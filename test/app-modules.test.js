@@ -49,7 +49,7 @@ const PARTS = {
   'design.js': ['renderHierarchy', 'clashBadge', 'viewOfModule', 'treeItem', 'selectRow', 'markSelRow', 'treeKeys',
     'select', 'testBench', 'inView', 'moduleContextMenu', 'fileContextMenu', 'projectContextMenu', 'setTop',
     'projectSaves', 'saveProjectJson', 'serialOp', 'removeFile', 'removeModule', 'removeNow'],
-  'menus.js': ['setupMenus', 'setupToolbar', 'refreshSteps', 'showPalette', 'printActive', 'downloadUrl', 'exportProjectZip'],
+  'menus.js': ['setupMenus', 'setupToolbar', 'refreshSteps', 'showPalette', 'printActive', 'exportProjectZip'],
   'viewers.js': ['netlistSources', 'SIM_MODEL_THEN', 'offerSimModel', 'isPrimitive', 'openTechSchematic',
     'openSilinxTechSchematic', 'openSchematic', 'readDataFiles', 'runSimulation', 'runSimulationInner',
     'saveStimTestbench', 'confirmElabErrors', 'openEmulator'],
