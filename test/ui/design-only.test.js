@@ -129,7 +129,7 @@ uiTest('#3780 #4103 Design Properties: its Project Kind makes a design project a
   const pick = v => (v === 'design' ? choose('Project Kind:', 'design') : choose('Project Kind:', 'fpga').then(() => choose('Evaluation Development Board:', v)));
   await page.menu('Project', 'Design Properties…');
   await page.waitDialog('Design Properties');
-  assert.deepEqual(await dialogFields(), { kind: 'design', kinds: ['FPGA design (a board and a device)', 'Design and simulation only (no FPGA)'], board: '', boards: [''], shown: ['Name:', 'Project Kind:', 'Top-Level Source Type:'] });
+  assert.deepEqual(await dialogFields(), { kind: 'design', kinds: ['No FPGA', 'With an FPGA', 'Co-design (not available yet)'], board: '', boards: [''], shown: ['Name:', 'Project Kind:', 'Top-Level Source Type:'] });
   await pick('basys2');
   assert.ok((await dialogFields()).shown.includes('Device:') && (await dialogFields()).shown.includes('Evaluation Development Board:'));
   await page.dialogButton('OK');
@@ -159,10 +159,19 @@ uiTest('#3780 #4103 Design Properties: its Project Kind makes a design project a
   await page.menu('Project', 'Design Properties…');
   await page.waitDialog('Design Properties');
   await pick('design');
-  await page.dialogButton('OK');
+  // (said at once under the kind, in red, OK disabled: nothing to confirm, #5041)
+  assert.deepEqual(await page.eval(() => {
+    const n = document.querySelector('.dlg-overlay .kind-note'), ok = document.querySelector('.dlg-overlay .dlg-buttons .btn.primary');
+    return [n.textContent, n.classList.contains('kind-refused'), n.style.display !== 'none', ok.disabled];
+  }), ['the project \'OwnHdl\' cannot become a design and simulation project: its HDL and C sources are not drawings (src/top.v)', true, true, true]);
+  await page.key('Enter');   // (Enter does not press a disabled OK)
+  assert.equal(await page.topDialogTitle(), 'Design Properties');
+  // back to With an FPGA: OK again
+  await pick('basys2');
+  assert.equal(await page.eval(() => document.querySelector('.dlg-overlay .dlg-buttons .btn.primary').disabled), false);
+  await page.dialogButton('Cancel');
   await page.waitNoDialog();
-  await page.waitConsole(/cannot become a design and simulation project/);
-  assert.deepEqual(await warnings(page), ['ERROR: the project \'OwnHdl\' cannot become a design and simulation project: its HDL and C sources are not drawings (src/top.v)']);
+  assert.deepEqual(await warnings(page), []);
   assert.equal(await page.eval(() => window.Silinx.project.kind), undefined);
 });
 

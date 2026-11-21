@@ -14,7 +14,7 @@ import { reservedNameDiags } from './processes.js';
 import { countEvent, siteCounts } from './analytics.js';
 import { confirmDeviceChange } from './device-change.js';
 import { boardTop } from './board-top.js';
-import { KIND_OPTIONS, kindFields, makeDesignProject } from './project-kind-ui.js';
+import { KIND_OPTIONS, kindFields, kindNote, makeDesignProject } from './project-kind-ui.js';
 import { kindStep } from './project-kind-step.js';
 import { HDL_TOP_TYPES, TOP_TYPES, projectTopType } from '/core/top-types.js';
 import { topSourceFiles } from '/core/top-source.js';
@@ -484,7 +484,11 @@ export async function projectProperties() {
   // (a design project's from before: an HDL type shown, and kept, as a Schematic)
   const top0 = isDesignOnly(pj) && HDL_TOP_TYPES.includes(projectTopType(pj).id) ? 'sch' : projectTopType(pj).id;
   const topSel = select(TOP_TYPES.map(t => [t.id, t.label]), top0);
-  const syncKind = kindFields(() => kindSel.value === DESIGN_KIND, [boardSel, dp.famSel, dp.partSel, dp.pkgSel, dp.spdSel, synth, lang], topSel);
+  const fpgaFields = kindFields(() => kindSel.value === DESIGN_KIND, [boardSel, dp.famSel, dp.partSel, dp.pkgSel, dp.spdSel, synth, lang], topSel);
+  // (what the kind chosen does, or why it cannot: OK disabled then, #5041)
+  const note = kindNote(kindSel, pj);
+  const buttons = [{ label: 'OK', value: true, primary: true }, { label: 'Cancel', value: null }];
+  const syncKind = () => { fpgaFields(); note.update(); if (buttons[0].el) buttons[0].el.disabled = note.refused(); };
   kindSel.addEventListener('change', syncKind);
   boardSel.addEventListener('change', () => {
     const b = db.boards.find(x => x.id === boardSel.value);
@@ -492,10 +496,10 @@ export async function projectProperties() {
     dp.disable(!!b);
   });
   const r = await dialog({
-    title: 'Design Properties', width: 520,
+    title: 'Design Properties', width: 520, buttons,
     body: h('div', { class: 'form-grid' },
       ...field('Name:', h('span', { 'data-no-i18n': '' }, pj.name)),
-      ...field('Project Kind:', kindSel),
+      ...field('Project Kind:', kindSel), note.el,
       ...field('Evaluation Development Board:', boardSel),
       ...field('Family:', dp.famSel),
       ...field('Device:', dp.partSel), ...field('Package:', dp.pkgSel), ...field('Speed:', dp.spdSel),

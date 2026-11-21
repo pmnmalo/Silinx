@@ -26,6 +26,15 @@ const fields = (page, kind = KIND, board = BOARD) => page.eval((k, b) => {
 }, kind, board);
 const choose = (page, label, v) => page.eval((l, x) => { const s = [...document.querySelectorAll('.dlg-overlay .form-grid > label')].find(e => e.textContent === l).nextElementSibling; s.value = x; s.dispatchEvent(new Event('change')); }, label, v);
 const warnings = async page => (await page.consoleText()).split('\n').filter(l => /WARNING|ERROR/.test(l));
+// the note under the Project Kind (#5041): its text (null hidden), refused (red), OK disabled
+const note = page => page.eval(() => {
+  const n = document.querySelector('.dlg-overlay .kind-note');
+  const ok = [...document.querySelectorAll('.dlg-overlay .dlg-buttons .btn')].find(b => b.classList.contains('primary'));
+  return { text: n.style.display === 'none' ? null : n.textContent, refused: n.classList.contains('kind-refused'), ok: !ok.disabled };
+});
+const KINDS = [['design', 'No FPGA'], ['fpga', 'With an FPGA'], ['codesign', 'Co-design (not available yet)']];
+const TO_DESIGN = 'Its board and its constraints file leave the project (the file stays on the disk); its drawings stay, their HDL and the test benches hidden, none deleted.';
+const TO_FPGA = 'Its HDL and the FPGA flow are shown, nothing lost: choose its board or its device.';
 
 uiTest('#4103 Design Properties: a Project Kind field as New Project\'s, no "no FPGA" board; the kind hides the FPGA fields; a design project made an FPGA one with no board', E, async (page) => {
   await makeProject(env, { name: 'KindFpga', board: 'basys2', files: { 'src/traffic.fsm.json': FSM }, top: 'traffic' });
@@ -34,13 +43,17 @@ uiTest('#4103 Design Properties: a Project Kind field as New Project\'s, no "no 
   await page.menu('Project', 'Design Properties…');
   await page.waitDialog('Design Properties');
   let f = await fields(page);
-  assert.deepEqual([f.kind, f.kinds], ['fpga', [['fpga', 'FPGA design (a board and a device)'], ['design', 'Design and simulation only (no FPGA)']]]);
+  assert.deepEqual([f.kind, f.kinds], ['fpga', KINDS]);   // (New Project's kinds, #5041; co-design not chosen yet)
+  assert.equal(await page.eval(() => document.querySelector('.dlg-overlay option[value=codesign]').disabled), true);
+  assert.deepEqual(await note(page), { text: null, refused: false, ok: true });
   assert.deepEqual(f.shown.slice(0, 3), ['Name:', KIND, BOARD]);
   assert.ok(f.boards[0] === 'None Specified' && !f.boards.some(b => /no FPGA/.test(b)), f.boards.join(' | '));
   for (const l of ['Device:', 'Synthesis Tool:', 'Preferred Language:']) assert.ok(f.shown.includes(l), l);
   // the kind "no FPGA": the board, the device, the synthesis tool and the language hidden at once; back, shown
   await choose(page, KIND, 'design');
   assert.deepEqual((await fields(page)).shown, ['Name:', KIND, 'Top-Level Source Type:']);
+  // (what it does said at once, before OK: its drawings' sources, nothing deleted, #5041)
+  assert.deepEqual(await note(page), { text: TO_DESIGN, refused: false, ok: true });
   await choose(page, KIND, 'fpga');
   assert.ok((await fields(page)).shown.includes(BOARD) && (await fields(page)).shown.includes('Device:'));
   await page.dialogButton('Cancel');
@@ -56,6 +69,7 @@ uiTest('#4103 Design Properties: a Project Kind field as New Project\'s, no "no 
   f = await fields(page);
   assert.deepEqual([f.kind, f.shown], ['design', ['Name:', KIND, 'Top-Level Source Type:']]);
   await choose(page, KIND, 'fpga');
+  assert.deepEqual(await note(page), { text: TO_FPGA, refused: false, ok: true });
   await page.dialogButton('OK');
   await page.waitNoDialog();
   await page.waitFor(() => !window.Silinx.project.kind && !document.documentElement.dataset.projectKind, [], { what: 'an FPGA project' });
@@ -75,7 +89,9 @@ uiTest('#4103 Design Properties\' Project Kind in Portuguese', E, async (page) =
     page.eval(async () => (await import('/js/wizards.js')).projectProperties()).catch(() => {});
     await page.waitFor(() => !!document.querySelector('.dlg-overlay .form-grid'), [], { what: 'Design Properties' });
     const f = await fields(page, 'Tipo de Projeto:', 'Placa de Desenvolvimento:');
-    assert.deepEqual([f.kind, f.kinds.map(k => k[1])], ['design', ['Projeto para FPGA (uma placa e um dispositivo)', 'Só desenho e simulação (sem FPGA)']]);
+    assert.deepEqual([f.kind, f.kinds.map(k => k[1])], ['design', ['Sem FPGA', 'Com FPGA', 'Co-design (ainda não disponível)']]);
+    await choose(page, 'Tipo de Projeto:', 'fpga');
+    assert.equal((await note(page)).text, 'O HDL e o fluxo da FPGA passam a ver-se, nada se perde: escolha a placa ou o dispositivo.');
     assert.ok(!f.boards.some(b => /sem FPGA/.test(b)), f.boards.join(' | '));
     await page.eval(() => [...document.querySelectorAll('.dlg-overlay .dlg-buttons .btn')].pop().click());
     await page.waitNoDialog();
