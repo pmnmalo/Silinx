@@ -16,6 +16,7 @@ import { vendorFlashText } from '/core/vendor-flash.js';
 import { refusedProject, isTrusted } from '/core/trust.js';
 import { noWebUsb } from '/core/webusb-support.js';
 import { downloadUrl } from './download.js';
+import { procState } from './state-proc.js';
 
 // (#4683: a Zynq-7000's ARM DAP, the processing system's debug port, kept in BYPASS)
 const roleOf = name => (/^arm_dap/i.test(name) ? 'dap' : /^xcf/i.test(name) ? 'prom' : /^(xc)?(3s|6s|4v|5v|6v|7[akvz])/i.test(name) ? 'fpga' : /^(xc)?(2c|95)/i.test(name) ? 'cpld' : 'other');
@@ -155,7 +156,7 @@ export function mountImpact(el) {
     if (cannotProgram() || bitData || !pj?.top || bitfile.value.trim() !== fpgaFile) return true;   // (a file of the student's choice)
     // (is the file there: a build in the browser's storage is gone after a reload, its processes' state is not, #1084)
     const there = await api.bitinfo(pj.name).then(b => b?.available, () => undefined);
-    const st = programFileState(S.status, there);
+    const st = programFileState(procState.status, there);
     if (st === 'running') { logError('The design is being implemented: program it when it ends'); return false; }
     const text = implementFirstText(st, pj.top, !!api.standalone);
     if (!text) return true;

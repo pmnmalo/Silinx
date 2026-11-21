@@ -115,7 +115,7 @@ async function showBeside(doc, view) {
   let g = view.find();
   on = true;
   // (in the Tasks interface, of the document's task: a waveform's HDL beside it in Simulate)
-  const place = () => { if (g !== doc) { if (sideOf(g) !== s) docsState.docs.push(...S.docs.splice(docsState.docs.indexOf(g), 1)); g.side = s; g.task = taskOf(doc); } };   // (at its new row's end)
+  const place = () => { if (g !== doc) { if (sideOf(g) !== s) docsState.docs.push(...docsState.docs.splice(docsState.docs.indexOf(g), 1)); g.side = s; g.task = taskOf(doc); } };   // (at its new row's end)
   if (g) { place(); await g.refresh?.(); activateDoc(g); }
   else {
     target = s;

@@ -91,7 +91,7 @@ export async function renameDialog(file, mod = null) {
 // close the editors of the files that move or change: the paths to reopen after, the active one first
 async function closeTouched(paths, moved) {
   const reopen = [];
-  for (const d of [...S.docs]) {
+  for (const d of [...docsState.docs]) {
     if (d.path && (paths.has(d.path) || moved.has(d.path))) {
       if (docsState.active === d) reopen.unshift(moved.get(d.path) || d.path); else reopen.push(moved.get(d.path) || d.path);
       d.dirty = false; clearTimeout(d._autosave); await closeDoc(d);

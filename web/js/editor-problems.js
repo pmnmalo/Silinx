@@ -11,13 +11,14 @@ import { S } from './app.js';
 import { log, renderDiagnostics, showConsolePage, showProblems } from './console.js';
 import { checkLines } from './tasks-check.js';
 import { t, onLanguageChange } from './i18n.js';
+import { procState } from './state-proc.js';
 
 const SHOW = 'Show it in the drawing';
 
 export function editorProblems({ file, tool, what = 'Validate', goto }) {
   const mine = (d) => d.source === 'editor' && d.file === file;
   const set = (diags) => {
-    S.diags = [...S.diags.filter((d) => !mine(d)), ...diags.filter((d) => d.severity === 'error' || d.severity === 'warning')
+    procState.diags = [...procState.diags.filter((d) => !mine(d)), ...diags.filter((d) => d.severity === 'error' || d.severity === 'warning')
       .map((d) => ({ severity: d.severity, tool, message: d.message, file, line: 0, source: 'editor', goto: () => goto(d) }))];
     renderDiagnostics();
   };

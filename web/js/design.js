@@ -36,6 +36,7 @@ import { cState } from './state-c.js';
 import { panes } from './state-panes.js';
 import { filesState } from './state-files.js';
 import { designState } from './state-design.js';
+import { docsState } from './state-docs.js';
 
 const $ = id => document.getElementById(id);
 // the Tasks interface (#799): one tree, no views: the design (as the Implementation view shows it); the test
@@ -438,7 +439,7 @@ async function deleteFile(file) {
   if (!await confirmDlg('Delete File', trash ? `Delete '${file}'?\n(It is moved to the workspace's .trash folder, from where you can move it back. Remove from Project keeps the file in the project folder.)`
     : `Delete '${file}' from the disk?\n(It cannot be undone: Remove from Project keeps the file in the project folder.)`)) return;
   if (!await saveAll()) return;
-  for (const d of [...S.docs]) if (d.path === file || String(d.id || '').endsWith(`:${file}`)) { d.dirty = false; clearTimeout(d._autosave); await closeDoc(d); }
+  for (const d of [...docsState.docs]) if (d.path === file || String(d.id || '').endsWith(`:${file}`)) { d.dirty = false; clearTimeout(d._autosave); await closeDoc(d); }
   return serialOp(async () => {
     const pj = S.project;
     pj.files = pj.files.filter(x => x.path !== file);
@@ -538,7 +539,7 @@ const shownName = file => (designOnly() && HDL_RE.test(file) && designState.modu
 export async function removeFile(file) {
   if (!await confirmDlg('Remove Source', `Remove '${shownName(file)}' from the project?\n(The file stays in the project folder: Undo or Add to Project in the Files view brings it back.)`)) return;
   if (!await saveAll()) return;
-  for (const d of [...S.docs]) if (d.path === file || String(d.id || '').endsWith(`:${file}`)) await closeDoc(d);
+  for (const d of [...docsState.docs]) if (d.path === file || String(d.id || '').endsWith(`:${file}`)) await closeDoc(d);
   return serialOp(() => removeNow(file));
 }
 // Remove from Project of a module in the Design pane (its row, its badges): a drawing and its HDL file,
@@ -552,7 +553,7 @@ export async function removeModule(file) {
   if (!await confirmDlg('Remove Source', designOnly() ? `Remove '${drawing}' from the project?\n(The file stays in the project folder: Undo or Add to Project in the Files view brings it back.)`
     : `Remove '${drawing}' and its HDL file '${hdl}' from the project?\n(The files stay in the project folder: Undo or Add to Project in the Files view brings them back.)`)) return;
   if (!await saveAll()) return;
-  for (const d of [...S.docs]) if ([drawing, hdl].some(f => d.path === f || String(d.id || '').endsWith(`:${f}`))) await closeDoc(d);
+  for (const d of [...docsState.docs]) if ([drawing, hdl].some(f => d.path === f || String(d.id || '').endsWith(`:${f}`))) await closeDoc(d);
   return serialOp(() => removeNow(drawing, hdl));
 }
 // (hdl: the drawing's HDL file, removed with it)

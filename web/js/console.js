@@ -13,6 +13,7 @@ import { lineMessage, entryOf } from '/core/message.js';
 import { lineSource, isShown, shownSourcesNow, showCommandLines } from './messages.js';
 import { docsState } from './state-docs.js';
 import { designState } from './state-design.js';
+import { procState } from './state-proc.js';
 
 const $ = id => document.getElementById(id);
 
@@ -124,10 +125,10 @@ function startsRun(line) {
 /** The Errors / Warnings tabs' entries of a run dropped (its Console lines kept): a rerun's (#4728), or a group of lines
  *  given a run of their own whose cause is gone (a drawing's HDL made again, #5008). */
 export function dropRun(run) {
-  const n = S.diags.length;
-  S.diags = S.diags.filter(d => !(d.source === 'console' && d.run === run));
+  const n = procState.diags.length;
+  procState.diags = procState.diags.filter(d => !(d.source === 'console' && d.run === run));
   lastConsoleDiag = null;
-  if (S.diags.length !== n) renderDiagnosticsSoon();
+  if (procState.diags.length !== n) renderDiagnosticsSoon();
 }
 const sameEntry = (a, b) => a.severity === b.severity && a.tool === b.tool && a.message === b.message;
 
@@ -155,8 +156,8 @@ function consoleMessage(msg, goto, draw = null) {
   const d = { ...e, source: 'console', ...(goto ? { goto, file: null, line: 0, inText: false } : {}) };
   // (an application's: drawn in the interface's language, its tag left out as its message's, #4749)
   if (draw) Object.defineProperty(d, 'draw', { value: () => draw().replace(TAGGED, '$2').trim(), enumerable: false });
-  if (e.run === null) S.diags = S.diags.filter(x => !(x.source === 'console' && x.run === null && sameEntry(x, d)));
-  S.diags.push(d);
+  if (e.run === null) procState.diags = procState.diags.filter(x => !(x.source === 'console' && x.run === null && sameEntry(x, d)));
+  procState.diags.push(d);
   lastConsoleDiag = d;
   renderDiagnosticsSoon();
 }
@@ -167,7 +168,7 @@ function consoleMessage(msg, goto, draw = null) {
 // listed once (an assertion in a loop: not a thousand times), at most SIM_ENTRIES of a run.
 const SIM_SEVERITY = { error: 'error', failure: 'error', fatal: 'error', warning: 'warning' }, SIM_ENTRIES = 200;
 export function simDiagnostics(run) {
-  S.diags = S.diags.filter(d => !(d.source === 'sim' && d.run === run));
+  procState.diags = procState.diags.filter(d => !(d.source === 'sim' && d.run === run));
   renderDiagnosticsSoon();
   const seen = new Set();
   return e => {
@@ -176,7 +177,7 @@ export function simDiagnostics(run) {
     const d = { severity, tool: 'SSim', message: String(e.text ?? ''), file: e.file || null, line: e.line || 0, source: 'sim', run, src: 'sim' };   // (src: Simulation's filter, #4749)
     if (seen.has(diagKey(d))) return;
     seen.add(diagKey(d));
-    S.diags.push(d);
+    procState.diags.push(d);
     renderDiagnosticsSoon();
   };
 }
@@ -255,7 +256,7 @@ export function setDiagnostics(diags, { keepConsole = true } = {}) {
   diags = diags.map(shownDiag);   // (a design project's: its drawings', never its HDL's, #3891)
   // a check replaces its own entries; warnings/errors collected from the console (e.g. a running
   // implementation) are kept unless keepConsole is false, and the open editors' problems (editor-problems.js) always
-  S.diags = [...diags, ...S.diags.filter(d => (keepConsole && (d.source === 'console' || d.source === 'sim')) || d.source === 'editor')];
+  procState.diags = [...diags, ...procState.diags.filter(d => (keepConsole && (d.source === 'console' || d.source === 'sim')) || d.source === 'editor')];
   lastConsoleDiag = null;
   renderDiagnostics();
   // push file-local diagnostics to open editors
@@ -283,7 +284,7 @@ function actionButton(d) {
 // (the tabs list the entries of the sources the console's filter shows, #4749: an entry of the console's lines its
 // line's source; the checks' and the editors' entries, of no source, always)
 export function renderDiagnostics({ quiet = false } = {}) {
-  const diags = S.diags;
+  const diags = procState.diags;
   const errs = diags.filter(d => d.severity === 'error'), warns = diags.filter(d => d.severity !== 'error');
   const set = shownSourcesNow(), shown = d => !d.src || isShown(set, d.src);
   const fill = (el, list, ico) => {
@@ -386,7 +387,7 @@ async function applyDiagFix(d, f) {
 export function clearConsole() {
   $('console-log').innerHTML = '';
   lineCur = 'app';
-  S.diags = [];
+  procState.diags = [];
   lastConsoleDiag = null;
   renderDiagnostics();
 }

@@ -56,6 +56,7 @@ import { startState } from './state-start.js';
 import { filesState } from './state-files.js';
 import { docsState } from './state-docs.js';
 import { designState } from './state-design.js';
+import { procState } from './state-proc.js';
 
 // ------------------------------------------------------------------ state
 // Every field of the page's state, by concern (#4767). The fields first written later start undefined, as they did before
@@ -108,9 +109,11 @@ export const S = {
   // the documents: web/js/state-docs.js's slice (#4767), its fields here as getters and setters onto it
   get docs() { return docsState.docs; }, set docs(v) { docsState.docs = v; },
   get active() { return docsState.active; }, set active(v) { docsState.active = v; },
-  // the processes and their results
-  status: {}, diags: [], busy: false,
-  diagsCleared: 0,            // how many times the Errors / Warnings tabs were cleared (a project opened or closed)
+  // the processes and their results: web/js/state-proc.js's slice (#4767), its fields here as getters and setters onto it
+  get status() { return procState.status; }, set status(v) { procState.status = v; },
+  get diags() { return procState.diags; }, set diags(v) { procState.diags = v; },
+  get busy() { return procState.busy; }, set busy(v) { procState.busy = v; },
+  get diagsCleared() { return procState.diagsCleared; }, set diagsCleared(v) { procState.diagsCleared = v; },
   // the implementation's run: web/js/state-run.js's slice (#4767), its fields here as getters and setters onto it
   get currentJob() { return runState.currentJob; }, set currentJob(v) { runState.currentJob = v; },
   get stopRequested() { return runState.stopRequested; }, set stopRequested(v) { runState.stopRequested = v; },
@@ -126,11 +129,11 @@ const $ = id => document.getElementById(id);
 
 // the messages of one file checked again (after a quick fix), when the tabs list some of them
 function recheckFile(path) {
-  if (!S.project || !S.diags.some(x => x.file === path)) return;
+  if (!S.project || !procState.diags.some(x => x.file === path)) return;
   const doc = docsState.docs.find(o => o.path === path && o.editor);
   let fresh;
   try { fresh = hdlDiagnostics(path, doc ? doc.editor.getValue() : null).filter(x => x.file === path); } catch { return; }
-  S.diags = [...S.diags.filter(x => x.file !== path), ...fresh];
+  procState.diags = [...procState.diags.filter(x => x.file !== path), ...fresh];
   renderDiagnostics();
   doc?.editor.setDiagnostics(fresh);
 }
@@ -189,8 +192,8 @@ export function compileProject() {
     else if (r) freshHdl(m.generatedFile);
   }
   // (in designState.sources too, so that every compile of the project (simulation, checks, RTL views) has them)
-  designState.sources = [...S.sources.filter(s => !s.view), ...S.viewSources];
-  designState.lib = compile([...srcs, ...S.viewSources]);
+  designState.sources = [...designState.sources.filter(s => !s.view), ...designState.viewSources];
+  designState.lib = compile([...srcs, ...designState.viewSources]);
   // open schematics: their palette (Project modules) and module symbols follow the sources
   // (and their Device Primitives the project's part's, #791)
   if (docsState.docs.some(d => d.schEditor)) schModules().then(mods => { for (const d of docsState.docs) { d.schEditor?.setModules(mods); d.schEditor?.setDevice?.(projectPart()); } }).catch(() => {});
@@ -199,7 +202,7 @@ export function compileProject() {
   for (const p of designState.lib.parsed) for (const u of p.units) if (u.kind === 'module' || u.kind === 'package') fileOf.set(u.name, p);
   // (a circuit's ICs' modules, in its generated HDL, are the circuit's, not the project's: no row, no picker's, #4216)
   designState.partModules = circuitPartModules(designState.lib, designState.sources);
-  designState.modules = [...S.lib.modules.values()].filter(m => !designState.partModules.has(m.name.toLowerCase())).map(m => ({
+  designState.modules = [...designState.lib.modules.values()].filter(m => !designState.partModules.has(m.name.toLowerCase())).map(m => ({
     name: m.name, lang: m.lang, file: m.archFile || m.file, line: m.loc?.line || 1, kind: m.lang === 'vhdl' ? 'entity' : 'module',
     role: S.project.files.find(f => f.path === m.file)?.role || 'design',
     portList: m.ports.map(p => ({ name: p.name, dir: p.dir, type: typeText(p.type, m.lang) })),
@@ -279,7 +282,7 @@ export const history = createHistory(api, {
   restored: async (e, paths) => {
     // the documents of the files it changed: closed (without saving), opened again from the files
     const reopen = [];
-    for (const d of [...S.docs]) {
+    for (const d of [...docsState.docs]) {
       const p = docPath(d);
       if (p && paths.includes(p)) { if (docsState.active === d) reopen.unshift(p); else reopen.push(p); d.dirty = false; clearTimeout(d._autosave); await closeDoc(d); }
     }
@@ -392,7 +395,7 @@ function docTab(doc) {
     popupMenu([
       { label: 'Close', action: () => closeDoc(doc) },
       { label: 'Close Others', action: () => docsState.docs.filter(d => d !== doc).forEach(closeDoc) },
-      { label: 'Close All', action: () => [...S.docs].forEach(closeDoc) },
+      { label: 'Close All', action: () => [...docsState.docs].forEach(closeDoc) },
       ...splitItems(doc),   // (two documents side by side, #1619)
       // (a text file in the user's editor, at the cursor's line, #4017)
       ...docEditorItems(doc),
@@ -506,7 +509,7 @@ export async function closeDoc(doc) {
 
 // ---- where the user was (#160, #163): web/js/view-state.js (#2886: moved as it was)
 export { closeAllDocs, restoreViewState, saveViewState } from './view-state.js';
-export function closeDocByPath(path) { for (const d of [...S.docs]) if (d.path === path) { d.dirty = false; closeDoc(d); } }
+export function closeDocByPath(path) { for (const d of [...docsState.docs]) if (d.path === path) { d.dirty = false; closeDoc(d); } }
 
 // ---- HDL / text editor
 // (task: the Tasks interface's task the document is shown in, `sim` from the Simulation tree's HDL badge, #1332; else
@@ -572,7 +575,7 @@ export async function openFile(path, line, col, { task } = {}) {
         });
         el.append(d.editor.status);   // (its status line: the line and column, the language, #2763)
         if (path === 'build/open/timing.txt' || path === `build/${S.project?.top}.twr` || path === `build/${S.project?.top}_timing.rpt`) d.paths = import('./timing-paths.js').then(m => m.mountTimingPaths(d, el, host));   // (its Paths panel, #3178: ISE's and Vivado's too)
-        d.editor.setDiagnostics(S.diags.filter(x => x.file === path));
+        d.editor.setDiagnostics(procState.diags.filter(x => x.file === path));
         let ucfTimer = null;
         const liveUcf = () => { clearTimeout(ucfTimer); ucfTimer = setTimeout(async () => { if (d.editor) d.editor.setDiagnostics(await ucfDiagnostics(d.editor.getValue(), path)); }, 400); };
         if (lang === 'ucf') liveUcf();
@@ -737,7 +740,7 @@ function folderContextMenu(e, dir) {
 }
 
 // files of the project under folder `dir`
-const filesUnder = dir => [...new Set([...S.fileTree, ...S.project.files.map(f => f.path)])].filter(f => f.startsWith(`${dir}/`));
+const filesUnder = dir => [...new Set([...filesState.fileTree, ...S.project.files.map(f => f.path)])].filter(f => f.startsWith(`${dir}/`));
 
 async function renameFolder(dir) {
   if (!S.project) return;
@@ -751,7 +754,7 @@ async function renameFolder(dir) {
   const views = filesState.fileTree.filter(f => /\.(sch|asm|tt|bool|fsm|pn|circ)\.json$/i.test(f));
   // the editors of moved files are closed and reopened at their new paths
   const reopen = [];
-  for (const d of [...S.docs]) if (d.path && d.path.startsWith(`${dir}/`)) { reopen.push(remap(d.path)); d.dirty = false; clearTimeout(d._autosave); await closeDoc(d); }
+  for (const d of [...docsState.docs]) if (d.path && d.path.startsWith(`${dir}/`)) { reopen.push(remap(d.path)); d.dirty = false; clearTimeout(d._autosave); await closeDoc(d); }
   try {
     await api.renameFile(S.project.name, dir, to);
     // synchronized charts / schematics refer to their HDL file by path: follow the move
@@ -775,7 +778,7 @@ async function deleteFolder(dir) {
   const files = filesUnder(dir);
   const trash = !api.standalone || api.keepsTrash;   // (into the workspace's .trash, #3364; a browser's storage has none)
   if (!await confirmDlg('Delete Folder', `Delete the folder '${dir}' and the ${files.length} file(s) in it from the project?${trash ? '\n(They are moved to the workspace\'s .trash folder, from where you can move them back.)' : ''}\n\n${files.slice(0, 12).join('\n')}${files.length > 12 ? '\n…' : ''}`)) return;
-  for (const d of [...S.docs]) if (d.path && d.path.startsWith(`${dir}/`)) { d.dirty = false; clearTimeout(d._autosave); await closeDoc(d); }
+  for (const d of [...docsState.docs]) if (d.path && d.path.startsWith(`${dir}/`)) { d.dirty = false; clearTimeout(d._autosave); await closeDoc(d); }
   try {
     const r = await api.deleteFile(S.project.name, dir, { trash });
     log(`Folder ${dir} deleted (${files.length} file(s)${r?.trashed ? `; moved to the workspace's .trash folder: ${r.trashed}` : ''}).`, 'ok');
@@ -907,10 +910,10 @@ async function boot() {
   // the start-up checks' warnings are in the Warnings tab until a project opens, as the lines written before
   // them: when their answer comes after a project was opened (the last one, reopened while the checks run),
   // they are in the console only; they were in the tabs or not by which came first (#339)
-  const cleared = S.diagsCleared;
+  const cleared = procState.diagsCleared;
   api.toolchain().then(tc => {
     S.toolchain = tc;
-    const opts = { diag: S.diagsCleared === cleared };
+    const opts = { diag: procState.diagsCleared === cleared };
     if (tc.ise.mode === 'silinx') log(`Toolchain: ${tc.ise.reason}.`, 'ok', opts);
     else log(`Toolchain: ISE ${tc.ise.available ? 'available' : 'not available'} (${tc.ise.mode}: ${tc.ise.reason}).`, tc.ise.available ? 'ok' : 'warn', opts);
     renderProcesses();

@@ -10,6 +10,7 @@ import { log, onLogLine } from './console.js';
 import { renderProcesses } from './processes.js';
 import { RUN_LIMITS, followedReports, followedRuns, redact, redactAll, reportPath, reportsActivity, runSecrets, runsActivity } from '/core/collab-runs.js';
 import { docsState } from './state-docs.js';
+import { procState } from './state-proc.js';
 
 const RUNS_MS = 1000;
 
@@ -18,7 +19,7 @@ export function runsPublisher(session) {
   let run = { id: 0, lines: [], dropped: 0, busy: false }, summary = null, last = 0, reportsKey = null;
   const secrets = () => runSecrets(S.toolchain);
   const off = onLogLine((line, cls, msg) => {
-    if (!S.busy) return;
+    if (!procState.busy) return;
     if (!run.busy) run = { id: run.id + 1, lines: [], dropped: 0, busy: true };
     run.lines.push([redact(line, secrets()), cls, msg?.source || 'app']);   // (its source: the follower's filters, #4749)
     // (the end of a long run's lines kept: what a follower gets is RUN_LIMITS.lines at most)
@@ -33,11 +34,11 @@ export function runsPublisher(session) {
   return {
     publish() {
       if (!S.project) return;
-      if (run.busy && !S.busy) { run.busy = false; readSummary(); }
+      if (run.busy && !procState.busy) { run.busy = false; readSummary(); }
       const now = Date.now();
-      if (!S.busy || now - last >= RUNS_MS) {
+      if (!procState.busy || now - last >= RUNS_MS) {
         last = now;
-        try { const v = runsActivity({ ...run, status: S.status, summary }); v.from += run.dropped; session.publish('runs', v); } catch { /* not sent */ }
+        try { const v = runsActivity({ ...run, status: procState.status, summary }); v.from += run.dropped; session.publish('runs', v); } catch { /* not sent */ }
       }
       const open = docsState.docs.filter(d => reportPath(d.path) && d.editor?.getValue);
       const key = open.map(d => `${d.path}:${d.editor.getValue().length}`).join('\n');
@@ -65,7 +66,7 @@ export async function followRuns(st, get) {
   const f = followedReports(reports);
   if (!f) return false;
   // (a report open here that the owner's run made again: opened again, with its new text)
-  for (const d of [...S.docs]) {
+  for (const d of [...docsState.docs]) {
     const t = f.files[d.path];
     if (typeof t === 'string' && d.editor?.getValue && d.editor.getValue() !== t) { d.dirty = false; await closeDoc(d); await openFile(d.path).catch(() => {}); }
   }
@@ -73,8 +74,8 @@ export async function followRuns(st, get) {
 }
 
 function applyRuns(st, r) {
-  for (const k of Object.keys(S.status)) delete S.status[k];
-  Object.assign(S.status, r.status);
+  for (const k of Object.keys(procState.status)) delete procState.status[k];
+  Object.assign(procState.status, r.status);
   renderProcesses();
   // (a run's lines from where this page was: a new run's from its first line kept)
   if (st.run?.id !== r.id) st.run = { id: r.id, shown: r.from };

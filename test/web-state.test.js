@@ -37,7 +37,7 @@ test('every field of S the page uses is declared (#4767)', () => {
   assert.ok(files.length > 50, `${files.length} modules share S`);
   for (const f of files) {
     const code = read(f);
-    const used = [...code.matchAll(/(?<![\w.$])S\.([A-Za-z_]\w*)/g)].map(m => m[1]);
+    const used = [...code.matchAll(/(?<![\w$])(?<![^.]\.)S\.([A-Za-z_]\w*)/g)].map(m => m[1]);
     // (fields set by Object.assign(S, { a, b: … }))
     for (const m of code.matchAll(/Object\.assign\(S,\s*\{([^}]*)\}/g)) used.push(...m[1].split(',').map(x => x.trim().split(/\s*:/)[0]).filter(Boolean));
     for (const k of used) if (!keys.has(k)) missing.set(k, [...(missing.get(k) || []), path.basename(f)]);
@@ -47,10 +47,11 @@ test('every field of S the page uses is declared (#4767)', () => {
 
 test('the undeclared field of a module is found (the check itself)', () => {
   const keys = new Set(declared());
-  const code = 'S.project.top; S.newThing = 1; Object.assign(S, { docs, other: 2 }); x.S.nope; const S2 = S.active;';
-  const used = [...code.matchAll(/(?<![\w.$])S\.([A-Za-z_]\w*)/g)].map(m => m[1]);
+  const code = 'S.project.top; S.newThing = 1; Object.assign(S, { docs, other: 2 }); x.S.nope; const S2 = S.active; f([...S.spread]);';
+  const used = [...code.matchAll(/(?<![\w$])(?<![^.]\.)S\.([A-Za-z_]\w*)/g)].map(m => m[1]);
   for (const m of code.matchAll(/Object\.assign\(S,\s*\{([^}]*)\}/g)) used.push(...m[1].split(',').map(x => x.trim().split(/\s*:/)[0]).filter(Boolean));
-  assert.deepEqual(used.filter(k => !keys.has(k)), ['newThing', 'other']);
+  // (a spread's, ...S.x, is a use too: #4767's slices had missed them)
+  assert.deepEqual(used.filter(k => !keys.has(k)), ['newThing', 'spread', 'other']);
 });
 
 // the slices (#4767): a slice's module owns its fields, S reads and writes them through getters and setters
@@ -68,7 +69,7 @@ test('the drawings\' HDL slice (state-sync.js): S\'s fields are its own, both wa
   for (const k of Object.keys(syncState)) assert.ok(block.includes(`get ${k}() { return syncState.${k}; }, set ${k}(v) { syncState.${k} = v; }`), k);
   // no module reads them through S any more but through the slice
   const through = fs.readdirSync(DIR).filter(f => f.endsWith('.js'))
-    .filter(f => /(?<![\w.$])S\.(outOfSync|staleHdl|staleSeen|hdlClash|hdlClashWarned)\b/.test(read(f)));
+    .filter(f => /(?<![\w$])(?<![^.]\.)S\.(outOfSync|staleHdl|staleSeen|hdlClash|hdlClashWarned)\b/.test(read(f)));
   assert.deepEqual(through, []);
 });
 
@@ -84,7 +85,7 @@ test('the C sources\' slice (state-c.js): S\'s fields are its own, both ways; a 
   assert.deepEqual(cState.hls, { models: 1 }, 'its black boxes kept: read again as the project opens');
   const block = app.slice(app.indexOf('export const S = {'), app.indexOf('\n};', app.indexOf('export const S = {')));
   for (const k of Object.keys(cState)) assert.ok(block.includes(`get ${k}() { return cState.${k}; }, set ${k}(v) { cState.${k} = v; }`), k);
-  const through = fs.readdirSync(DIR).filter(f => f.endsWith('.js')).filter(f => /(?<![\w.$])S\.(hls|bbUndeclared|cFailed|cFailedSaid)\b/.test(read(f)));
+  const through = fs.readdirSync(DIR).filter(f => f.endsWith('.js')).filter(f => /(?<![\w$])(?<![^.]\.)S\.(hls|bbUndeclared|cFailed|cFailedSaid)\b/.test(read(f)));
   assert.deepEqual(through, []);
 });
 
@@ -95,7 +96,7 @@ test('the implementation\'s run slice (state-run.js): S\'s fields are its own, b
   assert.throws(() => { runState.other = 1; }, TypeError, 'its fields only');
   const block = app.slice(app.indexOf('export const S = {'), app.indexOf('\n};', app.indexOf('export const S = {')));
   for (const k of Object.keys(runState)) assert.ok(block.includes(`get ${k}() { return runState.${k}; }, set ${k}(v) { runState.${k} = v; }`), k);
-  const through = fs.readdirSync(DIR).filter(f => f.endsWith('.js')).filter(f => /(?<![\w.$])S\.(currentJob|stopRequested|synthDone)\b/.test(read(f)));
+  const through = fs.readdirSync(DIR).filter(f => f.endsWith('.js')).filter(f => /(?<![\w$])(?<![^.]\.)S\.(currentJob|stopRequested|synthDone)\b/.test(read(f)));
   assert.deepEqual(through, []);
 });
 
@@ -126,7 +127,7 @@ test('the selection and the panes\' slice (state-panes.js): S\'s fields are its 
   assert.throws(() => { panes.other = 1; }, TypeError, 'its fields only');
   const block = app.slice(app.indexOf('export const S = {'), app.indexOf('\n};', app.indexOf('export const S = {')));
   for (const k of FIELDS) assert.ok(block.includes(`get ${k}() { return panes.${k}; }, set ${k}(v) { panes.${k} = v; }`), k);
-  const re = new RegExp(`(?<![\\w.$])S\\.(${FIELDS.join('|')})\\b`);
+  const re = new RegExp(`(?<![\\w$])(?<![^.]\\.)S\\.(${FIELDS.join('|')})\\b`);
   assert.deepEqual(fs.readdirSync(DIR).filter(f => f.endsWith('.js')).filter(f => re.test(read(f))), []);
   // (S's declaration evaluated, app.js itself needs a page: its getters and setters reach the slice)
   const { cState } = await import('../web/js/state-c.js');
@@ -148,7 +149,7 @@ test('the page\'s start slice (state-start.js): S\'s fields are its own, both wa
   assert.throws(() => { startState.other = 1; }, TypeError, 'its fields only');
   const block = app.slice(app.indexOf('export const S = {'), app.indexOf('\n};', app.indexOf('export const S = {')));
   for (const k of FIELDS) assert.ok(block.includes(`get ${k}() { return startState.${k}; }, set ${k}(v) { startState.${k} = v; }`), k);
-  assert.deepEqual(fs.readdirSync(DIR).filter(f => f.endsWith('.js')).filter(f => /(?<![\w.$])S\.(linkOpened|linksWatched|startupChecked)\b/.test(read(f))), []);
+  assert.deepEqual(fs.readdirSync(DIR).filter(f => f.endsWith('.js')).filter(f => /(?<![\w$])(?<![^.]\.)S\.(linkOpened|linksWatched|startupChecked)\b/.test(read(f))), []);
   // (S's declaration evaluated, app.js itself needs a page: window.Silinx.startupChecked is the slice's)
   const { cState } = await import('../web/js/state-c.js');
   const { syncState } = await import('../web/js/state-sync.js');
@@ -168,7 +169,7 @@ test('the project\'s files slice (state-files.js): S\'s fields are its own, both
   const block = app.slice(app.indexOf('export const S = {'), app.indexOf('\n};', app.indexOf('export const S = {')));
   for (const k of FIELDS) assert.ok(block.includes(`get ${k}() { return filesState.${k}; }, set ${k}(v) { filesState.${k} = v; }`), k);
   assert.match(block, /^\s*project: null, devices: null, toolchain: null,$/m);
-  const re = new RegExp(`(?<![\\w.$])S\\.(${FIELDS.join('|')})\\b`);
+  const re = new RegExp(`(?<![\\w$])(?<![^.]\\.)S\\.(${FIELDS.join('|')})\\b`);
   assert.deepEqual(fs.readdirSync(DIR).filter(f => f.endsWith('.js')).filter(f => re.test(read(f))), []);
   // (S's declaration evaluated, app.js itself needs a page: its getters and setters reach the slice, a list pushed
   // through S is the slice's)
@@ -190,7 +191,7 @@ test('the documents\' slice (state-docs.js): S\'s fields are its own, both ways,
   assert.throws(() => { docsState.other = 1; }, TypeError, 'its fields only');
   const block = app.slice(app.indexOf('export const S = {'), app.indexOf('\n};', app.indexOf('export const S = {')));
   for (const k of ['docs', 'active']) assert.ok(block.includes(`get ${k}() { return docsState.${k}; }, set ${k}(v) { docsState.${k} = v; }`), k);
-  assert.deepEqual(fs.readdirSync(DIR).filter(f => f.endsWith('.js')).filter(f => /(?<![\w.$])S\.(docs|active)\b/.test(read(f))), []);
+  assert.deepEqual(fs.readdirSync(DIR).filter(f => f.endsWith('.js')).filter(f => /(?<![\w$])(?<![^.]\.)S\.(docs|active)\b/.test(read(f))), []);
   // (S's declaration evaluated, app.js itself needs a page: a document pushed through S, the list filtered and the one in
   // front set through it, are the slice's; and the other way)
   const { cState } = await import('../web/js/state-c.js');
@@ -221,7 +222,7 @@ test('the compiled design\'s slice (state-design.js): S\'s fields are its own, b
   const block = app.slice(app.indexOf('export const S = {'), app.indexOf('\n};', app.indexOf('export const S = {')));
   for (const k of FIELDS) assert.ok(block.includes(`get ${k}() { return designState.${k}; }, set ${k}(v) { designState.${k} = v; }`), k);
   assert.match(block, /^\s*project: null, devices: null, toolchain: null,$/m, 'the project stays S\'s');
-  const re = new RegExp(`(?<![\\w.$])S\\.(${FIELDS.join('|')})\\b`);
+  const re = new RegExp(`(?<![\\w$])(?<![^.]\\.)S\\.(${FIELDS.join('|')})\\b`);
   assert.deepEqual(fs.readdirSync(DIR).filter(f => f.endsWith('.js')).filter(f => re.test(read(f))), []);
   // (project.js: the drawings' maps into the slice, the C sources' black boxes into theirs, as Object.assign(S, …) did)
   assert.match(read('project.js'), /Object\.assign\(designState, \{ schOwners, hdlToSch, viewModule, viewTexts, symbolFiles \}\);\n\s*cState\.hls = hls;/);
@@ -236,4 +237,34 @@ test('the compiled design\'s slice (state-design.js): S\'s fields are its own, b
   designState.hdlToSch = { 'top.vhd': 'top.sch.json' };
   assert.equal(S.hdlToSch['top.vhd'], 'top.sch.json');
   Object.assign(designState, { view: 'impl', modules: [], hdlToSch: undefined });
+});
+
+test('the processes\' slice (state-proc.js): S\'s fields are its own, both ways, nothing run at the start', async () => {
+  const { procState } = await import('../web/js/state-proc.js');
+  const FIELDS = ['status', 'diags', 'busy', 'diagsCleared'];
+  assert.deepEqual(Object.keys(procState), FIELDS);
+  assert.deepEqual([procState.status, procState.diags, procState.busy, procState.diagsCleared], [{}, [], false, 0]);
+  assert.throws(() => { procState.other = 1; }, TypeError, 'its fields only');
+  const block = app.slice(app.indexOf('export const S = {'), app.indexOf('\n};', app.indexOf('export const S = {')));
+  for (const k of FIELDS) assert.ok(block.includes(`get ${k}() { return procState.${k}; }, set ${k}(v) { procState.${k} = v; }`), k);
+  const re = new RegExp(`(?<![\\w$])(?<![^.]\\.)S\\.(${FIELDS.join('|')})\\b`);
+  assert.deepEqual(fs.readdirSync(DIR).filter(f => f.endsWith('.js')).filter(f => re.test(read(f))), []);
+  // (S's declaration evaluated, app.js itself needs a page: a process's state and a message through S are the slice's,
+  // and back)
+  const { cState } = await import('../web/js/state-c.js');
+  const { syncState } = await import('../web/js/state-sync.js');
+  const S = new Function('procState', 'cState', 'syncState', `return ${block.slice('export const S = '.length)}\n};`)(procState, cState, syncState);
+  S.status.synth = 'ok';
+  S.diags = [...S.diags, { file: 'top.vhd', line: 3 }];
+  S.diagsCleared++;
+  assert.deepEqual([procState.status, procState.diags, procState.diagsCleared], [{ synth: 'ok' }, [{ file: 'top.vhd', line: 3 }], 1]);
+  procState.busy = true;
+  assert.equal(S.busy, true);
+  Object.assign(procState, { status: {}, diags: [], busy: false, diagsCleared: 0 });
+});
+
+test('S\'s fields, sliced: the project, its devices and its toolchain are the only ones S holds itself (#4767)', () => {
+  const start = app.indexOf('export const S = {'), body = app.slice(start, app.indexOf('\n};', start)).replace(/\/\/[^\n]*/g, '');
+  const plain = [...body.matchAll(/(?:^|[{,\s])([A-Za-z_]\w*)\s*:/g)].map(m => m[1]);
+  assert.deepEqual(plain, ['project', 'devices', 'toolchain']);
 });

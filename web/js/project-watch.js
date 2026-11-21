@@ -14,6 +14,7 @@ import { editorOf, modelOf } from './collab-drawing.js';
 import { withView } from '/core/collab-model.js';
 import { runState } from './state-run.js';
 import { docsState } from './state-docs.js';
+import { procState } from './state-proc.js';
 
 const REPORTS = 'build/reports.json', STATUS = 'build/silinx-status.json';
 // (a drawing's document: its path in its id, as app.js's docPath)
@@ -60,7 +61,7 @@ export async function applyChanges({ project, changes = [], by = null, tab = fal
     await reloadProject();
   }
   if (by) return;   // (a project followed: its runs are its owner's, not shared)
-  if (S.busy || runState.currentJob) return;   // (a run of the page's own: its marks are its own)
+  if (procState.busy || runState.currentJob) return;   // (a run of the page's own: its marks are its own)
   if (files.length || run || changes.some(c => c.path === STATUS)) {
     // a run made outside the page: its marks from its summary, kept for the next opening
     await restoreImplStatus({ fromReports: run });

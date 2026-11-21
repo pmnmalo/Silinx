@@ -7,6 +7,7 @@ import { familyProfile } from '/core/family-profile.js';
 import { toolOf } from './tool-descriptors.js';
 import { h } from './ui.js';
 import { S, app } from './app.js';
+import { procState } from './state-proc.js';
 
 export function mountSummary(el) {
   const page = h('div', { class: 'page' });
@@ -22,7 +23,7 @@ export function mountSummary(el) {
     try { rep = await api.reports(pj.name); } catch { /* none */ }
     if (n !== asked) return latest;
     const part = S.devices?.parts.find(p => p.part === pj.device.part);
-    const errs = S.diags.filter(d => d.severity === 'error').length, warns = S.diags.length - errs;
+    const errs = procState.diags.filter(d => d.severity === 'error').length, warns = procState.diags.length - errs;
     page.innerHTML = '';
     page.append(h('h2', {}, `${pj.name} Project Status`));
     const row = (a, b, c, d) => h('tr', {}, h('th', {}, a), h('td', {}, b ?? ''), h('th', {}, c ?? ''), h('td', {}, d ?? ''));

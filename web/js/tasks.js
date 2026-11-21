@@ -45,6 +45,7 @@ import { ISE, allTasks, hasTask } from './tool-descriptors.js';
 import { panes } from './state-panes.js';
 import { docsState } from './state-docs.js';
 import { designState } from './state-design.js';
+import { procState } from './state-proc.js';
 
 // the tasks, from the tools' descriptors (#2311; a tool shows its own: refreshDots)
 const TASK_DEFS = allTasks();
@@ -153,7 +154,7 @@ export function docDetail(title) {
 }
 
 const RANK = { err: 4, running: 3, stale: 2, warn: 1, ok: 0 };
-/** A task's state dot from the processes' status (S.status), with the tool's list of them: 'err' | 'running' | 'stale' | 'warn' | 'ok' | null. */
+/** A task's state dot from the processes' status (procState.status), with the tool's list of them: 'err' | 'running' | 'stale' | 'warn' | 'ok' | null. */
 export function taskDot(task, status = {}, tool = ISE) {
   const ids = tool.tasks.find(t => t.id === task)?.dots || [];
   let worst = null;
