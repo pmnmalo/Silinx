@@ -14,6 +14,7 @@ import { startI18n, t } from './i18n.js';
 import { applyPrefs } from './silinx.js';
 import { initDrawer, drawerGiveWay, leftTabClicked } from './narrow.js';
 import { initPhone } from './phone.js';
+import { mountPhoneToolbar, fitPhoneMenus } from './phone-toolbar.js';
 import { initTasks, restoreStartTask } from './tasks.js';
 import { registerServiceWorker } from './pwa.js';
 import { createHistory } from './history.js';
@@ -840,6 +841,8 @@ async function boot() {
   document.querySelectorAll('.ico-inline[data-icon]').forEach(e => { e.innerHTML = icons[e.dataset.icon] || ''; });
   setupMenus();
   setupToolbar();
+  mountPhoneToolbar();   // (a phone: the tools it is for, the others in a menu, #5121)
+  fitPhoneMenus();
   mountSplit();   // (the Split button, #1652)
   splitter($('v-split'), $('left'), LEFT_SPLIT);
   splitter($('left-split'), $('proc-panel'), { dir: 'v', min: 80, max: 900, invert: true, storageKey: 'xl.procH' });
