@@ -157,6 +157,9 @@ viewer of its own:
 
 - **Both interfaces** (Silinx and ISE style), **light and dark themes**, **narrow screens** (a tablet in portrait)
   and **touch** (a long press is the right click).
+- **A phone** (under 600 px, `PHONE_QUERY` of `web/js/narrow.js`, #5121): one pane at a time, the whole screen: the side
+  panel, the document or the console, switched by the bar of panes at the bottom (`web/js/phone.js`). A new part of
+  the main window is placed in one of the three panes, never beside them.
 - **A drawing's view gestures are the Schematic editor's** (`web/js/view-gestures.js`, #4291): the wheel's and the
   pinch's smooth zoom about the pointer (Safari's pinch too: its gesture events, #4296), a trackpad's scroll pans, two fingers on a touch screen, the middle button and
   Space drag the view; none of them starts a tool. A new editor or viewer of a drawing wires them and joins
