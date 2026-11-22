@@ -7,7 +7,7 @@
 import { systemPlan, buildSystem, wireFrames } from './system-build.js';
 import { compiledNodeModel } from './system-sim-compiled.js';
 import { loadAvr8js } from './system-sim-avr.js';
-import { linkTraffic, usText } from './system-decode.js';
+import { linkTraffic, usText, decodeSpi, spiWarnings } from './system-decode.js';
 
 /** A run's time as Simulate System says it: ms or s. */
 export const runTimeText = ps => (ps >= 1e12 ? `${+(ps / 1e12).toFixed(3)} s` : `${+(ps / 1e9).toFixed(3)} ms`);
@@ -57,7 +57,9 @@ export const bytesText = bytes => bytes.map(({ byte: b }) => (b >= 0x20 && b < 0
  */
 export function systemReport({ sim, wires, terminals }) {
   const traffic = linkTraffic(sim, { frames: wireFrames(wires) }).map((t, i) => ({ wire: t.link, link: wires[i].link, from: wires[i].from, to: wires[i].to, baud: wires[i].baud ?? null, frame: wires[i].frame ?? null, kind: t.kind, bytes: t.bytes, decoded: t.warnings, changes: t.changes }));
-  const warnings = [...sim.messages('warning'), ...traffic.flatMap(t => t.decoded)];
+  // (an SPI link's transfers, from its four wires, #5214)
+  const spi = spiTraffic(sim, wires);
+  const warnings = [...sim.messages('warning'), ...traffic.flatMap(t => t.decoded), ...spi.flatMap(s => s.decoded)];
   const errors = sim.messages('error');
   const term = Object.fromEntries([...terminals].map(([id, n]) => [id, bytesText(n.received)]));
   const lines = [`Simulate System: ${runTimeText(sim.now)} simulated${sim.finished ? `, stopped by ${sim.finished.node} (${sim.finished.why})` : ''}.`];
@@ -65,8 +67,22 @@ export function systemReport({ sim, wires, terminals }) {
     if (t.kind !== 'uart') { lines.push(`${t.wire} (${t.from} → ${t.to}): ${t.changes} change(s)`); continue; }
     lines.push(`${t.wire} (${t.from} → ${t.to}, ${t.baud} ${t.frame}): ${t.bytes.length} byte(s)${t.bytes.length ? `, the first at ${usText(t.bytes[0].t)}: ${JSON.stringify(bytesText(t.bytes))}` : ''}`);
   }
+  for (const s of spi) lines.push(`${s.link} (SPI ${s.from} → ${s.to}, ${s.hz} Hz mode ${s.mode}): ${s.transfers.length} transfer(s)${s.transfers.length ? `: MOSI ${s.transfers.slice(0, 16).map(x => hexByte(x.mosi)).join(' ')}; MISO ${s.transfers.slice(0, 16).map(x => hexByte(x.miso)).join(' ')}` : ''}`);
   for (const [id, text] of Object.entries(term)) lines.push(`terminal ${id}: ${JSON.stringify(text)}`);
   for (const w of warnings) lines.push(`WARNING: ${w}`);
   for (const e of errors) lines.push(`ERROR: ${e}`);
-  return { now: sim.now, traffic, terminals: term, warnings, errors, lines };
+  return { now: sim.now, traffic, spi, terminals: term, warnings, errors, lines };
+}
+
+const hexByte = b => b.toString(16).toUpperCase().padStart(2, '0');
+// each SPI link's transfers (its wires `<link>_sck`…): [{ link, from, to, hz, mode, transfers, decoded }]
+function spiTraffic(sim, wires) {
+  const out = [];
+  for (const link of new Set(wires.filter(w => w.kind === 'spi').map(w => w.link))) {
+    const ws = Object.fromEntries(wires.filter(w => w.link === link).map(w => [w.line, w]));
+    const sent = k => (ws[k] ? sim.links.get(ws[k].name).sent : null);
+    const r = decodeSpi({ sck: sent('sck'), mosi: sent('mosi'), miso: sent('miso'), ss: sent('ss') }, { mode: ws.sck.mode });
+    out.push({ link, from: ws.sck.from.split('.')[0], to: ws.sck.to.split('.')[0], hz: ws.sck.hz, mode: ws.sck.mode, transfers: r.transfers, decoded: spiWarnings(link, { hz: r.hz, declared: ws.sck.hz }) });
+  }
+  return out;
 }
