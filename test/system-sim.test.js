@@ -53,12 +53,13 @@ test('the scheduler: the levels at 0, a burst delivered at its times plus its la
   const l = sys.link({ from: 'a.o', to: ['b.i', 'c.i'], fine: 1e6, hold: 10e6 });
   assert.equal(l.name, 'a.o>b.i,c.i');
   sys.run(1e9);
-  // the first change seen at the end of the first wide window (100 µs): the lag 70 µs, the burst's changes 1 and 2
-  // µs apart as they were; fine windows to the last delivery (103 µs), wide ones from there; the change at 900 µs, 867 µs
-  // after the last (idle: more than hold), seen at 903 µs: its own lag, 3 µs
+  // fine windows for the hold from the start (the link active from 0, #5130: to 10 µs), then wide; the first change
+  // seen at the end of the wide window 10–110 µs: the lag 80 µs, the burst's changes 1 and 2 µs apart as they were;
+  // fine windows to the last delivery (113 µs), wide ones from there; the change at 900 µs, 867 µs after the last
+  // (idle: more than hold), seen at 913 µs: its own lag, 13 µs
   assert.deepEqual(l.sent, [0, 1, 30e6, 0, 31e6, 1, 33e6, 0, 900e6, 1]);
-  assert.deepEqual(l.trace, [0, 1, 100e6, 0, 101e6, 1, 103e6, 0, 903e6, 1]);
-  assert.deepEqual(b.got, [0, 'i', 1, 100e6, 'i', 0, 101e6, 'i', 1, 103e6, 'i', 0, 903e6, 'i', 1]);
+  assert.deepEqual(l.trace, [0, 1, 110e6, 0, 111e6, 1, 113e6, 0, 913e6, 1]);
+  assert.deepEqual(b.got, [0, 'i', 1, 110e6, 'i', 0, 111e6, 'i', 1, 113e6, 'i', 0, 913e6, 'i', 1]);
   assert.deepEqual(c.got, b.got, 'every other end of the link');
   assert.equal(a.got.length, 0);
   assert.equal(sys.stats.late, 0);
@@ -68,17 +69,18 @@ test('the scheduler: the levels at 0, a burst delivered at its times plus its la
 
 test('the scheduler: the quantum fine while a link is active (its fine quantum, the smallest), wide while idle', () => {
   const sys = new SystemSim({ wide: 50e6 });
-  const a = sys.addNode('a', new Scripted({ script: [{ t: 140e6, pin: 'o', value: 0 }] }));
+  const a = sys.addNode('a', new Scripted({ script: [{ t: 110e6, pin: 'o', value: 0 }] }));
   sys.addNode('b', new Scripted());
   sys.link({ from: 'a.o', to: 'b.i', kind: 'uart', baud: 1e6 });   // fine: 62.5 ns, hold: 20 bits
-  assert.equal(sys.quantum(), 50e6);
+  assert.equal(sys.quantum(), 50e6, 'before the run: idle');
   sys.run(300e6);
-  // wide windows to 150 µs (the change seen there, delivered at once: its lag 10 µs), then fine ones to the hold's
-  // end (140 + 20 µs), then wide again
-  const ends = a.ends, q = BIT / UART_DIV;
-  assert.deepEqual(ends.slice(0, 3), [50e6, 100e6, 150e6]);
-  assert.equal(ends.filter((t, i) => i && t - ends[i - 1] === q).length, 10e6 / q);
-  assert.deepEqual(ends.slice(3 + 10e6 / q - 1), [160e6, 210e6, 260e6, 300e6]);
+  // fine windows for the hold from the start (the link active from 0, #5130: to 20 µs), then wide ones to 120 µs (the
+  // change seen there, delivered at once: its lag 10 µs), then fine ones to the hold's end (110 + 20 µs), then wide again
+  const ends = a.ends, q = BIT / UART_DIV, first = 20e6 / q;
+  assert.deepEqual(ends.slice(0, first).filter((t, i) => t !== (i + 1) * q), []);
+  assert.deepEqual(ends.slice(first, first + 2), [70e6, 120e6]);
+  assert.equal(ends.filter((t, i) => i > first && t - ends[i - 1] === q).length, 10e6 / q);
+  assert.deepEqual(ends.slice(first + 2 + 10e6 / q - 1), [130e6, 180e6, 230e6, 280e6, 300e6]);
   const adaptiveOff = new SystemSim({ wide: 50e6, adaptive: false });
   adaptiveOff.addNode('a', new Scripted());
   adaptiveOff.addNode('b', new Scripted());

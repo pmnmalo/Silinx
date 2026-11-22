@@ -144,10 +144,13 @@ export class SystemSim {
     return Math.min(q === Infinity ? this.wide : q, lat);
   }
 
-  // the links' levels at the start: each other end set from its source's value at 0
+  // the links' levels at the start: each other end set from its source's value at 0; each link active for its hold,
+  // so that the first windows are fine ones: a node's start-up (an AVR's D1 floating until its USART is on, #5130) is
+  // seen within the fine quantum, not at the end of a wide window (a floating line read as a start bit for 100 µs)
   start() {
     this.started = true;
     for (const l of this.links.values()) {
+      l.activeUntil = this.now + l.hold;
       l.level = l.src.a.value(l.src.pin);
       l.sent.push(this.now, l.level);
       for (const d of l.dsts) d.a.setPin(d.pin, l.level);

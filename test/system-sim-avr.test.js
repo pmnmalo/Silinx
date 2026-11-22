@@ -165,3 +165,23 @@ test('an AVR and the uart example\'s FPGA by UART: each byte echoed and answered
   assert.deepEqual(a.errors, []);
   assert.deepEqual(await run(), a, 'deterministic');
 });
+
+test('#5130 an AVR and the uart example\'s FPGA with the adaptive quantum: the same bytes as with a fixed latency (the AVR\'s D1 floating at the start, the first window a fine one)', async () => {
+  const run = async (latency) => {
+    const sys = new SystemSim();
+    sys.addNode('uno', hexNode());
+    sys.addNode('fpga', await uartNode('compiled', { hz: 50e6, baud: 9600 }));
+    sys.link({ name: 'tx', from: 'uno.D1', to: 'fpga.rx', kind: 'uart', baud: 9600, latency });
+    sys.link({ name: 'rx', from: 'fpga.tx', to: 'uno.D0', kind: 'uart', baud: 9600, latency });
+    const end = 8e9;
+    sys.run(end);
+    const text = (name) => bytesOf(sys.links.get(name).sent, 9600, end).map((b) => (b.error ? '?' : String.fromCharCode(b.byte))).join('');
+    return { avr: text('tx'), fpga: text('rx'), warnings: sys.messages('warning'), errors: sys.messages('error'), windows: sys.stats.windows };
+  };
+  const fixed = await run(1e6), adaptive = await run(null);
+  assert.equal(adaptive.avr.slice(0, 6), 'HiIjJk');
+  assert.equal(adaptive.fpga.slice(0, 5), 'HiIjJ');
+  assert.deepEqual([adaptive.avr, adaptive.fpga, adaptive.warnings, adaptive.errors], [fixed.avr, fixed.fpga, [], []]);
+  // (still the wide quantum while the links are idle: fewer windows than the fixed latency's)
+  assert.ok(adaptive.windows < fixed.windows, `${adaptive.windows} windows, ${fixed.windows} with a fixed latency`);
+});
