@@ -29,7 +29,7 @@ export function mountInspector(ctx) {
         a.type === 'case' ? field('Value(s) of this exit', h('input', { class: 'asm-input mono', value: e.port, spellcheck: 'false', 'data-focus': '1',
           oninput: (ev) => { e.port = ev.target.value.trim() || 'others'; commit(`lbl:${e.id}`); } }),
         `e.g. ${'0'.repeat(Math.max(0, caseWidth(a) - 1))}1, 4, 0|1 (several values) or others`) : null,
-        e.points ? btn('Reset route', 'Use automatic routing', () => { delete e.points; commit('route'); renderInspector(); }) : null,
+        e.points ? btn('Reset route', 'Use automatic routing', () => { delete e.points; commit(); renderInspector(); }) : null,
         btn('Delete connection', 'Delete (Del)', () => deleteSelection(), 'asm-danger'));
       return;
     }
@@ -49,7 +49,7 @@ export function mountInspector(ctx) {
         oninput: (ev) => { n.name = ev.target.value.trim(); commit(`name:${n.id}`); }, onchange: () => renderMachine() })));
       const isInit = n.id === M().initial;
       put(h('label', { class: 'asm-check' },
-        h('input', { type: 'checkbox', checked: isInit, disabled: isInit, onchange: () => { M().initial = n.id; commit('initial'); renderInspector(); renderMachine(); } }),
+        h('input', { type: 'checkbox', checked: isInit, disabled: isInit, onchange: () => { M().initial = n.id; commit(); renderInspector(); renderMachine(); } }),
         isInit ? ' Initial (reset) state' : ' Make this the initial (reset) state'));
       put(field('Moore outputs (one per line)', actionsArea(n), syntax));
     } else if (n.type === 'always') {
@@ -67,11 +67,11 @@ export function mountInspector(ctx) {
         oninput: (ev) => { n.cond = condAsText(ev.target.value); commit(`cond:${n.id}`); } }),
       'e.g. go, !done, cnt == 9, x && (mode == 2\'b01), (1 << n) > cnt. Exit 1 = true, 0 = false.'));
       put(h('label', { class: 'asm-check' },
-        h('input', { type: 'checkbox', checked: !!n.flip, onchange: (ev) => { if (ev.target.checked) n.flip = true; else delete n.flip; commit('flip'); } }),
+        h('input', { type: 'checkbox', checked: !!n.flip, onchange: (ev) => { if (ev.target.checked) n.flip = true; else delete n.flip; commit(); } }),
         ' 0-exit on the left side'));
       put(btn('Swap 1 / 0 exits', 'Exchange the true and false branches', () => {
         for (const e of M().edges) if (e.from === n.id) e.port = e.port === 'true' ? 'false' : 'true';
-        commit('swap');
+        commit();
       }));
     } else if (n.type === 'case') {
       put(h('h3', {}, 'Case'));
@@ -85,7 +85,7 @@ export function mountInspector(ctx) {
           h('input', { class: 'asm-input mono', value: e.port, spellcheck: 'false', title: 'Value(s) of this exit: binary digits, a literal, a|b, or others',
             oninput: (ev) => { e.port = ev.target.value.trim() || 'others'; commit(`lbl:${e.id}`); } }),
           h('span', { class: 'asm-muted' }, `→ ${t ? (t.type === 'state' ? t.name : t.type === 'decision' ? t.cond : t.type === 'case' ? t.expr : 'output') : '?'}`),
-          btn('✕', 'Delete this exit', () => { M().edges = M().edges.filter((x) => x.id !== e.id); commit('del-exit'); renderInspector(); }, 'asm-small asm-danger')));
+          btn('✕', 'Delete this exit', () => { M().edges = M().edges.filter((x) => x.id !== e.id); commit(); renderInspector(); }, 'asm-small asm-danger')));
       }
       put(field('Exits (value → box)', list, 'Drag from the ○ port on the right of the box to a box to add an exit (it gets the next free value). ' +
         "Without an 'others' exit the values must cover every case."));
@@ -112,14 +112,14 @@ export function mountInspector(ctx) {
       txt('Reset', () => M().reset.name, (v) => { M().reset.name = v; }, 'm-rst'));
     machineBody.append(row);
     machineBody.append(h('div', { class: 'asm-grid2' },
-      field('Reset level', h('select', { class: 'asm-input', onchange: (ev) => { M().reset.active = ev.target.value; commit('m-act'); } },
+      field('Reset level', h('select', { class: 'asm-input', onchange: (ev) => { M().reset.active = ev.target.value; commit(); } },
         h('option', { value: 'high', selected: M().reset.active === 'high' }, 'active high'),
         h('option', { value: 'low', selected: M().reset.active === 'low' }, 'active low'))),
-      field('Reset type', h('select', { class: 'asm-input', onchange: (ev) => { M().reset.sync = ev.target.value === 'sync'; commit('m-sync'); } },
+      field('Reset type', h('select', { class: 'asm-input', onchange: (ev) => { M().reset.sync = ev.target.value === 'sync'; commit(); } },
         h('option', { value: 'async', selected: !M().reset.sync }, 'asynchronous'),
         h('option', { value: 'sync', selected: M().reset.sync }, 'synchronous')))));
     const states = M().nodes.filter((n) => n.type === 'state');
-    machineBody.append(field('Initial state', h('select', { class: 'asm-input', onchange: (ev) => { M().initial = ev.target.value; commit('m-init'); renderInspector(); } },
+    machineBody.append(field('Initial state', h('select', { class: 'asm-input', onchange: (ev) => { M().initial = ev.target.value; commit(); renderInspector(); } },
       !states.some((s) => s.id === M().initial) ? h('option', { value: '', selected: true }, '(none)') : null,
       ...states.map((s) => h('option', { value: s.id, selected: s.id === M().initial, 'data-no-i18n': '' }, s.name || s.id)))));   // (a state's name never translated, #4964)
 
@@ -134,12 +134,12 @@ export function mountInspector(ctx) {
     const regWidthCell = (r, key) => h('td', {}, h('input', { class: 'asm-input mono w', value: String(r.width), spellcheck: 'false',
       title: designKind() ? 'Width: a number (1..256) or an expression of the parameters, e.g. clog2(N)' : 'Width: a number (1..256) or an expression of the generics, e.g. clog2(N)',
       oninput: (ev) => { r.width = widthValue(ev.target.value, 0); commit(key); } }));
-    const removeCell = (list, i, key) => h('td', { class: 'c' }, h('button', { type: 'button', class: 'asm-x', title: 'Remove',
+    const removeCell = (list, i) => h('td', { class: 'c' }, h('button', { type: 'button', class: 'asm-x', title: 'Remove',
       onclick: () => {
         list.splice(i, 1);
         // optional lists disappear when empty (old charts stay unchanged)
         for (const k of ['registers', 'generics']) if (M()[k] && !M()[k].length) delete M()[k];
-        commit(key); renderMachine();
+        commit(); renderMachine();
       } }, '✕'));
     const table = (title, cls, heads, list, row, addLabel, addTitle, make, attach = () => {}) => {
       const tb = h('tbody');
@@ -147,7 +147,7 @@ export function mountInspector(ctx) {
       const add = btn(addLabel, addTitle, () => {
         attach(list);
         list.push(make(list));
-        commit(`${cls}-add`); renderMachine();
+        commit(); renderMachine();
         const inputs = machineBody.querySelectorAll(`table.${cls} tbody tr:last-child input`);
         inputs[0]?.focus(); inputs[0]?.select();
       }, 'asm-small');
@@ -158,16 +158,16 @@ export function mountInspector(ctx) {
     machineBody.append(table('Inputs', 'ins', [['Name'], ['Width'], ['Sync', 'Synchronise with 2 flip-flops (conditions see the synchronised value)']], M().inputs,
       (p, i) => [nameCell(p, `p-n:in:${i}`), widthCell(p, `p-w:in:${i}`),
         h('td', { class: 'c' }, h('input', { type: 'checkbox', checked: !!p.sync, title: 'Synchronise with 2 flip-flops (asynchronous input, e.g. a button)',
-          onchange: (ev) => { if (ev.target.checked) p.sync = true; else delete p.sync; commit('p-s'); } })),
-        removeCell(M().inputs, i, 'p-del')],
+          onchange: (ev) => { if (ev.target.checked) p.sync = true; else delete p.sync; commit(); } })),
+        removeCell(M().inputs, i)],
       '+ input', 'Add an input port', () => ({ name: freshName('in', M().inputs.length), width: 1 })));
     machineBody.append(table('Outputs', 'outs', [['Name'], ['Width'], ['Default'], ['Reg', 'Registered']], M().outputs,
       (p, i) => [nameCell(p, `p-n:out:${i}`), widthCell(p, `p-w:out:${i}`),
         h('td', {}, h('input', { class: 'asm-input mono d', value: p.default, spellcheck: 'false', title: 'Default (combinational) or reset value (registered)',
           oninput: (ev) => { p.default = ev.target.value.trim() || '0'; commit(`p-d:${i}`); } })),
         h('td', { class: 'c' }, h('input', { type: 'checkbox', checked: p.registered, title: 'Registered output (holds its value, readable in conditions)',
-          onchange: (ev) => { p.registered = ev.target.checked; commit('p-r'); } })),
-        removeCell(M().outputs, i, 'p-del')],
+          onchange: (ev) => { p.registered = ev.target.checked; commit(); } })),
+        removeCell(M().outputs, i)],
       '+ output', 'Add an output port', () => ({ name: freshName('out', M().outputs.length), width: 1, default: '0', registered: false })));
     machineBody.append(h('small', { class: 'asm-fhint' }, 'Combinational outputs take their default unless assigned. Registered outputs (Reg) hold their value, reset to the default and can be read in conditions, e.g. cnt = cnt + 1.'));
     const regs = M().registers || [];
@@ -175,7 +175,7 @@ export function mountInspector(ctx) {
       (r, i) => [nameCell(r, `r-n:${i}`), regWidthCell(r, `r-w:${i}`),
         h('td', {}, h('input', { class: 'asm-input mono d', value: r.init, spellcheck: 'false', title: 'Reset value',
           oninput: (ev) => { r.init = ev.target.value.trim() || '0'; commit(`r-i:${i}`); } })),
-        removeCell(regs, i, 'r-del')],
+        removeCell(regs, i)],
       '+ register', 'Add an internal register (data path)', () => ({ name: freshName('r', regs.length), width: 8, init: '0' }),
       (l) => { M().registers = l; }));
     const gens = M().generics || [];
@@ -183,7 +183,7 @@ export function mountInspector(ctx) {
       (g, i) => [nameCell(g, `g-n:${i}`),
         h('td', {}, h('input', { class: 'asm-input mono d', value: String(g.default), spellcheck: 'false', title: 'Default value (non-negative integer)',
           oninput: (ev) => { const t = ev.target.value.trim().replace(/_/g, ''); g.default = /^\d+$/.test(t) ? Number(t) : ev.target.value.trim(); commit(`g-d:${i}`); } })),
-        removeCell(gens, i, 'g-del')],
+        removeCell(gens, i)],
       designKind() ? '+ parameter' : '+ generic', designKind() ? 'Add an integer parameter' : 'Add an integer generic / parameter', () => ({ name: freshName('N', gens.length + 1), default: 1 }),
       (l) => { M().generics = l; }));
     // (a design project's: no VHDL or Verilog, #3891)

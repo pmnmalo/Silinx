@@ -4,7 +4,8 @@
 // transitions follow); a state renamed in place (F2), an output value set in Properties and a wrong one refused, a
 // condition edited in Properties; a transition and a state deleted (Delete). After every step the diagram's Check (no
 // error), the HDL it makes in VHDL and Verilog compiled and elaborated; Check's warnings exactly; Undo back to the start
-// and Redo to the end. A bug found is a todo test: two drags soon after each other merged into one Undo step. In both interfaces (SILINX_UI_INTERFACE=ise) and in Portuguese (SILINX_USABILITY_LANG=pt).
+// and Redo to the end: each drag, each field typed its own Undo step, however soon after the one before (#5167). In both
+// interfaces (SILINX_UI_INTERFACE=ise) and in Portuguese (SILINX_USABILITY_LANG=pt).
 import { before, after } from 'node:test';
 import assert from 'node:assert/strict';
 import { setupUi, uiTest, makeProject } from '../ui/harness.js';
@@ -17,7 +18,6 @@ before(async () => { env = await setupUi(); });
 after(async () => { await env?.teardown?.(); });
 const E = () => env;
 let n = 0;
-const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
 /** The state diagram's own actions: points of the diagram (its coordinates) turned into the page's by the drawing's
  *  transform; a state or a transition found by its id. */
@@ -148,34 +148,28 @@ const onCircles = async (a, d, ids) => {
     }
   }
 };
-/** WALK, CARS_YELLOW and NIGHT dragged, one after the other (`pause`: ms before each of the second and third). */
-async function threeMoves(s, pause = 0) {
+/** WALK, CARS_YELLOW and NIGHT dragged, one soon after the other. */
+async function threeMoves(s) {
   const { a } = s;
   await s.step('moveState', { state: 'WALK', dx: 60, dy: 40 }, () => a.moveState('s4', 60, 40), {
     expect: async (d) => { assert.deepEqual([state(d, 'WALK').x, state(d, 'WALK').y], [840, 400]); await onCircles(a, d, ['t4', 't5']); },
   });
-  await sleep(pause);
   await s.step('moveState', { state: 'CARS_YELLOW', dy: -40 }, () => a.moveState('s2', 0, -40), {
     expect: async (d) => { assert.deepEqual([state(d, 'CARS_YELLOW').x, state(d, 'CARS_YELLOW').y], [540, 80]); await onCircles(a, d, ['t2', 't3']); },
   });
-  await sleep(pause);
   await s.step('moveState', { state: 'NIGHT', dx: -40, dy: 120 }, () => a.moveState('s7', -40, 120), {
     expect: async (d) => { assert.deepEqual([state(d, 'NIGHT').x, state(d, 'NIGHT').y], [40, 240]); await onCircles(a, d, ['t1', 't8']); },
   });
 }
 
-uiTest('usability: FSM: states dragged: their transitions follow them; Undo, Redo', E, async (page) => {
+// (each drag its own Undo step, however soon after the one before; two states renamed in Properties too, #5167)
+uiTest('usability: FSM: states dragged one soon after the other, two renamed: their transitions follow; each its own Undo step', E, async (page) => {
   const s = await traffic(page, 'move states');
-  // (a pause between two drags: two drags within 1.5 s are one Undo step, the todo test below)
-  await threeMoves(s, 1600);
-  await s.warnings([]);
-  await s.undoRedo();
-});
-
-uiTest('usability: FSM: states dragged one soon after the other: each drag its own Undo step', E, async (page, _env, t) => {
-  t.todo('#5167: two drags of different states within 1.5 s are merged into one Undo step (commit(\'move\'), fsm-history.js)');
-  const s = await traffic(page, 'quick moves');
+  const { a } = s;
   await threeMoves(s);
+  await s.step('renameState', { state: 'CARS_YELLOW', to: 'AMBER' }, () => a.renameState('s2', 'AMBER'), { expect: (d) => assert.equal(state(d, 'AMBER')?.id, 's2') });
+  await s.step('renameState', { state: 'NIGHT', to: 'DARK' }, () => a.renameState('s7', 'DARK'), { expect: (d) => assert.equal(state(d, 'DARK')?.id, 's7') });
+  await s.warnings([]);
   await s.undoRedo();
 });
 

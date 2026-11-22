@@ -31,7 +31,7 @@ export function lookFields({ kind, obj, host, commit, flash, where, refresh, fie
     if (!o) return null;
     const r = setStyle(kind, o.look, { [key]: v });
     if (r.error) return r.error;
-    if (JSON.stringify(r.look) !== JSON.stringify(o.look ?? null)) { if (r.look) o.look = r.look; else delete o.look; commit(`look:${key}`); }
+    if (JSON.stringify(r.look) !== JSON.stringify(o.look ?? null)) { if (r.look) o.look = r.look; else delete o.look; commit(`look:${o.id}:${key}`); }
     return null;
   };
   // (each field's label and its options' as `label: '…'`, which the label scan of test/web-i18n.test.js finds)

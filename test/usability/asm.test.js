@@ -5,8 +5,9 @@
 // unfinished condition said as an error and finished; a box and an arrow deleted, the chart's errors said and mended.
 // After every step the chart's Validate (no error but the ones a step makes on purpose), the HDL it makes in VHDL and
 // Verilog compiled and elaborated; Validate's warnings exactly; Undo back to the start and Redo to the end. In both
-// interfaces (SILINX_UI_INTERFACE=ise) and in Portuguese (SILINX_USABILITY_LANG=pt). The bugs found are todo tests: two
-// edits of the same kind soon after each other merged into one Undo step, a double click on a box adding a state.
+// interfaces (SILINX_UI_INTERFACE=ise) and in Portuguese (SILINX_USABILITY_LANG=pt). The bugs it found, their regression
+// tests: two edits of the same kind soon after each other merged into one Undo step (#5167), a double click on a box
+// adding a state (#5168).
 import { before, after } from 'node:test';
 import assert from 'node:assert/strict';
 import { setupUi, uiTest, makeProject } from '../ui/harness.js';
@@ -34,7 +35,7 @@ const box = (d, id) => d.nodes.find((x) => x.id === id);
 const exits = (d, id) => d.edges.filter((e) => e.from === id).map((e) => `${e.port}>${e.to}`).sort();
 const added = (d, b) => d.nodes.filter((x) => !b.nodes.some((y) => y.id === x.id));
 
-// (a pause between two edits of the same kind, as a person's: two within 1.5 s are one Undo step, the todo test below)
+// (a pause between two edits of one field, as a person's: its keystrokes within 1.5 s are one Undo step)
 const pause = () => new Promise((r) => setTimeout(r, 1600));
 const noExit = (what) => `error: ${what} has no exit${/^State/.test(what) ? ' (next state path)' : ''}`;
 
@@ -70,18 +71,16 @@ uiTest('usability: ASM: a state, a decision and a conditional output added and l
   await s.step('connect', { from: o, port: 'next', to: 'COUNT' }, () => a.connect(o, 'next', 's2'), {
     errors: ["error: Decision 'tick' has no 0 (false) branch"], expect: (d) => assert.deepEqual(exits(d, o), ['next>s2']),
   });
-  await pause();
   await s.step('connect', { from: q, port: 'false', to: 'PAUSE' }, () => a.connect(q, 'false', p), { expect: (d) => assert.deepEqual(exits(d, q), [`false>${p}`, `true>${o}`]) });
   await s.warnings(["WARNING: State 'PAUSE' is unreachable from the initial state"]);
   // COUNT's wait for the tick (d2's 0 exit, to COUNT) moved to PAUSE: reached
-  await pause();
   await s.step('connect', { from: 'd2', port: 'false', to: 'PAUSE' }, () => a.connect('d2', 'false', p), { expect: (d) => assert.deepEqual(exits(d, 'd2'), [`false>${p}`, 'true>d3']) });
   await s.warnings([]);
   await s.undoRedo();
 });
 
-uiTest('usability: ASM: two boxes added one soon after the other: each its own Undo step', E, async (page, _env, t) => {
-  t.todo('#5167: two boxes added within 1.5 s are merged into one Undo step (commit(\'add\'), asm-editor.js)');
+// (#5167)
+uiTest('usability: ASM: two boxes added one soon after the other: each its own Undo step', E, async (page) => {
   const s = await timer(page, 'quick adds');
   const { a } = s;
   await s.step('addAt', { tool: 'State', at: '(620, 200)' }, () => a.addAt('State', 620, 200), { errors: [noExit("State 'S0'")] });
@@ -129,8 +128,8 @@ uiTest('usability: ASM: boxes\' texts typed in Properties; an unfinished conditi
   await s.undoRedo();
 });
 
-uiTest('usability: ASM: a box double-clicked: the field of its text focused, typed over (no new box)', E, async (page, _env, t) => {
-  t.todo('#5168: a double click on a box adds a new state there (the svg captures the pointer: the dblclick\'s target is not the box, asm-pointer.js onDblClick)');
+// (#5168)
+uiTest('usability: ASM: a box double-clicked: the field of its text focused, typed over (no new box)', E, async (page) => {
   const s = await timer(page, 'double click');
   await s.step('typeOver', { box: 'd3', cond: 'cnt >= secs - 1' }, () => s.a.typeOver('d3', 'cnt >= secs - 1'), {
     expect: (d, b) => { assert.equal(d.nodes.length, b.nodes.length); assert.equal(box(d, 'd3').cond, 'cnt >= secs - 1'); },
