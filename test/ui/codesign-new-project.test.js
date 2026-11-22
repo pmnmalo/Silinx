@@ -26,7 +26,7 @@ async function newCodesign(page, name, template) {
   await page.click('.dlg-overlay .kind-card[data-kind=codesign] input');
   await page.dialogButton('Next >');
   await page.fill('.dlg-overlay .wiz-main input[type=text]', name);
-  assert.deepEqual(await startFrom(page), ['empty', 'uart-avr']);
+  assert.deepEqual(await startFrom(page), ['empty', 'uart-avr', 'spi-avr']);
   await page.fill('.dlg-overlay .wiz-main select', template);
   await page.dialogButton('Next >');
   await page.waitFor(() => document.querySelector('.dlg-overlay .wiz-main h3')?.textContent === 'Project Settings', [], { what: 'Project Settings' });

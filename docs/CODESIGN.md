@@ -74,7 +74,9 @@ The AVR node draws SCK and MOSI from the byte its program writes to SPDR, at its
 (`core/system-sim-avr-spi.js`), and reads MISO at each sampling edge from the levels it got. Each of the link's four
 wires has a fixed latency of a sixteenth of the interface's SCK period, so that MISO's answer is back before the next
 edge; SS floating reads high (the link's `pull`). The decoder (`decodeSpi`) gives each transfer's MOSI and MISO bytes,
-and warns when the program's SCK is faster than the interface says.
+and warns when the program's SCK is faster than the interface says. The System editor's **+ SPI** adds either end (an
+FPGA node's ports found by their names), and the **spi-avr** example shows it: an Arduino's count every 47 ms, the FPGA's
+LEDs, its answer on the Arduino's D2..D7.
 
 **How an interface is declared.** It is declared once:
 

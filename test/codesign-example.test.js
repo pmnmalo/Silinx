@@ -37,14 +37,14 @@ test('#4702 uart-avr: its FPGA module the uart example\'s sources, its firmware 
   assert.deepEqual([pj.kind, pj.board, pj.constraints, pj.top], ['codesign', null, null, '']);
   const sys = readSystem(fs.readFileSync(path.join(EX, 'uart_avr.sys.json'), 'utf8'));
   assert.deepEqual(sys.system.links, [{ id: 'serial', kind: 'uart', a: 'uno.Serial', b: 'fpga.uart' }]);
-  assert.deepEqual(CODESIGN_EXAMPLES, ['uart-avr']);
+  assert.deepEqual(CODESIGN_EXAMPLES, ['uart-avr', 'spi-avr']);
 });
 
 test('#4702 the kinds\' rules: a co-design project empty or from a co-design example; a new one\'s silinx.json and System', () => {
   assert.equal(createRefusal('codesign', 'empty'), null);
   assert.equal(createRefusal('codesign', 'uart-avr'), null);
   assert.equal(createRefusal(null, 'uart'), null);
-  assert.equal(createRefusal('codesign', 'uart'), 'a co-design project starts empty or from a co-design example (uart-avr)');
+  assert.equal(createRefusal('codesign', 'uart'), 'a co-design project starts empty or from a co-design example (uart-avr, spi-avr)');
   assert.equal(createRefusal(null, 'uart-avr'), null);   // (the example's kind)
   assert.equal(createRefusal('design', 'uart-avr'), 'a design and simulation project starts empty: no example');
   assert.equal(createRefusal('fpga', 'uart-avr'), 'unknown project kind \'fpga\'');   // (an FPGA project's kind is none)
@@ -59,10 +59,10 @@ test('#4702 the kinds\' rules: a co-design project empty or from a co-design exa
 });
 
 test('#4702 uart-avr made with the MCP server: its System checked (the 5 V warning) and simulated (the Arduino\'s hello echoed)', async () => {
-  // (listed after the FPGA examples, as a co-design one)
+  // (listed after the FPGA examples, as the co-design ones: uart-avr, then spi-avr)
   const ex = await ok('list_examples', {});
-  assert.equal(ex.text.split('\n').at(-1), 'uart-avr: a co-design example (FPGA and microcontroller nodes in a System), 5 file(s)');
-  assert.deepEqual(ex.data.examples.at(-1), { name: 'uart-avr', kind: 'codesign', top: null, simTop: null, board: null, device: null, files: 5 });
+  assert.deepEqual(ex.text.split('\n').slice(-2), ['uart-avr: a co-design example (FPGA and microcontroller nodes in a System), 5 file(s)', 'spi-avr: a co-design example (FPGA and microcontroller nodes in a System), 1 file(s)']);
+  assert.deepEqual(ex.data.examples.at(-2), { name: 'uart-avr', kind: 'codesign', top: null, simTop: null, board: null, device: null, files: 5 });
   await ok('new_project_from_example', { name: 'ua', example: 'uart-avr' });
   const warn = "serial: uno's D1, a 5 V output, drives fpga's rx (pin J3), a 3.3 V input of the FPGA (LVCMOS33): a level shifter or a divider on the real boards";
   const c = await ok('check_system', { project: 'ua', file: 'uart_avr.sys.json' });
@@ -82,4 +82,29 @@ test('#4702 uart-avr made with the MCP server: its System checked (the 5 V warni
   // (not an FPGA project's example)
   const r = await call('new_project_from_example', { name: 'ub', example: 'uart-avr', board: 'nexys2' });
   assert.deepEqual([r.isError, r.text], [true, 'new_project_from_example: ub: a co-design project has no board: its System names each FPGA node\'s']);
+});
+
+test('#5214 spi-avr: its firmware spi.asm assembled; made with the MCP server, its System checked (its 5 V warnings) and simulated (the counts sent, each answered with the one before plus one)', async () => {
+  const SPI = path.join(ROOT, 'examples/spi-avr');
+  assert.equal(fs.readFileSync(path.join(SPI, 'firmware/spi.hex'), 'utf8'), intelHex(avrAssemble(fs.readFileSync(path.join(SPI, 'firmware/spi.asm'), 'utf8').split('\n'))));
+  assert.deepEqual(readSystem(fs.readFileSync(path.join(SPI, 'spi_avr.sys.json'), 'utf8')).system.links, [{ id: 'spi', kind: 'spi', a: 'uno.SPI', b: 'fpga.bus' }]);
+  await ok('new_project_from_example', { name: 'sa', example: 'spi-avr' });
+  const W = (pin, port, loc) => `WARNING: spi: uno's ${pin}, a 5 V output, drives fpga's ${port} (pin ${loc}), a 3.3 V input of the FPGA (LVCMOS33): a level shifter or a divider on the real boards`;
+  const c = await ok('check_system', { project: 'sa', file: 'spi_avr.sys.json' });
+  assert.deepEqual(c.text.split('\n'), ['System spi_avr: 2 nodes, 1 link', 'node uno: Arduino Uno, firmware firmware/spi.hex', '  Serial: UART 9600 baud 8N1, TX D1, RX D0',
+    '  SPI: SPI 125000 Hz mode 0, SCK D13, MOSI D11, MISO D12, SS D10', 'node fpga: FPGA, module spi_echo on basys2-250',
+    '  bus: SPI 125000 Hz mode 0, SCK sck (B2), MOSI mosi (A3), MISO miso (J3), SS ss (B5)', 'link spi: SPI uno.SPI ↔ fpga.bus',
+    W('D13', 'sck', 'B2'), W('D11', 'mosi', 'A3'), W('D10', 'ss', 'B5'), 'Process "Check System" of spi_avr.sys.json completed successfully with 3 warning(s).']);
+  // three transfers in 120 ms (one every 47 ms or so): 00 01 02 sent, 00 01 02 answered (the first 0x00, then each the one before plus one)
+  const s = await ok('simulate', { project: 'sa', time_ns: 120e6 });
+  assert.deepEqual(s.data.spi.map((x) => x.transfers.map((t) => [t.mosi, t.miso])), [[[0, 0], [1, 1], [2, 2]]]);
+  assert.deepEqual([s.data.warnings, s.data.errors], [[], []]);
+  // edit_system as the editor: the link removed, the FPGA's SPI removed, both added back (its ports, then the link)
+  const e = await ok('edit_system', { project: 'sa', file: 'spi_avr.sys.json', edits: [
+    { action: 'remove_link', link: 'spi' }, { action: 'remove_interface', node: 'fpga', interface: 'bus' },
+    { action: 'add_interface', node: 'fpga', fields: { kind: 'spi', name: 'bus', sck: 'sck', mosi: 'mosi', miso: 'miso', ss: 'ss' } },
+    { action: 'add_link', fields: { a: 'uno.SPI', b: 'fpga.bus' } }] });
+  const sys = readSystem(fs.readFileSync(path.join(tmp, 'ws', 'sa', 'spi_avr.sys.json'), 'utf8')).system;
+  assert.deepEqual([sys.links, sys.nodes[1].interfaces], [[{ id: 'spi', kind: 'spi', a: 'uno.SPI', b: 'fpga.bus' }], [{ name: 'bus', kind: 'spi', sck: 'sck', mosi: 'mosi', miso: 'miso', ss: 'ss', hz: 125000, mode: 0 }]]);
+  assert.deepEqual(e.text.split('\n').slice(0, 4), ['remove_link spi', 'remove_interface fpga.bus', 'add_interface fpga.bus', 'add_link spi']);
 });

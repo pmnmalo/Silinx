@@ -39,6 +39,9 @@
 .system-editor .sys-wire-bytes { display: flex; flex-wrap: wrap; gap: 3px; max-height: 8em; overflow: auto; }
 .system-editor .sys-byte { font: 11px var(--asm-mono); padding: 0 3px; border-radius: 3px; background: color-mix(in srgb, var(--asm-accent) 14%, transparent); }
 .system-editor .sys-byte.err { background: color-mix(in srgb, var(--asm-warn) 35%, transparent); }
+/* an SPI link (#5214): dotted, its dot filled */
+.system-editor .sys-dot.spi { fill: var(--sys-hot); }
+.system-editor .sys-link.spi .sys-link-line { stroke-dasharray: 2 3; }
 
 /* the System Emulator (#5212): the boards side by side, an Arduino's pins' levels */
 .sys-emu .sys-emu-main { overflow: auto; }
