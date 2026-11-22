@@ -46,7 +46,8 @@ export function fpgaClock(node, ports = []) {
 function endOf(sys, end) {
   const e = linkEnd(end), n = e && sys.nodes.find(x => x.id === e.node), f = n?.interfaces.find(x => x.name === e.iface);
   if (!f) return null;
-  if (f.kind === 'gpio') return { n, f, pins: f.pins };
+  // (an FPGA's bus bit led<0>, as the UCF writes it: the scheduler's led[0], #5213)
+  if (f.kind === 'gpio') return { n, f, pins: n.kind === 'fpga' ? f.pins.map(p => String(p).replace(/<(\d+)>$/, '[$1]')) : f.pins };
   if (n.kind === 'fpga') return { n, f, tx: f.tx, rx: f.rx };
   if (n.kind === 'mcu') { const u = mcuBoard(n.board)?.uarts[f.name]; return u ? { n, f, tx: u.tx, rx: u.rx } : null; }
   return { n, f, tx: 'tx', rx: 'rx' };
