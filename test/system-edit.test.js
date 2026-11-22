@@ -117,7 +117,7 @@ test('#4700 interfaces: added, changed, renamed in the links, removed with their
   assert.deepEqual(changeInterface(s, 'fpga', 'serial', { baud: 0 }), { error: "fpga.serial: the baud is a whole number of bits a second, not '0'" });
   assert.deepEqual(changeInterface(s, 'fpga', 'serial', { frame: '9N1' }), { error: "fpga.serial: the frame is its data bits (5 to 8), its parity (N, E, O) and its stop bits (1, 2), as 8N1, not '9N1'" });
   assert.deepEqual(changeInterface(s, 'fpga', 'nope', {}), { error: "fpga: no interface 'nope'" });
-  assert.deepEqual(addInterface(s, 'fpga', { kind: 'can' }), { error: "fpga.can1: no interface kind 'can': uart, gpio, spi" });
+  assert.deepEqual(addInterface(s, 'fpga', { kind: 'can' }), { error: "fpga.can1: no interface kind 'can': uart, gpio, spi, i2c" });
   assert.deepEqual(addInterface(s, 'fpga', { kind: 'gpio', name: 'g', dir: 'both' }), { error: "fpga.g: a GPIO's direction is in or out, not 'both'" });
   assert.deepEqual(addInterface(s, 'fpga', { name: 'Serial' }), { error: "fpga: an interface named 'Serial' is there already" });
   assert.deepEqual(addInterface(s, 'fpga', { name: 'a b' }), { error: "fpga: 'a b' is not an interface's name: a letter, then letters, digits and _" });

@@ -2,7 +2,7 @@
 // made the co-simulation scheduler's system (core/system-sim.js): each node its engine's adapter (an FPGA node Silinx's
 // compiled engine, core/system-sim-compiled.js, at its board's clock; a microcontroller avr8js, core/system-sim-avr.js;
 // a serial terminal core/system-sim-terminal.js), each link its wires: a UART link two (a's TX to b's RX, b's TX to a's
-// RX), a GPIO link one a pin, from its `out` end. The FPGA node's pins are its module's ports (a UART's tx and rx); a
+// RX), a GPIO link one a pin, from its `out` end, an SPI link four, an I²C link three (SCL, and SDA each way, #5214). The FPGA node's pins are its module's ports (a UART's tx and rx); a
 // microcontroller's its board's (Serial: D1, D0); a terminal's tx and rx. A UART's RX that no link drives idles at 1.
 // Every wire has a fixed latency, a sixteenth of the UART's bit (a wire's 1 µs): the run is exact and deterministic.
 //
@@ -49,6 +49,7 @@ function endOf(sys, end) {
   // (an FPGA's bus bit led<0>, as the UCF writes it: the scheduler's led[0], #5213)
   if (f.kind === 'gpio') return { n, f, pins: n.kind === 'fpga' ? f.pins.map(p => String(p).replace(/<(\d+)>$/, '[$1]')) : f.pins };
   if (f.kind === 'spi') { const s = n.kind === 'mcu' ? mcuBoard(n.board)?.spis?.[f.name] : f; return s ? { n, f, spi: { sck: s.sck, mosi: s.mosi, miso: s.miso, ss: s.ss } } : null; }
+  if (f.kind === 'i2c') { const s = n.kind === 'mcu' ? mcuBoard(n.board)?.i2cs?.[f.name] : f; return s ? { n, f, i2c: { scl: s.scl, sda: s.sda } } : null; }
   if (n.kind === 'fpga') return { n, f, tx: f.tx, rx: f.rx };
   if (n.kind === 'mcu') { const u = mcuBoard(n.board)?.uarts[f.name]; return u ? { n, f, tx: u.tx, rx: u.rx } : null; }
   return { n, f, tx: 'tx', rx: 'rx' };
@@ -91,6 +92,16 @@ export function systemPlan(sys, { ports = {} } = {}) {
         const [s, d] = k === 'miso' ? [p, m] : [m, p];
         if (s.spi[k] && d.spi[k]) wire({ n: s.n, pin: s.spi[k] }, { n: d.n, pin: d.spi[k] }, k, 'spi', { hz: m.f.hz, mode: m.f.mode, line: k });
       }
+    } else if (l.kind === 'i2c') {
+      // (the master's SCL to the peripheral; SDA a wire each way, each end's pulling it low or releasing it: `<link>_scl`,
+      // `<link>_sda` the master's, `<link>_sda_back` the peripheral's, #5214)
+      const [m, p] = a.n.kind === 'mcu' ? [a, b] : [b, a];
+      const i2c = line => ({ hz: m.f.hz, line });
+      if (m.i2c.scl && p.i2c.scl) wire({ n: m.n, pin: m.i2c.scl }, { n: p.n, pin: p.i2c.scl }, 'scl', 'i2c', i2c('scl'));
+      if (m.i2c.sda && p.i2c.sda) {
+        wire({ n: m.n, pin: m.i2c.sda }, { n: p.n, pin: p.i2c.sda }, 'sda', 'i2c', i2c('sda'));
+        wire({ n: p.n, pin: p.i2c.sda }, { n: m.n, pin: m.i2c.sda }, 'sda_back', 'i2c', i2c('sda_back'));
+      }
     } else {
       const [s, d] = a.f.dir === 'out' ? [a, b] : [b, a];
       s.pins.forEach((p, i) => { if (d.pins[i]) wire({ n: s.n, pin: p }, { n: d.n, pin: d.pins[i] }, s.pins.length > 1 ? i : null, 'wire', {}); });
@@ -128,9 +139,10 @@ export function buildSystem(sys, plan, { fpga = {}, firmware = {} } = {}) {
     }
   }
   for (const w of plan.wires) {
-    // (an SPI wire: a sixteenth of its SCK's period, the MISO's answer in time for the master's next edge, #5214)
-    const latency = w.kind === 'uart' ? Math.round(1e12 / w.baud / UART_DIV) : w.kind === 'spi' ? Math.round(1e12 / w.hz / 16) : FINE;
-    sim.link({ name: w.name, from: w.from, to: w.to, kind: w.kind === 'uart' ? 'uart' : 'wire', baud: w.baud, latency, pull: w.line === 'ss' ? 1 : null });
+    // (an SPI or I²C wire: a sixteenth of its clock's period, the peripheral's answer in time for the master's next edge;
+    // SS and I²C's lines pulled up, #5214)
+    const latency = w.kind === 'uart' ? Math.round(1e12 / w.baud / UART_DIV) : w.kind === 'spi' || w.kind === 'i2c' ? Math.round(1e12 / w.hz / 16) : FINE;
+    sim.link({ name: w.name, from: w.from, to: w.to, kind: w.kind === 'uart' ? 'uart' : 'wire', baud: w.baud, latency, pull: w.line === 'ss' || w.kind === 'i2c' ? 1 : null });
   }
   for (const { node, pin, value } of plan.idle) sim.nodes.get(node).setPin(pin, value);
   return { sim, terminals, wires: plan.wires };

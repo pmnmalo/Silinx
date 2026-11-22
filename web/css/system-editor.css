@@ -42,6 +42,9 @@
 /* an SPI link (#5214): dotted, its dot filled */
 .system-editor .sys-dot.spi { fill: var(--sys-hot); }
 .system-editor .sys-link.spi .sys-link-line { stroke-dasharray: 2 3; }
+/* an I²C link (#5214): dashed, its dot filled */
+.system-editor .sys-dot.i2c { fill: var(--sys-hot); }
+.system-editor .sys-link.i2c .sys-link-line { stroke-dasharray: 6 3; }
 
 /* the System Emulator (#5212): the boards side by side, an Arduino's pins' levels */
 .sys-emu .sys-emu-main { overflow: auto; }

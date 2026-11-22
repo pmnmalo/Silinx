@@ -49,13 +49,13 @@ const SYS_FILE = STR('The System document (.sys.json).');
 const EDIT = { type: 'object', properties: {
   action: { type: 'string', enum: EDIT_ACTIONS },
   node: { type: 'string' }, interface: { type: 'string' }, link: { type: 'string' },
-  fields: { type: 'object', description: 'kind id board module variant pins firmware x y; name tx rx baud frame pins dir; a b (node.interface)' },
+  fields: { type: 'object', description: 'kind id board module variant pins firmware x y; name, its kind\'s fields; a b (node.interface)' },
 }, required: ['action'], additionalProperties: false };
 
 export const SYSTEM_TOOLS = [
   {
     name: 'edit_system', title: 'Edit a System',
-    description: 'Edit a co-design project\'s System (.sys.json) as its editor does, in order (one refused: none): add_, change_, remove_ a node (fpga, mcu, terminal), interface (uart, gpio), link; checked.',
+    description: 'Edit a co-design project\'s System (.sys.json) as its editor does, in order (one refused: none): add_, change_, remove_ a node (fpga, mcu, terminal), interface (uart, gpio, spi, i2c), link; checked.',
     inputSchema: { type: 'object', properties: { project: PROJECT, file: SYS_FILE, edits: { type: 'array', maxItems: 100, items: EDIT } }, required: ['project', 'file', 'edits'], additionalProperties: false },
     annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false },
     async run({ project: name, file, edits }) {

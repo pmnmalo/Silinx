@@ -37,14 +37,14 @@ test('#4702 uart-avr: its FPGA module the uart example\'s sources, its firmware 
   assert.deepEqual([pj.kind, pj.board, pj.constraints, pj.top], ['codesign', null, null, '']);
   const sys = readSystem(fs.readFileSync(path.join(EX, 'uart_avr.sys.json'), 'utf8'));
   assert.deepEqual(sys.system.links, [{ id: 'serial', kind: 'uart', a: 'uno.Serial', b: 'fpga.uart' }]);
-  assert.deepEqual(CODESIGN_EXAMPLES, ['uart-avr', 'spi-avr']);
+  assert.deepEqual(CODESIGN_EXAMPLES, ['uart-avr', 'spi-avr', 'i2c-avr']);
 });
 
 test('#4702 the kinds\' rules: a co-design project empty or from a co-design example; a new one\'s silinx.json and System', () => {
   assert.equal(createRefusal('codesign', 'empty'), null);
   assert.equal(createRefusal('codesign', 'uart-avr'), null);
   assert.equal(createRefusal(null, 'uart'), null);
-  assert.equal(createRefusal('codesign', 'uart'), 'a co-design project starts empty or from a co-design example (uart-avr, spi-avr)');
+  assert.equal(createRefusal('codesign', 'uart'), 'a co-design project starts empty or from a co-design example (uart-avr, spi-avr, i2c-avr)');
   assert.equal(createRefusal(null, 'uart-avr'), null);   // (the example's kind)
   assert.equal(createRefusal('design', 'uart-avr'), 'a design and simulation project starts empty: no example');
   assert.equal(createRefusal('fpga', 'uart-avr'), 'unknown project kind \'fpga\'');   // (an FPGA project's kind is none)
@@ -59,10 +59,10 @@ test('#4702 the kinds\' rules: a co-design project empty or from a co-design exa
 });
 
 test('#4702 uart-avr made with the MCP server: its System checked (the 5 V warning) and simulated (the Arduino\'s hello echoed)', async () => {
-  // (listed after the FPGA examples, as the co-design ones: uart-avr, then spi-avr)
+  // (listed after the FPGA examples, as the co-design ones: uart-avr, spi-avr, i2c-avr)
   const ex = await ok('list_examples', {});
-  assert.deepEqual(ex.text.split('\n').slice(-2), ['uart-avr: a co-design example (FPGA and microcontroller nodes in a System), 5 file(s)', 'spi-avr: a co-design example (FPGA and microcontroller nodes in a System), 1 file(s)']);
-  assert.deepEqual(ex.data.examples.at(-2), { name: 'uart-avr', kind: 'codesign', top: null, simTop: null, board: null, device: null, files: 5 });
+  assert.deepEqual(ex.text.split('\n').slice(-3), ['uart-avr: a co-design example (FPGA and microcontroller nodes in a System), 5 file(s)', 'spi-avr: a co-design example (FPGA and microcontroller nodes in a System), 1 file(s)', 'i2c-avr: a co-design example (FPGA and microcontroller nodes in a System), 1 file(s)']);
+  assert.deepEqual(ex.data.examples.at(-3), { name: 'uart-avr', kind: 'codesign', top: null, simTop: null, board: null, device: null, files: 5 });
   await ok('new_project_from_example', { name: 'ua', example: 'uart-avr' });
   const warn = "serial: uno's D1, a 5 V output, drives fpga's rx (pin J3), a 3.3 V input of the FPGA (LVCMOS33): a level shifter or a divider on the real boards";
   const c = await ok('check_system', { project: 'ua', file: 'uart_avr.sys.json' });
@@ -107,4 +107,33 @@ test('#5214 spi-avr: its firmware spi.asm assembled; made with the MCP server, i
   const sys = readSystem(fs.readFileSync(path.join(tmp, 'ws', 'sa', 'spi_avr.sys.json'), 'utf8')).system;
   assert.deepEqual([sys.links, sys.nodes[1].interfaces], [[{ id: 'spi', kind: 'spi', a: 'uno.SPI', b: 'fpga.bus' }], [{ name: 'bus', kind: 'spi', sck: 'sck', mosi: 'mosi', miso: 'miso', ss: 'ss', hz: 125000, mode: 0 }]]);
   assert.deepEqual(e.text.split('\n').slice(0, 4), ['remove_link spi', 'remove_interface fpga.bus', 'add_interface fpga.bus', 'add_link spi']);
+});
+
+test('#5214 i2c-avr: its firmware i2c.asm assembled; made with the MCP server, its System checked (its 5 V warnings), simulated (the counts written, the switches read) and emulated (SW1, SW3 and SW6 on: the Uno\'s D3 and D6)', async () => {
+  const I2C = path.join(ROOT, 'examples/i2c-avr');
+  assert.equal(fs.readFileSync(path.join(I2C, 'firmware/i2c.hex'), 'utf8'), intelHex(avrAssemble(fs.readFileSync(path.join(I2C, 'firmware/i2c.asm'), 'utf8').split('\n'))));
+  assert.deepEqual(readSystem(fs.readFileSync(path.join(I2C, 'i2c_avr.sys.json'), 'utf8')).system.links, [{ id: 'i2c', kind: 'i2c', a: 'uno.Wire', b: 'fpga.bus' }]);
+  await ok('new_project_from_example', { name: 'ia', example: 'i2c-avr' });
+  const W = (pin, port, loc) => `WARNING: i2c: uno's ${pin}, a 5 V output, drives fpga's ${port} (pin ${loc}), a 3.3 V input of the FPGA (LVCMOS33): a level shifter or a divider on the real boards`;
+  const c = await ok('check_system', { project: 'ia', file: 'i2c_avr.sys.json' });
+  assert.deepEqual(c.text.split('\n'), ['System i2c_avr: 2 nodes, 1 link', 'node uno: Arduino Uno, firmware firmware/i2c.hex', '  Wire: I²C 100000 Hz, SCL A5, SDA A4',
+    'node fpga: FPGA, module i2c_leds on basys2-250', '  bus: I²C 100000 Hz, SCL scl (B2), SDA sda (A3)', 'link i2c: I²C uno.Wire ↔ fpga.bus',
+    W('A5', 'scl', 'B2'), W('A4', 'sda', 'A3'), 'Process "Check System" of i2c_avr.sys.json completed successfully with 2 warning(s).']);
+  // two counts in 60 ms (one every 47 ms or so): 00 then 01 written, the switches (all off: 00) read after each
+  const s = await ok('simulate', { project: 'ia', time_ns: 60e6 });
+  assert.deepEqual(s.data.i2c.map((x) => [x.link, x.hz, x.transfers.map((t) => [t.read, t.addr, t.data.map((d) => d.byte)])]), [['i2c', 100000, [[false, 0x42, [0]], [true, 0x42, [0]], [false, 0x42, [1]], [true, 0x42, [0]]]]]);
+  assert.deepEqual([s.data.warnings, s.data.errors], [[], []]);
+  // emulated: SW1, SW3 and SW6 on from the start (0x4A): read back, on the Uno's D3 and D6 (its PORTD's bits 2..7); the
+  // FPGA's LEDs the last count, 1
+  const e = await ok('simulate', { project: 'ia', time_ns: 60e6, controls: [1, 3, 6].map((k) => ({ node: 'fpga', control: `sw${k}`, on: true, at_ns: 0 })) });
+  assert.deepEqual(['D2', 'D3', 'D4', 'D5', 'D6', 'D7'].map((p) => e.data.boards.uno.pins[p]), [0, 1, 0, 0, 1, 0]);
+  assert.deepEqual(e.data.boards.fpga.leds, [1, 0, 0, 0, 0, 0, 0, 0]);
+  // edit_system as the editor: the link removed, the FPGA's I²C removed, both added back (its ports, then the link)
+  const ed = await ok('edit_system', { project: 'ia', file: 'i2c_avr.sys.json', edits: [
+    { action: 'remove_link', link: 'i2c' }, { action: 'remove_interface', node: 'fpga', interface: 'bus' },
+    { action: 'add_interface', node: 'fpga', fields: { kind: 'i2c', name: 'bus', scl: 'scl', sda: 'sda' } },
+    { action: 'add_link', fields: { a: 'uno.Wire', b: 'fpga.bus' } }] });
+  const sys = readSystem(fs.readFileSync(path.join(tmp, 'ws', 'ia', 'i2c_avr.sys.json'), 'utf8')).system;
+  assert.deepEqual([sys.links, sys.nodes[1].interfaces], [[{ id: 'i2c', kind: 'i2c', a: 'uno.Wire', b: 'fpga.bus' }], [{ name: 'bus', kind: 'i2c', scl: 'scl', sda: 'sda', hz: 100000 }]]);
+  assert.deepEqual(ed.text.split('\n').slice(0, 4), ['remove_link i2c', 'remove_interface fpga.bus', 'add_interface fpga.bus', 'add_link i2c']);
 });

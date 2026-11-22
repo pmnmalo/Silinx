@@ -31,6 +31,13 @@ UART and GPIO links. Its design is in [CODESIGN.md](../../CODESIGN.md); its road
   program's: 125000 Hz at SPI_CLOCK_DIV128) and its mode (0 to 3), the same at both. Try it shows each transfer's bytes,
   MOSI's and MISO's, in the console's lines. The **spi-avr** example: an Arduino sends a count every 47 ms or so, the FPGA
   shows it on its LEDs and answers with the one before plus one, shown on the Arduino's D2..D7.
+- **I²C links** join an Arduino, the master, to an FPGA, the peripheral: **+ I²C** on the Arduino adds its board's I²C
+  bus, Wire (SCL A5, SDA A4), **+ I²C** on an FPGA node its module's two ports (found by their names: scl, sda), its SDA
+  an inout port (`sda <= '0' when pull = '1' else 'Z'`: pulled low or released, never driven high), then **Link** joins
+  them. Each end says its SCL rate (at least the program's: 100000 Hz with Wire), the same at both. Try it shows each
+  transfer in the console's lines: W or R, the address, the bytes (NACK where one was not acknowledged), and warns of an
+  address no peripheral acknowledged. The **i2c-avr** example: an Arduino writes a count every 47 ms or so to the FPGA
+  at the address 0x42, shown on its LEDs, then reads the FPGA's switches back, shown on the Arduino's D2..D7.
 
 ## Try it
 

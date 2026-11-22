@@ -14,7 +14,7 @@ import { CompiledNode } from './system-sim-compiled.js';
 
 /** The adapters a message can build, by the node's kind (the AVR's comes with #4698). */
 export const REMOTE_KINDS = {
-  compiled: (n) => new CompiledNode({ model: n.model, pins: n.pins, period: n.period }),
+  compiled: (n) => new CompiledNode({ model: n.model, pins: n.pins, index: n.index, period: n.period }),
 };
 
 /** The host: a SystemSim driven by the messages of `port` (a worker's self, a MessagePort). */
