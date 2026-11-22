@@ -52,6 +52,11 @@ test('the import map of web/index.html: every target installed; the editor\'s wh
   const meet = meetSrc.flatMap(src => [...bareImports(src), ...dynamic(src)]);
   assert.deepEqual([...new Set(meet)].sort(), ['@trystero-p2p/torrent']);
   todo.push(...meet);
+  // (the co-design System's AVR, #4701: avr8js, its ES modules importing each other with no extension, resolved by the
+  // server as a bundler does)
+  const avr = dynamic(fs.readFileSync(path.join(ROOT, 'core/system-sim-avr.js'), 'utf8'));
+  assert.deepEqual(avr, ['avr8js']);
+  todo.push(...avr);
   const relative = src => [...src.matchAll(/(?:^|[\s;}])(?:import|export)\s*(?:[\w*{}\s,$]+\sfrom\s*)?['"](\.\.?\/[^'"]+)['"]/g)].map(m => m[1]);
   const files = new Set();
   // (a module's relative imports: files of its own package, which the server serves whole; lib0's)
@@ -62,7 +67,8 @@ test('the import map of web/index.html: every target installed; the editor\'s wh
     const src = fs.readFileSync(file, 'utf8');
     todo.push(...bareImports(src));
     for (const r of relative(src)) {
-      const to = path.resolve(path.dirname(file), r);
+      let to = path.resolve(path.dirname(file), r);
+      if (spec === 'avr8js' && !/\.js$/.test(to)) to = fs.existsSync(`${to}.js`) ? `${to}.js` : path.join(to, 'index.js');
       assert.ok(to.startsWith(path.join(ROOT, 'node_modules', spec.match(/^(@[^/]+\/)?[^/]+/)[0]) + path.sep), `${spec}: ${r} inside its package`);
       load(to, spec);
     }
@@ -76,7 +82,7 @@ test('the import map of web/index.html: every target installed; the editor\'s wh
     // y-codemirror.next's, whose ES modules are its src/ files, and Trystero's core's: each package served whole, bundled in
     // the standalone)
     const src = fs.readFileSync(fileOf(map[spec]), 'utf8');
-    if (!spec.startsWith('lib0/') && spec !== 'y-codemirror.next' && spec !== '@trystero-p2p/core') assert.deepEqual(relative(src), [], `${spec}: no relative import`);
+    if (!spec.startsWith('lib0/') && spec !== 'y-codemirror.next' && spec !== '@trystero-p2p/core' && spec !== 'avr8js') assert.deepEqual(relative(src), [], `${spec}: no relative import`);
     load(fileOf(map[spec]), spec);
   }
   assert.deepEqual(missing, []);
@@ -116,4 +122,15 @@ test('the server serves every target of the import map as JavaScript, and no oth
   for (const url of ['/vendor/npm/express/package.json', '/vendor/npm/@yowasp/yosys/package.json', '/vendor/npm/esbuild/package.json', '/vendor/npm/../package.json', '/vendor/codemirror/lib/codemirror.js']) {
     assert.notEqual((await fetch(base + url)).status, 200, url);
   }
+});
+
+test('#4701 avr8js\'s ES modules as its imports name them, with no extension: a module (its .js), a folder (its index.js); none other', async () => {
+  const esm = '/vendor/npm/avr8js/dist/esm';
+  for (const [url, file] of [[`${esm}/cpu/cpu`, 'cpu/cpu.js'], [`${esm}/peripherals/usart`, 'peripherals/usart.js'], [`${esm}/`, 'index.js']]) {
+    const r = await fetch(base + url);
+    assert.equal(r.status, 200, url);
+    assert.match(r.headers.get('content-type'), /javascript/, url);
+    assert.equal(await r.text(), fs.readFileSync(path.join(ROOT, 'node_modules/avr8js/dist/esm', file), 'utf8'), url);
+  }
+  for (const url of [`${esm}/nope`]) assert.notEqual((await fetch(base + url)).status, 200, url);
 });
