@@ -1,6 +1,7 @@
 // Usability tests (#5148): what a person does in the Petri net editor (web/js/petri-*.js), through the interface (moved
 // from petri.test.js, #5206, for the random sequences too): its tools, clicks and drags on the net, its Properties.
 import { PLACE_R, TRANS_W, TRANS_H } from '../../../core/petri.js';
+import { arcGeometry } from '../../../core/petri-geometry.js';
 
 /** The Petri net editor's actions: its tools, clicks and drags on the net (its coordinates, turned into the page's by
  *  the drawing's own transform), its Properties. The net is read only to know where things are. */
@@ -45,13 +46,13 @@ export const pnActions = (page, { ed, t, getDoc }) => {
     },
     /** A node selected (a click on it). */
     async select(id) { await tool('select'); await page.click(await centre(id)); },
-    /** An arc selected (a click on its middle). */
+    /** An arc selected (a click on its middle: a line's, or a curve's when an arc goes back beside it, #5266). */
     async selectArc(id) {
       const m = await getDoc();
-      const a = m.arcs.find((x) => x.id === id);
-      const [p, q] = await Promise.all([nodeById(a.from), nodeById(a.to)]);
+      const g = arcGeometry(m, m.arcs.find((x) => x.id === id));
+      if (!g) throw new Error(`no arc ${id}`);
       await tool('select');
-      await page.click(await at((p.x + q.x) / 2, (p.y + q.y) / 2));
+      await page.click(await at(g.mid.x, g.mid.y));
     },
     /** A node dragged by (dx, dy). */
     async move(id, dx, dy) {
@@ -76,8 +77,8 @@ export const pnActions = (page, { ed, t, getDoc }) => {
         : Math.abs(x - nd.x) <= W / 2 + 3 && Math.abs(y - nd.y) <= H / 2 + 3);
       return [...document.querySelectorAll(`${e} .pn-arc`)].map((g) => {
         const a = m.arcs.find((x) => x.id === g.dataset.id), l = g.querySelector('.pn-arc-hit');
-        const [x1, y1, x2, y2] = ['x1', 'y1', 'x2', 'y2'].map((k) => +l.getAttribute(k));
-        return on(node(a.from), x1, y1) && on(node(a.to), x2, y2) ? null : a.id;
+        const [p, q] = [l.getPointAtLength(0), l.getPointAtLength(l.getTotalLength())];
+        return on(node(a.from), p.x, p.y) && on(node(a.to), q.x, q.y) ? null : a.id;
       }).filter(Boolean);
     }, ed, m, PLACE_R, TRANS_W, TRANS_H),
   };

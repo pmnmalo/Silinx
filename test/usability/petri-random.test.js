@@ -32,10 +32,9 @@ async function session(page, title, seed, quiet = false) {
 
 randomTests(() => env, { name: 'Petri net', fixed: [1, 2, 3], vocab: PN_VOCAB, session, n: 16 });
 
-// (#5266, found writing the vocabulary: an arc drawn back along another, then the first one's weight; the arcs back are
-// not drawn by the sequences until it is fixed)
-uiTest('usability: Petri net: an arc drawn back along another (fail1 to none): the first still selected, its weight set (#5266)', () => env, async (page, _env, t) => {
-  t.todo('#5266: the two arcs are drawn on one line, a click selects the later one only');
+// (#5266, found writing the vocabulary: an arc drawn back along another, then the first one's weight: the two are drawn
+// apart, each selected by a click on it)
+uiTest('usability: Petri net: an arc drawn back along another (fail1 to none): the first still selected, its weight set (#5266)', () => env, async (page) => {
   const s = await session(page, 'Petri net: an arc back along another', null);
   await replay(s, PN_VOCAB, [{ name: 'arc', args: { from: 't1', to: 'p1', inhibitor: false } }, { name: 'weight', args: { id: 'a1', weight: 2 } }]);
   await s.undoRedo();

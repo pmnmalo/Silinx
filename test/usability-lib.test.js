@@ -382,17 +382,20 @@ test('usability: the ASM chart\'s random steps (the lock\'s timer): the same fro
   assert.ok(!asmTolerate(["error: Loop through decision/output boxes without a state (in the block of state 'IDLE')"]));
 });
 
-test('usability: the Petri net\'s random steps (the lock\'s alarm): the same from a seed; nodes apart, names unique, tokens within capacity, no two arcs on one line; Check and the HDL sound', () => {
+test('usability: the Petri net\'s random steps (the lock\'s alarm): the same from a seed; nodes apart, names unique, tokens within capacity, no two arcs the same way, arcs back drawn; Check and the HDL sound', () => {
   const doc = example('lock/src/alarm.pn.json');
+  let back = 0;
   soundRuns('pn', PN_VOCAB, pnModel, doc, {
     each(m, at) {
       apart([...m.places, ...m.transitions], 90, at);
       unique([...m.places, ...m.transitions].map((n) => n.name).concat(['fail', 'opened', 'fails', 'alarm']), at);
       for (const p of m.places) assert.ok(p.tokens <= p.capacity, `${at}: ${p.name}'s tokens`);
-      // (#5266: two arcs between a place and a transition, one each way, drawn on one line: not drawn until fixed)
-      for (const a of m.arcs) assert.ok(!m.arcs.some((b) => b.from === a.to && b.to === a.from), `${at}: ${a.id} and an arc back`);
+      for (const a of m.arcs) assert.ok(!m.arcs.some((b) => b !== a && b.from === a.from && b.to === a.to), `${at}: ${a.id} twice`);
+      // (an arc back beside another, one each way: the two drawn apart, #5266)
+      if (m.arcs.some((a) => m.arcs.some((b) => b.from === a.to && b.to === a.from))) back++;
     },
   });
+  assert.ok(back > 0, 'an arc drawn back beside another');
 });
 
 test('usability: the truth table\'s random steps (the traffic lamps): the same from a seed; each step\'s table as core\'s (shapeTable, the expressions\' columns), the HDL sound', () => {
