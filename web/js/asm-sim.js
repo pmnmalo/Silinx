@@ -8,6 +8,7 @@ import { h } from './dom.js';
 import { asmResetActive, asmSimEval, asmSimReset, asmSimStep, prepareAsmSim } from '/core/asm-sim.js';
 import { simInputControls, simTraceTable } from './sim-panel.js';
 import { inputValues, traceRows } from '/core/collab-try.js';
+import { intervalWhileSeen } from './when-hidden.js';
 
 const RATES = [1, 2, 5, 10];   // clock edges per second of Run
 
@@ -84,8 +85,9 @@ export function mountAsmSim({ M, btn, render, layout, destroyed, onErrors, simBt
     sim.st = p.st; sim.cycle = p.cycle; sim.trace.length = Math.min(sim.trace.length, p.traceLength);
     update();
   }
-  function run() { sim.timer = setInterval(() => { if (destroyed() || !open) return stop(); step(); }, 1000 / (sim.rate || 1)); }
-  function stop() { if (sim?.timer) { clearInterval(sim.timer); sim.timer = null; } }
+  // (held while the chart is not seen, as the Board Emulator, #5276)
+  function run() { sim.timer = intervalWhileSeen(panel, 1000 / (sim.rate || 1), () => { if (destroyed() || !open) return stop(); step(); }); }
+  function stop() { if (sim?.timer) { sim.timer.stop(); sim.timer = null; } }
 
   /** Prepares the chart; false (its errors reported, the panel closed) when it cannot be simulated. */
   function prepare() {

@@ -31,7 +31,7 @@ end rtl;
 const emu = (page, prop) => page.eval((p) => p.split('.').reduce((o, k) => o?.[k], window.SilinxApp.findDoc('emulator').view), prop);
 const stat = (page) => page.eval(() => document.querySelector('.emu .stat').textContent);
 // the When hidden choice: its items in the toolbar's menu (#2846), the one checked, one chosen
-const hiddenItems = '.doc:not([hidden]) .emu-bar .tb-more-menu [role=menuitemradio][title^="What the emulator does while it is not seen"]';
+const hiddenItems = '.doc:not([hidden]) .emu-bar .tb-more-menu [role=menuitemradio][title^="What the emulator and every Try it do while not seen"]';
 const hiddenValue = (page) => page.eval((s) => document.querySelector(`${s}[aria-checked=true]`).dataset.value, hiddenItems);
 const chooseHidden = (page, v) => page.eval((s, x) => document.querySelector(`${s}[data-value="${x}"]`).click(), hiddenItems, v);
 async function openEmulator(page) {
@@ -159,7 +159,7 @@ uiTest('board emulator: paused while hidden and while its document tab is not ac
   const en = await page.eval(() => window.__uiTexts(document.querySelector('.doc:not([hidden]) .emu-bar')));
   await setLang('pt');
   const pt = await page.eval(() => window.__uiTexts(document.querySelector('.doc:not([hidden]) .emu-bar')));
-  for (const t of ['Quando oculto', 'Pausa', 'Continuar a executar', '@O que o emulador faz enquanto não está à vista (outro separador do navegador, uma janela minimizada, outro separador de documento): pausa, e continua onde estava quando volta a ser mostrado, ou continua a executar'])
+  for (const t of ['Quando oculto', 'Pausa', 'Continuar a executar', '@O que o emulador e cada Experimentar fazem enquanto não estão à vista (outro separador do navegador, uma janela minimizada, outro separador de documento): pausa, e continuam onde estavam quando voltam a ser mostrados, ou continuam a executar'])
     assert.ok(pt.includes(t), `${t}: ${pt.join(' | ')}`);
   assert.deepEqual(untranslated(en, pt, [/^(cnt|real \(÷1\))\b/]), []);
   await page.click('.doc:not([hidden]) .emu-bar .btn', { text: '▶ Executar' });

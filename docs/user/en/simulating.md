@@ -15,6 +15,10 @@ Silinx has its own simulator, **SSim**, for VHDL and Verilog, in the browser. No
   internal signals of any instance added to the window.
 - **The Board Emulator**: the design on a picture of the board, see [The Board Emulator](emulator.md).
 
+A Try it that runs on its own (Run, a clock), the Board Emulator and the System Emulator pause while you do not see
+them (another browser tab, a minimised window, another document tab) and go on where they were when you come back.
+The Board Emulator's menu, **When hidden ▸ Keep running**, keeps them all running instead.
+
 ## Making a test bench
 
 - **The Test Bench Wizard** (*New Test Bench…*, or a module's right-click menu) writes a self-checking test bench:

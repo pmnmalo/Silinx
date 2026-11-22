@@ -67,3 +67,62 @@ uiTest('#5212 Emulate: the System\'s boards side by side, the terminal\'s line o
   await page.eval(async () => (await import('/js/i18n.js')).setLanguage('en'));
   assert.deepEqual(page.console.filter((c) => c.type === 'warning' || c.type === 'warn' || c.type === 'error').map((c) => c.text), []);
 });
+
+// the page hidden (another browser tab) or shown again
+const setHidden = (page, on) => page.eval((x) => {
+  if (x) Object.defineProperty(document, 'hidden', { configurable: true, get: () => true });
+  else delete document.hidden;
+  document.dispatchEvent(new Event('visibilitychange'));
+}, on);
+const activate = (page, id) => page.eval((i) => window.SilinxApp.S.docs.find((d) => d.id === i).tab.dispatchEvent(new MouseEvent('mousedown', { button: 0, bubbles: true })), id);
+
+uiTest('#5276 Emulate: held behind another document tab and while the page is hidden, on in real time when seen again (the time held not caught up); Keep running runs on', E, async (page) => {
+  await makeProject(env, { name: 'CoEmuHid', template: 'uart', files: { 'emu.sys.json': SYS, 'fw/l.hex': intelHex(avrAssemble(BLINK)) } });
+  const pj = await env.server.api('GET', '/api/projects/CoEmuHid');
+  delete pj.fileTree;
+  await env.server.api('PUT', '/api/projects/CoEmuHid', { ...pj, kind: 'codesign', board: null, constraints: null, top: null });
+  await page.openProject('CoEmuHid');
+  await page.eval(() => window.SilinxApp.openFile('emu.sys.json'));
+  await page.waitFor((ed) => document.querySelector(ed), [ED], { what: 'the System editor' });
+  const sysDoc = await page.eval(() => window.Silinx.active.id);
+  await page.click(`${ED} .sys-emu-btn`);
+  await page.waitFor((e) => document.querySelector(`${e} [data-node=fpga] .emu-pcb`), [EMU], { what: 'the boards', timeout: 60000 });
+  const view = 'sysemu:emu.sys.json';
+  const now = async () => (await emu(page)).now;
+  const advances = async (what) => { const t = await now(); await page.waitFor((v, t0) => window.SilinxApp.findDoc(v).emulator.state().now > t0 + 20e9, [view, t], { what, timeout: 30000 }); };
+  const held = () => page.eval((v) => window.SilinxApp.findDoc(v).emulator.held(), view);
+  const standsStill = async (what) => {
+    await page.waitFor((v) => window.SilinxApp.findDoc(v).emulator.held(), [view], { what });
+    await new Promise((r) => setTimeout(r, 300));   // (a run in flight let in)
+    const t = await now();
+    await new Promise((r) => setTimeout(r, 800));
+    assert.equal(await now(), t, what);
+    return t;
+  };
+  await page.click(`${EMU} .sysemu-run`);
+  await advances('running');
+  // behind the System editor's tab: held; its own tab again: on from where it was, in real time
+  await activate(page, sysDoc);
+  const t1 = await standsStill('held behind another document tab');
+  await activate(page, view);
+  await advances('running again');
+  assert.ok(await now() - t1 < 900e9, 'the time it was held (1.1 s) not caught up');
+  // the page hidden: held; shown: on
+  await setHidden(page, true);
+  await standsStill('held while the page is hidden');
+  await setHidden(page, false);
+  await advances('running when shown again');
+  assert.equal(await held(), false);
+  // Keep running (the Board Emulator's When hidden setting): it runs on behind another tab
+  await page.eval(async () => (await import('/js/when-hidden.js')).setHiddenPref('run'));
+  await activate(page, sysDoc);
+  await advances('running behind another document tab');
+  assert.equal(await held(), false);
+  await page.eval(async () => (await import('/js/when-hidden.js')).setHiddenPref('pause'));
+  await standsStill('held again');
+  await activate(page, view);
+  await advances('on again');
+  const s = await emu(page);
+  assert.deepEqual([s.warnings, s.errors], [[], []]);
+  assert.deepEqual(page.console.filter((c) => c.type === 'warning' || c.type === 'warn' || c.type === 'error').map((c) => c.text), []);
+});
