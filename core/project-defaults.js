@@ -3,7 +3,7 @@
 // that file's text (#4766). Isomorphic module (browser + Node).
 
 import { constraintsExtOf } from '../packages/silinx-fpga/src/parts.js';
-import { asDesignProject } from './project-kind.js';
+import { asDesignProject, asCodesignProject, CODESIGN_KIND } from './project-kind.js';
 
 /** A new project's Process Properties: Optimization Fast (Speed, Normal: GOAL_IMPL.fast of the toolchain's package,
  *  #4828), the FPGA start-up clock the JTAG clock. A project read with none keeps reading as Fast (synthGoal, #2470). */
@@ -20,7 +20,8 @@ export function newProjectJson(name, { device, board, kind = null } = {}) {
     name, version: 1, device: { ...(device || DEFAULT_DEVICE) }, board: board ?? null, top: '', simTop: '', files: [],
     constraints: `constraints/top${constraintsExtOf(device)}`, stimuli: {}, impl: { ...NEW_IMPL },
   };
-  return kind ? asDesignProject({ ...json, device: { ...DEFAULT_DEVICE } }) : json;
+  if (kind === CODESIGN_KIND) return asCodesignProject({ ...json, device: { ...DEFAULT_DEVICE } });   // (#4702)
+  return kind && kind !== 'fpga' ? asDesignProject({ ...json, device: { ...DEFAULT_DEVICE } }) : json;
 }
 
 /** silinx.json's text (#4766, as both stores write it): 2-space JSON and a final newline, its name the project's, no

@@ -37,7 +37,7 @@ What the others teach us:
 ## The System document
 
 A **System** (`<name>.sys.json`, `core/system-doc.js`, #4697) is the top of a **co-design project**, a project kind of
-Silinx (#5041): New Project asks the kind first, and its co-design choice stays disabled until phase 1 is usable. A
+Silinx (#5041): New Project asks the kind first; its co-design choice makes one, empty or from the example `uart-avr` (#4702). A
 co-design project has one System, shown in the Design pane as `[System]`.
 
 - **Its canvas** follows the schematic editor's style and the rules of [UI-GUIDELINES.md](UI-GUIDELINES.md). The System
