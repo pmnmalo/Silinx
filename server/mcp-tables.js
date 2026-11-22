@@ -7,7 +7,7 @@ import * as P from './projects.js';
 import { toolError, readProject, STR, PROJECT, projectText } from './mcp-util.js';
 import { notationSetting } from './mcp-notation.js';
 
-const NAMES = what => ({ type: 'array', items: { type: 'string' }, minItems: 1, description: what });
+const NAMES = what => ({ type: 'array', items: { type: 'string' }, description: what });
 const FORMS_TEXT = 'sop, pos (minimal: Karnaugh\'s, past 6 inputs Quine-McCluskey\'s), qsop, qpos (Quine-McCluskey\'s), xor (when simpler, else the SOP), nand, nor, gates (least gates), delay (least delay), csop, cpos (canonical)';
 
 export const TABLE_TOOLS = [
