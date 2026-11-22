@@ -23,8 +23,6 @@ const LEFT = {
   // declared with MIN_ZOOM (`export const MAX_ZOOM = …, MIN_ZOOM = …`), which test/tasks.test.js reads: the check
   // takes a declaration's first name only
   'web/js/tasks-emu.js': 'MAX_ZOOM',
-  // pinplanner.js imports emulator.js and hands the module to pinplanner-board.js, which calls it
-  'web/js/emulator.js': 'injectStyle',
 };
 
 const PUBLIC = ['packages/silinx-fpga/src/index.js', 'packages/silinx-fpga/src/parts.js', 'packages/silinx-fpga/src/node.js'];

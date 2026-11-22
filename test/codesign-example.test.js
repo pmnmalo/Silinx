@@ -74,6 +74,11 @@ test('#4702 uart-avr made with the MCP server: its System checked (the 5 V warni
   assert.equal(text('serial_uno'), 'Hello from Arduino!\r\n');
   assert.equal(text('serial_fpga'), 'Hello from Arduino!\r\n');
   assert.deepEqual([s.data.warnings, s.data.errors], [[], []]);
+  // emulated (Emulate System, #5212): the FPGA's LEDs the last byte it received (LF, 0x0A), the Uno's D8..D13 the last
+  // byte the FPGA echoed (its PORTB: D9 and D11 high)
+  const e = await ok('simulate', { project: 'ua', time_ns: 50e6, controls: [] });   // (quiet in its last 10 ms)
+  assert.deepEqual(e.data.boards.fpga.leds, [0, 1, 0, 1, 0, 0, 0, 0]);
+  assert.deepEqual(['D8', 'D9', 'D10', 'D11', 'D12', 'D13'].map((p) => e.data.boards.uno.pins[p]), [0, 1, 0, 1, 0, 0]);
   // (not an FPGA project's example)
   const r = await call('new_project_from_example', { name: 'ub', example: 'uart-avr', board: 'nexys2' });
   assert.deepEqual([r.isError, r.text], [true, 'new_project_from_example: ub: a co-design project has no board: its System names each FPGA node\'s']);

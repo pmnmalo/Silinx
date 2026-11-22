@@ -35,7 +35,7 @@ function projectModules(sys) {
 // the System made ready to run (core/system-run.js systemInputs): its FPGA nodes' modules compiled by Yosys (the Board
 // Emulator's: the page's workers, the browser edition's own), its firmware read (a .hex's text, an .elf's bytes, #5198:
 // as the MCP's simulate of a System); then run in its Web Worker (system-remote.js), where the compiled engine may make its code
-async function prepareHere(sys) {
+export async function prepareHere(sys, { emulate = false } = {}) {
   const lib = designState.lib;
   if (!lib) return { error: 'the project does not compile: Check Syntax says why' };
   const designs = {}, ports = {};
@@ -50,7 +50,10 @@ async function prepareHere(sys) {
     netlist: m => { if (!designs[m]) throw new Error(`no module '${m}' that elaborates (Check Syntax says why)`); return netlistOf(designs[m], { run }); },
     firmware: async p => (/\.elf$/i.test(p) ? api.readFileBytes(S.project.name, p) : api.readFile(S.project.name, p)),   // (an .elf's bytes, #5198)
   });
-  return inputs.error ? inputs : (await import('./system-remote.js')).startSystemRun(sys, inputs);
+  if (inputs.error) return inputs;
+  // (the System Emulator's: its boards too, and the inputs it draws them from, #5212)
+  const r = await (await import('./system-remote.js')).startSystemRun(sys, inputs, { emulate });
+  return r.error ? r : Object.assign(r, { inputs });
 }
 
 /** A System's problems, as Check System says them (the MCP server's check_system's). */
@@ -91,6 +94,8 @@ export async function openSystem(path) {
         ...(following() ? { readOnly: true, banner: followNotice() } : phoneOnly()),   // (a phone's, #5121)
         // (Simulate: the System's simulation view, #4701)
         mountSim: (host, o) => mountSystemSim(host, { ...o, prepare: prepareHere, onMessage: (text, level) => log(text, level), openWaves: openSystemWaves }),
+        // (Emulate: the System Emulator, its own document, #5212)
+        onEmulate: async () => (await import('./system-emu-open.js')).openSystemEmulator(path, () => ed.getModel()),
       });
       d.systemEditor = ed;
       d.checkSystem = () => problems.log(ed.check());
@@ -116,5 +121,6 @@ export function systemContextMenu(e, file) {
   popupMenu([
     { label: 'Open', action: () => openSystem(file) },
     { label: 'Check System', action: async () => { await openSystem(file); findDoc(`sys:${file}`)?.checkSystem?.(); } },
+    { label: 'Emulate System', action: async () => (await import('./system-emu-open.js')).openSystemEmulator(file) },
   ], e.clientX, e.clientY);
 }

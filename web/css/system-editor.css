@@ -1,5 +1,5 @@
 /* The System editor (web/js/system-editor.js, #4700): the shared look of asm-editor.css, its own drawing. */
-.system-editor { --sys-fpga: color-mix(in srgb, var(--asm-panel) 80%, var(--asm-accent) 20%); --sys-mcu: color-mix(in srgb, var(--asm-panel) 82%, var(--asm-ok) 18%);
+:is(.system-editor, .sys-emu) { --sys-fpga: color-mix(in srgb, var(--asm-panel) 80%, var(--asm-accent) 20%); --sys-mcu: color-mix(in srgb, var(--asm-panel) 82%, var(--asm-ok) 18%);
   --sys-term: color-mix(in srgb, var(--asm-panel) 85%, var(--asm-warn) 15%); --sys-hot: #e0752d; }
 .system-editor .sys-canvas.sys-adding { cursor: crosshair; }
 .system-editor .sys-node { cursor: move; }
@@ -31,11 +31,19 @@
 .system-editor .sys-sim-bar { display: flex; gap: 6px; align-items: center; padding: 4px 8px; flex-wrap: wrap; }
 .system-editor .sys-sim-time { margin-left: 8px; font: 12px var(--asm-mono); color: var(--asm-muted); }
 .system-editor .sys-sim-body { display: flex; gap: 10px; padding: 4px 8px 8px; flex-wrap: wrap; align-items: flex-start; }
-.system-editor .sys-term, .system-editor .sys-wire { border: 1px solid var(--asm-border, color-mix(in srgb, var(--asm-fg) 20%, transparent)); border-radius: 4px; padding: 4px 6px; min-width: 260px; flex: 1 1 260px; }
-.system-editor .sys-term-cap, .system-editor .sys-wire-cap { font: 600 12px system-ui, -apple-system, "Segoe UI", sans-serif; margin-bottom: 4px; }
-.system-editor .sys-term-out { margin: 0 0 4px; min-height: 4em; max-height: 12em; overflow: auto; font: 12px var(--asm-mono); white-space: pre-wrap; overflow-wrap: anywhere; background: var(--asm-bg); padding: 4px; }
-.system-editor .sys-term-in { width: 100%; box-sizing: border-box; }
+:is(.system-editor, .sys-emu) .sys-term, .system-editor .sys-wire { border: 1px solid var(--asm-border, color-mix(in srgb, var(--asm-fg) 20%, transparent)); border-radius: 4px; padding: 4px 6px; min-width: 260px; flex: 1 1 260px; }
+:is(.system-editor, .sys-emu) .sys-term-cap, .system-editor .sys-wire-cap { font: 600 12px system-ui, -apple-system, "Segoe UI", sans-serif; margin-bottom: 4px; }
+:is(.system-editor, .sys-emu) .sys-term-out { margin: 0 0 4px; min-height: 4em; max-height: 12em; overflow: auto; font: 12px var(--asm-mono); white-space: pre-wrap; overflow-wrap: anywhere; background: var(--asm-bg); padding: 4px; }
+:is(.system-editor, .sys-emu) .sys-term-in { width: 100%; box-sizing: border-box; }
 .system-editor .sys-wire-text { font: 12px var(--asm-mono); white-space: pre-wrap; overflow-wrap: anywhere; margin-bottom: 4px; }
 .system-editor .sys-wire-bytes { display: flex; flex-wrap: wrap; gap: 3px; max-height: 8em; overflow: auto; }
 .system-editor .sys-byte { font: 11px var(--asm-mono); padding: 0 3px; border-radius: 3px; background: color-mix(in srgb, var(--asm-accent) 14%, transparent); }
 .system-editor .sys-byte.err { background: color-mix(in srgb, var(--asm-warn) 35%, transparent); }
+
+/* the System Emulator (#5212): the boards side by side, an Arduino's pins' levels */
+.sys-emu .sys-emu-main { overflow: auto; }
+.sys-emu .sys-emu-boards { display: flex; flex-wrap: wrap; gap: 18px; align-items: flex-start; padding: 12px; }
+.sys-emu .sys-pin { width: 12px; height: 12px; border-radius: 50%; box-sizing: border-box; border: 2px solid var(--asm-muted); background: transparent; }
+.sys-emu .sys-pin.low { background: var(--asm-muted); }
+.sys-emu .sys-pin.high { background: var(--sys-hot); border-color: var(--sys-hot); }
+.sys-emu .asm-side { width: 300px; }
