@@ -22,6 +22,8 @@ export function asmActions(page, { ed, t, getDoc }) {
     let v = await screen(pts);
     if (v.qs.every(Boolean) && v.scale >= 0.9) return v.qs;
     if (!v.qs.every(Boolean)) { await page.click(`${ed} .asm-btn[data-act=fit]`); v = await screen(pts); }
+    // (a point beyond the chart: zoomed out, #5206)
+    for (let i = 0; i < 4 && !v.qs.every(Boolean); i++) { await page.click(`${ed} .asm-btn[data-act=zout]`); v = await screen(pts); }
     if (!v.qs.every(Boolean)) throw new Error(`${JSON.stringify(pts)} out of the editor's view, the chart fitted`);
     if (v.scale >= 0.9) return v.qs;
     const c = { x: v.all.reduce((s, q) => s + q.x, 0) / v.all.length, y: v.all.reduce((s, q) => s + q.y, 0) / v.all.length };
@@ -118,18 +120,28 @@ export function asmActions(page, { ed, t, getDoc }) {
     async deleteArrow(id) {
       const d = await getDoc(), e = d.edges.find((x) => x.id === id);
       const [a, b] = [d.nodes.find((x) => x.id === e.from), d.nodes.find((x) => x.id === e.to)];
-      await view(around(a, b));
+      // (the arrow's whole route in the view too: one going round the chart)
+      const r = await page.eval((ed2, i) => { const b2 = document.querySelector(`${ed2} [data-edge="${i}"] .asm-edge-hit`).getBBox(); return [[b2.x, b2.y], [b2.x + b2.width, b2.y + b2.height]]; }, ed, id);
+      await view([...around(a, b), ...r]);
       const q = await page.eval((ed2, i) => {
         const p = document.querySelector(`${ed2} [data-edge="${i}"] .asm-edge-hit`);
-        const c = p.getScreenCTM(), L = p.getTotalLength();
-        for (const f of [0.5, 0.4, 0.6, 0.3, 0.7]) {
+        const c = p.getScreenCTM(), L = p.getTotalLength(), under = [];
+        // (from its middle out, every 2 % of it: an arrow alongside another may show only a short stretch, #5206)
+        const fs = Array.from({ length: 49 }, (_, k) => 0.5 + (k % 2 ? 1 : -1) * Math.ceil(k / 2) * 0.02);
+        for (const f of fs) {
           const r = p.getPointAtLength(L * f);
-          const x = c.a * r.x + c.e, y = c.d * r.y + c.f;
-          if (document.elementFromPoint(x, y)?.closest('[data-edge]')?.dataset.edge === i) return { x, y };
+          // (on the pixel the click lands on; where it alone is, a few pixels about it too: an arrow along another, a
+          // box, are not where a person clicks to pick it)
+          const x = Math.round(c.a * r.x + c.e), y = Math.round(c.d * r.y + c.f);
+          const el = document.elementFromPoint(x, y);
+          const alone = [[0, 0], [3, 0], [-3, 0], [0, 3], [0, -3]].every(([u, v]) => document.elementsFromPoint(x + u, y + v)
+            .every((w) => !w.closest('[data-node]') && (!w.closest('[data-edge]') || w.closest('[data-edge]').dataset.edge === i)));
+          if (el?.closest('[data-edge]')?.dataset.edge === i && alone) return { x, y };
+          under.push(el?.closest('[data-edge]') ? `arrow ${el.closest('[data-edge]').dataset.edge}` : el?.closest('[data-node]') ? `box ${el.closest('[data-node]').dataset.node}` : el?.getAttribute('class') || el?.tagName || 'nothing');
         }
-        return null;
+        return { under: [...new Set(under)] };
       }, ed, id);
-      if (!q) throw new Error(`no point of the arrow ${id} to click`);
+      if (q.under) throw new Error(`no point of the arrow ${id} to click (under: ${q.under.join(', ')})`);
       await page.click(q);
       await page.waitFor((ed2, i) => document.querySelector(`${ed2} [data-edge="${i}"].sel`), [ed, id], { what: `${id} selected` });
       await page.key('Delete');
