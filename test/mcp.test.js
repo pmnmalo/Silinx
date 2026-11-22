@@ -11,6 +11,7 @@ import path from 'node:path';
 import { spawn } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { EXAMPLE_ORDER } from '../core/examples.js';
+import { CODESIGN_EXAMPLES } from '../core/project-kind.js';
 import { VERSION } from '../core/version.js';
 import { plain, NOTE } from './mcp-label.js';
 
@@ -89,7 +90,7 @@ test('the protocol\'s errors: a line that is not JSON, an unknown method, an unk
 
 test('the examples, a new project from one (for another board too), the projects, a project\'s settings', async () => {
   const ex = await srv.call('list_examples');
-  assert.deepEqual(ex.structuredContent.examples.map(e => e.name), EXAMPLE_ORDER);
+  assert.deepEqual(ex.structuredContent.examples.map(e => e.name), [...EXAMPLE_ORDER, ...CODESIGN_EXAMPLES]);   // (the co-design one last, #4702)
   assert.deepEqual(ex.structuredContent.examples.find(e => e.name === 'blinky'), { name: 'blinky', top: 'top', simTop: 'tb_top', board: 'basys2', device: 'xc3s250ecp132-4', files: 7 });
   assert.equal((await srv.call('list_projects')).content[0].text, 'No project in the workspace (new_project_from_example makes one).');
   const made = await srv.call('new_project_from_example', { name: 'Blinky', example: 'blinky' });

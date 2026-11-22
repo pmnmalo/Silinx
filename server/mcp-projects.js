@@ -7,7 +7,7 @@ import * as P from './projects.js';
 import { readWithin } from './paths.js';
 import { orderExamples } from '../core/examples.js';
 import { nameUnnamed } from '../core/schname.js';
-import { CODESIGN_KIND, DESIGN_KIND, PROJECT_KINDS, isDesignOnly } from '../core/project-kind.js';
+import { CODESIGN_KIND, DESIGN_KIND, PROJECT_KINDS, isCodesign, isDesignOnly } from '../core/project-kind.js';
 import { placeText } from '../core/project-place.js';
 import { withPlaces } from './project-places.js';
 import { TOP_TYPES, topTypeRefusal } from '../core/top-types.js';
@@ -65,11 +65,13 @@ export const PROJECT_TOOLS = [
     async run() {
       const about = (dir, n) => {
         const pj = JSON.parse(fs.readFileSync(path.join(dir, n, 'silinx.json'), 'utf8'));
+        // (a co-design example: its System its top, no board nor device, #4702)
+        if (isCodesign(pj)) return { name: n, kind: CODESIGN_KIND, top: null, simTop: null, board: null, device: null, files: (pj.files || []).length };
         return { name: n, top: pj.top, simTop: pj.simTop || null, board: pj.board || null, device: pj.device ? `${pj.device.part}${pj.device.package}${pj.device.speed}` : null, files: (pj.files || []).length };
       };
       // (the examples only, as New Project's Start from: not the test designs, #5108)
       const examples = orderExamples(P.templateNames(P.EXAMPLES_DIR)).map(n => about(P.EXAMPLES_DIR, n));
-      const text = examples.map(e => `${e.name}: top ${e.top}${e.simTop ? `, test bench ${e.simTop}` : ''}, ${e.board || 'no board'} (${e.device}), ${e.files} file(s)`);
+      const text = examples.map(e => e.kind ? `${e.name}: a co-design example (FPGA and microcontroller nodes in a System), ${e.files} file(s)` : `${e.name}: top ${e.top}${e.simTop ? `, test bench ${e.simTop}` : ''}, ${e.board || 'no board'} (${e.device}), ${e.files} file(s)`);
       return { text: text.join('\n'), data: { examples } };
     },
   },

@@ -419,7 +419,7 @@ export async function createProject({ name, template = 'empty', device, board, k
   }
   await fs.mkdir(path.join(dir, 'src'), { recursive: true });
   await fs.mkdir(path.join(dir, 'sim'), { recursive: true });
-  if (!kind || kind === 'fpga') await fs.mkdir(path.join(dir, 'constraints'), { recursive: true });
+  if (!kind) await fs.mkdir(path.join(dir, 'constraints'), { recursive: true });
   // (core/project-defaults.js, as the browser edition's, #4766; Optimization Fast, #4828)
   const json = { ...newProjectJson(name, { device, board, kind }), ...(fromOutside ? { trusted: false } : {}), ...(madeBy === 'mcp' ? { trusted: false, madeBy } : {}) };
   await recordMade(dir, { fromOutside, madeBy });
