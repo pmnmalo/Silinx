@@ -108,7 +108,9 @@ uiTest('#4627 Tasks: every task\'s side panel resized by its edge, Simulate\'s t
   await task(page, 'impl');
   assert.ok(near((await side(page)).width, w, 4), 'impl: the simulation\'s width');
   await boot(page, 'tasks');
-  await page.waitFor(() => document.documentElement.dataset.task === 'impl' && document.getElementById('left')?.offsetWidth > 0, [], { what: 'impl again' });
+  // (once the project's documents and its task are restored: a task chosen before then is the restored one's again, #5147)
+  await page.waitFor(() => document.documentElement.dataset.task === 'impl' && document.getElementById('left')?.offsetWidth > 0
+    && window.Silinx.project?.name === 'TasksSideResize' && !('restoring' in document.documentElement.dataset) && !('starting' in document.documentElement.dataset), [], { what: 'impl again, the project restored', timeout: 30000 });
   assert.ok(near((await side(page)).width, w, 4), 'reloaded: impl\'s width');
   await task(page, 'sim');
   assert.ok(near((await side(page)).width, w, 4), 'reloaded: Simulate\'s width');
