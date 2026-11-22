@@ -965,7 +965,7 @@ uiTest('#2830 Import Project…, Silinx: the import gate leaves out what it refu
   await page.fill('.dlg-overlay input[type=text]', 'Gated');
   await page.dialogButton('Import');
   await page.waitFor(() => window.Silinx.project?.name === 'Gated' && document.querySelector('#hier .row'), [], { what: 'the imported project open', timeout: 30000 });   // (an import, slow on CI, #4462)
-  await page.waitConsole(/Imported Silinx project 'Gated' \(1 source file\(s\), 1 other file\(s\)\)\./);
+  await page.waitConsole(/Imported Silinx project 'Gated' \(1 source file\(s\)\)\./);   // (its one source, no other file: #5253)
   const warnings = (await page.consoleText()).split('\n').filter((l) => /^WARNING/.test(l));
   assert.deepEqual(warnings, [
     "WARNING: .git/hooks/post-checkout: not imported: hidden file or folder ('.git')",

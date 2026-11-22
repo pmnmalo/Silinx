@@ -122,7 +122,7 @@ async function reopenTouched(keep) {
   docsState.docs = [...docs, ...docsState.docs.filter(d => !docs.includes(d))];
   orderTabs();
   const front = typeof keep.active === 'string' ? docsState.docs.find(d => d.path === keep.active) : keep.active;
-  if (front && docsState.docs.includes(front)) activateDoc(front); else saveViewState();
+  if (front && docsState.docs.includes(front) && front !== docsState.active) activateDoc(front); else saveViewState();
 }
 
 // A module (and its file): core/rename-module.js, the MCP's rename_module's (#4731): its references, its drawing (its
