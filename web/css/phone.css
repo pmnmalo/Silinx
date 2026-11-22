@@ -3,7 +3,7 @@
    panes at the bottom (#phone-panes, above the Silinx interface's task tabs). The narrow screen's rules hold under it
    (app.css, silinx.css, tasks.css); these come after them and win (#app's id): the drawer, the splitters and the
    Silinx interface's Layout buttons (fold, messages, maximize) give way to the panes. Wider, the bar is not shown. */
-#phone-panes { display: none; }
+#phone-panes, #toolbar > #phone-more { display: none; }
 @media (max-width: 599px) {
   #phone-panes { display: flex; flex: none; justify-content: space-around; gap: 2px; padding: 3px 4px; background: var(--bg); border-top: 1px solid #c8c8c8; }
   #phone-panes .phone-pane { position: relative; flex: 1 1 0; min-width: 0; height: 40px; display: inline-flex; align-items: center; justify-content: center; gap: 6px;
@@ -42,4 +42,31 @@
   html[data-ui="silinx"][data-pane="console"] #app #console-wrap { display: grid !important; }
   html[data-pane="console"] #app #console-wrap > .caption, html[data-pane="console"] #app #mc-cmd { display: flex; }
   html[data-pane="console"] #app #console-wrap > .body { display: block; flex: 1 1 auto; min-height: 0; }
+
+  /* the main toolbar (web/js/phone-toolbar.js): Open Project, Undo, Redo, Find in Project, and More tools (⋯) for the
+     others; its separators gone */
+  #app #toolbar > :is(.tb-btn.phone-gone, .tb-sep) { display: none; }
+  #app #toolbar > #phone-more { display: inline-flex; align-items: center; justify-content: center; }
+  #app #toolbar > .tb-btn { flex: none; }
+  /* (the ISE style's menu bar: its eight menus in the width, in Portuguese too, as tall as a finger needs) */
+  #app #menubar { height: 32px; padding-left: 0; }
+  #app #menubar .item { flex: 0 1 auto; min-width: 0; padding: 0 4px; overflow: hidden; white-space: nowrap; }
+
+  /* a menu (the menu bar's, a right-click's, a ⋮ menu's, More tools'): the whole width, below where it opened, its
+     items as tall as a finger needs, scrolled when longer than the screen; a submenu over it, the same */
+  body > .menu-popup, .menu-popup.sub { left: 0 !important; right: 0; width: auto; max-width: none !important; max-height: calc(100dvh - 8px); overflow-y: auto; box-sizing: border-box; }
+  html .menu-popup .mi, html[data-ui] .menu-popup .mi { height: 40px; }
+  .menu-popup .lbl { white-space: normal; padding-right: 8px; }
+
+  /* a dialog (a wizard's, Settings', a question's): the whole screen, its buttons at its bottom */
+  .dlg-overlay .dlg { width: 100vw !important; max-width: 100vw !important; height: 100dvh; max-height: 100dvh !important; border-radius: 0; border: none; transform: none !important; }
+  .dlg-overlay .dlg > .dlg-title { border-radius: 0; height: 40px; }
+  .dlg-overlay .dlg > .dlg-body { flex: 1 1 auto; }
+  .dlg-overlay .dlg .dlg-x { width: 40px; height: 36px; }
+  .dlg-overlay .dlg .dlg-buttons { flex-wrap: wrap; }
+  /* (a wizard: its steps a line above its page, the current one only) */
+  .dlg .wiz { flex-direction: column; gap: 10px; min-height: 0; }
+  .dlg .wiz-side { width: auto; padding: 6px 10px; }
+  .dlg .wiz-side :is(.logo, .step:not(.cur)) { display: none; }
+  .dlg .wiz > :not(.wiz-side) { min-width: 0; }
 }
