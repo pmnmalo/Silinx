@@ -18,7 +18,7 @@ function nodeText(n) {
   if (n.kind === 'mcu') return `${mcuBoard(n.board)?.name || n.board} · ${n.firmware ? n.firmware.split('/').pop() : t('no firmware')}`;
   return t('Serial terminal');
 }
-const ifaceText = f => (f.kind === 'uart' ? `${f.name} · UART ${f.baud} ${f.frame}` : `${f.name} · GPIO ${f.dir} ${f.pins.length}`);
+const ifaceText = f => (f.kind === 'uart' ? `${f.name} · UART ${f.baud} ${f.frame}` : f.kind === 'spi' ? `${f.name} · SPI ${f.hz / 1000} kHz mode ${f.mode}` : `${f.name} · GPIO ${f.dir} ${f.pins.length}`);
 
 /** { applyView, render, toWorld, dotOf } of mountSystemEditor (M(), sel(), linkFrom(), drag(), view(): its values). */
 export function mountSystemDraw(ctx) {

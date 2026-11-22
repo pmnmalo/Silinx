@@ -32,6 +32,8 @@ export function avrAssemble(lines) {
       case 'sbrs': out.push(0xfe00 | (reg(a[0]) << 4) | num(a[1], labels)); break;
       case 'sbrc': out.push(0xfc00 | (reg(a[0]) << 4) | num(a[1], labels)); break;
       case 'inc': out.push(0x9403 | (reg(a[0]) << 4)); break;
+      case 'dec': out.push(0x940a | (reg(a[0]) << 4)); break;
+      case 'brne': { const k = num(a[0], labels) - at - 1; if (k < -64 || k > 63) throw new Error('brne: a branch of -64..63 words'); out.push(0xf401 | ((k & 0x7f) << 3)); break; }
       case 'rjmp': out.push(0xc000 | rel(a[0])); break;
       case 'rcall': out.push(0xd000 | rel(a[0])); break;
       case 'ret': out.push(0x9508); break;

@@ -1,5 +1,5 @@
 // Co-design's SPI links (#5214): an Arduino Uno, the master (its SPI on D13, D11, D12, its program's SS on D10), and an
-// FPGA peripheral (test/fixtures/spi/spi_echo.vhd: each byte shown on its LEDs, answered with the last one plus one).
+// FPGA peripheral (examples/spi-avr/src/spi_echo.vhd, the spi-avr example's: each byte shown on its LEDs, answered with the last one plus one).
 // The System document's SPI interface and its check (the master and the peripheral, one rate and one mode, its 5 V
 // warnings); the plan's four wires (SS pulled up while floating), each at a sixteenth of SCK's period; the run: the
 // Uno's 0x41 0x42 0x43 at 125 kHz, the FPGA's 00 42 43 back, its LEDs 0x43; the decoder against known waveforms (each
@@ -21,7 +21,7 @@ import { avrAssemble, intelHex } from './avr-asm.mjs';
 import { ROOT } from './examples-lib.mjs';
 
 await loadAvr8js();
-const SRC = fs.readFileSync(path.join(ROOT, 'test/fixtures/spi/spi_echo.vhd'), 'utf8');
+const SRC = fs.readFileSync(path.join(ROOT, 'examples/spi-avr/src/spi_echo.vhd'), 'utf8');
 const PORTS = { spi_echo: [['clk', 'in', 1], ['sck', 'in', 1], ['mosi', 'in', 1], ['ss', 'in', 1], ['miso', 'out', 1], ['led', 'out', 8]].map(([name, dir, width]) => ({ name, dir, width })) };
 const system = (over = {}) => normalizeSystem({ format: 'silinx-system', version: 1, name: 's', nodes: [
   { id: 'fpga', kind: 'fpga', module: 'spi_echo', board: 'basys2', variant: '250', pins: { clk: 'B8', sck: 'B2', mosi: 'A3', miso: 'J3', ss: 'B5' }, interfaces: [{ name: 'bus', kind: 'spi', sck: 'sck', mosi: 'mosi', miso: 'miso', ss: 'ss', ...over.fpga }] },
@@ -108,4 +108,12 @@ test('#5214 an SPI interface added and changed as the editor and edit_system do:
   assert.deepEqual(describeSystem(s).filter((l) => /SPI/.test(l)), [
     '  bus: SPI 125000 Hz mode 0, SCK sck (B2), MOSI mosi (A3), MISO miso (J3), SS ss (B5)',
     '  SPI: SPI 1000000 Hz mode 0, SCK D13, MOSI D11, MISO D12, SS D10']);
+});
+
+test('#5214 an SPI link added as the Link tool does: its id spi (a UART\'s serial, GPIO\'s wires)', async () => {
+  const { addLink } = await import('../core/system-edit.js');
+  assert.equal(addLink(system(), { a: 'uno.SPI', b: 'fpga.bus' }).error, 'uno.SPI is linked already (spi): an interface joins one link');
+  const s = system();
+  s.links = [];
+  assert.deepEqual(addLink(s, { a: 'uno.SPI', b: 'fpga.bus' }).system.links, [{ id: 'spi', kind: 'spi', a: 'uno.SPI', b: 'fpga.bus' }]);
 });
