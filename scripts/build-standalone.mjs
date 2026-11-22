@@ -18,6 +18,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { buildInfo, devChanges } from './build-info.mjs';
+import { channelFromEnv } from '../core/build-channel.js';
 import { VERSION, versionLabel } from '../core/version.js';
 import { THIRD_PARTY } from '../core/third-party.js';
 import { contentSecurityPolicy, inlineScriptHashes, withMetaCsp, relaySources, siteSource, WORKERS_SOURCES } from '../server/csp.js';
@@ -202,7 +203,10 @@ html = html.replace(/<link rel="stylesheet" href="([^"]+)">/g, (m, href) => {
   const file = `web${href}`;
   return fs.existsSync(path.join(ROOT, file)) ? `<style>${safeCss(rd(file))}</style>` : '';
 });
+// (the build's channel: its BUILD's, unless the environment asks for one, the tests' #5202: web/build-channel.js)
+const CHANNEL = channelFromEnv();
 html = html.replace(/<script src="([^"]+)"><\/script>/g, (m, src) => {
+  if (src === '/build-channel.js' && CHANNEL) return `<script>globalThis.SILINX_CHANNEL = ${JSON.stringify(CHANNEL)};</script>`;
   const file = src.startsWith('/vendor/elk/') ? `node_modules/elkjs/lib/${src.slice(12)}` : `web${src}`;
   return `<script>${safeJs(rd(file))}</script>`;
 });

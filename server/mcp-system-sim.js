@@ -5,6 +5,7 @@
 import * as P from './projects.js';
 import { toolError, projectText, elaborateView } from './mcp-util.js';
 import { readSystem, isSystemFile } from '../core/system-doc.js';
+import { codesignOn, CODESIGN_OFF } from '../core/build-channel.js';
 import { prepareSystem, systemReport, runTimeText } from '../core/system-run.js';
 import { systemVcd } from '../core/system-waves.js';
 import { ucfPort } from '../core/board-constraints.js';
@@ -26,6 +27,7 @@ async function modulesOf(name, sys) {
  * run for `ms`, the terminals' text `type` ({ terminal: text }) typed at the start; the tool's result.
  */
 export async function simulateSystem(name, file, { ms = 100, type = {} } = {}) {
+  if (!codesignOn()) throw toolError(CODESIGN_OFF);   // (co-design not in a release yet, #5202)
   if (!isSystemFile(file)) throw toolError(`'${file}' is not a System document (.sys.json)`);
   if (!(ms > 0) || ms > 10000) throw toolError('time_ns: a System runs from 0 to 1e10 ns (10 s)');
   const r = readSystem(await projectText(name, file, `no System '${file}' in the project '${name}'`));

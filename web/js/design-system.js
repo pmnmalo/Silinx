@@ -6,11 +6,12 @@ import { S } from './app.js';
 import { designState } from './state-design.js';
 import { filesState } from './state-files.js';
 import { CODESIGN_KIND } from '/core/project-kind.js';
+import { codesignOn } from '/core/build-channel.js';
 import { isSystemFile, readSystem } from '/core/system-doc.js';
 import { openSystem, systemContextMenu } from './system-open.js';
 
-/** Whether the project open is a co-design project. */
-export const codesign = () => S.project?.kind === CODESIGN_KIND;
+/** Whether the project open is a co-design project (and co-design is on in this build, #5202). */
+export const codesign = () => S.project?.kind === CODESIGN_KIND && codesignOn();
 /** The co-design project's System document (its path), or null. */
 const systemFile = () => (filesState.fileTree || []).find(isSystemFile) || null;
 
