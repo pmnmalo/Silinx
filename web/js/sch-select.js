@@ -2,7 +2,7 @@
 // Delete, Select All, Rotate and Mirror, and Cut / Copy / Paste (#677, core/schclip.js: the selection with the wires
 // joining it, pasted at the mouse or in a blank place in view (#1797) and untangled), Duplicate (#1556: its symbols and I/O markers only, beside it).
 import { clipEmpty, copySchematic, pasteOffset, pasteSchematic } from '/core/schclip.js';
-import { GRID, oppositeSide, portBox, portSide, rotSize, symbolBox, symbolDef, turnSide } from '/core/schdoc.js';
+import { GRID, followPins, oppositeSide, portBox, portSide, rotSize, symbolBox, symbolDef, symbolPins, turnSide } from '/core/schdoc.js';
 import { readClip, writeClip } from './clipboard.js';
 import { untangleNew } from '/core/schpath.js';
 import { deleteWireSegment } from '/core/schwire-seg.js';
@@ -11,7 +11,7 @@ import { KEYS, snap } from './sch-editor.js';
 /** { copySel, deleteSel, duplicateSel, mirrorSel, mirrorVSel, paste, rotateSel, selectAll, selected } of mountSchEditor (destroyed(), doc(), live(), modules(), placing(), sel(), tool(): its current values). */
 export function mountSchSelect(ctx) {
   const {
-    container, changed, destroyed, doc, edit, live, modules, placing, readOnly, refusedShort, render, renderOverlay,
+    container, changed, destroyed, doc, edit, keepConn = () => true, live, modules, placing, readOnly, refusedShort, render, renderOverlay,
     renderProps, segSel, sel, setTool, snapshot, svg, toSheet, tool, undoStack, setSel
   } = ctx;
 
@@ -19,21 +19,41 @@ export function mountSchSelect(ctx) {
   function selected(kind) { return [...sel()].filter(k => k.startsWith(kind + ':')).map(k => k.slice(kind.length + 1)); }
   // (the I/O markers selected: turned around their connection point, or to the opposite side, #296)
   const turnPorts = (ids, f) => { for (const id of ids) { const p = doc().ports.find(x => x.id === id); p.side = f(portSide(p)); if (p.side === portSide({ dir: p.dir })) delete p.side; } };
+  // the symbols ids turned or flipped by f: with Keep connections, the wires, I/O markers and net names on their pins
+  // following them, as a move's (#5156, followPins: Update Symbol's way), routed around what they now run over (#948)
+  function turnSyms(ids, f) {
+    const was = JSON.parse(snapshot());
+    const syms = ids.map(id => doc().symbols.find(x => x.id === id)).filter(Boolean);
+    const at = q => `${q.x},${q.y}`;
+    const before = syms.map(s => symbolPins(s, modules()));
+    syms.forEach(f);
+    if (!keepConn()) return;
+    const turned = new Set(syms), others = new Set(doc().symbols.filter(o => !turned.has(o)).flatMap(o => symbolPins(o, modules()).map(at)));
+    const moves = new Map();
+    syms.forEach((s, i) => {
+      for (const p of symbolPins(s, modules())) {
+        const from = before[i].find(q => q.name === p.name);
+        if (from && at(from) !== at(p) && !moves.has(at(from))) moves.set(at(from), { from: { x: from.x, y: from.y }, to: { x: p.x, y: p.y }, p });
+      }
+    });
+    const ends = new Set(doc().wires.filter(w => [w.points[0], w.points[w.points.length - 1]].some(q => moves.has(at(q)))).map(w => w.id));
+    followPins(doc(), moves, others);
+    try { untangleNew(was, doc(), { modules: modules(), prefer: [...ends] }); } catch (e) { console.error(e); }
+  }
   function rotateSel() {
     if (tool() === 'place' && placing()) { placing().rot = (placing().rot + 90) % 360; renderOverlay(); return; }
     const ids = selected('sym'), pids = selected('port');
     if (!ids.length && !pids.length) return;
     edit(() => {
       turnPorts(pids, turnSide);
-      for (const id of ids) {
-        const s = doc().symbols.find(x => x.id === id);
+      turnSyms(ids, s => {
         const def = symbolDef(s, modules());
         const a = rotSize(s, def);
         const cx = s.x + a.w / 2, cy = s.y + a.h / 2;
         s.rot = (s.rot + 90) % 360;
         const b = rotSize(s, def);
         s.x = snap(cx - b.w / 2); s.y = snap(cy - b.h / 2);
-      }
+      });
     });
   }
   function mirrorSel() {
@@ -49,7 +69,7 @@ export function mountSchSelect(ctx) {
     if (tool() === 'place' && placing()) { flip(placing()); renderOverlay(); return; }
     const ids = selected('sym'), pids = selected('port');
     if (!ids.length && !pids.length) return;
-    edit(() => { turnPorts(pids, portFlip); for (const id of ids) flip(doc().symbols.find(x => x.id === id)); });
+    edit(() => { turnPorts(pids, portFlip); turnSyms(ids, flip); });
   }
   function deleteSel() {
     if (!sel().size) return;

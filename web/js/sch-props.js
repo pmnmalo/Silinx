@@ -3,7 +3,7 @@
 // net label's and a wire's (its net, renamed with the whole net), several objects' commands and the properties they
 // have in common (#1471). mountProps(ctx) is called by mountSchEditor where this code was.
 import {
-  SYMBOLS, symbolDef, symbolParams, symbolPins, parseNetName, FF_INPUTS, ffVariant, gateVariant, MUX_INPUTS, netByName, renameNet,
+  SYMBOLS, symbolDef, symbolParams, symbolPins, parseNetName, FF_INPUTS, ffVariant, gateVariant, MUX_INPUTS, netByName, renameNet, repinSymbol,
 } from '/core/schdoc.js';
 import { staleSection } from './sch-modsym.js';
 import { symbolSummary } from '/core/symdocs.js';
@@ -196,7 +196,7 @@ export function mountProps(ctx) {
     }
     // a multiplexer's select bits (#334): 1 … 4 make it M2_1, M4_1, M8_1, M16_1 (its width, enable and select bus kept)
     if (MUX_INPUTS[s.type]) {
-      const el = selBox(String(Math.log2(MUX_INPUTS[s.type])), ['1', '2', '3', '4'], x => { s.type = `mux${1 << +x}`; });
+      const el = selBox(String(Math.log2(MUX_INPUTS[s.type])), ['1', '2', '3', '4'], x => retype(doc(), s, `mux${1 << +x}`, modules()));
       el.dataset.param = 'muxSel';
       propBody.append(field('Select bits', el));
     }
@@ -205,14 +205,14 @@ export function mountProps(ctx) {
       const k = S.invIn || 0;
       const to = n => gateVariant(s.type, k, n) || gateVariant(s.type, Math.min(k, n), n) || gateVariant(s.type, 0, n);
       const ns = ['2', '3', '4', ...(S.inputs > 4 ? [String(S.inputs)] : [])].filter(n => to(+n));
-      const el = selBox(String(S.inputs), ns, x => { const t = to(+x); if (t) s.type = t; });
+      const el = selBox(String(S.inputs), ns, x => retype(doc(), s, to(+x), modules()));
       el.dataset.param = 'inputs';
       propBody.append(field('Inputs', el));
     }
     // a gate's inverted inputs (#328): I0..I(k-1) inverted make it the variant that has them (AND3 + 2 = AND3B2)
     if (S?.gate && gateVariant(s.type, 1)) {
       const ks = Array.from({ length: S.inputs + 1 }, (_, k) => String(k)).filter(k => gateVariant(s.type, +k));
-      const el = selBox(String(S.invIn || 0), ks, x => { const t = gateVariant(s.type, +x); if (t) s.type = t; });
+      const el = selBox(String(S.invIn || 0), ks, x => retype(doc(), s, gateVariant(s.type, +x), modules()));
       el.dataset.param = 'invIn';
       propBody.append(field('Inverted inputs', el));
     }
@@ -221,7 +221,7 @@ export function mountProps(ctx) {
     if (S?.ff) {
       for (const [q, label] of FF_INPUTS) {
         const t = ffVariant(s.type, { ...S.ff, [q]: !S.ff[q] });
-        const el = chk(!!S.ff[q], () => { if (t) s.type = t; });
+        const el = chk(!!S.ff[q], () => retype(doc(), s, t, modules()));
         el.dataset.ff = q;
         if (!t) el.disabled = true;
         propBody.append(field(label, el, t ? null : designKind() ? 'not with the other inputs chosen' : 'not with the other inputs chosen (no such Xilinx flip-flop)'));
@@ -344,6 +344,11 @@ export function mountProps(ctx) {
 
 // a bus tap's MSB / LSB index (#1815): it takes the bits MSB downto LSB, so an MSB below its LSB (or an LSB above its
 // MSB) is refused, the reason said, the field back to its value
+// a symbol's type changed in Properties (a gate's inputs, a multiplexer's select bits, a flip-flop's inputs): the wires on
+// the pins that stay following them, those of the pins that go dropped (#5153, as a COMP's comparisons, #1555)
+function retype(doc, s, t, modules) {
+  if (t) repinSymbol(doc, s, x => { x.type = t; }, { modules });
+}
 function tapIndex(s, p, inp, flash) {
   const other = () => Math.max(0, Math.round(+s.params[p.name === 'msb' ? 'lsb' : 'msb'] || 0));
   const el = inp(s.params[p.name], x => {

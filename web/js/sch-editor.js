@@ -243,7 +243,7 @@ export function mountSchEditor(container, opts = {}) {
 
   // ---------------- selection operations (sch-select.js)
   const { copySel, deleteSel, duplicateSel, mirrorSel, mirrorVSel, paste, rotateSel, selectAll, selected } = mountSchSelect({
-    container, changed, destroyed: () => destroyed, doc: () => doc, edit, live: () => live, modules: () => modules,
+    container, changed, destroyed: () => destroyed, doc: () => doc, edit, keepConn, live: () => live, modules: () => modules,
     placing: () => placing, readOnly, refusedShort, render, renderOverlay, renderProps, segSel, sel: () => sel, setTool,
     snapshot, svg, toSheet, tool: () => tool, undoStack, setSel: (v) => { sel = v; }
   });

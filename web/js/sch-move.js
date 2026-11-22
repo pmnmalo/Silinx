@@ -3,6 +3,7 @@
 // dragged (#688), its neighbours stretched, its ends kept on what they connect. mountMove(ctx) is called by
 // mountSchEditor where this code was; keptEnds and rubber are the geometry of a wire, plain functions.
 import { GRID, normalizeDoc, symbolPins } from '/core/schdoc.js';
+import { nudgeWire, wireClashes } from '/core/schpath.js';
 import { connectivity, connectionsKept, moveSegment } from '/core/schroute.js';
 import { clone, snap, onSeg, segDist, cleanPts } from './sch-editor.js';
 import { moveGraphic } from '/core/schgraphics.js';
@@ -55,6 +56,20 @@ export function rubber(pts0, a, b, dx, dy, anchors = []) {
   return pts.length >= 2 ? pts : pts0;
 }
 
+const onWire = (l, P) => P.some((q, k) => k + 1 < P.length && onSeg(l, q, P[k + 1]));
+// a net name off the wire P put on it, at its nearest point
+function ontoWire(l, P) {
+  if (onWire(l, P)) return;
+  let best = null;
+  for (let k = 0; k + 1 < P.length; k++) {
+    const q = P[k], r = P[k + 1];
+    const c = { x: Math.max(Math.min(q.x, r.x), Math.min(Math.max(q.x, r.x), l.x)), y: Math.max(Math.min(q.y, r.y), Math.min(Math.max(q.y, r.y), l.y)) };
+    const dd = Math.hypot(c.x - l.x, c.y - l.y);
+    if (!best || dd < best.dd) best = { ...c, dd };
+  }
+  if (best) { l.x = best.x; l.y = best.y; }
+}
+
 /** { beginMove, applyMove, beginSegMove, applySegMove, finishSegMove } of a schematic editor (doc(), modules(),
  *  keepConn(): its current ones; setDoc(d) replaces its document). */
 export function mountMove(ctx) {
@@ -94,6 +109,8 @@ export function mountMove(ctx) {
       if (labelIds.has(l.id)) continue;
       if (doc().wires.some(w => wireIds.has(w.id) && w.points.some((p, i) => i + 1 < w.points.length && onSeg(l, p, w.points[i + 1])))) labelIds.add(l.id);
     }
+    // a net name on a moved pin (the end of a wire that follows it) moves with it: the net keeps its name (#5154)
+    if (keepConn()) for (const l of doc().labels) if (moved.has(`${l.x},${l.y}`)) labelIds.add(l.id);
     // points that must stay on the wires being stretched (T-junctions, net names)
     const anchors = [];
     for (const w of doc().wires) anchors.push(w.points[0], w.points[w.points.length - 1]);
@@ -177,20 +194,30 @@ export function mountMove(ctx) {
       if (!m.others.includes(l.id)) continue;
       // on a neighbour that shrank past it: put back on the wire, at its nearest point
       l.x = l0.x; l.y = l0.y;
-      const P = w.points;
-      if (P.some((q, k) => k + 1 < P.length && onSeg(l, q, P[k + 1]))) continue;
-      let best = null;
-      for (let k = 0; k + 1 < P.length; k++) {
-        const q = P[k], r = P[k + 1];
-        const c = { x: Math.max(Math.min(q.x, r.x), Math.min(Math.max(q.x, r.x), l0.x)), y: Math.max(Math.min(q.y, r.y), Math.min(Math.max(q.y, r.y), l0.y)) };
-        const dd = Math.hypot(c.x - l0.x, c.y - l0.y);
-        if (!best || dd < best.dd) best = { ...c, dd };
-      }
-      if (best) { l.x = best.x; l.y = best.y; }
+      ontoWire(l, w.points);
     }
     if (!moveFrame) moveFrame = requestAnimationFrame(() => { moveFrame = 0; render(); });
   }
+  // the segment left along another net's wire, over a pin or through a body: the wire nudged onto a clear path, as a
+  // wire drawn there is (#948, #5155), its net names kept on it; not when that would change the connections
+  function nudgeSeg(m) {
+    const w = doc().wires.find(x => x.id === m.id);
+    if (!w) return;
+    const clash = d => new Set(wireClashes(d, { modules: modules() }).filter(c => c.wire === m.id).map(c => `${c.kind}@${c.x},${c.y}`));
+    const was = clash(JSON.parse(m.before));
+    if (![...clash(doc())].some(c => !was.has(c))) return;
+    const pts = nudgeWire({ ...doc(), wires: doc().wires.filter(x => x !== w) }, w.points, { modules: modules() });
+    if (JSON.stringify(pts) === JSON.stringify(w.points)) return;
+    const keep = { points: w.points, labels: clone(doc().labels) };
+    const on = doc().labels.filter(l => onWire(l, w.points));
+    w.points = pts;
+    for (const l of on) ontoWire(l, pts);
+    let now = null;
+    try { now = connectivity(doc(), modules()); } catch { /* checked only when available */ }
+    if (m.conn0 && now && !connectionsKept(m.conn0, now)) { w.points = keep.points; doc().labels = keep.labels; }
+  }
   function finishSegMove(m) {
+    nudgeSeg(m);
     setDoc(normalizeDoc(doc()));
     if (refusedShort(m.before, 'The move')) return;
     if (m.conn0) {
