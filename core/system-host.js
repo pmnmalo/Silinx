@@ -4,29 +4,42 @@
 // netlists, the firmware) and drives the run by messages; the host builds it (systemFromInputs) and answers each with
 // the run as it is then (systemReport).
 //
-// The messages, page -> host: init { system, inputs }, run { id, until } (ps), send { node, bytes } (a terminal's line),
-// waves { id }; host -> page: ready { nodes, wires } or failed { error }, state { id, report, finished }, waves { id,
-// design } (core/system-waves.js), error { id, message }.
+// The messages, page -> host: init { system, inputs, emulate }, run { id, until } (ps), send { node, bytes } (a
+// terminal's line), set { node, pin, value } (a board's switch or button, the System Emulator's), waves { id }; host ->
+// page: ready { nodes, wires, terminals, boards } or failed { error }, state { id, report, finished, boards }, waves
+// { id, design } (core/system-waves.js), error { id, message }. emulate: the boards emulated too (core/system-emu.js,
+// #5212): `ready`'s boards, each state's what they show since the last.
 //
 // Isomorphic ES module, no DOM.
 import { systemFromInputs, systemReport } from './system-run.js';
 import { systemWaves } from './system-waves.js';
+import { emulationBoards, withBoards, watchBoards, boardStates, setBoardInput } from './system-emu.js';
 
 /** The host: a System's run driven by the messages of `port` (a worker's self, a MessagePort). */
 export function hostSystemRun(port) {
-  let run = null, name = 'system';
+  let run = null, name = 'system', boards = null, shown = 0, prev = {};
   const post = m => port.postMessage(m);
   const handle = {
-    init({ system, inputs }) {
-      const r = systemFromInputs(system, inputs);
+    init({ system, inputs, emulate = false }) {
+      boards = emulate ? emulationBoards(system, inputs) : null;
+      const r = systemFromInputs(system, boards ? withBoards(inputs, boards) : inputs);
       if (r.error) { run = null; post({ type: 'failed', error: r.error }); return; }
-      run = r; name = system.name;
-      post({ type: 'ready', nodes: [...r.sim.nodes.keys()], wires: r.wires, terminals: [...r.terminals.keys()] });
+      run = r; name = system.name; shown = 0; prev = {};
+      if (boards) watchBoards(r.sim, boards);
+      post({ type: 'ready', nodes: [...r.sim.nodes.keys()], wires: r.wires, terminals: [...r.terminals.keys()],
+        boards: boards && boards.map(b => ({ id: b.id, kind: b.kind, board: b.kind === 'fpga' ? b.board.board.id : b.board.id, variant: b.board.variant?.id ?? null, inputs: b.inputs ?? [], outputs: b.outputs })) });
     },
     run({ id, until }) {
       if (!run) throw new Error('no System: init first');
       const f = run.sim.run(until);
-      post({ type: 'state', id, report: systemReport(run), finished: f.finished });
+      const shows = boards ? (prev = boardStates(run.sim, boards, shown, run.sim.now, prev)) : undefined;
+      shown = run.sim.now;
+      post({ type: 'state', id, report: systemReport(run), finished: f.finished, boards: shows });
+    },
+    set({ node, pin, value }) {
+      const b = boards?.find(x => x.id === node);
+      if (!b || b.kind !== 'fpga') throw new Error(`no board of an FPGA node '${node}'`);
+      setBoardInput(run.sim, b, pin, value);
     },
     send({ node, bytes }) {
       const t = run?.terminals.get(node);

@@ -419,3 +419,18 @@ test('the whole system behind a message port (one Web Worker, no SharedArrayBuff
   assert.deepEqual(await reply({ type: 'set', t: 5, node: 'q', pin: 'btn', value: 1 }), { type: 'error', id: undefined, message: 'no node \'q\'' });
   port1.close();
 });
+
+test('#5212 the scheduler\'s watch: an output no link reads, its changes kept at their times from its value at the start; one linked too; a wrong pin refused', () => {
+  const sys = new SystemSim({ wide: 10e6 });
+  sys.addNode('a', new Scripted({ outputs: ['o', 'led'], script: [{ t: 3e6, pin: 'led', value: 0 }, { t: 5e6, pin: 'o', value: 0 }, { t: 7e6, pin: 'led', value: 1 }, { t: 7e6, pin: 'led', value: 1 }] }));
+  sys.addNode('b', new Scripted());
+  sys.link({ from: 'a.o', to: 'b.i', latency: 1e6 });
+  sys.watch('a', ['led', 'o']);
+  sys.run(20e6);
+  assert.deepEqual(sys.watched.get('a.led'), [0, 1, 3e6, 0, 7e6, 1], 'a change to the same value is none');
+  assert.deepEqual(sys.watched.get('a.o'), [0, 1, 5e6, 0]);
+  assert.deepEqual(sys.links.get('a.o>b.i').trace, [0, 1, 6e6, 0], 'the link as before');
+  assert.throws(() => sys.watch('a', ['i']), /^Error: 'i' is not an output of the node 'a'$/);
+  assert.throws(() => sys.watch('z', ['o']), /^Error: no node 'z'$/);
+  noMessages(sys);
+});
