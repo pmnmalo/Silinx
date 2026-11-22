@@ -70,6 +70,7 @@ export class SystemSim {
     this.links = new Map();
     this.drivenBy = new Map();   // 'node.pin' (an input) -> its link
     this.outLinks = new Map();   // 'node.pin' (an output) -> its link
+    this.watched = new Map();   // 'node.pin' (an output no link reads, watched: a board's LED) -> [t, value, …] (#5212)
     this.now = 0;
     this.pending = [];           // the changes to deliver: { t, link, value }
     this.events = [];            // the system's own: { t, fn }
@@ -168,10 +169,24 @@ export class SystemSim {
     while (this.events.length && this.events[0].t <= this.now) this.events.shift().fn(this);
   }
 
-  // a node's output changes seen at the window's end T, to deliver at their time plus their link's lag
+  /** Watch outputs of a node that no link reads (a board's LEDs, the System Emulator's, #5212): their changes kept
+   *  in `watched` ('node.pin' -> [t, value, …], from their value at the start). */
+  watch(node, pins) {
+    const a = this.nodes.get(node);
+    if (!a) throw new Error(`no node '${node}'`);
+    for (const p of pins) {
+      if (!a.outputs.includes(p)) throw new Error(`'${p}' is not an output of the node '${node}'`);
+      this.watched.set(`${node}.${p}`, [this.now, a.value(p)]);
+    }
+  }
+
+  // a node's output changes seen at the window's end T, to deliver at their time plus their link's lag (a watched
+  // pin's kept at its time)
   route(name, changes, T) {
     for (const { pin, t, value } of changes) {
       const l = this.outLinks.get(`${name}.${pin}`);
+      const w = this.watched.get(`${name}.${pin}`);
+      if (w && w.at(-1) !== value) w.push(t, value);
       if (!l || value === l.level) continue;
       l.level = value;
       l.sent.push(t, value);

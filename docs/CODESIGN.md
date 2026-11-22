@@ -220,8 +220,15 @@ The Board Emulator gets a **system** mode.
 - **A link inspector** (a foldable side panel) shows each link's decoded traffic with its time.
 - **The system's waves**: one VCD with every node's signals and the links' named signals, in the waveform viewer.
 
-**Still to solve.** Today's emulator has the fixed document id `'emulator'`, and its compiled engine takes one
-clock. In system mode each FPGA node gets an engine of its own.
+**Its core** (#5212, `core/system-emu.js`): each FPGA node's board is the Board Emulator's (`boardWiring`: its module's
+ports on its board's pins, the node's `pins`), each node its own engine in the scheduler. Its switches and buttons are
+the inputs no link drives (`setBoardInput`). Its LEDs and display are watched outputs, kept by the scheduler's `watch`
+and shown as the Board Emulator shows them (`boardOutputs`). An Arduino's board shows its pins' levels and its LED L
+(D13). The System's worker (`core/system-host.js`) gets `init { emulate }`, `set`, and each `state` with what the
+boards show since the last.
+
+**Still to solve.** Today's emulator has the fixed document id `'emulator'`: the System Emulator is a document of its
+own.
 
 ## Real boards
 

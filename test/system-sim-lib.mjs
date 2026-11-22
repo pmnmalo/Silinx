@@ -30,10 +30,14 @@ export const uartDesign = (o) => designOf(uartSources(), 'uart', { generics: uar
 const netlists = new Map();
 /** The uart design's word-level netlist, compiled with its pins watched: { model, pins } (Yosys once per generics). */
 export async function uartModel(o = {}, pins = ['tx']) {
+  const { json, top } = await uartNetlist(o);
+  return compiledNodeModel(json, { top, clock: 'clk', pins });
+}
+/** The uart design's word-level netlist: { json, top } (Yosys once per generics). */
+export async function uartNetlist(o = {}) {
   const key = JSON.stringify(uartGenerics(o));
   if (!netlists.has(key)) netlists.set(key, await netlistOf(uartDesign(o), { run: yosysNode }));
-  const { json, top } = netlists.get(key);
-  return compiledNodeModel(json, { top, clock: 'clk', pins });
+  return netlists.get(key);
 }
 
 /** A uart node: kind 'compiled' (CompiledNode) or 'event' (EventNode); its clock at hz. */
