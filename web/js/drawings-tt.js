@@ -14,6 +14,7 @@ import {
 } from './drawings.js';
 import { designSources as ttDesignSources } from './tbwizard.js';
 import { following, followNotice, editsDrawingHere } from './collab-state.js';
+import { phoneOnly } from './phone-readonly.js';
 import { syncState } from './state-sync.js';
 import { panes } from './state-panes.js';
 import { designState } from './state-design.js';
@@ -43,7 +44,7 @@ export async function openTt(path) {
         onOpenFile: f => openFile(f),
         onFromModule: () => loadTtFromModule(path),
         log: (text, cls) => log(text, cls),   // (its notes: no K-map past 6 inputs, a result not proven minimal, #3939)
-        ...(following() && !editsDrawingHere(path) ? { readOnly: true, banner: followNotice() } : newerOnly(path, model)),   // (a project followed, #3181; but an editor's link edits it live, #3183; one a newer Silinx saved, #4756)
+        ...(following() && !editsDrawingHere(path) ? { readOnly: true, banner: followNotice() } : { ...phoneOnly(), ...newerOnly(path, model) }),   // (a project followed, #3181; but an editor's link edits it live, #3183; one a newer Silinx saved, #4756)
       });
       d.ttEditor = ed;
       return {

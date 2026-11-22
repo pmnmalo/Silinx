@@ -11,6 +11,7 @@ import { editorProblems } from './editor-problems.js';
 import { renderHierarchy } from './design.js';
 import { designState } from './state-design.js';
 import { following, followNotice } from './collab-state.js';
+import { phoneOnly } from './phone-readonly.js';
 import { filesState } from './state-files.js';
 import { elaborate } from '/core/compile.js';
 import { ucfPort } from '/core/board-constraints.js';
@@ -84,7 +85,7 @@ export async function openSystem(path) {
         onMessage: (text, err) => log(err ? `WARNING: ${name}: ${text}` : `${name}: ${text}`, err ? 'warn' : 'info'),
         check: checkProjectSystem, modules, portsOf, firmwares,
         // (a project followed, #3181: read only, the follower's notice at the end of its toolbar; no live editing yet)
-        ...(following() ? { readOnly: true, banner: followNotice() } : {}),
+        ...(following() ? { readOnly: true, banner: followNotice() } : phoneOnly()),   // (a phone's, #5121)
         // (Simulate: the System's simulation view, #4701)
         mountSim: (host, o) => mountSystemSim(host, { ...o, prepare: prepareHere, onMessage: (text, level) => log(text, level), openWaves: openSystemWaves }),
       });

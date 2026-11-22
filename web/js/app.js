@@ -14,6 +14,7 @@ import { startI18n, t } from './i18n.js';
 import { applyPrefs } from './silinx.js';
 import { initDrawer, drawerGiveWay, leftTabClicked } from './narrow.js';
 import { initPhone } from './phone.js';
+import { phoneNotice } from './phone-readonly.js';
 import { initTasks, restoreStartTask } from './tasks.js';
 import { registerServiceWorker } from './pwa.js';
 import { createHistory } from './history.js';
@@ -542,7 +543,9 @@ export async function openFile(path, line, col, { task } = {}) {
       id, path, task, title: path.split('/').pop(), tooltip: path, icon: lang === 'vhdl' ? 'vhdl' : lang === 'verilog' ? 'verilog' : lang === 'ucf' ? 'ucf' : 'file',
       create(el, d) {
         // the HDL generated from a drawing is read-only: the drawing is the base, edited instead (#1176)
-        const generated = () => !!designState.hdlToSch?.[path] || (following() && !editsHere(path));   // (a project followed, #3181: read only too, but an editor's text files, #3182)
+        // (on a phone, #5121: read only, the phone's notice; a generated or followed file's own notice instead)
+        const phone = designState.hdlToSch?.[path] || following() ? null : phoneNotice();
+        const generated = () => !!designState.hdlToSch?.[path] || (following() && !editsHere(path)) || !!phone;   // (a project followed, #3181: read only too, but an editor's text files, #3182)
         const tplBtn = h('button', { class: 'btn', style: { minWidth: '0' }, title: 'Language Templates' }, 'Templates ▾');
         // (no Undo / Redo, the main toolbar's; no path, the tab's tip: #2514)
         const editing = [];
@@ -552,7 +555,7 @@ export async function openFile(path, line, col, { task } = {}) {
           ...(lang === 'c' ? cRunButtons(path) : []),   // (C Simulation, C/RTL Co-simulation: #1528)
           (lang === 'vhdl' || lang === 'verilog' || lang === 'ucf' || lang === 'c' || isLabFile(path)) ? h('button', { class: 'btn', style: { minWidth: '0' }, title: 'Check Syntax of this file',   // (a guided lab's: #3179)
             onclick: () => (lang === 'ucf' ? checkUcfFile(path) : isLabFile(path) ? import('./lab-view.js').then(m => m.checkLabFile(path)) : checkFileSyntax(path)) }, h('span', { class: 'ico-inline', html: icons.ok }), ' Check Syntax') : null,
-          syncBanner(path), followNotice(path));
+          syncBanner(path), followNotice(path), phone);
         if (lang === 'vhdl' || lang === 'verilog' || lang === 'c') editing.push(tplBtn);
         tplBtn.addEventListener('click', e => {
           const r = tplBtn.getBoundingClientRect();
