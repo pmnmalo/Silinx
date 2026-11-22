@@ -196,6 +196,17 @@ test('the allow-list (#3407): build-settings\' made-up remote folder and compute
   assert.equal(kinds('test/other.test.js', line).length, 2);
 });
 
+test('the allow-list (#5009, #5142): the made-up home folders of two tests, in their files and in the message of their fix only', () => {
+  const someone = '/' + 'home/someone', u = '/' + 'home/u';   // the scan reads this file too
+  const msg = `the made-up home folders ${someone} (one test) and ${u} (another), placeholders since`;
+  assert.deepEqual(kinds('test/mcp-board-target.test.js', `remote: '${someone}'`), []);
+  assert.deepEqual(kinds('test/message-location.test.js', `root: '${u}'`), []);
+  assert.deepEqual(kinds('(message of ece9afc)', msg), []);
+  assert.deepEqual(kinds('(message of 0000000)', msg),
+    [`home folder with a user name: ${someone}`, `home folder with a user name: ${u}`]);
+  assert.deepEqual(kinds('test/other.test.js', `at ${someone}`), [`home folder with a user name: ${someone}`]);
+});
+
 test('the allow-list (#498): XPower\'s section numbers in the history, read as addresses, and nowhere else', () => {
   const sections = `sections ${dot(3, 3, 1, 1)} and ${dot(3, 3, 1, 2)} of the report`;
   assert.deepEqual(kinds('scripts/measure-power.mjs', sections), []);

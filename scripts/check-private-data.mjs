@@ -71,8 +71,8 @@ const ALLOW = [
   [/^test\/collab-(loopback|meet)\.test\.js$/, /^(f996b581-dd21-407d-8644-e6498bc6c2f9\.local|4f2d\.local|192\.168\.1\.20|10\.0\.0\.2|fe80::1)$/,
     "the loopback twins' first fixtures: a WebRTC host candidate's mDNS name (a random one-off UUID, a browser's way of hiding "
     + 'the address), a made-up name, generic private and link-local addresses; replaced by c29876e (in the history only, #4549)'],
-  ['test/mcp-board-target.test.js', '/home/someone', "a made-up remote folder of the ssh settings in #4751's test (b5199647), a placeholder since (in the history only, #5009)"],
-  ['test/message-location.test.js', '/home/u', "a made-up project folder of #4746's message locations (c19fb1ca), a placeholder since (in the history only, #5009)"],
+  [/^(test\/mcp-board-target\.test\.js|\(message of ece9afc\))$/, '/home/someone', "a made-up remote folder of the ssh settings in #4751's test (b5199647), a placeholder since (in the history only, #5009); named in the message of ece9afc, its fix (#5142)"],
+  [/^(test\/message-location\.test\.js|\(message of ece9afc\))$/, '/home/u', "a made-up project folder of #4746's message locations (c19fb1ca), a placeholder since (in the history only, #5009); named in the message of ece9afc, its fix (#5142)"],
   ['test/build-settings.test.js', /^(\/home\/[uU]|build-box\.local)$/, "made-up remote folders and a made-up computer name of the build-settings checks (#3407)"],
   [/^(test\/github-checks\.test\.js|\(message of 3fa4fcb\))$/, '1.2.3.4', "a dummy address in a made-up rate limit's message of 26d6593, a "
     + 'documentation address nowhere since 3a38058 (in the history only, #4364); named in the message of 3fa4fcb, its fix (#4423)'],
