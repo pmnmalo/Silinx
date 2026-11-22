@@ -199,26 +199,28 @@ export function mountMove(ctx) {
     if (!moveFrame) moveFrame = requestAnimationFrame(() => { moveFrame = 0; render(); });
   }
   // the segment left along another net's wire, over a pin or through a body: the wire nudged onto a clear path, as a
-  // wire drawn there is (#948, #5155), its net names kept on it; not when that would change the connections
+  // wire drawn there is (#948, #5155), its net names kept on it; not when that would change the connections. On the
+  // normalized drawing: a segment dragged onto its own net's wire is merged with it (#4920), no clash. Whether it changed
   function nudgeSeg(m) {
     const w = doc().wires.find(x => x.id === m.id);
-    if (!w) return;
+    if (!w) return false;
     const clash = d => new Set(wireClashes(d, { modules: modules() }).filter(c => c.wire === m.id).map(c => `${c.kind}@${c.x},${c.y}`));
     const was = clash(JSON.parse(m.before));
-    if (![...clash(doc())].some(c => !was.has(c))) return;
+    if (![...clash(doc())].some(c => !was.has(c))) return false;
     const pts = nudgeWire({ ...doc(), wires: doc().wires.filter(x => x !== w) }, w.points, { modules: modules() });
-    if (JSON.stringify(pts) === JSON.stringify(w.points)) return;
+    if (JSON.stringify(pts) === JSON.stringify(w.points)) return false;
     const keep = { points: w.points, labels: clone(doc().labels) };
     const on = doc().labels.filter(l => onWire(l, w.points));
     w.points = pts;
     for (const l of on) ontoWire(l, pts);
     let now = null;
     try { now = connectivity(doc(), modules()); } catch { /* checked only when available */ }
-    if (m.conn0 && now && !connectionsKept(m.conn0, now)) { w.points = keep.points; doc().labels = keep.labels; }
+    if (m.conn0 && now && !connectionsKept(m.conn0, now)) { w.points = keep.points; doc().labels = keep.labels; return false; }
+    return true;
   }
   function finishSegMove(m) {
-    nudgeSeg(m);
     setDoc(normalizeDoc(doc()));
+    if (nudgeSeg(m)) setDoc(normalizeDoc(doc()));
     if (refusedShort(m.before, 'The move')) return;
     if (m.conn0) {
       let now = null;
