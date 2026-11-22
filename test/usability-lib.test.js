@@ -2,7 +2,9 @@
 // and the schematic's invariants on drawings made for each (a wire's end on nothing, a net name's stub, a wire come off
 // its pin, a diagonal, overlapping symbols, the junction dots, the nets, the HDL); the HDL editor's typing model and the
 // wave window's values against the reference simulator (#5206); the model of a project's lifecycle (#5206, phase 2); the
-// drawings' random steps on their models (#5206, phase 3): the same from a seed, each a person's, the drawing sound.
+// drawings' random steps on their models (#5206, phase 3): the same from a seed, each a person's, the drawing sound;
+// the hierarchy's kit (#5206, phase 4): a project's modules from its files, a symbol's pins against its module's ports,
+// the instances out of date, a schematic's HDL compiled with the modules below it.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
@@ -25,6 +27,9 @@ import { PN_VOCAB, pnModel } from './usability/lib/pn-random.js';
 import { TT_VOCAB, ttModel, column } from './usability/lib/tt-random.js';
 import { STATE_R } from '../core/fsm.js';
 import { shapeTable, parseExpr, exprColumn, normalizeTable } from '../core/logic.js';
+import { modulesOf, symbolPortsWrong, staleInstances, hierHdlErrors, topErrors } from './usability/lib/hier-kit.js';
+import { instanceParams, generateHdl } from '../core/schdoc.js';
+import { symbolPins as pinsOf } from '../core/schdoc-symbols.js';
 
 const ROOT = path.join(path.dirname(fileURLToPath(import.meta.url)), '..');
 const inv = (id, name, x, y) => ({ id, type: 'inv', x, y, rot: 0, mirror: false, name, params: { width: 1 } });
@@ -421,5 +426,62 @@ test('usability: the truth table\'s random steps (the traffic lamps): the same f
       } else d = normalizeTable({ ...d, table: want.table, exprs: want.exprs, forms: want.forms });
       assert.equal(modelDiff(want, ttModel(d)), null, `seed ${seed}, step ${i}: ${v.name} ${JSON.stringify(args)}`);
     }
+  }
+});
+
+// (#5206, phase 4) a 2-to-1 multiplexer pick, its symbol of its own (b and a on the left, y on the right, s at the
+// bottom); a top holding an instance of it, each pin wired to an I/O marker of its name
+const PICK = (ports, sel) => `library ieee;\nuse ieee.std_logic_1164.all;\n\nentity pick is\n  port (\n    ${ports}\n    y : out std_logic\n  );\nend entity pick;\n\narchitecture rtl of pick is\nbegin\n  ${sel}\nend architecture rtl;\n`;
+const PICK_AB = PICK('a, b, s : in std_logic;', "y <= b when s = '1' else a;"), PICK_AC = PICK('a, c, s : in std_logic;', "y <= c when s = '1' else a;");
+const PICK_SYM = JSON.stringify({ version: 1, kind: 'symbol', module: 'pick', pins: [{ name: 'b', side: 'W' }, { name: 'a', side: 'W' }, { name: 'y', side: 'E' }, { name: 's', side: 'S' }], spacing: 20, width: 100, height: null, title: 'top' });
+function pickTop(mods, lang) {
+  const d = newDoc('top', lang);
+  const s = { id: 'S1', type: 'module', x: 300, y: 200, rot: 0, mirror: false, name: 'u1', params: { module: 'pick', generics: {}, ...instanceParams(mods.pick) } };
+  d.symbols.push(s);
+  for (const p of pinsOf(s, mods)) {
+    const b = { x: p.x + (p.side === 'W' ? -60 : p.side === 'E' ? 60 : 0), y: p.y + (p.side === 'S' ? 60 : 0) };
+    d.wires.push({ id: `W_${p.name}`, points: [P(p.x, p.y), b] });
+    d.ports.push({ id: `P_${p.name}`, name: p.name, dir: p.dir === 'out' ? 'out' : 'in', width: 1, x: b.x, y: b.y });
+  }
+  return normalizeDoc(d, { modules: mods });
+}
+
+test('usability: the hierarchy\'s kit: a project\'s modules from its files, with their symbols; a symbol\'s pins against its module\'s ports', () => {
+  const mods = modulesOf({ 'src/pick.vhd': PICK_AB, 'src/pick.sym.json': PICK_SYM, 'src/notes.txt': 'not HDL' });
+  assert.deepEqual(Object.keys(mods), ['pick']);
+  assert.deepEqual(mods.pick.ports.map((q) => `${q.name}:${q.dir}`), ['a:in', 'b:in', 's:in', 'y:out']);
+  assert.deepEqual(mods.pick.symbol.pins.map((q) => `${q.name}:${q.side}`), ['b:W', 'a:W', 'y:E', 's:S']);
+  assert.equal(mods.pick.symbolFile, 'src/pick.sym.json');
+  // the module changed (b renamed c): its symbol's pins in step with it (c added, b dropped)
+  assert.deepEqual(modulesOf({ 'src/pick.vhd': PICK_AC, 'src/pick.sym.json': PICK_SYM }).pick.symbol.pins.map((q) => `${q.name}:${q.side}`), ['a:W', 'y:E', 's:S', 'c:W']);
+  // the symbol's pins: the same ones in any order and case; a port with none, a pin of no port, a pin twice
+  const sym = (names, module = 'pick') => ({ module, pins: names.map((name) => ({ name, side: 'W' })) });
+  assert.deepEqual(symbolPortsWrong(sym(['Y', 's', 'b', 'a']), mods), []);
+  assert.deepEqual(symbolPortsWrong(sym(['a', 'c', 's', 'y']), mods), ['port b of pick has no pin', 'pin c is no port of pick']);
+  assert.deepEqual(symbolPortsWrong(sym(['a', 'b', 's', 'y', 'a']), mods), ['pin a twice']);
+  assert.deepEqual(symbolPortsWrong(sym(['a'], 'other'), mods), ["no module 'other' in the project's HDL"]);
+  assert.deepEqual(symbolPortsWrong(null, mods), ['no symbol']);
+});
+
+test('usability: the hierarchy\'s kit: the instances out of date; a schematic\'s HDL in VHDL and Verilog compiled with the modules below it, its own module\'s file left out', () => {
+  const files = { 'src/pick.vhd': PICK_AB, 'src/pick.sym.json': PICK_SYM };
+  const mods = modulesOf(files);
+  for (const lang of ['vhdl', 'verilog']) {
+    const top = pickTop(mods, lang);
+    assert.deepEqual(staleInstances(top, mods), []);
+    assert.deepEqual(hierHdlErrors(top, { modules: mods, sources: files }), []);
+    // (a stale file of the top's own module among the sources: left out, the drawing's HDL is the one compiled)
+    assert.deepEqual(hierHdlErrors(top, { modules: mods, sources: { ...files, 'src/top.v': 'module top (input q); endmodule\n' } }), []);
+    // without the module below: not elaborated, in both languages
+    assert.deepEqual(hierHdlErrors(top, { modules: mods, sources: {} }), ["vhdl: elaborate: module/entity 'pick' not found (instance 'u1')", "verilog: elaborate: module/entity 'pick' not found (instance 'u1')"]);
+    // the module's b renamed c: the instance out of date, its pin b's wire an error of the HDL made
+    const changed = modulesOf({ ...files, 'src/pick.vhd': PICK_AC });
+    assert.deepEqual(staleInstances(top, changed), ['u1 (pick) out of date: {"added":["c"],"removed":["b"],"turned":[],"relaid":true}']);
+    assert.deepEqual(hierHdlErrors(top, { modules: changed, sources: { 'src/pick.vhd': PICK_AC }, langs: ['vhdl'] }), [
+      "vhdl: generated: u1: pin b is connected, but module 'pick' no longer has that port: Update Symbol, then connect it again", "vhdl: elaborate: module 'pick' has no port 'b'"]);
+    // the project's files elaborated with the top: the top's HDL made from it, with pick's and without
+    const g = generateHdl({ ...top, lang }, { modules: mods, lang });
+    assert.deepEqual(topErrors({ ...files, [g.filename]: g.code }, 'top'), []);
+    assert.deepEqual(topErrors({ [g.filename]: g.code }, 'top'), ["elaborate: module/entity 'pick' not found (instance 'u1')"]);
   }
 });
