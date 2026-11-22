@@ -40,7 +40,10 @@ A **System** (`<name>.sys.json`, `core/system-doc.js`, #4697) is the top of a **
 Silinx (#5041): New Project asks the kind first, and its co-design choice stays disabled until phase 1 is usable. A
 co-design project has one System, shown in the Design pane as `[System]`.
 
-- **Its canvas** follows the schematic editor's style and the rules of [UI-GUIDELINES.md](UI-GUIDELINES.md).
+- **Its canvas** follows the schematic editor's style and the rules of [UI-GUIDELINES.md](UI-GUIDELINES.md). The System
+  editor (`web/js/system-editor.js`, #4700) places the nodes (an FPGA node, an Arduino Uno or Nano, a serial terminal),
+  links their interfaces (a click on one, then on another of its kind), and edits a node's, an interface's and a link's
+  properties in its side panel; each edit is one of `core/system-edit.js`, the MCP's `edit_system`'s.
 - **It holds nodes and links.**
 - **A co-design project has no `board` of its own.** Each FPGA node is a module of the co-design project itself (HDL
   or a drawing), names its own board and pins, and is built with the flow of that board's family.
@@ -240,9 +243,8 @@ Every action is a tool (#2674), through the same functions as the interface:
 
 | Tool | What it does |
 |---|---|
-| `system_info` | describes the system |
-| `edit_system` | adds, changes or removes a node or a link |
-| `check_system` | runs the check |
+| `edit_system` | adds, changes or removes a node, an interface or a link (#4700) |
+| `check_system` | describes the system and runs the check (#4700) |
 | `simulate_system` | runs for a time and returns each node's serial output, the links' traffic and the VCD |
 | `node_firmware` | sets a node's firmware |
 

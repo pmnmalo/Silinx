@@ -68,7 +68,7 @@ test('the tools: those of the areas, the ones of before the split in their order
   assert.deepEqual(names(TABLE_TOOLS), ['set_output_logic']);
   assert.deepEqual(names(NOTATION_TOOLS), ['set_notation', 'set_schematic_symbols']);   // (the Boolean notation, #3915; the gates' standard, #4113)
   assert.deepEqual(names(CHECK_TOOLS), ['check_drawing']);
-  assert.deepEqual(names(SYSTEM_TOOLS), ['check_system']);
+  assert.deepEqual(names(SYSTEM_TOOLS), ['edit_system', 'check_system']);
   assert.deepEqual(names(FSM_TOOLS), ['set_fsm_outputs', 'set_fsm_look', 'set_fsm_condition', 'set_fsm_encoding', 'edit_fsm']);   // (a state's or a transition's outputs, #3814; its look, #3883; a transition's condition, #4489; the encoding, #4908)
   assert.deepEqual(names(CIRCUIT_TOOLS), ['circuit_parts', 'edit_circuit']);   // (a digital circuit's parts and edits, #3897)
   assert.deepEqual(names(KICAD_TOOLS), ['part_libraries', 'import_part', 'export_part']);   // (a project's KiCad parts, #4280)
