@@ -90,6 +90,11 @@ function checkInterface(n, f, at, { err, warn }) {
     if (f.dir !== 'in' && f.dir !== 'out') { err(`${n.id}.${f.name}: its direction '${f.dir ?? ''}' is not in or out`, ref); return false; }
     return true;
   }
+  if (f.kind === 'spi') {
+    if (!(Number(f.hz) > 0)) { err(`${n.id}.${f.name}: its SCK rate '${f.hz ?? ''}' is not a rate (Hz)`, ref); return false; }
+    if (![0, 1, 2, 3].includes(f.mode)) { err(`${n.id}.${f.name}: its mode '${f.mode ?? ''}' is not an SPI mode (0 to 3)`, ref); return false; }
+    return true;
+  }
   err(`${n.id}.${f.name}: no interface kind '${f.kind}' (the kinds: ${INTERFACE_KINDS.join(', ')})`, ref);
   return false;
 }
@@ -132,6 +137,11 @@ function checkFpga(n, at, { modules }, { err, warn }) {
     if (f.kind === 'uart') {
       if (!f.tx && !f.rx) { err(`${n.id}.${f.name}: a UART with no tx nor rx port`, ref); continue; }
       at.ifaces.set(lc(f.name), { f, tx: f.tx ? pinOf(f, f.tx, 'out') : null, rx: f.rx ? pinOf(f, f.rx, 'in') : null });
+    } else if (f.kind === 'spi') {
+      // (the peripheral: SCK, MOSI and SS its inputs, MISO its output, #5214)
+      const none = SPI_LINES.filter(k => !f[k]);
+      if (none.length) { err(`${n.id}.${f.name}: an SPI bus with no ${none.join(', ')} port`, ref); continue; }
+      at.ifaces.set(lc(f.name), { f, spi: Object.fromEntries(SPI_LINES.map(k => [k, pinOf(f, f[k], k === 'miso' ? 'out' : 'in')])) });
     } else at.ifaces.set(lc(f.name), { f, pins: f.pins.map(p => pinOf(f, p, f.dir)) });
   }
 }
@@ -158,6 +168,14 @@ function checkMcu(n, at, { files }, { err, warn }) {
       if (tx === u.rx && rx === u.tx) { err(`${n.id}.${f.name}: TX and RX crossed: the ${b.name}'s TX is ${u.tx}, its RX ${u.rx}`, ref); continue; }
       if ((tx !== u.tx || rx !== u.rx)) { err(`${n.id}.${f.name}: the ${b.name}'s ${f.name} is TX ${u.tx}, RX ${u.rx}`, ref); continue; }
       at.ifaces.set(lc(f.name), { f, tx: pin(tx, 'out'), rx: pin(rx, 'in') });
+      continue;
+    }
+    if (f.kind === 'spi') {
+      // (the master, on its board's SPI pins, #5214)
+      if (!b) continue;
+      const s = Object.entries(b.spis || {}).find(([k]) => lc(k) === lc(f.name))?.[1];
+      if (!s) { err(`${n.id}: the ${b.name} has no SPI bus ${f.name} (its SPI: ${Object.keys(b.spis || {}).join(', ') || 'none'})`, ref); continue; }
+      at.ifaces.set(lc(f.name), { f, spi: Object.fromEntries(SPI_LINES.map(k => [k, pin(s[k], k === 'miso' ? 'in' : 'out')])) });
       continue;
     }
     const bad = f.pins.filter(p => !has(p));
@@ -195,7 +213,7 @@ function checkLinks(sys, nodes, { err, warn }) {
     const [a, b] = ends;
     if (a.at === b.at) { err(`${l.id}: both ends on ${a.at.n.id}: a link joins two nodes`, ref); continue; }
     if (!a.r || !b.r) continue;   // (an interface in error: said)
-    const wires = l.kind === 'uart' ? uartWires(l, a, b, { err }) : gpioWires(l, a, b, { err });
+    const wires = l.kind === 'uart' ? uartWires(l, a, b, { err }) : l.kind === 'spi' ? spiWires(l, a, b, { err }) : gpioWires(l, a, b, { err });
     for (const [x, y] of wires) checkWire(l, x, y, byPin, { err, warn });
   }
   return used;
@@ -210,6 +228,19 @@ function uartWires(l, a, b, { err }) {
   if (a.r.tx && b.r.rx) w.push([{ end: a, ...a.r.tx }, { end: b, ...b.r.rx }]);
   if (b.r.tx && a.r.rx) w.push([{ end: b, ...b.r.tx }, { end: a, ...a.r.rx }]);
   return w;
+}
+
+// an SPI link's wires: the master's (a microcontroller's) SCK, MOSI and SS to the peripheral's (an FPGA's), its MISO back;
+// one SCK rate and mode at both ends (#5214)
+const SPI_LINES = ['sck', 'mosi', 'miso', 'ss'];
+function spiWires(l, a, b, { err }) {
+  const ref = link(l.id);
+  const [m, p] = a.at.n.kind === 'mcu' ? [a, b] : [b, a];
+  if (m.at.n.kind !== 'mcu' || p.at.n.kind !== 'fpga') { err(`${l.id}: an SPI link joins a microcontroller (the master) and an FPGA (the peripheral)`, ref); return []; }
+  if (Number(m.r.f.hz) !== Number(p.r.f.hz)) err(`${l.id}: ${m.name}'s SCK at ${m.r.f.hz} Hz, ${p.name}'s at ${p.r.f.hz}: an SPI bus's ends at one rate`, ref);
+  if (m.r.f.mode !== p.r.f.mode) err(`${l.id}: ${m.name} in mode ${m.r.f.mode}, ${p.name} in mode ${p.r.f.mode}: an SPI bus's ends in one mode`, ref);
+  return SPI_LINES.map(k => (k === 'miso' ? [p.r.spi[k] && { end: p, ...p.r.spi[k] }, m.r.spi[k] && { end: m, ...m.r.spi[k] }] : [m.r.spi[k] && { end: m, ...m.r.spi[k] }, p.r.spi[k] && { end: p, ...p.r.spi[k] }]))
+    .filter(([x, y]) => x && y);
 }
 
 // a GPIO link's wires: its ends' pins in order, as many at each end

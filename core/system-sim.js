@@ -92,9 +92,10 @@ export class SystemSim {
   /**
    * A link from an output pin to input pins: { from: 'node.pin', to: 'node.pin' or [them], name, kind: 'wire' or
    * 'uart' (baud: its bit's time sets the fine quantum and the hold), fine, hold (ps: active for hold after a change),
-   * latency (ps: a fixed one, exact; null: the lag of each burst) }.
+   * latency (ps: a fixed one, exact; null: the lag of each burst), pull (the level a floating source gives: an SPI's
+   * SS pulled up, #5214; null: floating) }.
    */
-  link({ from, to, name = null, kind = 'wire', baud = 9600, fine = null, hold = null, latency = null }) {
+  link({ from, to, name = null, kind = 'wire', baud = 9600, fine = null, hold = null, latency = null, pull = null }) {
     if (this.started) throw new Error('the links are added before the run');
     if (kind !== 'wire' && kind !== 'uart') throw new Error(`no link of kind '${kind}'`);
     const src = this.pinOf(from, 'outputs');
@@ -108,7 +109,7 @@ export class SystemSim {
     name ??= `${from}>${dsts.map((d) => d.key).join(',')}`;
     if (this.links.has(name)) throw new Error(`a link '${name}' already`);
     const link = {
-      name, kind, baud: bit && baud, bit, src, dsts, latency: latency == null ? null : Math.round(latency),
+      name, kind, baud: bit && baud, bit, src, dsts, latency: latency == null ? null : Math.round(latency), pull,
       fine: Math.max(1, Math.round(this.fine ?? fine ?? (bit ? bit / UART_DIV : FINE))),
       hold: hold ?? (bit ? 20 * bit : 16 * (this.fine ?? fine ?? FINE)),
       level: undefined, lag: null, last: -Infinity, delivered: 0, activeUntil: -Infinity,
@@ -152,7 +153,7 @@ export class SystemSim {
     this.started = true;
     for (const l of this.links.values()) {
       l.activeUntil = this.now + l.hold;
-      l.level = l.src.a.value(l.src.pin);
+      l.level = l.src.a.value(l.src.pin) ?? l.pull;
       l.sent.push(this.now, l.level);
       for (const d of l.dsts) d.a.setPin(d.pin, l.level);
       l.trace.push(this.now, l.level);
@@ -183,8 +184,8 @@ export class SystemSim {
   // a node's output changes seen at the window's end T, to deliver at their time plus their link's lag (a watched
   // pin's kept at its time)
   route(name, changes, T) {
-    for (const { pin, t, value } of changes) {
-      const l = this.outLinks.get(`${name}.${pin}`);
+    for (const { pin, t, value: v } of changes) {
+      const l = this.outLinks.get(`${name}.${pin}`), value = v ?? l?.pull ?? null;
       const w = this.watched.get(`${name}.${pin}`);
       if (w && w.at(-1) !== value) w.push(t, value);
       if (!l || value === l.level) continue;

@@ -2,7 +2,7 @@
 // System editor does them and the MCP server's edit_system (one set of rules and messages, #2674); a System described,
 // as check_system says it before its check. Each edit takes the System and returns a new one ({ system, id }) or { error }: the System given
 // is never changed. Isomorphic module (browser + Node).
-import { NODE_KINDS, INTERFACE_KINDS, FRAME_RE, MCU_BOARDS, mcuBoard, linkEnd, normalizeSystem } from './system-doc.js';
+import { NODE_KINDS, INTERFACE_KINDS, FRAME_RE, MCU_BOARDS, SPI_HZ, mcuBoard, linkEnd, normalizeSystem } from './system-doc.js';
 import { isName } from './ident.js';
 
 const lc = s => String(s).toLowerCase();
@@ -107,13 +107,18 @@ function ifaceError(n, f) {
   if (f.kind === 'uart') {
     if (!(Number.isInteger(f.baud) && f.baud > 0)) return `${n.id}.${f.name}: the baud is a whole number of bits a second, not '${f.baud}'`;
     if (!FRAME_RE.test(f.frame)) return `${n.id}.${f.name}: the frame is its data bits (5 to 8), its parity (N, E, O) and its stop bits (1, 2), as 8N1, not '${f.frame}'`;
+  } else if (f.kind === 'spi') {
+    if (!(Number(f.hz) > 0)) return `${n.id}.${f.name}: an SPI bus's SCK rate is a number of Hz, not '${f.hz}'`;
+    if (![0, 1, 2, 3].includes(f.mode)) return `${n.id}.${f.name}: an SPI bus's mode is 0, 1, 2 or 3, not '${f.mode}'`;
   } else if (!['in', 'out'].includes(f.dir)) return `${n.id}.${f.name}: a GPIO's direction is in or out, not '${f.dir}'`;
   return null;
 }
 
 /**
- * An interface added to a node ({ name, kind: 'uart' | 'gpio', … }): a UART with its tx and rx (an FPGA node's ports),
- * baud and frame (9600, 8N1 by default); GPIO with its pins and direction (in by default).
+ * An interface added to a node ({ name, kind: 'uart' | 'gpio' | 'spi', … }): a UART with its tx and rx (an FPGA node's
+ * ports), baud and frame (9600, 8N1 by default); GPIO with its pins and direction (in by default); an SPI bus (#5214)
+ * with its SCK rate and mode (125 kHz, 0 by default), an FPGA node's its sck, mosi, miso and ss ports, a
+ * microcontroller's its board's (SPI).
  */
 export function addInterface(sys, id, f = {}) {
   const out = copy(sys), n = nodeOf(out, id);
@@ -121,8 +126,12 @@ export function addInterface(sys, id, f = {}) {
   const kind = f.kind ?? 'uart';
   if (n.kind === 'mcu' && kind === 'uart') return { error: `${id}: a microcontroller's UARTs are its board's (${n.interfaces.filter(i => i.kind === 'uart').map(i => i.name).join(', ') || 'none'})` };
   if (n.kind === 'terminal') return { error: `${id}: a serial terminal has one UART, its own` };
-  const name = f.name ?? freeIfaceName(n, kind);
-  const it = kind === 'uart' ? { name, kind, ...UART_DEFAULTS, ...pick(f, ['tx', 'rx', 'baud', 'frame']) } : { name, kind, pins: [], dir: 'in', ...pick(f, ['pins', 'dir']) };
+  const spis = n.kind === 'mcu' ? Object.keys(mcuBoard(n.board)?.spis || {}) : null;
+  if (kind === 'spi' && spis && !spis.some(s => lc(s) === lc(f.name ?? spis[0]))) return { error: `${id}: a microcontroller's SPI bus is its board's (${spis.join(', ') || 'none'})` };
+  const name = f.name ?? (kind === 'spi' && spis ? spis[0] : freeIfaceName(n, kind));
+  const it = kind === 'uart' ? { name, kind, ...UART_DEFAULTS, ...pick(f, ['tx', 'rx', 'baud', 'frame']) }
+    : kind === 'spi' ? { name, kind, ...(spis ? {} : pick(f, ['sck', 'mosi', 'miso', 'ss'])), hz: SPI_HZ, mode: 0, ...pick(f, ['hz', 'mode']) }
+      : { name, kind, pins: [], dir: 'in', ...pick(f, ['pins', 'dir']) };
   if (n.interfaces.some(i => lc(i.name) === lc(name))) return { error: `${id}: an interface named '${name}' is there already` };
   const bad = ifaceError(n, it);
   if (bad) return { error: bad };
@@ -143,7 +152,8 @@ export function changeInterface(sys, id, name, fields = {}) {
   if (!n) return { error: `no node '${id}' in the System` };
   const f = n.interfaces.find(i => i.name === name);
   if (!f) return { error: `${id}: no interface '${name}'` };
-  const keys = f.kind === 'uart' ? (n.kind === 'fpga' ? ['name', 'tx', 'rx', 'baud', 'frame'] : ['baud', 'frame']) : ['name', 'pins', 'dir'];
+  const keys = f.kind === 'uart' ? (n.kind === 'fpga' ? ['name', 'tx', 'rx', 'baud', 'frame'] : ['baud', 'frame'])
+    : f.kind === 'spi' ? (n.kind === 'fpga' ? ['name', 'sck', 'mosi', 'miso', 'ss', 'hz', 'mode'] : ['hz', 'mode']) : ['name', 'pins', 'dir'];
   for (const k of Object.keys(fields)) if (!keys.includes(k)) return { error: `${id}.${name}: this interface has no field '${k}' to change (${keys.join(', ')})` };
   const next = { ...f, ...fields };
   if (fields.name != null && lc(fields.name) !== lc(name) && n.interfaces.some(i => lc(i.name) === lc(fields.name))) return { error: `${id}: an interface named '${fields.name}' is there already` };
@@ -235,6 +245,11 @@ export function editSystem(sys, { action, node = null, interface: iface = null, 
 // an interface said in a few words
 function ifaceText(n, f) {
   if (f.kind === 'gpio') return `${f.name}: GPIO ${f.dir}, ${f.pins.length ? f.pins.join(' ') : 'no pins'}`;
+  if (f.kind === 'spi') {
+    const s = n.kind === 'mcu' ? mcuBoard(n.board)?.spis?.[f.name] : f;
+    const at = k => `${k.toUpperCase()} ${s?.[k] ?? '?'}${n.kind === 'fpga' && n.pins[s?.[k]] ? ` (${n.pins[s[k]]})` : ''}`;
+    return `${f.name}: SPI ${f.hz} Hz mode ${f.mode}, ${['sck', 'mosi', 'miso', 'ss'].map(at).join(', ')}`;
+  }
   const pins = n.kind === 'fpga' ? `, TX ${f.tx ?? '?'}${n.pins[f.tx] ? ` (${n.pins[f.tx]})` : ''}, RX ${f.rx ?? '?'}${n.pins[f.rx] ? ` (${n.pins[f.rx]})` : ''}`
     : n.kind === 'mcu' ? (b => (b?.uarts[f.name] ? `, TX ${b.uarts[f.name].tx}, RX ${b.uarts[f.name].rx}` : ''))(mcuBoard(n.board)) : '';
   return `${f.name}: UART ${f.baud} baud ${f.frame}${pins}`;

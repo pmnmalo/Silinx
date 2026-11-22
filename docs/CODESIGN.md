@@ -68,6 +68,14 @@ co-design project has one System, shown in the Design pane as `[System]`.
 | AXI-Lite (Zynq) | the AXI channel | the register map | the same map at both ends |
 | Network (MQTT) | topics | broker | a topic subscribed with no publisher |
 
+**SPI** (#5214): an Arduino is the master on its board's SPI (SCK D13, MOSI D11, MISO D12; SS D10 its program's own
+pin), an FPGA node the peripheral on four ports of its module (`{ name, kind: 'spi', sck, mosi, miso, ss, hz, mode }`).
+The AVR node draws SCK and MOSI from the byte its program writes to SPDR, at its clock divider and mode
+(`core/system-sim-avr-spi.js`), and reads MISO at each sampling edge from the levels it got. Each of the link's four
+wires has a fixed latency of a sixteenth of the interface's SCK period, so that MISO's answer is back before the next
+edge; SS floating reads high (the link's `pull`). The decoder (`decodeSpi`) gives each transfer's MOSI and MISO bytes,
+and warns when the program's SCK is faster than the interface says.
+
 **How an interface is declared.** It is declared once:
 
 - on an FPGA node, as a set of the top's ports;

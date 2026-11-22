@@ -47,6 +47,7 @@ function endOf(sys, end) {
   const e = linkEnd(end), n = e && sys.nodes.find(x => x.id === e.node), f = n?.interfaces.find(x => x.name === e.iface);
   if (!f) return null;
   if (f.kind === 'gpio') return { n, f, pins: f.pins };
+  if (f.kind === 'spi') { const s = n.kind === 'mcu' ? mcuBoard(n.board)?.spis?.[f.name] : f; return s ? { n, f, spi: { sck: s.sck, mosi: s.mosi, miso: s.miso, ss: s.ss } } : null; }
   if (n.kind === 'fpga') return { n, f, tx: f.tx, rx: f.rx };
   if (n.kind === 'mcu') { const u = mcuBoard(n.board)?.uarts[f.name]; return u ? { n, f, tx: u.tx, rx: u.rx } : null; }
   return { n, f, tx: 'tx', rx: 'rx' };
@@ -82,6 +83,13 @@ export function systemPlan(sys, { ports = {} } = {}) {
     if (l.kind === 'uart') {
       const uart = { baud: a.f.baud, frame: a.f.frame };
       for (const [s, d] of [[a, b], [b, a]]) if (s.tx && d.rx) wire({ n: s.n, pin: s.tx }, { n: d.n, pin: d.rx }, null, 'uart', uart);
+    } else if (l.kind === 'spi') {
+      // (the master's SCK, MOSI and SS to the peripheral, its MISO back: four wires, `<link>_sck`…, #5214)
+      const [m, p] = a.n.kind === 'mcu' ? [a, b] : [b, a];
+      for (const k of ['sck', 'mosi', 'ss', 'miso']) {
+        const [s, d] = k === 'miso' ? [p, m] : [m, p];
+        if (s.spi[k] && d.spi[k]) wire({ n: s.n, pin: s.spi[k] }, { n: d.n, pin: d.spi[k] }, k, 'spi', { hz: m.f.hz, mode: m.f.mode, line: k });
+      }
     } else {
       const [s, d] = a.f.dir === 'out' ? [a, b] : [b, a];
       s.pins.forEach((p, i) => { if (d.pins[i]) wire({ n: s.n, pin: p }, { n: d.n, pin: d.pins[i] }, s.pins.length > 1 ? i : null, 'wire', {}); });
@@ -119,8 +127,9 @@ export function buildSystem(sys, plan, { fpga = {}, firmware = {} } = {}) {
     }
   }
   for (const w of plan.wires) {
-    const latency = w.kind === 'uart' ? Math.round(1e12 / w.baud / UART_DIV) : FINE;
-    sim.link({ name: w.name, from: w.from, to: w.to, kind: w.kind, baud: w.baud, latency });
+    // (an SPI wire: a sixteenth of its SCK's period, the MISO's answer in time for the master's next edge, #5214)
+    const latency = w.kind === 'uart' ? Math.round(1e12 / w.baud / UART_DIV) : w.kind === 'spi' ? Math.round(1e12 / w.hz / 16) : FINE;
+    sim.link({ name: w.name, from: w.from, to: w.to, kind: w.kind === 'uart' ? 'uart' : 'wire', baud: w.baud, latency, pull: w.line === 'ss' ? 1 : null });
   }
   for (const { node, pin, value } of plan.idle) sim.nodes.get(node).setPin(pin, value);
   return { sim, terminals, wires: plan.wires };
