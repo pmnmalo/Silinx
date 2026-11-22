@@ -642,6 +642,15 @@ export async function readFile(name, rel) {
   catch (e) { throw e.status === 400 ? new HttpError(400, e.message) : new HttpError(404, `file '${rel}' not found`); }
 }
 
+/** A file's bytes (a firmware's .elf, #5198), by readFile's checks and messages: a Uint8Array. */
+export async function readFileBytes(name, rel) {
+  const dir = projectDir(name);
+  const full = await spelledJoin(dir, rel);
+  refuseHidden(dir, rel, full, 'read');
+  try { return new Uint8Array(await readWithin(dir, full)); }
+  catch (e) { throw e.status === 400 ? new HttpError(400, e.message) : new HttpError(404, `file '${rel}' not found`); }
+}
+
 export async function writeFile(name, rel0, text) {
   const dir = projectDir(name);
   const full = await spelledJoin(dir, rel0);

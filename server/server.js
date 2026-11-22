@@ -249,6 +249,8 @@ export async function createApp({ host = '127.0.0.1', token = null, codes = crea
   // Rename Project… (#4641, the MCP's rename_project)
   api.post('/projects/:p/rename-project', wrap(async req => (await import('./project-rename.js')).renameProjectChecked(req.params.p, req.body?.to)));
   api.get('/projects/:p/file', wrap(async (req, res) => {
+    // (bytes=1: its bytes, a firmware's .elf, #5198)
+    if (req.query.bytes === '1') { const b = await P.readFileBytes(req.params.p, req.query.path); return res.type('application/octet-stream').send(Buffer.from(b.buffer, b.byteOffset, b.byteLength)); }
     const text = await P.readFile(req.params.p, req.query.path);   // read first: an error must go out as JSON, not text/plain
     res.type('text/plain').send(text);
   }));

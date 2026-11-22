@@ -11,11 +11,11 @@ UART and GPIO links. Its design is in [CODESIGN.md](../../CODESIGN.md); its road
 - **New Project ▸ Co-design.** It has no board of its own: each FPGA node of its System names its board and pins, each
   microcontroller its firmware. Start from **Empty** (its System, `<name>.sys.json`, with no node yet) or from the
   example **uart-avr** (an Arduino and the `uart` example's FPGA linked by UART).
-- **Its System** is its top, shown in the Design pane as `<name> [System]`, the FPGA nodes' modules under it. It opens in
-  the **System editor**: the tools place an FPGA node, an Arduino Uno or Nano, a serial terminal; **Link** joins two
+- **Its System** is its top, shown in the Design pane as `<name> [System]`, the FPGA nodes' modules under it. It opens
+  in the **System editor**: the tools place an FPGA node, an Arduino Uno or Nano, a serial terminal; **Link** joins two
   interfaces of one kind (a click on one, then on the other); the Properties panel sets a node's module, board and pins,
-  a microcontroller's board and firmware (an Intel HEX, `.hex`, in the browser), an interface's TX and RX ports, baud
-  and frame.
+  a microcontroller's board and firmware (an Intel HEX, `.hex`, or avr-gcc's `.elf`; an `.elf` in the browser edition
+  needs a workspace folder, its storage keeping text files only), an interface's TX and RX ports, baud and frame.
 - **Its check** says its errors and warnings in the console as it is edited, and Check writes them in the Console: a
   module's port that is no port of it, TX and RX crossed, different bauds at the two ends of a link, a node that joins
   nothing, and a 5 V output on a 3.3 V FPGA input (an Arduino's TX on an FPGA's RX: on the real boards, a level shifter

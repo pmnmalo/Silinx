@@ -240,6 +240,26 @@ test('files: a hidden file or folder is not written through the file route (#303
   assert.equal((await call('GET', '/projects/Hid/file?path=build/open/top.json')).body, '{}\n');
 });
 
+test('#5198 files: a file\'s bytes (bytes=1: a firmware\'s .elf), every byte intact; refused as its text is (hidden, out of the project, missing)', async () => {
+  await call('POST', '/projects', { name: 'Bytes' });
+  const elf = new Uint8Array(256).map((_, i) => i);   // every byte value, those UTF-8 would change too
+  await fs.mkdir(path.join(P.projectDir('Bytes'), 'firmware'), { recursive: true });
+  await fs.writeFile(path.join(P.projectDir('Bytes'), 'firmware', 'a.elf'), elf);
+  let r = await call('GET', '/projects/Bytes/file?path=firmware/a.elf&bytes=1');
+  assert.deepEqual([r.status, r.headers.get('content-type'), [...r.body]], [200, 'application/octet-stream', [...elf]]);
+  assert.deepEqual([...await P.readFileBytes('Bytes', 'firmware/a.elf')], [...elf]);
+  // (its text, as before: not its bytes)
+  r = await call('GET', '/projects/Bytes/file?path=firmware/a.elf');
+  assert.equal(r.headers.get('content-type'), 'text/plain; charset=utf-8');
+  assert.notEqual(Buffer.from(r.body, 'utf8').length, elf.length);
+  await fs.writeFile(path.join(P.projectDir('Bytes'), '.env'), 'x');
+  for (const [p, status, error] of [['.env', 400, '\'.env\': not read: hidden file or folder (\'.env\')'], ['../Files/a.elf', 400, '\'../Files/a.elf\': invalid path: path leaves the project (\'..\')'], ['firmware/none.elf', 404, 'file \'firmware/none.elf\' not found']]) {
+    r = await call('GET', `/projects/Bytes/file?path=${encodeURIComponent(p)}&bytes=1`);
+    assert.deepEqual([r.status, r.body.error], [status, error], p);
+    assert.deepEqual((await call('GET', `/projects/Bytes/file?path=${encodeURIComponent(p)}`)).body.error, error, `${p}: as its text`);
+  }
+});
+
 test('files: missing / traversing / absolute paths are refused, missing files are 404, file system errors by the project\'s path (#3537)', async () => {
   await call('POST', '/projects', { name: 'Trav' });
   const bad = ['../Files/src/top.v', '../../etc/passwd', '/etc/passwd', 'src/../../x', '..'];

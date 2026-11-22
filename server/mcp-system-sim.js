@@ -2,9 +2,8 @@
 // document (server/mcp-hdl.js), runs the System as Simulate System does (core/system-run.js): each FPGA node's module elaborated and compiled (Yosys, the compiled engine), each
 // microcontroller's firmware read, the terminals' text typed at the start, run for a time; each wire's decoded bytes, the
 // terminals' text, the warnings, and the System's waves written as a VCD (build/<name>.vcd).
-import fsp from 'node:fs/promises';
 import * as P from './projects.js';
-import { toolError, projectText, projectPath, elaborateView } from './mcp-util.js';
+import { toolError, projectText, elaborateView } from './mcp-util.js';
 import { readSystem, isSystemFile } from '../core/system-doc.js';
 import { prepareSystem, systemReport, runTimeText } from '../core/system-run.js';
 import { systemVcd } from '../core/system-waves.js';
@@ -38,7 +37,7 @@ export async function simulateSystem(name, file, { ms = 100, type = {} } = {}) {
   const ready = await prepareSystem(sys, {
     ports,
     netlist: m => { if (!designs[m]) throw new Error(`no module '${m}' that elaborates in the project`); return netlistOf(designs[m], { run: yosysNode }); },
-    firmware: async p => (/\.elf$/i.test(p) ? new Uint8Array(await fsp.readFile(await projectPath(name, p))) : P.readFile(name, p)),
+    firmware: async p => (/\.elf$/i.test(p) ? P.readFileBytes(name, p) : P.readFile(name, p)),   // (the page's reads, #5198)
   });
   if (ready.error) throw toolError(`${file}: ${ready.error}`);
   for (const [id, text] of Object.entries(type || {})) {

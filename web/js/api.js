@@ -74,7 +74,7 @@ async function zipPost(url, zip, headers = {}) {
   return j;
 }
 // (tagged: the answer with its revision, { body, etag }, #4726)
-async function req(method, url, body, { text = false, headers = {}, tagged = false } = {}) {
+async function req(method, url, body, { text = false, bytes = false, headers = {}, tagged = false } = {}) {
   const opts = { method, headers: await authed(headers) };
   if (body !== undefined) {
     if (typeof body === 'string') { opts.body = body; opts.headers['Content-Type'] = 'text/plain'; }
@@ -90,6 +90,7 @@ async function req(method, url, body, { text = false, headers = {}, tagged = fal
     throw Object.assign(new Error(msg), { status: r.status }, more);
   }
   if (text) return r.text();
+  if (bytes) return new Uint8Array(await r.arrayBuffer());
   const ct = r.headers.get('content-type') || '';
   const out = await (ct.includes('json') ? r.json() : r.text());
   return tagged ? { body: out, etag: r.headers.get('ETag') } : out;
@@ -147,6 +148,8 @@ export const api = {
   deleteProject: name => req('DELETE', `/api/projects/${enc(name)}`),
   renameProject: (name, to) => req('POST', `/api/projects/${enc(name)}/rename-project`, { to }),   // (Rename Project…, #4641)
   readFile: (name, path) => req('GET', `/api/projects/${enc(name)}/file?path=${enc(path)}`, undefined, { text: true }),
+  // a file's bytes (a firmware's .elf, #5198): a Uint8Array
+  readFileBytes: (name, path) => req('GET', `/api/projects/${enc(name)}/file?path=${enc(path)}&bytes=1`, undefined, { bytes: true }),
   writeFile: (name, path, text) => req('PUT', `/api/projects/${enc(name)}/file?path=${enc(path)}`, text),
   renameFile: (name, from, to) => req('POST', `/api/projects/${enc(name)}/rename`, { from, to }),
   // (trash: the user's Delete File / Delete Folder, into the workspace's .trash -> { trashed }, #3364)

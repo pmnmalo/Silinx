@@ -402,6 +402,7 @@ export const api = {
       return typeof t === 'string' ? t : new TextDecoder().decode(t);
     }
   },
+  readFileBytes: (name, path) => ops.readFileBytes(name, path),   // (a firmware's .elf, #5198)
   writeFile: (name, path, text) => ops.writeFile(name, path, text),
   deleteFile: (name, path, opts) => ops.deleteFile(name, path, opts),
   sources: name => ops.sources(name),

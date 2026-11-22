@@ -147,6 +147,21 @@ test('folder: writing, renaming (files and folders), deleting and saving keep si
   assert.deepEqual((await ops.project('Edit')).fileTree, ['notes.txt', 'src/b.vhd', 'ucf/top.ucf']);
 });
 
+test('#5198 a file\'s bytes (a firmware\'s .elf): a workspace folder\'s, every byte; the browser storage\'s refused, it keeps text only', async () => {
+  const { store, ops } = folder();
+  await ops.create({ name: 'Fw', board: 'basys2' });
+  const elf = new Uint8Array(256).map((_, i) => i);
+  await store.writeBuild('Fw', 'firmware/a.elf', elf);   // (a file put in the folder: its bytes)
+  await store.load('Fw', { fresh: true });   // (read again, as the project opened)
+  assert.deepEqual([...await ops.readFileBytes('Fw', 'firmware/a.elf')], [...elf]);
+  await assert.rejects(ops.readFileBytes('Fw', 'firmware/none.elf'), { message: 'file \'firmware/none.elf\' not found' });
+  const s = browserStore(memStorage()), b = projectOps(() => s, EXAMPLES);
+  await b.create({ name: 'Fw', board: 'basys2' });
+  await b.writeFile('Fw', 'firmware/a.elf', 'ELF');
+  await assert.rejects(b.readFileBytes('Fw', 'firmware/a.elf'), { message: 'firmware/a.elf: the browser\'s storage keeps text files only: an .elf needs a workspace folder (File ▸ Open Workspace Folder…), or give the firmware\'s .hex' });
+  await assert.rejects(b.readFileBytes('Fw', 'firmware/none.elf'), { message: 'file \'firmware/none.elf\' not found' });
+});
+
 test('folder: the exact errors (as the browser storage\'s)', async () => {
   for (const make of [() => folder(), () => { const s = browserStore(memStorage()); return { ops: projectOps(() => s, EXAMPLES) }; }]) {
     const { ops } = make();
