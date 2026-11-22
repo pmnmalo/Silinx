@@ -12,7 +12,7 @@
 
 import { h } from './ui.js';
 import { icons } from './icons.js';
-import { isPhone, PHONE_QUERY } from './narrow.js';
+import { PHONE_QUERY } from './narrow.js';
 
 const PANES = ['side', 'doc', 'console'];
 const LABEL = { side: 'Panels', doc: 'Document', console: 'Console' };
@@ -33,8 +33,8 @@ function setPane(pane) {
   }
 }
 
-/** On a phone, shows `pane`; on a wider screen nothing. */
-function phoneShow(pane) { if (isPhone()) setPane(pane); }
+// (on every screen: a wider one turned into a phone's shows what the user was at, #5121)
+const phoneShow = (pane) => setPane(pane);
 
 /** The bar of panes and what switches them; once, at start-up (after the drawer, web/js/app.js). */
 export function initPhone() {

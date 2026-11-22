@@ -388,6 +388,7 @@ export const PT = {
   'No project open': 'Nenhum projeto aberto', 'Main menu': 'Menu principal', 'Documents': 'Documentos', 'Panels': 'Painéis',
   'Document': 'Documento', 'Panes': 'Áreas', 'More tools': 'Mais ferramentas',   // (a phone's panes and toolbar, #5121)
   'Read-only on a phone': 'Só de leitura num telemóvel', 'Edit it on a tablet or a computer': 'Edite-o num tablet ou num computador',   // (a phone's editors, #5121)
+  'Switches and buttons': 'Interruptores e botões',   // (a phone's Board Emulator, #5121)
   'Search commands and files (Ctrl+K)': 'Procurar comandos e ficheiros (Ctrl+K)', 'Search commands and files…': 'Procurar comandos e ficheiros…',
   'Search commands and files': 'Procurar comandos e ficheiros',
   'Open a source from the Design panel, or search for any command or file.': 'Abra uma fonte no painel Projeto, ou procure qualquer comando ou ficheiro.',
