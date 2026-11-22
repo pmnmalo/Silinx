@@ -3,8 +3,8 @@
 // as check_system says it before its check. Each edit takes the System and returns a new one ({ system, id }) or { error }: the System given
 // is never changed. Isomorphic module (browser + Node).
 import { NODE_KINDS, INTERFACE_KINDS, FRAME_RE, MCU_BOARDS, mcuBoard, linkEnd, normalizeSystem } from './system-doc.js';
+import { isName } from './ident.js';
 
-const ID_RE = /^[A-Za-z][A-Za-z0-9_]*$/;
 const lc = s => String(s).toLowerCase();
 const copy = sys => normalizeSystem(JSON.parse(JSON.stringify(sys)));
 /** A new UART interface's settings. */
@@ -24,7 +24,7 @@ export function freeId(sys, base) {
 const nodeOf = (sys, id) => sys.nodes.find(n => n.id === id) || null;
 const linkOf = (sys, id) => sys.links.find(l => l.id === id) || null;
 const idError = (sys, id, self = null) => {
-  if (!ID_RE.test(id)) return `'${id}' is not an id: a letter, then letters, digits and _`;
+  if (!isName(id)) return `'${id}' is not an id: a letter, then letters, digits and _`;
   if ([...sys.nodes, ...sys.links].some(x => x !== self && lc(x.id) === lc(id))) return `the id '${id}' is used already`;
   return null;
 };
@@ -102,7 +102,7 @@ export function removeNode(sys, id) {
 
 // an interface's fields checked as they are set (the check says the rest: its pins on the board, its ports' directions)
 function ifaceError(n, f) {
-  if (!ID_RE.test(f.name)) return `${n.id}: '${f.name}' is not an interface's name: a letter, then letters, digits and _`;
+  if (!isName(f.name)) return `${n.id}: '${f.name}' is not an interface's name: a letter, then letters, digits and _`;
   if (!INTERFACE_KINDS.includes(f.kind)) return `${n.id}.${f.name}: no interface kind '${f.kind}': ${INTERFACE_KINDS.join(', ')}`;
   if (f.kind === 'uart') {
     if (!(Number.isInteger(f.baud) && f.baud > 0)) return `${n.id}.${f.name}: the baud is a whole number of bits a second, not '${f.baud}'`;

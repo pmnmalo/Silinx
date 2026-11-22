@@ -60,6 +60,9 @@ test('#4700 ids: free ones made, renamed in the links\' ends, refused when used 
   assert.deepEqual(changeNode(s, 'uno', { id: 'FPGA' }), { error: "the id 'FPGA' is used already" });
   assert.deepEqual(changeNode(s, 'uno', { id: 'serial' }), { error: "the id 'serial' is used already" });   // (a link's)
   assert.deepEqual(changeNode(s, 'uno', { id: '2x' }), { error: "'2x' is not an id: a letter, then letters, digits and _" });
+  // (the rule core/ident.js's NAME_RE, #5184: no _ first, no - nor space; letters, digits and _ after the first)
+  for (const id of ['_x', 'a-b', 'a b', '']) assert.deepEqual(changeNode(s, 'uno', { id }), { error: `'${id}' is not an id: a letter, then letters, digits and _` }, id);
+  assert.equal(ok(changeNode(s, 'uno', { id: 'Uno_2' })).system.nodes.some(n => n.id === 'Uno_2'), true);
   assert.deepEqual(addNode(s, { kind: 'terminal', id: 'uno' }), { error: "the id 'uno' is used already" });
   assert.deepEqual(changeLink(s, 'serial', { id: 'uno' }), { error: "the id 'uno' is used already" });
   assert.deepEqual(ok(changeLink(s, 'serial', { id: 'link1' })).system.links[0].id, 'link1');
