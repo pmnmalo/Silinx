@@ -14,11 +14,11 @@ import { reservedNameDiags } from './processes.js';
 import { countEvent, siteCounts } from './analytics.js';
 import { confirmDeviceChange } from './device-change.js';
 import { boardTop } from './board-top.js';
-import { KIND_OPTIONS, kindFields, kindNote, makeDesignProject } from './project-kind-ui.js';
+import { CODESIGN_NOTE, KIND_OPTIONS, kindFields, kindNote, makeDesignProject, openNewSystem, syncTemplates } from './project-kind-ui.js';
 import { kindStep } from './project-kind-step.js';
 import { HDL_TOP_TYPES, TOP_TYPES, projectTopType } from '/core/top-types.js';
 import { topSourceFiles } from '/core/top-source.js';
-import { DESIGN_KIND, DESIGN_ONLY_LABEL, asFpgaProject, isDesignOnly } from '/core/project-kind.js';
+import { CODESIGN_KIND, DESIGN_KIND, DESIGN_ONLY_LABEL, asFpgaProject, isDesignOnly } from '/core/project-kind.js';
 import { placeLines, placeText } from '/core/project-place.js';
 import { designOnly, refusedHere } from './design-only.js';
 import { byLastUsed } from './project-store.js';
@@ -173,6 +173,7 @@ export async function newProjectWizard({ template = 'empty' } = {}) {
       : { location: 'this browser: ', browser: true, hint: kept.supported ? "Projects are kept in this browser's storage (File ▸ Open Workspace Folder… keeps them in a folder on the disk)." : "Projects are kept in this browser's storage (a folder on the disk needs Chrome or Edge)." };
   const name = h('input', { type: 'text', value: st.name, placeholder: 'project name' });
   const tplSel = select([['empty', 'Empty project'], ...templates.map(t => [t, `Example: ${t}`])], template);
+  syncTemplates(tplSel, false);   // (the FPGA kind's first: no co-design example, #4702)
   // the project's kind, asked first (#5041, #3780): with no FPGA (a design and simulation project: no board, no device, no
   // HDL), with an FPGA, or co-design (not yet); an example's an FPGA project (Start from not shown with no FPGA)
   const kinds = kindStep('fpga', () => syncKind());
@@ -226,16 +227,19 @@ export async function newProjectWizard({ template = 'empty' } = {}) {
   topType.addEventListener('change', syncTop);
   const catSel = select(['All'], 'All'), simSel = select(['SSim (VHDL/Verilog; Silinx Simulator)'], ''), stdSel = select(['VHDL-93', 'VHDL-2008'], 'VHDL-93');
   const isDesign = () => kinds.design() && tplSel.value === 'empty';
-  const fpgaFields = kindFields(isDesign, [boardSel, catSel, dp.famSel, dp.partSel, dp.pkgSel, dp.spdSel, synthSel, simSel, langSel, stdSel], topType);
+  const fpgaFields = kindFields(() => isDesign() || kinds.codesign(), [boardSel, catSel, dp.famSel, dp.partSel, dp.pkgSel, dp.spdSel, synthSel, simSel, langSel, stdSel], topType);
   const syncKind = () => {
     if (kinds.design()) tplSel.value = 'empty';
     for (const x of tplField) x.style.display = kinds.design() ? 'none' : '';
+    syncTemplates(tplSel, kinds.codesign());   // (a co-design project's examples its own, #4702)
     fpgaFields();
+    for (const x of [topType, topType.previousElementSibling, topNote, codesignNote]) if (x) x.style.display = kinds.codesign() === (x === codesignNote) ? '' : 'none';
   };
+  const codesignNote = h('div', { class: 'hint codesign-note', style: { display: 'none' } }, CODESIGN_NOTE);
   const p2 = {
     title: 'Project Settings',
     render: () => h('div', {},
-      h('div', { class: 'hint' }, 'Select the device and design flow for the project.'),
+      h('div', { class: 'hint' }, 'Select the device and design flow for the project.'), codesignNote,
       h('div', { class: 'form-grid' },
         ...field('Evaluation Development Board:', boardSel),
         ...field('Product Category:', catSel),
@@ -258,6 +262,12 @@ export async function newProjectWizard({ template = 'empty' } = {}) {
     onShow: () => {
       summary.innerHTML = '';
       const b = db.boards.find(x => x.id === boardSel.value);
+      if (kinds.codesign()) {
+        summary.append(h('pre', { class: 'code-box' }, `Project Navigator will create a new project with the following specifications.\n\n` +
+          `Project:\n  Project Name: ${name.value.trim()}\n  Template:     ${tplSel.value}\n  Kind:         Co-design\n\n` +
+          `Flow:\n  Top-Level Source: its System (FPGA and microcontroller nodes)\n  Simulator:        Simulate System`));
+        return;
+      }
       if (isDesign()) {
         summary.append(h('pre', { class: 'code-box' }, `Project Navigator will create a new project with the following specifications.\n\n` +
           `Project:\n  Project Name: ${name.value.trim()}\n  Template:     ${tplSel.value}\n  Kind:         ${DESIGN_ONLY_LABEL}\n\n` +
@@ -276,8 +286,8 @@ export async function newProjectWizard({ template = 'empty' } = {}) {
   if (!ok) return;
   try {
     if (st.replace) await removeExistingProject(name.value.trim());
-    const design = isDesign();
-    const pj = await api.createProject(design ? { name: name.value.trim(), template: 'empty', kind: DESIGN_KIND } : {
+    const design = isDesign(), codesign = kinds.codesign();
+    const pj = await api.createProject(codesign ? { name: name.value.trim(), template: tplSel.value, kind: CODESIGN_KIND } : design ? { name: name.value.trim(), template: 'empty', kind: DESIGN_KIND } : {
       name: name.value.trim(), template: tplSel.value,
       device: dp.value(),
       board: boardSel.value || (tplSel.value !== 'empty' ? undefined : null),
@@ -285,13 +295,13 @@ export async function newProjectWizard({ template = 'empty' } = {}) {
     countEvent('new-project');
     pj.preferredLanguage = design ? 'vhdl' : langSel.value;
     pj.topSourceType = topType.value;
-    if (!design) pj.synthTool = synthSel.value;
+    if (!design && !codesign) pj.synthTool = synthSel.value;
     await api.saveProject(pj.name, pj);
     // a diagram / table top: its document and its synchronized HDL module 'top'
-    const top = topType.value !== 'hdl' && tplSel.value === 'empty' ? await createTopSource(pj.name, topType.value, langSel.value) : null;
+    const top = !codesign && topType.value !== 'hdl' && tplSel.value === 'empty' ? await createTopSource(pj.name, topType.value, langSel.value) : null;
     await app.openProject(pj.name);
     if (noFlowWarning(pj.device)) appLog(noFlowWarning(pj.device), 'warn');
-    if (api.standalone && tplSel.value !== 'empty') await app.boardUcf();   // (the chosen board's pins, as the server's, #2430)
+    if (api.standalone && tplSel.value !== 'empty' && !codesign) await app.boardUcf();   // (the chosen board's pins, as the server's, #2430)
     app.showLeftPage('design');
     if (top) {
       const fresh = await api.project(pj.name);
@@ -301,6 +311,7 @@ export async function newProjectWizard({ template = 'empty' } = {}) {
       await app.openProject(pj.name);
       ({ sch: app.openSch, fsm: app.openFsm, asm: app.openAsm, tt: app.openTt, petri: app.openPetri })[topType.value]?.(top) ?? app.openFile(top);
     }
+    if (codesign) await openNewSystem(pj.name);   // (its System, its top, #4702)
     toast(`Project ${pj.name} created`, 'ok');
   } catch (e) { commandError('New Project', e.message); }
 }
@@ -471,6 +482,8 @@ export async function projectProperties() {
   const db = S.devices || (S.devices = await api.devices().catch(() => null));
   if (!db) return commandError("Design Properties", "The device database could not be loaded (is the Silinx server running?).");
   const pj0 = S.project;
+  // (a co-design project, #4702: no board nor device of its own, its System's nodes have them)
+  if (pj0?.kind === CODESIGN_KIND) return appLog(`Design Properties: ${CODESIGN_NOTE}`, 'info');
   let pj = pj0;
   // (the project's kind, New Project's choice: a design and simulation project, both ways, #3780, #4103)
   const kindSel = select(KIND_OPTIONS, isDesignOnly(pj) ? DESIGN_KIND : 'fpga');

@@ -1,9 +1,8 @@
 // Silinx - New Project's first page, the project's kind (#5041): Digital Logic (the design and simulation project,
 // #3780, #3891: no FPGA or HDL in its card, #5133), FPGA (a board and a device), or co-design (FPGA and microcontroller nodes linked,
-// roadmap #4695), each said in a few words: what it is for, what it shows. Co-design is shown but cannot be chosen yet
-// (its System document, #4697, and its editor, #4700, are still being built): its reason in its card, as the MCP
-// server's new_project says it (core/project-kind.js).
-import { CODESIGN_KIND, CODESIGN_NOT_YET, DESIGN_KIND, PROJECT_KINDS } from '/core/project-kind.js';
+// roadmap #4695, #4702: its System document, its editor and its simulation), each said in a few words: what it is for,
+// what it shows (core/project-kind.js).
+import { CODESIGN_KIND, DESIGN_KIND, PROJECT_KINDS } from '/core/project-kind.js';
 import { h } from './ui.js';
 
 /**
@@ -13,16 +12,14 @@ import { h } from './ui.js';
 export function kindStep(value = 'fpga', onChange = () => {}) {
   let kind = value;
   const card = k => {
-    const off = k.id === CODESIGN_KIND;
-    const input = h('input', { type: 'radio', name: 'project-kind', value: k.id, disabled: off });
+    const input = h('input', { type: 'radio', name: 'project-kind', value: k.id });
     input.checked = k.id === kind;
     input.addEventListener('change', () => { if (input.checked) { kind = k.id; onChange(kind); } });
-    return h('label', { class: `kind-card${off ? ' off' : ''}`, 'data-kind': k.id },
+    return h('label', { class: 'kind-card', 'data-kind': k.id },
       input,
       h('div', { class: 'kind-text' },
         h('div', { class: 'kind-name' }, k.name),
-        h('div', { class: 'kind-about' }, k.about),
-        off ? h('div', { class: 'kind-not-yet' }, CODESIGN_NOT_YET) : null));
+        h('div', { class: 'kind-about' }, k.about)));
   };
   const page = {
     title: 'Project Kind',
@@ -30,5 +27,5 @@ export function kindStep(value = 'fpga', onChange = () => {}) {
       h('div', { class: 'hint' }, 'Choose the kind of project to create.'),
       h('div', { class: 'kind-cards', role: 'radiogroup' }, ...PROJECT_KINDS.map(card))),
   };
-  return { page, kind: () => kind, design: () => kind === DESIGN_KIND };
+  return { page, kind: () => kind, design: () => kind === DESIGN_KIND, codesign: () => kind === CODESIGN_KIND };
 }

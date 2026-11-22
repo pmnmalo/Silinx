@@ -46,18 +46,24 @@ test('new_project kind: design, fpga (its default); design_only its deprecated a
   await fails('new_project', { name: 'k6', kind: 'none' }, 'kind: one of fpga, design, codesign');
 });
 
-test('#5041 new_project kind codesign: refused with New Project\'s reason (its card not chosen yet); its description says the three kinds as the dialog', async () => {
-  const { CODESIGN_NOT_YET, PROJECT_KINDS } = await import('../core/project-kind.js');
-  await fails('new_project', { name: 'c1', kind: 'codesign' }, `kind codesign: ${CODESIGN_NOT_YET}`);
-  assert.equal(CODESIGN_NOT_YET, 'Not available yet: a co-design project needs the System document and its editor, still being built.');
-  assert.ok(!(await P.listProjects()).some(p => p.name === 'c1'), 'no project made');
+test('#4702 new_project kind codesign: an empty co-design project, its System document, no board; refused with a board; its description says the three kinds as the dialog', async () => {
+  const { PROJECT_KINDS } = await import('../core/project-kind.js');
+  const r = await call('new_project', { name: 'c1', kind: 'codesign' });
+  assert.equal(r.isError, false, r.text);
+  assert.match(r.text, /^Empty co-design project 'c1' made: its System c1\.sys\.json \(no node yet\)\. Write its modules with write_file, its firmware \(\.hex, \.elf\), then edit_system\./);
+  const pj = await P.readProject('c1');
+  assert.deepEqual([pj.kind, pj.board, pj.constraints, pj.top], ['codesign', null, null, '']);
+  const sys = await call('check_system', { project: 'c1', file: 'c1.sys.json' });
+  assert.equal(sys.text.split('\n')[0], 'System c1: 0 nodes, 0 links');
+  await fails('new_project', { name: 'c2', kind: 'codesign', board: 'basys2' }, 'a co-design project (kind codesign) has no board nor top document: its System (edit_system) names each FPGA node\'s board');
+  assert.ok(!(await P.listProjects()).some(p => p.name === 'c2'), 'no project made');
   const tools = (await handle({ jsonrpc: '2.0', id: ++id, method: 'tools/list', params: {} })).result.tools;
   const np = tools.find(t => t.name === 'new_project');
   assert.deepEqual(np.inputSchema.properties.kind.enum, ['fpga', 'design', 'codesign']);
   // (each kind's name and words, the dialog's cards')
   assert.deepEqual(PROJECT_KINDS.map(k => [k.id, k.name]), [['design', 'Digital Logic'], ['fpga', 'FPGA'], ['codesign', 'Co-design']]);
   // (the dialog's names, in few words: the MCP's size limits, #4752, #5097)
-  assert.equal(np.inputSchema.properties.kind.description, 'Its kind, New Project\'s first page: design (Digital Logic: drawings and simulation, no board, no HDL shown), fpga (FPGA: the default), codesign (Co-design: not available yet, refused).');
+  assert.equal(np.inputSchema.properties.kind.description, 'Its kind, New Project\'s first page: design (Digital Logic: drawings and simulation, no board, no HDL shown), fpga (FPGA: the default), codesign (Co-design: FPGA and microcontroller nodes in a System).');
   assert.match(np.description, / kind: New Project's first page \(fpga, design, codesign\)\. kind design \(Digital Logic\): /);
 });
 

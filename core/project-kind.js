@@ -10,10 +10,13 @@ export const DESIGN_KIND = 'design';
  *  the introductory courses, whose students need not know what an FPGA is: no FPGA or HDL in its name). */
 export const DESIGN_ONLY_LABEL = 'Digital Logic';
 
-/** A co-design project's kind (roadmap #4695): FPGA and microcontroller nodes; none can be made yet. */
+/** A co-design project's kind (roadmap #4695, #4702): FPGA and microcontroller nodes linked in its one System document
+ *  (`<name>.sys.json`, core/system-doc.js), its top; no board of its own (each FPGA node names its own). */
 export const CODESIGN_KIND = 'codesign';
-/** Why a co-design project cannot be made yet (New Project's card, the MCP server's new_project, #5041). */
-export const CODESIGN_NOT_YET = 'Not available yet: a co-design project needs the System document and its editor, still being built.';
+/** The co-design examples (New Project's Start from for a co-design project; the others are FPGA projects'). */
+export const CODESIGN_EXAMPLES = ['uart-avr'];
+/** Whether a project (its silinx.json) is a co-design project. */
+export const isCodesign = pj => pj?.kind === CODESIGN_KIND;
 /** New Project's first page (#5041): the three kinds, each with what it is for and what it shows (#5133: Digital Logic's
  *  says nothing of FPGA, HDL or a board); `short`, the MCP server's
  *  new_project's words for its kind (its arguments' size limits, #4752, #5097). */
@@ -23,8 +26,29 @@ export const PROJECT_KINDS = [
   { id: 'fpga', name: 'FPGA', about: 'A design that runs on a board: HDL sources and drawings, simulated, synthesized, implemented and programmed on the FPGA, or emulated.',
     short: 'the default' },
   { id: CODESIGN_KIND, name: 'Co-design', about: 'A system of FPGA and microcontroller nodes linked together, designed and simulated as one.',
-    short: 'not available yet, refused' },
+    short: 'FPGA and microcontroller nodes in a System' },
 ];
+
+/** Why a project of `kind` cannot start from `template`, or why `kind` is no kind (New Project, the server's and the
+ *  browser edition's stores, the MCP's new_project: one rule, one message), or null. */
+export function createRefusal(kind, template = 'empty') {
+  const empty = !template || template === 'empty';
+  if (kind != null && kind !== DESIGN_KIND && kind !== CODESIGN_KIND && kind !== 'fpga') return `unknown project kind '${kind}'`;
+  if (kind === DESIGN_KIND && !empty) return 'a design and simulation project starts empty: no example';
+  if (kind === CODESIGN_KIND && !empty && !CODESIGN_EXAMPLES.includes(template)) return `a co-design project starts empty or from a co-design example (${CODESIGN_EXAMPLES.join(', ')})`;
+  if (kind != null && kind !== CODESIGN_KIND && CODESIGN_EXAMPLES.includes(template)) return `${template} is a co-design example: a co-design project's`;
+  return null;
+}
+
+/** Why an example of `json` (its silinx.json) cannot be made with a board or a device, or null: a co-design example has
+ *  none (its System names each FPGA node's). */
+export function boardRefusal(json, { board, device } = {}) {
+  return isCodesign(json) && (board || device) ? `${json.name}: a co-design project has no board: its System names each FPGA node's` : null;
+  return null;
+}
+
+/** A new co-design project's silinx.json: no board, no constraints, no top module (its System is its top). */
+export const asCodesignProject = json => ({ ...json, kind: CODESIGN_KIND, board: null, constraints: null, top: '' });
 
 /** Whether a project (its silinx.json) is a design and simulation project. */
 export const isDesignOnly = pj => pj?.kind === DESIGN_KIND;

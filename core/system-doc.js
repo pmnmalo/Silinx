@@ -93,3 +93,7 @@ export function linkEnd(end) {
   const s = String(end || ''), i = s.indexOf('.');
   return i > 0 && i < s.length - 1 ? { node: s.slice(0, i), iface: s.slice(i + 1) } : null;
 }
+
+/** A new co-design project's System document (#4702): its path, `<project>.sys.json` at the project's root, and its text
+ *  (no node yet), as New Project writes it in both stores and the MCP's new_project. */
+export const newSystemFile = name => ({ path: `${name}.sys.json`, text: writeSystem(newSystem(name)) });

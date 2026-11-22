@@ -7,7 +7,7 @@ import * as P from './projects.js';
 import { readWithin } from './paths.js';
 import { orderExamples } from '../core/examples.js';
 import { nameUnnamed } from '../core/schname.js';
-import { CODESIGN_KIND, CODESIGN_NOT_YET, DESIGN_KIND, PROJECT_KINDS, isDesignOnly } from '../core/project-kind.js';
+import { CODESIGN_KIND, DESIGN_KIND, PROJECT_KINDS, isDesignOnly } from '../core/project-kind.js';
 import { placeText } from '../core/project-place.js';
 import { withPlaces } from './project-places.js';
 import { TOP_TYPES, topTypeRefusal } from '../core/top-types.js';
@@ -115,7 +115,13 @@ export const PROJECT_TOOLS = [
     annotations: { readOnlyHint: false, destructiveHint: false },
     async run({ name, board, variant, kind: given, top_source_type: type, language }) {
       // (its kind, #4103; design_only, its deprecated name: server/mcp-aliases.js)
-      if (given === CODESIGN_KIND) throw toolError(`kind codesign: ${CODESIGN_NOT_YET}`);   // (New Project's card, #5041)
+      // (a co-design project, #4702: no board, its System document, no top document)
+      if (given === CODESIGN_KIND) {
+        if (board || variant || type !== undefined) throw toolError('a co-design project (kind codesign) has no board nor top document: its System (edit_system) names each FPGA node\'s board');
+        try { await P.createProject({ name, kind: CODESIGN_KIND, madeBy: 'mcp' }); } catch (e) { throw toolError(e.message); }
+        const sys = `${name}.sys.json`;
+        return { text: `Empty co-design project '${name}' made: its System ${sys} (no node yet). Write its modules with write_file, its firmware (.hex, .elf), then edit_system.${UNTRUSTED}`, data: { project: name, kind: CODESIGN_KIND, board: null, system: sys, trusted: false } };
+      }
       const designOnly = (given ?? 'fpga') === DESIGN_KIND;
       if (designOnly && (board || variant)) throw toolError('a Digital Logic project (kind design) has no board: give kind design or a board, not both');
       const refusal = type !== undefined && topTypeRefusal({ kind: designOnly ? DESIGN_KIND : null }, type);

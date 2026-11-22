@@ -19,7 +19,8 @@ import { foldName, sameNameIn, spelledAs } from '../core/fold-name.js';
 import { fsFailure } from './fs-error.js';
 import { mapLimit, filesOf } from './concurrent.js';
 import { PROJECT_NAME_RE, projectNameError, sameProject } from '../core/project-name.js';
-import { DESIGN_KIND } from '../core/project-kind.js';
+import { CODESIGN_KIND, boardRefusal, createRefusal } from '../core/project-kind.js';
+import { newSystemFile } from '../core/system-doc.js';
 import { newProjectJson, projectJsonText } from '../core/project-defaults.js';
 import { renameProblem, renamedFile } from '../core/project-rename.js';
 import { withFileLock } from './project-lock.js';
@@ -378,8 +379,9 @@ async function copyDir(src, dst, { skipRoot = null } = {}) {
 // madeBy 'mcp': a project the MCP server makes, untrusted too, its messages saying so (#2981)
 // kind 'design': a design and simulation project (#3780, core/project-kind.js): an empty one, no board, no constraints
 export async function createProject({ name, template = 'empty', device, board, kind = null, fromOutside = false, madeBy = null }) {
-  if (kind != null && kind !== DESIGN_KIND) throw new HttpError(400, `unknown project kind '${kind}'`);
-  if (kind && template && template !== 'empty') throw new HttpError(400, 'a design and simulation project starts empty: no example');
+  // (a design project starts empty, a co-design one empty or from a co-design example: core/project-kind.js, #4702)
+  const refused = createRefusal(kind, template);
+  if (refused) throw new HttpError(400, refused);
   const dir = projectDir(name);
   // (one in another case too: the same folder on a case-insensitive file system, #3538)
   const other = sameProject(await fs.readdir(workspaceDir()).catch(() => []), name);
@@ -392,6 +394,8 @@ export async function createProject({ name, template = 'empty', device, board, k
     // (its files without its silinx.json, written once below, already marked when the project is untrusted: never on
     // disk as a trusted project's in between, #3413)
     const pj = { ...parseDescription(await fs.readFile(path.join(src, PROJECT_FILE), 'utf8')), name };
+    const noBoard = boardRefusal(pj, { board, device });   // (a co-design example, #4702)
+    if (noBoard) throw new HttpError(400, noBoard);
     pj.files ||= [];
     await copyDir(src, dir, { skipRoot: PROJECT_FILE });
     const was = `${pj.board}|${pj.device?.part}|${pj.device?.package}`, fromBoard = pj.board;
@@ -415,10 +419,12 @@ export async function createProject({ name, template = 'empty', device, board, k
   }
   await fs.mkdir(path.join(dir, 'src'), { recursive: true });
   await fs.mkdir(path.join(dir, 'sim'), { recursive: true });
-  if (!kind) await fs.mkdir(path.join(dir, 'constraints'), { recursive: true });
+  if (!kind || kind === 'fpga') await fs.mkdir(path.join(dir, 'constraints'), { recursive: true });
   // (core/project-defaults.js, as the browser edition's, #4766; Optimization Fast, #4828)
   const json = { ...newProjectJson(name, { device, board, kind }), ...(fromOutside ? { trusted: false } : {}), ...(madeBy === 'mcp' ? { trusted: false, madeBy } : {}) };
   await recordMade(dir, { fromOutside, madeBy });
+  // (a co-design project: its System document, its top, #4702)
+  if (kind === CODESIGN_KIND) { const f = newSystemFile(name); await fs.writeFile(path.join(dir, f.path), f.text); }
   return writeProject(name, json);
 }
 
