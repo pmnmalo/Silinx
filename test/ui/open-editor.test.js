@@ -41,9 +41,10 @@ async function ran() {
 }
 const items = (page) => page.eval(() => [...document.querySelectorAll('body > .menu-popup .mi')].map((m) => m.querySelector('.lbl')?.textContent.trim() ?? m.textContent.trim()));
 const closeMenu = (page) => page.eval(() => document.querySelector('body > .menu-popup')?.remove());
-// a Design pane row's menu, by its key (m:<module>, project)
+// a Design pane row's menu, by its key (m:<module>, project); the row shown (#5171: a new project's rows are drawn while
+// the side panel still shows the Start page, the Design page in front a moment later)
 async function rowMenu(page, key) {
-  const i = await page.waitFor((k) => { const n = [...document.querySelectorAll('#hier .row')].findIndex((r) => r.dataset.key === k); return n + 1; }, [key], { what: key });
+  const i = await page.waitFor((k) => { const n = [...document.querySelectorAll('#hier .row')].findIndex((r) => r.dataset.key === k && r.getClientRects().length); return n + 1; }, [key], { what: key });
   await page.rightClick('#hier .row', { index: i - 1 });
   await page.waitForSelector('body > .menu-popup');
   return items(page);
@@ -194,6 +195,10 @@ uiTest('#4017 the browser edition: no Open in VS Code', S, async (page) => {
   assert.equal((await rowMenu(page, `m:${top}`)).some((l) => /^Open in /.test(l)), false);
   await closeMenu(page);
   assert.equal((await rowMenu(page, 'project')).some((l) => /^Open Folder in /.test(l)), false);
+  await closeMenu(page);
+  // #5171 regression: the rows there but the pane hidden for a moment (as after Finish): the menu once it is shown
+  await page.eval(() => { const hier = document.getElementById('hier'); hier.style.display = 'none'; setTimeout(() => { hier.style.display = ''; }, 300); });
+  assert.equal((await rowMenu(page, `m:${top}`)).some((l) => /^Open in /.test(l)), false);
   await closeMenu(page);
   assert.deepEqual(warnings(page), []);
 }, { timeout: 180000 });
