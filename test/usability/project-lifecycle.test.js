@@ -53,10 +53,11 @@ const SOURCES = [
   { type: 'Clock Manager (DCM / PLL)', kind: 'clock', name: 'clkgen', wizard: 'Clocking Wizard', lines: ['Clocking Wizard: created src/clkgen.vhd, the module clkgen: clk0 50 MHz.'] },
   { type: 'Block Memory', kind: 'bram', name: 'ram', wizard: 'Block Memory', lines: ['Block Memory: created src/ram.vhd, the module ram: 1024 x 8, 1 RAMB16_S9.'] },
 ];
-// (#5252: the first export's own write of silinx.json said a moment later to be a change made outside Silinx: left out)
-const OUTSIDE = ['Changed outside Silinx: silinx.json.'];
 const opened = (name) => `Project "${name}" opened (${DEVICE}).`;
 const TRUST = (name) => `Project "${name}" came from outside (imported): it is edited, checked, simulated and implemented with the Silinx toolchain; Xilinx ISE and programming a board or a PROM run only once you trust it.`;
+
+/** The model's other files: neither a source nor the constraints (an Import Project…'s count). */
+const others = (m) => { const src = new Set(m.files().map((f) => f.split(':')[0])); return m.tree().filter((f) => !src.has(f) && f !== m.constraints).length; };
 
 /** A project's files on disk, path → text (silinx.json apart). */
 async function texts(name) {
@@ -110,7 +111,6 @@ async function lifecycle(page, title) {
   let zip = null;
   await s.act('Export Project (.zip)', {}, async () => { zip = await s.a.exportZip('UsabLife'); }, {
     changes: false,
-    ignore: OUTSIDE,
     lines: async () => [`Exported UsabLife-silinx.zip: the whole Silinx project (silinx.json + all project files, ${Math.round((await fsp.stat(zip)).size / 1024)} KB).`],
     expect: async () => {
       const entries = await readZip(new Uint8Array(await fsp.readFile(zip)), { inflate: (d) => zlib.inflateRawSync(d) });
@@ -123,18 +123,15 @@ async function lifecycle(page, title) {
   return { s, model, zip };
 }
 
-// a line whose count varies (#: the import's other files), in the interface's language (#5254): its translation's RegExp
-const counted = async (s, line) => new RegExp(`^${(await s.trs([line.replace('#', '999')]))[0].replace(/[.*+?^${}()|[\]\\]/g, '\\$&').replace('999', '\\d+')}$`);
-
 uiTest('usability: project: New Project, a source of each kind, the top set, one removed (Undo, Redo), one renamed, the top changed, exported, imported, closed and opened again', E, async (page) => {
   const { s, model, zip } = await lifecycle(page, 'project: lifecycle');
   // imported as a new project: the same files, sources and settings; opened with no editor
   const left = await pageState(page);
   s.model = model.clone('UsabLife2');
   await s.act('Import Project…', { zip: path.basename(zip), name: 'UsabLife2' }, () => s.a.importZip(zip, 'UsabLife2'), {
-    ignore: OUTSIDE,
-    // (the trust's line and its button; #5253: the sources counted twice, "8 source file(s), 20 other file(s)" for 20 files)
-    lines: async () => [opened('UsabLife2'), `${(await s.trs([TRUST('UsabLife2')]))[0]} ${(await s.trs(['Trust Project']))[0]}`, await counted(s, "Imported Silinx project 'UsabLife2' (8 source file(s), # other file(s)).")],
+    // (the trust's line and its button; the other files: neither a source nor the constraints, #5253)
+    lines: async () => [opened('UsabLife2'), `${(await s.trs([TRUST('UsabLife2')]))[0]} ${(await s.trs(['Trust Project']))[0]}`,
+      ...await s.trs([`Imported Silinx project 'UsabLife2' (8 source file(s), ${others(model)} other file(s)).`])],
     expect: async () => { const a = await texts('UsabLife2'), b = await texts('UsabLife'); same(Object.keys(a).filter((f) => a[f] !== b[f]), [], 'the files not as the first project\'s'); },
   });
   // closed: the Start page, no project, no editor
@@ -172,8 +169,7 @@ uiTest('usability: project: Rename… of a module keeps the editors\' tabs in th
 
 // Export Project (.zip)… gives the project its id (a copy's origin, #4205), a write of silinx.json of its own: no line
 // says that it changed outside Silinx
-uiTest('usability: project: Export Project (.zip)…: no "Changed outside Silinx" line after it (#5252)', E, async (page, _env, t) => {
-  t.todo('#5252: "Changed outside Silinx: silinx.json." a moment after the first export');
+uiTest('usability: project: Export Project (.zip)…: no "Changed outside Silinx" line after it (#5252)', E, async (page) => {
   const a = await small(page, 'UsabExportOutside');
   const n = await consoleCount(page);
   const zip = await a.exportZip('UsabExportOutside');
@@ -182,8 +178,7 @@ uiTest('usability: project: Export Project (.zip)…: no "Changed outside Silinx
 });
 
 // Import Project… of a Silinx zip: its line counts the sources and the other files apart
-uiTest('usability: project: Import Project…\'s line counts the sources and the other files once (#5253)', E, async (page, _env, t) => {
-  t.todo('#5253: "3 source file(s), 3 other file(s)" for 3 files');
+uiTest('usability: project: Import Project…\'s line counts the sources and the other files once (#5253)', E, async (page) => {
   const a = await small(page, 'UsabCount');
   const zip = await a.exportZip('UsabCount');
   const n = await consoleCount(page);
@@ -212,13 +207,11 @@ uiTest('usability: project: the console\'s lines of New Source, Remove from Proj
     'Removed src/sheet.sch.json and its HDL file src/sheet.vhd from the project (the files are kept in the project folder).',
     'Undo: Remove from Project.', 'Redo: Remove from Project.', "Rename: module 'alu' renamed to 'alu2' (2 file(s) updated); src/alu.vhd → src/alu2.vhd.",
     `Exported UsabLinesPt-silinx.zip: the whole Silinx project (silinx.json + all project files, ${kb} KB).`];
-  // (#5252's line after the export, if it comes: its own scenario's)
-  const outside = await tr(page, OUTSIDE);
-  assert.deepEqual((await consoleLines(page, n)).filter((l) => !outside.includes(l)), ['src/sheet.vhd gerado a partir de src/sheet.sch.json (todas as fontes têm o seu HDL)',
+  assert.deepEqual(await consoleLines(page, n), ['src/sheet.vhd gerado a partir de src/sheet.sch.json (todas as fontes têm o seu HDL)',
     "Nova fonte criada: Esquemático 'src/sheet.sch.json'.", 'Removidos do projeto src/sheet.sch.json e o seu ficheiro HDL src/sheet.vhd (os ficheiros ficam na pasta do projeto).',
     'Anular: Remover do Projeto.', 'Refazer: Remover do Projeto.', "Mudar o Nome: módulo 'alu' passou a chamar-se 'alu2' (2 ficheiro(s) atualizado(s)); src/alu.vhd → src/alu2.vhd.",
     `Exportado UsabLinesPt-silinx.zip: o projeto Silinx inteiro (silinx.json + todos os ficheiros do projeto, ${kb} KB).`]);
   // drawn again in English when the language changes
   await page.eval(async () => { (await import('/js/i18n.js')).setLanguage('en'); });
-  assert.deepEqual((await consoleLines(page, n)).filter((l) => l !== OUTSIDE[0]), english);
+  assert.deepEqual(await consoleLines(page, n), english);
 });

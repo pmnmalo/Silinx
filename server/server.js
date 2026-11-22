@@ -131,11 +131,13 @@ export async function createApp({ host = '127.0.0.1', token = null, codes = crea
     busy: name => listJobs().some(j => j.status === 'running' && String(j.meta?.project || '').toLowerCase() === name.toLowerCase()),
   });
   app.locals.watcher = watcher;
-  const WRITING_GET = /^\/projects\/[^/]+\/fpga-view$/;   // (export.xise writes nothing since #1432, #4753)
+  // (export.xise writes nothing since #1432, #4753; a Silinx zip given out, export.zip?copy=1, writes the project's id the
+  // first time, a copy's origin, #4205: its own, not told to the page as a change made outside Silinx, #5252)
+  const WRITING_GET = /^\/projects\/[^/]+\/(?:fpga-view|export\.zip)$/;
   // (a pull writes what GitHub had, not what the page sent: told to the page, its open documents read again, #3195)
   const TOLD = /^\/projects\/[^/]+\/git\/pull$/;
   // (the requests whose writes are all recorded, server/own-writes.js: another process's changes meanwhile told, #4726)
-  const KNOWN = /^(PUT \/projects\/[^/]+(\/file)?|DELETE \/projects\/[^/]+\/file|POST \/projects\/[^/]+\/(rename|trust))$/;
+  const KNOWN = /^(PUT \/projects\/[^/]+(\/file)?|DELETE \/projects\/[^/]+\/file|POST \/projects\/[^/]+\/(rename|trust)|GET \/projects\/[^/]+\/export\.zip)$/;
   // (an import's project is the one it makes, ?name=, never a project named import-zip, #4754; import-xise's name is in its
   // body: no lock, as a new project's)
   const IMPORT = /^\/(?:projects\/)?import-(?:zip|xise)$/;

@@ -122,3 +122,19 @@ test('#4760 exportProjectZip: a file left out said, a schematic not read said', 
   assert.deepEqual(x.warnings, ['src/gone.vhd: not read (not found): left out of the export', 'src/broken.sch.json: not read (not JSON): no ISE schematic made of it']);
   assert.ok((await names(x.zip)).includes('gz.xise'));
 });
+
+// #5253 regression: a Silinx zip's sources were counted among its other files too ("3 source file(s), 3 other file(s)"
+// for 3 files): its other files are those that are neither its sources nor its constraints, as an ISE import's
+test('#5253 importProjectEntries: the other files are neither the sources nor the constraints, a Silinx zip\'s, a folder\'s and an ISE zip\'s', async () => {
+  await P.createProject({ name: 'cnt5253', template: 'gates' });
+  fs.writeFileSync(`${P.projectDir('cnt5253')}/notes.txt`, 'notes\n');
+  const back = async (to, kind) => importProjectEntries(P, to, await gateZip((await exportProjectZip(P, 'cnt5253', kind)).zip, NODE_CODEC), m => new Error(m));
+  const count = r => [r.project.files.map(f => f.path).sort(), r.project.constraints, r.extra.sort(), r.missing, r.warnings];
+  assert.deepEqual(count(await back('cnt5253_s', 'silinx')), [['sim/tb_gates.vhd', 'src/gates.vhd'], 'constraints/gates.ucf', ['notes.txt', 'src/gates.sch.json'], [], []]);
+  // (a project folder: its files as its zip's)
+  const dir = P.projectDir('cnt5253');
+  const folder = (await P.fileTree('cnt5253')).concat('silinx.json').map(p => ({ path: `cnt5253/${p}`, data: new Uint8Array(fs.readFileSync(`${dir}/${p}`)) }));
+  assert.deepEqual(count(await importProjectEntries(P, 'cnt5253_f', gateEntries(folder), m => new Error(m))), [['sim/tb_gates.vhd', 'src/gates.vhd'], 'constraints/gates.ucf', ['notes.txt', 'src/gates.sch.json'], [], []]);
+  // (an ISE zip: its schematic made a Silinx one again, its HDL a source; the ISE schematic copied as it is)
+  assert.deepEqual(count(await back('cnt5253_x', 'xilinx')), [['sim/tb_gates.vhd', 'src/gates.vhd'], 'constraints/gates.ucf', ['notes.txt', 'src/gates.sch'], [], []]);
+});
