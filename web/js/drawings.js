@@ -227,7 +227,7 @@ export async function openFsm(path) {
         onTruthTables: () => fsmTruthTables(path),
         onToAsm: () => fsmToAsmChart(path),
         onVerify: (m) => import('./verify-props.js').then(v => v.propertyProcess(m)),
-        onMessage: msg => log(`WARNING: ${path}: ${msg} (not applied)`, 'warn'),
+        onMessage: msg => log(`WARNING: ${path}: ${t(msg)} ${t('(not applied)')}`, 'warn'),   // (in the page's language, #5164)
         onProblems: setProblems,
         onCheck: (diags) => problems.log(inLanguage(diags)),   // (Check: in the Console too, #2803)
       });
@@ -366,7 +366,7 @@ export async function openPetri(path) {
         onOpenFile: f => openFile(f),
         onProblems: (diags) => problems.set(diags),
         onCheck: (diags) => problems.log(diags),   // (Check: in the Console too, #2803)
-        onMessage: (text, err) => log(err ? `WARNING: ${path.split('/').pop()}: ${text}` : `${path.split('/').pop()}: ${text}`, err ? 'warn' : 'info'),
+        onMessage: (text, err) => log(err ? `WARNING: ${path.split('/').pop()}: ${t(text)}` : `${path.split('/').pop()}: ${t(text)}`, err ? 'warn' : 'info'),   // (in the page's language, #5164)
         ...followOnly(path, model),
       });
       d.petriEditor = ed;
@@ -427,7 +427,7 @@ export async function openCircuit(path) {
         onChange: (m) => { setDirty(d, true); refreshCircuitSchematic(path, m); },   // (its schematic, when open, follows: #4069)
         onProblems: (diags) => problems.set(diags),
         onCheck: (diags) => problems.log(diags),
-        onMessage: (text, err) => log(err ? `WARNING: ${path.split('/').pop()}: ${text}` : `${path.split('/').pop()}: ${text}`, err ? 'warn' : 'info'),
+        onMessage: (text, err) => log(err ? `WARNING: ${path.split('/').pop()}: ${t(text)}` : `${path.split('/').pop()}: ${t(text)}`, err ? 'warn' : 'info'),   // (in the page's language, #5164)
         hdl: circuitModules,   // (a KiCad part modelled by a module of the project, #4283, #4284)
         importKicad: K.importKicadDialog, browseKicad: KB.canBrowseKicad() ? KB.browseKicadDialog : null, importCatalogue: KC.importCatalogue, kicadExport: { ics: KX.exportIcsDialog, pkg: KX.exportPackageDialog },   // (Import KiCad Part…, #4281;
         // Browse KiCad Libraries…, #4285; the KiCad catalogue, #4305; the ⋮ menu's KiCad exports, #4282)

@@ -86,6 +86,8 @@ export const FSM_PT = {
   'Bold': 'Negrito', 'Italic': 'Itálico', 'Bold italic': 'Negrito itálico', 'Sans-serif': 'Sem serifa', 'Serif': 'Com serifa',
   'Monospace': 'Monoespaçado', 'Solid': 'Contínua', 'Dashed': 'Tracejada', 'Dotted': 'Pontilhada', 'Default look': 'Aspeto predefinido',
   'Back to the colour of the theme': 'Voltar à cor do tema', 'Draw it with the default look, in the colours of the theme': 'Desenhá-lo com o aspeto predefinido, nas cores do tema',
+  // (an edit refused, in the console: its reason then this, #5164)
+  '(not applied)': '(não aplicado)',
 };
 
 // Plain-language messages of the validation (core/fsm.js) and other texts with names in them

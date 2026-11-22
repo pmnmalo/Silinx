@@ -45,7 +45,7 @@ async function openTraffic(page, name) {
   await page.waitFor(() => window.Silinx.active?.fsmEditor?.fitted(), [], { what: 'the FSM editor' });
 }
 
-uiTest('#2729 FSM editor: no hint line; labelled selectors and the zoom in the toolbar, the counts in the status line (#2763); the reset on the start-up arrow; an invalid text to the console', E, async (page) => {
+uiTest('#2729 FSM editor: no hint line; labelled selectors and the zoom in the toolbar, the counts in the status line (#2763); the reset on the start-up arrow; an invalid text to the console (in Portuguese too, #5164)', E, async (page) => {
   await openTraffic(page, 'FsmLay');
   // no hint line; one status line, the editor's last line
   assert.deepEqual(await page.eval((ed) => ['.asm-hint', '.asm-status', '.asm-status-msg', '.doc-status'].map((s) => document.querySelectorAll(`${ed} ${s}`).length), ED), [0, 0, 0, 1]);
@@ -104,6 +104,14 @@ uiTest('#2729 FSM editor: no hint line; labelled selectors and the zoom in the t
   await page.eval(async () => { (await import('/js/i18n.js')).setLanguage('pt'); });
   assert.deepEqual((await bar(page)).slice(1), []);
   assert.deepEqual(await status(page), ['7 estado(s), 8 transição(ões)', 'Moore', 'Codificação: Binária']);
+  // (its warning in Portuguese too, #5164)
+  await page.eval((ed) => { const c = document.querySelector(`${ed} [data-state=s1] .fsm-circle`), b = c.getBoundingClientRect(); c.dispatchEvent(new MouseEvent('dblclick', { bubbles: true, clientX: b.left + b.width / 2, clientY: b.top + b.height / 2 })); }, ED);
+  await page.waitForSelector(`${ED} .fsm-inline`);
+  await page.fill(`${ED} .fsm-inline`, 'CARS / phase=');
+  await page.key('Enter');
+  const wantPt = "WARNING: src/traffic.fsm.json: 'phase=' não é uma atribuição de saída (escreva saída=valor, p.ex. z=1) (não aplicado)";
+  await page.waitFor((w) => [...document.querySelectorAll('#console-log .ln')].some((l) => l.textContent === w), [wantPt], { what: 'the warning in Portuguese' });
+  assert.deepEqual(await page.eval(() => [...document.querySelectorAll('#console-log .ln.warn, #console-log .ln.err')].map((l) => l.textContent).filter((t) => /^(WARNING|ERROR)/.test(t))), [want, wantPt]);
   await page.eval(async () => { (await import('/js/i18n.js')).setLanguage('en'); });
   assert.deepEqual(warnings(page), []);
 });
