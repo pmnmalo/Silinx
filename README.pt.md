@@ -57,7 +57,8 @@ não precisa de placa nenhuma. [Placas e ferramentas](docs/user/pt/boards.md)
 ## Experimentar
 
 - **No browser:** abra **https://pmnmalo.github.io/Silinx/**, clique em *Novo Projeto…* e comece a partir de um
-  exemplo. Os projetos ficam no seu browser. Nada a instalar, e funciona também num tablet.
+  exemplo. Os projetos ficam no seu browser. Nada a instalar, e funciona também num tablet (num telemóvel: para
+  ler, simular e emular).
 - **A síntese e o bitstream não precisam de nenhuma ferramenta da Xilinx** para a **Basys2-100 / 250,
   Nexys2-500 / 1200, Nexys3, Atlys, iCEBreaker, ULX3S, Tang Nano 9K e GateMate de avaliação**: as ferramentas do Silinx, o modo por omissão,
   sintetizam (Yosys), posicionam e encaminham (nextpnr) e escrevem o bitstream, no browser ou no seu computador.

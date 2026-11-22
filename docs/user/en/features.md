@@ -414,6 +414,26 @@ editors and the drawings, simulation, and the Silinx toolchain (synthesis, place
   editors' properties (and the schematic's symbols) open over the drawing with their toolbar's
   *Properties* (*Symbols*) button, so the drawing keeps the whole width.
 
+## On a phone
+
+On a phone (a screen under 600 px wide) Silinx is for reading, simulating and emulating a design; editing it stays a
+tablet's and a computer's (#5121).
+
+- **One pane at a time**, the whole screen: the side panel (Start, Design, Files…; Simulate's test benches, its
+  Instances and Objects; Emulate's processes), the document, or the console, switched by the bar at the bottom:
+  *Panels*, *Document*, *Console*. A new error or warning puts a dot on *Console*.
+- **The main toolbar** keeps *Open Project*, *Undo*, *Redo* and *Find in Project*; the other tools are in its
+  *More tools* (⋯) menu. Menus take the whole width, dialogs and wizards the whole screen.
+- **Open** a project, an example, a design's link or a shared project's link, and **follow a live share** (read only).
+- **Documents open read only**, with *Read-only on a phone* at the end of their toolbar: read them, zoom and pan them
+  (two fingers, a pinch), try a drawing out (*Try it*), step through a state diagram or an ASM chart. To edit one, open
+  it on a tablet or a computer.
+- **Simulate**: choose the test bench in the *Panels* pane; the waves take the *Document* pane. A finger places the
+  cursor, two fingers scroll the time, a pinch zooms it.
+- **The Board Emulator**: the board is fitted to the width, and its switches and buttons are repeated under it, large
+  enough for a finger: a tap flips a switch, a finger held on a button holds it down.
+- **Not designed for a phone**: editing, implementing a design and programming a board. Use a tablet or a computer.
+
 ## Guided labs
 
 *Project ▸ Guided Labs…* opens a step-by-step tutorial on the project, beside its documents: each step says what to

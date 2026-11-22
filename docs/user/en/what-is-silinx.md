@@ -34,7 +34,7 @@ Both are in English and in Portuguese: the browser's language is chosen, and *Se
 ## Where it runs
 
 - **In the browser**, at https://pmnmalo.github.io/Silinx/: nothing to install, the projects kept in the browser
-  (or, in Chrome and Edge, in a folder of your disk). On a tablet too.
+  (or, in Chrome and Edge, in a folder of your disk). On a tablet too, and on a phone to read, simulate and emulate.
 - **As one file**, `Silinx.html`, to keep and open offline.
 - **On your computer**, with Node.js: the projects as folders, Xilinx ISE 14.7 and AMD Vivado for the boards the
   Silinx toolchain does not build for, and the board programmed with the installed tools.

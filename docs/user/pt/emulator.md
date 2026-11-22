@@ -4,7 +4,8 @@
 
 O Emulador da Placa corre o projeto num desenho da placa real, ligado pelas suas restrições: mude os interruptores,
 carregue nos botões, e veja os LEDs, os mostradores de 7 segmentos e o monitor VGA, à velocidade real da placa. Sem
-placa e sem nada a instalar: funciona no browser, também num tablet.
+placa e sem nada a instalar: funciona no browser, também num tablet. Num telemóvel a placa ajusta-se à largura do
+ecrã, e os seus interruptores e botões repetem-se por baixo dela, grandes o bastante para o dedo.
 
 ![O exemplo stopwatch numa Basys2 emulada](../../images/emulator-basys2-pt.webp)
 

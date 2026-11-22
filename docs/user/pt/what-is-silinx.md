@@ -36,7 +36,7 @@ As duas estão em português e em inglês: o Silinx escolhe a língua do browser
 ## Onde corre
 
 - **No browser**, em https://pmnmalo.github.io/Silinx/: nada a instalar, os projetos guardados no browser (ou, no
-  Chrome e no Edge, numa pasta do disco). Também num tablet.
+  Chrome e no Edge, numa pasta do disco). Também num tablet, e num telemóvel para ler, simular e emular.
 - **Num só ficheiro**, o `Silinx.html`, para guardar e abrir sem Internet.
 - **No seu computador**, com o Node.js: os projetos em pastas, o Xilinx ISE 14.7 e o AMD Vivado para as placas que as
   ferramentas do Silinx não suportam, e a placa programada com as ferramentas instaladas.

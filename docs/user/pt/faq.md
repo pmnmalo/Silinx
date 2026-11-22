@@ -17,6 +17,9 @@ utilizador. *Ficheiro ▸ Exportar Projeto (.zip)…* faz uma cópia.
 **Funciona num iPad ou num tablet?** Sim: os editores, a simulação, o emulador e o bitstream. O Chrome num tablet
 Android também programa a placa; um iPad não chega aos dispositivos USB.
 
+**E num telemóvel?** Para ler, simular e emular, sim: uma área de cada vez, os documentos só de leitura, as ondas e a
+placa emulada por toque. Editar, implementar e programar a placa precisam de um tablet ou de um computador.
+
 **Posso abrir os meus projetos do ISE?** Sim: *Importar Projeto…* aceita um projeto do ISE (o seu `.xise`, ou um zip),
 também os seus esquemáticos.
 

@@ -70,6 +70,9 @@ https://pmnmalo.github.io/Silinx/dev/, com os projetos à parte) e passe ao pass
   menos memória, por isso um desenho grande pode falhar na síntese. Os menus do botão direito abrem
   com um **toque longo** (o dedo parado meio segundo); dois dedos movem um desenho e o gesto de pinça faz zoom. Na vertical o painel lateral (Projeto) mostra-se ou esconde-se com o
   botão do painel lateral no cabeçalho (na interface Estilo ISE é uma gaveta, o botão à esquerda do cabeçalho) e as propriedades dos editores abrem por cima do desenho (**Propriedades**).
+- **Num telemóvel**: abrir um projeto, um exemplo ou uma ligação, ler os documentos (aí só de leitura), simular e
+  correr o Emulador da Placa; uma área de cada vez, trocada pela barra em baixo (*Painéis*, *Documento*, *Consola*).
+  Editar, implementar e programar a placa precisam de um tablet ou de um computador.
 - **Uma ligação para os diapositivos**: clique com o botão direito no projeto, no painel Projeto, **Partilhar
   Projeto…** (uma cópia), e depois **Gerar** (a ligação feita, e depois **Copiar**, **Mostrar** ou **Mostrar o Código
   QR**): a ligação abre o Silinx no projeto, em Experimentar, na simulação ou no emulador da placa, com o
