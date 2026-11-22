@@ -268,7 +268,9 @@ test('workflows: every job has a time limit; the Playwright browsers cached by i
   assert.deepEqual(installs.map(([n]) => n).sort(), ['browsers', 'webkit-standalone']);
   for (const [name, lines] of installs) {
     const body = lines.join('\n');
-    const browsers = /npx playwright install --with-deps ([\w ]+?)(?: &&|;|\n|$)/.exec(body)[1].split(' ');
+    // (a job per browser, #5170: its matrix's browser, $BROWSER, in the install and in the keys)
+    const installed = /npx playwright install --with-deps ([\w ]+?|"\$BROWSER")(?: &&|;|\n|$)/.exec(body)[1];
+    const browsers = [installed === '"$BROWSER"' ? '${{ matrix.browser }}' : installed.split(' ').join('-')];
     const cache = /uses: actions\/cache@.+\n\s+with:\n\s+path: ~\/\.cache\/ms-playwright\n\s+key: (.+)/.exec(body);
     assert.ok(cache, name);
     assert.equal(cache[1], `playwright-\${{ runner.os }}-${browsers.join('-')}-\${{ hashFiles('node_modules/playwright-core/package.json') }}`, name);
@@ -286,8 +288,8 @@ test('workflows: every job has a time limit; the Playwright browsers cached by i
     assert.match(body, /for attempt in 1 2; do\n\s+if timeout 10m npx playwright install /, name);
     assert.match(body, /npx playwright install [^\n]+\n(?:.*\n){3}\s+exit 1\n\s+timeout-minutes: 25\n/, `${name}: the step's limit past its two attempts`);
   }
-  // the browsers job's limit past its steps' own (the install's 25 minutes, the tests' 40), so a step's fires
-  assert.match(j.browsers.join('\n'), /^ {4}timeout-minutes: 70$/m);
+  // the browsers job's limit past its steps' own (the install's 25 minutes, the tests' 30), so a step's fires
+  assert.match(j.browsers.join('\n'), /^ {4}timeout-minutes: 60$/m);
 });
 
 test('workflows: one setup for the jobs that run the repository\'s code, the action of the repository (#417)', () => {

@@ -62,14 +62,15 @@ test('CI: at a release (a tag v*, or the toolchain package\'s silinx-fpga-v*, #1
   assert.doesNotMatch(ui, /npm run test:ui/, 'the parts, not every file');
   // a failed test's screenshot kept, as the job's artifact (#4474), in the browsers' job too
   assert.match(ui, /- if: failure\(\)\n\s+uses: actions\/upload-artifact@.+\n\s+with:\n\s+name: ui-screenshots-\$\{\{ matrix\.interface \}\}-\$\{\{ matrix\.part \}\}\n\s+path: \/tmp\/silinx-ui-\*\/screenshots\/\n/);
-  assert.match(fs.readFileSync(path.join(ROOT, '.github/workflows/ci.yml'), 'utf8'), /- run: npm run test:browsers\n\s+timeout-minutes: 40\n\s+- if: failure\(\)\n\s+uses: actions\/upload-artifact@.+\n\s+with:\n\s+name: browsers-screenshots\n\s+path: \/tmp\/silinx-ui-\*\/screenshots\/\n/);
+  assert.match(fs.readFileSync(path.join(ROOT, '.github/workflows/ci.yml'), 'utf8'), /- run: npm run test:browsers -- "\$BROWSER"\n\s+timeout-minutes: 30\n\s+- if: failure\(\)\n\s+uses: actions\/upload-artifact@.+\n\s+with:\n\s+name: browsers-screenshots-\$\{\{ matrix\.browser \}\}\n\s+path: \/tmp\/silinx-ui-\*\/screenshots\/\n/);
   assert.match(ui, /^ {8}timeout-minutes: 40$/m, 'a part takes up to 25 minutes on a slow runner (#2462)');
   assert.match(ui, /^    timeout-minutes: 45$/m, 'the job holds the step and its setup');
-  // Firefox and WebKit, one after the other (#1126)
+  // Firefox and WebKit (#1126), a job each (#5170: both in one job took 40 minutes on a slow runner)
   const br = j.browsers.join('\n');
-  // (past its steps' own: the install's 25 minutes, the tests' 40, #2939)
-  assert.match(br, /^ {4}timeout-minutes: 70$/m);
-  assert.match(br, /- run: npm run test:browsers\n {8}timeout-minutes: 40$/m);
+  assert.match(br, /^    strategy:\n      fail-fast: false\n      matrix:\n        browser: \[firefox, webkit\]\n    name: browsers \(\$\{\{ matrix\.browser \}\}\)\n    env:\n      BROWSER: \$\{\{ matrix\.browser \}\}$/m);
+  // (past its steps' own: the install's 25 minutes, the tests' 30, #2939)
+  assert.match(br, /^ {4}timeout-minutes: 60$/m);
+  assert.match(br, /- run: npm run test:browsers -- "\$BROWSER"\n {8}timeout-minutes: 30$/m);
   // WebKit's jobs on Ubuntu 24.04: Playwright's WebKit needs its libicu 74, ubuntu-latest (26.04) has 78 (#3854)
   for (const k of ['browsers', 'webkit-standalone']) assert.match(j[k].join('\n'), /^    runs-on: ubuntu-24\.04$/m, k);
   // the macOS and Windows smoke tests

@@ -212,10 +212,19 @@ jobs:
   browsers:
     needs: changes
     if: needs.changes.outputs.run == 'true'
+    # one job per browser (#5170): Firefox then WebKit in one job took 28 minutes, and 40 on a slow runner (every
+    # test 1.44 times slower), past the step's limit
+    strategy:
+      fail-fast: false
+      matrix:
+        browser: [firefox, webkit]
+    name: browsers (${{ matrix.browser }})
+    env:
+      BROWSER: ${{ matrix.browser }}
     # (Ubuntu 24.04: Playwright's WebKit is built for its libicu 74, ubuntu-latest's 26.04 has 78, #3854)
     runs-on: ubuntu-24.04
-    # (Firefox, then WebKit, one file at a time: about 25 minutes, #1126; the steps' own limits first, #2939)
-    timeout-minutes: 70
+    # (one file at a time: about 15 minutes, #1126; the steps' own limits first, #2939)
+    timeout-minutes: 60
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -229,22 +238,22 @@ jobs:
       - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: ~/.cache/ms-playwright
-          key: playwright-${{ runner.os }}-firefox-webkit-${{ hashFiles('node_modules/playwright-core/package.json') }}
+          key: playwright-${{ runner.os }}-${{ matrix.browser }}-${{ hashFiles('node_modules/playwright-core/package.json') }}
       - id: apt
         uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: ~/apt-archives
-          key: apt-firefox-webkit-${{ steps.image.outputs.key }}
-          restore-keys: apt-firefox-webkit-
+          key: apt-${{ matrix.browser }}-${{ steps.image.outputs.key }}
+          restore-keys: apt-${{ matrix.browser }}-
       # an install that stalls stopped at 10 minutes and run once more, with what it downloaded
-      - name: Firefox, WebKit and their system packages
+      - name: The browser and its system packages
         run: |
           mkdir -p ~/apt-archives/partial
           printf 'Dir::Cache::Archives "%s";\nAPT::Keep-Downloaded-Packages "true";\nAPT::Sandbox::User "root";\n' ~/apt-archives \
             | sudo tee /etc/apt/apt.conf.d/90silinx-archives > /dev/null
           for attempt in 1 2; do
-            if timeout 10m npx playwright install --with-deps firefox webkit; then sudo chown -R "$USER" ~/apt-archives; exit 0; fi
-            echo "::warning::Firefox, WebKit and their system packages: attempt $attempt stopped or failed (#2921)"
+            if timeout 10m npx playwright install --with-deps "$BROWSER"; then sudo chown -R "$USER" ~/apt-archives; exit 0; fi
+            echo "::warning::$BROWSER and its system packages: attempt $attempt stopped or failed (#2921)"
             sudo dpkg --configure -a
           done
           exit 1
@@ -253,13 +262,14 @@ jobs:
         uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: ~/apt-archives
-          key: apt-firefox-webkit-${{ steps.image.outputs.key }}
-      - run: npm run test:browsers
-        timeout-minutes: 40
+          key: apt-${{ matrix.browser }}-${{ steps.image.outputs.key }}
+      # (a browser's 15 minutes, 21 on a slow runner)
+      - run: npm run test:browsers -- "$BROWSER"
+        timeout-minutes: 30
       - if: failure()
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
-          name: browsers-screenshots
+          name: browsers-screenshots-${{ matrix.browser }}
           path: /tmp/silinx-ui-*/screenshots/
           retention-days: 14
           if-no-files-found: ignore
