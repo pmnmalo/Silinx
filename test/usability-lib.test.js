@@ -110,3 +110,24 @@ test('usability: the junction dots: where three branches meet, wires\' and a pin
   d.wires.push({ id: 'W6', points: [P(260, 60), P(260, 140)] });
   assert.deepEqual(junctionPoints(d), ['160,100', '230,100']);
 });
+
+test('usability: the circuit\'s invariants: the breadboard example holds them; a wire come off, a loose end, a short said', async () => {
+  const { circInvariants, circDangling, circDetached, circNets, circHdlErrors, circDiagnostics } = await import('./usability/lib/circ-invariants.js');
+  const m = JSON.parse(fs.readFileSync(path.join(ROOT, 'examples/breadboard/src/breadboard.circ.json'), 'utf8'));
+  assert.deepEqual(circInvariants(m), {});
+  assert.deepEqual(circDangling(m), []);
+  assert.deepEqual(circDiagnostics(m), []);
+  assert.deepEqual(circHdlErrors(m), []);
+  assert.equal(circNets(m).length, 30);
+  // U2's VCC wire (w11: its pin 14 at (19, 4) to the + rail) moved off the board: its end on nothing, come off its pin
+  const e = structuredClone(m);
+  e.wires.find((w) => w.id === 'w11').points[0] = [19, 30];
+  assert.deepEqual(circDangling(e).map((x) => x.text), ["wire w11's end (19, 30) on nothing"]);
+  assert.deepEqual(circDetached(m, e), ["wire w11's first end came off its pin"]);
+  assert.deepEqual(circDetached(m, e, { except: ['w11'] }), []);
+  assert.deepEqual(Object.keys(circInvariants(e)), ['errors'], 'U2 not powered');
+  // the top rails' + and − joined: a short circuit, an error
+  const f = structuredClone(m);
+  f.wires.push({ id: 'w99', points: [[10, -4], [10, -3]] });
+  assert.match(circInvariants(f).errors[0], /^error: Short circuit: the supply's \+ and − are joined/);
+});
