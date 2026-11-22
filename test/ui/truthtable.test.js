@@ -859,3 +859,39 @@ uiTest('#1491 Truth Table: the 3D Karnaugh map draws each group as its exact sha
   assert.deepEqual([0, 1].map((m) => s.pieces.filter((p) => p.startsWith(`0@${m}:`)).flatMap((p) => p.split(':')[1].split(',').map(Number)).sort((a, b) => a - b)), [cellsOf(tables.sides, 0), cellsOf(tables.sides, 1)]);
   assert.deepEqual(s.walls, ['0@0-1:0-3,0-0:bottom', '0@0-1:0-3,0-0:right', '0@0-1:0-3,0-0:top', '0@0-1:0-3,3-3:bottom', '0@0-1:0-3,3-3:left', '0@0-1:0-3,3-3:top']);
 });
+
+// #5268: Edit ▸ Undo (and Redo) with the Outputs box focused shows the table's outputs in it: leaving the box applies
+// only what is typed after, never the undone text again; a shape typed in the other box then, with the table's outputs
+uiTest('#5268 Truth Table: Undo and Redo with a names box focused show the table\'s names in it, leaving it keeps the undone table', E, async (page) => {
+  const d = { version: 1, name: 'lamps', inputs: ['a', 'b'], outputs: ['f', 'g'], table: { f: '0001', g: '0111' }, exprs: {}, notes: '', form: 'sop', lang: 'vhdl' };
+  await makeProject(env, { name: 'TtBoxUndo', files: { 'src/lamps.bool.json': JSON.stringify(d) } });
+  await page.openProject('TtBoxUndo');
+  await page.eval(() => window.SilinxApp.openTt('src/lamps.bool.json'));
+  await page.waitFor(() => window.Silinx.active?.id === 'tt:src/lamps.bool.json' && document.querySelector('.doc:not([hidden]) .tt-editor'), [], { what: 'truth table editor' });
+  const T = '.doc:not([hidden]) .tt-editor';
+  const state = () => page.eval((t) => ({ focused: document.activeElement?.className, inputs: document.querySelector(`${t} .tt-inputs`).value, outputs: document.querySelector(`${t} .tt-outputs`).value, tabs: [...document.querySelectorAll(`${t} .tt-tab`)].map((x) => x.dataset.out) }), T);
+  const retype = async (box, text) => {
+    await page.click(`${T} .tt-${box}`);
+    await page.eval((s) => document.querySelector(s).select(), `${T} .tt-${box}`);
+    await page.type(text);
+    await page.key('Enter');
+  };
+  const leave = () => page.click(`${T} .tt-left .tt-caption`);
+  await retype('outputs', 'f');
+  assert.deepEqual(await state(), { focused: 'tt-outputs', inputs: 'a, b', outputs: 'f', tabs: ['f'] });
+  // Undo with the box focused: g back, in the box too; leaving it keeps g
+  await page.menu('Edit', 'Undo');
+  assert.deepEqual(await state(), { focused: 'tt-outputs', inputs: 'a, b', outputs: 'f, g', tabs: ['f', 'g'] });
+  await leave();
+  assert.deepEqual(await state(), { focused: 'tt-editor', inputs: 'a, b', outputs: 'f, g', tabs: ['f', 'g'] });
+  // Redo with the box focused: g gone, in the box too; an input then removed in the other box keeps the outputs
+  await page.click(`${T} .tt-outputs`);
+  await page.menu('Edit', 'Redo');
+  assert.deepEqual(await state(), { focused: 'tt-outputs', inputs: 'a, b', outputs: 'f', tabs: ['f'] });
+  await page.menu('Edit', 'Undo');
+  await retype('inputs', 'a');
+  await leave();
+  assert.deepEqual(await state(), { focused: 'tt-editor', inputs: 'a', outputs: 'f, g', tabs: ['f', 'g'] });
+  // no warnings, no errors
+  assert.deepEqual((await consoleAfterOpen(page)).filter((l) => /^(ERROR|WARNING)/.test(l)), []);
+});

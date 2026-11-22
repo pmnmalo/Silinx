@@ -39,10 +39,9 @@ const modelStep = (s, name, args, run) => s.step(name, args, run, {
   expect: (d, b) => assert.equal(modelDiff(TT_VOCAB.find((v) => v.name === name).apply(ttModel(b), args), ttModel(d)), null),
 });
 
-// (#5268, seed 2's sequence, shrunk by hand to its three steps: the Outputs box not left before Edit ▸ Undo; the
-// sequences leave a box after typing in it until it is fixed)
-uiTest('usability: truth table: an output removed in its box, Edit ▸ Undo, then an input removed: the output stays (#5268)', () => env, async (page, _env, t) => {
-  t.todo('#5268: the focused Outputs box keeps the undone text, and leaving it removes walk_g again');
+// (#5268, seed 2's sequence, shrunk by hand to its three steps: the Outputs box not left before Edit ▸ Undo, which shows
+// the table's outputs in it, so that leaving it applies nothing again)
+uiTest('usability: truth table: an output removed in its box, Edit ▸ Undo, then an input removed: the output stays (#5268)', () => env, async (page) => {
   const s = await session(page, 'truth table: Undo with the Outputs box focused', 2);
   await modelStep(s, 'removeOutput', { name: 'walk_g' }, () => s.a.outputs('car_r, car_y, car_g, walk_r'));
   await s.undo();

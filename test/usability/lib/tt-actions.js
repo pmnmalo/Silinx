@@ -16,8 +16,6 @@ export const ttActions = (page, { ed }) => {
     /** The Inputs (or Outputs) box: its names typed. */
     inputs: (names) => retype(`${ed} .tt-inputs`, names),
     outputs: (names) => retype(`${ed} .tt-outputs`, names),
-    /** The box typed in left: a click on the table's caption. */
-    leave: () => page.click(`${ed} .tt-left .tt-caption`),
     /** An output's cell of the table clicked (row r): scrolled to the middle of the table first, as a person does (a
      *  cell scrolled only into view, at its bottom edge, is under the table's scroll bar, #5206). */
     async cell(out, r) {

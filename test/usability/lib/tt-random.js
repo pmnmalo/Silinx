@@ -43,9 +43,6 @@ export function column(m, text) {
   return col;
 }
 const twoValued = (col) => col.includes('0') && col.includes('1');
-/** A box's names typed (Enter), then the box left, a click elsewhere (#5268: a box Edit ▸ Undo finds focused keeps the
- *  undone text, and leaving it applies it again: left at once until it is fixed). */
-const typed = async (a, done) => { await done; await a.leave(); };
 
 const SPECS = [
   {
@@ -57,7 +54,7 @@ const SPECS = [
       m.exprs = {};
       return m;
     },
-    act: (a, { name }, s) => typed(a, a.inputs([...s.doc.inputs, name].join(', '))),
+    act: (a, { name }, s) => a.inputs([...s.doc.inputs, name].join(', ')),
   },
   {
     name: 'removeInput', weight: 1,
@@ -69,7 +66,7 @@ const SPECS = [
       m.exprs = {};
       return m;
     },
-    act: (a, { name }, s) => typed(a, a.inputs(s.doc.inputs.filter((x) => x !== name).join(', '))),
+    act: (a, { name }, s) => a.inputs(s.doc.inputs.filter((x) => x !== name).join(', ')),
   },
   {
     // a name changed in place: the table kept, the expressions' words renamed
@@ -81,13 +78,13 @@ const SPECS = [
       m.exprs = Object.fromEntries(Object.entries(m.exprs).map(([k, e]) => [k, e.replace(word, to)]));
       return m;
     },
-    act: (a, { from, to }, s) => typed(a, a.inputs(s.doc.inputs.map((x) => (x === from ? to : x)).join(', '))),
+    act: (a, { from, to }, s) => a.inputs(s.doc.inputs.map((x) => (x === from ? to : x)).join(', ')),
   },
   {
     name: 'addOutput', weight: 1,
     gen(m, rng) { const name = m.outputs.length < 7 && fresh(m, rng, OUT_NAMES); return name ? { name } : null; },
     apply(m, { name }) { m.outputs.push(name); m.table[name] = '0'.repeat(1 << m.inputs.length); m.forms[name] = 'gates'; return m; },
-    act: (a, { name }, s) => typed(a, a.outputs([...s.doc.outputs, name].join(', '))),
+    act: (a, { name }, s) => a.outputs([...s.doc.outputs, name].join(', ')),
   },
   {
     name: 'removeOutput', weight: 1,
@@ -97,7 +94,7 @@ const SPECS = [
       for (const k of ['table', 'exprs', 'forms']) delete m[k][name];
       return m;
     },
-    act: (a, { name }, s) => typed(a, a.outputs(s.doc.outputs.filter((x) => x !== name).join(', '))),
+    act: (a, { name }, s) => a.outputs(s.doc.outputs.filter((x) => x !== name).join(', ')),
   },
   {
     name: 'renameOutput', weight: 1,
@@ -107,7 +104,7 @@ const SPECS = [
       for (const k of ['table', 'exprs', 'forms']) m[k] = renameKey(m[k], from, to);
       return m;
     },
-    act: (a, { from, to }, s) => typed(a, a.outputs(s.doc.outputs.map((x) => (x === from ? to : x)).join(', '))),
+    act: (a, { from, to }, s) => a.outputs(s.doc.outputs.map((x) => (x === from ? to : x)).join(', ')),
   },
   {
     // a cell of the table (or of the output's Karnaugh map): 0 → 1 → X → 0; the column no longer its expression's
