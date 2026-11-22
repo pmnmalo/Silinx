@@ -88,7 +88,8 @@ async function asCopy(P, name, entries) {
 }
 
 /** A new project `name` from the entries of a zip or a folder, as the import gate let them through (core/import-gate.js
- *  gateZip / gateEntries, #2830): { project, missing, warnings, extra }, the gate's refusals first in the warnings.
+ *  gateZip / gateEntries, #2830): { project, missing, warnings, extra (the files copied that are neither its sources nor its
+ *  constraints) }, the gate's refusals first in the warnings.
  *  bad(message): the error of an entry set that is not a project. */
 export async function importProjectEntries(P, name, gated, bad) {
   const entries = requireGated(gated, 'importProjectEntries');
@@ -185,5 +186,8 @@ async function importInto(P, name, gated, entries, bad) {
   }
   // a project from outside: trusted only once the user says so (#2830, core/trust.js)
   project = await P.updateProject(name, markUntrusted);
-  return { project, missing: result.missing, warnings: result.warnings, extra };
+  // the other files: neither a source nor the constraints, as an ISE import's (a Silinx zip's sources are copied with
+  // them above: not counted twice, #5253)
+  const listed = new Set((project.files || []).map(f => f.path).concat(project.constraints || []));
+  return { project, missing: result.missing, warnings: result.warnings, extra: extra.filter(p => !listed.has(p)) };
 }

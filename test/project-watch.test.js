@@ -406,3 +406,54 @@ test('#3972 the server: a page\'s write (X-Silinx-Client) told to the project\'s
     await fs.rm(scratch, { recursive: true, force: true });
   }
 });
+
+// #5252 regression: Export Project (.zip)… of a Silinx project gives it its id the first time (a copy's origin, #4205),
+// a write of silinx.json of the server's that no hold covered: told to the page that exported it as a change made
+// outside Silinx. Held as the page's other requests: not told to it, told to its other tab
+test('#5252 the server: a Silinx zip given out (export.zip?copy=1), its id written: not told to the page that asked', async () => {
+  const scratch = await scratchEnv('silinx-watch-export-');
+  const app = await startApp();
+  const ctl = new AbortController();
+  try {
+    assert.equal((await app.call('POST', '/projects', { name: 'Given' })).status, 200);
+    const file = path.join(process.env.SILINX_WORKSPACE, 'Given', 'silinx.json');
+    const listen = async (client) => {
+      const r = await fetch(`${app.base}/projects/Given/events`, { signal: ctl.signal, headers: { 'X-Silinx-Client': client } });
+      const events = [];
+      (async () => {
+        const reader = r.body.getReader(), dec = new TextDecoder();
+        let buf = '';
+        for (;;) {
+          let chunk;
+          try { chunk = await reader.read(); } catch { return; }
+          if (chunk.done) return;
+          buf += dec.decode(chunk.value, { stream: true });
+          let k;
+          while ((k = buf.indexOf('\n\n')) >= 0) {
+            const data = buf.slice(0, k).split('\n').filter(l => l.startsWith('data: ')).map(l => l.slice(6)).join('\n');
+            buf = buf.slice(k + 2);
+            if (data) events.push(JSON.parse(data));
+          }
+        }
+      })();
+      return events;
+    };
+    const watcher = app.app.locals.watcher;
+    const a = await listen('tab-a'), b = await listen('tab-b');
+    await sleep(50);
+    await watcher.check('Given');
+    const before = JSON.parse(await fs.readFile(file, 'utf8')).id;
+    const x = await fetch(`${app.base}/projects/Given/export.zip?kind=silinx&copy=1&backup=1`, { headers: { 'X-Silinx-Client': 'tab-a' } });
+    assert.equal(x.status, 200);
+    await x.arrayBuffer();
+    await watcher.check('Given'); await watcher.check('Given'); await sleep(50);
+    // (the id written by the export: none before)
+    assert.deepEqual([before, typeof JSON.parse(await fs.readFile(file, 'utf8')).id], [undefined, 'string']);
+    assert.deepEqual(a, [], 'not told to the page that exported it');
+    assert.deepEqual(b, [{ project: 'Given', changes: [{ path: 'silinx.json', kind: 'changed' }], tab: true }]);
+  } finally {
+    ctl.abort();
+    await app.close();
+    await fs.rm(scratch, { recursive: true, force: true });
+  }
+});
