@@ -243,6 +243,63 @@ test('#5223 the simulation\'s application lines: the wave configuration\'s (as S
     "Módulo de topo da simulação definido como 'tb_counter'.", "Módulo de topo definido como 'counter'."]);
 });
 
+// #5254: the project's lifecycle's application lines in Portuguese (appLog: their English kept, drawn through t()): a
+// project opened, New Source, a drawing's HDL made, Remove from Project, Undo / Redo, Rename (core/rename-module.js's),
+// Export, Import (its counts, either form, #5253), the wizards' sources
+test('#5254 the project\'s lines: opened, New Source, the HDL made, Remove, Undo / Redo, Rename, Export, Import, the wizards\'', () => {
+  assert.deepEqual([
+    'Project "UsabLife" opened (xc3s250e-4-cp132).', 'Project "d" opened (a design and simulation project, no FPGA).',
+    "Created Module (HDL) (VHDL) 'src/alu.vhd'.", "Created Schematic 'src/sheet.sch.json'.", "Created Memory Initialization File (.mem) 'src/rom.mem'.",
+    "Created Test Bench (Verilog) 'sim/tb_alu.v'.", "Created Clock Manager (DCM / PLL) 'src/c.vhd'.",
+    'src/sheet.vhd generated from src/sheet.sch.json (every source has its HDL)',
+    'src/sheet.vhd generated from src/sheet.sch.json (its HDL file src/old.vhd was removed from the project)',
+    'src/sheet.vhd generated from src/sheet.sch.json (its HDL file src/old.vhd is no longer in the project folder)',
+    'src/sheet_1.vhd generated from src/sheet.sch.json (src/sheet.vhd holds something else)', 'src/x.vhd replaced by the HDL generated from src/x.sch.json, linked to it',
+    'src/x.vhd generated again from src/x.sch.json, back in the project', 'src/x.vhd updated from src/x.sch.json',
+    'Removed src/net.pn.json and its HDL file src/net.vhd from the project (the files are kept in the project folder).',
+    'Removed src/alu.vhd from the project (the file is kept in the project folder).',
+    'Undo: Remove from Project.', 'Redo: Rename.',
+    "Rename: module 'alu' renamed to 'alu2' (2 file(s) updated); src/alu.vhd → src/alu2.vhd.", 'Rename: src/a.mem → src/b.mem.', 'Rename: nothing to rename.',
+    'Exported UsabLife-silinx.zip: the whole Silinx project (silinx.json + all project files, 12 KB).',
+    'Exported UsabLife-ise.zip: Xilinx ISE project UsabLife.xise + its sources (9 KB).',
+    "Imported Silinx project 'UsabLife2' (8 source file(s), 3 other file(s)).", "Imported Silinx project 'p' (3 source file(s)).",
+    "Imported Xilinx ISE project 'lab' (4 source file(s), 1 other file(s)).", "Importing folder 'lab': 12 file(s), 3 build/hidden file(s) skipped.",
+    'files listed in silinx.json but not in the zip: src/a.vhd', 'files referenced by the .xise but not found: a.vhd, b.vhd',
+    'Clocking Wizard: created src/clkgen.vhd, the module clkgen: clk0 50 MHz.', 'Clocking Wizard: wrote again src/clkgen.vhd, the module clkgen: clk0 50 MHz, clk1 25 MHz.',
+    'Block Memory: created src/ram.vhd, the module ram: 1024 x 8, 1 RAMB16_S9.', 'Block Memory: wrote again src/ram.v, the module ram: 16 x 4, inferable HDL.',
+    'Module Wizard: created src/m.vhd (VHDL, sequential). Fill in the TODO comments with the logic.', 'Schematic Wizard: created src/s.sch.json with 3 I/O marker(s).',
+    'FSM Wizard: created src/f.fsm.json with 1 input(s), 2 output(s) and 4 state(s).', 'Petri Net Wizard: created src/p.pn.json with 2 input(s) and 1 output(s).',
+    'Boolean Algebra Wizard: created src/b.bool.json with 3 input(s) and 2 output(s).', 'UCF Wizard: created constraints/top.ucf for \'top\', 5 net(s) on pins.',
+    "Save as Test Bench: created sim/tb_m.vhd from the stimuli of 'm' (8 cycle(s)); run Simulate Behavioral Model on tb_m to check the design.",
+  ].map(t), [
+    'Projeto "UsabLife" aberto (xc3s250e-4-cp132).', 'Projeto "d" aberto (um projeto de desenho e simulação, sem FPGA).',
+    "Nova fonte criada: Módulo (HDL) (VHDL) 'src/alu.vhd'.", "Nova fonte criada: Esquemático 'src/sheet.sch.json'.", "Nova fonte criada: Ficheiro de Inicialização de Memória (.mem) 'src/rom.mem'.",
+    "Nova fonte criada: Bancada de Teste (Verilog) 'sim/tb_alu.v'.", "Nova fonte criada: Gestor de Relógio (DCM / PLL) 'src/c.vhd'.",
+    'src/sheet.vhd gerado a partir de src/sheet.sch.json (todas as fontes têm o seu HDL)',
+    'src/sheet.vhd gerado a partir de src/sheet.sch.json (o seu ficheiro HDL src/old.vhd foi removido do projeto)',
+    'src/sheet.vhd gerado a partir de src/sheet.sch.json (o seu ficheiro HDL src/old.vhd já não está na pasta do projeto)',
+    'src/sheet_1.vhd gerado a partir de src/sheet.sch.json (src/sheet.vhd contém outra coisa)', 'src/x.vhd substituído pelo HDL gerado a partir de src/x.sch.json, ligado a ele',
+    'src/x.vhd gerado de novo a partir de src/x.sch.json, de volta ao projeto', 'src/x.vhd atualizado a partir de src/x.sch.json',
+    'Removidos do projeto src/net.pn.json e o seu ficheiro HDL src/net.vhd (os ficheiros ficam na pasta do projeto).',
+    'Removido src/alu.vhd do projeto (o ficheiro fica na pasta do projeto).',
+    'Anular: Remover do Projeto.', 'Refazer: Mudar o Nome.',
+    "Mudar o Nome: módulo 'alu' passou a chamar-se 'alu2' (2 ficheiro(s) atualizado(s)); src/alu.vhd → src/alu2.vhd.", 'Mudar o Nome: src/a.mem → src/b.mem.', 'Mudar o Nome: nada a mudar.',
+    'Exportado UsabLife-silinx.zip: o projeto Silinx inteiro (silinx.json + todos os ficheiros do projeto, 12 KB).',
+    'Exportado UsabLife-ise.zip: o projeto Xilinx ISE UsabLife.xise + as suas fontes (9 KB).',
+    "Importado o projeto Silinx 'UsabLife2' (8 ficheiro(s) de fonte, 3 outro(s) ficheiro(s)).", "Importado o projeto Silinx 'p' (3 ficheiro(s) de fonte).",
+    "Importado o projeto Xilinx ISE 'lab' (4 ficheiro(s) de fonte, 1 outro(s) ficheiro(s)).", "A importar a pasta 'lab': 12 ficheiro(s), 3 ficheiro(s) gerado(s)/oculto(s) ignorado(s).",
+    'ficheiros listados em silinx.json mas não no zip: src/a.vhd', 'ficheiros referidos pelo .xise mas não encontrados: a.vhd, b.vhd',
+    'Assistente de Relógio: criou src/clkgen.vhd, o módulo clkgen: clk0 50 MHz.', 'Assistente de Relógio: reescreveu src/clkgen.vhd, o módulo clkgen: clk0 50 MHz, clk1 25 MHz.',
+    'Memória de Bloco: criou src/ram.vhd, o módulo ram: 1024 x 8, 1 RAMB16_S9.', 'Memória de Bloco: reescreveu src/ram.v, o módulo ram: 16 x 4, HDL inferível.',
+    'Assistente de Módulo: criou src/m.vhd (VHDL, sequencial). Preencha os comentários TODO com a lógica.', 'Assistente de Esquemático: criou src/s.sch.json com 3 marcador(es) de E/S.',
+    'Assistente de FSM: criou src/f.fsm.json com 1 entrada(s), 2 saída(s) e 4 estado(s).', 'Assistente de Rede de Petri: criou src/p.pn.json com 2 entrada(s) e 1 saída(s).',
+    'Assistente de Álgebra Booleana: criou src/b.bool.json com 3 entrada(s) e 2 saída(s).', "Assistente de UCF: criou constraints/top.ucf para 'top', 5 rede(s) em pinos.",
+    "Guardar como Bancada de Teste: criou sim/tb_m.vhd a partir dos estímulos de 'm' (8 ciclo(s)); execute Simular Modelo Comportamental em tb_m para verificar o projeto.",
+  ]);
+  // (a folder's import: its missing files)
+  assert.equal(t('files listed in silinx.json but not in the folder: x.vhd'), 'ficheiros listados em silinx.json mas não na pasta: x.vhd');
+});
+
 test('SSim (#920): the simulator\'s labels translated with its name, SSim; no label of it says ISim', () => {
   assert.deepEqual(['SSim Simulator', 'Type an SSim command (help)', 'SSim (VHDL/Verilog; Silinx Simulator)'].map(t),
     ['Simulador SSim', 'Escreva um comando do SSim (help)', 'SSim (VHDL/Verilog; Simulador Silinx)']);

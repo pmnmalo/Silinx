@@ -26,7 +26,7 @@ import { isLabFile } from '/core/labs.js';
 import { primitiveTemplates } from '/core/prim-templates.js';
 import { deviceFamily } from '/packages/silinx-fpga/src/parts.js';
 import { setActionRunner, longPressMenu } from './ui.js';
-import { clearConsole, commandError, log, logError, logInfo, logLine, logWarning, renderDiagnostics, setDiagnostics, showConsolePage } from './console.js';
+import { appLog, clearConsole, commandError, log, logError, logInfo, logLine, logWarning, renderDiagnostics, setDiagnostics, showConsolePage } from './console.js';
 import { watchStale } from './stale-page.js';
 import { isOwnFailure } from './own-error.js';
 import { renderTeachingPage } from './teaching-page.js';
@@ -316,12 +316,12 @@ export const undoesProject = () => history.canUndo() && !(docsState.active?._edi
 export const redoesProject = () => history.canRedo() && !(docsState.active?._editedAt > history.redoAt() && docEditor(docsState.active));
 export async function projectUndo() {
   const e = await history.undo();
-  if (e) log(`Undo: ${e.label}.`, 'ok');
+  if (e) appLog(`Undo: ${e.label}.`, 'ok');   // (in the interface's language, #5254)
   refreshSteps();
 }
 export async function projectRedo() {
   const e = await history.redo();
-  if (e) log(`Redo: ${e.label}.`, 'ok');
+  if (e) appLog(`Redo: ${e.label}.`, 'ok');
   refreshSteps();
 }
 export const undoAny = () => (undoesProject() ? projectUndo() : docEditor(docsState.active)?.undo());

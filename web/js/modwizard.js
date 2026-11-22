@@ -18,6 +18,7 @@ import { schematicTemplatePorts, schematicFromTemplate, templatePortsError } fro
 import { templatePage } from './template-page.js';
 import { wizard, field, select, replaceGuard, closeBeforeReplace, moduleElsewhere, drawnHdlTaken } from './wizards.js';
 import { S, app } from './app.js';
+import { appLog } from './console.js';
 import { cleanLoc, portText, namedPages } from './wizard-util.js';
 import { designOnly } from './design-only.js';
 
@@ -279,7 +280,7 @@ export async function moduleWizard({ name = '', location = 'src', lang = null, n
   await closeBeforeReplace(path);
   await api.writeFile(S.project.name, path, code);   // registers the new file in silinx.json
   await app.reloadProject();
-  app.log(`Module Wizard: created ${path} (${p1.lang() === 'vhdl' ? 'VHDL' : 'Verilog'}, ${st.kind === 'seq' ? 'sequential' : 'combinational'}). Fill in the TODO comments with the logic.`, 'ok');
+  appLog(`Module Wizard: created ${path} (${p1.lang() === 'vhdl' ? 'VHDL' : 'Verilog'}, ${st.kind === 'seq' ? 'sequential' : 'combinational'}). Fill in the TODO comments with the logic.`, 'ok');
   toast(`Module ${p1.name()} created`, 'ok');
   app.openFile(path);
 }
@@ -341,7 +342,7 @@ export async function schematicWizard({ name = '', location = 'src', lang = null
   await closeBeforeReplace(path);
   await api.writeFile(S.project.name, path, JSON.stringify(d, null, 1));
   await app.reloadProject();
-  app.log(`Schematic Wizard: created ${path} with ${d.ports.length} I/O marker(s).`, 'ok');
+  appLog(`Schematic Wizard: created ${path} with ${d.ports.length} I/O marker(s).`, 'ok');
   toast(`Schematic ${d.name} created`, 'ok');
   app.openSch(path);
 }

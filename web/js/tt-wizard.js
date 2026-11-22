@@ -7,6 +7,7 @@ import { reservedError } from '/core/reserved.js';
 import { wizard, field, replaceGuard, closeBeforeReplace } from './wizards.js';
 import { NAME_RE } from '/core/ident.js';
 import { S, app } from './app.js';
+import { appLog } from './console.js';
 import { langNote } from './design-only.js';
 
 // a truth table from "name = expression" (#1056): its inputs (the expression's, 1 to 16, #3939), its output (the name, else f)
@@ -97,7 +98,7 @@ export async function booleanWizard({ path, name, lang, back = null }) {
   await closeBeforeReplace(path);
   await api.writeFile(S.project.name, path, JSON.stringify(made, null, 2));
   await app.reloadProject();
-  app.log(`Boolean Algebra Wizard: created ${path} with ${made.inputs.length} input(s) and ${made.outputs.length} output(s).`, 'ok');
+  appLog(`Boolean Algebra Wizard: created ${path} with ${made.inputs.length} input(s) and ${made.outputs.length} output(s).`, 'ok');
   toast(`${made.name} created`, 'ok');
   app.openTt(path);
   return path;

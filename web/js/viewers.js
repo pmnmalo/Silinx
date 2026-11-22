@@ -16,7 +16,7 @@ import { countEvent } from './analytics.js';
 import { S, activateDoc, app, closeDoc, findDoc, moduleInfo, openDoc, openFile, projectBoard, status, withPrimitives } from './app.js';
 import { asSsim, benchItems, treeBar, treeItems } from './tasks-sim-tree.js';
 import { mountSimPages } from './tasks-sim-files.js';
-import { commandError, commandInfo, log, logError, logInfo, setDiagnostics, showConsolePage, simDiagnostics, startRun } from './console.js';
+import { appLog, commandError, commandInfo, log, logError, logInfo, setDiagnostics, showConsolePage, simDiagnostics, startRun } from './console.js';
 import { reloadProject } from './project.js';
 import { boardConstraints, generateSimModel, readBuildFile, runImpl } from './implement.js';
 import { ucfPort } from './drawings.js';
@@ -354,7 +354,7 @@ async function saveStimTestbench(mod, inst, m) {
   // (a simulation source, whatever its name)
   const f = S.project.files?.find(x => x.path === path);
   if (f && f.role !== 'sim') { f.role = 'sim'; await saveProjectJson(); await reloadProject(); }
-  log(`Save as Test Bench: created ${designOnly() ? `the test bench ${name}` : path} from the stimuli of '${mod}' (${m.cycles} cycle(s)); run Simulate Behavioral Model on ${name} to check the design.`, 'ok');
+  appLog(`Save as Test Bench: created ${designOnly() ? `the test bench ${name}` : path} from the stimuli of '${mod}' (${m.cycles} cycle(s)); run Simulate Behavioral Model on ${name} to check the design.`, 'ok');
   toast(`Test bench ${designOnly() ? name : path} created`, 'ok');
 }
 

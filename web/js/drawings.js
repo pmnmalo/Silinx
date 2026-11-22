@@ -9,7 +9,7 @@ import { modulesFromLibrary } from '/core/schdoc.js';
 import { modelRunners } from '/core/circuit-live-model.js';
 import { S, activateDoc, closeDocByPath, compileProject, findDoc, flushDoc, hdlInProject, moduleInfo, openDoc,
   openFile, setDirty, status } from './app.js';
-import { commandError, commandWarning, dropRun, log, logError, logWarning } from './console.js';
+import { appLog, commandError, commandWarning, dropRun, log, logError, logWarning } from './console.js';
 import { newerDrawing } from '/core/doc-format.js';
 import { designOnly, hdlStatus, hdlWarning } from './design-only.js';
 import { getNotation } from './notation.js';
@@ -563,7 +563,7 @@ export async function adoptDrawnHdl() {
     if ((filesState.diskTree || filesState.fileTree || []).includes(target)) continue;
     if (!await writeDrawnHdl(v.path, target, v.text)) continue;
     // (#231: its HDL file was deleted, or removed from the project and another name is free)
-    if (!designOnly()) log(`${target} generated from ${v.path} (${!v.lost ? 'every source has its HDL' : `its HDL file ${v.lost} ${(filesState.diskTree || []).includes(v.lost) ? 'was removed from the project' : 'is no longer in the project folder'}`})`, 'info');
+    if (!designOnly()) appLog(`${target} generated from ${v.path} (${!v.lost ? 'every source has its HDL' : `its HDL file ${v.lost} ${(filesState.diskTree || []).includes(v.lost) ? 'was removed from the project' : 'is no longer in the project folder'}`})`, 'info');
     n++;
   }
   return n;
@@ -659,7 +659,7 @@ export async function resolveHdlClash(path) {
   const target = c.kind === 'same' || c.kind === 'removed' ? c.file : c.free;
   closeDocByPath(target);
   if (!await writeDrawnHdl(path, target, r.text)) return false;
-  log(designOnly() ? `${path}: its module made` : c.kind === 'same' ? `${target} replaced by the HDL generated from ${path}, linked to it`
+  appLog(designOnly() ? `${path}: its module made` : c.kind === 'same' ? `${target} replaced by the HDL generated from ${path}, linked to it`
     : c.kind === 'removed' ? `${target} generated again from ${path}, back in the project`
       : `${target} generated from ${path} (${c.target} holds something else)`, 'info');
   await reloadProject(false);

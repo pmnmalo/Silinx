@@ -39,6 +39,7 @@ import { PROGRAM_PT, PROGRAM_PT_PATTERNS } from './i18n-program.js';
 import { SUMMARY_PT, SUMMARY_PT_PATTERNS } from './i18n-summary.js';
 import { MESSAGES_PT, MESSAGES_PT_PATTERNS } from './i18n-messages.js';
 import { SIM_PT, SIM_PT_PATTERNS } from './i18n-sim.js';
+import { PROJECT_PT, PROJECT_PT_PATTERNS } from './i18n-project.js';
 import { PT } from './i18n-general.js';   // (moved, #4765)
 import { prefKey } from './prefs.js';
 
@@ -491,6 +492,7 @@ keep(PROGRAM_PT, PROGRAM_PT_PATTERNS);   // the open families' Configure Target 
 keep(SUMMARY_PT, SUMMARY_PT_PATTERNS);   // the Design Summary's values (#4518)
 keep(MESSAGES_PT, MESSAGES_PT_PATTERNS);   // toasts, dialogs, plain elements' texts (#3539), template literals' (#4748)
 keep(SIM_PT, SIM_PT_PATTERNS);   // the simulation's application lines: the Console's and SSim's (#5223)
+keep(PROJECT_PT, PROJECT_PT_PATTERNS);   // the project's lifecycle's application lines (#5254)
 
 export const LOCALES = {
   en: { name: 'English', strings: {}, patterns: [] },

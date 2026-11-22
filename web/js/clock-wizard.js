@@ -6,7 +6,7 @@
 // settings in its header: opening it from the Design pane reopens the wizard with them (web/js/wizard-modules.js).
 import { api } from './api.js';
 import { h, toast } from './ui.js';
-import { commandError } from './console.js';
+import { appLog, commandError } from './console.js';
 import { clockModule, planClock, fxChoices, dvChoices, DCM_PINS, PLL_OUTPUTS } from '/core/clocking.js';
 import { resourceCount, periodNs } from '/packages/silinx-fpga/src/parts.js';
 import { familyProfile } from '/core/family-profile.js';
@@ -252,7 +252,7 @@ export async function clockWizard({ name = '', location = 'src', lang = null, pa
   await closeBeforeReplace(p);
   await api.writeFile(pj.name, p, code);
   await app.reloadProject();
-  app.log(`Clocking Wizard: ${editPath ? 'wrote again' : 'created'} ${p}, the module ${spec.name}: ${plan.outputs.map(o => `${o.port} ${mhzText(o.mhz)}`).join(', ')}.`, 'ok');
+  appLog(`Clocking Wizard: ${editPath ? 'wrote again' : 'created'} ${p}, the module ${spec.name}: ${plan.outputs.map(o => `${o.port} ${mhzText(o.mhz)}`).join(', ')}.`, 'ok');
   toast(`Clock module ${spec.name} ${editPath ? 'updated' : 'created'}`, 'ok');
   return p;
 }

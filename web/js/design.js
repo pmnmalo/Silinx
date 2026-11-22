@@ -566,10 +566,10 @@ async function removeNow(file, hdl = null) {
   await reloadProject();
   await fixMissingTops();   // (the top module removed, #253)
   if (hdl && !designOnly()) {
-    log(`Removed ${file} and its HDL file ${hdl} from the project (the files are kept in the project folder).`, 'info');
+    appLog(`Removed ${file} and its HDL file ${hdl} from the project (the files are kept in the project folder).`, 'info');
     toast(`Removed ${file.split('/').pop()} and ${hdl.split('/').pop()} from the project`, 'info', 10000, { label: 'Undo', run: () => projectUndo() });
     return;
   }
-  log(`Removed ${shownName(file)} from the project (the file is kept in the project folder).`, 'info');
+  appLog(`Removed ${shownName(file)} from the project (the file is kept in the project folder).`, 'info');
   toast(`Removed ${shownName(file).split('/').pop()} from the project`, 'info', 10000, { label: 'Undo', run: () => projectUndo() });
 }

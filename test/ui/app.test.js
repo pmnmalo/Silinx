@@ -507,12 +507,13 @@ uiTest('Portuguese: View ▸ Language switches the UI; menus, dialogs and the ma
     ['Ficheiro', 'Editar', 'Ver', 'Projeto', 'Processo', 'Ferramentas', 'Janela', 'Ajuda']);
   assert.equal(await page.eval(() => document.documentElement.lang), 'pt');
   assert.equal(await page.eval(() => localStorage.getItem('silinx.lang')), 'pt');
-  // the choice survives a reload; user content (console, hierarchy names) is not translated
+  // the choice survives a reload; user content (hierarchy names, the tools' output) is not translated, the application's
+  // lines are (#5254)
   await page.goto(env.server.url);
   await page.waitFor(() => document.querySelector('#menubar .item')?.textContent === 'Ficheiro' && window.Silinx?.project?.name === 'LangPj');
   await page.waitFor(() => document.querySelector('#hier .lbl'));
   assert.ok(await page.eval(() => [...document.querySelectorAll('#hier .lbl')].some((e) => e.textContent === 'top')));
-  assert.match(await page.consoleText(), /Project "LangPj" opened/);
+  assert.match(await page.consoleText(), /^Projeto "LangPj" aberto \(xc3s250e-4-cp132\)\.$/m);
   const v = await page.openMenu('Ver');
   await page.hover(await page.point('body > .menu-popup > .mi', { index: v.findIndex((i) => i.label === 'Idioma') }));
   await page.waitForSelector('.menu-popup.sub .mi');

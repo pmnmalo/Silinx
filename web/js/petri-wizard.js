@@ -14,6 +14,7 @@ import { reservedError } from '/core/reserved.js';
 import { wizard, field, replaceGuard, closeBeforeReplace } from './wizards.js';
 import { namePage, portEditor } from './modwizard.js';
 import { S, app } from './app.js';
+import { appLog } from './console.js';
 import { portText, namedPages } from './wizard-util.js';
 import { designOnly, langNote } from './design-only.js';
 
@@ -82,7 +83,7 @@ export async function petriWizard({ name = '', location = 'src', lang = null, na
   await closeBeforeReplace(path);
   await api.writeFile(S.project.name, path, JSON.stringify(m, null, 2));
   await app.reloadProject();
-  app.log(`Petri Net Wizard: created ${path} with ${m.inputs.length} input(s) and ${m.outputs.length} output(s).`, 'ok');
+  appLog(`Petri Net Wizard: created ${path} with ${m.inputs.length} input(s) and ${m.outputs.length} output(s).`, 'ok');
   toast(`Petri net ${m.name} created`, 'ok');
   app.openPetri(path);
   return path;
