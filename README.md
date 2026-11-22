@@ -55,7 +55,8 @@ at all. [Boards and toolchains](docs/user/en/boards.md)
 ## Try it
 
 - **In the browser:** open **https://pmnmalo.github.io/Silinx/**, click *New Project…* and start from an example.
-  Your projects stay in your browser. Nothing to install, and it works on a tablet too.
+  Your projects stay in your browser. Nothing to install, and it works on a tablet too (on a phone: to read,
+  simulate and emulate).
 - **Synthesis and bitstreams need no Xilinx tool** for the **Basys2-100 / 250, Nexys2-500 / 1200, Nexys3, Atlys,
   iCEBreaker, ULX3S, Tang Nano 9K and GateMate evaluation board** (and the Basys 3 and Nexys A7, an experimental family): the
   *Silinx toolchain (no ISE)*, the default mode, synthesizes (Yosys), places and routes (nextpnr) and writes the bitstream, in the

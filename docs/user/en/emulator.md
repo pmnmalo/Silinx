@@ -4,7 +4,8 @@
 
 The Board Emulator runs the design on a drawing of the real board, wired by its constraints: flip the switches,
 press the buttons, and watch the LEDs, the 7-segment displays and the VGA monitor, at the board's real speed. No
-board needed, and nothing to install: it works in the browser, on a tablet too.
+board needed, and nothing to install: it works in the browser, on a tablet too. On a phone the board is fitted to the
+screen's width, and its switches and buttons are repeated under it, large enough for a finger.
 
 ![The stopwatch example on an emulated Basys2](../../images/emulator-basys2.webp)
 

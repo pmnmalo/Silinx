@@ -17,6 +17,10 @@ Chrome and Edge). Running Silinx on your computer, in `Silinx-projects` in your 
 **Does it work on an iPad or a tablet?** Yes: the editors, the simulation, the emulator and the bitstream. Chrome on
 an Android tablet programs the board too; an iPad cannot reach USB devices.
 
+**And on a phone?** To read, simulate and emulate, yes: one pane at a time, the documents read only, the waves and the
+emulated board by touch. Editing, implementing and programming the board need a tablet or a computer
+([Features](features.md#on-a-phone)).
+
 **Can I open my ISE projects?** Yes: *Import Project…* takes an ISE project (its `.xise`, or a zip), its schematics
 too.
 
