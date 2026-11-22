@@ -131,23 +131,26 @@ uiTest('Convert to Schematic of a VHDL module whose file holds its package: the 
   ]);
   // the package is listed as before
   assert.ok(await page.eval(() => [...document.querySelectorAll('#hier .row .lbl')].some((e) => e.textContent === 'alu_pkg')));
-  // a module that does not elaborate: refused, nothing written
+  // a module that does not elaborate: refused, nothing written; its refusal an ERROR line of the console, no dialog (#4747, #5146)
+  const refusals = (re) => page.eval((src) => [...document.querySelectorAll('#console-log .ln.err')].map((l) => l.textContent).filter((t) => new RegExp(src).test(t)), re.source);
   await page.eval(() => window.SilinxApp.showLeftPage('design'));
   await convert(page, 'bad');
-  await page.waitDialog('Convert to Schematic');
-  assert.match(await page.eval(() => [...document.querySelectorAll('.dlg-overlay')].pop().querySelector('.msg-text').textContent), /^'bad' does not elaborate \(.*nosuch.*\): correct it first\.$/);
-  await page.dialogButton('OK');
-  await page.waitNoDialog();
+  await page.waitFor(() => [...document.querySelectorAll('#console-log .ln.err')].some((l) => /^ERROR: Convert to Schematic: /.test(l.textContent)), [], { what: 'the refusal in the console' });
+  assert.equal(await page.dialogCount(), 0);
+  const en = await refusals(/^ERROR: Convert to Schematic: /);
+  assert.equal(en.length, 1, 'one line');
+  assert.match(en[0], /^ERROR: Convert to Schematic: 'bad' does not elaborate \(.*nosuch.*\): correct it first\.$/);
   assert.equal(await exists('Conv_vhd', 'src/bad.sch.json'), false);
-  // in Portuguese: the menu, the dialog
+  // in Portuguese: the menu, the console's line (the command's name and the message translated apart)
   await page.eval(async () => { (await import('/js/i18n.js')).setLanguage('pt'); });
   try {
+    const before = (await refusals(/^ERROR: Converter para Esquemático: /)).length;
     await page.treeRow('#hier', 'bad', { right: true, exact: true });
     await page.click('body > .menu-popup .mi', { text: 'Converter para Esquemático (editável)…' });
-    await page.waitDialog('Converter para Esquemático');
-    assert.match(await page.eval(() => [...document.querySelectorAll('.dlg-overlay')].pop().querySelector('.msg-text').textContent), /^'bad' não é elaborado \(.*nosuch.*\): corrija-o primeiro\.$/);
-    await page.dialogButton('OK');
-    await page.waitNoDialog();
+    await page.waitFor((n) => [...document.querySelectorAll('#console-log .ln.err')].filter((l) => /^ERROR: Converter para Esquemático: /.test(l.textContent)).length > n, [before], { what: 'the refusal in the console, in Portuguese' });
+    assert.equal(await page.dialogCount(), 0);
+    const pt = await refusals(/^ERROR: Converter para Esquemático: /);
+    assert.match(pt.at(-1), /^ERROR: Converter para Esquemático: 'bad' não é elaborado \(.*nosuch.*\): corrija-o primeiro\.$/);
   } finally {
     await page.eval(async () => { (await import('/js/i18n.js')).setLanguage('en'); });
   }
