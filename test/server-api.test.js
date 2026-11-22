@@ -1035,7 +1035,8 @@ test('zip: Silinx export keeps silinx.json and every file; import restores board
   assert.deepEqual(imp.body.project.stimuli, { a: [1, 0] });
   assert.equal(imp.body.project.preferredLanguage, 'verilog');
   assert.deepEqual(imp.body.missing, []);   // the default UCF was never written: not missing (#4288)
-  assert.deepEqual(imp.body.extra.sort(), ['src/fsm.asm.json', 'src/top.v']);
+  // (the other files: src/top.v a source, not counted among them too, #5253)
+  assert.deepEqual([imp.body.project.files.map(f => f.path), imp.body.extra], [['src/top.v'], ['src/fsm.asm.json']]);
   assert.equal((await call('GET', '/projects/Nope/export.zip')).status, 404);
 });
 

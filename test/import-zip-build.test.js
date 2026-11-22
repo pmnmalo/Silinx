@@ -43,7 +43,9 @@ test('the route: a zip with or without a root folder, its build/ refused, with t
       const r = await app.call('POST', `/projects/import-zip?name=${name}`, await createZip(files(root), NODE_CODEC));
       assert.equal(r.status, 200, JSON.stringify(r.body));
       assert.deepEqual(r.body.warnings, refusals(root), name);
-      assert.deepEqual(r.body.extra, ['src/t.vhd'], name);
+      // (its source imported, not another file too, #5253)
+      assert.deepEqual([r.body.project.files.map(f => f.path), r.body.extra], [['src/t.vhd'], []], name);
+      assert.ok(fs.existsSync(path.join(process.env.SILINX_WORKSPACE, name, 'src', 't.vhd')), name);
       assert.equal(r.body.project.trusted, false);
       noBuild(name);
       const rep = await app.call('GET', `/projects/${name}/reports`);
@@ -60,7 +62,7 @@ test('the MCP\'s import_project: a zip and a folder with a root folder, the same
     const r = await call('import_project', { name, from: path.join(tmp, 'exchange', from) });
     assert.equal(r.isError, false, r.text);
     assert.deepEqual(r.text.split('\n').slice(0, -1), refusals('p/').slice(0, name === 'mf' ? -1 : 3).map(w => `WARNING: ${w}`), name);
-    assert.deepEqual(r.data.extra, ['src/t.vhd'], name);
+    assert.deepEqual([r.data.files, r.data.extra], [['src/t.vhd'], []], name);
     noBuild(name);
   }
 });
