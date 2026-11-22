@@ -62,7 +62,7 @@ export function renderCollabPage() {
   const tab = document.querySelector('#left-tabs .tab[data-page="collab"]');
   const none = gitOff() && !liveHere();
   if (tab) tab.hidden = none;
-  if (none && panes.leftPage === 'collab') showLeftPage('design');
+  if (none && panes.leftPage === 'collab') showLeftPage(S.project ? 'design' : 'start');   // (no project: no Design page, #5284)
   const page = h('div', { class: 'page' }, ...boxes());
   if (host.firstElementChild?.outerHTML === page.outerHTML) return;
   host.replaceChildren(page);

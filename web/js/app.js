@@ -697,9 +697,9 @@ export async function openUcf() {
 export { openFpgaView, openImpact, openPinPlanner, openSummary, refreshSummary, syncFpgaView };
 
 // ------------------------------------------------------------------ left pages
-export function showLeftPage(page) {
+export function showLeftPage(page, { save = true } = {}) {
   panes.leftPage = page;
-  saveViewState();
+  if (save) saveViewState();   // (not while a project opens: its kept view not yet read, #5284)
   document.querySelectorAll('#left-tabs .tab').forEach(t => t.classList.toggle('active', t.dataset.page === page));
   document.querySelectorAll('.left-page').forEach(p => { p.hidden = p.dataset.page !== page; });
   if (page === 'start') renderStartPage();

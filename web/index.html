@@ -133,7 +133,8 @@
   <div id="main">
     <div id="left">
       <div id="left-pages">
-        <div class="left-page" data-page="design">
+        <!-- (the Start page shown until a project opens: no Design page seen at start-up, #5284) -->
+        <div class="left-page" data-page="design" hidden>
           <div class="ise-panel" id="design-panel">
             <div class="caption"><span>Design</span><span class="spacer"></span></div>
             <div class="view-select">
@@ -149,15 +150,15 @@
             <div class="body" id="procs"></div>
           </div>
         </div>
-        <div class="left-page" data-page="start" hidden><div class="ise-panel fill"><div class="caption">Start</div><div class="body" id="start-page"></div></div></div>
+        <div class="left-page" data-page="start"><div class="ise-panel fill"><div class="caption">Start</div><div class="body" id="start-page"></div></div></div>
         <div class="left-page" data-page="files" hidden><div class="ise-panel fill"><div class="caption">Files</div><div class="body" id="files-page"></div></div></div>
         <div class="left-page" data-page="libraries" hidden><div class="ise-panel fill"><div class="caption">Libraries</div><div class="body" id="libs-page"></div></div></div>
         <div class="left-page" data-page="collab" hidden><div class="ise-panel fill"><div class="caption">Collaboration</div><div class="body" id="collab-page"></div></div></div>
         <div class="left-page" data-page="teaching" hidden><div class="ise-panel fill"><div class="caption">Teaching</div><div class="body" id="teach-page"></div></div></div>
       </div>
       <div id="left-tabs" class="bottom-tabs" role="tablist" aria-label="Panels">
-        <div class="tab" data-page="start" role="tab" tabindex="0"><span class="ico-inline tab-ico" data-icon="mHome"></span><span class="tab-lbl">Start</span></div>
-        <div class="tab active" data-page="design" role="tab" tabindex="0"><span class="ico-inline tab-ico" data-icon="mDesign"></span><span class="tab-lbl">Design</span></div>
+        <div class="tab active" data-page="start" role="tab" tabindex="0"><span class="ico-inline tab-ico" data-icon="mHome"></span><span class="tab-lbl">Start</span></div>
+        <div class="tab" data-page="design" role="tab" tabindex="0"><span class="ico-inline tab-ico" data-icon="mDesign"></span><span class="tab-lbl">Design</span></div>
         <div class="tab" data-page="files" role="tab" tabindex="0"><span class="ico-inline tab-ico" data-icon="mFiles"></span><span class="tab-lbl">Files</span></div>
         <div class="tab" data-page="libraries" role="tab" tabindex="0"><span class="ico-inline tab-ico" data-icon="mLibrary"></span><span class="tab-lbl">Libraries</span></div>
         <div class="tab" data-page="collab" role="tab" tabindex="0"><span class="ico-inline tab-ico" data-icon="mCollab"></span><span class="tab-lbl">Collaboration</span></div>

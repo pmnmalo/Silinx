@@ -51,13 +51,8 @@ export function renderHierarchy() {
   host.innerHTML = '';
   // (the Silinx interface's Implement and Emulate Files page, #4609)
   renderFlowFiles();
-  // (no project: its two commands here, the Silinx interface has no File menu, #1585)
-  if (!S.project) {
-    host.append(h('div', { class: 'tree empty' }, h('div', {}, 'No project open'),
-      h('div', { class: 'empty-actions' }, h('a', { href: '#', 'data-act': 'new-project', onclick: e => { e.preventDefault(); wiz.newProjectWizard(); } }, 'New Project…'),
-        ' · ', h('a', { href: '#', 'data-act': 'open-project', onclick: e => { e.preventDefault(); wiz.openProjectDialog(); } }, 'Open Project…'))));
-    return;
-  }
+  // (no project: nothing, its Design page is not shown then: the Start page's New Project and Open Project, #5284)
+  if (!S.project) return;
   const pj = S.project;
   const one = oneTree(), sim = designState.view === 'sim' && !one;
   const tree = h('ul', { class: 'tree', role: 'tree', tabindex: '0', 'aria-label': 'Design hierarchy', onkeydown: treeKeys });
