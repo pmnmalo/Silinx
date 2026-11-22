@@ -144,11 +144,12 @@ export class Session {
     }
   }
 
-  /** Check Schematic: its warnings and errors, exactly `expected` ('WARNING: …' in English, [] for none). */
-  async warnings(expected) {
+  /** Check Schematic: its warnings and errors, exactly `expected` ('WARNING: …' in English, [] for none; `pt`: as they
+   *  are in Portuguese, written out, #5185; else the English translated by the page). */
+  async warnings(expected, { pt } = {}) {
     const text = await this.a.check();
     const got = [...text.matchAll(/(WARNING|ERROR|AVISO|ERRO): (.*?)(?=(?:WARNING|ERROR|AVISO|ERRO|INFO): |Process "|Processo "|$)/gs)].map((m) => `${m[1]}: ${m[2].trim()}`);
-    const want = RUN.lang === 'en' ? expected : await this.page.eval(async (l) => { const { t } = await import('/js/i18n.js'); return l.map((x) => t(x)); }, expected);
+    const want = RUN.lang === 'en' ? expected : RUN.lang === 'pt' && pt ? pt : await this.page.eval(async (l) => { const { t } = await import('/js/i18n.js'); return l.map((x) => t(x)); }, expected);
     try { assert.deepEqual(got, want); } catch { await this.fail('Check Schematic', { 'warnings': [`got ${JSON.stringify(got)}`, `expected ${JSON.stringify(want)}`] }); }
   }
 

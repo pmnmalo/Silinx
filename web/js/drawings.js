@@ -14,7 +14,7 @@ import { newerDrawing } from '/core/doc-format.js';
 import { designOnly, hdlStatus, hdlWarning } from './design-only.js';
 import { getNotation } from './notation.js';
 import { editorProblems } from './editor-problems.js';
-import { t, onLanguageChange } from './i18n.js';
+import { t } from './i18n.js';
 import { reloadProject } from './project.js';
 import { markStale, saveAll } from './processes.js';
 import { openModuleSource, removeModule, renderHierarchy, saveProjectJson, setTop, topMenuItem } from './design.js';
@@ -213,12 +213,8 @@ export async function openFsm(path) {
       const host = h('div', { class: 'doc-body' });
       el.append(host);
       // (its problems in the console's Errors and Warnings, a click selecting the state or the transition, #2737)
-      const problems = editorProblems({ file: path, tool: 'FSM', what: 'Check State Diagram', goto: (x) => { activateDoc(d); ed.focus(x); } });
       // (in the interface's language, as the panel had them, again when it changes: the console shows a message as given)
-      let last = [];
-      const inLanguage = (diags) => diags.map(x => ({ ...x, message: t(x.message) }));
-      const setProblems = (diags) => { last = diags; problems.set(inLanguage(diags)); };
-      const offLang = onLanguageChange(() => setProblems(last));
+      const problems = editorProblems({ file: path, tool: 'FSM', what: 'Check State Diagram', goto: (x) => { activateDoc(d); ed.focus(x); }, inLanguage: true });
       const ed = mountFsmEditor(host, {
         model, ...followOnly(path, model),
         onChange: () => { setDirty(d, true); refreshFsmSchematic(path, ed.getModel()); },   // (its schematic, when open, follows: #4910)
@@ -228,8 +224,8 @@ export async function openFsm(path) {
         onToAsm: () => fsmToAsmChart(path),
         onVerify: (m) => import('./verify-props.js').then(v => v.propertyProcess(m)),
         onMessage: msg => log(`WARNING: ${path}: ${t(msg)} ${t('(not applied)')}`, 'warn'),   // (in the page's language, #5164)
-        onProblems: setProblems,
-        onCheck: (diags) => problems.log(inLanguage(diags)),   // (Check: in the Console too, #2803)
+        onProblems: (diags) => problems.set(diags),
+        onCheck: (diags) => problems.log(diags),   // (Check: in the Console too, #2803)
       });
       d.fsmEditor = ed;
       return {
@@ -238,7 +234,7 @@ export async function openFsm(path) {
           await api.writeFile(S.project.name, path, JSON.stringify(m, null, 2)); setDirty(d, false);
           syncDrawingHdl(path).catch(e => log(hdlWarning(`WARNING: HDL not synchronized: ${e.message}`, path, e.message), 'warn'));
         },
-        destroy: () => { offLang(); problems.clear(); ed.destroy?.(); },
+        destroy: () => { problems.clear(); ed.destroy?.(); },
       };
     },
   });
@@ -358,7 +354,7 @@ export async function openPetri(path) {
       const host = h('div', { class: 'doc-body' });
       el.append(host);
       // (its problems in the console's Errors and Warnings, a click selecting the item; its messages in the console, #2718)
-      const problems = editorProblems({ file: path, tool: 'PetriNet', what: 'Check Petri Net', goto: (x) => { activateDoc(d); if (x.ref?.id) ed.select(x.ref); } });
+      const problems = editorProblems({ file: path, tool: 'PetriNet', what: 'Check Petri Net', goto: (x) => { activateDoc(d); if (x.ref?.id) ed.select(x.ref); }, inLanguage: true });   // (#5185)
       const ed = mountPetriEditor(host, {
         model,
         onChange: () => setDirty(d, true),
@@ -421,7 +417,7 @@ export async function openCircuit(path) {
     create(el, d) {
       const host = h('div', { class: 'doc-body' });
       el.append(host);
-      const problems = editorProblems({ file: path, tool: 'Circuit', what: 'Check Circuit', goto: (x) => { activateDoc(d); if (x.ref?.id) ed.select(x.ref); } });
+      const problems = editorProblems({ file: path, tool: 'Circuit', what: 'Check Circuit', goto: (x) => { activateDoc(d); if (x.ref?.id) ed.select(x.ref); }, inLanguage: true });   // (#5185)
       const ed = mountCircuitEditor(host, {
         model,   // (its ⋮ menu: no HDL Language, #4168: Source Properties choose it)
         onChange: (m) => { setDirty(d, true); refreshCircuitSchematic(path, m); },   // (its schematic, when open, follows: #4069)

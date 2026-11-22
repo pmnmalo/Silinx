@@ -95,6 +95,6 @@ uiTest('usability: circuit: a short circuit and a floating input made on purpose
   await s.undo();
   // the wire from the 74194's output to the 7408 (w37) deleted: the 7408's input left floating
   await s.step('deleteWire', { id: 'w37' }, () => a.deleteWire('w37'), { frees: [], expect: (d, b) => assert.equal(d.wires.length, b.wires.length - 1) });
-  await s.warnings(['WARNING: U2 pin 1 (1A) is floating: a 74LS input reads high']);
+  await s.warnings(['WARNING: U2 pin 1 (1A) is floating: a 74LS input reads high'], { pt: ['WARNING: U2 pino 1 (1A) está a flutuar: uma entrada 74LS lê 1'] });   // (#5185)
   await s.undoRedo();
 });
