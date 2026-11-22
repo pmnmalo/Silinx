@@ -1,8 +1,10 @@
 // Silinx - the co-design system's link decoders (#4699, docs/CODESIGN.md): a link's traffic decoded from the pins the
 // co-simulation scheduler exchanges (core/system-sim.js: a link's changes, [t, value, t, value…] in ps). A UART's bytes
 // at a baud and a frame (data bits 5 to 8, parity N / E / O, stop bits 1 or 2, a System document's `8N1`), each with its
-// time; a framing error (a stop bit at 0) and a parity error are the decoder's warnings, as the console says them. SPI
-// and I²C come with their links (phase 2). Isomorphic ES module, no DOM.
+// time; a framing error (a stop bit at 0) and a parity error are the decoder's warnings, as the console says them. An
+// SPI bus's transfers from its four lines (#5214: a byte each way, MOSI's and MISO's, at the mode's sampling edges while
+// SS is low); a SCK faster than its interface says, a warning. I²C comes with its links (phase 2). Isomorphic ES module,
+// no DOM.
 
 /** A frame's text read ('8N1', '7E2'): { bits, parity: 'N' | 'E' | 'O', stop }, or null. */
 export function parseFrame(frame) {
@@ -95,3 +97,39 @@ export function linkTraffic(sys, { frames = {}, end = sys.now } = {}) {
     return { link: l.name, kind: 'uart', bytes, warnings: uartWarnings(l.name, bytes, { baud: l.baud, frame }) };
   });
 }
+
+// a line's level at t from its changes [t, level, …]
+function levelAt(ch, t) {
+  let v = null;
+  for (let k = 0; k < ch.length && ch[k] <= t; k += 2) v = ch[k + 1];
+  return v;
+}
+
+/**
+ * An SPI bus's transfers from its lines' changes (ps) { sck, mosi, miso, ss } (miso, ss: none, read as 0 and selected):
+ * [{ t (its first edge's), mosi, miso }] (bytes, MSB first unless lsbFirst), and its SCK's fastest rate (Hz). The bits
+ * are read at the mode's sampling edges (mode 0 and 3 SCK rising, 1 and 2 falling) while SS is low; a transfer of fewer
+ * than 8 bits (SS raised before its end) is dropped.
+ */
+export function decodeSpi({ sck = [], mosi = [], miso = [], ss = null }, { mode = 0, lsbFirst = false } = {}) {
+  const cpol = mode >> 1, cpha = mode & 1, edge = cpol ^ cpha ? 0 : 1;   // (the level SCK goes to at a sampling edge)
+  const out = [];
+  let cur = null, last = null, fastest = 0;
+  for (let k = 2; k < sck.length; k += 2) {
+    const t = sck[k];
+    if (last != null && t > last) fastest = Math.max(fastest, 1e12 / (2 * (t - last)));
+    last = t;
+    if (sck[k + 1] !== edge) continue;
+    if (ss && levelAt(ss, t) !== 0) { cur = null; continue; }
+    cur ??= { t, n: 0, mosi: 0, miso: 0 };
+    const at = lsbFirst ? 1 << cur.n : 0x80 >> cur.n;
+    if (levelAt(mosi, t) === 1) cur.mosi |= at;
+    if (levelAt(miso, t) === 1) cur.miso |= at;
+    if (++cur.n === 8) { out.push({ t: cur.t, mosi: cur.mosi, miso: cur.miso }); cur = null; }
+  }
+  return { transfers: out, hz: Math.round(fastest) };
+}
+
+/** An SPI bus's warnings: its SCK faster than its interface says (its link's latency set by it). */
+export const spiWarnings = (link, { hz, declared }) => (hz > declared * 1.01
+  ? [`${link}: SCK at ${hz} Hz, faster than its interface's ${declared} Hz: its MISO may be read late (the interface's SCK rate at least the program's)`] : []);

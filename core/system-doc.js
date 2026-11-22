@@ -6,29 +6,34 @@
 //     nodes: [ { id, kind: 'fpga', module, board, variant?, pins: { <port>: <pin of the board> }, interfaces, x, y }
 //              { id, kind: 'mcu', board: 'arduino-uno' | 'arduino-nano', firmware: <a .hex / .elf of the project>, interfaces, x, y }
 //              { id, kind: 'terminal', interfaces, x, y } ],
-//     links: [ { id, kind: 'uart' | 'gpio', a: '<node>.<interface>', b: '<node>.<interface>' } ] }
+//     links: [ { id, kind: 'uart' | 'gpio' | 'spi', a: '<node>.<interface>', b: '<node>.<interface>' } ] }
 //
 // An interface is declared once, on its node: a UART { name, kind: 'uart', tx, rx, baud, frame } (an FPGA node's tx and
 // rx its module's ports; a microcontroller's its board's UART, named as the board's, its pins the board's), GPIO wires
 // { name, kind: 'gpio', pins: [...], dir: 'in' | 'out' } (an FPGA node's pins its module's ports, `led<0>` a bus's bit;
-// a microcontroller's its board's pins). A UART link joins a's TX to b's RX and b's TX to a's RX; a GPIO link its ends'
-// pins in order. An FPGA node is a module of the co-design project itself (HDL or a drawing), on a board of its own: a
+// a microcontroller's its board's pins), an SPI bus { name, kind: 'spi', sck, mosi, miso, ss, hz, mode } (#5214: an FPGA
+// node's four its module's ports, the peripheral; a microcontroller's its board's SPI, named as the board's, its pins
+// the board's, the master; hz its SCK's rate, mode 0 to 3). A UART link joins a's TX to b's RX and b's TX to a's RX; a
+// GPIO link its ends' pins in order; an SPI link the master's SCK, MOSI and SS to the peripheral's, its MISO back. An FPGA node is a module of the co-design project itself (HDL or a drawing), on a board of its own: a
 // co-design project has no `board`.
 
 export const SYSTEM_FORMAT = 'silinx-system';
 export const SYSTEM_VERSION = 1;
 export const NODE_KINDS = ['fpga', 'mcu', 'terminal'];
-export const LINK_KINDS = ['uart', 'gpio'];
-export const INTERFACE_KINDS = ['uart', 'gpio'];
+export const LINK_KINDS = ['uart', 'gpio', 'spi'];
+export const INTERFACE_KINDS = ['uart', 'gpio', 'spi'];
+/** An SPI bus's default SCK rate (Hz): the Arduino's SPI_CLOCK_DIV128, 125 kHz. */
+export const SPI_HZ = 125000;
 /** A UART's frame: data bits, parity (None, Even, Odd), stop bits. */
 export const FRAME_RE = /^[5-8][NEO][12]$/;
 
 const digital = n => Array.from({ length: n }, (_, i) => `D${i}`);
 const analog = n => Array.from({ length: n }, (_, i) => `A${i}`);
-/** The microcontrollers' boards: their pins, their I/O voltage, their UARTs ({ name: { tx, rx } }). */
+/** The microcontrollers' boards: their pins, their I/O voltage, their UARTs ({ name: { tx, rx } }), their SPI buses
+ *  ({ name: { sck, mosi, miso, ss } }). */
 export const MCU_BOARDS = [
-  { id: 'arduino-uno', name: 'Arduino Uno', mcu: 'ATmega328P', clockHz: 16e6, vio: 5, pins: [...digital(14), ...analog(6)], uarts: { Serial: { tx: 'D1', rx: 'D0' } } },
-  { id: 'arduino-nano', name: 'Arduino Nano', mcu: 'ATmega328P', clockHz: 16e6, vio: 5, pins: [...digital(14), ...analog(8)], inputOnly: ['A6', 'A7'], uarts: { Serial: { tx: 'D1', rx: 'D0' } } },
+  { id: 'arduino-uno', name: 'Arduino Uno', mcu: 'ATmega328P', clockHz: 16e6, vio: 5, pins: [...digital(14), ...analog(6)], uarts: { Serial: { tx: 'D1', rx: 'D0' } }, spis: { SPI: { sck: 'D13', mosi: 'D11', miso: 'D12', ss: 'D10' } } },
+  { id: 'arduino-nano', name: 'Arduino Nano', mcu: 'ATmega328P', clockHz: 16e6, vio: 5, pins: [...digital(14), ...analog(8)], inputOnly: ['A6', 'A7'], uarts: { Serial: { tx: 'D1', rx: 'D0' } }, spis: { SPI: { sck: 'D13', mosi: 'D11', miso: 'D12', ss: 'D10' } } },
 ];
 /** A microcontroller's board by its id, or null. */
 export const mcuBoard = id => MCU_BOARDS.find(b => b.id === id) || null;
@@ -48,6 +53,9 @@ function normalInterface(f) {
   } else if (out.kind === 'gpio') {
     out.pins = Array.isArray(f.pins) ? f.pins.map(String) : [];
     out.dir = f.dir;
+  } else if (out.kind === 'spi') {
+    for (const k of ['sck', 'mosi', 'miso', 'ss']) if (f[k] != null) out[k] = String(f[k]);
+    out.hz = f.hz ?? SPI_HZ; out.mode = f.mode ?? 0;
   } else Object.assign(out, f, out);
   return out;
 }

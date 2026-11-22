@@ -37,7 +37,9 @@ test('normalized: the missing fields given, a kind\'s fields only, in their orde
   ], links: [{ id: 'l', kind: 'uart', a: 't.serial', b: 'm.Serial' }] });
   assert.deepEqual(Object.keys(m.nodes[0]), ['id', 'kind', 'module', 'board', 'pins', 'interfaces', 'x', 'y']);
   // an interface of a kind not known: kept as it is (the check says it)
-  assert.deepEqual(normalizeSystem({ nodes: [{ id: 'f', kind: 'fpga', interfaces: [{ name: 's', kind: 'spi', mode: 0 }] }] }).nodes[0].interfaces, [{ name: 's', kind: 'spi', mode: 0 }]);
+  assert.deepEqual(normalizeSystem({ nodes: [{ id: 'f', kind: 'fpga', interfaces: [{ name: 's', kind: 'can', mode: 0 }] }] }).nodes[0].interfaces, [{ name: 's', kind: 'can', mode: 0 }]);
+  // (an SPI bus's: its ports, its rate and mode, 125 kHz and 0 by default, #5214)
+  assert.deepEqual(normalizeSystem({ nodes: [{ id: 'f', kind: 'fpga', interfaces: [{ name: 's', kind: 'spi', x: 1, sck: 'c' }] }] }).nodes[0].interfaces, [{ name: 's', kind: 'spi', sck: 'c', hz: 125000, mode: 0 }]);
   assert.deepEqual(newSystem('top'), { format: SYSTEM_FORMAT, version: SYSTEM_VERSION, name: 'top', nodes: [], links: [] });
   assert.equal(writeSystem(newSystem('top')), '{\n  "format": "silinx-system",\n  "version": 1,\n  "name": "top",\n  "nodes": [],\n  "links": []\n}\n');
 });
