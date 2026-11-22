@@ -53,12 +53,12 @@ for (const name of EXAMPLES) {
 
 // ------------------------------------------------------------------ the open synthesis's test designs (test/fixtures/designs)
 const DESIGNS = path.join(ROOT, 'test/fixtures/designs');
-// (their warnings, or why they are not compiled: an inout port)
+// (their warnings; the tristate's inout port and its tristate output as pads, #4709: test/compiled-inout.test.js)
 const FIXTURES = {
   adder: [], blinky: [], bram_dp: [], bram_sp: [], cpu8: [], dram: [], fsm: [], mult: [], srl: [],
   latch: ["latch inferred for 'l3'", "latch inferred for 'l2'", "latch inferred for 'l1'"],
   bram_prim: [], bufgmux: [], dcm: [],
-  tristate: { error: "the inout port 'io' (a tristate) cannot be compiled" },
+  tristate: [],
 };
 test('the test designs are all listed', () => {
   assert.deepEqual(fs.readdirSync(DESIGNS).sort(), Object.keys(FIXTURES).sort());
@@ -603,10 +603,18 @@ const failure = async (name, text) => {
   try { await compileDesign(designOf(src(name, text), name.replace(/\.\w+$/, '')), { run: yosysNode }); } catch (e) { assert.ok(e instanceof CompileError, e.message); return e.message; }
   return null;
 };
-test('a combinational loop, an inout port, a tristate buffer, a primitive with no model (PULLUP): not compiled, with the reason', async () => {
+test('a combinational loop, a tristate buffer, a primitive with no model (PULLUP): not compiled, with the reason', async () => {
   assert.equal(await failure('loop.v', 'module loop(input x, y, output a); wire b; assign a = b ^ x; assign b = a & y; endmodule'), "combinational loop through 'b': not compiled");
-  assert.equal(await failure('io.v', "module io(input en, d, inout p, output q); assign p = en ? d : 1'bz; assign q = p; endmodule"), "the inout port 'p' (a tristate) cannot be compiled");
+  // (a $tribuf on an output port: a pad, #4709, its output A and its enable EN; one on a net of the design: refused)
   const tb = oneCell('$tribuf', { WIDTH: 1 }, { A: 1, EN: 1, Y: 1 });
+  const pad = new CompiledSim(compileNetlist(tb, { top: 't' }));
+  pad.set('A', 1); pad.set('EN', 0); pad.cycle(0);
+  assert.deepEqual([pad.get('Y'), pad.get('Y:en')], [0n, 0n]);
+  pad.set('EN', 1); pad.cycle(0);
+  assert.deepEqual([pad.get('Y'), pad.get('Y:en')], [1n, 1n]);
+  const t = tb.modules.t;
+  t.ports = { A: t.ports.A, EN: t.ports.EN, q: { direction: 'output', bits: [9] } };
+  t.cells.n = { type: '$not', parameters: { A_WIDTH: bin(1), Y_WIDTH: bin(1), A_SIGNED: bin(0) }, port_directions: {}, connections: { A: [4], Y: [9] } };
   assert.throws(() => compileNetlist(tb, { top: 't' }), { message: "the tristate buffer 'c' cannot be compiled" });
   assert.equal(await failure('pu.v', 'module pu(input d, output q); wire w; PULLUP p (.O(w)); assign q = d & w; endmodule'), 'the compiled simulator has no model of PULLUP');
   // a latch in a loop with itself never settles: an error when it runs
@@ -655,16 +663,16 @@ test('a PLL_BASE: not compiled when its CLKIN is not an input port, a duty cycle
   assert.equal(s.get('n'), 0n);
 });
 
-test('an output at high impedance (Z) is 0, with a warning', async () => {
+test('an output at high impedance (Z) is 0, its enable p:en (a pad, #4709: no warning)', async () => {
   const s = await compileDesign(designOf(src('tbuf.v', "module tbuf(input en, d, output p); assign p = en ? d : 1'bz; endmodule"), 'tbuf'), { run: yosysNode });
-  assert.deepEqual(s.warnings, ["a high-impedance value ('Z') is 0 in the compiled simulator"]);
+  assert.deepEqual(s.warnings, []);
   s.set('d', 1);
   s.set('en', 1);
   s.cycle(0);
-  assert.equal(s.get('p'), 1n);
+  assert.deepEqual([s.get('p'), s.get('p:en')], [1n, 1n]);
   s.set('en', 0);
   s.cycle(0);
-  assert.equal(s.get('p'), 0n);
+  assert.deepEqual([s.get('p'), s.get('p:en')], [0n, 0n]);
 });
 test('the buffers (BUFG, IBUFG…) are wires; the clock through a BUFG is the main clock', async () => {
   const s = await compileDesign(designOf(src('withbuf.v', 'module withbuf(input clk, input [3:0] d, output reg [3:0] q); wire c; BUFG b (.I(clk), .O(c)); always @(posedge c) q <= q + d; endmodule'), 'withbuf'), { run: yosysNode });

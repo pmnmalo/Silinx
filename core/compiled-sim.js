@@ -23,7 +23,8 @@
 //     schedule of their edges in the main clock's cycles (dcmSchedule): the main clock is its input, each
 //     cycle's edges are steps of the loop in time order; a DCM whose RST the design drives starts its
 //     schedule again after a reset (#465).
-// What it cannot compile (a combinational loop, a tristate, an inout port, a primitive with no model
+// An inout port, or an output port driven with 'Z', is a pad: its input, its output and its enable (core/compiled-inout.js,
+// #4709). What it cannot compile (a combinational loop, a tristate buffer inside the design, a primitive with no model
 // here, a cascaded DCM with its RST driven) is a CompileError with the reason: the emulator then keeps the
 // event-driven simulator.
 //
@@ -37,6 +38,7 @@ import { PRIMITIVE_MODELS, bramInit, simprimCell } from './compiled-prims.js';
 import { gateModel } from './compiled-tables.js';
 import { CompileError, CHUNK, CUT_GAIN, FF, GUARD, HELPERS, PIECE, PMAX, PROFILE, SPLIT, WORTH } from './compiled-helpers.js';
 import { mountCells } from './compiled-cells.js';
+import { splitPads } from './compiled-inout.js';
 import { mountExpressions } from './compiled-exprs.js';
 import { mountElements } from './compiled-elements.js';
 import { mountClocks } from './compiled-clocks.js';
@@ -189,14 +191,16 @@ export function portBit(json, top, name, pos = 0) {
  *   netlist (portBit), sampled in every cycle before its clock edge (the values the cycle shows).
  */
 export function compileNetlist(json, { top, clock = null, wide = false, watch = null, activity = true, profile = PROFILE, split: splitAt = SPLIT, chunk = CHUNK } = {}) {
-  const mod = json.modules[top] || Object.values(json.modules).find(m => m.attributes?.top) || Object.values(json.modules)[0];
-  if (!mod) throw new CompileError('the netlist has no module');
+  const read = json.modules[top] || Object.values(json.modules).find(m => m.attributes?.top) || Object.values(json.modules)[0];
+  if (!read) throw new CompileError('the netlist has no module');
   const vars = [];                 // { w, kind }
   const src = new Map();           // bit -> [var, offset]
   const newVar = (w) => { vars.push({ w, kind: wide || w > 32 ? 'b' : 'n' }); return vars.length - 1; };
   const drive = (bits, v) => bits.forEach((b, i) => { if (typeof b === 'number') src.set(b, [v, i]); });
   const names = [];                // cell names for the messages
   const cellName = (n) => n.replace(/^\$[^$]*\$/, '').replace(/\$\d+$/, '');
+  // (#4709: the tristate ports as pads: an inout port's input, output and enable, compiled-inout.js)
+  const { mod, pads } = splitPads(read, cellName);
 
   // ---- the netlist read: the ports, the cells' outputs as variables, the memories (compiled-cells.js)
   const { comb, dcms, elems, inputs, mems, ports } = mountCells({
@@ -283,8 +287,9 @@ export function compileNetlist(json, { top, clock = null, wide = false, watch = 
   const nets = new Map();
   for (const [name, n] of Object.entries(mod.netnames || {})) if (!n.hide_name && !n.bits.some(b => unread.has(b))) nets.set(name, n.bits);
   for (const p of ports) nets.set(p.name, p.bits);
+  for (const p of pads) if (p.dir === 'inout') nets.set(p.name, nets.get(`${p.name}:out`));
   return {
-    code, inputs, ports, nets, src, vars, warnings,
+    code, inputs, ports, pads, nets, src, vars, warnings,
     clock: mainPort ? { port: mainPort.name } : null,
     stats: { cells: names.length, comb: order.length, flipflops: elems.filter(e => FF.has(e.type)).length, memories: mems.length, clocks: dlist.length + (main != null ? 1 : 0), bothEdges: needFall, dcms: dcms.length,
       // (#670: the combinational cells' cost, as cells (their operations), and the part of it a step evaluates, as the

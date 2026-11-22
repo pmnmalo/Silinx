@@ -13,7 +13,6 @@ export function mountCells(ctx) {
   // ---- ports
   const inputs = [], ports = [];
   for (const [name, p] of Object.entries(mod.ports || {})) {
-    if (p.direction === 'inout') throw new CompileError(`the inout port '${name}' (a tristate) cannot be compiled`);
     ports.push({ name, dir: p.direction, bits: p.bits });
     if (p.direction === 'input') {
       const v = newVar(p.bits.length);
