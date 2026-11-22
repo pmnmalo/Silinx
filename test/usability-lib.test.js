@@ -1,7 +1,7 @@
 // The usability tests' own logic (#5148, test/usability/lib/): the seeded generator, the shrinking of a failing sequence,
 // and the schematic's invariants on drawings made for each (a wire's end on nothing, a net name's stub, a wire come off
 // its pin, a diagonal, overlapping symbols, the junction dots, the nets, the HDL); the HDL editor's typing model and the
-// wave window's values against the reference simulator (#5206).
+// wave window's values against the reference simulator (#5206); the model of a project's lifecycle (#5206, phase 2).
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
@@ -15,6 +15,7 @@ import { DESIGNS } from './usability/lib/hdl-designs.js';
 import { shownValue, wrongValues, waveReference } from './usability/lib/wave-kit.js';
 import { compile, elaborate } from '../core/compile.js';
 import { mk, allX, format, toDec } from '../core/values.js';
+import { ProjectModel, KIND_NAMES } from './usability/lib/project-model.js';
 
 const ROOT = path.join(path.dirname(fileURLToPath(import.meta.url)), '..');
 const inv = (id, name, x, y) => ({ id, type: 'inv', x, y, rot: 0, mirror: false, name, params: { width: 1 } });
@@ -218,4 +219,78 @@ test('usability: the wave window\'s values: written in each radix, against core\
   assert.deepEqual(wrongValues(doc, ref), []);
   assert.deepEqual(wrongValues({ ...doc, values: ['3', '1'] }, ref), ['tb.q at 45000 ps (udec): shown "3", the reference\'s "4"']);
   assert.deepEqual(wrongValues({ ...doc, rows: [['tb.nope', 'default']], values: [''] }, ref), ['tb.nope: not in the reference']);
+});
+
+// a project with a source of each kind, as the lifecycle's scenario makes them
+function everyKind() {
+  const m = new ProjectModel('P');
+  for (const [k, n, o] of [['vhdl', 'alu'], ['verilog', 'cnt'], ['sch', 'sheet'], ['fsm', 'ctl'], ['asm', 'seq'], ['tt', 'dec'], ['pn', 'net'], ['circ', 'board'],
+    ['tb', 'tb_alu', { uut: 'alu' }], ['ucf', 'pins'], ['mem', 'rom'], ['c', 'add'], ['cpp', 'mul'], ['lab', 'lab1'], ['clock', 'clkgen'], ['bram', 'ram']]) m.add(k, n, o);
+  return m;
+}
+
+test('usability: the project\'s model: a source of each kind: the Design pane\'s rows, the files on disk and silinx.json\'s, the modules, the editors', () => {
+  const m = everyKind();
+  assert.deepEqual(KIND_NAMES.length, 16);
+  // (one row per module by name, the drawing's badge first, [VHDL] last; the wizards' instances under theirs; the empty
+  // ASM chart and state diagram rows of their files)
+  assert.deepEqual(m.rows(), ['add [C*] [VHDL] (add.c)', 'alu [VHDL*] (alu.vhd)', 'board [Circuit*] [Schematic] [VHDL] (board.circ.json)',
+    'clkgen [Clocking Wizard*] [VHDL] (clkgen.vhd)', '  u_bufg_clk0 - BUFG (primitive)', '  u_dcm - DCM_SP (primitive)', '  u_ibufg - IBUFG (primitive)',
+    'cnt [Verilog*] [VHDL] (cnt.v)', 'dec [Algebra*] [Schematic] [VHDL] (dec.bool.json)', 'mul [C++*] [VHDL] (mul.cpp)', 'net [Petri*] [FSM] [VHDL] (net.pn.json)',
+    'ram [Block Memory*] [VHDL] (ram.vhd)', '  u_ram_0_0 - RAMB16_S9 (primitive)', 'sheet [Schematic*] [VHDL] (sheet.sch.json)', 'seq.asm.json', 'ctl.fsm.json']);
+  assert.deepEqual(m.tree(), ['constraints/pins.ucf', 'labs/lab1.lab.json', 'sim/tb_alu.vhd', 'src/add.c', 'src/alu.vhd', 'src/board.circ.json', 'src/board.vhd', 'src/clkgen.vhd',
+    'src/cnt.v', 'src/ctl.fsm.json', 'src/dec.bool.json', 'src/dec.vhd', 'src/mul.cpp', 'src/net.pn.json', 'src/net.vhd', 'src/ram.vhd', 'src/rom.mem', 'src/seq.asm.json',
+    'src/sheet.sch.json', 'src/sheet.vhd']);
+  assert.deepEqual(m.files(), ['sim/tb_alu.vhd:sim', 'src/alu.vhd:design', 'src/board.vhd:design', 'src/clkgen.vhd:design', 'src/cnt.v:design', 'src/dec.vhd:design',
+    'src/net.vhd:design', 'src/ram.vhd:design', 'src/sheet.vhd:design']);
+  assert.deepEqual(m.modules(), ['alu', 'board', 'clkgen', 'cnt', 'dec', 'net', 'ram', 'sheet', 'tb_alu']);
+  assert.deepEqual([m.top, m.simTop, m.constraints, m.excluded()], ['', 'tb_alu', 'constraints/pins.ucf', []]);
+  // (the wizards' modules open no editor: the guided lab's still in front)
+  assert.deepEqual([m.docs.length, m.active], [14, 'file:labs/lab1.lab.json']);
+  assert.deepEqual(m.errors(), [['ERROR:FSM - "src/ctl.fsm.json": ', 'The diagram has no states: double-click the drawing to add one'],
+    ['ERROR:ASM - "src/seq.asm.json": ', 'The chart has no states'], ['ERROR:ASM - "src/seq.asm.json": ', 'No initial (reset) state selected']]);
+  assert.throws(() => m.add('vhdl2', 'x'), /no kind vhdl2/);
+  assert.throws(() => m.setTop('nothing'), /no source nothing/);
+});
+
+test('usability: the project\'s model: the top first, a source removed and back, a module renamed (its file, its editor, the bench\'s unit under test), a clone', () => {
+  const m = everyKind();
+  m.setTop('cnt');
+  assert.equal(m.rows()[0], '▲cnt [Verilog*] [VHDL] (cnt.v)');
+  m.closeDoc('file:labs/lab1.lab.json');
+  assert.equal(m.active, 'file:src/mul.cpp', 'the tab before it in front');
+  m.remove('net');
+  assert.ok(!m.rows().some((r) => r.startsWith('net ')));
+  assert.deepEqual([m.excluded(), m.files().includes('src/net.vhd:design'), m.tree().includes('src/net.vhd'), m.docs.includes('pn:src/net.pn.json')], [['src/net.pn.json'], false, true, false]);
+  m.restore('net');
+  assert.deepEqual([m.excluded(), m.files().includes('src/net.vhd:design')], [[], true]);
+  m.openDoc('file:src/alu.vhd');
+  m.rename('alu', 'alu2');
+  assert.deepEqual([m.active, m.docs.includes('file:src/alu.vhd'), m.source('tb_alu').uut, m.files().includes('src/alu2.vhd:design'), m.modules().includes('alu2')],
+    ['file:src/alu2.vhd', false, 'alu2', true, true]);
+  m.rename('cnt', 'cnt2');
+  assert.equal(m.top, 'cnt2');
+  const c = m.clone('Q');
+  assert.deepEqual([c.name, c.docs, c.active, c.rows(), c.tree(), c.files()], ['Q', [], null, m.rows(), m.tree(), m.files()]);
+  c.remove('dec');
+  assert.ok(m.rows().some((r) => r.startsWith('dec ')), 'the clone\'s sources its own');
+});
+
+test('usability: the project\'s model: the ISE style\'s Design pane: the Simulation view\'s bench and its unit under test, the flow\'s files under the top', () => {
+  const m = new ProjectModel('P');
+  m.flowFiles = true;
+  m.add('vhdl', 'alu'); m.add('verilog', 'cnt'); m.add('tb', 'tb_alu', { uut: 'alu', simTop: false }); m.add('ucf', 'pins'); m.add('mem', 'rom');
+  assert.equal(m.simTop, '', 'the bench selected in the view, not set');
+  m.view = 'sim';
+  assert.deepEqual(m.rows(), ['cnt [Verilog*] [VHDL] (cnt.v)', 'tb_alu [VHDL*] (tb_alu.vhd)', '  uut - alu [VHDL*] (alu.vhd)']);
+  m.view = 'impl';
+  // (no top: the constraints and the memory files after the modules; under the top once there is one)
+  assert.deepEqual(m.rows(), ['alu [VHDL*] (alu.vhd)', 'cnt [Verilog*] [VHDL] (cnt.v)', 'pins.ucf', 'rom.mem']);
+  m.setTop('cnt');
+  assert.deepEqual(m.rows(), ['▲cnt [Verilog*] [VHDL] (cnt.v)', '  pins.ucf', '  rom.mem', 'alu [VHDL*] (alu.vhd)']);
+  // (the project's own constraints file, not written: none listed)
+  const n = new ProjectModel('N');
+  n.flowFiles = true;
+  n.add('vhdl', 'top');
+  assert.deepEqual([n.constraints, n.rows()], ['constraints/top.ucf', ['top [VHDL*] (top.vhd)']]);
 });
