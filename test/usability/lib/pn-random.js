@@ -5,6 +5,7 @@
 // arc's weight set in Properties; a node (with its arcs) or an arc deleted; Undo, Redo. A name is one nothing of the net
 // has (its nodes, its ports); a guard tests the inputs.
 import { PLACE_R } from '../../../core/petri.js';
+import { arcGeometry } from '../../../core/petri-geometry.js';
 import { vocabulary, freshName, segDist } from './draw-random.js';
 
 const AREA = { x0: 60, y0: 60, x1: 780, y1: 440 };
@@ -38,21 +39,26 @@ function free(m, p, self = null) {
   }
   return true;
 }
-/** Whether an arc's line from `a` to `b` passes clear of the other nodes, and no arc joins them either way (#5266: two
- *  arcs between the same nodes are drawn on one line, the first then out of reach: not drawn until it is fixed). */
-const clearArc = (m, a, b) => !m.arcs.some((x) => (x.from === a.id && x.to === b.id) || (x.from === b.id && x.to === a.id))
+/** Whether an arc's line from `a` to `b` passes clear of the other nodes, and no arc goes from `a` to `b` yet (one back,
+ *  from `b` to `a`, may: the two are drawn apart, #5266). */
+const clearArc = (m, a, b) => !m.arcs.some((x) => x.from === a.id && x.to === b.id)
   && !nodes(m).some((n) => n !== a && n !== b && segDist(n, a, b) < PLACE_R + 16);
+/** An arc as drawn (core/petri-geometry.js): points along it, its line's or its curve's. */
+function arcPoints(m, arc) {
+  const g = arcGeometry(m, arc);
+  return Array.from({ length: 9 }, (_, i) => i / 8).map((s) => ({ x: (1 - s) ** 2 * g.p1.x + 2 * s * (1 - s) * g.c.x + s * s * g.p2.x,
+    y: (1 - s) ** 2 * g.p1.y + 2 * s * (1 - s) * g.c.y + s * s * g.p2.y }));
+}
 /** Whether an arc's middle, where a click selects it, is clear of the nodes and of the other arcs. */
 function clickable(m, arc) {
-  const [u, v] = [nodeOf(m, arc.from), nodeOf(m, arc.to)];
-  const mid = { x: (u.x + v.x) / 2, y: (u.y + v.y) / 2 };
+  const { mid } = arcGeometry(m, arc);
   if (nodes(m).some((n) => Math.hypot(n.x - mid.x, n.y - mid.y) < PLACE_R + 12)) return false;
-  return !m.arcs.some((x) => x !== arc && segDist(mid, nodeOf(m, x.from), nodeOf(m, x.to)) < 12);
+  return !m.arcs.some((x) => x !== arc && arcPoints(m, x).some((p, i, ps) => i && segDist(mid, ps[i - 1], p) < 12));
 }
 const names = (m) => [...nodes(m).map((n) => n.name), ...PORTS];
 const grid = (rng, lo, hi) => rng.int(Math.ceil(lo / 20), Math.floor(hi / 20)) * 20;
-/** A place and a transition an arc may join (none yet, its line clear). */
-const pair = (m, rng) => rng.pick(m.places.flatMap((p) => m.transitions.filter((t) => clearArc(m, p, t)).map((t) => [p, t]))) ?? null;
+/** A place and a transition an arc may join (one way at least none yet, its line clear). */
+const pair = (m, rng) => rng.pick(m.places.flatMap((p) => m.transitions.filter((t) => clearArc(m, p, t) || clearArc(m, t, p)).map((t) => [p, t]))) ?? null;
 
 const SPECS = [
   ...['place', 'transition'].map((kind) => ({
@@ -76,7 +82,9 @@ const SPECS = [
     gen(m, rng) {
       const pt = pair(m, rng);
       if (!pt) return null;
-      const inhibitor = rng.next() < 0.2, back = !inhibitor && rng.next() < 0.5;
+      // (the way no arc goes yet: either when both are free; an arc back beside one, drawn apart, #5266)
+      const fwd = clearArc(m, pt[0], pt[1]), bk = clearArc(m, pt[1], pt[0]);
+      const inhibitor = fwd && rng.next() < 0.2, back = !inhibitor && (fwd && bk ? rng.next() < 0.5 : bk);
       return { from: (back ? pt[1] : pt[0]).id, to: (back ? pt[0] : pt[1]).id, inhibitor };
     },
     apply(m, { from, to, inhibitor }, c) { m.arcs.push({ id: c.id('a'), from, to, weight: 1, inhibitor }); return m; },

@@ -161,6 +161,47 @@ uiTest('Petri net editor: arcs and inhibitor arcs drawn, delete / undo / redo, t
   await page.waitFor((ed) => /^Place p1/.test(document.querySelector(`${ed} .pn-selection h3`)?.textContent || ''), [ED], { what: 'p1 selected' });
 });
 
+// (#5266) an arc drawn back along another (start → idle beside idle → start): the two bent apart, each selected by a
+// click on it, its own weight by it; Delete takes the one selected only
+uiTest('Petri net editor: two arcs each way between a place and a transition, each selected by a click, its weight, deleted (#5266)', E, async (page) => {
+  await newNet(page, 'PnTwo');
+  await page.click(`${ED} .pn-tool`, { text: 'Arc' });
+  await page.click(await node(page, 't1')); await page.click(await node(page, 'p1'));
+  await page.waitFor((ed) => /5 arcs/.test(document.querySelector(`${ed} .asm-info`).textContent), [ED], { what: 'the arc back drawn' });
+  await page.click(`${ED} [data-act=select]`);
+  // an arc's middle on the screen (the point half along its drawn line) and what is under it
+  const mid = (id) => page.eval((ed, i) => {
+    const l = document.querySelector(`${ed} .pn-arc[data-id=${i}] .pn-arc-line`), p = l.getPointAtLength(l.getTotalLength() / 2).matrixTransform(l.getScreenCTM());
+    return { x: p.x, y: p.y, under: document.elementFromPoint(p.x, p.y)?.closest('[data-kind]')?.dataset.id ?? 'nothing' };
+  }, ED, id);
+  const [m1, m5] = [await mid('a1'), await mid('a5')];
+  assert.ok(Math.hypot(m1.x - m5.x, m1.y - m5.y) > 20, `drawn apart: ${JSON.stringify([m1, m5])}`);
+  assert.deepEqual([m1.under, m5.under], ['a1', 'a5']);
+  const selected = () => page.eval((ed) => [...document.querySelectorAll(`${ed} .pn-arc.sel`)].map((g) => g.dataset.id), ED);
+  for (const [id, at, w] of [['a1', m1, 2], ['a5', m5, 3]]) {
+    await page.click(at);
+    await page.waitFor((ed, i) => document.querySelector(`${ed} .pn-arc[data-id=${i}]`)?.classList.contains('sel'), [ED, id], { what: `arc ${id} selected by its click` });
+    assert.deepEqual(await selected(), [id]);
+    await setField(page, 'Weight', w);
+  }
+  const m = await untilSaved('PnTwo', (x) => x.arcs.length === 5 && x.arcs[0].weight === 2 && x.arcs[4].weight === 3, 'the weights saved');
+  assert.deepEqual(m.arcs.map((a) => [a.id, a.from, a.to, a.weight]), [['a1', 'p1', 't1', 2], ['a2', 't1', 'p2', 1], ['a3', 'p2', 't2', 1], ['a4', 't2', 'p1', 1], ['a5', 't1', 'p1', 3]]);
+  // each weight by its own arc: the nearer of the two arcs' middles
+  const lab = await page.eval((ed) => ['a1', 'a5'].map((i) => { const r = document.querySelector(`${ed} .pn-arc[data-id=${i}] .pn-weight`).getBoundingClientRect(); return { x: r.left + r.width / 2, y: r.top + r.height / 2 }; }), ED);
+  const d = (a, b) => Math.hypot(a.x - b.x, a.y - b.y);
+  assert.ok(d(lab[0], m1) < d(lab[0], m5) && d(lab[1], m5) < d(lab[1], m1), `weights by their arcs: ${JSON.stringify(lab)}`);
+  // (the weights each on its own arc, so the net's problems, exact: idle's capacity is 1)
+  assert.deepEqual(await problems(page), [
+    'warning: transition start never fires: it takes 2 tokens from place idle, whose capacity is 1',
+    'warning: transition start never fires: it puts 3 tokens into place idle, whose capacity is 1',
+  ]);
+  // the first one selected again, Delete: it goes, the arc back stays
+  await page.click(m1);
+  await page.waitFor((ed) => document.querySelector(`${ed} .pn-arc[data-id=a1]`)?.classList.contains('sel'), [ED], { what: 'a1 selected again' });
+  await page.click(`${ED} [data-act=delete]`);
+  await page.waitFor((ed) => /4 arcs/.test(document.querySelector(`${ed} .asm-info`).textContent) && !document.querySelector(`${ed} .pn-arc[data-id=a1]`), [ED], { what: 'a1 deleted' });
+  assert.ok(await page.eval((ed) => !!document.querySelector(`${ed} .pn-arc[data-id=a5]`), ED), 'a5 kept');
+});
 uiTest('Petri net editor: Random, Run / Stop, Reset; PNML export and import (undone); the HDL file generated and kept in sync', E, async (page) => {
   await newNet(page, 'PnSim');
   await page.click(`${ED} .pn-tab-btn`, { text: 'Try it' });
