@@ -60,9 +60,10 @@ const MADE = "src/pick.sym.json: the symbol of module 'pick' made (its default o
 
 // the Symbol Editor's edits once the HDL changed ([action, pin, its argument, the pins after it]): c moved up (◀
 // Earlier), en dragged above it (the left side's pins: en where b was, a moved down a place); or en to the bottom
-// beside s (s moved along the bottom, its wire following, #5278); then the new pins wired
-const LEFT = { edits: [['Earlier', 'c', -1, ['c:W', 'a:W', 'y:E', 's:S', 'en:W']], ['drag', 'en', 'c', ['en:W', 'c:W', 'a:W', 'y:E', 's:S']]], connect: [['wire', 'en'], ['marker', 'c']] };
-const BOTTOM = { edits: [['Side', 'en', 'S', ['a:W', 'y:E', 's:S', 'en:S', 'c:W']], ['drag', 'c', 'a', ['c:W', 'a:W', 'y:E', 's:S', 'en:S']]], connect: [['wire', 'c'], ['marker', 'en']] };
+// beside s (s moved along the bottom, its wire following, #5278); then the new pins wired; `open`: the new pins Check
+// Schematic says not connected, in the instance's pins' order
+const LEFT = { open: ['en', 'c'], edits: [['Earlier', 'c', -1, ['c:W', 'a:W', 'y:E', 's:S', 'en:W']], ['drag', 'en', 'c', ['en:W', 'c:W', 'a:W', 'y:E', 's:S']]], connect: [['wire', 'en'], ['marker', 'c']] };
+const BOTTOM = { open: ['c', 'en'], edits: [['Side', 'en', 'S', ['a:W', 'y:E', 's:S', 'en:S', 'c:W']], ['drag', 'c', 'a', ['c:W', 'a:W', 'y:E', 's:S', 'en:S']]], connect: [['wire', 'c'], ['marker', 'en']] };
 let k = 0;
 
 /** The whole session in `lang`: `v` the second symbol's edits and the new pins' wiring (LEFT, BOTTOM). */
@@ -160,7 +161,7 @@ async function symbols(page, lang, { title, v }) {
       await lines([`WARNING: top.sch.json: ${said}`])();
     },
   });
-  await sch.warnings(["WARNING: input pin en of inst_1 (pick) is not connected", "WARNING: input pin c of inst_1 (pick) is not connected", "WARNING: I/O marker 'b' is not connected"]);
+  await sch.warnings([...v.open.map((p) => `WARNING: input pin ${p} of inst_1 (pick) is not connected`), "WARNING: I/O marker 'b' is not connected"]);
   await mark();
   // b's wire and its marker deleted (a click on its segment's middle, on the marker's body); the new pins wired: a wire
   // to a marker, or a marker on the pin (`v.connect`); Undo to the start, Redo; saved
@@ -200,8 +201,7 @@ for (const lang of ['vhdl', 'verilog']) {
   }, { timeout: 240000 });
 }
 
-// (#5278: a pin that moves along the bottom side: its wire follows over its I/O marker's body)
-uiTest('usability: symbols: Update Symbol moves s along the bottom, its wire following clear of its marker (#5278)', E, async (page, _env, t) => {
-  t.todo('#5278: s\'s wire bent at its marker, along the marker\'s body');
+// (#5278: a pin that moves along the bottom side: its wire follows, clear of its I/O marker's body)
+uiTest('usability: symbols: Update Symbol moves s along the bottom, its wire following clear of its marker (#5278)', E, async (page) => {
   await symbols(page, 'vhdl', { title: 'symbols: a bottom pin moved', v: BOTTOM });
 }, { timeout: 240000 });

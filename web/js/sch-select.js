@@ -37,7 +37,7 @@ export function mountSchSelect(ctx) {
       }
     });
     const ends = new Set(doc().wires.filter(w => [w.points[0], w.points[w.points.length - 1]].some(q => moves.has(at(q)))).map(w => w.id));
-    followPins(doc(), moves, others);
+    followPins(doc(), moves, others, { modules: modules() });
     try { untangleNew(was, doc(), { modules: modules(), prefer: [...ends] }); } catch (e) { console.error(e); }
   }
   function rotateSel() {
