@@ -5,6 +5,8 @@
 import { symbolPins, symbolBox } from '../../../core/schdoc-symbols.js';
 
 export const ED = '.doc:not([hidden]) .sch-editor';
+/** Ctrl (Cmd on a Mac) for the keyboard's shortcuts. */
+export const CTRL = process.platform === 'darwin' ? 4 : 2;
 
 /** The schematic editor's actions on `page`. */
 export function schActions(page) {
@@ -59,6 +61,17 @@ export function schActions(page) {
   const menu = async (m, item) => {
     const [tm, ti] = await page.eval(async (a, b) => { const { t } = await import('/js/i18n.js'); return [t(a), t(b)]; }, m, item);
     return page.menu(tm, ti);
+  };
+  // a tool clicked at a point, the name it asks for typed in its box, Enter; the Select tool again
+  const prompted = async (act, x, y, name) => {
+    await tool(act);
+    // (the point measured with the tool chosen: its options in the toolbar may move the sheet)
+    await page.click(await at(x, y));
+    await page.waitFor((ed) => document.querySelector(`${ed} .se-prompt input`), [ED], { what: 'the name asked' });
+    await page.fill(`${ED} .se-prompt input`, name);
+    await page.key('Enter');
+    await page.waitFor((ed) => !document.querySelector(`${ed} .se-prompt`), [ED], { what: 'the name taken' });
+    await tool('select');
   };
   const center = (s) => { const b = symbolBox(s); return { x: b.x + b.w / 2, y: b.y + b.h / 2 }; };
 
@@ -125,6 +138,31 @@ export function schActions(page) {
       await page.key('Escape');
       await tool('select');
       await page.fill(`${ED} .se-search`, '');
+    },
+    /** Select a wire's segment (a click on it at (x, y)). */
+    async selectAt(x, y) { await tool('select'); await page.click(await at(x, y)); },
+    /** Delete the wire whose segment is at (x, y) (selected with a click, Delete). */
+    async deleteWire(x, y) { await this.selectAt(x, y); await page.key('Delete'); },
+    /** The Net Name tool on the wire at (x, y): the name typed in the box it asks with. */
+    async netName(x, y, name) { await prompted('net', x, y, name); },
+    /** The I/O Marker tool on a pin or a wire's end at (x, y): its name typed in the box it asks with. */
+    async ioMarker(x, y, name) { await prompted('io', x, y, name); },
+    /** The symbols named copied (Ctrl+C, the editor focused) and pasted (Ctrl+V) with the mouse at (x, y). */
+    async copyPaste(names, x, y) {
+      await this.select(names[0]);
+      for (const n of names.slice(1)) {
+        const c = center(await symByName(n));
+        await page.click(await at(c.x, c.y), { modifiers: 8 });   // (Shift + click: added to the selection)
+      }
+      await page.key('c', { modifiers: CTRL });
+      const q = await at(x, y);
+      await page.mouse('mouseMoved', q.x, q.y);
+      await page.key('v', { modifiers: CTRL });
+    },
+    /** The toolbar's menu (⋮): Rearrange Wires ('rewire') or Rearrange Schematic ('relayout'). */
+    async rearrange(act) {
+      await page.click(`${ED} .se-btn[data-act=more]`);
+      await page.click(`${ED} [data-act=${act}]`);
     },
     /** The junction dots drawn ('x,y', sorted). */
     dots: () => page.eval((ed) => [...document.querySelectorAll(`${ed} svg .junction`)].map((c) => `${c.getAttribute('cx')},${c.getAttribute('cy')}`).sort(), ED),
