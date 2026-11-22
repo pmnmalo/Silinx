@@ -21,9 +21,9 @@ UART and GPIO links. Its design is in [CODESIGN.md](../../CODESIGN.md); its road
   nothing, and a 5 V output on a 3.3 V FPGA input (an Arduino's TX on an FPGA's RX: on the real boards, a level shifter
   or a divider).
 
-## Simulate System
+## Try it
 
-**Simulate** in the System editor's toolbar opens its simulation view under the canvas. **Run 100 ms** (or Run, then
+**Try it** in the System editor's toolbar opens its simulation view under the canvas, the green Try it panel. **Run 100 ms** (or Run, then
 Pause) runs the whole System together: the FPGA nodes' modules compiled (Yosys) for the compiled engine at their board's
 clock, the Arduino's firmware run by avr8js at 16 MHz, everything in a Web Worker, deterministic. It shows:
 
@@ -40,7 +40,7 @@ MCP server's `edit_system`, `check_system` and `simulate` (a co-design project's
 
 1. New Project ▸ **Co-design**, Start from **Example: uart-avr**, Finish. Its System opens: `uno` (an Arduino Uno with
    `firmware/hello.hex`) linked by `serial` to `fpga` (the `uart` module on a Basys2).
-2. **Simulate**, then **Run 100 ms**. In the link inspector, `serial_uno` (the Arduino's TX to the FPGA's RX) shows
+2. **Try it**, then **Run 100 ms**. In the link inspector, `serial_uno` (the Arduino's TX to the FPGA's RX) shows
    `Hello from Arduino!` and `serial_fpga` (the FPGA's TX back) the same text: the FPGA echoes each byte.
 3. **Waves**: the Arduino's D1 and D0, the FPGA's rx and tx, and the two wires, over the 100 ms.
 

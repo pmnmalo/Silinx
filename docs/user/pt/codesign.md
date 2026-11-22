@@ -21,9 +21,9 @@ ligados por UART e GPIO.
   nada, e uma saída de 5 V numa entrada de 3,3 V da FPGA (o TX de um Arduino no RX de uma FPGA: nas placas reais, um
   conversor de nível ou um divisor).
 
-## Simular o Sistema
+## Experimentar
 
-**Simular**, na barra do editor de Sistema, abre a vista de simulação por baixo da tela. **Correr 100 ms** (ou Correr,
+**Experimentar**, na barra do editor de Sistema, abre a vista de simulação por baixo da tela, o painel verde de Experimentar. **Correr 100 ms** (ou Correr,
 depois Pausa) corre o Sistema todo junto: os módulos dos nós FPGA compilados (Yosys) para o motor compilado ao relógio
 da sua placa, o firmware do Arduino corrido pelo avr8js a 16 MHz, tudo num Web Worker, determinístico. Mostra:
 
@@ -40,7 +40,7 @@ ondas em `build/<nome>.vcd`).
 
 1. Novo Projeto ▸ **Co-design**, Começar por **Exemplo: uart-avr**, Concluir. O Sistema abre: `uno` (um Arduino Uno com
    `firmware/hello.hex`) ligado por `serial` a `fpga` (o módulo `uart` numa Basys2).
-2. **Simular**, depois **Correr 100 ms**. No inspetor de ligações, `serial_uno` (o TX do Arduino para o RX da FPGA)
+2. **Experimentar**, depois **Correr 100 ms**. No inspetor de ligações, `serial_uno` (o TX do Arduino para o RX da FPGA)
    mostra `Hello from Arduino!` e `serial_fpga` (o TX da FPGA de volta) o mesmo texto: a FPGA devolve cada byte.
 3. **Ondas**: o D1 e o D0 do Arduino, o rx e o tx da FPGA, e os dois fios, ao longo dos 100 ms.
 

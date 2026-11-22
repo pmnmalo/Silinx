@@ -107,7 +107,7 @@ read / write. Silinx generates both sides:
 
 ## Simulating everything together
 
-**Simulate System** (#4701) is the System editor's bottom panel: the page compiles each FPGA node's module (Yosys) and
+**Simulate System** (#4701) is the System editor's bottom panel, opened by its toolbar's **Try it** (the green Try it panel of the drawing editors, #5194): the page compiles each FPGA node's module (Yosys) and
 reads the firmware (`core/system-run.js` systemInputs), a Web Worker builds and runs the System (`core/system-host.js`,
 `core/system-build.js`: an FPGA node at its board's clock, its UART's RX idle at 1 when no link drives it; each wire with
 a fixed latency, a sixteenth of its bit), and the panel shows the run: its time, a terminal for each terminal node, the
