@@ -87,7 +87,7 @@ test('folder: a project from each example is the server\'s, file for file', asyn
     await P.createProject({ name, template: t });
     assert.deepEqual(under(await dump(root), name), sorted(diskTree(P.projectDir(name))), t);
   }
-  assert.deepEqual(Object.keys(EXAMPLES).sort(), ['blinky', 'breadboard', 'clock', 'gates', 'isqrt', 'lock', 'micro80', 'pong', 'stopwatch', 'traffic', 'uart', 'uart-avr', 'vga']);
+  assert.deepEqual(Object.keys(EXAMPLES).sort(), ['blinky', 'breadboard', 'clock', 'gates', 'isqrt', 'lock', 'micro80', 'pong', 'spi-avr', 'stopwatch', 'traffic', 'uart', 'uart-avr', 'vga']);
 });
 
 // (#3710) an example made for another board (the Mimas V2: 100 MHz, its buttons and switches active low): its top's

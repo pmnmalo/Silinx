@@ -153,9 +153,9 @@ uiTest('Start page: no Open Example entries (#776); New Project… lists the sev
   assert.deepEqual(entries.filter((e) => /^Open Example/.test(e)), []);
   await newFromExample(page, 'pong');
   // the wizard's list of templates: the empty project, then the examples in their order, nothing else (#5108); the
-  // co-design example last, hidden for an FPGA project (a co-design project's, #4702)
+  // co-design examples last, hidden for an FPGA project (a co-design project's, #4702, #5214)
   assert.deepEqual(await page.eval(() => [...document.querySelector('.dlg-overlay .wiz-main select').options].map((o) => [o.value, o.textContent, o.hidden])),
-    [['empty', 'Empty project', false], ...['gates', 'breadboard', 'traffic', 'blinky', 'pong', 'stopwatch', 'clock', 'vga', 'isqrt', 'uart', 'micro80', 'lock'].map((t) => [t, `Example: ${t}`, false]), ['uart-avr', 'Example: uart-avr', true]]);
+    [['empty', 'Empty project', false], ...['gates', 'breadboard', 'traffic', 'blinky', 'pong', 'stopwatch', 'clock', 'vga', 'isqrt', 'uart', 'micro80', 'lock'].map((t) => [t, `Example: ${t}`, false]), ['uart-avr', 'Example: uart-avr', true], ['spi-avr', 'Example: spi-avr', true]]);
   await page.fill('.dlg-overlay .wiz-main input[type=text]', 'PongN2');
   await page.dialogButton('Next >');
   await page.waitFor(() => document.querySelector('.dlg-overlay .wiz-main h3')?.textContent === 'Project Settings');

@@ -6,6 +6,7 @@
 // MCP server. Isomorphic module (browser + Node).
 
 import { codesignOn, CODESIGN_OFF } from './build-channel.js';
+import { CODESIGN_ORDER } from './examples.js';
 
 export const DESIGN_KIND = 'design';
 /** The design and simulation project's kind, as New Project, Design Properties and Open Project name it (#5133: for
@@ -16,7 +17,7 @@ export const DESIGN_ONLY_LABEL = 'Digital Logic';
  *  (`<name>.sys.json`, core/system-doc.js), its top; no board of its own (each FPGA node names its own). */
 export const CODESIGN_KIND = 'codesign';
 /** The co-design examples (New Project's Start from for a co-design project; the others are FPGA projects'). */
-export const CODESIGN_EXAMPLES = ['uart-avr'];
+export const CODESIGN_EXAMPLES = CODESIGN_ORDER;
 /** The examples offered in this build (New Project, the MCP's list_examples): the co-design ones only where co-design is
  *  on (#5202). */
 export const offeredExamples = names => names.filter(n => codesignOn() || !CODESIGN_EXAMPLES.includes(n));

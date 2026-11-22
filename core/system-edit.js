@@ -194,7 +194,7 @@ export function addLink(sys, { a, b, id = null } = {}) {
   }
   if (ends[0].n === ends[1].n) return { error: `a link joins two nodes: ${a} and ${b} are both of ${ends[0].n.id}` };
   if (ends[0].f.kind !== ends[1].f.kind) return { error: `${a} is ${ends[0].f.kind === 'uart' ? 'a UART' : 'GPIO'}, ${b} is ${ends[1].f.kind === 'uart' ? 'a UART' : 'GPIO'}: a link joins two interfaces of one kind` };
-  const lid = id ?? freeId(out, ends[0].f.kind === 'uart' ? 'serial' : 'wires');
+  const lid = id ?? freeId(out, { uart: 'serial', spi: 'spi' }[ends[0].f.kind] ?? 'wires');
   const bad = idError(out, lid);
   if (bad) return { error: bad };
   out.links.push({ id: lid, kind: ends[0].f.kind, a, b });
@@ -264,6 +264,6 @@ export function describeSystem(sys) {
     lines.push(`node ${n.id}: ${what}`);
     for (const f of n.interfaces) lines.push(`  ${ifaceText(n, f)}`);
   }
-  for (const l of sys.links) lines.push(`link ${l.id}: ${l.kind === 'uart' ? 'UART' : 'GPIO'} ${l.a} ↔ ${l.b}`);
+  for (const l of sys.links) lines.push(`link ${l.id}: ${String(l.kind).toUpperCase()} ${l.a} ↔ ${l.b}`);
   return lines;
 }
