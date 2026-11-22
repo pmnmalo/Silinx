@@ -113,8 +113,16 @@ export function mountTtEditor(container, opts = {}) {
     if (!M.outputs.includes(out)) out = M.outputs[0];
     render(); opts.onChange?.(M);
   };
-  const undo = () => { if (shared) shared.undo(); else if (hi > 0) restore(hi - 1); };
-  const redo = () => { if (shared) shared.redo(); else if (hi < hist.length - 1) restore(hi + 1); };
+  // (an Undo / Redo shows the table's names in its boxes, the focused one too, #5268: leaving it applies only what is typed
+  // after; a box whose text the step did not change keeps what is being typed in it)
+  const boxes = () => [[inIn, M.inputs.join(', ')], [outIn, M.outputs.join(', ')], [exprIn, M.exprs[out] || ''], [notes, M.notes]];
+  const reshow = step => {
+    const was = boxes().map(([, v]) => v);
+    step();
+    boxes().forEach(([f, v], i) => { if (v !== was[i]) f.value = v; });
+  };
+  const undo = () => reshow(() => { if (shared) shared.undo(); else if (hi > 0) restore(hi - 1); });
+  const redo = () => reshow(() => { if (shared) shared.redo(); else if (hi < hist.length - 1) restore(hi + 1); });
 
   container.innerHTML = '';
   const root = h('div', { class: 'tt-editor' });
@@ -365,7 +373,7 @@ export function mountTtEditor(container, opts = {}) {
       render(); if (mine) opts.onChange?.(M);
     },
     // (a change under way the merge must wait for: notes typed, not pushed yet; a name or an expression being typed)
-    busy: () => !!notesT || [[inIn, M.inputs.join(', ')], [outIn, M.outputs.join(', ')], [exprIn, M.exprs[out] || '']].some(([f, v]) => document.activeElement === f && f.value !== v),
+    busy: () => !!notesT || boxes().slice(0, 3).some(([f, v]) => document.activeElement === f && f.value !== v),
     // its HDL file linked (generatedFile, #245): nothing else changes, Undo / Redo keep the link
     setLink(file) { linkModel(M, file); hist.forEach((s, i) => { hist[i] = linkSnapshot(s, file); }); renderLink(); },
     refreshLink: () => renderLink(),
