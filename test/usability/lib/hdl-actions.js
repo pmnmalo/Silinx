@@ -62,11 +62,10 @@ export function hdlActions(page) {
       }
     },
 
-    /** Enter at the end of a line, the person reading the line first: a completion list still open closed with Esc
-     *  (`escape`: else the Enter is the list's, #5220). */
-    async enter({ escape = true } = {}) {
+    /** Enter at the end of a line, the person reading the line first (a completion list still open on the word typed
+     *  whole: the new line all the same, #5220). */
+    async enter() {
       await sleep(READ_MS);
-      if (escape && (await editorState(page)).list.length) await page.key('Escape');
       await page.key('Enter');
     },
 

@@ -3,7 +3,9 @@
 // bracket or a quote closed when what follows is a space, the end of the line or a closing character; a quote after a
 // word's letter not, as 4'd0; a closing character typed over the one it put), Enter (the text after the cursor carried to
 // the new line, its spaces dropped; a line of spaces only before the cursor emptied; the new line indented as the
-// person leaves it), a completion taken (the rest of its word inserted), the End of a line.
+// person leaves it: the editor's, or corrected; a closing word, 'end', 'else'…, the editor brings back to its block's
+// indentation as it is typed, which is the one intended), Enter after a word typed whole a new line even with the
+// completion list open on it, a completion taken (the rest of its word inserted), the End of a line.
 //
 // A line to type is written as the person types it: `[[std_logic_v|ector]]` types `std_logic_v`, waits for the
 // completion list and takes its first word, which is `std_logic_vector` (the part after the bar what it adds).

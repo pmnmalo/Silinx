@@ -109,21 +109,18 @@ for (const lang of ['vhdl', 'verilog']) {
 
 // the indentation the editor gives left as it is: each line where it was intended (VHDL: the block's, an 'end' back
 // to its opening's; Verilog: an 'end' / 'endmodule' back to its block's as it is typed)
-uiTest('usability: hdl edit: vhdl: the indentation the editor gives on Enter, left as it is, is the block\'s (#5218)', E, async (page, _env, t) => {
-  t.todo('#5218: the VHDL indentation is C\'s (a line after a declaration at column 0, after \'end if;\' deeper)');
+uiTest('usability: hdl edit: vhdl: the indentation the editor gives on Enter, left as it is, is the block\'s (#5218)', E, async (page) => {
   const s = await session(page, 'vhdl', 'indent as given');
   await s.typeDesign('vhdl', { strict: 'indent' });
 }, { timeout: 120000 });
 
-uiTest('usability: hdl edit: verilog: \'end\' and \'endmodule\' typed go back to their block\'s indentation (#5219)', E, async (page, _env, t) => {
-  t.todo('#5219: \'end\' and \'endmodule\' stay where Enter put them');
+uiTest('usability: hdl edit: verilog: \'end\' and \'endmodule\' typed go back to their block\'s indentation (#5219)', E, async (page) => {
   const s = await session(page, 'verilog', 'indent as given');
   await s.typeDesign('verilog', { strict: 'indent' });
 }, { timeout: 120000 });
 
 // Enter at the end of a line whose last word is a whole keyword (then, begin, is): a new line, not the completion's
-uiTest('usability: hdl edit: vhdl: Enter after a keyword typed whole makes the new line (#5220)', E, async (page, _env, t) => {
-  t.todo('#5220: the completion list, still open on the keyword, takes the Enter');
+uiTest('usability: hdl edit: vhdl: Enter after a keyword typed whole makes the new line (#5220)', E, async (page) => {
   const s = await session(page, 'vhdl', 'enter after a keyword');
   await s.typeDesign('vhdl', { strict: 'enter' });
 }, { timeout: 120000 });

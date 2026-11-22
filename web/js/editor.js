@@ -3,12 +3,12 @@
 // (snippets), live lint from the Silinx parsers with quick fixes (in the lint tooltip, a click on its
 // marker, Ctrl+.), hover info, go-to-definition, rename symbol (F2, web/js/refactor.js), folding,
 // comment toggling, search.
-import { EditorState, StateEffect, StateField, Compartment, Transaction } from '@codemirror/state';
+import { EditorState, StateEffect, StateField, Compartment, Transaction, Prec } from '@codemirror/state';
 import { EditorView, Decoration, keymap, lineNumbers, highlightActiveLine, highlightActiveLineGutter, drawSelection } from '@codemirror/view';
-import { StreamLanguage, syntaxHighlighting, bracketMatching, foldGutter, foldService, foldCode, indentUnit } from '@codemirror/language';
-import { history, historyKeymap, defaultKeymap, undo, redo, undoDepth, redoDepth, toggleComment, indentMore, indentLess, selectAll } from '@codemirror/commands';
+import { StreamLanguage, syntaxHighlighting, bracketMatching, foldGutter, foldService, foldCode, indentUnit, indentService, indentOnInput } from '@codemirror/language';
+import { history, historyKeymap, defaultKeymap, undo, redo, undoDepth, redoDepth, toggleComment, indentMore, indentLess, selectAll, insertNewlineAndIndent } from '@codemirror/commands';
 import { search, searchKeymap, openSearchPanel, closeSearchPanel, searchPanelOpen, findNext, gotoLine as gotoLinePanel, highlightSelectionMatches } from '@codemirror/search';
-import { autocompletion, completionKeymap, closeBrackets, closeBracketsKeymap } from '@codemirror/autocomplete';
+import { autocompletion, completionKeymap, closeBrackets, closeBracketsKeymap, completionStatus, selectedCompletion, closeCompletion } from '@codemirror/autocomplete';
 import { linter, lintGutter, setDiagnostics as showDiagnostics } from '@codemirror/lint';
 import { tags, tagHighlighter } from '@lezer/highlight';
 import { vhdl } from '@codemirror/legacy-modes/mode/vhdl';
@@ -17,6 +17,7 @@ import { c } from '@codemirror/legacy-modes/mode/clike';
 import { checkC } from '/core/c-check.js';
 import { parse as parseVerilog } from '/core/verilog/parser.js';
 import { parse as parseVhdl } from '/core/vhdl/parser.js';
+import { vhdlIndent, VHDL_ELECTRIC } from '/core/vhdl/indent.js';
 import { quickFixes } from '/core/quickfix.js';
 import { hintTooltip } from './diaghelp.js';
 import { t, getLanguage, onLanguageChange } from './i18n.js';
@@ -142,11 +143,39 @@ const ucf = {
   },
   languageData: { commentTokens: { line: '#' } },
 };
+// (Verilog's closing words typed at the start of a line bring it back, #5219; not the legacy mode's bracket typed anywhere
+// in it, which indented again a line the person had indented)
+const verilogMode = { ...verilog, languageData: { ...verilog.languageData, indentOnInput: /^\s*(?:end|end(?:case|module|function|task|generate|specify|primitive|table|config|package|class|interface|program|property|sequence|clocking|group)|join(?:_any|_none)?)$/ } };
 const LANGUAGES = {};
 const languageOf = lang => {
-  const mode = { vhdl, verilog, ucf, c }[lang];   // (c: Silinx HLS, #1524)
+  const mode = { vhdl, verilog: verilogMode, ucf, c }[lang];   // (c: Silinx HLS, #1524)
   return mode ? (LANGUAGES[lang] ??= StreamLanguage.define(mode)) : [];
 };
+
+// VHDL's indentation (#5218: the legacy mode's is C's), its lines before as they are indented (indentRange's own),
+// a line typed with 'end', 'begin', 'elsif', 'else' or 'when' brought back to its block's (indentOnInput)
+const vhdlIndentation = [
+  indentService.of((cx, pos) => {
+    const doc = cx.state.doc, at = doc.lineAt(pos), lines = [];
+    for (let n = 1; n < at.number; n++) { const l = doc.line(n); lines.push(' '.repeat(cx.lineIndent(l.from)) + l.text.trimStart()); }
+    if (pos > at.from) lines.push(doc.sliceString(at.from, pos));   // (Enter's: the line's part before the break)
+    return vhdlIndent(lines, cx.textAfterPos(pos), cx.unit);
+  }),
+  EditorState.languageData.of(() => [{ indentOnInput: VHDL_ELECTRIC }]),
+];
+// Enter after a word the completion list offers as it is (a keyword typed whole: is, then, begin): the new line, the
+// list closed (#5220); a completion that adds something is still Enter's
+const enterPastWord = lang => Prec.highest(keymap.of([{ key: 'Enter', run: v => {
+  const c = completionStatus(v.state) === 'active' && selectedCompletion(v.state);
+  if (!c) return false;
+  const { head } = v.state.selection.main, line = v.state.doc.lineAt(head), at = head - line.from;
+  const word = /[\w$.]*$/.exec(line.text.slice(0, at))[0];
+  const same = lang === 'vhdl' ? word.toLowerCase() === c.label.toLowerCase() : word === c.label;
+  if (!same || /^[\w$]/.test(line.text.slice(at))) return false;
+  closeCompletion(v);
+  return insertNewlineAndIndent(v);
+} }]));
+const typingOf = lang => (lang === 'vhdl' || lang === 'verilog' ? [lang === 'vhdl' ? vhdlIndentation : [], indentOnInput(), enterPastWord(lang)] : []);
 
 // folding by indentation: a line folds up to the last following line indented deeper than it
 const indentOf = s => s.match(/^\s*/)[0].replace(/\t/g, '  ').length;
@@ -392,7 +421,7 @@ export function createEditor(container, { text = '', lang = 'verilog', path = ''
         lineNumbers(), foldGutter(), indentFold, highlightActiveLineGutter(),
         history(), drawSelection(), highlightActiveLine(), bracketMatching(), closeBrackets(),
         highlightSelectionMatches({ wholeWords: true }), search({ top: true }), flashField, pathField, peersField, peerSelField,
-        languageOf(lang), syntaxHighlighting(highlighter), EditorView.editorAttributes.of({ class: 'xl-editor' }),
+        languageOf(lang), typingOf(lang), syntaxHighlighting(highlighter), EditorView.editorAttributes.of({ class: 'xl-editor' }),
         indentUnit.of('  '), EditorState.tabSize.of(2), readOnliness.of(EditorState.readOnly.of(readOnly)), phrasing.of(EditorState.phrases.of(phrases())),
         lang === 'vhdl' || lang === 'verilog' ? autocompletion({ override: [ctx => (ro() ? null : completions(ctx))], icons: false, maxRenderedOptions: 200, addToOptions: [{ render: renderKind, position: 20 }] }) : [],
         keymap.of([...keys, ...closeBracketsKeymap, ...completionKeymap, ...searchKeymap, ...historyKeymap, ...defaultKeymap]),
