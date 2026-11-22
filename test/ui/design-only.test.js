@@ -129,7 +129,7 @@ uiTest('#3780 #4103 Design Properties: its Project Kind makes a design project a
   const pick = v => (v === 'design' ? choose('Project Kind:', 'design') : choose('Project Kind:', 'fpga').then(() => choose('Evaluation Development Board:', v)));
   await page.menu('Project', 'Design Properties…');
   await page.waitDialog('Design Properties');
-  assert.deepEqual(await dialogFields(), { kind: 'design', kinds: ['Digital Logic', 'FPGA', 'Co-design (not available yet)'], board: '', boards: [''], shown: ['Name:', 'Project Kind:', 'Top-Level Source Type:'] });
+  assert.deepEqual(await dialogFields(), { kind: 'design', kinds: ['Digital Logic', 'FPGA', 'Co-design (New Project only)'], board: '', boards: [''], shown: ['Name:', 'Project Kind:', 'Top-Level Source Type:'] });
   await pick('basys2');
   assert.ok((await dialogFields()).shown.includes('Device:') && (await dialogFields()).shown.includes('Evaluation Development Board:'));
   await page.dialogButton('OK');
