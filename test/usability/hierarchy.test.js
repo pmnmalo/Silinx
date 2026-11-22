@@ -128,7 +128,9 @@ uiTest('usability: hierarchy: down from the top to a schematic module and its HD
         expect: async (d) => {
           same(s.note, (await tr(page, [`The symbol is out of date: module '${below}' changed its ports (added c).`]))[0], 'the note');
           same(staleInstances(d, ctx.modules).filter((x) => x.startsWith(`${inst} `)), [], 'out of date');
-          await lines([])();
+          // (its console line: the connections kept, #5277; its text in the page's language)
+          const [said] = await tr(page, [`Symbol updated (${inst}), its connections kept`]);
+          await lines([`${file}: ${said}`])();
         },
       });
     }
