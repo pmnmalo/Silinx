@@ -5,6 +5,7 @@ import { h } from './dom.js';
 import { vgaPins } from '/core/vga.js';
 import { BOARD_LAYOUTS, makeDigit } from './emulator.js';
 import { pressEnd } from '/core/emulate-press.js';
+import { mountTouchControls } from './emulator-touch.js';
 
 /** { digits, leds, powerSwitches, vgaWired } of mountEmulator (compiled(), knobEnd(), lcdView(), powered(), running(): its current values). */
 /** No context menu over the emulated board: on a tablet a long press is one, and it released a push button held down
@@ -152,5 +153,6 @@ export function mountBoardParts(ctx) {
     boardEl.append(h('div', { style: { fontSize: '11px', color: '#cfe8d4', marginTop: '6px' } }, clockNote));
   }
 
+  mountTouchControls(main);   // (a phone's: the switches and buttons for a finger, under the board, #5121)
   return { digits, leds, powerSwitches, vgaWired };
 }

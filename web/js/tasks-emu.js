@@ -16,16 +16,21 @@
 //   that both interfaces draw a board at the same size (the Silinx interface's is the reference).
 // boardZoom has no DOM and is unit tested (test/tasks.test.js).
 
+import { isPhone } from './narrow.js';
+
 export const MAX_ZOOM = 1.5, MIN_ZOOM = 0.7;   // (smaller on a tablet, but not below 0.7: its labels kept legible, #1999)
+// (on a phone, #5121: the board fitted to the width, whatever its size, its switches and buttons under it for a finger,
+// web/js/emulator-touch.js; the pane scrolls down)
+export const PHONE_MIN_ZOOM = 0.3;
 const GAP = 12;   // (.emu-main's padding and gap, web/js/emulator.js)
 const BAR = 16;   // (a scrollbar's room: the area scrolling down once zoomed, #1399)
 
 /** The zoom of a board of size `board` ({ w, h }) in the room `room` ({ w, h }): as large as fits, at most MAX_ZOOM,
- *  at least MIN_ZOOM (the room smaller still: the task's area scrolls). */
-export function boardZoom(room, board) {
+ *  at least `min` (MIN_ZOOM; the room smaller still: the task's area scrolls). */
+export function boardZoom(room, board, min = MIN_ZOOM) {
   if (!(board?.w > 0) || !(board?.h > 0) || !(room?.w > 0) || !(room?.h > 0)) return 1;
   // (to the hundredth below: a board that fills the room makes it scroll in neither direction)
-  return Math.max(MIN_ZOOM, Math.floor(100 * Math.min(MAX_ZOOM, room.w / board.w, room.h / board.h)) / 100);
+  return Math.max(min, Math.floor(100 * Math.min(MAX_ZOOM, room.w / board.w, room.h / board.h)) / 100);
 }
 
 const shown = el => !!el && el.getClientRects().length > 0;
@@ -40,7 +45,9 @@ function fitBoard(on) {
     const main = emu.querySelector('.emu-main'), bar = emu.querySelector('.emu-bar'), line = emu.querySelector(':scope > .doc-status');
     // (the board's area, the side panel at its right or over it, #2666, #2713: the VGA monitor wraps below the board)
     const h = emu.clientHeight - (bar?.offsetHeight || 0) - (line?.offsetHeight || 0) - 2 * GAP, board = { w: wrap.offsetWidth, h: wrap.offsetHeight };
-    wrap.style.zoom = String(boardZoom({ w: main.clientWidth - 2 * GAP - BAR, h }, board));
+    // (a phone: to the width alone, the pane scrolling down to the switches and buttons under the board)
+    const phone = isPhone();
+    wrap.style.zoom = String(boardZoom({ w: main.clientWidth - 2 * GAP - BAR, h: phone ? Infinity : h }, board, phone ? PHONE_MIN_ZOOM : MIN_ZOOM));
   }
 }
 

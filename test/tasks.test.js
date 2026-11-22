@@ -159,6 +159,12 @@ test('#801 #1021 #1999 boardZoom: as large as fits the room, at most 1.5, at lea
   assert.equal(EMU.boardZoom({ w: 350, h: 1000 }, board), 0.7);
   assert.equal(EMU.boardZoom({ w: 70, h: 52 }, board), 0.7);
   assert.equal(EMU.MIN_ZOOM, 0.7);
+  // (a phone, #5121: to the width alone, the room's height unbounded, down to 0.3: a Basys2's 840 px in a 375 px screen)
+  assert.equal(EMU.PHONE_MIN_ZOOM, 0.3);
+  assert.equal(EMU.boardZoom({ w: 335, h: Infinity }, { w: 840, h: 556 }, EMU.PHONE_MIN_ZOOM), 0.39);
+  assert.equal(EMU.boardZoom({ w: 390, h: Infinity }, { w: 860, h: 720 }, EMU.PHONE_MIN_ZOOM), 0.45);
+  assert.equal(EMU.boardZoom({ w: 100, h: Infinity }, board, EMU.PHONE_MIN_ZOOM), 0.3);
+  assert.equal(EMU.boardZoom({ w: 2000, h: Infinity }, board, EMU.PHONE_MIN_ZOOM), 1.5);
   assert.equal(EMU.boardZoom({ w: 0, h: 500 }, board), 1);
   assert.equal(EMU.boardZoom({ w: 800, h: 600 }, { w: 0, h: 0 }), 1);
   assert.equal(EMU.boardZoom(null, board), 1);
