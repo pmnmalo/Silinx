@@ -86,7 +86,8 @@ uiTest('#405 ASM inspector: nothing, several boxes, a state, a decision, a case 
   assert.deepEqual(out.c1, ['s1:01']);
   assert.deepEqual(out.edge[0], ['Connection', 'Value(s) of this exit', 'Delete connection']);
   assert.equal(out.edge[1], 'From case "mode" to state IDLE.');
-  assert.deepEqual(out.commits, ['name:s2', 'act:s2', 'initial', 'cond:d1', 'swap', 'lbl:e9', 'del-exit']);
+  // (a field typed: its key, the field and its object; an action of its own: none, never merged with the one before, #5167)
+  assert.deepEqual(out.commits, ['name:s2', 'act:s2', null, 'cond:d1', null, 'lbl:e9', null]);
   assert.deepEqual(out.calls, ['deleteSelection', 'deleteSelection']);
 });
 
@@ -128,7 +129,7 @@ uiTest('#405 ASM inspector: the machine (name, reset, an input added and removed
   assert.equal(out.removed, 3);
   assert.deepEqual(out.regs, ['r0:8:0']);
   assert.equal(out.noRegs, false);
-  assert.deepEqual(out.commits, ['m-name', 'm-sync', 'm-init', 'ins-add', 'p-del', 'regs-add', 'r-del']);
+  assert.deepEqual(out.commits, ['m-name', null, null, null, null, null, null]);
   assert.deepEqual(out.replaced, ['other', 'START']);
 });
 
@@ -155,7 +156,7 @@ uiTest('#4378 ASM inspector: a register\'s width, a number or an expression of t
   assert.equal(out.expr, 'clog2(N)');
   assert.equal(out.num, 12);
   assert.deepEqual(out.shown, ['N + 1', 'N + 1']);
-  assert.deepEqual(out.commits, ['regs-add', 'r-w:0', 'r-w:0', 'r-w:0']);
+  assert.deepEqual(out.commits, [null, 'r-w:0', 'r-w:0', 'r-w:0']);
   assert.equal(out.hint, 'Registers are internal: assign them like registered outputs (next value at the clock edge, they hold otherwise) and read them anywhere. '
     + 'Generics are integer VHDL generics / Verilog parameters, usable in expressions (e.g. cnt == N - 1) and in the registers\' widths (e.g. clog2(N)).');
   // in Portuguese

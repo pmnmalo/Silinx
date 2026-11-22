@@ -40,7 +40,7 @@ export function mountSide(ctx) {
         if (!o) return;
         const s = setOutputValue(o.outputs, r.name, v, M().outputs);
         el.classList.toggle('bad', !!s.error);
-        if (!s.error) { if (JSON.stringify(s.outputs) !== JSON.stringify(o.outputs)) { o.outputs = s.outputs; commit(`${key}:${r.name}`); } return; }
+        if (!s.error) { if (JSON.stringify(s.outputs) !== JSON.stringify(o.outputs)) { o.outputs = s.outputs; commit(`${key}:${o.id}:${r.name}`); } return; }
         if (done) { flash(`${where()}: ${s.error}`); el.value = o.outputs[r.name] ?? ''; el.classList.remove('bad'); }
       }, { cls: 'mono v', ph: r.placeholder, key: `${key}:${r.name}` });
       tbl.append(h('tr', {}, h('td', { class: 'mono n', 'data-no-i18n': '' }, r.name), h('td', { class: 'c' }, String(r.width)), h('td', {}, el)));
@@ -73,7 +73,7 @@ export function mountSide(ctx) {
       if (!s) { setSel(null); return renderSelection(); }
       const id = s.id, cur = () => stateById(id);
       const e = encOf().get(s.id);
-      const name = input(s.name, (v, done) => { if (!cur()) return; cur().name = v.trim(); commit('sname'); if (done) renderMachine(); }, { cls: 'mono fsm-sname', key: 'sname' });
+      const name = input(s.name, (v, done) => { if (!cur()) return; cur().name = v.trim(); commit(`sname:${id}`); if (done) renderMachine(); }, { cls: 'mono fsm-sname', key: 'sname' });
       const outs = outputsTable('souts', cur, () => outputsWhere(M(), { type: 'state', id }));
       const init = h('input', { type: 'checkbox', class: 'fsm-initial', checked: M().initial === s.id, disabled: M().initial === s.id });
       init.addEventListener('change', () => { if (init.checked) { M().initial = id; commit(); renderSelection(); } });
@@ -84,7 +84,7 @@ export function mountSide(ctx) {
       const code = M().encoding === 'enum' ? null : input(user ? (s.code ?? '') : e?.bits ?? '', (v, done) => {
         if (!cur()) return;
         setStateCode(M(), id, v, (sid) => encOf().get(sid)?.bits);
-        commit('scode');
+        commit(`scode:${id}`);
         if (done || !user) renderMachine();
       }, { cls: 'mono fsm-scode', key: 'scode', title: user ? 'The state\'s code: binary digits, as wide as the other states\'' : 'The state\'s code: one typed makes the encoding User-defined' });
       // (a state with no comment, or no code: nothing there, not the text "null", #2722)
@@ -113,7 +113,7 @@ export function mountSide(ctx) {
     from.addEventListener('change', () => reroute('from', from.value));
     to.addEventListener('change', () => reroute('to', to.value));
     // (text, whatever the notation: an overbar typed or pasted kept as /…, #4417)
-    const cond = input(condAsText(t.cond), (v) => { if (!cur()) return; cur().cond = condAsText(v.trim()); commit('cond'); }, { cls: 'mono fsm-cond', ph: 'e.g. x && !y   (empty = always)', key: 'cond' });
+    const cond = input(condAsText(t.cond), (v) => { if (!cur()) return; cur().cond = condAsText(v.trim()); commit(`cond:${id}`); }, { cls: 'mono fsm-cond', ph: 'e.g. x && !y   (empty = always)', key: 'cond' });
     // (the state's otherwise, StateCAD's @ELSE, #4489: ticked, `else` written and the condition not editable; unticked,
     // the condition emptied, to be typed)
     const elseBox = h('input', { type: 'checkbox', class: 'fsm-else-box', checked: isElseWord(t.cond) });
@@ -190,7 +190,7 @@ export function mountSide(ctx) {
     const enc = h('select', { class: 'asm-select fsm-encoding' }, ...FSM_ALL_ENCODINGS.map((v) => h('option', { value: v, selected: M().encoding === v }, FSM_ENCODING_NAMES[v])));
     enc.addEventListener('change', () => {
       setEncoding(M(), enc.value, (sid) => encOf().get(sid)?.bits);
-      commit('enc'); renderSide();
+      commit(); renderSide();
     });
     const desc = h('textarea', { class: 'asm-input', rows: 2, placeholder: designKind() ? 'What the machine does' : 'What the machine does (written in the HDL header)' }, M().description || '');
     desc.addEventListener('change', () => { if (desc.value.trim()) M().description = desc.value.trim(); else delete M().description; commit(); });

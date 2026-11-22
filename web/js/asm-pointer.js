@@ -18,6 +18,8 @@ export function mountAsmPointer(ctx) {
   // free exit; a port's press still draws an arrow, an arrow's selects it)
 
   // ---------------------------------------------------------------------------- pointer interaction
+  // (what the last press was on: the pointer captured by the svg, the dblclick's target is the svg, #5168)
+  let pressed = { node: null, edge: false };
   function onPointerDown(ev) {
     if (ev.button !== 0 && ev.button !== 1) return;
     setFitted(true);
@@ -30,6 +32,7 @@ export function mountAsmPointer(ctx) {
     // mousedown to the removed element and moves the keyboard focus to the page (Delete did nothing)
     if (nodeEl || edgeEl) ev.preventDefault();
     const start ={ cx: ev.clientX, cy: ev.clientY, w: toWorld(ev.clientX, ev.clientY) };
+    pressed = { node: nodeEl?.dataset.node ?? null, edge: !!edgeEl };
     try { svg.setPointerCapture(ev.pointerId); } catch { /* not an active pointer */ }
     const sel0 = sel();
     const add = tool();
@@ -134,7 +137,7 @@ export function mountAsmPointer(ctx) {
     setDrag(null);
     svg.classList.remove('panning', 'connecting');
     try { svg.releasePointerCapture(ev.pointerId); } catch { /* ignore */ }
-    if (d.mode === 'move' && d.moved) commit('move');
+    if (d.mode === 'move' && d.moved) commit();
     else if (d.mode === 'connect') {
       gOverlay.innerHTML = '';
       svg.querySelectorAll('.drop').forEach((el) => el.classList.remove('drop'));
@@ -149,7 +152,7 @@ export function mountAsmPointer(ctx) {
           if (same && label !== 'others') { same.port = `${same.port}|${label}`; e = same; }   // one more value for the same exit
           else e = connect(d.from, label, over.dataset.node);
           setSel({ nodes: new Set(), edge: e.id });
-          commit('connect'); renderInspector();
+          commit(); renderInspector();
         }
       } else if (!over && Math.hypot(ev.clientX - d.start.cx, ev.clientY - d.start.cy) > 30) {
         flash('Drop the connection on a box (a state, decision or conditional output)');
@@ -167,13 +170,14 @@ export function mountAsmPointer(ctx) {
   }
 
   function onDblClick(ev) {
-    const nodeEl = ev.target.closest?.('[data-node]');
-    if (nodeEl) {
+    const node = ev.target.closest?.('[data-node]')?.dataset.node ?? pressed.node;
+    if (node) {
+      if (!sel().nodes.has(node)) { setSel({ nodes: new Set([node]), edge: null }); render(); renderInspector(); updateToolbar(); }
       const f = selSection.querySelector('[data-focus]');
       f?.focus(); f?.select?.();
       return;
     }
-    if (ev.target.closest?.('[data-edge]') || tool() !== 'select') return;   // (an add tool: each press added its box)
+    if (ev.target.closest?.('[data-edge]') || pressed.edge || tool() !== 'select') return;   // (an add tool: each press added its box)
     setSel({ nodes: new Set(), edge: null });
     const n = addNode('state', toWorld(ev.clientX, ev.clientY));
     focusInspectorSoon(n);
@@ -208,7 +212,7 @@ export function mountAsmPointer(ctx) {
     if (arrows[k] && sel().nodes.size) {
       const step = ev.shiftKey ? 1 : GRID;
       for (const id of sel().nodes) { const n = nodeById(id); n.x += arrows[k][0] * step; n.y += arrows[k][1] * step; }
-      commit('nudge'); ev.preventDefault();
+      commit(`nudge:${[...sel().nodes].join()}`); ev.preventDefault();
     }
   }
   function onKeyUp(ev) {

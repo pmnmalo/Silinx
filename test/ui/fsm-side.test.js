@@ -81,7 +81,8 @@ uiTest('#405 FSM side panel: nothing, a state (name, outputs, code, initial, its
   assert.deepEqual(out.t3, ['x && y', 's2', false, 'moore']);
   assert.deepEqual(out.mealy, [{ z: '1' }, 'mealy', 'The value of each output while this transition is taken (empty: the state\'s value; X or "1X0": don\'t care; a value makes the machine a Mealy machine).']);
   assert.deepEqual(out.gone, [null, true, 0]);
-  assert.deepEqual(out.commits, ['sname', 'souts:z', '', 'cond', '', '', 'touts:z']);
+  // (a field typed: its key names the field and its object, its keystrokes one Undo step, #5167; an action: none)
+  assert.deepEqual(out.commits, ['sname:s2', 'souts:s2:z', '', 'cond:t3', '', '', 'touts:t3:z']);
 });
 
 uiTest('#3814 FSM side panel: a state\'s and a transition\'s outputs, a table of the machine\'s (name, width read-only; a value set, cleared, refused in the console; an output renamed, removed), in Portuguese', E, async (page) => {
@@ -144,7 +145,7 @@ uiTest('#3814 FSM side panel: a state\'s and a transition\'s outputs, a table of
   assert.deepEqual(out.transCleared, { y: '3' });
   assert.deepEqual(out.renamed, [[['Name', 'Width', 'Value'], ['w', '2', "[|2'b01]"]], {}, { w: '3' }]);
   assert.deepEqual(out.none, [null, 'The machine has no outputs']);
-  assert.deepEqual(out.commits, ['souts:y', 'souts:z', 'souts:y', 'touts:y', 'touts:z', 'touts:z', 'pout1', 'pout1', '']);
+  assert.deepEqual(out.commits, ['souts:s2:y', 'souts:s2:z', 'souts:s2:y', 'touts:t3:y', 'touts:t3:z', 'touts:t3:z', 'pout1', 'pout1', '']);
   // in Portuguese: the headers, the label, the hints
   await page.eval(async () => (await import('/js/i18n.js')).setLanguage('pt'));
   try {

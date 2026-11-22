@@ -186,7 +186,7 @@ export function mountAsmEditor(container, { model, onChange, onProblems, onValid
   // (the state encoding, rarely changed: a choice of the ⋮ menu, as the state diagram's, #3289; encSel.value = … moves
   // its ✓; the encoding stays in the status line, #2763)
   const encItems = menuChoice('Encoding', ENCODINGS.map((e) => ({ value: e, label: ENCODING_NAMES[e] })),
-    { value: M.encoding, title: 'State encoding', onChange: (v) => { M.encoding = v; commit('enc'); } });
+    { value: M.encoding, title: 'State encoding', onChange: (v) => { M.encoding = v; commit(); } });
   const encSel = { set value(v) { setChoice(encItems, v); } };
   const snapBtn = btn('# Snap', 'Toggle snapping to the grid', () => { snap = !snap; snapBtn.classList.toggle('on', snap); });
   snapBtn.classList.add('on');
@@ -295,6 +295,8 @@ export function mountAsmEditor(container, { model, onChange, onProblems, onValid
   });
 
   // ---------------------------------------------------------------------------- history
+  // (key: the field being typed in and its object, e.g. `cond:d3`, or the boxes nudged: its run within 1.5 s one undo
+  // step; none: an action of its own, a drag, an add, a connect, a delete, never merged with the one before, #5167)
   function commit(key) {
     if (readOnly) { M = JSON.parse(hist[0]); render(); renderInspector(); return; }   // (nothing changes)
     const snapStr = JSON.stringify(M);

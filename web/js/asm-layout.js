@@ -21,7 +21,7 @@ export function mountAsmLayout(ctx) {
         const pos = new Map(asmLayout(M()).nodes.map((n) => [n.id, n]));
         for (const n of M().nodes) { const p = pos.get(n.id); if (p) { n.x = p.x; n.y = p.y; } }
         for (const e of M().edges) delete e.points;
-        commit('arrange');
+        commit();
         fit();
         return;
       } catch { /* fallback */ }
@@ -86,7 +86,7 @@ export function mountAsmLayout(ctx) {
       y += maxH / 2 + 60;
     }
     for (const e of M().edges) delete e.points;
-    commit('arrange');
+    commit();
     fit();
   }
 

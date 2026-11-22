@@ -162,9 +162,7 @@ export function mountFsmPointer(ctx) {
     gOverlay.textContent = '';
     try { svg.releasePointerCapture(ev.pointerId); } catch { /* not captured */ }
     if (!d) return;
-    if (d.kind === 'move' && d.moved) commit('move');
-    else if (d.kind === 'bend' && d.moved) commit('bend');
-    else if (d.kind === 'entry' && d.moved) commit('entry');
+    if ((d.kind === 'move' || d.kind === 'bend' || d.kind === 'entry') && d.moved) commit();
     else if (d.dbl && d.kind === 'move') editAt(ev, () => editState(d.s));
     else if (d.dbl && d.kind === 'bend') editAt(ev, () => editLabel(d.t));
     else if (d.dbl && d.kind === 'connect' && Math.hypot(ev.clientX - d.x, ev.clientY - d.y) < 4) {

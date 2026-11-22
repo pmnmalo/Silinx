@@ -118,7 +118,7 @@ export function mountFsmEditor(container, opts = {}) {
   // (the generated HDL's style, rarely changed: a choice of the ⋮ menu, #3289; styleSel.value = … moves its ✓; the
   // state encoding: in the machine's Properties, #4908, and in the status line, #2763)
   const styleItems = menuChoice('Coding Style', [{ value: '3process', label: '3 processes' }, { value: '2process', label: '2 processes' }],
-    { value: M.style, title: 'Style of the generated HDL', onChange: (v) => { M.style = v; commit('style'); } });
+    { value: M.style, title: 'Style of the generated HDL', onChange: (v) => { M.style = v; commit(); } });
   const styleSel = { set value(v) { setChoice(styleItems, v); } };
   const zoomLbl = h('span', { class: 'asm-zoom', title: 'Zoom level' }, '100%');
   // (what the diagram is, its states and transitions, Moore or Mealy, its encoding: in its status line, #2763)
@@ -256,7 +256,7 @@ export function mountFsmEditor(container, opts = {}) {
     const d = 2 * GRID * ++pasteN;
     const { ids } = pasteDrawing('fsm', M, clip, { dx: d, dy: d });
     if (ids.length) sel = { type: 'state', id: ids[0] };
-    commit('paste');
+    commit();
     renderSide();
     root.focus({ preventScroll: true });
   }

@@ -114,7 +114,7 @@ export function mountAsmOps(ctx) {
     if (parent) connect(parent.id, port, n.id);
     if (type === 'state' && (!M().initial || !nodeById(M().initial))) M().initial = n.id;
     setSel({ nodes: new Set([n.id]), edge: null });
-    commit('add');
+    commit();
     renderInspector();
     return n;
   }
@@ -129,7 +129,7 @@ export function mountAsmOps(ctx) {
       if (sel().nodes.has(M().initial)) M().initial = M().nodes.find((n) => n.type === 'state')?.id || '';
       sel().nodes.clear();
     } else return;
-    commit('delete');
+    commit();
     renderInspector();
   }
 
@@ -153,7 +153,7 @@ export function mountAsmOps(ctx) {
     setM(normalizeModel(M()));
     if (!M().initial || !nodeById(M().initial)) M().initial = ids.find((id) => nodeById(id)?.type === 'state') || M().initial;
     setSel({ nodes: new Set(ids), edge: null });
-    commit('paste');
+    commit();
     renderInspector();
     root.focus({ preventScroll: true });
   }

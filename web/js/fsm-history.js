@@ -16,6 +16,8 @@ export function mountFsmHistory(ctx) {
   const changed = () => { clearTimeout(timers.change); timers.change = setTimeout(() => { if (!destroyed()) opts.onChange?.(clone(M())); }, 250); };
 
   // ---------------------------------------------------------------------------- history
+  // (key: the field being typed in and its object, e.g. `cond:t3`: its keystrokes within 1.5 s one undo step; none:
+  // an action of its own, a drag, an add, a delete, never merged with the one before, #5167)
   function commit(key) {
     setM(normalizeFsm(M()));
     const snap = JSON.stringify(M());
