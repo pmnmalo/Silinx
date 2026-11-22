@@ -13,6 +13,7 @@ import { PRODUCT, VERSION_LABEL } from '/core/version.js';
 import { startI18n, t } from './i18n.js';
 import { applyPrefs } from './silinx.js';
 import { initDrawer, drawerGiveWay, leftTabClicked } from './narrow.js';
+import { initPhone } from './phone.js';
 import { initTasks, restoreStartTask } from './tasks.js';
 import { registerServiceWorker } from './pwa.js';
 import { createHistory } from './history.js';
@@ -844,6 +845,7 @@ async function boot() {
   splitter($('left-split'), $('proc-panel'), { dir: 'v', min: 80, max: 900, invert: true, storageKey: 'xl.procH' });
   splitter($('h-split'), $('console-wrap'), { dir: 'v', min: 60, max: 700, invert: true, storageKey: 'xl.consoleH' });
   initDrawer();
+  initPhone();   // (a phone: one pane at a time, #5121)
   document.querySelectorAll('#left-tabs .tab').forEach(t => t.addEventListener('click', () => { leftTabClicked(t.dataset.page, document.querySelector('#left-tabs .tab.active')?.dataset.page); panes.leftChosen = t.dataset.page; showLeftPage(t.dataset.page); }));
   // (no project, the Start tab alone: its page only; a project opened brings the others back on the one last chosen, #4257, #4322)
   addEventListener('silinx:project-opened', () => { if (panes.leftPage === 'start' && panes.leftChosen && panes.leftChosen !== 'start') showLeftPage(panes.leftChosen); });

@@ -1,0 +1,45 @@
+/* A phone's screen (#5121, web/js/phone.js): under 600 px wide (PHONE_QUERY of web/js/narrow.js) one pane at a time,
+   the whole width and height: the side panel, the document or the console (<html data-pane>), switched by the bar of
+   panes at the bottom (#phone-panes, above the Silinx interface's task tabs). The narrow screen's rules hold under it
+   (app.css, silinx.css, tasks.css); these come after them and win (#app's id): the drawer, the splitters and the
+   Silinx interface's Layout buttons (fold, messages, maximize) give way to the panes. Wider, the bar is not shown. */
+#phone-panes { display: none; }
+@media (max-width: 599px) {
+  #phone-panes { display: flex; flex: none; justify-content: space-around; gap: 2px; padding: 3px 4px; background: var(--bg); border-top: 1px solid #c8c8c8; }
+  #phone-panes .phone-pane { position: relative; flex: 1 1 0; min-width: 0; height: 40px; display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+    padding: 0 4px; border: 1px solid transparent; border-radius: 4px; background: none; color: inherit; font: inherit; cursor: pointer; }
+  #phone-panes .phone-pane[aria-pressed="true"] { border-color: #7da2ce; background: #d5e7f8; font-weight: 600; }
+  #phone-panes .phone-pane .ico-inline { margin: 0; flex: none; }
+  #phone-panes .phone-pane .lbl { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  /* (a new error or warning while the console is not shown, #5121) */
+  #phone-panes .phone-pane.news::after { content: ''; position: absolute; top: 5px; right: calc(50% - 34px); width: 8px; height: 8px; border-radius: 50%; background: var(--danger, #c42b1c); }
+  html[data-ui="silinx"] #phone-panes { background: var(--m-surface); border-top-color: var(--m-border); }
+  html[data-ui="silinx"] #phone-panes .phone-pane { border-radius: var(--m-radius); color: var(--m-muted); }
+  html[data-ui="silinx"] #phone-panes .phone-pane[aria-pressed="true"] { border-color: transparent; background: var(--m-accent-soft); color: var(--m-accent); }
+  html[data-ui="silinx"] #phone-panes .phone-pane .ico-inline svg { width: 18px; height: 18px; }
+
+  /* the drawer, the splitters and the Layout buttons: the panes instead */
+  #app :is(#drawer-btn, #drawer-scrim, #v-split, #h-split, #task-view) { display: none !important; }
+  #app #main { padding: 0; }
+
+  /* the side panel: the whole width, docked (not a drawer), whatever was folded or maximized */
+  html[data-pane="side"] #app #left { display: flex !important; position: static; flex: 1 1 auto; width: auto !important; min-width: 0; box-shadow: none; z-index: auto; }
+  html[data-pane="side"] #app #left-pages { display: flex; position: static; flex: 1 1 auto; width: auto; min-width: 0; border-right: none; box-shadow: none; }
+  html[data-ui="silinx"][data-pane="side"] #app #left-tabs .tab.active { background: var(--m-accent-soft); color: var(--m-accent); font-weight: 600; }
+  html[data-pane="side"] #app #center { display: none; }
+  /* (Simulate's side panel is in its document, #task-sim-panel: the document's pane, the Panels button not offered) */
+  html[data-layout="tasks"][data-task="sim"][data-pane="side"] #app #left { display: none !important; }
+  html[data-layout="tasks"][data-task="sim"][data-pane="side"] #app #center { display: flex; }
+  html[data-layout="tasks"][data-task="sim"] #phone-panes [data-pane="side"] { display: none; }
+
+  /* the document: the whole width */
+  html[data-pane="doc"] #app #left { display: none !important; }
+
+  /* the console: the whole height, whatever was folded or maximized */
+  html:is([data-pane="side"], [data-pane="doc"]) #app #console-wrap { display: none !important; }
+  html[data-pane="console"] #app #main { display: none; }
+  html[data-pane="console"] #app #console-wrap { display: flex !important; flex: 1 1 auto; height: auto !important; min-height: 0; margin: 0; }
+  html[data-ui="silinx"][data-pane="console"] #app #console-wrap { display: grid !important; }
+  html[data-pane="console"] #app #console-wrap > .caption, html[data-pane="console"] #app #mc-cmd { display: flex; }
+  html[data-pane="console"] #app #console-wrap > .body { display: block; flex: 1 1 auto; min-height: 0; }
+}
