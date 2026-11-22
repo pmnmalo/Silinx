@@ -37,7 +37,7 @@ export function mountApi(ctx) {
       if (st.fit) applyFit();
       logLine('Simulator is doing circuit initialization process.');
       logLine('Finished circuit initialization process.');
-      if (st.forces.length) logLine(`${st.forces.length} force(s) re-applied.`);
+      if (st.forces.length) logLine(`${st.forces.length} force(s) re-applied.`, 'info', { app: true });   // (#5223)
       setMsg('Ready'); setObjDirty(true); invalidate();
     },
     addSignals(sigs) { addSignals(sigs); },
@@ -111,8 +111,8 @@ export function mountApi(ctx) {
       const text = toVCD(design, sim);
       const filename = `${design.top?.name || 'waveform'}.vcd`;
       downloadBlob(filename, new Blob([text], { type: 'text/plain' }));
-      logLine(`Waveform exported to ${filename} (${(text.length / 1024).toFixed(1)} KB)`);
-    } catch (e) { logLine(`ERROR: VCD export failed: ${e.message}`, 'error'); }
+      logLine(`Waveform exported to ${filename} (${(text.length / 1024).toFixed(1)} KB)`, 'info', { app: true });
+    } catch (e) { logLine(`ERROR: VCD export failed: ${e.message}`, 'error', { app: true }); }
   }
 
   return { api, exportVCD };

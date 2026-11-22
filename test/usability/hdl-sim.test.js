@@ -115,7 +115,7 @@ for (const lang of ['vhdl', 'verilog']) {
     const saved = s.doc;
     await s.step('save the wave configuration', {}, () => a.saveConfig(), {
       changes: false,
-      expect: async () => assert.equal((await a.isimLines()).at(-1), 'Wave configuration saved to sim/tb_counter.wcfg'),
+      expect: async () => assert.equal((await a.isimLines()).at(-1), (await tr(page, ['Wave configuration saved to sim/tb_counter.wcfg']))[0]),
     });
     assert.match(await readWs(env, name, 'sim/tb_counter.wcfg'), /^<\?xml version="1\.0" encoding="UTF-8"\?>\n<wave_config>/);
     // the simulation run again: the window as the bench has it
@@ -124,7 +124,7 @@ for (const lang of ['vhdl', 'verilog']) {
     await s.step('load the wave configuration', {}, () => a.loadConfig(), {
       expect: async (d) => {
         assert.deepEqual([d.rows, d.markers], [saved.rows, saved.markers]);
-        assert.equal((await a.isimLines()).at(-1), `Wave configuration sim/tb_counter.wcfg loaded: ${saved.rows.length} signals, 1 marker`);
+        assert.equal((await a.isimLines()).at(-1), (await tr(page, [`Wave configuration sim/tb_counter.wcfg loaded: ${saved.rows.length} signals, 1 marker`]))[0]);
       },
     });
     // the cursor on the marker's change again: the values there, in the radixes loaded
@@ -133,19 +133,36 @@ for (const lang of ['vhdl', 'verilog']) {
   }, { timeout: 180000 });
 }
 
-// in Portuguese: the application's lines of the wizard and of the wave configuration in Portuguese too
-uiTest('usability: hdl sim: the Test Bench Wizard\'s and the wave configuration\'s lines in Portuguese (#5223)', E, async (page, _env, t) => {
-  t.todo('#5223: they are in English');
+// in Portuguese: the application's lines of the wizard and of the wave configuration in Portuguese too (#5223), in the
+// simulator's console and in the Console (its copy of the simulator's, the Tasks interface's); drawn in English again
+// when the language changes
+uiTest('usability: hdl sim: the Test Bench Wizard\'s and the wave configuration\'s lines in Portuguese (#5223)', E, async (page) => {
   const D = DESIGNS.vhdl, S = SIM.vhdl;
+  const esc = (x) => x.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
   await makeProject(env, { name: 'UsabSimPt', files: { [D.file]: D.text }, top: 'counter' });
   await page.openProject('UsabSimPt');
   await page.eval(async () => { (await import('/js/i18n.js')).setLanguage('pt'); });
   await testBenchWizard(page, 'vhdl');
-  const made = `Test Bench Wizard: created ${S.tb} (${VECTORS} vector(s)) for 'counter' (selected in the Simulation view). Run Simulate Behavioral Model to check the design.`;
-  await page.waitConsole(/^Test Bench Wizard: |^Assistente/m);
-  assert.ok(!(await page.eval(() => window.__console())).split('\n').includes(made), 'the wizard\'s line in English');
+  await page.waitConsole(new RegExp(`^${esc(`Assistente de Bancada de Teste: criou ${S.tb} (${VECTORS} vetor(es)) para 'counter' (selecionada na vista Simulação). Execute Simular Modelo Comportamental para verificar o projeto.`)}$`, 'm'));
   await simulate(page);
   const a = waveActions(page);
+  await a.addMarkerAtCursor();
   await a.saveConfig();
-  assert.notEqual((await a.isimLines()).at(-1), 'Wave configuration saved to sim/tb_counter.wcfg');
-}, { skip: RUN.lang !== 'pt' && 'in Portuguese only (SILINX_USABILITY_LANG=pt)' });
+  const SAVED = 'Configuração de formas de onda guardada em sim/tb_counter.wcfg';
+  await page.waitFor((l) => [...document.querySelectorAll('.doc:not([hidden]) .isim-console .isim-ln')].pop()?.textContent === l, [SAVED], { what: 'the saved line' });
+  await a.loadConfig();
+  const n = await page.eval(() => window.Silinx.active.view.state.rows.filter((r) => r.kind === 'sig').length);
+  const LOADED = `Configuração de formas de onda sim/tb_counter.wcfg carregada: ${n} sinais, 1 marcador`;
+  await page.waitFor((l) => [...document.querySelectorAll('.doc:not([hidden]) .isim-console .isim-ln')].pop()?.textContent === l, [LOADED], { what: 'the loaded line' })
+    .catch(async (e) => { throw new Error(`${e.message}\n${(await a.isimLines()).slice(-4).join('\n')}`); });
+  assert.deepEqual((await a.isimLines()).slice(-2), [SAVED, LOADED]);
+  const text = await page.eval(() => window.__console());
+  if (await page.eval(() => document.documentElement.dataset.ui) !== 'ise') for (const l of [SAVED, LOADED]) assert.ok(text.split('\n').includes(l), `the Console's copy: ${l}`);
+  assert.ok(!/Test Bench Wizard: created|Wave configuration (saved|sim\/)/.test(text), 'no English line of theirs');
+  assert.deepEqual(warningsOf(text), []);
+  // the language changed: drawn again in English, then in Portuguese
+  await page.eval(async () => { (await import('/js/i18n.js')).setLanguage('en'); });
+  assert.deepEqual((await a.isimLines()).slice(-2), ['Wave configuration saved to sim/tb_counter.wcfg', `Wave configuration sim/tb_counter.wcfg loaded: ${n} signals, 1 marker`]);
+  await page.eval(async () => { (await import('/js/i18n.js')).setLanguage('pt'); });
+  assert.deepEqual((await a.isimLines()).slice(-2), [SAVED, LOADED]);
+}, { skip: RUN.lang !== 'pt' && 'in Portuguese only (SILINX_USABILITY_LANG=pt)', timeout: 180000 });

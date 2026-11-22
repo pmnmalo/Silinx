@@ -6,7 +6,7 @@
 // that the design drives it) and the value expected on the bus. Generator: core/testbench.js.
 import { api } from './api.js';
 import { h, toast } from './ui.js';
-import { commandError } from './console.js';
+import { appLog, commandError } from './console.js';
 import { compile, elaborate } from '/core/compile.js';
 import { clocksOf } from '/core/schematic.js';
 import { reservedError } from '/core/reserved.js';
@@ -247,7 +247,7 @@ export async function testBenchWizard({ module, name = null, location = null, la
   await api.writeFile(pj.name, path(), text);   // registers the file (role: simulation)
   await app.reloadProject();
   app.showInSim(tbName.value.trim());
-  app.log(st.mode === 'none' ? `Test Bench Wizard: created the test bench skeleton ${path()} for '${uut.name}' (selected in the Simulation view): write the stimulus, then Simulate Behavioral Model.`
+  appLog(st.mode === 'none' ? `Test Bench Wizard: created the test bench skeleton ${path()} for '${uut.name}' (selected in the Simulation view): write the stimulus, then Simulate Behavioral Model.`
     : `Test Bench Wizard: created ${designOnly() ? `the test bench ${tbName.value.trim()}` : path()} (${rows.length} vector(s)) for '${uut.name}' (selected in the Simulation view). Run Simulate Behavioral Model to check the design.`, 'ok');
   // (a design and simulation project's, #3780: its HDL not shown, the test bench simulated)
   if (designOnly()) return app.runSimulation?.(tbName.value.trim());

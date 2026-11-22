@@ -177,6 +177,72 @@ test('the wave configuration (#1019): its buttons, dialogs and messages translat
     "'a b' não é um nome de ficheiro válido (letras, algarismos, _ . - e pastas; .wcfg).", 'sim/tb.wcfg já existe. Substituí-lo?']);
 });
 
+// #5223: the simulation's application lines in Portuguese: SSim's wave configuration's, as mountWcfg writes them (app
+// lines, their English kept), the other lines of SSim's window, the Test Bench Wizard's and Set as Top Module's
+test('#5223 the simulation\'s application lines: the wave configuration\'s (as SSim writes them), its runs\', forces\', stimuli\'s, the Test Bench Wizard\'s', async () => {
+  await import('./ui/core-hooks.js');
+  const { mountWcfg } = await import('../web/js/isim-wcfg.js');
+  const sig = (name, w) => ({ name, path: `tb.${name}`, scope: 'tb', t: { kind: 'logic', w } });
+  const signals = [sig('clk', 1), sig('q', 4)];
+  const st = { rows: [], sel: new Set(), markers: [], rowSeq: 0, markerSeq: 0 };
+  const said = [];
+  let saveErr = null;
+  const opts = { wcfg: { save: async () => { if (saveErr) throw new Error(saveErr); return 'sim/tb_counter.wcfg'; }, load: async () => ({ name: 'bad.wcfg', text: '{}' }) } };
+  const w = mountWcfg({ opts, st, design: { top: { name: 'tb' }, signals }, newRow: (s, o) => ({ id: st.rowSeq++, kind: 'sig', sig: s, ...o }),
+    rebuildFlat() {}, invalidate() {}, logLine: (text, kind, o) => said.push([text, kind, o?.app === true]) });
+  st.rows = signals.map((s) => ({ id: st.rowSeq++, kind: 'sig', sig: s }));
+  st.markers = [{ id: 0, t: 1000 }];
+  await w.saveWcfg();
+  const text = w.wcfgText();
+  w.applyWcfg(text, 'sim/tb_counter.wcfg');
+  w.applyWcfg(text.replace('/tb/clk', '/tb/gone'), 'other.wcfg');
+  await w.loadWcfg();
+  saveErr = 'disk full';
+  await w.saveWcfg();
+  assert.deepEqual(said, [
+    ['Wave configuration saved to sim/tb_counter.wcfg', 'info', true],
+    ['Wave configuration sim/tb_counter.wcfg loaded: 2 signals, 1 marker', 'info', true],
+    ['WARNING: /tb/gone is not a signal of this design: not shown', 'warning', true],
+    ['Wave configuration other.wcfg loaded: 1 signal, 1 marker', 'info', true],
+    ['ERROR: the wave configuration was not loaded: not a wave configuration (no <wave_config>)', 'error', true],
+    ['ERROR: the wave configuration was not saved: disk full', 'error', true],
+  ]);
+  // (drawn as SSim's console draws an application's line: its tag kept, web/js/isim-console.js)
+  const drawn = (l) => { const m = /^((?:ERROR|WARNING): )(.*)$/s.exec(l); return m ? m[1] + t(m[2]) : t(l); };
+  assert.deepEqual(said.map(([l]) => drawn(l)), [
+    'Configuração de formas de onda guardada em sim/tb_counter.wcfg',
+    'Configuração de formas de onda sim/tb_counter.wcfg carregada: 2 sinais, 1 marcador',
+    'WARNING: /tb/gone não é um sinal deste projeto: não mostrado',
+    'Configuração de formas de onda other.wcfg carregada: 1 sinal, 1 marcador',
+    'ERROR: a configuração de formas de onda não foi carregada: not a wave configuration (no <wave_config>)',
+    'ERROR: a configuração de formas de onda não foi guardada: disk full',
+  ]);
+  assert.equal(t('Wave configuration sim/tb_counter.wcfg loaded: 6 signals, 3 markers'), 'Configuração de formas de onda sim/tb_counter.wcfg carregada: 6 sinais, 3 marcadores');
+  // SSim's other application lines (web/js/isim-api.js, isim-forces.js, isim-run.js, isim-stimuli.js, isim-toolbar.js)
+  assert.deepEqual(['2 force(s) re-applied.', 'Force removed from /tb/clk', 'simulation has finished; the force takes effect after restart',
+    "Command 'run 1 us' cancelled (Break)", 'Simulation has already finished ($finish); use Restart to run again.', 'internal simulator error: x',
+    'Simulation interrupted (Break) at 10 ns', 'Simulation stopped: no more events scheduled (time 7 ns)', 'Run All stopped at the 1 ms limit (time 1 ms)',
+    'Simulation has finished; use Restart.', 'No more events scheduled', 'Stepped to 5 ns', "invalid run time 'x ns'",
+    'Stimuli: 32 cycles, the expected outputs match', 'Stimuli: 1 mismatch(es) of the expected outputs', '  y at cycle 0 (0 ns): expected 1, got 0',
+    'Stimuli: the expected outputs filled in from the simulation', 'Waveform exported to tb.vcd (1.2 KB)', 'VCD export failed: x'].map(t),
+  ['2 forçamento(s) aplicado(s) de novo.', 'Forçamento removido de /tb/clk', 'a simulação terminou; o forçamento tem efeito depois de reiniciar',
+    "Comando 'run 1 us' cancelado (Parar)", 'A simulação já terminou ($finish); use Reiniciar para a executar de novo.', 'erro interno do simulador: x',
+    'Simulação interrompida (Parar) em 10 ns', 'Simulação parada: não há mais eventos agendados (tempo 7 ns)', 'Executar Tudo parado no limite de 1 ms (tempo 1 ms)',
+    'A simulação terminou; use Reiniciar.', 'Não há mais eventos agendados', 'Avançou para 5 ns', "tempo de execução inválido 'x ns'",
+    'Estímulos: 32 ciclos, as saídas esperadas coincidem', 'Estímulos: 1 diferença(s) nas saídas esperadas', '  y no ciclo 0 (0 ns): esperado 1, obtido 0',
+    'Estímulos: as saídas esperadas preenchidas a partir da simulação', 'Formas de onda exportadas para tb.vcd (1.2 KB)', 'a exportação VCD falhou: x']);
+  // the Console's: the Test Bench Wizard's (web/js/tbwizard.js: a project's, a design and simulation project's, a skeleton) and Set as Top Module's
+  assert.deepEqual([
+    "Test Bench Wizard: created sim/tb_counter.vhd (16 vector(s)) for 'counter' (selected in the Simulation view). Run Simulate Behavioral Model to check the design.",
+    "Test Bench Wizard: created the test bench tb_counter (16 vector(s)) for 'counter' (selected in the Simulation view). Run Simulate Behavioral Model to check the design.",
+    "Test Bench Wizard: created the test bench skeleton sim/tb_counter.v for 'counter' (selected in the Simulation view): write the stimulus, then Simulate Behavioral Model.",
+    "Top-level simulation module set to 'tb_counter'.", "Top-level module set to 'counter'."].map(t), [
+    "Assistente de Bancada de Teste: criou sim/tb_counter.vhd (16 vetor(es)) para 'counter' (selecionada na vista Simulação). Execute Simular Modelo Comportamental para verificar o projeto.",
+    "Assistente de Bancada de Teste: criou a bancada de teste tb_counter (16 vetor(es)) para 'counter' (selecionada na vista Simulação). Execute Simular Modelo Comportamental para verificar o projeto.",
+    "Assistente de Bancada de Teste: criou o esqueleto da bancada de teste sim/tb_counter.v para 'counter' (selecionada na vista Simulação): escreva os estímulos e depois Simular Modelo Comportamental.",
+    "Módulo de topo da simulação definido como 'tb_counter'.", "Módulo de topo definido como 'counter'."]);
+});
+
 test('SSim (#920): the simulator\'s labels translated with its name, SSim; no label of it says ISim', () => {
   assert.deepEqual(['SSim Simulator', 'Type an SSim command (help)', 'SSim (VHDL/Verilog; Silinx Simulator)'].map(t),
     ['Simulador SSim', 'Escreva um comando do SSim (help)', 'SSim (VHDL/Verilog; Simulador Silinx)']);

@@ -143,8 +143,10 @@ function showLast() {
 // (#4729: the lines after it stay the process's, not the simulation's)
 // (#4746: not the Errors tab's, which the simulator's own messages fill, web/js/console.js simDiagnostics; a line that
 // goes to its source, double-clicked, goes there here too, each line of it, with its message's location, #4749)
+// (an application's line of SSim's, #5223: its English, drawn in the interface's language as SSim's is)
 function mirror(text, cls, src, el) {
-  const lines = app.log(text, cls, { diag: false, src, location: el?.message?.location ?? null });
+  const lines = el?.draw ? app.log(el.message.text, cls, { diag: false, src, location: el.message.location ?? null, draw: el.draw })
+    : app.log(text, cls, { diag: false, src, location: el?.message?.location ?? null });
   if (!el?.classList.contains('link')) return;
   for (const ln of lines) {
     ln.classList.add('mc-link');

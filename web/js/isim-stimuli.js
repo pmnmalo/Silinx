@@ -60,17 +60,17 @@ export function mountStimuli(ctx) {
     const stEl = stimBar.querySelector('.isim-stim-st');
     if (stEl) { stEl.textContent = `${m.cycles} cycles (${timing}): ${res}`; stEl.classList.toggle('bad', st.stim.bad.length > 0); }
     if (log && nExp) {
-      if (!st.stim.bad.length) logLine(`Stimuli: ${m.cycles} cycles, the expected outputs match`, 'info');
+      if (!st.stim.bad.length) logLine(`Stimuli: ${m.cycles} cycles, the expected outputs match`, 'info', { app: true });
       else {
-        logLine(`Stimuli: ${st.stim.bad.length} mismatch(es) of the expected outputs`, 'warning');
-        for (const b of st.stim.bad.slice(0, 10)) logLine(`  ${b.port} at cycle ${b.k} (${fmtTime(b.k * cyclePs(m))}): expected ${b.expected}, got ${b.got}`, 'warning');
+        logLine(`Stimuli: ${st.stim.bad.length} mismatch(es) of the expected outputs`, 'warning', { app: true });
+        for (const b of st.stim.bad.slice(0, 10)) logLine(`  ${b.port} at cycle ${b.k} (${fmtTime(b.k * cyclePs(m))}): expected ${b.expected}, got ${b.got}`, 'warning', { app: true });
       }
     }
   }
   function fillStim() {
     if (!st.stim.m) return;
     fillExpected(st.stim.m, portBits);
-    logLine('Stimuli: the expected outputs filled in from the simulation', 'info');
+    logLine('Stimuli: the expected outputs filled in from the simulation', 'info', { app: true });
     stimChanged(false);
   }
   // a click on the waves in Edit Stimuli: true when it was on a cell of a port (edited)

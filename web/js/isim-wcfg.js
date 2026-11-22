@@ -5,6 +5,8 @@
 // { name, text } | null }; without it the toolbar has no such buttons.
 import { placeWcfg, readWcfg, wcfgSignal, writeWcfg } from '/core/wcfg.js';
 
+const APP = { app: true };   // (its console's lines: the application's, in the interface's language, #5223)
+
 /** { wcfgText, applyWcfg, saveWcfg, loadWcfg } of mountISim, through its API (isim-api.js). */
 export function mountWcfg(ctx) {
   const { opts, st, design, newRow, rebuildFlat, invalidate, logLine } = ctx;
@@ -41,23 +43,23 @@ export function mountWcfg(ctx) {
     st.markers = cfg.markers.map(t => ({ id: st.markerSeq++, t }));
     st.activeMarker = st.markers[st.markers.length - 1] || null;
     rebuildFlat(); invalidate();
-    for (const p of missing) logLine(`WARNING: ${p} is not a signal of this design: not shown`, 'warning');
+    for (const p of missing) logLine(`WARNING: ${p} is not a signal of this design: not shown`, 'warning', APP);
     const n = rows.filter(r => r.kind === 'sig').length;
-    logLine(`Wave configuration ${name} loaded: ${n} signal${n === 1 ? '' : 's'}, ${st.markers.length} marker${st.markers.length === 1 ? '' : 's'}`);
+    logLine(`Wave configuration ${name} loaded: ${n} signal${n === 1 ? '' : 's'}, ${st.markers.length} marker${st.markers.length === 1 ? '' : 's'}`, 'info', APP);
     return { signals: n, missing };
   }
 
   async function saveWcfg() {
     try {
       const name = await opts.wcfg?.save(wcfgText());
-      if (name) logLine(`Wave configuration saved to ${name}`);
-    } catch (e) { logLine(`ERROR: the wave configuration was not saved: ${e.message}`, 'error'); }
+      if (name) logLine(`Wave configuration saved to ${name}`, 'info', APP);
+    } catch (e) { logLine(`ERROR: the wave configuration was not saved: ${e.message}`, 'error', APP); }
   }
   async function loadWcfg() {
     try {
       const f = await opts.wcfg?.load();
       if (f) applyWcfg(f.text, f.name);
-    } catch (e) { logLine(`ERROR: the wave configuration was not loaded: ${e.message}`, 'error'); }
+    } catch (e) { logLine(`ERROR: the wave configuration was not loaded: ${e.message}`, 'error', APP); }
   }
 
   return { wcfgText, applyWcfg, saveWcfg, loadWcfg };
