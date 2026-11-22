@@ -7,6 +7,7 @@ import { fileURLToPath } from 'node:url';
 import * as P from './projects.js';
 import { withPlaces } from './project-places.js';
 import { orderExamples } from '../core/examples.js';
+import { offeredExamples } from '../core/project-kind.js';
 import { importMapPackages } from './import-map.js';
 import { contentSecurityPolicy, inlineScriptHashes, relaySources } from './csp.js';
 import { configDir, relayConfig } from './toolchain.js';
@@ -18,6 +19,7 @@ import { tightenConfigFolder, tightenedMessage } from './config-folder.js';
 import { attachRelay } from './collab-relay.js';
 import { partsScope } from './parts-scope.js';
 import { sendError } from './http-errors.js';
+import { channelScript } from './build-channel.js';
 import { VERSION } from '../core/version.js';
 
 const ROOT = path.join(path.dirname(fileURLToPath(import.meta.url)), '..');
@@ -168,6 +170,8 @@ export async function createApp({ host = '127.0.0.1', token = null, codes = crea
   app.use((req, res, next) => { res.set({ 'X-Content-Type-Options': 'nosniff', 'Referrer-Policy': 'no-referrer' }); next(); });
   // (on the file served, so however the URL spells it)
   const setHeaders = (res, file) => { if (/\.html$/i.test(file)) { const csp = pageCsp(file); if (csp) res.set('Content-Security-Policy', csp); } };
+  // the build's channel for the page (#5202: web/build-channel.js, the server's own)
+  app.get('/build-channel.js', (req, res) => res.type('text/javascript').set('Cache-Control', 'no-store').send(channelScript()));
   app.use('/', express.static(path.join(ROOT, 'web'), { setHeaders }));
   // the folders outside web/ (the code and the packages it loads, which ship files of their own: a test page, a README)
   // on the page's origin, which holds the token (#4172): what the app loads from them, scripts, WebAssembly and data;
@@ -282,9 +286,10 @@ export async function createApp({ host = '127.0.0.1', token = null, codes = crea
   }));
   api.get('/projects/:p/sources', wrap(req => P.readSources(req.params.p)));
   // the examples, in the order the interface lists them (gates first: core/examples.js)
-  api.get('/templates', wrap(() => orderExamples(fs.readdirSync(P.EXAMPLES_DIR, { withFileTypes: true })
+  // (the co-design example only where co-design is on, #5202)
+  api.get('/templates', wrap(() => offeredExamples(orderExamples(fs.readdirSync(P.EXAMPLES_DIR, { withFileTypes: true })
     .filter(d => d.isDirectory() && fs.existsSync(path.join(P.EXAMPLES_DIR, d.name, 'silinx.json')))
-    .map(d => d.name))));
+    .map(d => d.name)))));
   // an example's files (#2826: a link to it opens the project of that name as it is when it has the same files)
   api.get('/templates/:name/files', wrap(req => P.exampleFiles(req.params.name)));
 

@@ -5,6 +5,8 @@
 // checks, never shown. One set of rules and messages for the interface, the local server, the browser edition and the
 // MCP server. Isomorphic module (browser + Node).
 
+import { codesignOn, CODESIGN_OFF } from './build-channel.js';
+
 export const DESIGN_KIND = 'design';
 /** The design and simulation project's kind, as New Project, Design Properties and Open Project name it (#5133: for
  *  the introductory courses, whose students need not know what an FPGA is: no FPGA or HDL in its name). */
@@ -15,6 +17,9 @@ export const DESIGN_ONLY_LABEL = 'Digital Logic';
 export const CODESIGN_KIND = 'codesign';
 /** The co-design examples (New Project's Start from for a co-design project; the others are FPGA projects'). */
 export const CODESIGN_EXAMPLES = ['uart-avr'];
+/** The examples offered in this build (New Project, the MCP's list_examples): the co-design ones only where co-design is
+ *  on (#5202). */
+export const offeredExamples = names => names.filter(n => codesignOn() || !CODESIGN_EXAMPLES.includes(n));
 /** Whether a project (its silinx.json) is a co-design project. */
 export const isCodesign = pj => pj?.kind === CODESIGN_KIND;
 /** New Project's first page (#5041): the three kinds, each with what it is for and what it shows (#5133: Digital Logic's
@@ -35,6 +40,8 @@ export function createRefusal(kind, template = 'empty') {
   const empty = !template || template === 'empty';
   if (kind != null && kind !== DESIGN_KIND && kind !== CODESIGN_KIND) return `unknown project kind '${kind}'`;
   if (kind === DESIGN_KIND && !empty) return 'a design and simulation project starts empty: no example';
+  // (co-design not in a release yet, #5202: core/build-channel.js)
+  if ((kind === CODESIGN_KIND || CODESIGN_EXAMPLES.includes(template)) && !codesignOn()) return CODESIGN_OFF;
   if (kind === CODESIGN_KIND && !empty && !CODESIGN_EXAMPLES.includes(template)) return `a co-design project starts empty or from a co-design example (${CODESIGN_EXAMPLES.join(', ')})`;
   return null;
 }

@@ -11,7 +11,7 @@
 // Target Device programs the FPGA of a Digilent board over WebUSB (core/adept.js; Chrome / Edge),
 // and its Platform Flash (core/xcf.js). XST (Xilinx ISE) needs the full application.
 import { getDeviceDb, findPart, findBoard } from '../../core/devices.js';
-import { DESIGN_ONLY_MESSAGES, isDesignOnly } from '../../core/project-kind.js';
+import { DESIGN_ONLY_MESSAGES, isDesignOnly, offeredExamples } from '../../core/project-kind.js';
 import { resourcesOf, openOnlyDevice, experimentalDevice, vivadoDevice, openFlowDevice, noFlowMessage, noOpenFlowMessage, MODEL_VERSION } from '../../packages/silinx-fpga/src/parts.js';
 import { exportCSources, exportXise, importXise, importIseSchematics, iseModuleSymbols, exportIseSchematics } from '../../core/xise.js';
 import EXAMPLES from 'silinx-examples';
@@ -371,7 +371,7 @@ export const api = {
   // ---- projects
   // (with where each is kept, as the server's: this browser's storage or the folder opened, its GitHub repository, #4314)
   projects: async () => Promise.all((await ops.list()).map(async p => ({ ...p, stored: store.kind === 'folder' ? 'folder' : 'browser', github: await git.gitRemote(p.name).catch(() => null) }))),
-  templates: async () => orderExamples(Object.keys(EXAMPLES)),
+  templates: async () => offeredExamples(orderExamples(Object.keys(EXAMPLES))),   // (the co-design one where it is on, #5202)
   // an example's description and files ({ project, files: { path: text } }, #2826)
   exampleFiles: async name => (Object.hasOwn(EXAMPLES, name) ? { project: structuredClone(EXAMPLES[name].json), files: { ...EXAMPLES[name].files } } : fail(`unknown example '${name}'`)),
   createProject: p => ops.create(p),

@@ -349,6 +349,19 @@ The existing `program_board` and `capture` serve the FPGA nodes.
    - the PS–PL as an AXI-Lite link, the Zynq's processor engines as the scheduler's adapters;
    - #4396's soft cores as FPGA nodes with the common instruction view.
 
+## In a release
+
+Co-design is off in a release until it is stable (#5202): the site's root, the release's zip and its local server (a
+release's checkout, its tag's commit) hide New Project's Co-design (its card disabled, the reason said), the `uart-avr`
+example, the Design pane's System row and the System editor (a `.sys.json` opened says so in the console), and the MCP
+server refuses `new_project` kind codesign, `edit_system`, `check_system` and `simulate` of a System with the same
+message. The development build (the site's `dev/`) and a checkout's local server (`npm start` at any other commit) have
+it, and so do the tests (`node --test`: scripts/build-info.mjs `channelFromEnv`; `SILINX_CHANNEL=release` tests a
+release, `SILINX_CHANNEL=dev` runs a release's server with it).
+
+**Turning it on** in a release is one change: `CODESIGN_IN_RELEASE = true` in `core/build-channel.js`, with its
+changelog fragment.
+
 ## Decided
 
 - The System is a co-design project's top, its one System document (#5041); its FPGA nodes are modules of that project.

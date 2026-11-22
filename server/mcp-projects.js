@@ -7,7 +7,8 @@ import * as P from './projects.js';
 import { readWithin } from './paths.js';
 import { orderExamples } from '../core/examples.js';
 import { nameUnnamed } from '../core/schname.js';
-import { CODESIGN_KIND, DESIGN_KIND, PROJECT_KINDS, isCodesign, isDesignOnly } from '../core/project-kind.js';
+import { CODESIGN_KIND, DESIGN_KIND, PROJECT_KINDS, isCodesign, isDesignOnly, offeredExamples } from '../core/project-kind.js';
+import { codesignOn, CODESIGN_OFF } from '../core/build-channel.js';
 import { placeText } from '../core/project-place.js';
 import { withPlaces } from './project-places.js';
 import { TOP_TYPES, topTypeRefusal } from '../core/top-types.js';
@@ -70,7 +71,7 @@ export const PROJECT_TOOLS = [
         return { name: n, top: pj.top, simTop: pj.simTop || null, board: pj.board || null, device: pj.device ? `${pj.device.part}${pj.device.package}${pj.device.speed}` : null, files: (pj.files || []).length };
       };
       // (the examples only, as New Project's Start from: not the test designs, #5108)
-      const examples = orderExamples(P.templateNames(P.EXAMPLES_DIR)).map(n => about(P.EXAMPLES_DIR, n));
+      const examples = offeredExamples(orderExamples(P.templateNames(P.EXAMPLES_DIR))).map(n => about(P.EXAMPLES_DIR, n));   // (#5202)
       const text = examples.map(e => e.kind ? `${e.name}: a co-design example (FPGA and microcontroller nodes in a System), ${e.files} file(s)` : `${e.name}: top ${e.top}${e.simTop ? `, test bench ${e.simTop}` : ''}, ${e.board || 'no board'} (${e.device}), ${e.files} file(s)`);
       return { text: text.join('\n'), data: { examples } };
     },
@@ -119,6 +120,7 @@ export const PROJECT_TOOLS = [
       // (its kind, #4103; design_only, its deprecated name: server/mcp-aliases.js)
       // (a co-design project, #4702: no board, its System document, no top document)
       if (given === CODESIGN_KIND) {
+        if (!codesignOn()) throw toolError(CODESIGN_OFF);   // (#5202)
         if (board || variant || type !== undefined) throw toolError('a co-design project (kind codesign) has no board nor top document: its System (edit_system) names each FPGA node\'s board');
         try { await P.createProject({ name, kind: CODESIGN_KIND, madeBy: 'mcp' }); } catch (e) { throw toolError(e.message); }
         const sys = `${name}.sys.json`;

@@ -22,6 +22,14 @@ export function buildInfo(root, version, env = process.env) {
   return { commit, date };
 }
 
+/** The build's channel the environment asks for (#5202, core/build-channel.js), or null (the build's own):
+ *  SILINX_CHANNEL (dev, release); under node --test (NODE_TEST_CONTEXT), 'dev': the tests run the features a release has
+ *  not yet, at a release's tag too (its CI), and ask for SILINX_CHANNEL=release to test a release. */
+export function channelFromEnv(env = process.env) {
+  if (env.SILINX_CHANNEL === 'dev' || env.SILINX_CHANNEL === 'release') return env.SILINX_CHANNEL;
+  return env.NODE_TEST_CONTEXT ? 'dev' : null;
+}
+
 /**
  * A development build's changes since the last release, for its Development menu: { since, changes }, since the
  * newest tag v<X.Y.Z> (null without one), changes as core/changelog.js buildChanges, each typed by its issue's

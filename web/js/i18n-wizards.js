@@ -25,6 +25,8 @@ export const WIZARDS_PT = {
     'Um sistema de nós de FPGA e de microcontrolador ligados entre si, desenhado e simulado como um todo.',
   // Design Properties' Project Kind, what a change of kind does (#5041, core/project-kind.js DESIGN_ONLY_MESSAGES)
   'Co-design (New Project only)': 'Co-design (só em Novo Projeto)',
+  // (co-design not in a release yet, #5202: core/build-channel.js)
+  "Co-design is not in this release yet: it is in the development build (the site's dev/) until it is stable.": 'O co-design ainda não está nesta versão: está na versão de desenvolvimento (a dev/ do site) até estar estável.',
   'Its board and its constraints file leave the project (the file stays on the disk); its drawings stay, their HDL and the test benches hidden, none deleted.':
     'A placa e o ficheiro de restrições saem do projeto (o ficheiro fica no disco); os desenhos ficam, o seu HDL e as bancadas de teste escondidos, nada apagado.',
   'Its HDL and the FPGA flow are shown, nothing lost: choose its board or its device.':
