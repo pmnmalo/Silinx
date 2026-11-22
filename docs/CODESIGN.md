@@ -156,7 +156,7 @@ The engines:
 
 | Node | Engine | Licence | Notes |
 |---|---|---|---|
-| FPGA | Silinx's compiled engine (`core/compiled-sim.js`), or the event-driven simulator for full waves and `inout` | Silinx's | both are already driven from outside; the compiled one runs in a Worker |
+| FPGA | Silinx's compiled engine (`core/compiled-sim.js`, `inout` ports too: #4709), or the event-driven simulator for full waves | Silinx's | both are already driven from outside; the compiled one runs in a Worker |
 | AVR | [avr8js](https://github.com/wokwi/avr8js) | MIT | GPIO, timers, USART, ADC; SPI and TWI as a master only |
 | RP2040 | [rp2040js](https://github.com/wokwi/rp2040js) | MIT | runs MicroPython's own firmware (UF2, downloaded once) and the student's `.py` through its REPL over the emulated USB; it needs the RP2040's bootrom (Raspberry Pi's, BSD-3) |
 | ESP32 | MicroPython's [WebAssembly port](https://github.com/micropython/micropython/tree/master/ports/webassembly) with a `machine` module of Silinx's (Pin, UART, SPI, I2C, PWM, ADC, a simulated `network`) | MIT and Silinx's | behavioural, and it says so: it is not the chip (no real interrupts); its time is virtual, a time per line through `sys.settrace`. The same `.py` runs on the real board. The browser build needs JSPI (Chrome and Edge 137+, Firefox 153; not Safari) |
@@ -322,9 +322,9 @@ The existing `program_board` and `capture` serve the FPGA nodes.
   says so.
 - **avr8js and rp2040js are masters only for SPI and I²C.** An AVR as an SPI or I²C slave is not simulated: that
   would be a contribution to avr8js.
-- **The compiled engine refuses `inout` ports.** An FPGA's I²C slave (an open-drain SDA) would fall back to the
-  event-driven engine. A top-level `inout` must become three signals in the compiled engine: input, output and
-  enable, from Yosys's `$tribuf` (#4709). This is needed before the I²C links.
+- **`inout` ports in the compiled engine** (#4709, done): a top-level `inout` is three signals there, its input
+  (`set`), its output and its enable (`get('p')`, `get('p:en')`), so an FPGA's I²C slave (an open-drain SDA) runs
+  on it; the I²C links resolve the line (a pull-up, a low from either end).
 - **MicroPython's WebAssembly build needs JSPI** (no Safari).
   - One MicroPython node can call the scheduler from inside its `sleep`.
   - Several need to be suspended and resumed, through JSPI, or each needs a Worker of its own.
