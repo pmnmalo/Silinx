@@ -2,11 +2,14 @@
 // .hex): its System, an Arduino Uno linked by UART to the FPGA node, opened in the System editor; Simulate, Run 100 ms:
 // the FPGA node's module compiled (Yosys), the AVR's "Hi" and the FPGA's echo of each byte (and the AVR's answers plus
 // one) in the link inspector; the waves in the waveform viewer, a scope a node; the console's lines, no warnings. A
-// terminal linked to the FPGA instead: a line typed, its echo read back. Portuguese; both interfaces.
+// terminal linked to the FPGA instead: a line typed, its echo read back. The AVR's firmware an .elf instead (#5198): its
+// bytes read by the page, the same run. Portuguese; both interfaces.
 import { before, after } from 'node:test';
 import assert from 'node:assert/strict';
 import { setupUi, uiTest, makeProject } from './harness.js';
-import { intelHex, echoProgram } from '../avr-asm.mjs';
+import fsp from 'node:fs/promises';
+import path from 'node:path';
+import { intelHex, echoProgram, avrElf } from '../avr-asm.mjs';
 
 let env;
 before(async () => { env = await setupUi(); });
@@ -88,5 +91,24 @@ uiTest('#4701 Simulate System: a terminal typing to the FPGA, its echo read back
   assert.deepEqual((await state(page)).warnings, []);
   await page.click(`${ED} .sys-restart`);
   await page.waitFor((ed) => document.querySelector(`${ed} .sys-sim-time`)?.textContent === 't = 0 ms' && document.querySelector(`${ed} .sys-term-out`)?.textContent === '', [ED], { what: 'restarted', timeout: 60000 });
+  assert.deepEqual(page.console.filter((c) => c.type === 'warning' || c.type === 'warn' || c.type === 'error').map((c) => c.text), []);
+});
+
+uiTest('#5198 Try it with an .elf firmware: its bytes read by the page, the AVR\'s and the FPGA\'s bytes those of the .hex', E, async (page) => {
+  await codesign('CoElf', doc([{ ...UNO, firmware: 'fw/echo.elf' }, FPGA], [{ id: 'serial', kind: 'uart', a: 'uno.Serial', b: 'fpga.uart' }]));
+  await fsp.writeFile(path.join(env.server.workspace, 'CoElf', 'fw', 'echo.elf'), avrElf(echoProgram()));
+  await openSystem(page, 'CoElf');
+  await page.click(`${ED} .sys-sim-btn`);
+  await page.waitFor((ed) => document.querySelector(`${ed} .sys-sim-panel:not([hidden]) .sys-run-for`), [ED], { what: 'the simulation view' });
+  await page.click(`${ED} .sys-run-for`);
+  await page.waitFor(() => { const s = window.Silinx.active.systemEditor.sim?.state(); return s && !s.running && s.now >= 100e9; }, [], { what: '100 ms run', timeout: 60000 });
+  const s = await state(page);
+  const text = (w) => String.fromCharCode(...s.traffic.find((t) => t.wire === w).bytes.map((b) => b.byte));
+  assert.equal(text('serial_uno').slice(0, 6), 'HiIjJk');
+  assert.equal(text('serial_fpga').slice(0, 5), 'HiIjJ');
+  assert.deepEqual([s.warnings, s.errors], [[], []]);
+  const lines = await consoleLines(page);
+  assert.ok(lines.includes('Simulate System: uno, fpga ready, 2 wire(s).'), lines.join('\n'));
+  assert.deepEqual(lines.filter((l) => /^(ERROR|WARNING)/.test(l)), []);
   assert.deepEqual(page.console.filter((c) => c.type === 'warning' || c.type === 'warn' || c.type === 'error').map((c) => c.text), []);
 });

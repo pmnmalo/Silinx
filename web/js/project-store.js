@@ -674,6 +674,16 @@ export function projectOps(getStore, examples = {}) {
       if (t === undefined) fail(`file '${path}' not found`);
       return t;
     },
+    // a file's bytes (a firmware's .elf, #5198), as the local server's readFileBytes: a workspace folder's file; the
+    // browser's storage keeps text only
+    readFileBytes: async (name, path) => {
+      const p = await S().load(name);
+      const key = await spelled(p, cleanPath(path));
+      if (p.files[key] === undefined) fail(`file '${path}' not found`);
+      const b = await S().readBinary(name, key);
+      if (!b) fail(`${key}: the browser's storage keeps text files only: an .elf needs a workspace folder (File ▸ Open Workspace Folder…), or give the firmware's .hex`);
+      return b;
+    },
     writeFile: async (name, path, text) => {
       const p = await S().load(name);
       // written again: back in the project

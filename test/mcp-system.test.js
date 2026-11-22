@@ -129,6 +129,13 @@ test('#4701 simulate of a System (Simulate System): an AVR and the uart example\
   await write('term.sys.json', t);
   const e = await ok('simulate', { project: 'u', top: 'term.sys.json', time_ns: 6e6, type: { term: 'OK' } });
   assert.deepEqual(e.data.terminals, { term: 'OK' });
+  // the firmware an .elf (avr-gcc's): its bytes read by server/projects.js readFileBytes, the page's read (#5198); the same bytes
+  const { avrElf } = await import('./avr-asm.mjs');
+  const P = await import('../server/projects.js');
+  fs.writeFileSync(`${P.projectDir('u')}/fw/echo.elf`, avrElf(echoProgram()));
+  await write('elf.sys.json', { ...m, nodes: m.nodes.map(n => (n.id === 'uno' ? { ...n, firmware: 'fw/echo.elf' } : n)) });
+  const elf = await ok('simulate', { project: 'u', top: 'elf.sys.json', time_ns: 8e6 });
+  assert.deepEqual([elf.data.traffic.map(t => t.bytes.map(b => b.byte)), elf.data.warnings], [data.traffic.map(t => t.bytes.map(b => b.byte)), []]);
   // what cannot be simulated: said, nothing run
   const bad = async (args, message) => { const x = await call('simulate', args); assert.deepEqual([x.isError, x.text], [true, `simulate: ${message}`]); };
   await write('nofw.sys.json', { ...m, nodes: m.nodes.map(n => (n.id === 'uno' ? { ...n, firmware: null } : n)) });
