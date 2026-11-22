@@ -38,6 +38,7 @@ import { filesState } from './state-files.js';
 import { designState } from './state-design.js';
 import { docsState } from './state-docs.js';
 
+import { codesign, systemRow } from './design-system.js';
 const $ = id => document.getElementById(id);
 // the Tasks interface (#799): one tree, no views: the design (as the Implementation view shows it); the test
 // benches Simulate's (its Simulation, #1161); no constraints (#1250: the Files page, Implement's and Emulate's Files
@@ -64,14 +65,16 @@ export function renderHierarchy() {
   const root = treeItem({ label: pj.name, ico: 'project', open: true, mark: gitMark(filesState.git ? filesState.git.files.map(f => f.path) : []), onSelect: () => select({ type: 'project' }), key: 'project', onContext: e => projectContextMenu(e) });
   tree.append(root.li);
   // (a design and simulation project, #3780: no device; its drawings and test benches under Design)
-  const devItem = treeItem({ label: designOnly() ? 'Design' : !sim ? dev : 'Behavioral', ico: !sim ? 'chip' : 'sim', open: true, key: 'device', onSelect: () => select({ type: 'device' }), onContext: e => projectContextMenu(e) });
+  // (a co-design project, #4700: its System's row in place of the device, its FPGA nodes' modules under it)
+  const sysRow = !sim && codesign() ? systemRow(treeItem, select) : null;
+  const devItem = sysRow?.item || treeItem({ label: designOnly() ? 'Design' : !sim ? dev : 'Behavioral', ico: !sim ? 'chip' : 'sim', open: true, key: 'device', onSelect: () => select({ type: 'device' }), onContext: e => projectContextMenu(e) });
   root.ul.append(devItem.li);
 
   const lib = designState.lib;
   const topName = !sim ? pj.top : null;   // the Simulation view has no top: Simulate runs the selected module
   const isTopName = n => !!topName && String(n).toLowerCase() === String(topName).toLowerCase();
   // (the top first, then in natural order: x_2 before x_10, #3819)
-  const roots = hierarchyOrder(viewRoots(sim), topName);
+  const roots = sysRow ? sysRow.modules : hierarchyOrder(viewRoots(sim), topName);
   const addModule = (parentUl, modName, instName, depth, path) => {
     const info = moduleInfo(modName);
     // a device primitive (#4188): the device's, a leaf, not a module missing from the project

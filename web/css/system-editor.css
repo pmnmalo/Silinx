@@ -1,0 +1,28 @@
+/* The System editor (web/js/system-editor.js, #4700): the shared look of asm-editor.css, its own drawing. */
+.system-editor { --sys-fpga: color-mix(in srgb, var(--asm-panel) 80%, var(--asm-accent) 20%); --sys-mcu: color-mix(in srgb, var(--asm-panel) 82%, var(--asm-ok) 18%);
+  --sys-term: color-mix(in srgb, var(--asm-panel) 85%, var(--asm-warn) 15%); --sys-hot: #e0752d; }
+.system-editor .sys-canvas.sys-adding { cursor: crosshair; }
+.system-editor .sys-node { cursor: move; }
+.system-editor .sys-box { fill: var(--asm-panel); stroke: var(--asm-fg); stroke-width: 1.4; }
+.system-editor .sys-node.fpga .sys-head { fill: var(--sys-fpga); }
+.system-editor .sys-node.mcu .sys-head { fill: var(--sys-mcu); }
+.system-editor .sys-node.terminal .sys-head { fill: var(--sys-term); }
+.system-editor .sys-node:hover .sys-box { stroke: var(--asm-accent); }
+.system-editor .sys-node.sel .sys-box { stroke: var(--asm-accent); stroke-width: 2.6; }
+.system-editor .sys-id { fill: var(--asm-fg); font: 700 12px system-ui, -apple-system, "Segoe UI", sans-serif; pointer-events: none; }
+.system-editor .sys-what, .system-editor .sys-none { fill: var(--asm-muted); font: 11px system-ui, -apple-system, "Segoe UI", sans-serif; pointer-events: none; }
+.system-editor .sys-iface { cursor: pointer; }
+.system-editor .sys-iface-row { fill: transparent; }
+.system-editor .sys-iface:hover .sys-iface-row { fill: color-mix(in srgb, var(--asm-accent) 12%, transparent); }
+.system-editor .sys-iface.sel .sys-iface-row { fill: color-mix(in srgb, var(--asm-accent) 24%, transparent); }
+.system-editor .sys-iface-name { fill: var(--asm-fg); font: 11px var(--asm-mono); pointer-events: none; }
+.system-editor .sys-dot { fill: var(--asm-bg); stroke: var(--asm-fg); stroke-width: 1.6; }
+.system-editor .sys-dot.gpio { fill: var(--asm-fg); }
+.system-editor .sys-iface.sel .sys-dot { stroke: var(--sys-hot); stroke-width: 2.6; }
+.system-editor .sys-link { cursor: pointer; }
+.system-editor .sys-link-hit { stroke: transparent; stroke-width: 10; fill: none; }
+.system-editor .sys-link-line { stroke: color-mix(in srgb, var(--asm-fg) 85%, transparent); stroke-width: 2; fill: none; }
+.system-editor .sys-link.gpio .sys-link-line { stroke-dasharray: 6 3; }
+.system-editor .sys-link.sel .sys-link-line { stroke: var(--asm-accent); stroke-width: 3; }
+.system-editor .sys-link-line.sys-ghost { stroke-dasharray: 6 4; pointer-events: none; }
+.system-editor .sys-link-name { fill: var(--asm-muted); font: 11px var(--asm-mono); pointer-events: none; }

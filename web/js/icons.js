@@ -32,6 +32,8 @@ export const icons = {
   ucf: S('<rect x="2" y="1.5" width="12" height="13" fill="#fff" stroke="#556"/><text x="8" y="11" font-size="6" text-anchor="middle" fill="#606" font-family="Arial" font-weight="bold">UCF</text>'),
   asm: S('<rect x="4" y="1" width="8" height="4" fill="#fff8d0" stroke="#806000"/><path d="M8 5v2" stroke="#806000"/><path d="M8 7l4 2.5-4 2.5-4-2.5z" fill="#e0f0ff" stroke="#004080"/><path d="M8 12v3" stroke="#806000"/>'),
   petri: S('<circle cx="3.5" cy="8" r="2.6" fill="#e8f0ff" stroke="#004080"/><circle cx="3.5" cy="8" r=".9" fill="#004080"/><rect x="7.4" y="3" width="1.6" height="10" fill="#004080"/><circle cx="12.5" cy="8" r="2.6" fill="#e8f0ff" stroke="#004080"/><path d="M6.2 8h1.1M9.1 8h.9" stroke="#806000"/>'),
+  // a co-design project's System (#4700): two nodes linked
+  system: S('<rect x="1" y="3" width="5.5" height="10" rx="1" fill="none" stroke="currentColor"/><rect x="9.5" y="3" width="5.5" height="10" rx="1" fill="none" stroke="currentColor"/><path d="M6.5 6.5h3M6.5 9.5h3" stroke="currentColor"/>'),
   // a digital circuit (#3897): a 14-pin DIP on a breadboard's holes
   circuit: S('<rect x="1" y="2" width="14" height="12" rx="1.5" fill="#f2efe6" stroke="#8a836f"/><rect x="3.5" y="5" width="9" height="6" rx=".8" fill="#222"/><circle cx="4.6" cy="8" r=".8" fill="#777"/><path d="M5 5V3.6M7 5V3.6M9 5V3.6M11 5V3.6M5 11v1.4M7 11v1.4M9 11v1.4M11 11v1.4" stroke="#999"/>'),
   fsm: S('<circle cx="4" cy="11" r="3" fill="#e8f0ff" stroke="#004080"/><circle cx="12" cy="5" r="3" fill="#e8f0ff" stroke="#004080"/><circle cx="12" cy="5" r="1.7" fill="none" stroke="#004080" stroke-width=".7"/><path d="M5.5 8.6Q6.5 5.5 9 5" fill="none" stroke="#806000"/><path d="M8.2 4.2l1 .8-1.1.7" fill="none" stroke="#806000"/>'),

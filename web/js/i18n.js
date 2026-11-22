@@ -17,6 +17,7 @@ import { LINT_PT } from './i18n-lint.js';
 import { EDITOR_PT, EDITOR_PT_PATTERNS } from './i18n-editor.js';
 import { FSM_PT, FSM_PT_PATTERNS } from './i18n-fsm.js';
 import { PETRI_PT, PETRI_PT_PATTERNS } from './i18n-petri.js';
+import { SYSTEM_PT, SYSTEM_PT_PATTERNS } from './i18n-system.js';
 import { CIRCUIT_PT, CIRCUIT_PT_PATTERNS } from './i18n-circuit.js';
 import { SYMBOL_PT, SYMBOL_PT_PATTERNS } from './i18n-symbol.js';
 import { FPGA_PT, FPGA_PT_PATTERNS } from './i18n-fpga.js';
@@ -465,6 +466,7 @@ Object.assign(PT, EDITOR_PT); PT_PATTERNS.unshift(...EDITOR_PT_PATTERNS);   // H
 const keep = (strings, patterns = []) => { for (const [k, v] of Object.entries(strings)) if (!(k in PT)) PT[k] = v; PT_PATTERNS.unshift(...patterns); };
 keep(FSM_PT, FSM_PT_PATTERNS);   // FSM state diagram editor (existing translations kept)
 keep(PETRI_PT, PETRI_PT_PATTERNS);   // Petri net editor
+keep(SYSTEM_PT, SYSTEM_PT_PATTERNS);   // System editor (#4700)
 keep(CIRCUIT_PT, CIRCUIT_PT_PATTERNS);   // digital circuit editor (#3897)
 keep(SYMBOL_PT, SYMBOL_PT_PATTERNS);   // Symbol Editor (#3755)
 keep(FPGA_PT, FPGA_PT_PATTERNS);   // View Implemented Design (FPGA)

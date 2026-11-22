@@ -308,7 +308,7 @@ function primTemplatesMenu(d, lang) {
   return { label: 'Device Primitives', disabled: !list.length, submenu: list.map(t => ({ label: t.name, action: () => d.editor.insertText(t.text) })) };
 }
 // (a read-only document, the HDL generated from a drawing (#1176): none, its Undo / Redo greyed out, #1192)
-export const docEditor = d => d && (d.editor ? (d.editor.readOnly?.() ? null : { undo: () => d.editor.exec('undo'), redo: () => d.editor.exec('redo') }) : d.schEditor || d.asmEditor || d.fsmEditor || d.ttEditor || d.petriEditor || d.circuitEditor || d.symEditor || d.pinPlanner || null);
+export const docEditor = d => d && (d.editor ? (d.editor.readOnly?.() ? null : { undo: () => d.editor.exec('undo'), redo: () => d.editor.exec('redo') }) : d.schEditor || d.asmEditor || d.fsmEditor || d.ttEditor || d.petriEditor || d.circuitEditor || d.symEditor || d.pinPlanner || d.systemEditor || null);
 export const undoesProject = () => history.canUndo() && !(docsState.active?._editedAt > history.lastAt() && docEditor(docsState.active));
 export const redoesProject = () => history.canRedo() && !(docsState.active?._editedAt > history.redoAt() && docEditor(docsState.active));
 export async function projectUndo() {
@@ -523,6 +523,7 @@ export async function openFile(path, line, col, { task } = {}) {
   if (path.endsWith('.fsm.json')) return openFsm(path);
   if (path.endsWith('.pn.json')) return openPetri(path);
   if (path.endsWith('.circ.json')) return (await import('./drawings.js')).openCircuit(path);   // (a digital circuit, #3897)
+  if (path.endsWith('.sys.json')) return (await import('./system-open.js')).openSystem(path);   // (a co-design project's System, #4700)
   if (/\.sym\.json$/i.test(path)) return (await import('./symbol-doc.js')).openSymbol(path);   // (a module's symbol, #3755)
   if (path.endsWith('.exercise.json')) return (await import('./exercise-view.js')).openExercise(path);   // (#3192)
   if (/(^|\/)([^/]+\.)?grades\.json$/i.test(path)) return (await import('./grade-results-view.js')).openResultsFile(path);   // (a class's results, #3864)
