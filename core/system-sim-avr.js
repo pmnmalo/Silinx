@@ -8,9 +8,20 @@
 //
 //   const node = new AvrNode({ board: 'arduino-uno', firmware: { name: 'fw/echo.hex', data: text } });
 //
-// avr8js is loaded from node_modules (Node, the local server); the browser's bundle comes with the System's simulation
-// view (#4701). Isomorphic ES module, no DOM.
-import { CPU, avrInstruction, AVRIOPort, AVRUSART, AVRTimer, portBConfig, portCConfig, portDConfig, usart0Config, timer0Config, timer1Config, timer2Config, PinState } from 'avr8js';
+// avr8js: node_modules in Node, the page's import map, a Web Worker's own (#4701). Isomorphic ES module, no DOM.
+// avr8js's names, bound on first use (bind): node_modules in Node, the page's import map, the browser edition's bundle
+// (loadAvr8js); a Web Worker, which has no import map, gives it as SILINX_AVR8JS (web/js/system-worker.js, #4701)
+let CPU, avrInstruction, AVRIOPort, AVRUSART, AVRTimer, portBConfig, portCConfig, portDConfig, usart0Config, timer0Config, timer1Config, timer2Config, PinState;
+let lib = null;
+function bind(l) {
+  lib = l;
+  ({ CPU, avrInstruction, AVRIOPort, AVRUSART, AVRTimer, portBConfig, portCConfig, portDConfig, usart0Config, timer0Config, timer1Config, timer2Config, PinState } = l);
+}
+/** avr8js loaded (once), before an AvrNode is made: the worker's, else imported by its name. */
+export async function loadAvr8js() {
+  if (!lib) bind(globalThis.SILINX_AVR8JS ?? await import('avr8js'));
+  return lib;
+}
 import { readFirmware } from './avr-firmware.js';
 import { mcuBoard } from './system-doc.js';
 
@@ -37,6 +48,8 @@ export class AvrNode {
    *  .elf's bytes) or { program } (the flash's words). A firmware in error: the node finished at once, its message
    *  logged. */
   constructor({ board = 'arduino-uno', firmware }) {
+    if (!lib && globalThis.SILINX_AVR8JS) bind(globalThis.SILINX_AVR8JS);
+    if (!lib) throw new Error('avr8js is not loaded: await loadAvr8js() first');
     const b = mcuBoard(board);
     if (!b) throw new Error(`no microcontroller board '${board}'`);
     this.board = b;

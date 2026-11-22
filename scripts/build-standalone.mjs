@@ -148,6 +148,8 @@ const plugin = {
   name: 'silinx-standalone',
   setup(b) {
     b.onResolve({ filter: /^\/(core|packages)\// }, a => ({ path: path.join(ROOT, a.path) }));
+    // (an npm package's file by the path the server serves it at: the co-design System's worker's avr8js, #4701)
+    b.onResolve({ filter: /^\/vendor\/npm\// }, a => ({ path: path.join(ROOT, 'node_modules', a.path.slice('/vendor/npm/'.length)) }));
     b.onResolve({ filter: /^\.\/api\.js$/ }, a => (a.importer.includes(`${path.sep}web${path.sep}js${path.sep}`) ? { path: path.join(ROOT, 'web/js/api-local.js') } : undefined));
     b.onResolve({ filter: /^silinx-examples$/ }, a => ({ path: a.path, namespace: 'virtual' }));
     b.onLoad({ filter: /.*/, namespace: 'virtual' }, a => ({ contents: `export default ${JSON.stringify(examples)};`, loader: 'js' }));
@@ -185,6 +187,12 @@ const hdlWorkerRes = await esbuild.build({
   bundle: true, format: 'esm', minify: true, write: false, target: 'es2022', plugins: [plugin], logLevel: 'warning', platform: 'browser', define,
 });
 const hdlWorkerJs = hdlWorkerRes.outputFiles[0].text;
+// a co-design System's run (web/js/system-worker.js, #4701), embedded the same way
+const sysWorkerRes = await esbuild.build({
+  entryPoints: [path.join(ROOT, 'web/js/system-worker.js')],
+  bundle: true, format: 'esm', minify: true, write: false, target: 'es2022', plugins: [plugin], logLevel: 'warning', platform: 'browser', define,
+});
+const sysWorkerJs = sysWorkerRes.outputFiles[0].text;
 
 // ---- inline everything into index.html
 let html = rd('web/index.html');
@@ -203,7 +211,7 @@ html = html.replace(/<!-- the editor \(CodeMirror 6[\s\S]*?<script type="importm
 if (html.includes('importmap')) throw new Error('web/index.html: the import map was not removed');
 // replacer functions: the inserted code may contain `$'`, `$&`… which a replacement string would expand
 html = html.replace('<script type="module" src="/js/app.js"></script>',
-  () => `<script>window.SILINX_STANDALONE = true;\nwindow.SILINX_ASSET_LAYOUT = ${safeJs(JSON.stringify(LAYOUT))};\nwindow.SILINX_FLOW_WORKER_SRC = ${safeJs(JSON.stringify(workerJs))};\nwindow.SILINX_EMU_WORKER_SRC = ${safeJs(JSON.stringify(emuWorkerJs))};\nwindow.SILINX_HDL_WORKER_SRC = ${safeJs(JSON.stringify(hdlWorkerJs))};</script>\n<script type="module">${safeJs(appJs)}</script>`);
+  () => `<script>window.SILINX_STANDALONE = true;\nwindow.SILINX_ASSET_LAYOUT = ${safeJs(JSON.stringify(LAYOUT))};\nwindow.SILINX_FLOW_WORKER_SRC = ${safeJs(JSON.stringify(workerJs))};\nwindow.SILINX_EMU_WORKER_SRC = ${safeJs(JSON.stringify(emuWorkerJs))};\nwindow.SILINX_HDL_WORKER_SRC = ${safeJs(JSON.stringify(hdlWorkerJs))};\nwindow.SILINX_SYSTEM_WORKER_SRC = ${safeJs(JSON.stringify(sysWorkerJs))};</script>\n<script type="module">${safeJs(appJs)}</script>`);
 const TITLE = '<title>Silinx</title>';
 if (!html.includes(TITLE)) throw new Error(`web/index.html: no ${TITLE} to mark (standalone)`);
 html = html.replace(TITLE, () => '<title>Silinx (standalone)</title>');

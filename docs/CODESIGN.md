@@ -107,6 +107,12 @@ read / write. Silinx generates both sides:
 
 ## Simulating everything together
 
+**Simulate System** (#4701) is the System editor's bottom panel: the page compiles each FPGA node's module (Yosys) and
+reads the firmware (`core/system-run.js` systemInputs), a Web Worker builds and runs the System (`core/system-host.js`,
+`core/system-build.js`: an FPGA node at its board's clock, its UART's RX idle at 1 when no link drives it; each wire with
+a fixed latency, a sixteenth of its bit), and the panel shows the run: its time, a terminal for each terminal node, the
+link inspector (each wire's decoded bytes) and the waves in the waveform viewer.
+
 **One co-simulation scheduler**, a new core module (system-sim, #4696). It is isomorphic and runs in one Web Worker; it needs no
 `SharedArrayBuffer`, so no cross-origin isolation, which GitHub Pages cannot set.
 
@@ -245,7 +251,7 @@ Every action is a tool (#2674), through the same functions as the interface:
 |---|---|
 | `edit_system` | adds, changes or removes a node, an interface or a link (#4700) |
 | `check_system` | describes the system and runs the check (#4700) |
-| `simulate_system` | runs for a time and returns each node's serial output, the links' traffic and the VCD |
+| `simulate` (a System) | the existing tool: `top` a System document (a co-design project's by default) runs it for a time and returns each wire's bytes, the terminals' text and the warnings; the VCD in `build/<name>.vcd` (#4701) |
 | `node_firmware` | sets a node's firmware |
 
 Later:

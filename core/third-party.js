@@ -193,7 +193,7 @@ export const THIRD_PARTY = [
     "version": "0.21.1",
     "license": "MIT",
     "url": "https://github.com/wokwi/avr8js",
-    "standalone": false
+    "standalone": true
   },
   {
     "name": "body-parser",

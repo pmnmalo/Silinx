@@ -23,7 +23,12 @@ function signal(name, changes) {
   return { name, kind: 'signal', net: 'wire', t: { kind: 'logic', w: 1, s: false, scalar: true }, wave, val: wave.v.at(-1) ?? X };
 }
 
-const scope = (name, signals) => ({ name, ports: [], signals, children: [] });
+// a scope (an instance, as the simulator's: its path, its signals' too, `top.node.pin`, as the waveform viewer names them)
+const scope = (name, signals, parent = null) => {
+  const inst = { name, path: parent ? `${parent}.${name}` : name, ports: [], signals, children: [] };
+  for (const g of signals) Object.assign(g, { path: `${inst.path}.${g.name}`, inst });
+  return inst;
+};
 
 /** The system's waves: { design: { top, signals } } (the scopes `system` ▸ each node, `links`). */
 export function systemWaves(sys, { name = 'system' } = {}) {
@@ -34,9 +39,11 @@ export function systemWaves(sys, { name = 'system' } = {}) {
     for (const d of l.dsts) pins.get(d.node).push(signal(d.pin, l.trace));
     links.push(signal(l.name, l.sent));
   }
-  const children = [...pins].map(([n, s]) => scope(n, s));
-  const top = { ...scope(name, []), children: [...children, scope('links', links)] };
-  return { design: { top, signals: [...children.flatMap((c) => c.signals), ...links] } };
+  const children = [...pins].map(([n, s]) => scope(n, s, name));
+  const top = { ...scope(name, []), children: [...children, scope('links', links, name)] };
+  const signals = [...children.flatMap((c) => c.signals), ...links];
+  signals.forEach((g, i) => { g.id = i; });
+  return { design: { top, signals } };
 }
 
 /** The system's VCD (its waves, systemWaves'), in ps. */

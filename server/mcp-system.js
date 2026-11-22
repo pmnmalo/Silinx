@@ -46,14 +46,14 @@ async function readSystemFile(name, file) {
 const SYS_FILE = STR('The System document (.sys.json).');
 const EDIT = { type: 'object', properties: {
   action: { type: 'string', enum: EDIT_ACTIONS },
-  node: STR('A node\'s id.'), interface: STR('An interface\'s name.'), link: STR('A link\'s id.'),
-  fields: { type: 'object', description: 'kind, id, board, module, variant, pins { port: pin }, firmware, x, y; name, tx, rx, baud, frame, pins, dir; a, b (node.interface).' },
+  node: { type: 'string' }, interface: { type: 'string' }, link: { type: 'string' },
+  fields: { type: 'object', description: 'kind id board module variant pins firmware x y; name tx rx baud frame pins dir; a b (node.interface)' },
 }, required: ['action'], additionalProperties: false };
 
 export const SYSTEM_TOOLS = [
   {
     name: 'edit_system', title: 'Edit a System',
-    description: 'Edit a co-design project\'s System document (.sys.json) as the System editor does, edits applied in order (one refused: nothing written, and why): a node (fpga: a module of the project on a board; mcu: an Arduino Uno or Nano; terminal), an interface (uart: TX, RX, baud, frame; gpio: pins, direction) or a link between two interfaces of one kind added, changed or removed. Then written and checked, as Check System.',
+    description: 'Edit a co-design project\'s System (.sys.json) as its editor does, in order (one refused: nothing written): add_, change_, remove_ a node (fpga, mcu, terminal), an interface (uart, gpio) or a link; then checked.',
     inputSchema: { type: 'object', properties: { project: PROJECT, file: SYS_FILE, edits: { type: 'array', maxItems: 100, items: EDIT } }, required: ['project', 'file', 'edits'], additionalProperties: false },
     annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false },
     async run({ project: name, file, edits }) {
@@ -75,7 +75,7 @@ export const SYSTEM_TOOLS = [
   },
   {
     name: 'check_system', title: 'Check a System',
-    description: 'Describe and check a co-design project\'s System document (.sys.json) as Check System does: its nodes, interfaces and links, then its errors and warnings, each with its node or link.',
+    description: 'Describe and check a co-design project\'s System (.sys.json) as Check System does: its nodes, links, errors and warnings.',
     inputSchema: { type: 'object', properties: { project: PROJECT, file: SYS_FILE }, required: ['project', 'file'], additionalProperties: false },
     annotations: { readOnlyHint: true },
     async run({ project: name, file }) {
