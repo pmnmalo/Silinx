@@ -1,7 +1,8 @@
 // The usability tests' own logic (#5148, test/usability/lib/): the seeded generator, the shrinking of a failing sequence,
 // and the schematic's invariants on drawings made for each (a wire's end on nothing, a net name's stub, a wire come off
 // its pin, a diagonal, overlapping symbols, the junction dots, the nets, the HDL); the HDL editor's typing model and the
-// wave window's values against the reference simulator (#5206); the model of a project's lifecycle (#5206, phase 2).
+// wave window's values against the reference simulator (#5206); the model of a project's lifecycle (#5206, phase 2); the
+// drawings' random steps on their models (#5206, phase 3): the same from a seed, each a person's, the drawing sound.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
@@ -16,6 +17,14 @@ import { shownValue, wrongValues, waveReference } from './usability/lib/wave-kit
 import { compile, elaborate } from '../core/compile.js';
 import { mk, allX, format, toDec } from '../core/values.js';
 import { ProjectModel, KIND_NAMES } from './usability/lib/project-model.js';
+import { ANY, modelDiff, freshName, segDist, modelRun } from './usability/lib/draw-random.js';
+import { drawDiagnostics, drawHdlErrors } from './usability/lib/draw-kit.js';
+import { FSM_VOCAB, fsmModel, fsmTolerate } from './usability/lib/fsm-random.js';
+import { ASM_VOCAB, asmModel, asmTolerate } from './usability/lib/asm-random.js';
+import { PN_VOCAB, pnModel } from './usability/lib/pn-random.js';
+import { TT_VOCAB, ttModel, column } from './usability/lib/tt-random.js';
+import { STATE_R } from '../core/fsm.js';
+import { shapeTable, parseExpr, exprColumn, normalizeTable } from '../core/logic.js';
 
 const ROOT = path.join(path.dirname(fileURLToPath(import.meta.url)), '..');
 const inv = (id, name, x, y) => ({ id, type: 'inv', x, y, rot: 0, mirror: false, name, params: { width: 1 } });
@@ -293,4 +302,121 @@ test('usability: the project\'s model: the ISE style\'s Design pane: the Simulat
   n.flowFiles = true;
   n.add('vhdl', 'top');
   assert.deepEqual([n.constraints, n.rows()], ['constraints/top.ucf', ['top [VHDL*] (top.vhd)']]);
+});
+
+test('usability: the drawings\' models: the first difference said where, ANY matching anything; the editors\' new names; a point\'s distance to a segment', () => {
+  assert.equal(modelDiff({ a: [{ id: ANY, x: 1 }] }, { a: [{ id: 's9', x: 1 }] }), null);
+  assert.equal(modelDiff({ a: [{ id: ANY, x: 1 }] }, { a: [{ id: 's9', x: 2 }] }), 'a[0].x: 2, expected 1');
+  assert.equal(modelDiff({ a: [1, 2] }, { a: [1] }), 'a: 1 items, expected 2 ([1])');
+  assert.equal(modelDiff({ o: { k: 1 } }, { o: { k: 1, j: 2 } }), 'o.j: 2, expected undefined');
+  assert.equal(freshName('s', ['S0', 'IDLE', 's1']), 'S2');
+  assert.equal(freshName('p', ['none', 'P1'], 1, 'p'), 'p2');
+  assert.equal(segDist({ x: 5, y: 5 }, { x: 0, y: 0 }, { x: 10, y: 0 }), 5);
+  assert.equal(segDist({ x: -3, y: 4 }, { x: 0, y: 0 }, { x: 10, y: 0 }), 5);
+});
+
+/** A model on its example's document: the full document again, for the editors' checks and the HDL. */
+const asDoc = (doc, m) => {
+  const out = { ...doc };
+  for (const [k, v] of Object.entries(m)) out[k] = Array.isArray(v) ? v.map((x) => (x && typeof x === 'object' ? { ...(doc[k]?.find?.((y) => y.id === x.id) || {}), ...x } : x)) : v;
+  return out;
+};
+const example = (p) => JSON.parse(fs.readFileSync(path.join(ROOT, 'examples', p), 'utf8'));
+/** A vocabulary's sequences on its example's model, seeds 1 to 6, 40 steps: the same steps from a seed, others from
+ *  another; every model sound (the drawing's check: no errors but the tolerated, its HDL compiled and elaborated when it
+ *  has none) and `each(model)` holding. */
+function soundRuns(kind, vocab, model, doc, { tolerate = () => false, each = () => {} }) {
+  const run = (seed) => modelRun(vocab, model(doc), { seed, n: 40, prng });
+  assert.deepEqual(run(1).steps, run(1).steps);
+  assert.notDeepEqual(run(1).steps, run(2).steps);
+  const names = new Set();
+  for (let seed = 1; seed <= 6; seed++) {
+    const { steps, models } = run(seed);
+    assert.equal(steps.length, 40, `seed ${seed}: a step at every draw`);
+    for (const st of steps) names.add(st.name);
+    models.forEach((m, i) => {
+      const d = asDoc(doc, m), errs = drawDiagnostics(kind, d).filter((x) => x.startsWith('error'));
+      assert.ok(!errs.length || tolerate(errs), `seed ${seed}, model ${i}: ${errs}`);
+      if (!errs.length) assert.deepEqual(drawHdlErrors(kind, d), [], `seed ${seed}, model ${i}: its HDL`);
+      each(m, `seed ${seed}, model ${i}`);
+    });
+  }
+  // (every action drawn, but those a step does only after another)
+  assert.deepEqual([...names].sort(), vocab.filter((v) => v.weight).map((v) => v.name).sort());
+}
+const apart = (list, min, what) => list.forEach((a, i) => list.slice(i + 1).forEach((b) => assert.ok(Math.hypot(a.x - b.x, a.y - b.y) >= min, `${what}: ${a.id} and ${b.id} too close`)));
+const unique = (names, what) => assert.equal(new Set(names.map((x) => x.toLowerCase())).size, names.length, `${what}: a name twice: ${names}`);
+
+test('usability: the state diagram\'s random steps (traffic): the same from a seed; states in free room, names unique, the initial state kept; the check and the HDL sound', () => {
+  const doc = example('traffic/src/traffic.fsm.json');
+  soundRuns('fsm', FSM_VOCAB, fsmModel, doc, {
+    tolerate: fsmTolerate,
+    each(m, at) {
+      apart(m.states, 2 * STATE_R + 50, at);
+      unique(m.states.map((s) => s.name), at);
+      assert.equal(m.initial, 's1', at);
+      for (const t of m.transitions) assert.ok(m.states.some((s) => s.id === t.from) && m.states.some((s) => s.id === t.to), `${at}: ${t.id}'s states`);
+    },
+  });
+  // (the errors tolerated: two "otherwise" transitions, a transition drawn before its condition is typed; no other)
+  assert.ok(fsmTolerate(['error: State CARS has 2 otherwise transitions (else, @else, default, others, otherwise, true, 1 or no condition), to NIGHT, WALK; a state has one at most']));
+  assert.ok(!fsmTolerate(["error: Two states are named 'GO' (letter case does not count)"]));
+});
+
+test('usability: the ASM chart\'s random steps (the lock\'s timer): the same from a seed; boxes apart, exits to state boxes, names unique; Validate and the HDL sound', () => {
+  const doc = example('lock/src/timer.asm.json');
+  const base = new Set(doc.edges.map((e) => `${e.from}.${e.port}>${e.to}`));
+  soundRuns('asm', ASM_VOCAB, asmModel, doc, {
+    tolerate: asmTolerate,
+    each(m, at) {
+      m.nodes.forEach((a, i) => m.nodes.slice(i + 1).forEach((b) => assert.ok(Math.abs(a.x - b.x) >= 140 || Math.abs(a.y - b.y) >= 60, `${at}: ${a.id} on ${b.id}`)));
+      unique(m.nodes.filter((n) => n.type === 'state').map((n) => n.name), at);
+      // (an arrow the steps drew: to a state box, or to the box added on its exit)
+      for (const e of m.edges) {
+        const to = m.nodes.find((n) => n.id === e.to);
+        assert.ok(base.has(`${e.from}.${e.port}>${e.to}`) || to.type === 'state' || /new/.test(to.id), `${at}: ${e.id} to ${to.type} ${to.id}`);
+      }
+    },
+  });
+  assert.ok(asmTolerate(["error: Decision 'tick' has no 0 (false) branch", "error: State 'S0' has no exit (next state path)"]));
+  assert.ok(!asmTolerate(["error: Loop through decision/output boxes without a state (in the block of state 'IDLE')"]));
+});
+
+test('usability: the Petri net\'s random steps (the lock\'s alarm): the same from a seed; nodes apart, names unique, tokens within capacity, no two arcs on one line; Check and the HDL sound', () => {
+  const doc = example('lock/src/alarm.pn.json');
+  soundRuns('pn', PN_VOCAB, pnModel, doc, {
+    each(m, at) {
+      apart([...m.places, ...m.transitions], 90, at);
+      unique([...m.places, ...m.transitions].map((n) => n.name).concat(['fail', 'opened', 'fails', 'alarm']), at);
+      for (const p of m.places) assert.ok(p.tokens <= p.capacity, `${at}: ${p.name}'s tokens`);
+      // (#5266: two arcs between a place and a transition, one each way, drawn on one line: not drawn until fixed)
+      for (const a of m.arcs) assert.ok(!m.arcs.some((b) => b.from === a.to && b.to === a.from), `${at}: ${a.id} and an arc back`);
+    },
+  });
+});
+
+test('usability: the truth table\'s random steps (the traffic lamps): the same from a seed; each step\'s table as core\'s (shapeTable, the expressions\' columns), the HDL sound', () => {
+  const doc = normalizeTable(example('traffic/src/lamps.bool.json'));
+  soundRuns('tt', TT_VOCAB, ttModel, doc, { each: (m, at) => { for (const o of m.outputs) assert.match(m.table[o], new RegExp(`^[01X]{${1 << m.inputs.length}}$`), `${at}: ${o}`); } });
+  // each step's model against core's own table for the same step (its Inputs and Outputs boxes' shapeTable, an
+  // expression's parseExpr and exprColumn): the model computed apart from it, the same
+  const shaped = { addInput: 1, removeInput: 1, renameInput: 1, addOutput: 1, removeOutput: 1, renameOutput: 1 };
+  for (let seed = 1; seed <= 6; seed++) {
+    const r = prng(seed);
+    let d = doc;
+    for (let i = 0; i < 40; i++) {
+      const m = ttModel(d);
+      const opts = TT_VOCAB.filter((v) => v.weight && !/^(undo|redo)$/.test(v.name)).map((v) => ({ v, args: v.gen(d, r) })).filter((x) => x.args);
+      const { v, args } = r.weighted(opts.map((x) => ({ ...x, weight: x.v.weight })));
+      const want = v.apply(JSON.parse(JSON.stringify(m)), args, { id: () => '?', any: (x) => x });
+      if (shaped[v.name]) {
+        const ins = v.name.endsWith('Input') ? want.inputs : m.inputs, outs = v.name.endsWith('Output') ? want.outputs : m.outputs;
+        d = shapeTable(d, ins, outs);
+      } else if (v.name === 'expr') {
+        assert.equal(column(m, args.text), exprColumn(parseExpr(args.text, { vars: m.inputs }), m.inputs), `${args.text} on ${m.inputs}`);
+        d = normalizeTable({ ...d, table: want.table, exprs: want.exprs });
+      } else d = normalizeTable({ ...d, table: want.table, exprs: want.exprs, forms: want.forms });
+      assert.equal(modelDiff(want, ttModel(d)), null, `seed ${seed}, step ${i}: ${v.name} ${JSON.stringify(args)}`);
+    }
+  }
 });

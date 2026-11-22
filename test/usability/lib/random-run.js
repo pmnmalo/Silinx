@@ -21,7 +21,13 @@ export function randomTests(envRef, { name, fixed, vocab, session, n = 40 }) {
         console.log(`seed ${seed}: ${done.length} steps: ${Object.entries(count).map(([k, v]) => `${k} ${v}`).join(', ')}`);
         await s.undoRedo();
       } catch (e) {
-        if (!e.usability) throw e;
+        // (a step the interface could not do, a click on nothing: the steps that led to it said, #5206)
+        if (!e.usability) {
+          console.error(`USABILITY: seed ${seed}: step ${s.steps.length} could not be done: ${e.message.split('\n')[0]}`);
+          s.steps.forEach((st, i) => console.error(`USABILITY:   ${i + 1}. ${st.name} ${JSON.stringify(st.args)}`));
+          if (s.shots.length) { envRef().keep = true; console.error(`USABILITY: its last screenshot: ${s.shots.at(-1)}`); }
+          throw e;
+        }
         failure = e;
       }
       if (!failure) return;

@@ -10,7 +10,7 @@ import assert from 'node:assert/strict';
 import { setupUi, uiTest, makeProject } from '../ui/harness.js';
 import { Session } from './lib/session.js';
 import { drawKit } from './lib/draw-kit.js';
-import { PLACE_R, TRANS_W, TRANS_H } from '../../core/petri.js';
+import { pnActions } from './lib/pn-actions.js';
 
 const FILE = 'test/usability/petri.test.js';
 let env;
@@ -23,79 +23,6 @@ const DEADLOCK = 'WARNING: the net can reach a deadlock, no transition able to f
 // (Check's lines in Portuguese, written out: SILINX_USABILITY_LANG=pt, #5185)
 const DEADLOCK_PT = 'WARNING: a rede pode chegar a um bloqueio, sem nenhuma transição capaz de disparar: depois de fail1, fail2, fail3';
 
-/** The Petri net editor's actions: its tools, clicks and drags on the net (its coordinates, turned into the page's by
- *  the drawing's own transform), its Properties. The net is read only to know where things are. */
-const pnActions = (page, { ed, t, getDoc }) => {
-  const TOOLS = ['select', 'place', 'transition', 'arc', 'inhibitor'];   // (the toolbar's .pn-tool, in order)
-  const tool = (name) => page.click(`${ed} .pn-tool`, { index: TOOLS.indexOf(name) });
-  // a point of the net on the page, the net fitted (Zoom to Full View) when it is out of the view
-  const screen = (x, y) => page.eval((e, px, py) => {
-    const w = document.querySelector(`${e} .pn-world`), r = w.ownerSVGElement.getBoundingClientRect();
-    const q = new DOMPoint(px, py).matrixTransform(w.getScreenCTM());
-    return q.x > r.left + 8 && q.x < r.right - 8 && q.y > r.top + 8 && q.y < r.bottom - 8 ? { x: q.x, y: q.y } : null;
-  }, ed, x, y);
-  const at = async (x, y) => {
-    let q = await screen(x, y);
-    if (!q) { await page.click(`${ed} [data-act=fit]`); q = await screen(x, y); }
-    if (!q) throw new Error(`(${x}, ${y}) out of the editor's view, the net fitted`);
-    return q;
-  };
-  const nodeById = async (id) => {
-    const m = await getDoc();
-    const nd = [...m.places, ...m.transitions].find((x) => x.id === id);
-    if (!nd) throw new Error(`no node ${id}`);
-    return nd;
-  };
-  const centre = async (id) => { const nd = await nodeById(id); return at(nd.x, nd.y); };
-  return {
-    tool,
-    async addPlace(x, y) { await tool('place'); await page.click(await at(x, y)); await tool('select'); },
-    async addTransition(x, y) { await tool('transition'); await page.click(await at(x, y)); await tool('select'); },
-    /** An arc drawn with the Arc (or Inhibitor) tool: a click on one node, then on the other. */
-    async arc(from, to, { inhibitor = false } = {}) {
-      await tool(inhibitor ? 'inhibitor' : 'arc');
-      await page.click(await centre(from));
-      await page.click(await centre(to));
-      await tool('select');
-    },
-    /** A node selected (a click on it). */
-    async select(id) { await tool('select'); await page.click(await centre(id)); },
-    /** An arc selected (a click on its middle). */
-    async selectArc(id) {
-      const m = await getDoc();
-      const a = m.arcs.find((x) => x.id === id);
-      const [p, q] = await Promise.all([nodeById(a.from), nodeById(a.to)]);
-      await tool('select');
-      await page.click(await at((p.x + q.x) / 2, (p.y + q.y) / 2));
-    },
-    /** A node dragged by (dx, dy). */
-    async move(id, dx, dy) {
-      const nd = await nodeById(id);
-      await tool('select');
-      await page.drag(await at(nd.x, nd.y), await at(nd.x + dx, nd.y + dy), { steps: 10 });
-    },
-    /** A field of the selection's Properties (its label in English) typed in. */
-    async field(label, value) {
-      const l = await t(label);
-      const i = await page.waitFor((e, x) => [...document.querySelectorAll(`${e} .pn-selection .asm-field`)]
-        .findIndex((f) => f.querySelector('.asm-label')?.textContent === x) + 1, [ed, l], { what: `the field ${label}` });
-      await page.fill(`${ed} .pn-selection .asm-field:nth-of-type(${i}) :is(input, textarea)`, String(value));
-    },
-    /** The selection deleted (Del). */
-    del: () => page.key('Delete'),
-    /** The arcs as drawn whose ends are not on their nodes' rims ([] when every one is). */
-    arcsOffNodes: (m) => page.eval((e, m, R, W, H) => {
-      const node = (id) => [...m.places, ...m.transitions].find((x) => x.id === id);
-      const on = (nd, x, y) => (m.places.includes(nd) ? Math.abs(Math.hypot(x - nd.x, y - nd.y) - R) < 1
-        : Math.abs(x - nd.x) <= W / 2 + 3 && Math.abs(y - nd.y) <= H / 2 + 3);
-      return [...document.querySelectorAll(`${e} .pn-arc`)].map((g) => {
-        const a = m.arcs.find((x) => x.id === g.dataset.id), l = g.querySelector('.pn-arc-hit');
-        const [x1, y1, x2, y2] = ['x1', 'y1', 'x2', 'y2'].map((k) => +l.getAttribute(k));
-        return on(node(a.from), x1, y1) && on(node(a.to), x2, y2) ? null : a.id;
-      }).filter(Boolean);
-    }, ed, m, PLACE_R, TRANS_W, TRANS_H),
-  };
-};
 const KIT = drawKit('pn', pnActions);
 
 async function alarm(page, title) {
