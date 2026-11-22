@@ -77,7 +77,7 @@ export function mountSchToolbar(ctx) {
     let prevSep = true;                                   // a separator at the start is not needed
     let lastSep = null;
     for (const el of tb.children) {
-      if (el.classList.contains('se-keep') || el.classList.contains('se-branch') || el.classList.contains('se-opts') || el.classList.contains('se-more') || el.classList.contains('se-gfx') || ['wire', 'net', 'io', 'rotate', 'mirror', 'mirrorv', 'delete'].includes(el.dataset.act) || (el.dataset.act === 'sim' && !canSim)) continue;   // hidden by .read-only CSS
+      if (el.classList.contains('se-keep') || el.classList.contains('se-branch') || el.classList.contains('se-opts') || el.classList.contains('se-more') || el.classList.contains('se-gfx') || ['wire', 'net', 'io', 'rotate', 'mirror', 'mirrorv', 'delete', 'check'].includes(el.dataset.act) || (el.dataset.act === 'sim' && !canSim)) continue;   // hidden by .read-only CSS
       if (el.classList.contains('se-sep')) { if (prevSep) el.style.display = 'none'; else { prevSep = true; lastSep = el; } }
       else { prevSep = false; lastSep = null; }
     }
