@@ -175,3 +175,19 @@ test('the breakpoint (under 1024 px: 1024 px wide, an iPad in landscape, docked,
   assert.match(html, /<button id="drawer-btn"[^>]*aria-controls="left"/);
   assert.match(html, /<div id="drawer-scrim"><\/div>/);
 });
+
+test('a phone (#5121): under 600 px wide, the same breakpoint in phone.css; a phone is a narrow screen too', () => {
+  assert.equal(N.PHONE_QUERY, '(max-width: 599px)');
+  const css = fs.readFileSync(path.join(ROOT, 'web/css/phone.css'), 'utf8');
+  assert.ok(css.includes('@media (max-width: 599px)'));
+  assert.doesNotMatch(css, /max-width: (600|1023|1024)px/, 'no other breakpoint');
+  assert.ok(fs.readFileSync(path.join(ROOT, 'web/index.html'), 'utf8').includes('<link rel="stylesheet" href="/css/phone.css">'));
+  // the queries as a browser answers them at a width
+  const at = (width) => (q) => ({ matches: width <= +q.match(/max-width: (\d+)px/)[1] });
+  for (const [width, phone, narrow] of [[375, true, true], [599, true, true], [600, false, true], [768, false, true], [1024, false, false]]) {
+    globalThis.matchMedia = at(width);
+    assert.deepEqual([N.isPhone(), N.isNarrow()], [phone, narrow], `${width} px`);
+  }
+  delete globalThis.matchMedia;
+  assert.equal(N.isPhone(), false, 'no matchMedia: not a phone');
+});
