@@ -38,7 +38,10 @@ export const HEAVY = [
   'test/examples-nextpnr-s3e.test.js', 'test/examples-nextpnr-s6-pack-atlys.test.js', 'test/examples-nextpnr-s6-pack.test.js',
   'test/examples-nextpnr-s6.test.js', 'test/examples.test.js', 'test/lut-resynth.test.js',
   'test/nextpnr-size.test.js', 'test/nextpnr-xc7-cyinit.test.js', 'test/open-flow-clocks.test.js', 'test/open-flow-core.test.js',
-  'test/open-flow-features.test.js', 'test/open-flow-io.test.js', 'test/s6-place.test.js', 'test/sim-model-examples.test.js', 'test/sim-model-impl.test.js',
+  'test/open-flow-features.test.js', 'test/open-flow-io.test.js',
+  // (nextpnr on the XC6SLX45, three seeds a language: past its tests' 600 s on a Windows runner, #5140)
+  'test/s6-pad-paths.test.js',
+  'test/s6-place.test.js', 'test/sim-model-examples.test.js', 'test/sim-model-impl.test.js',
   'test/sim-model-par-examples.test.js', 'test/sim-model-par-micro80.test.js', 'test/sim-model-par-vga-verilog.test.js',
   'test/sim-model-par-vga.test.js', 'test/sim-model-par.test.js', 'test/sim-model-s6-vga.test.js', 'test/sim-model-s6.test.js',
   'test/synth-diff-fixtures.test.js', 'test/synth-diff.test.js', 'test/synth-fsm.test.js', 'test/synth-goal.test.js',
