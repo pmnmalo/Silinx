@@ -55,7 +55,7 @@ const EDIT = { type: 'object', properties: {
 export const SYSTEM_TOOLS = [
   {
     name: 'edit_system', title: 'Edit a System',
-    description: 'Edit a co-design project\'s System (.sys.json) as its editor does, in order (one refused: nothing written): add_, change_, remove_ a node (fpga, mcu, terminal), an interface (uart, gpio) or a link; then checked.',
+    description: 'Edit a co-design project\'s System (.sys.json) as its editor does, in order (one refused: none): add_, change_, remove_ a node (fpga, mcu, terminal), interface (uart, gpio), link; checked.',
     inputSchema: { type: 'object', properties: { project: PROJECT, file: SYS_FILE, edits: { type: 'array', maxItems: 100, items: EDIT } }, required: ['project', 'file', 'edits'], additionalProperties: false },
     annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false },
     async run({ project: name, file, edits }) {
@@ -77,7 +77,7 @@ export const SYSTEM_TOOLS = [
   },
   {
     name: 'check_system', title: 'Check a System',
-    description: 'Describe and check a co-design project\'s System (.sys.json) as Check System does: its nodes, links, errors and warnings.',
+    description: 'Describe and check a co-design project\'s System (.sys.json) as Check System does: nodes, links, errors, warnings.',
     inputSchema: { type: 'object', properties: { project: PROJECT, file: SYS_FILE }, required: ['project', 'file'], additionalProperties: false },
     annotations: { readOnlyHint: true },
     async run({ project: name, file }) {

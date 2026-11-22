@@ -37,6 +37,19 @@ Os avisos dos nós (um byte perdido no AVR, um erro de trama) aparecem na consol
 ferramentas `edit_system`, `check_system` e `simulate` do servidor MCP (o Sistema de um projeto de co-design; as
 ondas em `build/<nome>.vcd`).
 
+## Emular
+
+**Emular**, na barra do editor de Sistema (ou **Emular o Sistema** no menu da linha do Sistema no painel Design), abre o
+emulador do Sistema num separador próprio:
+- a placa de cada nó FPGA desenhada como o Board Emulator a desenha, e uma Arduino como o Silinx a desenha, lado a lado;
+- **Executar** corre-as todas juntas em tempo real, e **Pausa** para-as;
+- um clique num interruptor ou num botão de uma placa FPGA: o seu módulo vê-o como na placa real;
+- os LEDs e os displays de uma placa FPGA acendem como o seu módulo os comanda;
+- os pinos de uma Arduino mostram o seu nível (aceso alto, escuro baixo, vazio flutuante) e o seu LED L acende com o D13;
+- cada terminal série está no painel **Terminais**: escreva uma linha, Enter envia-a.
+
+A linha de estado mostra o tempo e a rapidez com que as placas correm face ao tempo real.
+
 ## Experimente: o exemplo uart-avr
 
 1. Novo Projeto ▸ **Co-design**, Começar por **Exemplo: uart-avr**, Concluir. O Sistema abre: `uno` (um Arduino Uno com

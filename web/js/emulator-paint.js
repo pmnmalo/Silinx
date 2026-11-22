@@ -11,7 +11,7 @@ const EMU_SEVERITY = { error: 'error', failure: 'error', fatal: 'error', warning
 
 /** { paint, setStat } of mountEmulator (compiled(), dirty(), lcd(), lcdDirty(), lcdView(), logN(), paints(), powered(), prev(), rateWin(), running(), serialView(), vgaView(): its current values). */
 // an LED's colour at brightness v (0..1): green, or red (data-colour="red": the iCEBreaker's LED1 and LEDR_N, #2511)
-const ledColour = (v, red) => (red ? [58 + 197 * v, 27 + 20 * v, 27 + 20 * v] : [27 + 20 * v, 58 + 197 * v, 35 + 40 * v]).map(Math.round);
+export const ledColour = (v, red) => (red ? [58 + 197 * v, 27 + 20 * v, 27 + 20 * v] : [27 + 20 * v, 58 + 197 * v, 35 + 40 * v]).map(Math.round);
 // (the status line's rewrites while running: twice a second at most, #1106)
 const STAT_MS = 500;
 /** A count of the status line (its cycles): grouped by commas whatever the browser's locale, 1,246,995,500 (in

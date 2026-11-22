@@ -143,3 +143,24 @@ test('#4701 simulate of a System (Simulate System): an AVR and the uart example\
   await bad({ project: 'u', top: 'term.sys.json', type: { nope: 'x' } }, 'type: no terminal \'nope\' in the System');
   await bad({ project: 'u', type: { term: 'x' } }, 'type: a System\'s terminals (top: a .sys.json)');
 });
+
+test('#5212 simulate of a System with controls (Emulate System): BTN0 pressed on the FPGA\'s board, its message in the terminal, what the boards show; the wrong controls refused', async () => {
+  // the FPGA node's pins its UCF's: BTN0, LD7..LD0, the display
+  const ucf = fs.readFileSync(new URL('../examples/uart/constraints/top.ucf', import.meta.url), 'utf8');
+  const pins = Object.fromEntries([...ucf.matchAll(/^NET "([^"]+)"\s+LOC = "([^"]+)"/gm)].map((m) => [m[1], m[2]]));
+  const m = system();
+  m.nodes = m.nodes.map((n) => (n.id === 'fpga' ? { ...n, pins } : n));
+  await write('emu.sys.json', m);
+  const r = await ok('simulate', { project: 'u', top: 'emu.sys.json', time_ns: 60e6, type: { term: 'A' }, controls: [{ node: 'fpga', control: 'btn0', on: true, at_ns: 5e6 }, { node: 'fpga', control: 'btn0', on: false, at_ns: 30e6 }] });
+  assert.equal(r.data.terminals.term, 'AHello from Silinx!\r\n');
+  assert.deepEqual(r.data.boards.fpga.leds, [1, 0, 0, 0, 0, 0, 1, 0], 'the last byte received: A');
+  const lines = r.text.split('\n');
+  assert.equal(lines.at(-2), 'fpga\'s board: LEDs LD0 LD6; display 0141.');
+  assert.deepEqual([r.data.warnings, r.data.errors], [[], []]);
+  // (with no controls: no board emulated, as before)
+  assert.equal((await ok('simulate', { project: 'u', top: 'emu.sys.json', time_ns: 2e6 })).data.boards, undefined);
+  const bad = async (controls, message) => { const x = await call('simulate', { project: 'u', top: 'emu.sys.json', time_ns: 2e6, controls }); assert.deepEqual([x.isError, x.text], [true, `simulate: ${message}`]); };
+  await bad([{ node: 'term', control: 'btn0', on: true }], 'controls[0]: no FPGA node \'term\' with a board in the System');
+  await bad([{ node: 'fpga', control: 'sw3', on: true }], 'controls[0]: no switch or button \'sw3\' of fpga\'s board linked to its module (btn0)');
+  await bad([{ node: 'fpga', control: 'btn0', on: true, at_ns: 5e6 }], 'controls[0]: at_ns from 0 to the run\'s time');
+});

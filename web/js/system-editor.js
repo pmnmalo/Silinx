@@ -62,6 +62,7 @@ export function mountSystemEditor(container, opts = {}) {
   };
   const delBtn = toolIcon('delete', 'del', 'Delete the selection (Del)', () => deleteSelection(), 'asm-danger');
   const checkBtn = toolWide('check', 'Check', 'Check the System for errors and warnings', () => opts.onCheck?.(check()), 'sys-check');
+  const emuBtn = btn('Emulate', 'Emulate the System: its boards side by side, interactive, in real time', () => opts.onEmulate?.(), 'sys-emu-btn asm-wide');
   const simBtn = toolWide('sim', 'Try it', 'Try the System out: its nodes run together, its links decoded, its waves', () => toggleSim(), 'sys-sim-btn try-btn');
   const zoomLbl = h('span', { class: 'asm-zoom', title: 'Zoom level' }, '100%');
   const info = statusLine();
@@ -70,7 +71,7 @@ export function mountSystemEditor(container, opts = {}) {
     h('div', { class: 'asm-group' }, delBtn), sep(),
     h('div', { class: 'asm-group' }, ...zoomTools(f => zoomBtn(f), () => fit()), zoomLbl), sep(),
     h('div', { class: 'asm-group' }, checkBtn), sep(),
-    h('div', { class: 'asm-group' }, simBtn),
+    h('div', { class: 'asm-group' }, simBtn, emuBtn),
     h('div', { class: 'asm-spacer' }),
     h('div', { class: 'asm-group' }, panelToggle(root, btn('☰ Properties', 'Show / hide the properties panel'), { key: PROPS_KEY })));
 
@@ -99,6 +100,7 @@ export function mountSystemEditor(container, opts = {}) {
     if (!on && simView) { simView.destroy(); simView = null; }
     dock.apply?.();
   }
+  if (!opts.onEmulate) emuBtn.hidden = true;
   if (readOnly) { for (const b of [...Object.values(tools).slice(1), delBtn]) b.hidden = true; root.classList.add('asm-readonly'); if (opts.banner) toolbar.append(opts.banner); }
 
   // ---------------------------------------------------------------- edits, history

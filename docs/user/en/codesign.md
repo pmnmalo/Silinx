@@ -36,6 +36,19 @@ The nodes' warnings (an AVR's byte lost, a framing error) are in the console. Th
 MCP server's `edit_system`, `check_system` and `simulate` (a co-design project's System; its waves written to
 `build/<name>.vcd`).
 
+## Emulate
+
+**Emulate** in the System editor's toolbar (or **Emulate System** in the System row's menu in the Design pane) opens
+the System Emulator in a tab of its own:
+- each FPGA node's board is drawn as the Board Emulator draws it, and an Arduino as Silinx draws it, side by side;
+- **Run** runs them all together in real time, and **Pause** stops them;
+- click a switch or a button on an FPGA board: its module sees it as on the real board;
+- an FPGA board's LEDs and displays light as its module drives them;
+- an Arduino's pins show their levels (lit high, dark low, hollow floating) and its LED L lights with D13;
+- each serial terminal is in the **Terminals** panel: type a line, Enter sends it.
+
+The status line shows the time and how fast the boards run against real time.
+
 ## Try it: the uart-avr example
 
 1. New Project ▸ **Co-design**, Start from **Example: uart-avr**, Finish. Its System opens: `uno` (an Arduino Uno with

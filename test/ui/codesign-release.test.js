@@ -1,7 +1,7 @@
 // UI (#5202): co-design off in a release (core/build-channel.js), the local server's channel 'release'
 // (SILINX_CHANNEL): New Project's Co-design card disabled, the reason said under it (in Portuguese too), the FPGA kind's
 // Start from with no co-design example; a co-design project made in a development build: no System row in the Design
-// pane, its .sys.json opened says why in the console (no editor). Both interfaces. (In the development build:
+// pane, its .sys.json opened, or emulated, says why in the console (no editor, no emulator). Both interfaces. (In the development build:
 // test/ui/codesign-new-project.test.js.)
 import { before, after } from 'node:test';
 import assert from 'node:assert/strict';
@@ -50,5 +50,9 @@ uiTest('#5202 a release: a co-design project\'s System not shown, its .sys.json 
   await page.eval(() => window.SilinxApp.openFile('cd.sys.json'));
   await page.waitConsole(/^ERROR: cannot open cd\.sys\.json: Co-design is not in this release yet/m);
   assert.equal(await page.eval(() => !!document.querySelector('.system-editor') || (window.Silinx.active?.id || '').startsWith('sys:')), false);
+  // (the System Emulator too, #5212)
+  await page.eval(async () => (await import('/js/system-emu-open.js')).openSystemEmulator('cd.sys.json'));
+  await page.waitConsole(/^ERROR: cannot emulate cd\.sys\.json: Co-design is not in this release yet/m);
+  assert.equal(await page.eval(() => !!document.querySelector('.sys-emu') || (window.Silinx.active?.id || '').startsWith('sysemu:')), false);
   assert.deepEqual(page.console.filter((c) => c.type === 'warning' || c.type === 'warn' || c.type === 'error').map((c) => c.text), []);
 });

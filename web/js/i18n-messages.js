@@ -61,6 +61,7 @@ const failure = e => (e === 'see log' ? 'veja o registo' : tr(e));
 export const MESSAGES_PT_PATTERNS = [
   // the commands' errors (their console lines: web/js/console.js logError, commandError)
   [/^cannot open (\S+): ([\s\S]*)$/, (m, p, e) => `não foi possível abrir ${p}: ${tr(e)}`],
+  [/^cannot emulate (\S+): ([\s\S]*)$/, (m, p, e) => `não foi possível emular ${p}: ${tr(e)}`],   // (the System Emulator, #5212)
   [/^Cannot open (.+) in (.+): ([\s\S]*)$/, (m, p, l, e) => `Não foi possível abrir ${p} em ${l}: ${tr(e)}`],
   [/^cannot parse (\S+): ([\s\S]*)$/, (m, p, e) => `não foi possível ler ${p}: ${tr(e)}`],
   [/^Cannot build the design: ([\s\S]*)$/, (m, e) => `Não foi possível construir o projeto: ${tr(e)}`],

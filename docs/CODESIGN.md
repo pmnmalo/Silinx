@@ -227,8 +227,13 @@ and shown as the Board Emulator shows them (`boardOutputs`). An Arduino's board 
 (D13). The System's worker (`core/system-host.js`) gets `init { emulate }`, `set`, and each `state` with what the
 boards show since the last.
 
-**Still to solve.** Today's emulator has the fixed document id `'emulator'`: the System Emulator is a document of its
-own.
+**Its view** (#5212, `web/js/system-emu-view.js`): a document of its own, `sysemu:<file>`, opened from the System
+editor's Emulate or the System row's Emulate System. An FPGA board is mounted with the Board Emulator's parts
+(`mountBoardParts`), a button held down until the design saw a real press (`pressHolds`). An Arduino is drawn by
+`web/js/emulator-arduino.js`, Silinx's own. The terminals are in the side panel. The run follows real time, at most 50
+ms a run, the backlog dropped when it falls behind; the status line has the time and the rate. The MCP server's
+`simulate` of a System takes `controls` (`[{ node, control: btn0, on, at_ns }]`) and says what the boards show at the
+end, through the same functions.
 
 ## Real boards
 
