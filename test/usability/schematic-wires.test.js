@@ -9,6 +9,7 @@ import assert from 'node:assert/strict';
 import { setupUi, uiTest, makeProject } from '../ui/harness.js';
 import { SchSession } from './lib/session.js';
 import { nets, junctionPoints } from './lib/sch-invariants.js';
+import { wireClashes } from '../../core/schpath.js';
 
 const FILE = 'test/usability/schematic-wires.test.js';
 let env;
@@ -81,7 +82,6 @@ uiTest('usability: schematic: move wires: a segment dragged, a T-junction\'s wir
 uiTest('usability: schematic: move symbols with their wires: dragged; the wires follow, the nets kept; Undo, Redo', E, async (page) => {
   const s = await gates(page, 'move symbols');
   const { a } = s;
-  // (the inverters: the gates' outputs carry their nets' names, which a move leaves behind, #5154)
   await s.step('moveSymbol', { name: 'inv_b', dx: 20 }, () => a.moveSymbol('inv_b', 20, 0), { expect: sameNets });
   await s.step('moveSymbol', { name: 'inv_a', dx: 20, dy: 20 }, () => a.moveSymbol('inv_a', 20, 20), { expect: sameNets });
   await s.step('moveSymbol', { name: 'inv_b', dx: -20 }, () => a.moveSymbol('inv_b', -20, 0), { expect: sameNets });
@@ -112,49 +112,58 @@ uiTest('usability: schematic: a symbol\'s width changed: its wires kept, the wid
   await s.undoRedo();
 });
 
-uiTest('usability: schematic: a gate\'s inputs changed (OR4 to OR2): the wires of the pins kept follow them (#5153)', E, async (page, _env, t) => {
-  t.todo('#5153: the output\'s wire is left where the pin was');
+uiTest('usability: schematic: a gate\'s inputs changed (OR4 to OR2): the wires of the pins kept follow them (#5153)', E, async (page) => {
   const s = await gates(page, 'change a gate\'s inputs');
   const { a } = s;
   await s.step('setParam', { name: 'or_sum', inputs: 2 }, () => a.setParam('or_sum', 'inputs', 2), {
     frees: ['W30', 'W31'],   // (the wires of I2 and I3, which go)
     expect: (d) => assert.equal(d.symbols.find((x) => x.name === 'or_sum').type, 'or2'),
   });
+  // (and_p3's and and_p4's outputs now read by nothing)
+  await s.warnings(["WARNING: net 'p3' connects only and_p3.O", "WARNING: net 'p4' connects only and_p4.O"]);
   await s.undoRedo();
 });
 
-uiTest('usability: schematic: a gate whose output carries its net\'s name moved: the name follows its wire (#5154)', E, async (page, _env, t) => {
-  t.todo('#5154: the net name stays where the pin was, off the wire');
+uiTest('usability: schematic: a gate whose output carries its net\'s name moved: the name follows its wire (#5154)', E, async (page) => {
   const s = await gates(page, 'move a named output');
   await s.step('moveSymbol', { name: 'or_sum', dy: 40 }, () => s.a.moveSymbol('or_sum', 0, 40), { expect: sameNets });
   await s.step('moveSymbol', { name: 'nand_sum', dx: 40, dy: -20 }, () => s.a.moveSymbol('nand_sum', 40, -20), { expect: sameNets });
+  await s.warnings([]);
   await s.undoRedo();
 });
 
-uiTest('usability: schematic: a segment dragged onto another net\'s wire is not left overlapping it (#5155)', E, async (page, _env, t) => {
-  t.todo('#5155: the segment is left along the other wire');
+uiTest('usability: schematic: a segment dragged onto another net\'s wire is not left overlapping it (#5155)', E, async (page) => {
   const s = await gates(page, 'segment onto another wire');
   // W29's vertical segment (x 770) 10 to the right, onto W28's (x 780, y 630 to 720)
-  await s.step('moveSegment', { at: '(770, 725)', dx: 10 }, () => s.a.moveSegment(770, 725, 10, 0), { expect: sameNets });
+  await s.step('moveSegment', { at: '(770, 725)', dx: 10 }, () => s.a.moveSegment(770, 725, 10, 0), {
+    expect: (d, b) => { sameNets(d, b); assert.deepEqual(wireClashes(d).filter((c) => c.wire === 'W29'), [], 'W29 clear of the other wires'); },
+  });
+  await s.warnings([]);
   await s.undoRedo();
 });
 
-uiTest('usability: schematic: a wired symbol rotated: its wires stay on its pins (#5156)', E, async (page, _env, t) => {
-  t.todo('#5156: Rotate leaves the wires behind');
+uiTest('usability: schematic: a wired symbol rotated, mirrored: its wires stay on its pins (#5156)', E, async (page) => {
   const s = await gates(page, 'rotate a wired symbol');
   const { a } = s;
   for (const [x, y] of [[1340, 1030], [1540, 1030]]) await s.step('place', { symbol: 'INV', x, y }, () => a.place('INV', x, y));
   await s.step('addWire', { from: 'inst_1.O', to: 'inst_2.I' }, () => a.addWire([[1380, 1030], [1500, 1030]]));
   await s.step('rotate', { name: 'inst_2' }, () => a.rotate('inst_2'), { expect: sameNets });
+  await s.step('rotate', { name: 'inst_2' }, () => a.rotate('inst_2'), { expect: sameNets });
+  await s.step('mirror', { name: 'inst_2' }, () => a.mirror('inst_2'), { expect: sameNets });
+  await s.step('mirror', { name: 'inst_1', act: 'mirrorv' }, () => a.mirror('inst_1', 'mirrorv'), { expect: sameNets });
+  await s.step('rotate', { name: 'inst_1' }, () => a.rotate('inst_1'), { expect: sameNets });
+  await s.warnings(['WARNING: input pin I of inst_1 (inv) is not connected', 'WARNING: inst_1: input I unconnected, tied to 0']);
   await s.undoRedo();
 });
 
-uiTest('usability: schematic: a symbol dragged, a wire drawn from it, then its Width changed: the change kept (#5159)', E, async (page, _env, t) => {
-  t.todo('#5159: its Properties edit a stale copy of it');
+uiTest('usability: schematic: a symbol dragged, a wire drawn from it, then its Width changed: the change kept (#5159)', E, async (page) => {
   const s = await gates(page, 'width after a wire');
   const { a } = s;
   for (const [x, y] of [[1340, 1030], [1540, 1030]]) await s.step('place', { symbol: 'INV', x, y }, () => a.place('INV', x, y));
   await s.step('moveSymbol', { name: 'inst_1', dx: -20 }, () => a.moveSymbol('inst_1', -20, 0));
   await s.step('addWire', { from: 'inst_1.O', to: 'inst_2.I' }, () => a.addWire([[1360, 1030], [1500, 1030]]));
-  await s.step('setParam', { name: 'inst_1', width: 4 }, () => a.setParam('inst_1', 'width', 4), { errors: ["error: width mismatch on net 'net_1': 4 vs 1 bits"] });
+  await s.step('setParam', { name: 'inst_1', width: 4 }, () => a.setParam('inst_1', 'width', 4), { errors: ["error: width mismatch on net 'net_2': 4 vs 1 bits"] });
+  await s.step('setParam', { name: 'inst_2', width: 4 }, () => a.setParam('inst_2', 'width', 4), { expect: sameNets });
+  await s.warnings(['WARNING: input pin I of inst_1 (inv) is not connected', 'WARNING: inst_1: input I unconnected, tied to 0']);
+  await s.undoRedo();
 });

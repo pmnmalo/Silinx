@@ -31,7 +31,8 @@ export function mountSchEdits(ctx) {
     if (dirs.length) setDoc(normalizeDoc(doc()));
     if (snapshot() !== before) { pushUndo(before); changed(); }
     render();
-    if (!keepProps) renderProps();
+    // (kept, the sheet's: an object's drawn again, its panel edited the copy in the document replaced, #5159)
+    if (!keepProps || sel().size) renderProps();
   }
   function pushUndo(before) { undoStack.push(before); if (undoStack.length > 300) undoStack.shift(); redoStack.length = 0; }
   function changed() {

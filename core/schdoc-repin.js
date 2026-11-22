@@ -21,9 +21,10 @@ export function followPins(doc, moves, others) {
     for (const { e, mv } of ends.reverse()) {   // (the last end first: the first one's index stays)
       if (!mv) continue;
       const { from, to } = mv, pt = w.points[e], next = w.points[e === 0 ? 1 : e - 1];
-      // the end moved to the pin; a corner where the run would go slanted
-      const corner = from.x === to.x ? (next.x === pt.x ? null : { x: next.x, y: to.y }) : (next.y === pt.y ? null : { x: to.x, y: next.y });
-      const run = corner && !same(corner, to) && !same(corner, next) ? [corner, { ...to }] : [{ ...to }];
+      // the end moved to the pin; a corner where the run would go slanted, the wire still reaching the pin as it did
+      // (along x or along y: a pin turned, #5156, moves both ways)
+      const corner = next.y === pt.y && next.x !== pt.x ? { x: next.x, y: to.y } : { x: to.x, y: next.y };
+      const run = !same(corner, to) && !same(corner, next) ? [corner, { ...to }] : [{ ...to }];
       if (e === 0) w.points.splice(0, 1, ...run.reverse()); else w.points.splice(e, 1, ...run);
     }
     w.points = w.points.filter((q, i) => i === 0 || !same(q, w.points[i - 1]));

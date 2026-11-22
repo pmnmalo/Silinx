@@ -1,11 +1,13 @@
 // The schematic editor's drags that change the drawing (web/js/sch-move.js, #405: out of mountSchEditor), on real
 // documents: the document's geometry (symbolPins) and connectivity (core/schroute.js) are the reference. A symbol moved
 // with its wires stretched, with Keep Connections off, a pin touching another one directly; a wire's segment dragged
-// with its net name, a short refused (#806); a wire's kept ends and a stretched wire.
+// with its net name, a short refused (#806); a wire's kept ends and a stretched wire. On the gates example: a net name
+// on a moved pin moved with it (#5154), a segment dragged onto another net's wire nudged clear of it (#5155).
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import './ui/core-hooks.js';
-import { normalizeDoc, symbolPins } from '../core/schdoc.js';
+import { netlist, normalizeDoc, symbolPins } from '../core/schdoc.js';
+import { wireClashes } from '../core/schpath.js';
 import { connectivity, connectionsKept } from '../core/schroute.js';
 
 const { mountMove, keptEnds, rubber } = await import('../web/js/sch-move.js');
@@ -125,4 +127,60 @@ test('#405 schematic move: a wire\'s kept ends, a wire stretched', () => {
   assert.deepEqual(xy(rubber(P([0, 0], [100, 0], [100, 100]), true, false, 0, 40, P([50, 0]))), [[0, 40], [10, 40], [10, 0], [100, 0], [100, 100]]);
   // with three points and nothing on it: the first segment moved with its end
   assert.deepEqual(xy(rubber(P([0, 0], [100, 0], [100, 100]), true, false, 0, 40)), [[0, 40], [100, 40], [100, 100]]);
+});
+
+// the gates example (examples/gates) in a schematic editor's drags, `ids` selected
+async function gatesMover(ids = [], { keepConn = true } = {}) {
+  const fs = await import('node:fs/promises');
+  let doc = normalizeDoc(JSON.parse(await fs.readFile(new URL('../examples/gates/src/gates.sch.json', import.meta.url), 'utf8')));
+  const sel = new Set(ids);
+  const seen = [];
+  const m = mountMove({ doc: () => doc, setDoc: (d) => { doc = d; }, modules: () => ({}), keepConn: () => keepConn,
+    selected: (kind) => [...sel].filter((k) => k.startsWith(`${kind}:`)).map((k) => k.slice(kind.length + 1)),
+    connPoints: () => [...doc.symbols.flatMap((s) => symbolPins(s)), ...doc.ports].map((p) => ({ x: p.x, y: p.y })),
+    snapshot: () => JSON.stringify(doc), pushUndo: () => seen.push('undo'), changed: () => seen.push('changed'), render: () => {}, renderProps: () => {},
+    flash: (t) => seen.push(`flash ${t.slice(0, 30)}`), nextId: (p, arr) => `${p}${arr.length + 1}`, refusedShort: () => false });
+  return { ...m, doc: () => doc, seen };
+}
+
+test('#5154 schematic move: a net name on a moved pin goes with it, the net keeps its name', async () => {
+  // or_sum (S12): its output's wire W32 named prime_sop (L12) at the pin, the name read by join_led.I1
+  const e = await gatesMover(['sym:S12']);
+  const conn0 = connectivity(e.doc()), nl0 = netlist(e.doc());
+  const m = e.beginMove({ x: 0, y: 0 });
+  e.applyMove(m, 0, 40);
+  const O = symbolPins(e.doc().symbols.find((s) => s.id === 'S12')).find((p) => p.name === 'O');
+  assert.deepEqual(e.doc().labels.filter((l) => l.id === 'L12').map((l) => [l.x, l.y]), [[O.x, O.y]]);
+  assert.deepEqual(ends(e.doc().wires.find((w) => w.id === 'W32'))[0], `${O.x},${O.y}`);
+  assert.ok(connectionsKept(conn0, connectivity(e.doc())));
+  const nl = netlist(e.doc());
+  assert.equal(nl.pinNet.get('S12/O'), nl.pinNet.get(`${e.doc().symbols.find((s) => s.name === 'join_led').id}/I1`));
+  assert.equal(nl.nets.find((n) => n === nl.pinNet.get('S12/O')).name, nl0.nets.find((n) => n === nl0.pinNet.get('S12/O')).name);
+  // Keep Connections off: the name stays with the wire, which stays
+  const off = await gatesMover(['sym:S12'], { keepConn: false });
+  const w0 = JSON.stringify(off.doc().wires.find((w) => w.id === 'W32'));
+  off.applyMove(off.beginMove({ x: 0, y: 0 }), 0, 40);
+  assert.deepEqual(off.doc().labels.filter((l) => l.id === 'L12').map((l) => [l.x, l.y]), [[880, 750]]);
+  assert.equal(JSON.stringify(off.doc().wires.find((w) => w.id === 'W32')), w0);
+});
+
+test('#5155 schematic move: a segment dragged onto another net\'s wire is nudged clear of it, its ends and the nets kept', async () => {
+  // W29 (740,710 770,710 770,740 800,740): its vertical segment 10 to the right, onto W28's (x 780, y 630 to 720)
+  const e = await gatesMover();
+  const conn0 = connectivity(e.doc());
+  const s = e.beginSegMove('W29', { x: 770, y: 725 });
+  e.applySegMove(s, 10);
+  assert.ok(wireClashes(e.doc()).some((c) => c.wire === 'W29' && c.kind === 'overlap'), 'along W28 while dragged');
+  e.finishSegMove(s);
+  const w = e.doc().wires.find((x) => x.id === 'W29');
+  assert.deepEqual(ends(w), ['740,710', '800,740']);
+  assert.deepEqual(wireClashes(e.doc()).filter((c) => c.wire === 'W29'), []);
+  assert.ok(connectionsKept(conn0, connectivity(e.doc())));
+  assert.deepEqual(e.seen, ['undo', 'changed']);
+  // dragged onto a clear place: left where it was dragged (not nudged)
+  const f = await gatesMover();
+  const t = f.beginSegMove('W29', { x: 770, y: 725 });
+  f.applySegMove(t, -10);
+  f.finishSegMove(t);
+  assert.deepEqual(f.doc().wires.find((x) => x.id === 'W29').points.map((p) => `${p.x},${p.y}`), ['740,710', '760,710', '760,740', '800,740']);
 });

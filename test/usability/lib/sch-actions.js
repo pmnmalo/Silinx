@@ -115,10 +115,7 @@ export function schActions(page) {
       return [p.x, p.y];
     },
     /** A parameter of a symbol in Properties (Width, the gate's inputs…), as typed or chosen there. */
-    async setParam(name, param, value, { fresh = false } = {}) {
-      // (fresh: the selection cleared first, a click on an empty corner of the sheet: the panel of a symbol selected
-      // before a wire was drawn edits a stale copy of it, #5159)
-      if (fresh) { await tool('select'); await page.click(await at(30, 1080)); }
+    async setParam(name, param, value) {
       await this.select(name);
       // (the panel drawn again for it: its Instance name, the first field, is the symbol's)
       await page.waitFor((ed, n) => document.querySelector(`${ed} .se-props .se-field input`)?.value === n, [ED, name], { what: `${name}'s Properties` });
@@ -128,13 +125,16 @@ export function schActions(page) {
       await page.fill(sel, String(value));
     },
     async rotate(name) { await this.select(name); await tool('rotate'); },
+    /** Mirror Horizontal ('mirror') or Vertical ('mirrorv') of a symbol. */
+    async mirror(name, act = 'mirror') { await this.select(name); await tool(act); },
     async deleteSymbol(name) { await this.select(name); await page.key('Delete'); },
     /** Place a symbol from the palette (its title searched) with its body's corner near (x, y). */
     async place(title, x, y) {
-      const q = await at(x, y);
       await page.fill(`${ED} .se-search`, title);
       await page.click(`${ED} .se-symrow .nm`, { text: title });
-      await page.click(q);
+      // (the point measured with the symbol chosen: the Place tool's options in the toolbar may move the sheet, as in
+      // Portuguese, its labels longer, #5187)
+      await page.click(await at(x, y));
       await page.key('Escape');
       await tool('select');
       await page.fill(`${ED} .se-search`, '');

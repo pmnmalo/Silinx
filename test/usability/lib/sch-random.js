@@ -118,7 +118,7 @@ export const SCH_VOCAB = [
       return { name: s.name, width };
     },
     // (its nets then wider than its neighbours' pins: those width mismatches, which the step makes, are expected)
-    run: (s, { name, width }) => s.step('setParam', { name, width }, () => s.a.setParam(name, 'width', width, { fresh: true }), { expect: sameNets, errors: (e) => e.every((m) => /width mismatch/.test(m)) }),
+    run: (s, { name, width }) => s.step('setParam', { name, width }, () => s.a.setParam(name, 'width', width), { expect: sameNets, errors: (e) => e.every((m) => /width mismatch/.test(m)) }),
   },
   {
     // a new inverter deleted: the wires on its pins freed
