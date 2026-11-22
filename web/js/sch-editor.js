@@ -207,9 +207,11 @@ export function mountSchEditor(container, opts = {}) {
 
   // ---------------- properties panel (sch-props.js); an I/O marker given a net's name (sch-join.js, #2170)
   const { joinMarker } = mountSchJoin({ doc: () => doc, nl: () => nl, container });
+  // a message to the console (the page's onMessage; the canvas's toast without one, #2718): the tools', Update Symbol's (#5277)
+  const message = text => (opts.onMessage ? opts.onMessage(text) : flash(text, 4000));
   const { renderProps, openSelected, renamed, joinByName, renameLabel, pushInto, canPushInto } = mountProps({ joinMarker, segSel, opts, container, propBody, readOnly, doc: () => doc, sel: () => sel, nl: () => nl,
     live: () => live, modules: () => modules, setGenLang: (v) => { genLang = v; }, edit: (...a) => edit(...a),
-    flash: (...a) => flash(...a), rotateSel: (...a) => rotateSel(...a), mirrorSel: (...a) => mirrorSel(...a),
+    flash: (...a) => flash(...a), message, rotateSel: (...a) => rotateSel(...a), mirrorSel: (...a) => mirrorSel(...a),
     deleteSel: (...a) => deleteSel(...a), nextId: (...a) => nextId(...a), openInfo: (...a) => openInfo(...a),
     infoTarget: (...a) => infoTarget(...a) });
 
@@ -227,7 +229,7 @@ export function mountSchEditor(container, opts = {}) {
     set: (o) => { if ('tool' in o) tool = o.tool; if ('placing' in o) placing = o.placing; if ('wireDraw' in o) wireDraw = o.wireDraw; },
     readOnly, canvas, optBox, container, edit, flash: (...a) => flash(...a), shortNote, nextId, nextInstName,
     promptBox: (...a) => promptBox(...a), renderPalette, render, renderOverlay, renderProps,
-    updateToolbar, updateStatus, joinByName, joinMarker, renamed, message: text => (opts.onMessage ? opts.onMessage(text) : flash(text, 4000)) });   // (the console's, #2718)
+    updateToolbar, updateStatus, joinByName, joinMarker, renamed, message });
   // a short of two named nets refused (#754, #806): the status line says why
   function shortNote(what, pair) { flash(shortText(what, pair), 6000); }
   // a move or a paste that shorted two named nets (#806): the document as it was before, nothing to undo
@@ -270,7 +272,7 @@ export function mountSchEditor(container, opts = {}) {
   // the right-click menu (sch-context.js): Rename… (sch-rename.js, #1546), the selection's commands (#1556)
   const { rename } = mountSchRename({ doc: () => doc, nl: () => nl, edit, joinByName, joinMarker, renameLabel });
   const { contextMenu } = mountSchContext({ readOnly, doc: () => doc, live: () => live, segSel, sel: () => sel, tool: () => tool, render, renderProps,
-    rename, duplicateSel, rotateSel, mirrorSel, deleteSel, setSel: (v) => { sel = v; }, openInfo: (...a) => openInfo(...a), symTarget: (...a) => symTarget(...a), opts, modules: () => modules, edit: (...a) => edit(...a), flash: (...a) => flash(...a), pushInto });
+    rename, duplicateSel, rotateSel, mirrorSel, deleteSel, setSel: (v) => { sel = v; }, openInfo: (...a) => openInfo(...a), symTarget: (...a) => symTarget(...a), opts, modules: () => modules, edit: (...a) => edit(...a), flash: (...a) => flash(...a), message, pushInto });
   const { finishMove, onMove, onUp } = mountSchMouse({
     junction, segSel, wholeBranch, container, opts, applyMove, applySegMove, applyView, bandRect, bandSelect, beginMove, beginSegMove, canvas, changed, contextMenu, curve,
     cursor: () => cursor, destroyed: () => destroyed, doc: () => doc, drag: () => drag, finishSegMove, finishWire,

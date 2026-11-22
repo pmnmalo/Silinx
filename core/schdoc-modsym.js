@@ -86,3 +86,11 @@ export function updateModuleSymbols(doc, modules = {}, ids = null) {
   }
   return report;
 }
+
+/** What an update (updateModuleSymbols' report) says, in the console and the MCP's update_symbols (#5277): warn when a pin
+ *  is left unconnected. */
+export function symbolUpdateNote(r) {
+  const lost = [...r.removed, ...r.turned];
+  return lost.length ? { text: `Symbol updated; not connected any more: ${lost.join(', ')}`, warn: true }
+    : { text: `Symbol updated (${r.updated.join(', ')}), its connections kept`, warn: false };
+}

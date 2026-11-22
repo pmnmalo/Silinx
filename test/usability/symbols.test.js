@@ -65,9 +65,8 @@ const LEFT = { edits: [['Earlier', 'c', -1, ['c:W', 'a:W', 'y:E', 's:S', 'en:W']
 const BOTTOM = { edits: [['Side', 'en', 'S', ['a:W', 'y:E', 's:S', 'en:S', 'c:W']], ['drag', 'c', 'a', ['c:W', 'a:W', 'y:E', 's:S', 'en:S']]], connect: [['wire', 'c'], ['marker', 'en']] };
 let k = 0;
 
-/** The whole session in `lang`: `v` the second symbol's edits and the new pins' wiring (LEFT, BOTTOM), `says` the
- *  console's lines of Update Symbol. */
-async function symbols(page, lang, { title, v, says = [] }) {
+/** The whole session in `lang`: `v` the second symbol's edits and the new pins' wiring (LEFT, BOTTOM). */
+async function symbols(page, lang, { title, v }) {
   const P = PICK[lang];
   const name = `UsabSym${++k}`;
   await makeProject(env, { name, top: 'top', files: { [P.file]: P.text(...P.before), 'src/top.sch.json': JSON.stringify(newDoc('top', lang)) } });
@@ -156,8 +155,9 @@ async function symbols(page, lang, { title, v, says = [] }) {
       same(staleInstances(d, ctx.modules), [], 'out of date');
       same(d.symbols[0].params.ports.map((q) => `${q.name}:${q.side}`), v.edits.at(-1)[3], 'the instance\'s pins');
       same(nets(d, { modules: ctx.modules }), ['inst_1.a port:a', 'inst_1.c', 'inst_1.en', 'inst_1.s port:s', 'inst_1.y port:y', 'port:b'], 'the nets');
-      // (#5277: what Update Symbol says is flashed on the canvas, not a console line: the todo below)
-      await lines(says)();
+      // (its console line, a warning: b's wire left unconnected, #5277; its text in the page's language)
+      const [said] = await tr(page, ['Symbol updated; not connected any more: inst_1.b']);
+      await lines([`WARNING: top.sch.json: ${said}`])();
     },
   });
   await sch.warnings(["WARNING: input pin en of inst_1 (pick) is not connected", "WARNING: input pin c of inst_1 (pick) is not connected", "WARNING: I/O marker 'b' is not connected"]);
@@ -199,12 +199,6 @@ for (const lang of ['vhdl', 'verilog']) {
     await symbols(page, lang, { title: `symbols ${lang}`, v: LEFT });
   }, { timeout: 240000 });
 }
-
-// (#5277: Update Symbol's "not connected any more" flashed on the canvas, never in the console)
-uiTest('usability: symbols: Update Symbol says the pin it leaves unconnected in the console (#5277)', E, async (page, _env, t) => {
-  t.todo('#5277: "Symbol updated; not connected any more: inst_1.b" only flashed on the canvas');
-  await symbols(page, 'vhdl', { title: 'symbols: Update Symbol said', v: LEFT, says: ['WARNING: top.sch.json: Symbol updated; not connected any more: inst_1.b'] });
-}, { timeout: 240000 });
 
 // (#5278: a pin that moves along the bottom side: its wire follows over its I/O marker's body)
 uiTest('usability: symbols: Update Symbol moves s along the bottom, its wire following clear of its marker (#5278)', E, async (page, _env, t) => {

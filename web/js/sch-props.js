@@ -42,7 +42,7 @@ const intoButton = (s, { pushInto, canPushInto }) => (s.type !== 'module' && can
 
 /** { renderProps, openSelected, renamed, joinByName, renameLabel, pushInto, canPushInto } of a schematic editor (doc(), sel(), nl(), live(), modules(): its current ones). */
 export function mountProps(ctx) {
-  const { opts, container, propBody, readOnly, doc, sel, nl, live, modules, setGenLang, edit, flash, rotateSel, mirrorSel, deleteSel, nextId,
+  const { opts, container, propBody, readOnly, doc, sel, nl, live, modules, setGenLang, edit, flash, message, rotateSel, mirrorSel, deleteSel, nextId,
     openInfo, infoTarget, joinMarker, segSel } = ctx;
 
   const multiProps = mountMultiProps({ propBody, doc, edit, field: (...a) => field(...a), keepFocus: (...a) => keepFocus(...a) });   // (#1471)
@@ -246,7 +246,7 @@ export function mountProps(ctx) {
       const fn = init ? lutFunction(init, +lut[1]) : null;
       if (fn) propBody.append(lutSection(fn));
       // its symbol out of date (#1183): what changed, Update Symbol (sch-modsym.js)
-      propBody.append(...staleSection(s, { readOnly, doc, modules, edit, flash }));
+      propBody.append(...staleSection(s, { readOnly, doc, modules, edit, message }));
       if (opts.onOpenModule) propBody.append(h('div', { class: 'se-pbtns' }, h('button', { class: 'btn ro-ok', type: 'button', text: readOnly ? 'Open this instance' : 'Open module source', onclick: () => opts.onOpenModule(s.params.module, { instance: s.name, symbol: clone(s) }) }), !readOnly && opts.onEditSymbol ? h('button', { class: 'btn se-editsym', type: 'button', text: 'Edit Symbol', title: 'Its module\'s symbol in the Symbol Editor', onclick: () => opts.onEditSymbol(s.params.module) }) : null));   // (Edit Symbol, #3791)
     }
     if (s.type === 'hdlblock') {

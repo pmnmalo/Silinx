@@ -3,7 +3,7 @@
 // (a warning; an error for a pin connected to a port gone) until Update Symbol, which keeps its connections by pin name.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { normalizeDoc, netlist, symbolDef, symbolPins, symbolDiff, updatedPorts, updateModuleSymbols, generateHdl } from '../core/schdoc.js';
+import { normalizeDoc, netlist, symbolDef, symbolPins, symbolDiff, updatedPorts, updateModuleSymbols, symbolUpdateNote, generateHdl } from '../core/schdoc.js';
 
 const P = (name, dir = 'in', width = 1) => ({ name, dir, width });
 const mods = (ports) => ({ sub: { name: 'sub', lang: 'vhdl', ports } });
@@ -125,4 +125,10 @@ test('#1183 Update Symbol: several pins moving at once each keep their own wire 
   updateModuleSymbols(doc, changed);
   const nl = netlist(normalizeDoc(doc), { modules: changed });
   assert.equal(netOf(nl, 'U', 'b'), netOf(nl, 'I', 'O'));
+});
+
+test('#5277 what an update says: a warning when a pin is left unconnected (removed or turned), else its connections kept', () => {
+  assert.deepEqual(symbolUpdateNote({ updated: ['U1', 'U2'], removed: [], turned: [] }), { text: 'Symbol updated (U1, U2), its connections kept', warn: false });
+  assert.deepEqual(symbolUpdateNote({ updated: ['U1'], removed: ['U1.a'], turned: ['U1.y'] }), { text: 'Symbol updated; not connected any more: U1.a, U1.y', warn: true });
+  assert.deepEqual(symbolUpdateNote({ updated: ['U1'], removed: [], turned: ['U1.y'] }), { text: 'Symbol updated; not connected any more: U1.y', warn: true });
 });

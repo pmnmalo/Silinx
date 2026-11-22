@@ -99,8 +99,7 @@ export const SYMBOL_TOOLS = [
       const r = sd.updateModuleSymbols(doc, modules, symbols?.length ? symbols : null);
       if (!r.updated.length) return { text: `${rel}: no symbol out of date`, data: { project: name, path: rel, ...r } };
       const sync = await saveSchematic(name, rel, doc);
-      const lost = [...r.removed, ...r.turned];
-      return { text: [lost.length ? `Symbol updated; not connected any more: ${lost.join(', ')}` : `Symbol updated (${r.updated.join(', ')}), its connections kept`, ...(sync?.messages || [])].join('\n'),
+      return { text: [sd.symbolUpdateNote(r).text, ...(sync?.messages || [])].join('\n'),   // (the editor's console line, #5277)
         data: { project: name, path: rel, ...r, ...(sync ? { hdl: { file: sync.target, written: !!sync.written } } : {}) } };
     },
   },

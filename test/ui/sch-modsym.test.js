@@ -1,6 +1,6 @@
 // UI: a module's symbol when its module's ports change (#1183): the instance drawn as it was placed, its wires on the
 // same pins; marked out of date (its box dashed, Check Schematic's warning, the properties' note); Update Symbol takes
-// the module's ports, the wires following their pin by name; in Portuguese.
+// the module's ports, the wires following their pin by name, what it did said in the console (#5277); in Portuguese.
 import { before, after } from 'node:test';
 import assert from 'node:assert/strict';
 import { setupUi, uiTest, makeProject } from './harness.js';
@@ -61,7 +61,9 @@ uiTest('#1183 a module\'s ports changed: its instance drawn as placed, marked ou
   const nl = netlist(normalizeDoc(doc), { modules: mods });
   for (const n of ['b', 'y']) assert.equal(nl.pinNet.get(`U/${n}`), nl.portNet.get(`m_${n}`), n);
   assert.deepEqual(nl.diagnostics.filter((d) => d.severity === 'error'), []);
-  assert.match(await page.eval((ed) => document.querySelector(`${ed} .se-status`).textContent + document.querySelector(ed).textContent, ED), /Symbol updated; not connected any more: U1\.a/);
+  // (said in the console, a warning, never in the editor's window, #5277)
+  await page.waitFor(() => document.getElementById('console-log').textContent.includes('WARNING: top.sch.json: Symbol updated; not connected any more: U1.a'), [], { what: 'the console\'s warning' });
+  assert.doesNotMatch(await page.eval((ed) => document.querySelector(ed).textContent, ED), /Symbol updated/);
   // one undo step back to the symbol of before (the editor's: Ctrl+Z in it, #2505)
   await page.eval(() => document.querySelector('.doc:not([hidden]) .sch-editor').focus());
   await page.key('z', { modifiers: 2 });
@@ -86,11 +88,14 @@ uiTest('#3791 Update Symbol in a module instance\'s right-click menu: disabled w
   await page.waitFor((ed) => document.querySelector(`${ed} svg .sym[data-id="U"]`)?.classList.contains('stale'), [ED], { what: 'out of date' });
   await page.eval(async () => (await import('/js/i18n.js')).setLanguage('pt'));
   assert.deepEqual(await item(), { label: 'Atualizar Símbolo', disabled: false, title: '' });
-  await page.eval(async () => (await import('/js/i18n.js')).setLanguage('en'));
+  // chosen in Portuguese: its console line in Portuguese (#5277)
   await page.closeMenus();
   await item();
-  await page.click('body > .menu-popup .mi', { text: 'Update Symbol' });
+  await page.click('body > .menu-popup .mi', { text: 'Atualizar Símbolo' });
   await page.waitFor((ed) => !document.querySelector(`${ed} svg .sym[data-id="U"]`).classList.contains('stale'), [ED], { what: 'up to date' });
+  await page.waitFor(() => /Símbolo atualizado; já não ligados: U1\.a/.test(document.getElementById('console-log').textContent), [], { what: 'the console\'s line in Portuguese' });
+  assert.doesNotMatch(await page.eval((ed) => document.querySelector(ed).textContent, ED), /Símbolo atualizado|Symbol updated/);
+  await page.eval(async () => (await import('/js/i18n.js')).setLanguage('en'));
   assert.deepEqual(await page.eval(() => window.Silinx.active.schEditor.getDoc().symbols[0].params.ports.map((q) => q.name)), ['b', 'c', 'y']);
   // one Undo: the symbol of before
   await page.eval(() => document.querySelector('.doc:not([hidden]) .sch-editor').focus());

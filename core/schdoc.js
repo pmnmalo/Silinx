@@ -52,7 +52,7 @@ export {
 };
 export { BUF_OLD_W, COMPARE_OPS, COMPARE_SYM, compareOps, comparePin, constWidth, JOIN_BAR, JOIN_OLD_W, JOIN_W, MUX_BODY_W, MUX_OLD_BODY_W, MUX_SEL_X } from './schdoc-symbols.js';
 export { followPins, otherPins, repinSymbol } from './schdoc-repin.js';
-export { symbolDiff, updateModuleSymbols, updatedPorts } from './schdoc-modsym.js';
+export { symbolDiff, symbolUpdateNote, updateModuleSymbols, updatedPorts } from './schdoc-modsym.js';
 export { attachSymbols, instanceParams, isSymbolFile, layoutDef, newSymbol, normalizeSymbol, readSymbol, reconcile, symbolFileOf, symbolText } from './symbol-layout.js';
 export {
   modulesFromLibrary, schematicFromHdl

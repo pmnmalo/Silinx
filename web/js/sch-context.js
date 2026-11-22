@@ -12,7 +12,7 @@ import { hasComposition } from '/core/symlib.js';
 export function mountSchContext(ctx) {
   const {
     readOnly, doc, live, segSel, sel, tool, setSel, render, renderProps, rename, duplicateSel, rotateSel, mirrorSel, deleteSel,
-    openInfo, symTarget, opts = {}, modules = () => ({}), edit, flash, pushInto
+    openInfo, symTarget, opts = {}, modules = () => ({}), edit, flash, message, pushInto
   } = ctx;
 
   function contextMenu(e, it) {
@@ -33,7 +33,7 @@ export function mountSchContext(ctx) {
     const symbol = s?.type === 'module' && s.params?.module && opts.onEditSymbol && { label: 'Edit Symbol', action: () => opts.onEditSymbol(s.params.module) };
     // (its Update Symbol, as its Properties' button, #3791: enabled when it is out of date)
     const stale = s?.type === 'module' && !!symbolDiff(s, modules());
-    const update = s?.type === 'module' && edit && { label: 'Update Symbol', disabled: !stale, ...(stale ? {} : { title: 'The symbol is up to date' }), action: () => updateSymbol(s, { doc, modules, edit, flash }) };
+    const update = s?.type === 'module' && edit && { label: 'Update Symbol', disabled: !stale, ...(stale ? {} : { title: 'The symbol is up to date' }), action: () => updateSymbol(s, { doc, modules, edit, message }) };
     popupMenu([
       info, into, symbol, update, (info || into || symbol || update) && '-',
       { label: 'Rename…', action: () => rename(it) },
