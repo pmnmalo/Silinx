@@ -163,7 +163,8 @@ viewer of its own:
   Redo and Find in Project, the others in its More tools (⋯) menu (`web/js/phone-toolbar.js`); a menu is the whole
   width, a dialog the whole screen. An editor opened there is read only, with "Read-only on a phone" at the right end of
   its toolbar (`phoneOnly` / `phoneNotice` of `web/js/phone-readonly.js`): a new editor takes it as it takes a followed
-  project's read-only mode.
+  project's read-only mode. A side panel kept in the workspace (Simulate's) is the Panels pane too, its document the
+  Document pane.
 - **A drawing's view gestures are the Schematic editor's** (`web/js/view-gestures.js`, #4291): the wheel's and the
   pinch's smooth zoom about the pointer (Safari's pinch too: its gesture events, #4296), a trackpad's scroll pans, two fingers on a touch screen, the middle button and
   Space drag the view; none of them starts a tool. A new editor or viewer of a drawing wires them and joins

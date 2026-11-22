@@ -4,7 +4,8 @@
 // interface's task tabs) switches them; the pane shown is <html data-pane="side|doc|console">, its look
 // web/css/phone.css (nothing on a wider screen, where the attribute is ignored). The pane follows what the
 // user does: a project opened or closed shows the side panel (its Design or Start page), a document opened or
-// brought to the front shows it, a task chosen (Simulate, Emulate, Implement) shows its document; a new error or
+// brought to the front shows it, a task chosen (Simulate, Emulate, Implement) shows its document, or its side panel
+// when it has none yet (what to simulate, the emulator's processes: #task-empty shown); a new error or
 // warning marks the Console button (a dot) until the console is shown or no error or warning is left. The side
 // panel replaces the drawer of the narrow screen (web/js/narrow.js), and the Silinx interface's Layout buttons
 // (fold, messages, maximize).
@@ -47,11 +48,12 @@ export function initPhone() {
   addEventListener('silinx:project-opened', () => phoneShow('side'));
   addEventListener('silinx:project-closed', () => phoneShow('side'));
   addEventListener('silinx:doc-activated', (e) => { if (!e.detail?.background) phoneShow('doc'); });
-  // a task chosen in the Silinx interface: its document (the waves, the board, the summary); Design keeps the pane
+  // a task chosen in the Silinx interface: its document (the waves, the board, the summary), or its side panel where it
+  // starts when it has none; Design keeps the pane
   let task = root().dataset.task;
   new MutationObserver(() => {
     const t = root().dataset.task;
-    if (t !== task && t && t !== 'edit') phoneShow('doc');
+    if (t !== task && t && t !== 'edit') phoneShow(document.querySelector('#task-empty:not([hidden])') ? 'side' : 'doc');
     task = t;
   }).observe(root(), { attributes: true, attributeFilter: ['data-task'] });
   // a new error or warning: the Console button marked while the console is not shown, until it is or none is left

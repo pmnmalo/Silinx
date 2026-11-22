@@ -27,10 +27,25 @@
   html[data-pane="side"] #app #left-pages { display: flex; position: static; flex: 1 1 auto; width: auto; min-width: 0; border-right: none; box-shadow: none; }
   html[data-ui="silinx"][data-pane="side"] #app #left-tabs .tab.active { background: var(--m-accent-soft); color: var(--m-accent); font-weight: 600; }
   html[data-pane="side"] #app #center { display: none; }
-  /* (Simulate's side panel is in its document, #task-sim-panel: the document's pane, the Panels button not offered) */
+  /* Simulate (the Silinx interface, #5121): its side panel is in the workspace, the Panels pane all of it: with nothing
+     simulated #task-sim-panel, else SSim's Instances and Objects (.isim-left, of SSim in front or of the one beside
+     another document, [data-sim-side]); the Document pane the waves, or the document in front, the whole width */
   html[data-layout="tasks"][data-task="sim"][data-pane="side"] #app #left { display: none !important; }
   html[data-layout="tasks"][data-task="sim"][data-pane="side"] #app #center { display: flex; }
-  html[data-layout="tasks"][data-task="sim"] #phone-panes [data-pane="side"] { display: none; }
+  html[data-layout="tasks"][data-task="sim"] #app :is(#task-sim-split, .isim .isim-split-main) { display: none !important; }
+  html[data-layout="tasks"][data-task="sim"][data-pane="side"] #app :is(#task-empty, #doc-tabs) { display: none !important; }
+  html[data-layout="tasks"][data-task="sim"][data-pane="side"] #app #task-sim-panel:not([hidden]) { display: flex; width: 100%; border-right: none; }
+  html[data-layout="tasks"][data-task="sim"][data-pane="side"] #app #workspace > .doc[data-sim-side] { display: flex !important; left: 0; width: 100%; }
+  html[data-layout="tasks"][data-task="sim"][data-pane="side"] #app #workspace:has(> .doc[data-sim-side], > #task-sim-panel:not([hidden])) > .doc:not([data-sim-side]) { display: none !important; }
+  html[data-layout="tasks"][data-task="sim"][data-pane="side"] #app #workspace > .doc .isim :is(.isim-wavewin, .isim-stimbar) { display: none !important; }
+  html[data-layout="tasks"][data-task="sim"][data-pane="side"] #app #workspace > .doc .isim .isim-left { display: flex !important; flex: 1 1 auto; width: auto !important; }
+  html[data-layout="tasks"][data-task="sim"][data-pane="doc"] #app :is(#task-sim-panel, #workspace > .doc[data-sim-side], .isim .isim-left) { display: none !important; }
+  html[data-layout="tasks"][data-task="sim"][data-pane="doc"] #app :is(#workspace > .doc, #workspace > #task-empty, #doc-tabs) { left: 0 !important; }
+  /* (the ISE style: SSim's window as it is, its Instances and Objects above its waves, the waves the whole width) */
+  html:not([data-layout="tasks"]) .isim .isim-main { flex-direction: column; }
+  html:not([data-layout="tasks"]) .isim .isim-left { width: auto !important; height: 36%; flex: none; }
+  html:not([data-layout="tasks"]) .isim .isim-split-main { display: none; }
+  html:not([data-layout="tasks"]) .isim .isim-wavewin { flex: 1 1 auto; min-height: 0; }
 
   /* the document: the whole width */
   html[data-pane="doc"] #app #left { display: none !important; }
