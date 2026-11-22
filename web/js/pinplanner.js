@@ -3,6 +3,9 @@
 // folded to a strip (side-fold.js), its groups folded each, over the table on a narrow window (narrow.js).
 // Two views (#2694): the table, and the board as the Board Emulator draws it (pinplanner-board.js), the ports dragged
 // from the Ports panel on its left (pinplanner-ports.js, #2715) onto its parts or onto the rows of Board Resources.
+// Read only (#5247), as the other editors: a followed project's (#3181; but an editor's link that edits its constraints)
+// and a phone's (#5121): its notice at the right end of its toolbar, the assignments shown, nothing changed (Auto-assign
+// and Clear All hidden, the table's fields disabled, no port dragged nor taken off its pin).
 import { constraintsExt, readPins, writePins } from './constraints-format.js';
 import { pinAttrsOf } from '/core/constraints-check.js';
 import { toolWide } from './editor-icons.js';
@@ -21,11 +24,14 @@ import { statusLine } from './status-line.js';
 import { logError, logWarning } from './console.js';
 import { filesState } from './state-files.js';
 import { designState } from './state-design.js';
+import { following, followNotice } from './collab-state.js';
+import { phoneNotice } from './phone-readonly.js';
 
 export function mountPinPlanner(el, doc, top) {
   const pj = S.project;
   const db = S.devices;
   const board = app.projectBoard(pj);
+  const notice = following() ? followNotice(pj.constraints) : phoneNotice(), readOnly = !!notice;
   const root = h('div', { class: 'asm-editor pin-planner' });
   el.append(root);
 
@@ -97,7 +103,7 @@ export function mountPinPlanner(el, doc, top) {
   // the board's view: the ports on its left (folded to a strip, remembered), dragged onto it
   const portsList = h('div', { class: 'pp-portlist' });
   const portsSide = h('aside', { class: 'pp-ports-side', hidden: true }, h('div', { class: 'asm-cap' }, 'Ports'), portsList);
-  const portsView = board && mountPinPorts({ list: portsList, root, board, ports, assignments: () => asg, drop: boardDrop, remove: removeNets });
+  const portsView = board && mountPinPorts({ list: portsList, root, board, ports, assignments: () => asg, drop: boardDrop, remove: removeNets, readOnly });
   // the view shown: the table or the board (its drawing loaded the first time: the emulator's module)
   let view = 'table', boardView = null;
   const viewBtn = (id, label, title) => h('button', { type: 'button', class: 'asm-btn asm-wide pp-view', 'data-view': id, title, onclick: () => setView(id) }, label);
@@ -134,7 +140,7 @@ export function mountPinPlanner(el, doc, top) {
   // the right-click menu of a pin (a part of the board, a row of Board Resources) with bits on it
   function pinMenu(e, pin) {
     const on = used().get(String(pin).toUpperCase());
-    if (!on) return;
+    if (!on || readOnly) return;
     e.preventDefault();
     popupMenu(on.map(n => ({ label: `Remove ${n} from its pin`, action: () => removeNets([n]) })), e.clientX, e.clientY);
   }
@@ -146,13 +152,15 @@ export function mountPinPlanner(el, doc, top) {
   const autoBtn = toolWide('beautify', 'Auto-assign from Board', board ? 'Match port names with board resources (clk, led, sw, btn, seg, an…)' : 'Select a board in Design Properties', () => autoAssign());
   autoBtn.disabled = !board;
   const portsBtn = panelToggle(root, h('button', { type: 'button', class: 'asm-btn asm-wide', title: 'Show / hide the ports panel' }, '☰ Ports'), { cls: 'ports-open', key: PORTS_KEY });
+  const editing = h('div', { class: 'asm-group', hidden: readOnly }, autoBtn, toolWide('del', 'Clear All', 'Remove every pin assignment', () => { asg = {}; clocks = []; render(); changed(); }));
   const bar = h('div', { class: 'asm-toolbar pp-bar' },
     h('div', { class: 'asm-group' }, ...viewBtns),
-    sep(),
-    h('div', { class: 'asm-group' }, autoBtn, toolWide('del', 'Clear All', 'Remove every pin assignment', () => { asg = {}; clocks = []; render(); changed(); })),
+    readOnly ? null : sep(),
+    editing,
     h('div', { class: 'asm-spacer' }),
     // (a narrow window: the ports and the board's resources over the board and the table, shown by these)
-    h('div', { class: 'asm-group' }, portsBtn, panelToggle(root, h('button', { type: 'button', class: 'asm-btn asm-wide', title: 'Show / hide the board resources panel' }, '☰ Board Resources'), { key: RESOURCES_KEY })));
+    h('div', { class: 'asm-group' }, portsBtn, panelToggle(root, h('button', { type: 'button', class: 'asm-btn asm-wide', title: 'Show / hide the board resources panel' }, '☰ Board Resources'), { key: RESOURCES_KEY })),
+    notice);   // (read only: its notice at the right end, docs/UI-GUIDELINES.md)
   const side = h('aside', { class: 'asm-side pp-side' }, h('div', { class: 'asm-cap' }, 'Board Resources'), resHost);
   root.append(bar, h('div', { class: 'asm-body' }, portsSide, h('div', { class: 'asm-main' }, tableHost, boardHost), side), line.el);
   mountSideFold({ root, side, key: 'silinx.pins.props.folded', titles: { fold: 'Collapse the Board Resources panel', unfold: 'Expand the Board Resources panel' } });
@@ -204,6 +212,7 @@ export function mountPinPlanner(el, doc, top) {
         h('td', {}, resSel), h('td', { class: conflict ? 'conflict' : '', title: conflict ? `Pin used by ${u.get(a.loc.toUpperCase()).join(', ')}` : '' }, loc),
         h('td', {}, std), h('td', {}, drive), h('td', {}, slew), h('td', {}, pull), h('td', {}, per)));
     }
+    if (readOnly) for (const x of tbl.querySelectorAll('input, select')) x.disabled = true;
     tableHost.append(tbl, h('datalist', { id: 'pp-pins' }, ...resPins.map(r => h('option', { value: r.pin }, r.label))));
     const assigned = nets.filter(n => asg[n.net]?.loc).length;
     setStatus(`${assigned}/${nets.length} I/Os assigned`);
@@ -249,6 +258,7 @@ export function mountPinPlanner(el, doc, top) {
 
   let lastDups = '';
   async function save() {
+    if (readOnly) return;   // (nothing changed)
     const u = used();
     const dup = [...u.entries()].filter(([, v]) => v.length > 1);
     // (a message the console's, not its status line's, #2784: once, until the pins in question change; saved, the tab's mark)
