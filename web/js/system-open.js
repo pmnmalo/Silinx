@@ -31,8 +31,8 @@ function projectModules(sys) {
   return out;
 }
 // the System made ready to run (core/system-run.js systemInputs): its FPGA nodes' modules compiled by Yosys (the Board
-// Emulator's: the page's workers, the browser edition's own), its firmware read (a .hex: an .elf is read by the MCP's
-// simulate of a System); then run in its Web Worker (system-remote.js), where the compiled engine may make its code
+// Emulator's: the page's workers, the browser edition's own), its firmware read (a .hex's text, an .elf's bytes, #5198:
+// as the MCP's simulate of a System); then run in its Web Worker (system-remote.js), where the compiled engine may make its code
 async function prepareHere(sys) {
   const lib = designState.lib;
   if (!lib) return { error: 'the project does not compile: Check Syntax says why' };
@@ -46,7 +46,7 @@ async function prepareHere(sys) {
   const inputs = await systemInputs(sys, {
     ports,
     netlist: m => { if (!designs[m]) throw new Error(`no module '${m}' that elaborates (Check Syntax says why)`); return netlistOf(designs[m], { run }); },
-    firmware: async p => { if (!/\.hex$/i.test(p)) throw new Error('the browser reads an Intel HEX (.hex): give the firmware\'s .hex'); return api.readFile(S.project.name, p); },
+    firmware: async p => (/\.elf$/i.test(p) ? api.readFileBytes(S.project.name, p) : api.readFile(S.project.name, p)),   // (an .elf's bytes, #5198)
   });
   return inputs.error ? inputs : (await import('./system-remote.js')).startSystemRun(sys, inputs);
 }

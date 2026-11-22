@@ -13,9 +13,10 @@ ligados por UART e GPIO.
   **uart-avr** (um Arduino e a FPGA do exemplo `uart` ligados por UART).
 - **O seu Sistema** é o topo, no painel Design como `<nome> [System]`, com os módulos dos nós FPGA por baixo. Abre no
   **editor de Sistema**: as ferramentas põem um nó FPGA, um Arduino Uno ou Nano, um terminal série; **Ligação** junta
-  duas interfaces do mesmo tipo (um clique numa, depois na outra); o painel de Propriedades indica o módulo, a placa e os
-  pinos de um nó, a placa e o firmware de um microcontrolador (um Intel HEX, `.hex`, no browser), os portos TX e RX, o
-  baud e a trama de uma interface.
+  duas interfaces do mesmo tipo (um clique numa, depois na outra); o painel de Propriedades indica o módulo, a placa e
+  os pinos de um nó, a placa e o firmware de um microcontrolador (um Intel HEX, `.hex`, ou o `.elf` do avr-gcc; um
+  `.elf` na edição do browser precisa de uma pasta de trabalho, o seu armazenamento só guarda ficheiros de texto), os
+  portos TX e RX, o baud e a trama de uma interface.
 - **A verificação** mostra os erros e os avisos na consola enquanto se edita, e Verificar escreve-os na Consola: um
   porto que não é do módulo, TX e RX trocados, bauds diferentes nas duas pontas de uma ligação, um nó que não liga a
   nada, e uma saída de 5 V numa entrada de 3,3 V da FPGA (o TX de um Arduino no RX de uma FPGA: nas placas reais, um
