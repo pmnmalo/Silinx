@@ -134,20 +134,17 @@ uiTest('Convert to Schematic of a VHDL module whose file holds its package: the 
   // a module that does not elaborate: refused, nothing written
   await page.eval(() => window.SilinxApp.showLeftPage('design'));
   await convert(page, 'bad');
-  await page.waitDialog('Convert to Schematic');
-  assert.match(await page.eval(() => [...document.querySelectorAll('.dlg-overlay')].pop().querySelector('.msg-text').textContent), /^'bad' does not elaborate \(.*nosuch.*\): correct it first\.$/);
-  await page.dialogButton('OK');
-  await page.waitNoDialog();
+  // the refusal an ERROR line of the console, no dialog (#4747)
+  await page.waitConsole(/^ERROR: Convert to Schematic: 'bad' does not elaborate \(.*nosuch.*\): correct it first\.$/m);
+  assert.equal(await page.eval(() => document.querySelectorAll('.dlg-overlay').length), 0);
   assert.equal(await exists('Conv_vhd', 'src/bad.sch.json'), false);
-  // in Portuguese: the menu, the dialog
+  // in Portuguese: the menu, the console's line
   await page.eval(async () => { (await import('/js/i18n.js')).setLanguage('pt'); });
   try {
     await page.treeRow('#hier', 'bad', { right: true, exact: true });
     await page.click('body > .menu-popup .mi', { text: 'Converter para Esquemático (editável)…' });
-    await page.waitDialog('Converter para Esquemático');
-    assert.match(await page.eval(() => [...document.querySelectorAll('.dlg-overlay')].pop().querySelector('.msg-text').textContent), /^'bad' não é elaborado \(.*nosuch.*\): corrija-o primeiro\.$/);
-    await page.dialogButton('OK');
-    await page.waitNoDialog();
+    await page.waitConsole(/^ERROR: Converter para Esquemático: 'bad' não é elaborado \(.*nosuch.*\): corrija-o primeiro\.$/m);
+    assert.equal(await page.eval(() => document.querySelectorAll('.dlg-overlay').length), 0);
   } finally {
     await page.eval(async () => { (await import('/js/i18n.js')).setLanguage('en'); });
   }
