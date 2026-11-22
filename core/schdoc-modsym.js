@@ -79,7 +79,7 @@ export function updateModuleSymbols(doc, modules = {}, ids = null) {
       const from = oldAt.get(lc(p.name)), to = xform(s, newDef, p.x, p.y);
       if (from && !same(from, to) && !diff.turned.some(n => lc(n) === lc(p.name))) moves.set(`${from.x},${from.y}`, { from, to, p });
     }
-    followPins(doc, moves, others);
+    followPins(doc, moves, others, { modules });
     report.updated.push(s.name);
     report.removed.push(...diff.removed.map(n => `${s.name}.${n}`));
     report.turned.push(...diff.turned.map(n => `${s.name}.${n}`));
