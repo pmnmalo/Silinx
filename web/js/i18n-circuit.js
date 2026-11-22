@@ -101,6 +101,7 @@ export const CIRCUIT_PT = {
     'Dez LEDs lado a lado, cada um aceso enquanto o seu ânodo está a 1 e o seu cátodo a 0. Saídas do HDL.',
   'Shows the level of the net its tip touches: H (1), L (0), – (open) or X (unknown). Not a port of the HDL.':
     'Mostra o nível da rede em que a sua ponta toca: H (1), L (0), – (no ar) ou X (desconhecido). Não é uma porta do HDL.',
+  'a wire joins two different places': 'um fio liga dois sítios diferentes',   // (#5164)
 };
 // the parts' titles (core/circuit-parts.js, core/circuit-ics.js)
 const TITLE = { 'Half breadboard': 'Meia placa de ensaio', 'Full breadboard (its rails split in the middle)': 'Placa de ensaio inteira (as linhas de alimentação cortadas ao meio)',
@@ -271,4 +272,10 @@ export const CIRCUIT_PT_PATTERNS = [
   // a part moved or turned onto the leads of others, refused (core/circuit-edit.js, #5162)
   [/^(.+) cannot be turned: it would land on the leads of (.+), joining them$/, 'Não é possível rodar $1: ficaria sobre os terminais de $2, ligando-os'],
   [/^(.+) cannot be moved there: it would land on the leads of (.+), joining them$/, 'Não é possível mover $1 para aí: ficaria sobre os terminais de $2, ligando-os'],
+  // (the editor's messages in the console: a wire, its properties, Try it's, #5164)
+  [/^The circuit cannot be simulated: ([\s\S]+)$/, 'O circuito não pode ser simulado: $1'],
+  [/^Short circuit at (\S+) ns: (.+) driven to 0 and 1 at once$/, 'Curto-circuito aos $1 ns: $2 levado a 0 e a 1 ao mesmo tempo'],
+  [/^The circuit oscillates: still changing (\S+) ns after (\S+) ns \((.*)\)$/, 'O circuito oscila: ainda a mudar $1 ns depois de $2 ns ($3)'],
+  [/^(\S+): no clear orthogonal path \(the parts' pins and the other wires in the way\): drawn straight there$/, '$1: nenhum caminho ortogonal livre (os pinos das peças e os outros fios no caminho): desenhado a direito aí'],
+  [/^hz: a frequency from (\S+) to (\S+) Hz$/, 'hz: uma frequência de $1 a $2 Hz'],
 ];

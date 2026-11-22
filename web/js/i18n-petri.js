@@ -84,4 +84,6 @@ export const PETRI_PT_PATTERNS = [
   [/^Priority (\d+) of (\d+) \(in a conflict, the first takes the tokens\)$/, 'Prioridade $1 de $2 (num conflito, a primeira tira as marcas)'],
   [/^fire ([A-Za-z]\w*)$/, 'disparo $1'], [/^clock: nothing fires$/, 'relógio: nada dispara'], [/^clock: ([A-Za-z]\w*(?:, [A-Za-z]\w*)*)$/, 'relógio: $1'],
   [/^([A-Za-z]\w*): not enabled \(its guard is false\)$/, '$1: não habilitada (a guarda é falsa)'], [/^([A-Za-z]\w*): not enabled$/, '$1: não habilitada'],
+  // (the editor's messages in the console, #5164)
+  [/^PNML: (.+): not a PNML file \(\.pnml or \.xml\)$/, 'PNML: $1: não é um ficheiro PNML (.pnml ou .xml)'],
 ];

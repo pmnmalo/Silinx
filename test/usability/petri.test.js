@@ -174,9 +174,11 @@ uiTest('usability: Petri net: an arc\'s weight, an inhibitor arc, an arc that ca
   // a place to a place: refused (said in the console), nothing changes
   await s.step('arc', { from: 'p1', to: 'p2' }, async () => {
     const n0 = (await page.consoleText()).length;
+    const want = await a.t('An arc joins a place and a transition');   // (in the page's language, #5164)
     await a.arc('p1', 'p2');
-    // (its words not checked here: left in English in Portuguese, the todo below)
     await page.waitFor((k) => /(WARNING|AVISO): alarm\.pn\.json: /.test(window.__console().slice(k)), [n0], { what: 'the arc refused' });
+    const said = (await page.consoleText()).slice(n0).trim();
+    assert.ok(said.endsWith(`alarm.pn.json: ${want}`), `said: ${said}`);
   }, { changes: false });
   // an inhibitor arc alarmed ⊸ fail1: no failure counted while the alarm is on
   await s.step('arc', { from: 'p4', to: 't1', inhibitor: true }, () => a.arc('p4', 't1', { inhibitor: true }), {
@@ -198,8 +200,7 @@ uiTest('usability: Petri net: an arc\'s weight, an inhibitor arc, an arc that ca
   await s.undoRedo();
 });
 
-uiTest('usability: Petri net: an arc that cannot be, refused: said in the page\'s language (Portuguese) (#5164)', E, async (page, _env, t) => {
-  t.todo('#5164: the Petri net editor\'s messages are logged untranslated (web/js/drawings.js, its onMessage: no t())');
+uiTest('usability: Petri net: an arc that cannot be, refused: said in the page\'s language (Portuguese) (#5164)', E, async (page) => {
   const s = await alarm(page, 'refused arc in Portuguese');
   await page.eval(async () => { (await import('/js/i18n.js')).setLanguage('pt'); });
   const want = await s.a.t('An arc joins a place and a transition');
@@ -209,4 +210,5 @@ uiTest('usability: Petri net: an arc that cannot be, refused: said in the page\'
   await page.waitFor((k) => /alarm\.pn\.json: /.test(window.__console().slice(k)), [n0], { what: 'the arc refused' });
   const said = (await page.consoleText()).slice(n0).trim();
   assert.ok(said.endsWith(`alarm.pn.json: ${want}`), `said: ${said}`);
+  assert.equal(want, 'Um arco liga um lugar e uma transição');
 });

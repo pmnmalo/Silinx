@@ -427,3 +427,33 @@ test('#4705 the labels that are also names: the examples\' names, the identifier
     'multiplier', 'name', 'net', 'no', 'none', 'optional', 'or', 'orange', 'output', 'owner', 'priority', 'purple', 'red',
     'rises', 'rising', 'sync', 'synchronous', 'tip', 'up', 'viewer', 'visible', 'white', 'yellow', 'yes', 'you']);
 });
+
+// #5164: the messages the Petri net, circuit and state diagram editors log in the console (drawings.js's onMessage: t()),
+// those of the core's edits as the core makes them
+test('#5164 the drawing editors\' messages in the console in Portuguese', async () => {
+  const { newCircuit } = await import('../core/circuit.js');
+  const { addPart, setPartProps } = await import('../core/circuit-edit.js');
+  const { addStyledWire } = await import('../core/circuit-route.js');
+  const c = addPart(newCircuit('c'), { type: 'clock', at: [0, 0] });
+  const T = {
+    // the Petri net's
+    'An arc joins a place and a transition': 'Um arco liga um lugar e uma transição',
+    'An inhibitor arc goes from a place to a transition': 'Um arco inibidor vai de um lugar para uma transição',
+    'These two are joined already: change the weight of that arc': 'Estes dois já estão ligados: mude o peso desse arco',
+    'fail1: not enabled (its guard is false)': 'fail1: não habilitada (a guarda é falsa)',
+    'Deadlock: no transition can fire': 'Bloqueio: nenhuma transição pode disparar',
+    'PNML: net.xml: not a PNML file (.pnml or .xml)': 'PNML: net.xml: não é um ficheiro PNML (.pnml ou .xml)',
+    // the circuit's
+    [setPartProps(c.model, c.id, { hz: 1e9 }).error]: 'hz: uma frequência de 0.1 a 50 Hz',
+    [addStyledWire(c.model, { from: [5, 5], to: [5, 5], via: [] }).error]: 'um fio liga dois sítios diferentes',
+    'W3: no clear orthogonal path (the parts\' pins and the other wires in the way): drawn straight there':
+      'W3: nenhum caminho ortogonal livre (os pinos das peças e os outros fios no caminho): desenhado a direito aí',
+    'The circuit cannot be simulated: U1 is not powered': 'O circuito não pode ser simulado: U1 is not powered',
+    'Short circuit at 120 ns: S1.out, U1.1 driven to 0 and 1 at once': 'Curto-circuito aos 120 ns: S1.out, U1.1 levado a 0 e a 1 ao mesmo tempo',
+    'The circuit oscillates: still changing 1000 ns after 0 ns (U1.2; U1.3)': 'O circuito oscila: ainda a mudar 1000 ns depois de 0 ns (U1.2; U1.3)',
+    // the state diagram's (its reason, then "(not applied)")
+    "State S0: The name 'S1' is used twice (letter case does not count)": "Estado S0: O nome 'S1' é usado duas vezes (maiúsculas e minúsculas não contam)",
+    '(not applied)': '(não aplicado)',
+  };
+  for (const [en, pt] of Object.entries(T)) assert.equal(t(en), pt, en);
+});
