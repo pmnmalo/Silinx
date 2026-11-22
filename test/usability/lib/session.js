@@ -92,7 +92,7 @@ export class Session {
     const det = this.kit.detached(before, after, { modules: this.modules, except: typeof frees === 'function' ? frees(after, before) : frees });
     if (det.length) bad['wires come off'] = det;
     // (the ends of the wires the step made that are on nothing: as many as it leaves on purpose, `stubs`)
-    const old = new Set(before.wires.map((w) => w.id));
+    const old = new Set((before.wires || []).map((w) => w.id));
     const loose = this.kit.dangling(after, { modules: this.modules }).filter((e) => !old.has(e.wire));
     if (loose.length !== stubs) bad['loose wire ends'] = [`${loose.length} new, ${stubs} expected`, ...loose.map((e) => e.text)];
     const changed = !same(before, after);
@@ -147,7 +147,7 @@ export class Session {
   /** Check Schematic: its warnings and errors, exactly `expected` ('WARNING: …' in English, [] for none). */
   async warnings(expected) {
     const text = await this.a.check();
-    const got = [...text.matchAll(/(WARNING|ERROR|AVISO|ERRO): (.*?)(?=(?:WARNING|ERROR|AVISO|ERRO): |Process "|Processo "|$)/gs)].map((m) => `${m[1]}: ${m[2].trim()}`);
+    const got = [...text.matchAll(/(WARNING|ERROR|AVISO|ERRO): (.*?)(?=(?:WARNING|ERROR|AVISO|ERRO|INFO): |Process "|Processo "|$)/gs)].map((m) => `${m[1]}: ${m[2].trim()}`);
     const want = RUN.lang === 'en' ? expected : await this.page.eval(async (l) => { const { t } = await import('/js/i18n.js'); return l.map((x) => t(x)); }, expected);
     try { assert.deepEqual(got, want); } catch { await this.fail('Check Schematic', { 'warnings': [`got ${JSON.stringify(got)}`, `expected ${JSON.stringify(want)}`] }); }
   }
