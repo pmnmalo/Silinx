@@ -70,6 +70,9 @@ export const PETRI_PT = {
   'too many to compute': 'demasiados para calcular', 'Reachability graph': 'Grafo de alcançabilidade',
   'Reachability graph (the first 200 markings)': 'Grafo de alcançabilidade (as primeiras 200 marcações)',
   'after nothing (the initial marking)': 'logo de início (a marcação inicial)', 'analysis: a deadlock': 'análise: um bloqueio',
+  // its Check's (#5185)
+  'an arc joins a place to a transition or a transition to a place': 'um arco liga um lugar a uma transição ou uma transição a um lugar',
+  'an inhibitor arc goes from a place to a transition': 'um arco inibidor vai de um lugar para uma transição',
 };
 export const PETRI_PT_PATTERNS = [
   [/^\((\d+) states?(, the first (\d+): the state space is larger)?\)$/, (m, n, more, max) => `(${n} ${n === '1' ? 'estado' : 'estados'}${more ? `, os primeiros ${max}: o espaço de estados é maior` : ''})`],
@@ -86,4 +89,19 @@ export const PETRI_PT_PATTERNS = [
   [/^([A-Za-z]\w*): not enabled \(its guard is false\)$/, '$1: não habilitada (a guarda é falsa)'], [/^([A-Za-z]\w*): not enabled$/, '$1: não habilitada'],
   // (the editor's messages in the console, #5164)
   [/^PNML: (.+): not a PNML file \(\.pnml or \.xml\)$/, 'PNML: $1: não é um ficheiro PNML (.pnml ou .xml)'],
+  // its Check's errors and warnings (core/petri.js validatePetri, core/petri-analysis.js checkPetri, #5185)
+  [/^'(.*)' is not a valid module name$/, "'$1' não é um nome de módulo válido"],
+  [/^(the clock|the reset|input|output|place|transition) '(.*)' is not a valid (VHDL|VERILOG) name$/, (m, w, n, l) => `${WHAT[w][0].toUpperCase()}${WHAT[w].slice(1)} '${n}' não é um nome ${l} válido`],
+  // (a name used twice: i18n-wizards.js's, the same message)
+  [/^place (\S+): (\d+) initial tokens, more than its capacity (\d+)$/, 'lugar $1: $2 marcas iniciais, mais do que a sua capacidade $3'],
+  [/^transition (\S+): guard '(.*?)': ([\s\S]+)$/, "transição $1: guarda '$2': $3"],   // (the parser's error as it is, #5196)
+  [/^transition (\S+) is not connected$/, 'transição $1 não está ligada'], [/^place (\S+) is not connected$/, 'lugar $1 não está ligado'],
+  [/^transition (\S+) takes no token: it fires on every clock edge while its guard is true$/, 'transição $1 não tira marcas: dispara em cada flanco do relógio enquanto a sua guarda for verdadeira'],
+  [/^transition (\S+) never fires: it (takes|puts) (\d+) tokens (?:from|into) place (\S+), whose capacity is (\d+)$/,
+    (m, x, w, n, p, c) => `transição ${x} nunca dispara: ${w === 'takes' ? `tira ${n} marcas do` : `põe ${n} marcas no`} lugar ${p}, cuja capacidade é ${c}`],
+  [/^transition (\S+) never fires: no reachable marking enables it$/, 'transição $1 nunca dispara: nenhuma marcação alcançável a habilita'],
+  [/^(\S+): '(.*)' is not an output of the net$/, "$1: '$2' não é uma saída da rede"],
+  [/^(\S+): (\S+) = (.*) is not a constant$/, '$1: $2 = $3 não é uma constante'],
+  [/^the net can reach a deadlock, no transition able to fire: (?:after (.+)|at once)$/, (m, a) => `a rede pode chegar a um bloqueio, sem nenhuma transição capaz de disparar: ${a ? `depois de ${a}` : 'logo de início'}`],
 ];
+const WHAT = { 'the clock': 'o relógio', 'the reset': 'o reset', input: 'a entrada', output: 'a saída', place: 'o lugar', transition: 'a transição' };

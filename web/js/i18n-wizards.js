@@ -173,8 +173,9 @@ export const WIZARDS_PT_PATTERNS = [
   [/^State '(.*)': (.*)\.$/, "Estado '$1': $2."], [/^Two states are named '(.*)'\.$/, "Há dois estados com o nome '$1'."],
   [/^Each bit of the module's ports on a pin of the (.*): assigned from the board by their names \(clk, led, sw, btn…\) and directions; change them at will\.$/,
     'Cada bit dos portos do módulo num pino da $1: atribuído pela placa pelos nomes (clk, led, sw, btn…) e pelas direções; mude-os à vontade.'],
-  [/^'(.*)' is used twice \((the clock|the reset|input|output) and (the clock|the reset|input|output)\)$/, (m, n, a, b) => {
-    const W = { 'the clock': 'o relógio', 'the reset': 'o reset', input: 'entrada', output: 'saída' };
+  // (a Petri net's places and transitions too, core/petri.js validatePetri, #5185)
+  [/^'(.*)' is used twice \((the clock|the reset|input|output|place|transition) and (the clock|the reset|input|output|place|transition)\)$/, (m, n, a, b) => {
+    const W = { 'the clock': 'o relógio', 'the reset': 'o reset', input: 'entrada', output: 'saída', place: 'lugar', transition: 'transição' };
     return `'${n}' é usado duas vezes (${W[a]} e ${W[b]})`;
   }],
   [/^Not assigned: (.*)\.$/, 'Por atribuir: $1.'], [/^The pin (\S+) is given to (\S+) and (\S+)\.$/, 'O pino $1 está dado a $2 e a $3.'],

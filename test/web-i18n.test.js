@@ -457,3 +457,91 @@ test('#5164 the drawing editors\' messages in the console in Portuguese', async 
   };
   for (const [en, pt] of Object.entries(T)) assert.equal(t(en), pt, en);
 });
+
+// #5185: the Petri net's and the circuit's Check (their errors and warnings in the console and its Errors / Warnings
+// tabs: editor-problems.js inLanguage) in Portuguese, each message as the core makes it, on small drawings; the few the
+// core's own tests make on drawings of their own (a KiCad part's, a 3-state's, a DIP switch's, a display's) as those
+// tests have them. Every English part of the checks' messages (their templates in the core's sources) is in one of
+// them, and none is left in a translation.
+test('#5185 the Petri net\'s and the circuit\'s Check messages in Portuguese', async () => {
+  const { checkCircuit } = await import('../core/circuit-check.js');
+  const { normalizeCircuit } = await import('../core/circuit.js');
+  const { partPins } = await import('../core/circuit-parts.js');
+  const { checkPetri } = await import('../core/petri-analysis.js');
+  const { halfAdder, icBench } = await import('./circuit-helpers.mjs');
+  const { templatesOf } = await import('./js-literals.js');
+  const VCC = [-20, -20], GND = [-20, -19];
+  const circ = (m) => checkCircuit(normalizeCircuit(m)).map((d) => d.message);
+  const pinAt = (m, id, n) => { const q = partPins(m.parts.find((p) => p.id === id)).find((x) => x.n === n); return [q.x, q.y]; };
+  const plus = (m, parts = [], wires = []) => ({ ...m, parts: [...m.parts, ...parts], wires: [...m.wires, ...wires] });
+  const W = (id, ...points) => ({ id, points, color: 'red' });
+  const base = halfAdder();
+  const label = (labels) => ({ ...base, parts: base.parts.map((p) => (labels[p.id] ? { ...p, label: labels[p.id] } : p)) });
+  const inv = icBench('7404'), oc = icBench('7405'), oc0 = icBench('7405', { pullUps: false }), tri = icBench('74125');
+  const floating = { ...inv, parts: inv.parts.filter((p) => p.id !== 'S1a'), wires: inv.wires.filter((w) => w.id !== 'w3') };
+  const cmos = icBench('4011');
+  const flip = { ...base, wires: base.wires.map((w) => (w.id === 'wv1' ? { ...w, points: [[4, 3], [4, -3]] } : w.id === 'wg1' ? { ...w, points: [[10, 9], [10, -4]] } : w)) };
+  const made = [
+    plus(base, [], [W('U1', [50, 0], [-6, 9])]), plus(base, [{ id: 'D3', type: 'led', x: 24, y: 2 }]),
+    plus(base, [{ id: 'S3', type: 'logic-switch', x: 40, y: 0 }], [W('wx', [50, 0], [60, 0])]), { ...base, name: 'entity' },
+    plus(base, [{ id: 'U1', type: '7404', x: 40, y: 40 }, { id: 'U9', type: '74999', x: 50, y: 50 }, { id: '', type: 'led', x: 60, y: 60 }]),
+    label({ S2: 'a', D2: '2c' }), label({ D1: 'half_adder' }), plus(base, [{ id: 'S9', type: 'dip-4', x: 40, y: 20, label: 'd[0]' }]),
+    plus(base, [{ id: 'S8', type: 'logic-switch', x: 40, y: 0, label: 'sw[0]' }, { id: 'S9', type: 'logic-switch', x: 40, y: 3, label: 'sw[2]' }]),
+    plus(base, [{ id: 'S8', type: 'logic-switch', x: 40, y: 0, label: 'sw[0]' }, { id: 'D8', type: 'led', x: 40, y: 3, label: 'sw[1]' }, { id: 'D9', type: 'led', x: 40, y: 6, label: 'sw' }]),
+    plus(tri, [], [W('x1', pinAt(tri, 'U1', 3), VCC)]), plus(base, [], [W('wx', [2, -4], [2, -3])]), plus(base, [], [W('wx', [-6, 9], [1, -4])]),
+    plus(oc, [], [W('x1', pinAt(oc, 'U1', 2), VCC)]), plus(base, [], [W('wx', [6, 8], [15, 8])]), oc0,
+    plus(floating, [{ id: 'B1', type: 'button', x: -30, y: -20 }], [W('v1', [-30, -20], [-20, -20]), W('v2', [-27, -20], [-27, -19], [-20, -19])]),
+    plus(inv, [{ id: 'B1', type: 'button', x: -30, y: -30 }], [W('v1', [-30, -30], pinAt(inv, 'U1', 2)), W('v2', [-27, -30], VCC)]),
+    flip, icBench('7404', { power: false }), floating,
+    plus(floating, [{ id: 'B1', type: 'button', x: -10, y: 0 }], [W('v1', [-10, 0], pinAt(inv, 'U1', 1)), W('v2', [-7, 0], GND)]),
+    { ...cmos, parts: cmos.parts.filter((p) => p.id !== 'S1a'), wires: cmos.wires.filter((w) => w.id !== 'w3') },
+    plus(base, [{ id: 'D3', type: 'led', x: 40, y: 0 }], [W('wx', [40, 0], [-4, -3]), W('wy', [41, 0], [-4, -4])]),
+    plus(base, [{ id: 'D3', type: 'led', x: 40, y: 0 }], [W('wx', [40, 0], [41, 0])]),
+  ].flatMap(circ).filter((m) => !/^[ :]/.test(m));   // (the part with no id's other messages: its id empty)
+  const CIRCUIT = [...new Set([...made,
+    // (circuit-kicad.test.js, circuit-parts.test.js, circuit-kicad-hdl.test.js)
+    'M1 (TEST-SENSOR) is drawn only: it is not simulated and its pins drive nothing',
+    'U1 pin 1 (1A) floats while S9 is off: a 74LS input reads high',
+    'DS1 never lights: its common anode is on the supply\'s − (a common cathode display\'s place)',
+    'DS2 never lights: its common cathode is on the supply\'s + (a common anode display\'s place)',
+    'U1 (TEST-INV): no module \'test_inv\' in the project', 'U1 (TEST-INV): its module test_inv has no port y (its pin 2)',
+    'U1 (TEST-INV): its module test_inv\'s port z has no pin', 'U1 (TEST-INV): its pin 1 (A) is an input, its module test_inv\'s port a an output',
+    'U1 (TEST-INV): its module test_inv\'s port y is 4 bits wide, a pin one',
+    'U1 (TEST-FIN): its module m_finish cannot run in Try it: its simulation stopped (finish)',
+    'U1 1Y, U2 1Y (3-state) and SX out drive one net: a short whenever one is enabled',
+    'U1 1Y, U1 2Y: open collector with no pull-up: the net floats while they are off (a 74LS input reads it high, an LED stays off)',
+  ])];
+  // the Petri net's: a net with every problem of its validation, then nets whose token game deadlocks
+  const P = (id, more = {}) => ({ id, name: id, ...more });
+  const A = (id, from, to, more = {}) => ({ id, from, to, ...more });
+  const petri = (m) => checkPetri(m).map((d) => d.message);
+  const PETRI = [...new Set([
+    { name: '1net', clock: 'go', reset: { name: 'busy' }, inputs: [{ name: 'go' }, { name: '2a' }], outputs: [{ name: 'busy' }],
+      places: [P('p1', { tokens: 2 }), P('p2', { outputs: { zz: '1' } }), P('p3', { outputs: { busy: 'go' } }), P('p4')],
+      transitions: [P('t1', { guard: 'go &' }), P('t2'), P('t3'), P('t4', { name: 'p4' })],
+      arcs: [A('a1', 'p1', 'p2'), A('a2', 't1', 'p2', { inhibitor: true }), A('a3', 't2', 'p3'), A('a4', 'p3', 't3', { weight: 2 }), A('a5', 't3', 'p2', { weight: 2 })] },
+    { name: 'signal' }, { name: 'context', places: [P('p1')], transitions: [P('t1')], arcs: [A('a1', 'p1', 't1')] },
+    { name: 'net', places: [P('p1', { tokens: 1 }), P('p2')], transitions: [P('t1')], arcs: [A('a1', 'p1', 't1'), A('a2', 't1', 'p2')] },
+  ].flatMap(petri))];
+  // every English part of the messages' templates (and of their plain strings) in one of the messages
+  const src = (f, from, to) => { const s = fs.readFileSync(new URL(`../core/${f}`, import.meta.url), 'utf8'); const i = s.indexOf(from); return s.slice(i, to ? s.indexOf(to, i) : undefined); };
+  const parts = (s) => { const { strings, templates } = templatesOf(s); return [...strings.filter((x) => / /.test(x)), ...templates.flatMap((x) => x.parts)].map((x) => x.trim()).filter((x) => /[a-z]{3}/i.test(x)); };
+  const English = {
+    circuit: [...parts(src('circuit-check.js', 'export function checkCircuit', '/** The circuit\'s errors only')), ...parts(src('circuit-kicad-hdl.js', 'export function checkModels', '\n}\n'))],
+    petri: [...parts(src('petri.js', 'export function validatePetri', 'export const petriErrors')), ...parts(src('petri-analysis.js', 'export function checkPetri', '/** Strongly'))],
+  };
+  for (const [k, list] of Object.entries({ circuit: CIRCUIT, petri: PETRI })) {
+    assert.deepEqual(English[k].filter((x) => !list.some((m) => m.includes(x))), [], `${k}: the parts no message has`);
+    assert.deepEqual(list.map((m) => [m, t(m)]).filter(([m, pt]) => pt === m || English[k].some((x) => x.length > 5 && pt.includes(x))), [], `${k}: English left`);
+  }
+  assert.deepEqual([CIRCUIT.length, PETRI.length], [67, 22]);
+  // (the issue's, exactly; a guard's error and Try it's reason are the parser's and the simulator's own, as they come)
+  const T = {
+    'the net can reach a deadlock, no transition able to fire: after fail1, fail2, fail3': 'a rede pode chegar a um bloqueio, sem nenhuma transição capaz de disparar: depois de fail1, fail2, fail3',
+    'U2 pin 1 (1A) is floating: a 74LS input reads high': 'U2 pino 1 (1A) está a flutuar: uma entrada 74LS lê 1',
+    'Short circuit: the supply\'s + and − are joined (U1 pin 14 (VCC), U1 pin 7 (GND), …)': 'Curto-circuito: o + e o − da fonte estão ligados (U1 pino 14 (VCC), U1 pino 7 (GND), …)',
+    '\'x\' is used twice (place and transition)': '\'x\' é usado duas vezes (lugar e transição)',
+    'transition t1: guard \'go &\': unexpected end of expression': 'transição t1: guarda \'go &\': unexpected end of expression',
+  };
+  for (const [en, pt] of Object.entries(T)) assert.equal(t(en), pt, en);
+});

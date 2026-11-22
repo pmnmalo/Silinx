@@ -20,6 +20,8 @@ const E = () => env;
 let n = 0;
 // (the shipped net's one warning: the third failure's place, alarmed, has no way out)
 const DEADLOCK = 'WARNING: the net can reach a deadlock, no transition able to fire: after fail1, fail2, fail3';
+// (Check's lines in Portuguese, written out: SILINX_USABILITY_LANG=pt, #5185)
+const DEADLOCK_PT = 'WARNING: a rede pode chegar a um bloqueio, sem nenhuma transição capaz de disparar: depois de fail1, fail2, fail3';
 
 /** The Petri net editor's actions: its tools, clicks and drags on the net (its coordinates, turned into the page's by
  *  the drawing's own transform), its Properties. The net is read only to know where things are. */
@@ -130,7 +132,8 @@ uiTest('usability: Petri net: a place and a transition added, linked by arcs, na
   });
   assert.deepEqual(await a.arcsOffNodes(s.doc), []);
   // (cool never fires: p1 holds its one token from the start, full at its capacity of 1; alarmed is still a dead end)
-  await s.warnings(['WARNING: transition cool never fires: no reachable marking enables it', DEADLOCK]);
+  await s.warnings(['WARNING: transition cool never fires: no reachable marking enables it', DEADLOCK],
+    { pt: ['WARNING: transição cool nunca dispara: nenhuma marcação alcançável a habilita', DEADLOCK_PT] });
   await s.undoRedo();
 });
 
@@ -146,7 +149,7 @@ uiTest('usability: Petri net: nodes dragged: their arcs follow, drawn from rim t
   await s.step('move', { node: 't5', dx: 40, dy: 40 }, () => a.move('t5', 40, 40), { expect: moved('t5', 320, 340) });
   await s.step('move', { node: 'p3', dy: -60 }, () => a.move('p3', 0, -60), { expect: moved('p3', 460, 80) });
   await s.step('move', { node: 'p1', dx: -40, dy: 20 }, () => a.move('p1', -40, 20), { expect: moved('p1', 60, 160) });
-  await s.warnings([DEADLOCK]);
+  await s.warnings([DEADLOCK], { pt: [DEADLOCK_PT] });
   await s.undoRedo();
 });
 
@@ -164,7 +167,7 @@ uiTest('usability: Petri net: a transition deleted with its arcs, then an arc; C
   await s.step('deleteArc', { arc: 'a10' }, async () => { await a.selectArc('a10'); await a.del(); }, {
     expect: (d, b) => assert.deepEqual(ids(b.arcs).filter((x) => !ids(d.arcs).includes(x)), ['a10']),
   });
-  await s.warnings([DEADLOCK]);
+  await s.warnings([DEADLOCK], { pt: [DEADLOCK_PT] });
   await s.undoRedo();
 });
 
@@ -196,7 +199,8 @@ uiTest('usability: Petri net: an arc\'s weight, an inhibitor arc, an arc that ca
   });
   assert.deepEqual(await a.arcsOffNodes(s.doc), []);
   // (fail1 takes both of none's tokens; forgive1 gives one back, too few for fail1, and alarmed still a dead end)
-  await s.warnings(['WARNING: the net can reach a deadlock, no transition able to fire: after fail1, forgive1']);
+  await s.warnings(['WARNING: the net can reach a deadlock, no transition able to fire: after fail1, forgive1'],
+    { pt: ['WARNING: a rede pode chegar a um bloqueio, sem nenhuma transição capaz de disparar: depois de fail1, forgive1'] });
   await s.undoRedo();
 });
 
