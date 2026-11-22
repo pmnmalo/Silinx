@@ -1,7 +1,7 @@
 // Usability (#5148, part 3): a digital circuit built on the breadboard as a person builds it, on the breadboard example
 // (examples/breadboard): an IC placed from the parts panel, powered with two wires to the rails, linked to the circuit
 // by a wire from another IC's output; the breadboard dragged and turned with everything on it (the
-// nets kept; turned, #5162); a short circuit and a floating input made on purpose, said by Check, and undone. After every step the
+// nets kept; a turn onto the leads of the parts beside it refused, #5162); a short circuit and a floating input made on purpose, said by Check, and undone. After every step the
 // circuit's invariants (lib/circ-invariants.js: its check's errors, the wires that were attached still attached, the
 // new wires' loose ends), the HDL in VHDL and Verilog; Check's warnings exactly; Undo back to the start and Redo to the
 // end. In both interfaces (SILINX_UI_INTERFACE=ise) and in Portuguese (SILINX_USABILITY_LANG=pt).
@@ -63,11 +63,24 @@ uiTest('usability: circuit: the breadboard dragged with all on it: the wires fol
   await s.undoRedo();
 });
 
-uiTest('usability: circuit: the breadboard turned (R) with all on it: the nets kept, no lead of the parts beside it in its holes (#5162)', E, async (page, _env, t) => {
-  t.todo('#5162: its holes land under the switch\'s, the clock\'s and the button\'s leads');
+uiTest('usability: circuit: the breadboard turned (R) beside the parts: refused, said in the console; moved off them, turned with all on it, the nets kept (#5162)', E, async (page) => {
   const s = await breadboard(page, 'turn the breadboard');
-  // (clicked by its channel at column 14, where no IC is)
-  await s.step('rotate', { id: 'BB1' }, () => s.a.rotate('BB1', { grip: [13.4, 5.4] }), { expect: (d, b) => { sameNets(d, b); assert.equal(d.parts[0].rot, 1); } });
+  const { a } = s;
+  // (clicked by its channel at column 14, where no IC is) its hole h11 would land under the button's lead: refused
+  const said = async (msg) => {
+    const n0 = (await page.consoleText()).length;
+    await a.rotate('BB1', { grip: [13.4, 5.4] });
+    // (in English or in the page's language: the editor's messages translated by #5164)
+    const want = [msg, await page.eval(async (x) => (await import('/js/i18n.js')).t(x), msg)];
+    await page.waitFor((k, w) => w.some((x) => window.__console().slice(k).includes(x)), [n0, want], { what: 'the turn refused' });
+  };
+  await s.step('rotate', { id: 'BB1' }, () => said('BB1 cannot be turned: it would land on the leads of B1, joining them'), { changes: false });
+  // dragged down off the parts beside it (by its channel), then turned: its ICs and wires with it, the nets kept
+  await s.step('movePart', { id: 'BB1', dx: 0, dy: 20 }, () => a.movePart('BB1', 0, 20, { grip: [13.4, 5.4] }), {
+    expect: (d, b) => { sameNets(d, b); assert.deepEqual([d.parts[0].x, d.parts[0].y], [0, 20]); },
+  });
+  await s.step('rotate', { id: 'BB1' }, () => a.rotate('BB1', { grip: [13.4, 25.4] }), { expect: (d, b) => { sameNets(d, b); assert.equal(d.parts[0].rot, 1); } });
+  await s.warnings([]);
   await s.undoRedo();
 });
 

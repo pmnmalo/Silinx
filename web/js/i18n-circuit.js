@@ -268,4 +268,7 @@ export const CIRCUIT_PT_PATTERNS = [
   [/^(.+): (\d+) symbol librar(?:y|ies), (\d+) footprint\(s\)$/, '$1: $2 biblioteca(s) de símbolos, $3 footprint(s)'],
   [/^(parts\/.+) is in the project already\. Replace it\?$/, '$1 já está no projeto. Substituí-lo?'],
   [/^(parts\/.+): the project has it already\. Replace the files of the library\?$/, '$1: o projeto já o tem. Substituir os ficheiros da biblioteca?'],
+  // a part moved or turned onto the leads of others, refused (core/circuit-edit.js, #5162)
+  [/^(.+) cannot be turned: it would land on the leads of (.+), joining them$/, 'Não é possível rodar $1: ficaria sobre os terminais de $2, ligando-os'],
+  [/^(.+) cannot be moved there: it would land on the leads of (.+), joining them$/, 'Não é possível mover $1 para aí: ficaria sobre os terminais de $2, ligando-os'],
 ];

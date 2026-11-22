@@ -1,7 +1,9 @@
-// A circuit's moves that keep its connections (#4059), a breadboard turned (#4065), copy and paste (#4066):
+// A circuit's moves that keep its connections (#4059), a breadboard turned (#4065), refused onto other parts' leads
+// (#5162), copy and paste (#4066):
 // core/circuit-edit.js, the editor's and the MCP server's edit_circuit's. The connections checked against the circuit's
 // nets before the edit (core/circuit-net.js), an independent reckoning of what joins what.
 import { test } from 'node:test';
+import { readFileSync } from 'node:fs';
 import assert from 'node:assert/strict';
 import { partHoles, partPins, WIRE_COLORS } from '../core/circuit-parts.js';
 import { circuitNets } from '../core/circuit-net.js';
@@ -65,6 +67,28 @@ test('a breadboard turned (#4065): its holes, the parts on it and their wires wi
   const t = addPart(m, { type: 'breadboard-half', at: [40, 0], rot: 2 });
   assert.equal(t.error, undefined);
   assert.deepEqual(partHoles(part(t.model, t.id)).find((h) => h.name === 'j30'), { name: 'j30', strip: '30f', x: 11, y: -11 });
+});
+
+test('a breadboard turned or moved onto the leads of the parts beside it (#5162): refused, saying which; an IC on another\'s leads too', () => {
+  const m = JSON.parse(readFileSync(new URL('../examples/breadboard/src/breadboard.circ.json', import.meta.url), 'utf8'));
+  // (turned about a1: its hole h11 under the button's pin 2; moved 3, 5 then turned: its rails under the clock's, the
+  // switch's, the pull-down's leads)
+  assert.deepEqual(rotatePart(m, 'BB1'), { error: 'BB1 cannot be turned: it would land on the leads of B1, joining them' });
+  assert.deepEqual(rotatePart(movePart(m, 'BB1', [3, 5]).model, 'BB1'), { error: 'BB1 cannot be turned: it would land on the leads of CK1, B1, R1, S1, joining them' });
+  assert.deepEqual(movePart(m, 'BB1', [-20, 0]), { error: 'BB1 cannot be moved there: it would land on the leads of P1, B1, joining them' });
+  // (the leads' strips not joined by any: an independent reckoning, the nets of a turn made anyway)
+  const turned = { ...m, parts: m.parts.map((p) => (p.id === 'BB1' ? { ...p, rot: 1 } : p)) };
+  assert.ok(circuitNets(turned).nets.some((n) => n.pins.some((q) => q.part === 'B1') && n.holes.length), 'the button joined to a strip');
+  // moved where nothing is beside it: turned, its parts with it, the connections the same
+  const away = movePart(m, 'BB1', [0, 20]).model, r = rotatePart(away, 'BB1');
+  assert.equal(r.error, undefined);
+  assert.deepEqual(joins(r.model), joins(m));
+  // an IC moved so that its pins land on another IC's (U2's, columns 20 to 26)
+  assert.deepEqual(movePart(m, 'U1', [20, 7]), { error: 'U1 cannot be moved there: it would land on the leads of U2, joining them' });
+  assert.deepEqual(movePart(m, 'U1', [2, 7]).error, undefined);
+  // (a lead left where it was is no new contact: a move by nothing, a turn about pin 1 by four quarters)
+  assert.deepEqual(movePart(m, 'U1', [1, 7]).model, m);
+  assert.deepEqual(rotatePart(m, 'BB1', 4).model, m);
 });
 
 test('copy and paste (#4066): a breadboard with the parts on it and the wires between them, new ids, moved by', () => {

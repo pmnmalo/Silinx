@@ -249,6 +249,8 @@ export function mountCircuitEditor(container, opts = {}) {
       const nx = g[0] - drag.dx, ny = g[1] - drag.dy, p = M.parts.find((x) => x.id === drag.id);
       if (p && (p.x !== nx || p.y !== ny)) {
         const r = movePart(drag.base, drag.id, [nx, ny], { keep: keep() });
+        // (a place where it would land on other parts' leads refused: it stays at the last one it could, said on release, #5162)
+        drag.refused = r.error || null;
         if (!r.error) { M = r.model; drag.moved = nx !== drag.at[0] || ny !== drag.at[1]; render(); }
       }
     }
@@ -258,6 +260,7 @@ export function mountCircuitEditor(container, opts = {}) {
     drag = null;
     if (d?.kind === 'press' && sim) setInput(d.id, false);
     if (d?.kind === 'move' || d?.kind === 'wire') { if (d.moved) commit(); else { M = d.base; render(); } }
+    if (d?.refused) status(d.refused, true);
   });
   svg.addEventListener('dblclick', () => { if (tool === 'wire' && draft) endWire(); });
   // (a double click on the selected wire's bend: removed, #4931; its second press, the drag it started dropped)

@@ -64,26 +64,41 @@ function carry(c, ps, f, rot, keep) {
   }
 }
 
-/** A part moved: its pin 1 to `at`; a breadboard with the parts on it; `keep` (default): its wires' ends with it. */
+// the parts not moved whose leads the parts `ps` moved by f land on (#5162): a moved lead on another part's lead, or a
+// moved breadboard's hole under it, a contact the move would make (a lead in a breadboard's hole not moved is how a part
+// goes on it); none when a lead stays where it was
+function landsOn(c, ps, f) {
+  const lead = (p) => partDef(p.type)?.kind === 'breadboard' ? partHoles(p) : partPins(p);
+  const at = new Set(ps.flatMap(lead).map((q) => [q.x, q.y]).filter((o) => { const n = f(o); return n[0] !== o[0] || n[1] !== o[1]; }).map((o) => f(o).join(',')));
+  return c.parts.filter((x) => !ps.includes(x) && partDef(x.type)?.kind !== 'breadboard' && partPins(x).some((q) => at.has(`${q.x},${q.y}`))).map((x) => x.id);
+}
+// the parts `ps` carried by f, refused when they land on other parts' leads: the message, or null
+function carryOff(c, p, f, rot, keep, what) {
+  const ps = carried(c, p), hit = landsOn(c, ps, f);
+  if (hit.length) return `${p.id} cannot be ${what}: it would land on the leads of ${hit.join(', ')}, joining them`;
+  carry(c, ps, f, rot, keep);
+  return null;
+}
+
+/** A part moved: its pin 1 to `at`; a breadboard with the parts on it; `keep` (default): its wires' ends with it. Refused
+ *  when it would land on the leads of other parts (#5162). */
 export const movePart = (m, id, at, { keep = true } = {}) => edit(m, (c) => {
   const p = partIn(c, id);
   if (!p) return `no part ${id} in the circuit`;
   const pt = pointOf(c, at);
   if (pt.error) return pt.error;
   const dx = pt[0] - p.x, dy = pt[1] - p.y;
-  carry(c, carried(c, p), ([x, y]) => [x + dx, y + dy], 0, keep);
-  return null;
+  return carryOff(c, p, ([x, y]) => [x + dx, y + dy], 0, keep, 'moved there');
 });
 
 /** A part turned a quarter clockwise (`by` quarter turns), about its pin 1; a breadboard with the parts on it; `keep`
- *  (default): its wires' ends with it. */
+ *  (default): its wires' ends with it. Refused when it would land on the leads of other parts (#5162). */
 export const rotatePart = (m, id, by = 1, { keep = true } = {}) => edit(m, (c) => {
   const p = partIn(c, id);
   if (!p) return `no part ${id} in the circuit`;
   const k = ((by % 4) + 4) % 4, ox = p.x, oy = p.y;
   const f = ([x, y]) => { let dx = x - ox, dy = y - oy; for (let i = 0; i < k; i++) [dx, dy] = [-dy, dx]; return [ox + dx, oy + dy]; };
-  carry(c, carried(c, p), f, k, keep);
-  return null;
+  return carryOff(c, p, f, k, keep, 'turned');
 });
 
 // ------------------------------------------------------------------ copy and paste (#4066)
