@@ -117,8 +117,7 @@ export function mountSchEditor(container, opts = {}) {
   let hoverPin = null;
   const undoStack = [], redoStack = [];
   let changeTimer = null;
-  let destroyed = false;
-  let lastDiags = null;
+  let destroyed = false, lastDiags = null;
   let genLang = doc.lang;
   const readOnly = !!opts.readOnly;
   const canSim = !readOnly || !!opts.simulate;   // read-only blocks editing the drawing, not simulating it (#946)
@@ -207,8 +206,7 @@ export function mountSchEditor(container, opts = {}) {
 
   // ---------------- properties panel (sch-props.js); an I/O marker given a net's name (sch-join.js, #2170)
   const { joinMarker } = mountSchJoin({ doc: () => doc, nl: () => nl, container });
-  // a message to the console (the page's onMessage; the canvas's toast without one, #2718): the tools', Update Symbol's (#5277)
-  const message = text => (opts.onMessage ? opts.onMessage(text) : flash(text, 4000));
+  const message = text => (opts.onMessage ? opts.onMessage(text) : flash(text, 4000));   // (the console's, #2718: the tools', Update Symbol's, #5277)
   const { renderProps, openSelected, renamed, joinByName, renameLabel, pushInto, canPushInto } = mountProps({ joinMarker, segSel, opts, container, propBody, readOnly, doc: () => doc, sel: () => sel, nl: () => nl,
     live: () => live, modules: () => modules, setGenLang: (v) => { genLang = v; }, edit: (...a) => edit(...a),
     flash: (...a) => flash(...a), message, rotateSel: (...a) => rotateSel(...a), mirrorSel: (...a) => mirrorSel(...a),
