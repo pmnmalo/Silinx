@@ -9,6 +9,7 @@ import { simInputControls, simTraceTable } from './sim-panel.js';
 import { onNotation } from './notation.js';
 import { inputValues, traceRows } from '/core/collab-try.js';
 import { bitsText } from '/core/fsm-value.js';
+import { intervalWhileSeen } from './when-hidden.js';
 
 /** { renderPanel, resetSim, stopRun, togglePanel, tryState, setTryState } of mountFsmEditor (M(), destroyed(), diags(), panel(), sim(): its current values;
  *  commit(key) a change of the model, locked() whether it may not be changed: the transition table edited in place, #4974). */
@@ -94,7 +95,7 @@ export function mountFsmBottom(ctx) {
     const inputs = Object.fromEntries(M().inputs.map((i) => [i.name, sim()?.inputs?.[i.name] ?? 0]));
     setSim({ state: M().initial, inputs, trace: [], cycle: 0, timer: null });
   }
-  function stopRun() { if (sim()?.timer) { clearInterval(sim().timer); sim().timer = null; } }
+  function stopRun() { if (sim()?.timer) { sim().timer.stop(); sim().timer = null; } }
   function clockStep() {
     if (!sim() || !stateById(sim().state)) resetSim();
     const r = stepFsm(M(), sim().state, sim().inputs);
@@ -109,7 +110,8 @@ export function mountFsmBottom(ctx) {
   // again at every clock edge of Run, a click on ■ Stop or on an input whose press and release fell on
   // each side of an edge went to an element no longer there, and was lost (#240)
   const runBtn = btn('▶ Run', 'Apply a clock edge every second', () => {
-    if (sim().timer) stopRun(); else sim().timer = setInterval(() => { if (destroyed() || panel() !== 'sim') return stopRun(); clockStep(); }, 1000);
+    // (held while the diagram is not seen, as the Board Emulator, #5276)
+    if (sim().timer) stopRun(); else sim().timer = intervalWhileSeen(bottom, 1000, () => { if (destroyed() || panel() !== 'sim') return stopRun(); clockStep(); });
     renderPanel();
   }, 'asm-small');
   const simTools = [btn('⟲ Reset', 'Back to the initial state', () => { resetSim(); render(); renderPanel(); }, 'asm-small fsm-sim-reset'),

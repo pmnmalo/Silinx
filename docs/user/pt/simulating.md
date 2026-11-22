@@ -15,6 +15,11 @@ O Silinx tem o seu próprio simulador, o **SSim**, para VHDL e Verilog, no brows
   hexadecimal ou decimal, os sinais internos de qualquer instância acrescentados à janela.
 - **O Emulador da Placa**: o projeto numa imagem da placa, veja [O Emulador da Placa](emulator.md).
 
+Um Experimentar que corre sozinho (Executar, um relógio), o Emulador da Placa e o Emulador do Sistema fazem pausa
+enquanto não os vê (outro separador do navegador, uma janela minimizada, outro separador de documento) e continuam
+onde estavam quando volta. O menu do Emulador da Placa, **Quando oculto ▸ Continuar a executar**, mantém-nos todos a
+correr.
+
 ## Fazer uma bancada de teste
 
 - **O assistente de bancadas de teste** (*Nova Bancada de Teste…*, ou o menu de um módulo) escreve uma bancada de

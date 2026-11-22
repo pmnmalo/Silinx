@@ -21,15 +21,15 @@ import { countText, mountEmuPaint } from './emulator-paint.js';
 import { mountEmuToolbar } from './emulator-toolbar.js';
 import { emuPrintView } from './emulator-print.js';
 import { mountEmuModules } from './emulator-modules.js';
-import { prefKey } from './prefs.js';
+import { hiddenPref, setHiddenPref, watchSeen } from './when-hidden.js';
 import { BOARD_LAYOUTS } from './emulator-layouts.js';
 
 export const SPEEDS = [['real', 'Real time'], ['max', 'Max speed'], [1e5, '100 kHz'], [1e4, '10 kHz'], [1e3, '1 kHz'], [100, '100 Hz'], [10, '10 Hz'], [1, '1 Hz']];
 const FRAME_BUDGET_MS = 14;
 // what the emulator does while it is not seen (another browser tab, a minimised window, another document tab,
-// #719): 'pause' (the default: it goes on where it was when shown again) or 'run' (it simulates on, drawing nothing)
-export const HIDDEN_KEY = prefKey('silinx.emulator.hidden');
-const hiddenPref = () => { try { return localStorage.getItem(HIDDEN_KEY) === 'run' ? 'run' : 'pause'; } catch { return 'pause'; } };
+// #719): 'pause' (the default: it goes on where it was when shown again) or 'run' (it simulates on, drawing nothing);
+// one setting for every Try it (web/js/when-hidden.js, #5276)
+export { HIDDEN_KEY } from './when-hidden.js';
 
 const SVG = (tag, attrs = {}) => {
   const el = document.createElementNS('http://www.w3.org/2000/svg', tag);
@@ -270,10 +270,10 @@ export function mountEmulator(container, { design, board, assignments, title = '
   // the next frame: an animation frame while the page is visible, a timer while it is hidden (when it keeps
   // running hidden); none while paused, powered off or held (#719)
   let raf = 0, timer = 0, paintRaf = 0, dirty = true, lastFrame = 0, paints = 0;
-  // not seen: the page hidden or the emulator's document tab not the active one (inView: its element shown);
+  // not seen: the page hidden or the emulator's document tab not the active one (seen: web/js/when-hidden.js);
   // held: paused while not seen (the default setting)
-  let whenHidden = hiddenPref(), inView = true, held = false;
-  const shown = () => !document.hidden && inView;
+  let held = false, seen = null;
+  const shown = () => seen?.shown() ?? !document.hidden;
   let powered = true;   // the board's power switch: off = nothing runs, outputs dark
   // (cycles per run of the event-driven engine: the compiled one slices its runs itself)
   const maxSlice = 200000;
@@ -286,7 +286,7 @@ export function mountEmulator(container, { design, board, assignments, title = '
     container, engine, model, timing, title, compiled: () => compiled, engineNote: () => engineNote,
     powerCycle: (...a) => powerCycle(...a), running: () => running, setRunning: (...a) => setRunning(...a),
     speed: () => speed, step: (...a) => step(...a), visibility: (...a) => visibility(...a),
-    whenHidden: () => whenHidden, setSpeed: (v) => { speed = v; }, setWhenHidden: (v) => { whenHidden = v; }
+    whenHidden: hiddenPref, setSpeed: (v) => { speed = v; }, setWhenHidden: setHiddenPref
   });
 
   // the port bit on resource `res` (its pin `idx`); widgets are addressed by board resource name
@@ -421,7 +421,7 @@ export function mountEmulator(container, { design, board, assignments, title = '
   // on from where it was when seen again (real time: no backlog)
   function visibility() {
     if (destroyed) return;
-    const hold = whenHidden === 'pause' && !shown();
+    const hold = !!seen?.held();
     if (hold !== held) {
       held = hold;
       if (!held) { lastT = performance.now(); cyclesAcc = 0; rateWin = { t: lastT, cyc: 0, rate: rateWin.rate }; }
@@ -431,10 +431,8 @@ export function mountEmulator(container, { design, board, assignments, title = '
     if (held && powered) setStat(`t = ${formatTime(sim.now)} · ${countText(sim.now / period)} cycles · paused while hidden`);
     else refresh();
   }
-  document.addEventListener('visibilitychange', visibility);
-  // (the document tab: its element is hidden when another tab is active)
-  const seen = typeof IntersectionObserver === 'function' ? new IntersectionObserver((es) => { inView = es[es.length - 1].isIntersecting; visibility(); }) : null;
-  seen?.observe(root);
+  // (the page's visibility, the document tab's: its element is hidden when another tab is active; the setting)
+  seen = watchSeen(root, visibility);
 
   function frame(now) {
     if (destroyed || !running || held) return;
@@ -518,7 +516,7 @@ export function mountEmulator(container, { design, board, assignments, title = '
   setRunning(true);
 
   return withBoardControls(main, () => running, () => speed, setRunning, {   // (#4002)
-    destroy() { destroyed = true; unschedule(); cancelAnimationFrame(paintRaf); seen?.disconnect(); document.removeEventListener('visibilitychange', visibility); compiled?.destroy(); root.remove(); },
+    destroy() { destroyed = true; unschedule(); cancelAnimationFrame(paintRaf); seen.destroy(); compiled?.destroy(); root.remove(); },
     pause: () => setRunning(false),
     power: (on) => setPower(!!on),
     get powered() { return powered; },
