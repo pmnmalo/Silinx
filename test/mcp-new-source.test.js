@@ -40,7 +40,7 @@ test('new_source: a module with its ports and its test bench, in VHDL and in Ver
     const t = await ok('new_source', { project: 'p', type: 'test_bench', name: `tb_cnt_${ext}`, language: lang, module: `cnt_${ext}` });
     assert.equal(t.text, `Created Test Bench (${L}) 'sim/tb_cnt_${ext}.${ext}'.`);
     assert.equal(t.data.role, 'sim');
-    assert.match(await checks(`tb_cnt_${ext}`, true), new RegExp(`^Process "Check Syntax" of <tb_cnt_${ext}> completed successfully \\(\\d+ signals, \\d+ processes\\)\\.$`));
+    assert.match(await checks(`tb_cnt_${ext}`, true), new RegExp(`^Process "Check Syntax" of <tb_cnt_${ext}> completed successfully \\(\\d+ signals?, \\d+ process(?:es)?\\)\\.$`));
     const s = await ok('simulate', { project: 'p', top: `tb_cnt_${ext}`, time_ns: 200, signals: ['clk', 'rst'] });
     assert.equal(s.data.failed, false, s.text);
     assert.deepEqual(s.data.warnings, []);
@@ -67,12 +67,12 @@ test('new_source: the drawings, empty, in VHDL and in Verilog; their Check Synta
       if (hdl) assert.match(read(hdl), lang === 'vhdl' ? new RegExp(`^entity ${type}_${ext} is`, 'm') : new RegExp(`^module ${type}_${ext}\\b`, 'm'));
     }
     assert.equal(await checks(`schematic_${ext}`), `Process "Check Syntax" of <schematic_${ext}> completed successfully (0 signals, 0 processes).`);
-    assert.equal(await checks(`petri_${ext}`), `Process "Check Syntax" of <petri_${ext}> completed successfully (2 signals, 1 processes).`);
+    assert.equal(await checks(`petri_${ext}`), `Process "Check Syntax" of <petri_${ext}> completed successfully (2 signals, 1 process).`);
     // a circuit (#3897): its breadboard and its supply, no ports
     assert.equal(await checks(`circuit_${ext}`), `Process "Check Syntax" of <circuit_${ext}> completed successfully (0 signals, 0 processes).`);
     const line = lang === 'vhdl' ? 13 : 9;
     assert.equal(await checks(`boolean_${ext}`), ['a', 'b', 'c'].map(i => `WARNING:Silinx:647 - "src/boolean_${ext}.${lang === 'vhdl' ? 'vhd' : 'v'}" Line ${line}: Input <${i}> is never used.`).join('\n')
-      + `\nProcess "Check Syntax" of <boolean_${ext}> completed successfully with 3 warning(s) (4 signals, 1 processes).`);
+      + `\nProcess "Check Syntax" of <boolean_${ext}> completed successfully with 3 warning(s) (4 signals, 1 process).`);
     // an empty state diagram or ASM chart: no module until it has a state, its errors said on it (#3934)
     const WHY = { fsm: 'The diagram has no states: double-click the drawing to add one', asm: 'The chart has no states; No initial (reset) state selected' };
     for (const k of ['fsm', 'asm']) {
@@ -134,7 +134,7 @@ test('new_source: the Digital Electronic Circuit Wizard\'s assemblies of ICs (#4
     const d = JSON.parse(read(`src/asm_${template}.circ.json`));
     assert.deepEqual(d.parts.filter((p) => /^(U|DS)\d/.test(p.id)).map((p) => p.type), chips, template);
     // (its HDL checked with no warnings: "completed successfully")
-    assert.match(await checks(`asm_${template}`), new RegExp(`^Process "Check Syntax" of <asm_${template}> completed successfully \\(\\d+ signals, \\d+ processes\\)\\.$`), template);
+    assert.match(await checks(`asm_${template}`), new RegExp(`^Process "Check Syntax" of <asm_${template}> completed successfully \\(\\d+ signals?, \\d+ process(?:es)?\\)\\.$`), template);
   }
   assert.equal(JSON.parse(read('src/asm_counter.circ.json')).parts.find((p) => p.type === 'clock').hz, 10);
   // the defaults: a 7490 at 1 Hz
@@ -152,7 +152,7 @@ test('write_file: a drawing with no HDL file gets it, then follows its drawing (
   assert.equal(JSON.parse(read('src/maj.bool.json')).generatedFile, 'src/maj.vhd');
   assert.match(read('src/maj.vhd'), /f <= \(b and c\) or \(a and c\) or \(a and b\);/);
   assert.equal((await ok('project_info', { project: 'p' })).data.files.find(f => f.path === 'src/maj.vhd')?.role, 'design');
-  assert.equal(await checks('maj'), 'Process "Check Syntax" of <maj> completed successfully (4 signals, 1 processes).');
+  assert.equal(await checks('maj'), 'Process "Check Syntax" of <maj> completed successfully (4 signals, 1 process).');
   // written again: its HDL file follows it
   const again = table('01111111', { generatedFile: 'src/maj.vhd' });
   assert.deepEqual((await ok('write_file', { project: 'p', path: 'src/maj.bool.json', text: again })).data.hdl, { file: 'src/maj.vhd', written: true, removed: null, stale: null });

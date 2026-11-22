@@ -225,7 +225,7 @@ test('set_top on an instantiated module (#2877): project_info, Check Syntax and 
     const info = await ok('project_info', { project: 'nested' });
     assert.equal(info.data.top, top);
     assert.match(info.text, new RegExp(`^nested: top ${top}, `));
-    assert.equal((await ok('check_syntax', { project: 'nested' })).text, `Process "Check Syntax" of <${top}> completed successfully (2 signals, 1 processes).`);
+    assert.equal((await ok('check_syntax', { project: 'nested' })).text, `Process "Check Syntax" of <${top}> completed successfully (2 signals, 1 process).`);
     const synth = await ok('run_process', { project: 'nested', process: 'synthesize', log_lines: 3 });
     assert.equal(synth.text.split('\n').pop(), `Process "synthesize" of <${top}> completed successfully with 1 warning(s) (Silinx toolchain).`);
     assert.deepEqual(synth.data.errors, []);

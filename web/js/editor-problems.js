@@ -47,4 +47,4 @@ export function editorProblems({ file, tool, what = 'Validate', goto, inLanguage
     clear: () => { offLang(); set([]); },
   };
 }
-onLanguageChange(() => { for (const ln of document.querySelectorAll('#console-log .ln.mc-link')) ln.title = t(SHOW); });
+onLanguageChange(() => { for (const ln of document.querySelectorAll('#console-log .ln.mc-link:not(.mc-file)')) ln.title = t(SHOW); });

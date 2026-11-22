@@ -60,7 +60,7 @@ test('test_bench_wizard: given vectors, one expected value wrong: the mismatch a
   const sk = await ok('test_bench_wizard', { project: 'traffic', module: 'top', name: 'tb_sk', stimulus: 'none' });
   assert.equal(sk.text, ['Test Bench Wizard: created sim/tb_sk.vhd (VHDL), the test bench tb_sk of top.', 'Clock: clk, 20 ns', 'Reset: none',
     'Vectors: none — a skeleton: write the stimulus (set the inputs, wait, check the outputs) where the comments show.', RUN].join('\n'));
-  assert.match((await ok('check_syntax', { project: 'traffic', top: 'tb_sk', simulation: true })).text, /^Process "Check Syntax" of <tb_sk> completed successfully \(\d+ signals, \d+ processes\)\.$/);
+  assert.match((await ok('check_syntax', { project: 'traffic', top: 'tb_sk', simulation: true })).text, /^Process "Check Syntax" of <tb_sk> completed successfully \(\d+ signals?, \d+ process(?:es)?\)\.$/);
 });
 
 test('test_bench_wizard: traffic\'s timer, its port named done (#2740): the bench\'s own is tb_done, TEST PASSED in VHDL and in Verilog', async () => {

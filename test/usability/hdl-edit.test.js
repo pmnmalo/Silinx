@@ -11,6 +11,7 @@ import { setupUi, uiTest, makeProject, readWs } from '../ui/harness.js';
 import { HdlSession } from './lib/hdl-session.js';
 import { DESIGNS } from './lib/hdl-designs.js';
 import { editorState } from './lib/hdl-actions.js';
+import { RUN } from './lib/session.js';
 
 const FILE = 'test/usability/hdl-edit.test.js';
 let env;
@@ -19,7 +20,7 @@ after(async () => { await env?.teardown?.(); });
 const E = () => env;
 
 // each language: Check Syntax's lines with the mistake, and once fixed (the console's own, in English in any language;
-// Verilog's "1 processes": #5222)
+// Verilog's one process in the singular: #5222)
 const CHECK = {
   vhdl: {
     failed: [
@@ -41,7 +42,7 @@ const CHECK = {
     failed: [
       'Started : "Check Syntax" of src/counter.v.',
       'Analyzing Verilog file "src/counter.v" into library work',
-      'Elaborating module <counter>: 4 signals, 1 processes.',
+      'Elaborating module <counter>: 4 signals, 1 process.',
       'ERROR:HDLCompiler - "src/counter.v" Line 3: expected \';\' after \'4\'d0\'',
       'Process "Check Syntax" failed (1 error(s), 0 warning(s))',
     ],
@@ -49,7 +50,7 @@ const CHECK = {
     clean: [
       'Started : "Check Syntax" of src/counter.v.',
       'Analyzing Verilog file "src/counter.v" into library work',
-      'Elaborating module <counter>: 4 signals, 1 processes.',
+      'Elaborating module <counter>: 4 signals, 1 process.',
       'Process "Check Syntax" completed successfully',
     ],
   },
@@ -126,8 +127,7 @@ uiTest('usability: hdl edit: vhdl: Enter after a keyword typed whole makes the n
 }, { timeout: 120000 });
 
 // the console's line of Check Syntax's error clicked: the editor at its line, as the Errors tab's row does
-uiTest('usability: hdl edit: vhdl: Check Syntax\'s error line in the console clicked goes to its line (#5221)', E, async (page, _env, t) => {
-  t.todo('#5221: the console\'s line is not a link');
+uiTest('usability: hdl edit: vhdl: Check Syntax\'s error line in the console clicked goes to its line (#5221)', E, async (page) => {
   const D = DESIGNS.vhdl, C = CHECK.vhdl;
   const name = 'UsabHdlConsoleLink';
   await makeProject(env, { name, files: { [D.file]: D.text.replace('r <= r + 1;', 'r <= r + 1') }, top: 'counter' });
@@ -135,6 +135,10 @@ uiTest('usability: hdl edit: vhdl: Check Syntax\'s error line in the console cli
   const s = new HdlSession(page, env, { file: FILE, title: 'hdl edit: vhdl: the console\'s error line' });
   await s.open(D.file);
   await checkSyntax(s, C.failed);
+  // the error's line a link, its tooltip in the interface's language; the other lines none
+  const links = await page.eval(() => [...document.querySelectorAll('#console-log .ln.mc-link')].map((l) => [l.textContent, l.title]));
+  assert.deepEqual(links, [[C.failed[3], RUN.lang === 'pt' ? 'Abrir o ficheiro nesta linha' : 'Open the file at this line']]);
+  assert.notEqual((await editorState(page)).line, C.line, 'the cursor elsewhere before the click');
   await s.step('click the console\'s error line', {}, () => s.a.clickConsoleLine(C.failed[3]), {
     changes: false,
     expect: async () => { const e = await editorState(page); assert.deepEqual([e.line, e.focused], [C.line, true]); },
@@ -142,12 +146,13 @@ uiTest('usability: hdl edit: vhdl: Check Syntax\'s error line in the console cli
 });
 
 // the elaboration's line: one process, not "1 processes"
-uiTest('usability: hdl edit: verilog: Check Syntax says "1 process" (#5222)', E, async (page, _env, t) => {
-  t.todo('#5222: it says "1 processes"');
+uiTest('usability: hdl edit: verilog: Check Syntax says "1 process" (#5222)', E, async (page) => {
   const D = DESIGNS.verilog;
   await makeProject(env, { name: 'UsabHdlPlural', files: { [D.file]: D.text }, top: 'counter' });
   await page.openProject('UsabHdlPlural');
   const s = new HdlSession(page, env, { file: FILE, title: 'hdl edit: verilog: one process' });
   await s.open(D.file);
-  await checkSyntax(s, CHECK.verilog.clean.map((l) => l.replace('1 processes', '1 process')));
+  await checkSyntax(s, CHECK.verilog.clean);
+  assert.ok(CHECK.verilog.clean.includes('Elaborating module <counter>: 4 signals, 1 process.'));
+  assert.deepEqual(warningsOf(await page.eval(() => window.__console())), []);
 });

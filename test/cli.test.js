@@ -133,7 +133,7 @@ test('check: OK design (exit 0), --top, errors (exit 1), missing project (exit 1
   const dir = await project('Chk');
   let r = await cli(['check', dir]);
   assert.equal(r.code, 0, r.err);
-  assert.match(r.out, /^OK: top elaborated \(\d+ signals, \d+ processes\)$/m);
+  assert.match(r.out, /^OK: top elaborated \(\d+ signals?, \d+ process(?:es)?\)$/m);
   r = await cli(['check', '--top', 'top', dir]);
   assert.equal(r.code, 0, r.err);
   r = await cli(['check'], { cwd: dir });   // default: the current directory

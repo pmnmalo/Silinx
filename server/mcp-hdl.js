@@ -8,6 +8,7 @@ import * as P from './projects.js';
 import { toolError, clip, elaborateView, diagLine, diagJson, diagMessage, STR, PROJECT } from './mcp-util.js';
 import { makeMessage, messageData } from '../core/message.js';
 import { isDesignOnly } from '../core/project-kind.js';
+import { designSize } from '../core/hdl-check.js';
 import { designDiags } from './mcp-design-only.js';
 import { parseTime, parseValue } from '../core/ssim-values.js';
 import { findSignalIn, injectForceIn } from '../core/ssim-forces.js';
@@ -187,7 +188,7 @@ export const HDL_TOOLS = [
       const errors = diags.filter(d => d.severity === 'error'), warnings = diags.filter(d => d.severity !== 'error');
       const ok = !errors.length && !!design?.top;
       const lines = [...diags.map(diagLine),
-        ok ? `Process "${proc}" of <${mod}> completed successfully${warnings.length ? ` with ${warnings.length} warning(s)` : ''} (${design.signals.length} signals, ${design.procs.length} processes).`
+        ok ? `Process "${proc}" of <${mod}> completed successfully${warnings.length ? ` with ${warnings.length} warning(s)` : ''} (${designSize(design)}).`
           : `Process "${proc}" of <${mod}> failed (${errors.length} error(s), ${warnings.length} warning(s)).`];
       // (its messages, #4749: the console's lines of the interface's run, its result's too)
       const messages = [...diags.map(d => diagMessage(d, { process: proc })), messageData(makeMessage({ text: lines.at(-1), severity: ok ? 'ok' : 'error', source: 'check', process: proc }))];

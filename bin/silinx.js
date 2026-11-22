@@ -5,6 +5,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { within } from '../server/paths.js';
 import { parseDescription } from '../core/project-json.js';
+import { designSize } from '../core/hdl-check.js';
 
 const [cmd = 'serve', ...args] = process.argv.slice(2);
 const opt = (name, def) => { const i = args.indexOf(`--${name}`); return i >= 0 ? args[i + 1] : def; };
@@ -94,7 +95,7 @@ async function main() {
       const diags = [...lib.errors, ...design.diags];
       for (const d of diags) console.log(`${d.severity.toUpperCase()}: ${d.file}:${d.line}:${d.col}: ${d.message}`);
       if (diags.some(d => d.severity === 'error')) process.exit(1);
-      if (cmd === 'check') { console.log(`OK: ${top} elaborated (${design.signals.length} signals, ${design.procs.length} processes)`); break; }
+      if (cmd === 'check') { console.log(`OK: ${top} elaborated (${designSize(design)})`); break; }
       const files = new Map(sources.map(s => [s.path, s.text]));
       const sim = new Simulator(design, { files, onLog: e => console.log(`[${(e.time / 1000).toFixed(3)} ns] ${e.kind === 'print' ? '' : e.kind.toUpperCase() + ': '}${e.text}`) });
       const until = parseFloat(opt('time', '1000')) * 1000;
