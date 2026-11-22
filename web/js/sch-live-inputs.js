@@ -3,8 +3,9 @@
 // bidirectional port (a value typed in a radix, +1 / −1, 0, Z to release the bus).
 import { fmtValue, parseValue } from '/core/schlive.js';
 import { t } from './i18n.js';
+import { nextFrame, watchSeen } from './when-hidden.js';
 
-/** { closeEditor, openEditor, startClock, stopAll, stopClock } of liveController (destroyed(), editor(), lastT(), radix(), raf(): its current values). */
+/** { closeEditor, destroy, openEditor, startClock, stopAll, stopClock } of liveController (destroyed(), editor(), lastT(), radix(), raf(): its current values). */
 export function mountLiveInputs(parts) {   // (parts: ctx is the editor's, as in liveController)
   const {
     ctx, live, act, canvas, clockBoxes, destroyed, doc, editor, h, lastT, radix, raf, running, update, setRaf, setLastT,
@@ -12,10 +13,14 @@ export function mountLiveInputs(parts) {   // (parts: ctx is the editor's, as in
   } = parts;
 
   // ------------------------------------------------------------------ clocks
+  // (raf(): the next frame's cancel; held while the schematic is not seen, as the Board Emulator, and on again in real
+  // time, the time it was held not caught up, #5276)
+  const seen = watchSeen(canvas, () => { if (seen.held()) { raf()?.(); setRaf(0); } else go(); });
+  function go() { if (!raf() && running.size && !destroyed() && !seen.held()) { setLastT(performance.now()); setRaf(nextFrame(tick)); } }
   function startClock(id, rate) {
     running.set(id, { rate, acc: 0 });
     syncClockBtns();
-    if (!raf()) { setLastT(performance.now()); setRaf(requestAnimationFrame(tick)); }
+    go();
   }
   function stopClock(id) { running.delete(id); syncClockBtns(); }
   function stopAll() { running.clear(); syncClockBtns(); }
@@ -29,7 +34,7 @@ export function mountLiveInputs(parts) {   // (parts: ctx is the editor's, as in
   }
   function tick(t) {
     setRaf(0);
-    if (destroyed() || !running.size) return;
+    if (destroyed() || !running.size || seen.held()) return;
     const dt = Math.min(0.25, Math.max(0, (t - lastT()) / 1000));
     setLastT(t);
     let any = false;
@@ -39,7 +44,7 @@ export function mountLiveInputs(parts) {   // (parts: ctx is the editor's, as in
       if (n > 0) { st.acc -= n; live.cycles([id], n); any = true; }
     }
     if (any) update();
-    if (running.size && !live.error) setRaf(requestAnimationFrame(tick));
+    if (running.size && !live.error) setRaf(nextFrame(tick));
   }
 
   // ------------------------------------------------------------------ bus value editor
@@ -93,5 +98,5 @@ export function mountLiveInputs(parts) {   // (parts: ctx is the editor's, as in
   }
   function closeEditor() { if (editor()) { editor().box.remove(); setEditor(null); } }
 
-  return { closeEditor, openEditor, startClock, stopAll, stopClock };
+  return { closeEditor, destroy: () => seen.destroy(), openEditor, startClock, stopAll, stopClock };
 }

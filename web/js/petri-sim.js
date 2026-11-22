@@ -5,6 +5,7 @@ import { analyzePetri } from '/core/petri-analysis.js';
 import { clockStep, enabledTransitions, fire, initialMarking, isDeadlock, outputsOf } from '/core/petri.js';
 import { h } from './ui.js';
 import { inputValues } from '/core/collab-try.js';
+import { intervalWhileSeen } from './when-hidden.js';
 
 /** { analysis, envOf, fireOne, renderPanel, resetSim, togglePanel, tryState, setTryState } of mountPetriEditor (M(), destroyed(), panel(), sim(): its current values). */
 export function mountPetriSim(ctx) {
@@ -16,7 +17,7 @@ export function mountPetriSim(ctx) {
   // ---------------------------------------------------------------- simulation panel
   const envOf = () => Object.fromEntries(M().inputs.map(i => [i.name, BigInt(sim()?.inputs[i.name] ?? 0)]));
   function resetSim(rerender = true) {
-    if (sim()?.timer) clearInterval(sim().timer);
+    sim()?.timer?.stop();
     setSim({ marking: initialMarking(M()), fired: [], inputs: sim()?.inputs || {}, log: [], timer: null });
     if (rerender) render();
   }
@@ -27,7 +28,7 @@ export function mountPetriSim(ctx) {
     panelBody.classList.toggle('try-it-body', panel() === 'sim');   // (its body a lighter green, #3924)
     for (const [k, b] of Object.entries(tabBtns)) b.classList.toggle('active', k === panel());
     if (panel() === 'sim' && !sim()) resetSim(false);
-    if (panel() !== 'sim' && sim()) { if (sim().timer) clearInterval(sim().timer); setSim(null); }
+    if (panel() !== 'sim' && sim()) { sim().timer?.stop(); setSim(null); }
     render();
   }
   const say = (msg) => { sim().log.unshift(msg); sim().log.length = Math.min(sim().log.length, 50); sim().steps = (sim().steps || 0) + 1; };
@@ -54,7 +55,8 @@ export function mountPetriSim(ctx) {
   // clock step of Run, a click on ■ Stop or on an input whose press and release fell on each side of
   // a step went to an element no longer there, and was lost
   const runBtn = btn('▶▶ Run', 'Clock steps every half second', () => {
-    if (sim().timer) { clearInterval(sim().timer); sim().timer = null; } else sim().timer = setInterval(() => { if (!destroyed() && sim()) step(); }, 500);
+    // (held while the net is not seen, as the Board Emulator, #5276)
+    if (sim().timer) { sim().timer.stop(); sim().timer = null; } else sim().timer = intervalWhileSeen(bottom, 500, () => { if (!destroyed() && sim()) step(); });
     render();
   });
   const simTools = [btn('⏭ Clock step', 'A clock edge: every enabled transition whose guard is true fires (priority order), as the hardware does', () => step()),
@@ -116,7 +118,7 @@ export function mountPetriSim(ctx) {
     if (!o) { if (panel() === 'sim') togglePanel('sim'); return; }
     if (panel() !== 'sim') togglePanel('sim');
     const s = sim(), sn = o.snap || {}, m = sn.marking && typeof sn.marking === 'object' ? sn.marking : {};
-    if (s.timer) { clearInterval(s.timer); s.timer = null; }
+    if (s.timer) { s.timer.stop(); s.timer = null; }
     s.marking = Object.fromEntries(M().places.map(p => [p.id, Number.isSafeInteger(m[p.id]) && m[p.id] >= 0 ? m[p.id] : 0]));
     s.fired = Array.isArray(sn.fired) ? sn.fired.filter(id => transOf(id)) : [];
     s.inputs = { ...s.inputs, ...inputValues(sn.inputs, M().inputs.map(i => i.name)) };

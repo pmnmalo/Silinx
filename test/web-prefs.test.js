@@ -60,7 +60,7 @@ test('the constants that name the settings\' keys are made by prefKey', () => {
   const src = (f) => fs.readFileSync(path.join(ROOT, 'web/js', f), 'utf8');
   const defs = {
     'silinx.js': ['UI_KEY', 'THEME_KEY'], 'narrow.js': ['DRAWER_KEY', 'PROPS_KEY', 'SYMBOLS_KEY'], 'i18n.js': ['KEY'], 'diaghelp.js': ['KEY'],
-    'ink-dialog.js': ['SAMPLES_KEY'], 'emulator.js': ['HIDDEN_KEY'], 'tasks.js': ['TASKS_KEY'], 'wizards.js': ['UPDATE_CACHE', 'UPDATE_ON_START'],
+    'ink-dialog.js': ['SAMPLES_KEY'], 'when-hidden.js': ['HIDDEN_KEY'], 'tasks.js': ['TASKS_KEY'], 'wizards.js': ['UPDATE_CACHE', 'UPDATE_ON_START'],
   };
   for (const [f, names] of Object.entries(defs)) {
     for (const n of names) assert.match(src(f), new RegExp(`const ${n} = prefKey\\('silinx\\.`), `${f} ${n}`);

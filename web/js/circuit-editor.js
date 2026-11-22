@@ -38,6 +38,7 @@ import { mountCircuitParts } from './circuit-parts-panel.js';
 import { printDiagram, svgSnapshot } from './print.js';
 import { onLayoutToggled } from './layout-fit.js';
 import { onSymbolStandard } from './symbol-standard.js';
+import { intervalWhileSeen } from './when-hidden.js';
 
 export function mountCircuitEditor(container, opts = {}) {
   let M = normalizeCircuit(opts.model || newCircuit('circuit'));
@@ -131,14 +132,15 @@ export function mountCircuitEditor(container, opts = {}) {
     sim = createCircuitSim(M, { runner: opts.hdl?.()?.runner });
     recordCircuit(sim, steps = tryOps(null));   // (its steps, as live sharing sends them, #4244)
     runSim();
-    // (a clock source flips its level every half period, in real time; the simulated time moves on by as much)
-    ticks = M.parts.filter((p) => p.type === 'clock').map((p) => setInterval(() => {
+    // (a clock source flips its level every half period, in real time; the simulated time moves on by as much; held
+    // while the circuit is not seen, its time standing still, and on again with no burst of ticks, #5276)
+    ticks = M.parts.filter((p) => p.type === 'clock').map((p) => intervalWhileSeen(root, 500 / (p.hz || 1), () => {
       if (!sim || destroyed) return;
       sim.advance(5e8 / (p.hz || 1));
       setInput(p.id, !sim.inputs()[p.id]);
-    }, 500 / (p.hz || 1)));
+    }));
   }
-  function stopTicks() { for (const t of ticks) clearInterval(t); ticks = []; }
+  function stopTicks() { for (const t of ticks) t.stop(); ticks = []; }
   // one of a part's inputs set while trying it, then run
   function setInput(id, v, index = 0) { sim.set(id, v, index); runSim(); }
   function runSim() {

@@ -3,7 +3,7 @@
 // netlist, #490, #878); in its menu (the three dots at its right, as the diagram editors', #2666) the engine (compiled or
 // event-driven, #418), what it does while not seen and the modules shown (emulator-modules.js).
 import { h } from './dom.js';
-import { HIDDEN_KEY, SPEEDS } from './emulator.js';
+import { SPEEDS } from './emulator.js';
 import { menuChoice, toolbarMenu } from './toolbar-menu.js';
 import { panelToggle, PROPS_KEY } from './narrow.js';
 import { statusLine } from './status-line.js';
@@ -28,8 +28,8 @@ export function mountEmuToolbar(ctx) {
   line.el.append(stat);
   // what it does while not seen (#719)
   const hidden = menuChoice('When hidden', [{ value: 'pause', label: 'Pause' }, { value: 'run', label: 'Keep running' }], {
-    value: whenHidden(), title: 'What the emulator does while it is not seen (another browser tab, a minimised window, another document tab): pause, and go on where it was when shown again, or keep running',
-    onChange: (v) => { setWhenHidden(v); try { localStorage.setItem(HIDDEN_KEY, whenHidden()); } catch { /* ignore */ } visibility(); } });
+    value: whenHidden(), title: 'What the emulator and every Try it do while not seen (another browser tab, a minimised window, another document tab): pause, and go on where they were when shown again, or keep running',
+    onChange: (v) => { setWhenHidden(v); visibility(); } });
   // timing scale: the top's large integer generics divided (see core/emulate.js)
   let timingSel = null;
   if (timing?.gens?.length) {

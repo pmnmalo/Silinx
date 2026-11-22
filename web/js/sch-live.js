@@ -234,7 +234,7 @@ function liveController(ctx, live) {
   function act(fn) { fn(); update(); }
 
   // ------------------------------------------------------------------ clocks (sch-live-inputs.js)
-  const { closeEditor, openEditor, startClock, stopAll, stopClock } = mountLiveInputs({
+  const { closeEditor, destroy: destroyInputs, openEditor, startClock, stopAll, stopClock } = mountLiveInputs({
     ctx, live, act, canvas, clockBoxes, destroyed: () => destroyed, doc, editor: () => editor, h, lastT: () => lastT,
     radix: () => radix, raf: () => raf, running, update, setRaf: (v) => { raf = v; }, setLastT: (v) => { lastT = v; },
     setEditor: (v) => { editor = v; }
@@ -318,7 +318,8 @@ function liveController(ctx, live) {
 
   function destroy() {
     destroyed = true;
-    if (raf) cancelAnimationFrame(raf);
+    if (raf) raf();
+    destroyInputs();
     running.clear();
     closeEditor();
     tip.remove();

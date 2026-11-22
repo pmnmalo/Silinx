@@ -327,6 +327,6 @@ export function mountPetriEditor(container, opts = {}) {
     showPanel: (p) => { if (panel !== p) togglePanel(p); }, get panel() { return panel; },   // ('sim': a link's view=try, #2869)
     // (a problem's item, from the console)
     select(ref) { if (!nodeOf(ref.id) && !M.arcs.some(a => a.id === ref.id)) return; sel = { kind: ref.kind, id: ref.id }; render(); },
-    destroy() { destroyed = true; dock.destroy(); ro?.disconnect(); offLayout(); if (sim?.timer) clearInterval(sim.timer); container.innerHTML = ''; },
+    destroy() { destroyed = true; dock.destroy(); ro?.disconnect(); offLayout(); sim?.timer?.stop(); container.innerHTML = ''; },
   };
 }

@@ -7,7 +7,9 @@
 // nodes' and the decoders' messages in the console (`onMessage`), never in the view (docs/UI-GUIDELINES.md).
 //
 //   const v = mountSystemEmulator(host, { system, prepare(system) -> { run, inputs } | { error }, onMessage(text, level) });
-//   v.run(); v.pause(); v.restart(); v.press(node, res, idx, on); v.state(); v.destroy();
+//   v.run(); v.pause(); v.restart(); v.press(node, res, idx, on); v.state(); v.held(); v.destroy();
+// While it is not seen (another browser tab, another document tab) it is held, as the Board Emulator (#5276:
+// web/js/when-hidden.js, its When hidden setting), and on in real time when seen again, the time held not caught up.
 import { h } from './ui.js';
 import { mountBoardParts } from './emulator-board.js';
 import { injectStyle } from './emulator.js';
@@ -19,6 +21,7 @@ import { panelToggle, PROPS_KEY } from './narrow.js';
 import { emulationBoards, pinOf } from '/core/system-emu.js';
 import { pressHolds } from '/core/emulate-press.js';
 import { runTimeText } from '/core/system-run.js';
+import { nextFrame, watchSeen } from './when-hidden.js';
 
 const MAX_STEP = 50e9;     // the most one run goes ahead (ps): 50 ms
 const BEHIND = 200e9;      // behind real time by more (ps): the backlog dropped
@@ -43,6 +46,14 @@ export function mountSystemEmulator(host, opts) {
   h('div', { class: 'asm-body' }, h('div', { class: 'asm-main sys-emu-main' }, boardsEl), side), info.el);
   host.replaceChildren(root);
   mountSideFold({ root, side, key: 'silinx.sysemu.side.folded', titles: { fold: 'Collapse the terminals panel', unfold: 'Expand the terminals panel' } });
+  // (next: the next frame's cancel; none while held)
+  let next = null;
+  const seen = watchSeen(root, () => {
+    if (seen.held()) { next?.(); next = null; return; }
+    if (running && report) { wall0 = performance.now(); sim0 = report.now; rateAt = { wall: wall0, sim: sim0 }; }
+    schedule();
+  });
+  function schedule() { if (!next && running && !destroyed && !seen.held()) next = nextFrame(() => { next = null; frame(); }); }
 
   // an FPGA node's board: the Board Emulator's parts, its inputs the node's pins
   function fpgaView(b) {
@@ -105,7 +116,7 @@ export function mountSystemEmulator(host, opts) {
   }
   // a frame: the run ahead to real time (at most MAX_STEP a run, one at a time), what the boards showed painted
   async function frame() {
-    if (!running || busy || destroyed) return;
+    if (!running || busy || destroyed || seen.held()) return;
     const target = sim0 + (performance.now() - wall0) * 1e9;
     if (target - report.now > BEHIND) { sim0 = report.now; wall0 = performance.now(); }   // (too slow: the backlog dropped)
     busy = true; clock.busy = true;
@@ -119,17 +130,18 @@ export function mountSystemEmulator(host, opts) {
     if (wall - rateAt.wall > 500) { rate = (report.now - rateAt.sim) / 1e9 / (wall - rateAt.wall); rateAt = { wall, sim: report.now }; }
     paint();
     if (st.finished) { pause(); return; }
-    requestAnimationFrame(frame);
+    schedule();
   }
   async function run() {
     if (running || !(await prepare())) return;
     running = true; runBtn.textContent = '⏸ Pause';
     wall0 = performance.now(); sim0 = report.now; rateAt = { wall: wall0, sim: sim0 }; rate = null;
-    requestAnimationFrame(frame);
+    schedule();
   }
   function pause() {
     if (!running) return;
     running = false; runBtn.textContent = '▶ Run';
+    next?.(); next = null;
     holds.flush();
     if (report) say(`Emulate System: paused at ${runTimeText(report.now)}.`);
     paint();
@@ -149,6 +161,8 @@ export function mountSystemEmulator(host, opts) {
       ready.set(node, pinOf(x), on ? 1 : 0);
     },
     state: () => (report ? { now: report.now, running, boards: shown, terminals: report.terminals, warnings: report.warnings, errors: report.errors } : null),
-    destroy() { destroyed = true; running = false; ready?.close(); host.replaceChildren(); },
+    /** Held while not seen (#5276). */
+    held: () => running && seen.held(),
+    destroy() { destroyed = true; running = false; next?.(); seen.destroy(); ready?.close(); host.replaceChildren(); },
   };
 }
