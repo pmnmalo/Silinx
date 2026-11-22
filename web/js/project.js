@@ -108,6 +108,9 @@ async function openProjectNow(name, { startup = false } = {}) {
   if (api.standalone) cancelPrefetch = afterOpening(() => S.project?.name === name && import('./open-flow-browser.js').then(m => m.prepareBrowserFlow(S.project.device)).catch(() => {}));
   // where the user was in this project; the Design Summary the first time (its documents reopened out of sight: the
   // work area shown once they are in place, at start-up once its task is back too, web/js/app.js, #1339)
+  // (the page starts on the Start page, #5284: the project's Design page, once it opens at start-up or before any page
+  // was chosen, unless its kept view shows another)
+  if (startup || panes.leftPage === undefined) showLeftPage('design', { save: false });
   document.documentElement.dataset.restoring = '';
   try { if (!await restoreViewState(name)) openSummary({ background: true }); } finally { if (!startup) delete document.documentElement.dataset.restoring; }
   // (said once its documents are in place, the tasks they brought to the front followed (a tick later): the Tasks

@@ -386,7 +386,7 @@ export const PT = {
   'Implement': 'Implementar', 'Emulate': 'Emular', 'Design flow': 'Fluxo de projeto',
   'Check Syntax of the selected module': 'Verificar a sintaxe do módulo selecionado',
   'Simulate Behavioral Model of the selected module': 'Simular o modelo comportamental do módulo selecionado',
-  'No project open': 'Nenhum projeto aberto', 'Main menu': 'Menu principal', 'Documents': 'Documentos', 'Panels': 'Painéis',
+  'Main menu': 'Menu principal', 'Documents': 'Documentos', 'Panels': 'Painéis',
   'Document': 'Documento', 'Panes': 'Áreas', 'More tools': 'Mais ferramentas',   // (a phone's panes and toolbar, #5121)
   'Read-only on a phone': 'Só de leitura num telemóvel', 'Edit it on a tablet or a computer': 'Edite-o num tablet ou num computador',   // (a phone's editors, #5121)
   'Switches and buttons': 'Interruptores e botões',   // (a phone's Board Emulator, #5121)
