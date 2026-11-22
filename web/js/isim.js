@@ -20,6 +20,7 @@ export { UNITS, parseTime, parseValue } from '/core/ssim-values.js';
 import { onPrefsChange } from './silinx.js';
 import { normalizeStimuli } from '/core/stimuli.js';
 import { h } from './dom.js';
+import { isPhone } from './narrow.js';
 import { mountConsole } from './isim-console.js';
 import { mountForces } from './isim-forces.js';
 import { mountDialogs } from './isim-dialogs.js';
@@ -217,7 +218,8 @@ export function mountISim(container, opts = {}) {
     rows: [], rowSeq: 1, sel: new Set(), anchor: null,
     cursor: 0, markers: [], activeMarker: null, markerSeq: 1,
     t0: 0, scale: 1000, fit: true,
-    nameW: 180, valW: 120, scrollY: 0,
+    // (on a phone, #5121: narrower, the waves most of the width; a wave configuration's widths win)
+    nameW: isPhone() ? 100 : 180, valW: isPhone() ? 56 : 120, scrollY: 0,
     curInst: design.top, selObj: new Set(),
     forces: [], forceSeq: 1,
     running: false, breakReq: false, runTarget: 0, runStart: 0,

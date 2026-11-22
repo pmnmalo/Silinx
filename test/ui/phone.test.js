@@ -1,8 +1,9 @@
 // UI: a phone's screen (#5121, web/js/phone.js, web/css/phone.css): under 600 px wide (375 × 812 and 430 × 932, with
 // touch) one pane at a time, the whole width: the side panel, the document or the console, switched by taps on the bar
 // of panes at the bottom. A project opened shows the side panel, a document opened shows it, a task chosen (Simulate)
-// its document; a new error or warning (the start-up checks') marks the Console button until the console is shown or
-// none is left; the page never scrolls sideways; at 768 px (a tablet in portrait) no bar, the narrow screen's layout.
+// its document or, with none yet, its side panel; a new error or warning (the start-up checks') marks the Console
+// button until the console is shown or none is left; the page never scrolls sideways; at 768 px (a tablet in portrait)
+// no bar, the narrow screen's layout.
 // In both interfaces (SILINX_UI_INTERFACE) and in Portuguese.
 import { before, after } from 'node:test';
 import assert from 'node:assert/strict';
@@ -79,10 +80,11 @@ for (const [w, h] of [[375, 812], [430, 932]]) {
     await tapPane(page, 'doc');
     assert.equal((await box(page, `${DOC} .se-canvas`)).width, canvas.width);
     if (silinx) {
-      // Simulate: its document (its side panel is in it): no Panels button; Design again: the pane kept
+      // Simulate, nothing simulated yet: its side panel, where it starts (#5121's fourth phase: test/ui/phone-sim.test.js);
+      // Design again: the pane kept
       await page.tap('#task-tabs .task-btn[data-task="sim"]');
       await page.waitFor(() => document.documentElement.dataset.task === 'sim', [], { what: 'Simulate' });
-      assert.deepEqual(await panes(page), { pane: 'doc', buttons: ['Document', 'Console'], pressed: ['doc'], news: [], sideScroll: false });
+      assert.deepEqual(await panes(page), { pane: 'side', buttons: ['Panels', 'Document', 'Console'], pressed: ['side'], news: [], sideScroll: false });
       await tapPane(page, 'console');
       await page.tap('#task-tabs .task-btn[data-task="edit"]');
       await page.waitFor(() => document.documentElement.dataset.task === 'edit', [], { what: 'Design' });
