@@ -14,7 +14,7 @@ const HEX = /['"`]#(?:[0-9a-fA-F]{8}|[0-9a-fA-F]{6}|[0-9a-fA-F]{3,4})\b/g;
 // the most each file may have (web/js/<file>), at #4763
 const LIMITS = {
   'devmenu-pointer.js': 8, 'editor-icons.js': 77, 'emulator-atlys.js': 53, 'emulator-basys2.js': 42,
-  'emulator-basys3.js': 33, 'emulator-board.js': 2, 'emulator-cmod-s6.js': 16, 'emulator-elbert-v2.js': 59,
+  'emulator-arduino.js': 7, 'emulator-basys3.js': 33, 'emulator-board.js': 2, 'emulator-cmod-s6.js': 16, 'emulator-elbert-v2.js': 59,
   'emulator-icebreaker.js': 65, 'emulator-mimas-v2.js': 57, 'emulator-nexys-a7.js': 40, 'emulator-nexys2.js': 46,
   'emulator-nexys3.js': 45, 'emulator-paint.js': 2, 'emulator-papilio-one.js': 25, 'emulator-pcb.js': 7,
   'emulator-s3-starter.js': 44, 'emulator-s3a.js': 69, 'emulator-s3e.js': 59, 'emulator-tangnano9k.js': 47,

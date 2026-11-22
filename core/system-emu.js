@@ -23,7 +23,7 @@ function portsOf(netlist) {
 // a port as boardWiring reads it (its bits by position, the last at the left)
 const portOf = p => ({ name: p.name, dir: p.dir, sig: { t: { w: p.width, left: p.width - 1, right: 0, desc: true, kind: 'logic', scalar: p.width === 1 } } });
 // a wiring bit's pin of the node (core/system-sim.js's names: 'tx', 'led[3]')
-const pinOf = b => (b.sig.t.w === 1 ? b.port : `${b.port}[${b.pos}]`);
+export const pinOf = b => (b.sig.t.w === 1 ? b.port : `${b.port}[${b.pos}]`);
 
 /**
  * The System's boards to emulate: [{ id, kind: 'fpga', board, wiring, inputs: [{ pin, kind, res, idx }], outputs: [pin] }

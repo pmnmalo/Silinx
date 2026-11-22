@@ -1,8 +1,9 @@
 // A co-design System's run in a Web Worker (#4701, core/system-host.js): started from its file on the local server
 // (web/js/system-worker.js, a module worker), from its embedded text in the browser edition (a Blob, a classic worker:
 // a file:// page cannot start a module one, #512), as the Board Emulator's engine (web/js/emulator.js). The page drives it
-// by messages, each answered: { nodes, wires, terminals, run(until) -> { report, finished }, send(node, bytes),
-// waves() -> { design, now }, close() }, or { error }.
+// by messages, each answered: { nodes, wires, terminals, boards, run(until) -> { report, finished, boards }, send(node,
+// bytes), set(node, pin, value) (a board's switch or button, the System Emulator's, #5212), waves() -> { design, now },
+// close() }, or { error }.
 let workerUrl = null;
 
 function spawn() {
@@ -12,7 +13,7 @@ function spawn() {
 }
 
 /** The run of `system` from its inputs (core/system-run.js systemInputs'), started in its worker. */
-export function startSystemRun(system, inputs) {
+export function startSystemRun(system, inputs, { emulate = false } = {}) {
   let w;
   try { w = spawn(); } catch (e) { return Promise.resolve({ error: `no Web Worker to run it in: ${e.message}` }); }
   let n = 0;
@@ -25,9 +26,10 @@ export function startSystemRun(system, inputs) {
       const m = e.data;
       if (m.type === 'failed') { w.terminate(); resolve({ error: m.error }); return; }
       if (m.type === 'ready') {
-        ready = { nodes: m.nodes, wires: m.wires, terminals: m.terminals,
+        ready = { nodes: m.nodes, wires: m.wires, terminals: m.terminals, boards: m.boards,
           run: (until) => ask({ type: 'run', until }), waves: () => ask({ type: 'waves' }),
-          send: (node, bytes) => w.postMessage({ type: 'send', node, bytes }), close: () => w.terminate() };
+          send: (node, bytes) => w.postMessage({ type: 'send', node, bytes }), set: (node, pin, value) => w.postMessage({ type: 'set', node, pin, value }),
+          close: () => w.terminate() };
         resolve(ready);
         return;
       }
@@ -36,6 +38,6 @@ export function startSystemRun(system, inputs) {
       waiting.delete(m.id);
       if (m.type === 'error') x.fail(new Error(m.message)); else x.ok(m);
     };
-    w.postMessage({ type: 'init', system, inputs });
+    w.postMessage({ type: 'init', system, inputs, emulate });
   });
 }
