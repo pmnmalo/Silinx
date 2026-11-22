@@ -360,6 +360,8 @@
 
 .sch-editor .se-keep, .sch-editor .se-branch, .sch-editor .se-names, .sch-editor .se-curved { display: inline-flex; align-items: center; gap: 3px; font-size: 11px; white-space: nowrap; padding: 0 4px; cursor: pointer; }
 .sch-editor.read-only .se-keep, .sch-editor.read-only .se-branch { display: none; }
+/* (nor Add Graphics, which annotates the sheet, nor Check: a read-only view is not checked, docs/UI-GUIDELINES.md, #5248) */
+.sch-editor.read-only .se-toolbar :is(.se-gfx, [data-act="check"]) { display: none; }
 /* a read-only view's note at the end of its toolbar, as the generated HDL's (#1193) */
 .sch-editor .se-toolbar .gen-banner { padding: 1px 8px; background: #fff4ce; border: 1px solid #e6d690; border-radius: 3px; color: #5a4a00; white-space: nowrap; }
 .sch-editor .se-toolbar .gen-banner.out-of-sync { background: #fdecea; border-color: #e0a0a0; color: #900; }

@@ -2,8 +2,9 @@
 // editor opens read only, as a followed project's: the HDL and constraints text, the schematic, the state diagram, the
 // ASM chart, the Petri net, the truth table, the circuit (the lock example has one of each). Its read-only notice,
 // "Read-only on a phone", at the right end of its toolbar, its tip saying where to edit it; its editing tools hidden
-// (the ASM chart's and the circuit's too, which were shown on every screen, #5228); its view, its Try it kept. At
-// 768 px (a tablet) the same documents edit, with no notice (the state diagram checked as it opens, its warnings). In both interfaces (SILINX_UI_INTERFACE) and in Portuguese.
+// (the ASM chart's and the circuit's too, which were shown on every screen, #5228; the schematic's Add Graphics and a
+// drawing's Check, #5248); its view, its Try it kept. At 768 px (a tablet) the same documents edit, with no notice (the
+// state diagram checked as it opens, its warnings). In both interfaces (SILINX_UI_INTERFACE) and in Portuguese.
 import { before, after } from 'node:test';
 import assert from 'node:assert/strict';
 import { setupUi, uiTest, makeProject } from './harness.js';
@@ -14,8 +15,9 @@ after(async () => { await env?.teardown?.(); });
 const E = () => env;
 
 const FILES = ['src/top.vhd', 'constraints/lock.ucf', 'src/control.sch.json', 'src/lock.fsm.json', 'src/timer.asm.json', 'src/alarm.pn.json', 'src/digit_ok.bool.json', 'src/sync.circ.json'];
-// the tools that change a document (their tips' beginnings): add, draw, delete, turn, fill, the language's templates
-const EDIT = /^(Add Wire|Delete|Rotate|Click the drawing to add|Click a place then|Fill the|Draw a wire|Turn the selected part|Language Templates)/;
+// the tools that change a document (their tips' beginnings): add, draw, delete, turn, fill, the language's templates, the
+// schematic's graphics; and a drawing's Check (a read-only view is not checked, #5248)
+const EDIT = /^(Add Wire|Add Graphics|Delete|Rotate|Click the drawing to add|Click a place then|Fill the|Draw a wire|Turn the selected part|Language Templates|Check (Schematic|the ))/;
 
 // the document in front: its read-only notices (text, tip, whether nothing of its toolbar's line is right of it but a ⋮
 // menu), its editing tools shown, a text editor's read-only state
