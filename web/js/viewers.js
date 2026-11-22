@@ -4,6 +4,7 @@ import { readPins } from './constraints-format.js';
 import { api } from './api.js';
 import { h, dialog, confirmDlg, promptDlg, toast } from './ui.js';
 import { compile, elaborate } from '/core/compile.js';
+import { designSize } from '/core/hdl-check.js';
 import { primitiveSources } from '/core/unisim.js';
 import { naturalCompare } from '/core/hier-order.js';
 import { hierarchySources } from '/core/top-hierarchy.js';
@@ -260,7 +261,7 @@ async function runSimulationInner(mod, model, stale) {
   const sim = new Simulator(design, { files });
   if (!design.top) { setStatus(procId, 'err'); R.log(`ERROR: cannot elaborate '${mod}': ${design.diags.map(d => d.message).join('; ')}`, 'err'); return; }
   if (!await confirmElabErrors(title, lib, design)) { setStatus(procId, 'err'); return; }
-  R.log(`Simulation model ready: ${design.signals.length} signals, ${design.procs.length} processes. Launching SSim view.`, 'ok');
+  R.log(`Simulation model ready: ${designSize(design)}. Launching SSim view.`, 'ok');
   setStatus(procId, 'ok');
   const { mountISim } = await import('./isim.js');
   if (stale?.()) return;

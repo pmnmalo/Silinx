@@ -35,13 +35,13 @@ test('convert_module to a schematic: stopwatch\'s and blinky\'s top, the schemat
   const r = await ok('convert_module', { project: 's', module: 'stopwatch', to: 'schematic' });
   assert.equal(r.text, '\'stopwatch\' converted to the schematic src/stopwatch.sch.json (11 symbols drawn, 7 HDL blocks keeping the HDL that is not drawn): it is now the module\'s base, src/stopwatch.vhd generated from it.');
   assert.equal(JSON.parse(read('s', 'src/stopwatch.sch.json')).generatedFile, 'src/stopwatch.vhd');
-  assert.match((await ok('check_syntax', { project: 's', simulation: true })).text, /^Process "Check Syntax" of <tb_stopwatch> completed successfully \(\d+ signals, \d+ processes\)\.$/);
+  assert.match((await ok('check_syntax', { project: 's', simulation: true })).text, /^Process "Check Syntax" of <tb_stopwatch> completed successfully \(\d+ signals?, \d+ process(?:es)?\)\.$/);
   await passes('s', 2000000, ['Simulation finished OK']);
   await fails('convert_module', { project: 's', module: 'stopwatch', to: 'asm' }, '\'stopwatch\' is made from src/stopwatch.sch.json already: its file src/stopwatch.vhd is generated from that drawing');
   await ok('new_project_from_example', { name: 'b', example: 'blinky' });
   assert.equal((await ok('convert_module', { project: 'b', module: 'top', to: 'schematic' })).text,
     '\'top\' converted to the schematic src/top.sch.json (15 symbols drawn, 3 HDL blocks keeping the HDL that is not drawn): it is now the module\'s base, src/top.vhd generated from it.');
-  assert.match((await ok('check_syntax', { project: 'b', simulation: true })).text, /^Process "Check Syntax" of <tb_top> completed successfully \(\d+ signals, \d+ processes\)\.$/);
+  assert.match((await ok('check_syntax', { project: 'b', simulation: true })).text, /^Process "Check Syntax" of <tb_top> completed successfully \(\d+ signals?, \d+ process(?:es)?\)\.$/);
 });
 
 test('convert_module to a schematic (#2901): a ripple-carry adder whose instances drive bits of vectors, every instance drawn', async () => {
@@ -54,7 +54,7 @@ test('convert_module to a schematic (#2901): a ripple-carry adder whose instance
     '\'add4\' converted to the schematic src/add4.sch.json (13 symbols drawn, 0 HDL blocks keeping the HDL that is not drawn): it is now the module\'s base, src/add4.vhd generated from it.');
   const doc = JSON.parse(read('r', 'src/add4.sch.json'));
   assert.deepEqual(doc.symbols.filter(s => s.type === 'module').map(s => s.name).sort(), ['U0', 'U1', 'U2', 'U3']);
-  assert.match((await ok('check_syntax', { project: 'r' })).text, /^Process "Check Syntax" of <add4> completed successfully \(\d+ signals, \d+ processes\)\.$/);
+  assert.match((await ok('check_syntax', { project: 'r' })).text, /^Process "Check Syntax" of <add4> completed successfully \(\d+ signals?, \d+ process(?:es)?\)\.$/);
   await passes('r', 6000, []);
 });
 
@@ -70,7 +70,7 @@ test('convert_module to a schematic (#2903): internal vectors not from 0, c(3 do
       `'${c.module}' converted to the schematic ${sch} (9 symbols drawn, 1 HDL block keeping the HDL that is not drawn): it is now the module's base, ${hdl} generated from it.`);
     const doc = JSON.parse(read(n, sch));
     assert.deepEqual(doc.labels.map(l => l.net).sort(), name.startsWith('vhdl') ? ['c(3:1)', 'd(1:3)'] : ['c[3:1]', 'd[1:3]']);
-    assert.match((await ok('check_syntax', { project: n })).text, new RegExp(`^Process "Check Syntax" of <${c.module}> completed successfully \\(\\d+ signals, \\d+ processes\\)\\.$`));
+    assert.match((await ok('check_syntax', { project: n })).text, new RegExp(`^Process "Check Syntax" of <${c.module}> completed successfully \\(\\d+ signals?, \\d+ process(?:es)?\\)\\.$`));
     await passes(n, 200, log);
   }
 });
@@ -88,7 +88,7 @@ test('convert_module to a schematic (#2961): ports not from 0, a(4 downto 1) and
     assert.equal((await ok('convert_module', { project: n, module: c.module, to: 'schematic' })).text,
       `'${c.module}' converted to the schematic ${sch} (9 symbols drawn, 1 HDL block keeping the HDL that is not drawn): it is now the module's base, ${hdl} generated from it.`);
     assert.match(read(n, hdl), decl);
-    assert.match((await ok('check_syntax', { project: n })).text, new RegExp(`^Process "Check Syntax" of <${c.module}> completed successfully \\(\\d+ signals, \\d+ processes\\)\\.$`));
+    assert.match((await ok('check_syntax', { project: n })).text, new RegExp(`^Process "Check Syntax" of <${c.module}> completed successfully \\(\\d+ signals?, \\d+ process(?:es)?\\)\\.$`));
     await passes(n, 200, log);
   }
 });

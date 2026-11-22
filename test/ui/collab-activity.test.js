@@ -77,7 +77,7 @@ uiTest('#4002 a viewer follows the owner\'s Design pane, simulation, documents a
     const [mine, theirs] = [await sim(fp), await sim(page)];
     assert.ok(mine.rows.length >= 2 && mine.log.some((l) => /Simulation finished OK/.test(l)), JSON.stringify(mine));
     assert.deepEqual(mine, theirs);
-    assert.match(await fp.consoleText(), /Simulation model ready: \d+ signals, \d+ processes\. Launching SSim view\./);
+    assert.match(await fp.consoleText(), /Simulation model ready: \d+ signals?, \d+ process(?:es)?\. Launching SSim view\./);
     // the owner closes it: closed at the viewer's
     await page.eval(() => window.SilinxApp.closeDoc(window.SilinxApp.findDoc('isim:tb_gates')));
     await fp.waitFor(() => !window.SilinxApp.findDoc('isim:tb_gates'), [], { what: 'the SSim closed' });

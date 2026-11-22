@@ -6,6 +6,12 @@ import { compile, elaborate } from './compile.js';
 import { reservedModuleDiags } from './reserved.js';
 import { designChecks } from './lint.js';
 
+/** An elaborated design's size, as its lines say it (#5222: one of each singular): "4 signals, 1 process". */
+export const designSize = (design) => {
+  const n = (k, w) => `${k} ${w}${k === 1 ? '' : (w === 'process' ? 'es' : 's')}`;
+  return `${n(design.signals.length, 'signal')}, ${n(design.procs.length, 'process')}`;
+};
+
 /** path: the file checked; sources: the project's [{ path, text, lang, role }] in view (the primitives' models with
  *  them, the file's text as checked); lint: the design checks' warnings too; clean: its modules elaborated only when
  *  it reads without an error (a check as one types: no elaboration of a half-typed file); keep: the parses kept from
@@ -24,7 +30,7 @@ export function hdlCheck({ path, sources, lint = true, clean = false, keep = fal
     let checks = [];
     try { checks = designChecks(lib, design, { lint }); } catch { /* none */ }
     diags.push(...design.diags, ...checks);
-    if (design.top) info.push(`Elaborating module <${u.name}>: ${design.signals.length} signals, ${design.procs.length} processes.`);
+    if (design.top) info.push(`Elaborating module <${u.name}>: ${designSize(design)}.`);
   }
   return { diags, info };
 }

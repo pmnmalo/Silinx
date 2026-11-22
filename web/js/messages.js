@@ -144,7 +144,7 @@ function showLast() {
 // (#4746: not the Errors tab's, which the simulator's own messages fill, web/js/console.js simDiagnostics; a line that
 // goes to its source, double-clicked, goes there here too, each line of it, with its message's location, #4749)
 function mirror(text, cls, src, el) {
-  const lines = app.log(text, cls, { diag: false, src, location: el?.message?.location ?? null });
+  const lines = app.log(text, cls, { diag: false, src, location: el?.message?.location ?? null, link: false });
   if (!el?.classList.contains('link')) return;
   for (const ln of lines) {
     ln.classList.add('mc-link');
