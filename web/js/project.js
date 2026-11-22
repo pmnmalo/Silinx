@@ -87,7 +87,7 @@ async function openProjectNow(name, { startup = false } = {}) {
   await reloadProject();
   await fixMissingTops();   // (a project saved with a top it no longer has, #253)
   // (a design project's: no device, #3891)
-  log(isDesignOnly(S.project) ? `Project "${name}" opened (a design and simulation project, no FPGA).` : `Project "${name}" opened (${S.project.device.part}${S.project.device.speed}-${S.project.device.package}).`, 'info');
+  appLog(isDesignOnly(S.project) ? `Project "${name}" opened (a design and simulation project, no FPGA).` : `Project "${name}" opened (${S.project.device.part}${S.project.device.speed}-${S.project.device.package}).`, 'info');
   // a project from outside (#2830): what waits for the user's trust, and the button that gives it
   if (!isTrusted(S.project)) appLog(untrustedNotice(name, S.project), 'info', { action: trustAction(name) });   // (shown under every filter and task, #4729)
   // (the browser edition: a project kept only in the browser's storage and not backed up for days, said once, #4971)

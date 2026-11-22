@@ -12,6 +12,7 @@ import { wizardTitle, wizardText, wizardError } from '/core/constraints-wizard.j
 import { elaborate } from '/core/compile.js';
 import { wizard, field, replaceGuard, closeBeforeReplace } from './wizards.js';
 import { S, app } from './app.js';
+import { appLog } from './console.js';
 import { filesState } from './state-files.js';
 import { designState } from './state-design.js';
 
@@ -135,7 +136,7 @@ export async function ucfWizard({ path, back = null }) {
   await app.reloadProject();
   if (noUcf) { S.project.constraints = path; await app.saveProjectJson(); await app.reloadProject(); }
   const n = Object.keys(asg).length;
-  app.log(`${title}: created ${path} for '${top}', ${n} net(s) on pins.`, 'ok');
+  appLog(`${title}: created ${path} for '${top}', ${n} net(s) on pins.`, 'ok');
   toast(`${path.split('/').pop()} created`, 'ok');
   app.openFile(path);
   return path;

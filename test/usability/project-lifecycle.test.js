@@ -123,6 +123,9 @@ async function lifecycle(page, title) {
   return { s, model, zip };
 }
 
+// a line whose count varies (#: the import's other files), in the interface's language (#5254): its translation's RegExp
+const counted = async (s, line) => new RegExp(`^${(await s.trs([line.replace('#', '999')]))[0].replace(/[.*+?^${}()|[\]\\]/g, '\\$&').replace('999', '\\d+')}$`);
+
 uiTest('usability: project: New Project, a source of each kind, the top set, one removed (Undo, Redo), one renamed, the top changed, exported, imported, closed and opened again', E, async (page) => {
   const { s, model, zip } = await lifecycle(page, 'project: lifecycle');
   // imported as a new project: the same files, sources and settings; opened with no editor
@@ -131,7 +134,7 @@ uiTest('usability: project: New Project, a source of each kind, the top set, one
   await s.act('Import Project…', { zip: path.basename(zip), name: 'UsabLife2' }, () => s.a.importZip(zip, 'UsabLife2'), {
     ignore: OUTSIDE,
     // (the trust's line and its button; #5253: the sources counted twice, "8 source file(s), 20 other file(s)" for 20 files)
-    lines: async () => [opened('UsabLife2'), `${(await s.trs([TRUST('UsabLife2')]))[0]} ${(await s.trs(['Trust Project']))[0]}`, /^Imported Silinx project 'UsabLife2' \(8 source file\(s\), \d+ other file\(s\)\)\.$/],
+    lines: async () => [opened('UsabLife2'), `${(await s.trs([TRUST('UsabLife2')]))[0]} ${(await s.trs(['Trust Project']))[0]}`, await counted(s, "Imported Silinx project 'UsabLife2' (8 source file(s), # other file(s)).")],
     expect: async () => { const a = await texts('UsabLife2'), b = await texts('UsabLife'); same(Object.keys(a).filter((f) => a[f] !== b[f]), [], 'the files not as the first project\'s'); },
   });
   // closed: the Start page, no project, no editor
@@ -189,16 +192,33 @@ uiTest('usability: project: Import Project…\'s line counts the sources and the
   assert.equal((await consoleLines(page, n)).at(-1), (await tr(page, ["Imported Silinx project 'UsabCount2' (3 source file(s))."]))[0]);
 });
 
-// in Portuguese the lifecycle's lines are Portuguese, as the simulation's (#5223)
-uiTest('usability: project: the console\'s lines of New Source, Remove from Project, Rename and Export in Portuguese (#5254)', E, async (page, _env, t) => {
-  t.todo('#5254: they stay in English');
+// in Portuguese the lifecycle's lines are Portuguese, as the simulation's (#5223), and English again in English
+uiTest('usability: project: the console\'s lines of New Source, Remove from Project, Undo / Redo, Rename and Export in Portuguese (#5254)', E, async (page) => {
   const a = await small(page, 'UsabLinesPt');
   await page.eval(async () => { (await import('/js/i18n.js')).setLanguage('pt'); });
   const n = await consoleCount(page);
   await a.newSource({ type: 'Schematic', name: 'sheet', file: 'src/sheet.sch.json' });
   await a.remove('sheet');
+  // (each one done, its line written, the page settled, before the next)
+  await pageState(page);
+  const step = async (which, line) => { await a.editMenu(which); await page.waitFor((l) => [...document.querySelectorAll('#console-log .ln')].some((x) => x.textContent === l), [line], { what: `${which}'s line` }); await pageState(page); };
+  await step('Undo', 'Anular: Remover do Projeto.');
+  await step('Redo', 'Refazer: Remover do Projeto.');
   await a.rename('alu', 'alu2');
-  await a.exportZip('UsabLinesPt');
-  const english = [/^src\/sheet\.vhd generated from/, /^Created Schematic/, /^Removed src\/sheet\.sch\.json/, /^Rename: module/, /^Exported UsabLinesPt-silinx\.zip/];
-  assert.deepEqual((await consoleLines(page, n)).filter((l) => english.some((re) => re.test(l))), []);
+  const zip = await a.exportZip('UsabLinesPt');
+  const kb = Math.round((await fsp.stat(zip)).size / 1024);
+  await sleep(500);
+  const english = ['src/sheet.vhd generated from src/sheet.sch.json (every source has its HDL)', "Created Schematic 'src/sheet.sch.json'.",
+    'Removed src/sheet.sch.json and its HDL file src/sheet.vhd from the project (the files are kept in the project folder).',
+    'Undo: Remove from Project.', 'Redo: Remove from Project.', "Rename: module 'alu' renamed to 'alu2' (2 file(s) updated); src/alu.vhd → src/alu2.vhd.",
+    `Exported UsabLinesPt-silinx.zip: the whole Silinx project (silinx.json + all project files, ${kb} KB).`];
+  // (#5252's line after the export, if it comes: its own scenario's)
+  const outside = await tr(page, OUTSIDE);
+  assert.deepEqual((await consoleLines(page, n)).filter((l) => !outside.includes(l)), ['src/sheet.vhd gerado a partir de src/sheet.sch.json (todas as fontes têm o seu HDL)',
+    "Nova fonte criada: Esquemático 'src/sheet.sch.json'.", 'Removidos do projeto src/sheet.sch.json e o seu ficheiro HDL src/sheet.vhd (os ficheiros ficam na pasta do projeto).',
+    'Anular: Remover do Projeto.', 'Refazer: Remover do Projeto.', "Mudar o Nome: módulo 'alu' passou a chamar-se 'alu2' (2 ficheiro(s) atualizado(s)); src/alu.vhd → src/alu2.vhd.",
+    `Exportado UsabLinesPt-silinx.zip: o projeto Silinx inteiro (silinx.json + todos os ficheiros do projeto, ${kb} KB).`]);
+  // drawn again in English when the language changes
+  await page.eval(async () => { (await import('/js/i18n.js')).setLanguage('en'); });
+  assert.deepEqual((await consoleLines(page, n)).filter((l) => l !== OUTSIDE[0]), english);
 });

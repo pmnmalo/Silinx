@@ -6,7 +6,7 @@
 // (web/js/wizard-modules.js), and writes it again from the file's contents of then.
 import { api } from './api.js';
 import { h, toast } from './ui.js';
-import { commandError } from './console.js';
+import { appLog, commandError } from './console.js';
 import { memoryModule, planMemory, readInitFile, MEMORY_FAMILIES } from '/core/blockram.js';
 import { resourceCount } from '/packages/silinx-fpga/src/parts.js';
 import { familyProfile } from '/core/family-profile.js';
@@ -172,7 +172,7 @@ export async function blockMemoryWizard({ name = '', location = 'src', lang = nu
   await closeBeforeReplace(p);
   await api.writeFile(pj.name, p, code);
   await app.reloadProject();
-  app.log(`Block Memory: ${editPath ? 'wrote again' : 'created'} ${p}, the module ${spec.name}: ${spec.depth} x ${spec.width}, ${spec.style === 'inferred' ? 'inferable HDL' : `${plan.blocks} ${plan.primName}`}.`, 'ok');
+  appLog(`Block Memory: ${editPath ? 'wrote again' : 'created'} ${p}, the module ${spec.name}: ${spec.depth} x ${spec.width}, ${spec.style === 'inferred' ? 'inferable HDL' : `${plan.blocks} ${plan.primName}`}.`, 'ok');
   toast(`Memory module ${spec.name} ${editPath ? 'updated' : 'created'}`, 'ok');
   return p;
 }

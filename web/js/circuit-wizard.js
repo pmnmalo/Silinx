@@ -11,6 +11,7 @@ import { h } from './dom.js';
 import { wizard, replaceGuard, closeBeforeReplace } from './wizards.js';
 import { namePage } from './modwizard.js';
 import { S, app } from './app.js';
+import { appLog } from './console.js';
 import { namedPages } from './wizard-util.js';
 import { designOnly, langNote } from './design-only.js';
 
@@ -49,7 +50,7 @@ export async function circuitWizard({ name = '', location = 'src', lang = null, 
   await closeBeforeReplace(path);
   await api.writeFile(S.project.name, path, JSON.stringify(m, null, 2));
   await app.reloadProject();
-  app.log(`Digital Electronic Circuit Wizard: created ${path} (${tpl.label()}, ${m.parts.length} part(s), ${m.wires.length} wire(s)).`, 'ok');
+  appLog(`Digital Electronic Circuit Wizard: created ${path} (${tpl.label()}, ${m.parts.length} part(s), ${m.wires.length} wire(s)).`, 'ok');
   toast(`Circuit ${m.name} created`, 'ok');
   app.openFile(path);   // (the circuit editor)
   return path;

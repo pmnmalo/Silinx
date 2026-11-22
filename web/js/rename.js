@@ -7,7 +7,7 @@ import { S, activateDoc, closeDoc, compileProject, openFile, saveViewState } fro
 import { keepCursor } from './doc-cursor.js';
 import { orderTabs } from './tab-order.js';
 import { splitState } from './split-view.js';
-import { commandError, log } from './console.js';
+import { appLog, commandError } from './console.js';
 import { reloadProject } from './project.js';
 import { markStale, saveAll } from './processes.js';
 import { reservedError } from '/core/reserved.js';
@@ -138,8 +138,8 @@ async function renameModuleNow(from, to, oldMod, newMod) {
     }));
     await reloadProject(false);
     markStale();
-    log(r.message, 'ok');
-    for (const m of r.hdl) log(m, /^ERROR/.test(m) ? 'err' : /^WARNING/.test(m) ? 'warn' : 'info');
+    appLog(r.message, 'ok');   // (in the interface's language, #5254)
+    for (const m of r.hdl) appLog(m, /^ERROR/.test(m) ? 'err' : /^WARNING/.test(m) ? 'warn' : 'info');
     if (reopen) await reopenTouched(reopen);
   } catch (e) {
     commandError('Rename', e.message);
@@ -171,7 +171,7 @@ async function renameSource(from, to, oldMod, newMod) {
     markStale();
     const parts = [];
     for (const [a, b] of moved) if (!designOnly() || !hdlSideFile(a)) parts.push(`${a} → ${b}`);   // (a design project's HDL: never named, #3891)
-    log(`Rename: ${parts.join('; ')}.`, 'ok');
+    appLog(`Rename: ${parts.join('; ')}.`, 'ok');
     await reopenTouched(reopen);
   } catch (e) {
     commandError('Rename', e.message);

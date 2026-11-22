@@ -7,6 +7,7 @@ import { icons, icon } from './icons.js';
 import { h } from './ui.js';
 import { uutInfo } from '/core/uut-info.js';
 import { S, app } from './app.js';
+import { appLog } from './console.js';
 import { isView } from '/core/view-hdl.js';
 import { reservedError } from '/core/reserved.js';
 import { wizard, field, select, replaceGuard, closeBeforeReplace, moduleElsewhere, drawnHdlTaken } from './wizards.js';
@@ -261,7 +262,7 @@ export async function newSourceWizard({ type, name = '', location = null, lang =
   await app.reloadProject();
   if (CONSTRAINTS.includes(st.id) && noUcf) { S.project.constraints = path; await app.saveProjectJson(); await app.reloadProject(); }
   if (st.id === 'tb') app.showInSim(n);   // selected in the Simulation view, ready to simulate
-  app.log(`Created ${st.label}${st.ext ? '' : ` (${langSel.value === 'verilog' ? 'Verilog' : 'VHDL'})`} '${path}'.`, 'ok');
+  appLog(`Created ${st.label}${st.ext ? '' : ` (${langSel.value === 'verilog' ? 'Verilog' : 'VHDL'})`} '${path}'.`, 'ok');
   if (st.id === 'fsm') { app.openFsm(path); return; }
   if (st.id === 'petri') { app.openPetri(path); return; }
   if (st.id === 'asm') app.openAsm(path); else if (st.id === 'tt') app.openTt(path); else if (st.id === 'sch') app.openSch(path); else app.openFile(path);

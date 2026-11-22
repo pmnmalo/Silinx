@@ -16,6 +16,7 @@ import { reservedError } from '/core/reserved.js';
 import { wizard, field, select, replaceGuard, closeBeforeReplace } from './wizards.js';
 import { namePage, portEditor } from './modwizard.js';
 import { S, app } from './app.js';
+import { appLog } from './console.js';
 import { portText, namedPages } from './wizard-util.js';
 import { designOnly, langNote } from './design-only.js';
 
@@ -123,7 +124,7 @@ async function create(title, path, model, open, what) {
   await closeBeforeReplace(path);
   await api.writeFile(S.project.name, path, JSON.stringify(model, null, 2));
   await app.reloadProject();
-  app.log(`${title}: created ${path} with ${model.inputs.length} input(s), ${model.outputs.length} output(s) and ${what}.`, 'ok');
+  appLog(`${title}: created ${path} with ${model.inputs.length} input(s), ${model.outputs.length} output(s) and ${what}.`, 'ok');
   toast(`${model.name} created`, 'ok');
   open(path);
   return path;
