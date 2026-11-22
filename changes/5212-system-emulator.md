@@ -12,3 +12,5 @@ In detail:
   the terminals in its side panel, its run paced to real time, its status line the time and the rate. The MCP server's
   `simulate` of a System takes `controls` (a board's switches and buttons set at their times) and says what each board
   shows at the end. Off in a release, as the rest of co-design (#5212).
+- The `uart-avr` example's FPGA node has its board's pins for all its module's ports (the uart example's: BTN0, the
+  LEDs, the display), so that the System Emulator shows them (#5212).
