@@ -3,7 +3,10 @@
 import { api } from './api.js';
 import { h, dialog } from './ui.js';
 import { renameSymbolAtCursor, applyEdits } from './refactor.js';
-import { S, closeDoc, compileProject, openFile } from './app.js';
+import { S, activateDoc, closeDoc, compileProject, openFile, saveViewState } from './app.js';
+import { keepCursor } from './doc-cursor.js';
+import { orderTabs } from './tab-order.js';
+import { splitState } from './split-view.js';
 import { commandError, log } from './console.js';
 import { reloadProject } from './project.js';
 import { markStale, saveAll } from './processes.js';
@@ -88,23 +91,45 @@ export async function renameDialog(file, mod = null) {
   await renameSource(file, fIn.value.trim(), modName, mIn ? mIn.value.trim() : null);
 }
 
-// close the editors of the files that move or change: the paths to reopen after, the active one first
+// close the editors of the files that move or change: their places, to open them again there (#5250): the tabs' order
+// (each closed one by the path it is opened again at), the one in front, a closed one's side and task, its cursor
 async function closeTouched(paths, moved) {
-  const reopen = [];
+  const pj = S.project.name, keep = { order: [], active: null, reopen: [] };
   for (const d of [...docsState.docs]) {
     if (d.path && (paths.has(d.path) || moved.has(d.path))) {
-      if (docsState.active === d) reopen.unshift(moved.get(d.path) || d.path); else reopen.push(moved.get(d.path) || d.path);
+      const p = moved.get(d.path) || d.path;
+      keep.order.push({ path: p, side: d.side, task: d.task });
+      keep.reopen.push(p);
+      if (docsState.active === d) keep.active = p;
+      if (d.editor?.getCursor) keepCursor(pj, p, d.editor.getCursor());   // (the renamed file's too: under its new path)
       d.dirty = false; clearTimeout(d._autosave); await closeDoc(d);
+    } else {
+      keep.order.push({ doc: d });
+      if (docsState.active === d) keep.active = d;
     }
   }
-  return reopen;
+  return keep;
+}
+
+// the closed editors opened again where their tabs were, the one in front before in front again
+async function reopenTouched(keep) {
+  for (const p of keep.reopen) await openFile(p);
+  const docs = keep.order.map(o => {
+    const d = o.doc || docsState.docs.find(x => x.path === o.path);
+    if (d && !o.doc) Object.assign(d, { task: o.task }, splitState().on && { side: o.side });   // (its side: while split still)
+    return d;
+  }).filter(d => d && docsState.docs.includes(d));
+  docsState.docs = [...docs, ...docsState.docs.filter(d => !docs.includes(d))];
+  orderTabs();
+  const front = typeof keep.active === 'string' ? docsState.docs.find(d => d.path === keep.active) : keep.active;
+  if (front && docsState.docs.includes(front)) activateDoc(front); else saveViewState();
 }
 
 // A module (and its file): core/rename-module.js, the MCP's rename_module's (#4731): its references, its drawing (its
 // HDL made again by its kind, core/drawing-sync.js), its symbol, the project's top; the files moved all or nothing.
 async function renameModuleNow(from, to, oldMod, newMod) {
   const { renameModule } = await import('/core/rename-module.js');
-  let reopen = [];
+  let reopen = null;
   try {
     // (in the drawings' queue: no drawing's HDL made again in the middle of it, #4750)
     const r = await serialDrawings(() => renameModule(pageStore(), S.project.name, oldMod, newMod, {
@@ -115,7 +140,7 @@ async function renameModuleNow(from, to, oldMod, newMod) {
     markStale();
     log(r.message, 'ok');
     for (const m of r.hdl) log(m, /^ERROR/.test(m) ? 'err' : /^WARNING/.test(m) ? 'warn' : 'info');
-    for (const p of reopen.reverse()) await openFile(p);
+    if (reopen) await reopenTouched(reopen);
   } catch (e) {
     commandError('Rename', e.message);
     await reloadProject(false);
@@ -147,7 +172,7 @@ async function renameSource(from, to, oldMod, newMod) {
     const parts = [];
     for (const [a, b] of moved) if (!designOnly() || !hdlSideFile(a)) parts.push(`${a} → ${b}`);   // (a design project's HDL: never named, #3891)
     log(`Rename: ${parts.join('; ')}.`, 'ok');
-    for (const p of reopen.reverse()) await openFile(p);
+    await reopenTouched(reopen);
   } catch (e) {
     commandError('Rename', e.message);
     await reloadProject(false);

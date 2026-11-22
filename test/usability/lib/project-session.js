@@ -36,7 +36,6 @@ const kit = (env) => ({
   }),
   invariants: () => ({}), hdlErrors: () => [], detached: () => [], dangling: () => [],
 });
-const sorted = (l) => [...l].sort();
 // (what differs said on one line, the report's: got and expected)
 export const same = (got, want, what) => { try { assert.deepEqual(got, want); } catch { throw new Error(`${what}: got ${JSON.stringify(got)}, expected ${JSON.stringify(want)}`); } };
 
@@ -75,8 +74,8 @@ export class ProjectSession extends Session {
     same(s.page.name, m.name, 'the project open');
     same(s.page.top, m.top, 'the top');
     same(s.page.rows, await this.shown(m.rows()), 'the Design pane\'s rows');
-    // (the editors open: their order apart, #5250's scenario; the Design Summary is the implementation's, not an editor)
-    same(sorted(s.page.docs.ids.filter((d) => d !== 'summary')), sorted(m.docs), 'the editors open');
+    // (the editors open, in their tabs' order; the Design Summary is the implementation's, not an editor)
+    same(s.page.docs.ids.filter((d) => d !== 'summary'), m.docs, 'the editors open');
     if (m.active) same(s.page.docs.active, m.active, 'the editor in front');
     same(s.page.docs.dirty, [], 'unsaved changes');
     const errors = m.errors(), said = await tr(page, errors.map((e) => e[1]));
