@@ -90,8 +90,8 @@ async function lifecycle(page, title) {
   }, { update: (m) => m.remove('net'), lines: ['Removed src/net.pn.json and its HDL file src/net.vhd from the project (the files are kept in the project folder).'] });
   await s.act('Edit ▸ Undo', {}, () => s.a.editMenu('Undo'), { update: (m) => m.restore('net'), lines: ['Undo: Remove from Project.'] });
   await s.act('Edit ▸ Redo', {}, () => s.a.editMenu('Redo'), { update: (m) => m.remove('net'), lines: ['Redo: Remove from Project.'] });
-  // the VHDL module opened from its row (a double-click), renamed: its file and the test bench that instantiates it
-  await s.act('open a module', { row: 'alu' }, () => s.a.openRow('alu'), { update: (m) => m.openDoc('file:src/alu.vhd'), lines: [] });
+  // the VHDL module renamed from its row (its editor open behind others): its file and the test bench that instantiates
+  // it, their editors in their tabs' places, the one in front kept (#5250)
   await s.act('Rename…', { row: 'alu', to: 'alu2' }, () => s.a.rename('alu', 'alu2'), {
     update: (m) => m.rename('alu', 'alu2'),
     lines: ["Rename: module 'alu' renamed to 'alu2' (2 file(s) updated); src/alu.vhd → src/alu2.vhd."],
@@ -157,8 +157,7 @@ async function small(page, name) {
 
 // Rename… of a module: the editors it reopens (its file renamed, the bench it changed) where their tabs were, the one in
 // front kept in front
-uiTest('usability: project: Rename… of a module keeps the editors\' tabs in their places and the one in front (#5250)', E, async (page, _env, t) => {
-  t.todo('#5250: the tabs of the files it changed move to the end, the renamed file\'s comes to the front');
+uiTest('usability: project: Rename… of a module keeps the editors\' tabs in their places and the one in front (#5250)', E, async (page) => {
   const a = await small(page, 'UsabRenameTabs');
   for (const f of ['src/alu.vhd', 'sim/tb_alu.vhd', 'src/other.vhd']) await page.eval((p) => window.SilinxApp.openFile(p), f);
   await page.waitFor(() => window.Silinx.active?.id === 'file:src/other.vhd', [], { what: 'the three editors open' });

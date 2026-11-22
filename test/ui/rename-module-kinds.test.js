@@ -86,3 +86,35 @@ for (const k of KINDS) {
     assert.deepEqual(await warnings(page), []);
   });
 }
+
+// #5250: Rename… closes the editors of the files it changes and opens them again: each in its tab's place (the renamed
+// file's under its new name), the one in front kept in front, the renamed file's cursor kept; a module's rename (its
+// file, the bench that instantiates it) and a file's alone (a constraints file).
+const ALU = 'library ieee;\nuse ieee.std_logic_1164.all;\n\nentity alu is\n  port (a : in std_logic; y : out std_logic);\nend alu;\n\narchitecture rtl of alu is\nbegin\n  y <= not a;\nend rtl;\n';
+const TB = 'library ieee;\nuse ieee.std_logic_1164.all;\n\nentity tb_alu is\nend tb_alu;\n\narchitecture sim of tb_alu is\n  signal a, y : std_logic := \'0\';\nbegin\n  uut : entity work.alu port map (a => a, y => y);\n  a <= \'1\' after 10 ns;\nend sim;\n';
+const OTHER = 'library ieee;\nuse ieee.std_logic_1164.all;\n\nentity other is\n  port (b : in std_logic; z : out std_logic);\nend other;\n\narchitecture rtl of other is\nbegin\n  z <= b;\nend rtl;\n';
+uiTest('#5250 Rename… keeps the editors\' tabs in their places, the one in front and the renamed file\'s cursor', E, async (page) => {
+  await makeProject(env, { name: 'RenTabs', board: 'basys2', top: 'other', files: { 'src/alu.vhd': ALU, 'sim/tb_alu.vhd': TB, 'src/other.vhd': OTHER, 'constraints/top.ucf': 'NET "b" LOC = "P11";\nNET "z" LOC = "M5";\n' }, roles: { 'sim/tb_alu.vhd': 'sim' } });
+  await page.openProject('RenTabs');
+  await page.waitFor(() => window.Silinx.modules?.some((x) => x.name === 'alu'), [], { what: 'the modules' });
+  for (const f of ['src/alu.vhd', 'sim/tb_alu.vhd', 'constraints/top.ucf', 'src/other.vhd']) await page.eval((p) => window.SilinxApp.openFile(p), f);
+  const docs = () => page.eval(() => [window.Silinx.docs.map((d) => d.id).filter((d) => d !== 'summary'), window.Silinx.active?.id]);
+  await page.waitFor(() => window.Silinx.active?.id === 'file:src/other.vhd', [], { what: 'the four editors open' });
+  // (alu.vhd's cursor on line 10, column 3; other.vhd in front)
+  await page.eval(() => { const d = window.Silinx.docs.find((x) => x.id === 'file:src/alu.vhd'); d.editor.setCursor({ line: 9, ch: 2 }); window.SilinxApp.activateDoc(window.Silinx.docs.find((x) => x.id === 'file:src/other.vhd')); });
+  const ids = ['file:src/alu2.vhd', 'file:sim/tb_alu.vhd', 'file:constraints/top.ucf', 'file:src/other.vhd'];
+  await rename(page, 'src/alu.vhd', 'alu', 'alu2');
+  await page.waitConsole(/^Rename: module 'alu' renamed to 'alu2'/m);
+  await page.waitFor((want) => JSON.stringify(window.Silinx.docs.map((d) => d.id).filter((d) => d !== 'summary')) === want, [JSON.stringify(ids)], { what: 'the editors opened again', timeout: 10000 }).catch(() => {});
+  assert.deepEqual(await docs(), [ids, 'file:src/other.vhd']);
+  assert.deepEqual(await page.eval(async () => { await new Promise((r) => setTimeout(r, 100)); return window.Silinx.docs.find((x) => x.id === 'file:src/alu2.vhd').editor.getCursor(); }), { line: 9, ch: 2 });
+  // a file alone (no module): the bench in front
+  await page.eval(() => window.SilinxApp.activateDoc(window.Silinx.docs.find((x) => x.id === 'file:sim/tb_alu.vhd')));
+  await rename(page, 'constraints/top.ucf', null, 'constraints/board.ucf');
+  await page.waitConsole(/^Rename: constraints\/top\.ucf → constraints\/board\.ucf\.$/m);
+  ids[2] = 'file:constraints/board.ucf';
+  await page.waitFor((want) => JSON.stringify(window.Silinx.docs.map((d) => d.id).filter((d) => d !== 'summary')) === want, [JSON.stringify(ids)], { what: 'the editors opened again', timeout: 10000 }).catch(() => {});
+  assert.deepEqual(await docs(), [ids, 'file:sim/tb_alu.vhd']);
+  assert.deepEqual((await page.consoleText()).split('\n').filter((l) => /^Rename: /.test(l)), ["Rename: module 'alu' renamed to 'alu2' (2 file(s) updated); src/alu.vhd → src/alu2.vhd.", 'Rename: constraints/top.ucf → constraints/board.ucf.']);
+  assert.deepEqual(await warnings(page), []);
+});
