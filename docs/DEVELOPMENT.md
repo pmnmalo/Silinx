@@ -46,7 +46,8 @@ main has not changed since their last successful run, documentation aside
 run every week on GitHub's runners (`.github/workflows/usability.yml`), and by hand on any branch (Actions ▸ Usability ▸
 Run workflow), never on a pull request: long sessions of a person's steps through the interface (wires drawn and moved,
 symbols moved and widened, Undo and Redo), scripted and random with a fixed seed (the schematic, the circuit, the state
-diagram, the ASM chart, the Petri net, the truth table), the drawing checked after every step;
+diagram, the ASM chart, the Petri net, the truth table), a module's symbol made, edited and updated in the schematics that
+use it, a hierarchy gone down and back up (`symbols`, `hierarchy`), the drawing checked after every step;
 a failure's report (its seed, its steps shrunk, what broke) is quoted in the issue the scheduled run opens, its
 screenshots kept as the job's artifact.
 
