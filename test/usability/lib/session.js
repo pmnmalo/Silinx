@@ -1,5 +1,5 @@
 // Usability tests (#5148): a scenario's steps, each one done through the interface and checked after it: the drawing's
-// invariants (lib/sch-invariants.js), the wires that were attached still attached, what the step expects, the page's
+// invariants (its kit's: the schematic's lib/sch-invariants.js, the circuit's lib/circ-invariants.js), the wires that were attached still attached, what the step expects, the page's
 // errors; Undo back to the start and Redo to the end give every step's document again. A failure writes its report
 // (the scenario, its seed, its steps, what broke, the documents before and after, the last steps' screenshots) to the
 // screenshots' folder (uploaded by the workflow) and says it in lines that start with "USABILITY:", which the
@@ -25,13 +25,21 @@ export function replayCommand(file, seed) {
   return `${vars.join(' ')}${vars.length ? ' ' : ''}node --test ${file}`;
 }
 
-export class SchSession {
-  /** `file`: the test file (for the replay command), `title`: the scenario's, `seed`: a random sequence's. */
+/** The schematic's kit: its actions and its checks (each `(doc, { modules })`). */
+export const SCH_KIT = {
+  actions: schActions,
+  invariants: (d, o) => schInvariants(d, { ...o, hdl: false }),
+  hdlErrors, detached: detachedEnds, dangling: danglingEnds,
+};
+
+export class Session {
+  /** `file`: the test file (for the replay command), `title`: the scenario's, `seed`: a random sequence's; `kit`: the
+   *  drawing's actions and checks ({ actions(page), invariants, hdlErrors, detached, dangling }). */
   /** `tolerate(errors)`: whether the errors of any step are ones the session's steps may make (a random sequence's:
    *  a width changed), the HDL then not made. */
-  constructor(page, env, { file, title, seed = null, modules = {}, hdl = true, quiet = false, tolerate = null }) {
-    Object.assign(this, { page, env, file, title, seed, modules, hdl, quiet, tolerate });
-    this.a = schActions(page);
+  constructor(page, env, { file, title, seed = null, modules = {}, hdl = true, quiet = false, tolerate = null, kit = SCH_KIT }) {
+    Object.assign(this, { page, env, file, title, seed, modules, hdl, quiet, tolerate, kit });
+    this.a = kit.actions(page);
     this.steps = [];      // [{ name, args }]
     this.docs = [];       // the document at the start and after each step that changed it (Undo's past)
     this.future = [];     // the documents Undo went back from (Redo's)
@@ -39,12 +47,13 @@ export class SchSession {
   }
   get doc() { return this.docs.at(-1); }
 
-  /** The schematic opened (in the run's language), its document as it is checked: it must hold every invariant. */
-  async open(sch) {
+  /** The drawing opened (in the run's language), its document as it is checked: it must hold every invariant. */
+  async open(file) {
     if (RUN.lang !== 'en') await this.page.eval(async (l) => { (await import('/js/i18n.js')).setLanguage(l); }, RUN.lang);
-    await this.a.open(sch);
+    await this.a.open(file);
     this.docs.push(await this.settled());
-    const bad = schInvariants(this.doc, { modules: this.modules, hdl: this.hdl });
+    const bad = this.kit.invariants(this.doc, { modules: this.modules });
+    if (this.hdl && !bad.errors) { const h = this.kit.hdlErrors(this.doc, { modules: this.modules }); if (h.length) bad.HDL = h; }
     if (Object.keys(bad).length) await this.fail('(the start)', bad);
   }
 
@@ -73,18 +82,18 @@ export class SchSession {
     const after = await this.settled();
     // (a step that makes errors on purpose, a width that no longer matches its net's: exactly those; the HDL made and
     // elaborated when the drawing has none)
-    const bad = schInvariants(after, { modules: this.modules, hdl: false });
-    if (this.hdl && !bad.errors) { const h = hdlErrors(after, { modules: this.modules }); if (h.length) bad.HDL = h; }
+    const bad = this.kit.invariants(after, { modules: this.modules });
+    if (this.hdl && !bad.errors) { const h = this.kit.hdlErrors(after, { modules: this.modules }); if (h.length) bad.HDL = h; }
     if (errors) {
       // (`errors` the list, or a function that says whether the errors made are the step's)
       if (typeof errors === 'function' ? errors(bad.errors || []) : same(bad.errors || [], errors)) delete bad.errors;
       else bad.errors = [`got ${JSON.stringify(bad.errors || [])}`, `expected ${typeof errors === 'function' ? 'the step\'s' : JSON.stringify(errors)}`];
     }
-    const det = detachedEnds(before, after, { modules: this.modules, except: typeof frees === 'function' ? frees(after, before) : frees });
+    const det = this.kit.detached(before, after, { modules: this.modules, except: typeof frees === 'function' ? frees(after, before) : frees });
     if (det.length) bad['wires come off'] = det;
     // (the ends of the wires the step made that are on nothing: as many as it leaves on purpose, `stubs`)
     const old = new Set(before.wires.map((w) => w.id));
-    const loose = danglingEnds(after, { modules: this.modules }).filter((e) => !old.has(e.wire));
+    const loose = this.kit.dangling(after, { modules: this.modules }).filter((e) => !old.has(e.wire));
     if (loose.length !== stubs) bad['loose wire ends'] = [`${loose.length} new, ${stubs} expected`, ...loose.map((e) => e.text)];
     const changed = !same(before, after);
     if (changes && !changed) bad['nothing happened'] = ['the document is the same as before the step'];
@@ -158,7 +167,9 @@ export class SchSession {
   async fail(where, bad, before = null, after = null) {
     const message = `${this.title}: ${where}: ${Object.entries(bad).map(([k, v]) => `${k}: ${v[0]}`).join('; ')}`;
     // (what failed, the step and the checks: a shrunk sequence must fail the same way)
-    const signature = `${where}: ${Object.keys(bad).join(', ')}`;
+    // (and the start of the first thing wrong, its numbers apart: "errors: got [\"error: Short circuit")
+    const first = String(Object.values(bad)[0]?.[0] ?? '').replace(/\d+/g, '#').slice(0, 40);
+    const signature = `${where}: ${Object.keys(bad).join(', ')}: ${first}`;
     if (this.quiet) throw Object.assign(new assert.AssertionError({ message }), { usability: true, signature });
     const lines = [
       `scenario '${this.title}' (${this.file}), interface ${RUN.ui}, language ${RUN.lang}${this.seed != null ? `, seed ${this.seed}` : ''}`,
@@ -177,3 +188,6 @@ export class SchSession {
     throw Object.assign(new assert.AssertionError({ message }), { usability: true, signature });
   }
 }
+
+/** A schematic's session (the schematic's kit). */
+export class SchSession extends Session {}
