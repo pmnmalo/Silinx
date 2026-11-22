@@ -42,7 +42,12 @@ or tokens (`scripts/ise-runner/`). The same runner compares the Silinx toolchain
 with ISE on the design corpus every week (`.github/workflows/quality.yml`) and pushes the results
 ([docs/QUALITY.md](QUALITY.md)) to the branch `quality-results`, merged into main by a maintainer. The scheduled runs (nightly, ISE, weekly comparison) are skipped when
 main has not changed since their last successful run, documentation aside
-(`scripts/changed-since-last-run.mjs`); run by hand, they always run.
+(`scripts/changed-since-last-run.mjs`); run by hand, they always run. The usability tests (`test/usability/`, #5148)
+run every week on GitHub's runners (`.github/workflows/usability.yml`), and by hand on any branch (Actions ▸ Usability ▸
+Run workflow), never on a pull request: long sessions of a person's steps through the interface (wires drawn and moved,
+symbols moved and widened, Undo and Redo), scripted and random with a fixed seed, the drawing checked after every step;
+a failure's report (its seed, its steps shrunk, what broke) is quoted in the issue the scheduled run opens, its
+screenshots kept as the job's artifact.
 
 ## Command line
 
@@ -61,6 +66,8 @@ npm run check:xc7 [-- --boards basys3 --filter '^pong$' --vivado]   # the 7-seri
 node scripts/check-private-data.mjs [--history]                 # no personal data, secrets or Xilinx files (also run by npm test)
 npm run test:ui                                                  # UI tests (headless Chrome), incl. memory leaks (npm ci first)
 node --test --test-name-pattern='latch warning' test/ui/hints.test.js   # one UI test alone
+node --test test/usability/schematic-wires.test.js               # the usability tests of a file (SILINX_USABILITY_LANG=pt, SILINX_UI_INTERFACE=ise)
+SILINX_USABILITY_SEED=8 node --test test/usability/schematic-random.test.js   # a random sequence's seed again (SILINX_USABILITY_STEPS)
 npx playwright install webkit && npm run test:webkit             # memory in WebKit (Safari's engine)
 npx playwright install firefox webkit && npm run test:browsers   # the main UI flows in Firefox and WebKit
 SILINX_UI_BROWSER=firefox npm run test:ui                        # any UI test in firefox, webkit or chromium

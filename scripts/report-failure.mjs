@@ -62,8 +62,9 @@ export function clean(line, env = process.env) {
  *  such a line is withheld rather than published (#1437). */
 const holdsPrivateData = (line) => scanText("(a job's log)", line, { whole: false }).some((x) => x.line > 0);
 
-// the lines that say what failed: a test's 'not ok' and its error, a corpus design's failure, an error
-const FAILURE = /\bnot ok \d+\b|^\s*✖|\bfail(?![-\w])|\bmismatch\b|\bfailed\b|\bERROR\b|\berror\b:|^\s*(Error|AssertionError|TypeError|RangeError)\b|timed out|^(LARGER OR SLOWER|NEW WARNINGS|VANISHED WARNINGS)\b|##\[error\]/;
+// the lines that say what failed: a test's 'not ok' and its error, a corpus design's failure, an error, a usability
+// scenario's report (#5148: 'USABILITY: …', its seed, its steps, what broke, the command that replays it)
+const FAILURE = /\bUSABILITY: |\bnot ok \d+\b|^\s*✖|\bfail(?![-\w])|\bmismatch\b|\bfailed\b|\bERROR\b|\berror\b:|^\s*(Error|AssertionError|TypeError|RangeError)\b|timed out|^(LARGER OR SLOWER|NEW WARNINGS|VANISHED WARNINGS)\b|##\[error\]/;
 
 /** The lines of a job's log that say what failed: their timestamps off, cleaned, each once, `max` at most; a line
  *  that still holds private data is left out, and a last line says how many were (#1437). */
@@ -75,7 +76,8 @@ export function failureLines(log, max = 40, env = process.env) {
     if (!line.trim() || !FAILURE.test(line)) continue;
     const c = clean(line, env).slice(0, 300);
     if (holdsPrivateData(c)) { withheld++; continue; }
-    if (!out.includes(c)) out.push(c);
+    // (a usability report's lines as they are, its steps' list in order: '  2. undo {}' may come twice)
+    if (!out.includes(c) || /\bUSABILITY: /.test(c)) out.push(c);
     if (out.length >= max) break;
   }
   if (withheld) out.push(`(${withheld} line${withheld > 1 ? 's' : ''} withheld: private data; see the run)`);

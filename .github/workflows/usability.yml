@@ -1,0 +1,128 @@
+name: Usability
+# The usability tests (#5148, test/usability/): Silinx used as people use it, in long sessions of steps through the
+# interface (wires drawn and moved, symbols moved and widened, Undo and Redo…), the drawing checked after each step;
+# scripted scenarios and random sequences of a fixed seed (the week's seed too). Every week, and by hand (Actions ▸
+# Usability ▸ Run workflow, on any branch: a new scenario tried before it merges); never on pull requests nor on pushes.
+# On GitHub's runners only. In parts of about the same time (scripts/test-shard.mjs --usability, by test/timings.json),
+# each under 15 minutes, in both interfaces and, one job of them, in Portuguese. A failure: the report of its scenario
+# (its seed, the steps that reproduce it, shrunk, what broke, the documents) and the screenshots of its last steps kept
+# as the job's artifact; a scheduled run's failed job opens an issue that quotes the report's lines (USABILITY:,
+# scripts/report-failure.mjs).
+on:
+  schedule:
+    - cron: '23 4 * * 0'      # Sundays 04:23 UTC (after the quality comparison of Saturday night)
+  workflow_dispatch:
+    inputs:
+      files:
+        description: the test files (test/usability/…, space-separated; empty for all)
+        default: ''
+      seed:
+        description: the random sequences' seed (empty for the fixed ones and the week's)
+        default: ''
+      steps:
+        description: the random sequences' steps (empty for each file's own)
+        default: ''
+      interface:
+        description: silinx, ise or both
+        default: both
+      language:
+        description: en, pt or both (pt in the Silinx interface)
+        default: both
+permissions:
+  contents: read
+jobs:
+  # whether main changed since this workflow's last successful run (a scheduled run with nothing new to test is
+  # skipped; by hand it always runs): .github/workflows/scheduled-changes.yml
+  changes:
+    uses: ./.github/workflows/scheduled-changes.yml
+    permissions:
+      actions: read
+      contents: read
+    with:
+      workflow: usability.yml
+
+  # the jobs to run: each interface and language asked for (by hand) or all (scheduled), as a matrix
+  plan:
+    needs: changes
+    if: needs.changes.outputs.run == 'true' && (github.event_name == 'workflow_dispatch' || (github.repository_id == '1407836659' && github.ref == 'refs/heads/main'))
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      matrix: ${{ steps.plan.outputs.matrix }}
+    steps:
+      - id: plan
+        run: |
+          ui="${UI:-both}"; lang="${LANG_IN:-both}"
+          rows=()
+          if [ "$lang" != pt ]; then
+            [ "$ui" != ise ] && rows+=('{"interface":"silinx","lang":"en"}')
+            [ "$ui" != silinx ] && rows+=('{"interface":"ise","lang":"en"}')
+          fi
+          [ "$lang" != en ] && [ "$ui" != ise ] && rows+=('{"interface":"silinx","lang":"pt"}')
+          parts=()
+          for r in "${rows[@]}"; do for p in 1; do parts+=("${r%\}},\"part\":$p}"); done; done
+          echo "matrix={\"include\":[$(IFS=,; echo "${parts[*]}")]}" >> "$GITHUB_OUTPUT"
+        env:
+          UI: ${{ inputs.interface }}
+          LANG_IN: ${{ inputs.language }}
+
+  usability:
+    needs: plan
+    if: needs.plan.outputs.matrix != '{"include":[]}'
+    strategy:
+      fail-fast: false
+      max-parallel: 6
+      matrix: ${{ fromJSON(needs.plan.outputs.matrix) }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    name: usability (${{ matrix.interface }}, ${{ matrix.lang }}, ${{ matrix.part }}/1)
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: ./.github/actions/setup
+      - name: Usability tests (headless Chrome)
+        run: |
+          if [ -n "$FILES" ]; then
+            node --test --test-concurrency=1 --test-reporter=tap --test-reporter-destination=stdout $FILES
+          else
+            node scripts/test-shard.mjs "$PART/1" --usability --test-concurrency=1 \
+              --test-reporter=tap --test-reporter-destination=stdout \
+              --test-reporter=./scripts/test-times-reporter.mjs --test-reporter-destination=test-times.json
+          fi
+        timeout-minutes: 15
+        env:
+          PART: ${{ matrix.part }}
+          FILES: ${{ inputs.files }}
+          CHROME_PATH: /usr/bin/google-chrome
+          SILINX_UI_INTERFACE: ${{ matrix.interface == 'ise' && 'ise' || '' }}
+          SILINX_USABILITY_LANG: ${{ matrix.lang }}
+          SILINX_USABILITY_SEED: ${{ inputs.seed }}
+          SILINX_USABILITY_STEPS: ${{ inputs.steps }}
+      - if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: usability-times-${{ matrix.interface }}-${{ matrix.lang }}-${{ matrix.part }}
+          path: test-times.json
+          retention-days: 30
+          if-no-files-found: ignore
+      # (each failed scenario's report, its documents and its last steps' screenshots: lib/session.js; the harness's
+      # screenshot of the failed test)
+      - if: failure()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: usability-${{ matrix.interface }}-${{ matrix.lang }}-${{ matrix.part }}
+          path: /tmp/silinx-ui-*/screenshots/
+          retention-days: 30
+          if-no-files-found: ignore
+
+  # a failed job is an issue (#251): .github/workflows/failure-report.yml, the scenario's report quoted
+  report:
+    needs: [changes, plan, usability]
+    if: always() && github.event_name == 'schedule' && (contains(needs.*.result, 'failure') || contains(needs.*.result, 'cancelled'))
+    uses: ./.github/workflows/failure-report.yml
+    permissions:
+      actions: read
+      checks: read
+      contents: read
+      issues: write
