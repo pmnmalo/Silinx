@@ -1,6 +1,7 @@
 // The usability tests' own logic (#5148, test/usability/lib/): the seeded generator, the shrinking of a failing sequence,
 // and the schematic's invariants on drawings made for each (a wire's end on nothing, a net name's stub, a wire come off
-// its pin, a diagonal, overlapping symbols, the junction dots, the nets, the HDL).
+// its pin, a diagonal, overlapping symbols, the junction dots, the nets, the HDL); the HDL editor's typing model and the
+// wave window's values against the reference simulator (#5206).
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
@@ -9,6 +10,11 @@ import { fileURLToPath } from 'node:url';
 import { prng, seeds, shrink } from './usability/lib/random.js';
 import { danglingEnds, detachedEnds, badSegments, overlaps, junctionPoints, nets, schInvariants, hdlErrors } from './usability/lib/sch-invariants.js';
 import { newDoc, normalizeDoc } from '../core/schdoc.js';
+import { TypingModel, pieces, plain, fileOf, typeDesign } from './usability/lib/hdl-typing.js';
+import { DESIGNS } from './usability/lib/hdl-designs.js';
+import { shownValue, wrongValues, waveReference } from './usability/lib/wave-kit.js';
+import { compile, elaborate } from '../core/compile.js';
+import { mk, allX, format, toDec } from '../core/values.js';
 
 const ROOT = path.join(path.dirname(fileURLToPath(import.meta.url)), '..');
 const inv = (id, name, x, y) => ({ id, type: 'inv', x, y, rot: 0, mirror: false, name, params: { width: 1 } });
@@ -130,4 +136,86 @@ test('usability: the circuit\'s invariants: the breadboard example holds them; a
   const f = structuredClone(m);
   f.wires.push({ id: 'w99', points: [[10, -4], [10, -3]] });
   assert.match(circInvariants(f).errors[0], /^error: Short circuit: the supply's \+ and − are joined/);
+});
+
+test('usability: the HDL editor\'s typing model: brackets and quotes closed and typed over, Enter carrying the rest, a completion, a line\'s end', () => {
+  const m = new TypingModel();
+  // ( closed before the end of the line; ) typed over the one it put
+  m.typeAll('f(a)');
+  assert.deepEqual([m.text, m.pos], ['f(a)', 4]);
+  // a quote after a space closed, typed over; after a word's letter not (4'd0); ( before a closing one closed too
+  m.typeAll(" <= '1'; x = 4'd0; (others => '0')");
+  assert.equal(m.text, "f(a) <= '1'; x = 4'd0; (others => '0')");
+  // ( before a letter not closed
+  const n = new TypingModel('ab');
+  n.pos = 1;
+  n.type('(');
+  assert.deepEqual([n.text, n.pos], ['a(b', 2]);
+  // Enter: the text after the cursor carried to the new line, its spaces dropped, the line indented as given
+  const e = new TypingModel();
+  e.typeAll('port (clk : in std_logic;');
+  assert.equal(e.text, 'port (clk : in std_logic;)');
+  e.enter(8);
+  assert.deepEqual([e.text, e.pos], ['port (clk : in std_logic;\n        )', 34]);
+  e.typeAll('q : out bit);');
+  assert.equal(e.text, 'port (clk : in std_logic;\n        q : out bit);');
+  // Enter on a line of spaces only: it is emptied
+  e.enter(2);
+  e.enter(0);
+  assert.equal(e.text, 'port (clk : in std_logic;\n        q : out bit);\n\n');
+  // a completion's rest inserted; the end of a line
+  const c = new TypingModel('a\nbc\n');
+  c.endOf(2);
+  assert.equal(c.pos, 4);
+  c.typeAll(' std_logic_v');
+  c.complete('ector');
+  assert.equal(c.text, 'a\nbc std_logic_vector\n');
+  c.endOf(1);
+  c.type(';');
+  assert.equal(c.text, 'a;\nbc std_logic_vector\n');
+});
+
+test('usability: the lines typed with completions: their pieces, their text; the designs typed by the model are their files, and compile', () => {
+  assert.deepEqual(pieces('q : out [[std_logic_v|ector]](3 downto 0));'), [{ type: 'q : out ' }, { prefix: 'std_logic_v', rest: 'ector' }, { type: '(3 downto 0));' }]);
+  assert.deepEqual(pieces('[[pose|dge]]'), [{ prefix: 'pose', rest: 'dge' }]);
+  assert.equal(plain('use [[ieee.nu|meric_std.all]];'), 'use ieee.numeric_std.all;');
+  assert.equal(fileOf([{ indent: 0, line: 'a' }, { indent: 2, line: '[[b|c]]' }]), 'a\n  bc\n');
+  for (const [lang, D] of Object.entries(DESIGNS)) {
+    // the model, every line as intended: the design's file; with its mistake: the file without the fix, the fix then
+    assert.equal(typeDesign(D.lines.map((l) => ({ ...l, typed: undefined }))).text, D.text, lang);
+    const m = typeDesign(D.lines);
+    assert.notEqual(m.text, D.text, `${lang}: the mistake`);
+    m.endOf(D.fix.line);
+    m.typeAll(D.fix.type);
+    assert.equal(m.text, D.text, `${lang}: fixed`);
+    // the design compiles and elaborates, no warnings; with its mistake, an error
+    const lib = compile([{ path: D.file, text: D.text }]);
+    assert.deepEqual([...lib.errors, ...elaborate(lib, 'counter').diags].filter((d) => d.severity !== 'note').map((d) => d.message), [], lang);
+    const bad = compile([{ path: D.file, text: typeDesign(D.lines).text }]);
+    assert.ok(bad.errors.some((d) => d.severity === 'error'), `${lang}: the mistake an error`);
+  }
+});
+
+test('usability: the wave window\'s values: written in each radix, against core\'s formats; the reference\'s at a time; a wrong one said', () => {
+  const v = mk(8, 0x2An), b = mk(1, 1n);
+  assert.deepEqual(['default', 'hex', 'bin', 'udec'].map((r) => shownValue(v, { kind: 'logic' }, r)), ['2A', '2A', '00101010', '42']);
+  assert.equal(shownValue(v, { kind: 'logic' }, 'hex'), format(v, 'hex').toUpperCase());
+  assert.equal(shownValue(v, { kind: 'logic' }, 'udec'), toDec(v, false));
+  assert.equal(shownValue(mk(6, 0x05n), { kind: 'logic' }, 'hex'), '05');
+  assert.equal(shownValue(b, { kind: 'logic' }), '1');
+  assert.equal(shownValue(mk(1, 1n), { kind: 'bool' }), 'TRUE');
+  assert.equal(shownValue(mk(32, 0xFFFFFFFFn), { kind: 'int' }), '-1');
+  assert.equal(shownValue([mk(1)], { kind: 'array' }), '(array)');
+  assert.deepEqual(['hex', 'bin', 'udec'].map((r) => shownValue(allX(4), { kind: 'logic' }, r)), ['X', 'XXXX', 'X']);
+  assert.equal(shownValue(mk(8, 0x0Fn, 0xF0n), { kind: 'logic' }, 'hex'), 'XF');
+  // the reference: a counter's bench run 100 ns, its values at times; a window showing another value said
+  const TB = 'module tb; reg clk = 0; wire [3:0] q; reg rst = 1, en = 1;\n  counter uut (.clk(clk), .rst(rst), .en(en), .q(q));\n  always #5 clk = ~clk;\n  initial #12 rst = 0;\nendmodule\n';
+  const ref = waveReference([{ path: DESIGNS.verilog.file, text: DESIGNS.verilog.text }, { path: 'tb.v', text: TB }], 'tb', 100000);
+  assert.deepEqual(ref.rows, ['tb.clk', 'tb.q', 'tb.rst', 'tb.en']);
+  // (the rising edges at 5, 15, 25… ns: reset at 5, then counted from 15)
+  assert.deepEqual([4000, 5000, 15000, 44999, 45000].map((t) => shownValue(ref.at('tb.q', t).v, ref.at('tb.q', t).t, 'udec')), ['X', '0', '1', '3', '4']);
+  const doc = { rows: [['tb.q', 'udec'], ['tb.clk', 'default']], cursor: 45000, values: ['4', '1'] };
+  assert.deepEqual(wrongValues(doc, ref), []);
+  assert.deepEqual(wrongValues({ ...doc, values: ['3', '1'] }, ref), ['tb.q at 45000 ps (udec): shown "3", the reference\'s "4"']);
+  assert.deepEqual(wrongValues({ ...doc, rows: [['tb.nope', 'default']], values: [''] }, ref), ['tb.nope: not in the reference']);
 });
