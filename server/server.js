@@ -182,6 +182,13 @@ export async function createApp({ host = '127.0.0.1', token = null, codes = crea
   app.use('/packages/silinx-hdl/src', asset(path.join(ROOT, 'packages/silinx-hdl/src')));
   app.use('/vendor/elk', asset(path.join(ROOT, 'node_modules/elkjs/lib')));
   // the editor's ES modules (CodeMirror 6): the packages the import map of web/index.html names, only
+  // (avr8js's ES modules import each other with no extension, './cpu/cpu', '..': resolved as a bundler does, the co-design
+  // System's AVR, #4701)
+  app.use('/vendor/npm/avr8js/dist/esm', (req, res, next) => {
+    const p = decodedPath(req);
+    if (!/\.\w+$/.test(p)) req.url = p.endsWith('/') ? `${p}index.js` : `${p}.js`;
+    next();
+  });
   for (const pkg of importMapPackages()) {
     app.use(`/vendor/npm/${pkg}`, asset(path.join(ROOT, 'node_modules', pkg)));
   }

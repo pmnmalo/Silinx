@@ -16,6 +16,17 @@ import { simModelsOf, toolOf } from '../core/tool-descriptors.js';
 
 const SIM_MODELS = { postsynth: 'Post-Synthesis', posttrans: 'Post-Translate', postmap: 'Post-Map', postpar: 'Post-Place & Route' };
 // the process that makes each model (run_process), and the stage it comes after
+// the System document `simulate` runs (#4701): `top` a .sys.json, or a co-design project's with no top given
+async function systemOf(name, top) {
+  const { isSystemFile } = await import('../core/system-doc.js');
+  if (top) return isSystemFile(top) ? top : null;
+  const pj = await P.readProject(name).catch(() => null);
+  if (pj?.kind !== 'codesign') return null;
+  const f = (await P.fileTree(name)).find(isSystemFile);
+  if (!f) throw toolError(`the co-design project '${name}' has no System document (.sys.json)`);
+  return f;
+}
+
 export const MODEL_PROCESS = { postsynth: 'post_synthesis_model', posttrans: 'post_translate_model', postmap: 'post_map_model', postpar: 'post_par_model' };
 // the models each flow makes (#3707): the interface's tool's (core/tool-descriptors.js toolOf, simModelsOf, #4751): a
 // device's Silinx toolchain, but a 7-series one's AMD Vivado unless `silinx` (the Silinx toolchain asked for, on a device it
@@ -188,7 +199,8 @@ export const HDL_TOOLS = [
     name: 'simulate', title: 'Simulate Behavioral Model',
     description: 'Run the simulation of the project\'s test bench (or another top) for a time, behavioural or against a simulation model of the flow (post-synthesis, post-translate, post-map, post-place & route with its timing): its messages (report / $display, assertions), where it stopped, and the values of signals (the test bench\'s by default; hierarchical names as tb/uut/count) with their changes.',
     inputSchema: { type: 'object', properties: {
-      project: PROJECT, top: STR('The simulation top (default: the project\'s test bench).'),
+      project: PROJECT, top: STR('The simulation top (default: the project\'s test bench); a co-design project\'s System (.sys.json, its default): Simulate System, each link\'s decoded bytes, build/<name>.vcd.'),
+      type: { type: 'object', description: 'A System\'s terminals: { terminal: text } typed.' },
       time_ns: { type: 'number', description: 'How long to simulate, in ns (default 1000; at most 1e9).' },
       signals: { type: 'array', items: { type: 'string' }, description: 'The signals to return (names of the top, or paths through instances: uut/count).' },
       max_changes: { type: 'integer', description: `The changes of each signal returned at most (default 20, the last ones; from 1 to ${SIM_LIMITS.maxChanges}, and ${nth(SIM_LIMITS.changes)} in all).` },
@@ -205,7 +217,12 @@ export const HDL_TOOLS = [
       }, required: ['signal'] }, description: 'Forces, as SSim\'s Force Constant and Force Clock (ssim force add): over what drives the signal, from start until cancel. A later force of a signal cuts its earlier one.' },
     }, required: ['project'], additionalProperties: false },
     annotations: { readOnlyHint: true },
-    async run({ project: name, top, time_ns: timeNs = 1000, signals, max_changes: maxChanges = 20, timeout_s: timeoutS = SIM_LIMITS.timeoutS, model = 'behavioral', generate = false, vcd, forces }, { signal } = {}) {
+    async run({ project: name, top, time_ns: timeGiven, type, signals, max_changes: maxChanges = 20, timeout_s: timeoutS = SIM_LIMITS.timeoutS, model = 'behavioral', generate = false, vcd, forces }, { signal } = {}) {
+      // (a co-design project's System, #4701: Simulate System, 100 ms by default)
+      const sysFile = await systemOf(name, top);
+      if (sysFile) return (await import('./mcp-system-sim.js')).simulateSystem(name, sysFile, { ms: timeGiven != null ? timeGiven / 1e6 : 100, type });
+      const timeNs = timeGiven ?? 1000;
+      if (type) throw toolError('type: a System\'s terminals (top: a .sys.json)');
       if (!(timeNs > 0) || timeNs > 1e9) throw toolError('time_ns: from 0 to 1e9 ns');
       if (!Number.isInteger(maxChanges) || maxChanges < 1 || maxChanges > SIM_LIMITS.maxChanges) throw toolError(`max_changes: from 1 to ${SIM_LIMITS.maxChanges}`);
       if (!Number.isInteger(timeoutS) || timeoutS < 1 || timeoutS > SIM_LIMITS.maxTimeoutS) throw toolError(`timeout_s: from 1 to ${SIM_LIMITS.maxTimeoutS} s`);

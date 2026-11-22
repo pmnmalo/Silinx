@@ -16,6 +16,9 @@ import { elaborate } from '/core/compile.js';
 import { ucfPort } from '/core/board-constraints.js';
 import { readSystem, writeSystem } from '/core/system-doc.js';
 import { checkSystem } from '/core/system-check.js';
+import { systemInputs } from '/core/system-run.js';
+import { mountSystemSim } from './system-sim-view.js';
+import { openSystemWaves } from './system-waves-view.js';
 
 // the project's modules ({ name: ports, null when not elaborated }): every module, the FPGA nodes' elaborated
 function projectModules(sys) {
@@ -27,6 +30,27 @@ function projectModules(sys) {
   }
   return out;
 }
+// the System made ready to run (core/system-run.js systemInputs): its FPGA nodes' modules compiled by Yosys (the Board
+// Emulator's: the page's workers, the browser edition's own), its firmware read (a .hex: an .elf is read by the MCP's
+// simulate of a System); then run in its Web Worker (system-remote.js), where the compiled engine may make its code
+async function prepareHere(sys) {
+  const lib = designState.lib;
+  if (!lib) return { error: 'the project does not compile: Check Syntax says why' };
+  const designs = {}, ports = {};
+  for (const m of new Set(sys.nodes.filter(n => n.kind === 'fpga' && n.module).map(n => String(n.module)))) {
+    try { designs[m] = elaborate(lib, m); ports[m] = designs[m].top.ports.map(ucfPort).map(p => ({ name: p.name, dir: p.dir, width: p.width })); } catch { /* said below */ }
+  }
+  const { netlistOf } = await import('/core/compiled-sim.js');
+  const { emulatorYosys } = await import('./emulator.js');
+  const run = await emulatorYosys(api.standalone);
+  const inputs = await systemInputs(sys, {
+    ports,
+    netlist: m => { if (!designs[m]) throw new Error(`no module '${m}' that elaborates (Check Syntax says why)`); return netlistOf(designs[m], { run }); },
+    firmware: async p => { if (!/\.hex$/i.test(p)) throw new Error('the browser reads an Intel HEX (.hex): give the firmware\'s .hex'); return api.readFile(S.project.name, p); },
+  });
+  return inputs.error ? inputs : (await import('./system-remote.js')).startSystemRun(sys, inputs);
+}
+
 /** A System's problems, as Check System says them (the MCP server's check_system's). */
 const checkProjectSystem = sys => checkSystem(sys, { modules: projectModules(sys), files: filesState.fileTree || [] });
 // the editor's lists: the project's design modules (the roots of its hierarchy first: a new FPGA node's), a module's
@@ -61,6 +85,8 @@ export async function openSystem(path) {
         check: checkProjectSystem, modules, portsOf, firmwares,
         // (a project followed, #3181: read only, the follower's notice at the end of its toolbar; no live editing yet)
         ...(following() ? { readOnly: true, banner: followNotice() } : {}),
+        // (Simulate: the System's simulation view, #4701)
+        mountSim: (host, o) => mountSystemSim(host, { ...o, prepare: prepareHere, onMessage: (text, level) => log(text, level), openWaves: openSystemWaves }),
       });
       d.systemEditor = ed;
       d.checkSystem = () => problems.log(ed.check());

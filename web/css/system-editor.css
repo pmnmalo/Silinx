@@ -26,3 +26,16 @@
 .system-editor .sys-link.sel .sys-link-line { stroke: var(--asm-accent); stroke-width: 3; }
 .system-editor .sys-link-line.sys-ghost { stroke-dasharray: 6 4; pointer-events: none; }
 .system-editor .sys-link-name { fill: var(--asm-muted); font: 11px var(--asm-mono); pointer-events: none; }
+/* the simulation view (web/js/system-sim-view.js, #4701): its bar, the terminals, the link inspector */
+.system-editor .sys-sim-host { display: flex; flex-direction: column; min-height: 0; overflow: auto; color: var(--asm-fg); }
+.system-editor .sys-sim-bar { display: flex; gap: 6px; align-items: center; padding: 4px 8px; flex-wrap: wrap; }
+.system-editor .sys-sim-time { margin-left: 8px; font: 12px var(--asm-mono); color: var(--asm-muted); }
+.system-editor .sys-sim-body { display: flex; gap: 10px; padding: 4px 8px 8px; flex-wrap: wrap; align-items: flex-start; }
+.system-editor .sys-term, .system-editor .sys-wire { border: 1px solid var(--asm-border, color-mix(in srgb, var(--asm-fg) 20%, transparent)); border-radius: 4px; padding: 4px 6px; min-width: 260px; flex: 1 1 260px; }
+.system-editor .sys-term-cap, .system-editor .sys-wire-cap { font: 600 12px system-ui, -apple-system, "Segoe UI", sans-serif; margin-bottom: 4px; }
+.system-editor .sys-term-out { margin: 0 0 4px; min-height: 4em; max-height: 12em; overflow: auto; font: 12px var(--asm-mono); white-space: pre-wrap; overflow-wrap: anywhere; background: var(--asm-bg); padding: 4px; }
+.system-editor .sys-term-in { width: 100%; box-sizing: border-box; }
+.system-editor .sys-wire-text { font: 12px var(--asm-mono); white-space: pre-wrap; overflow-wrap: anywhere; margin-bottom: 4px; }
+.system-editor .sys-wire-bytes { display: flex; flex-wrap: wrap; gap: 3px; max-height: 8em; overflow: auto; }
+.system-editor .sys-byte { font: 11px var(--asm-mono); padding: 0 3px; border-radius: 3px; background: color-mix(in srgb, var(--asm-accent) 14%, transparent); }
+.system-editor .sys-byte.err { background: color-mix(in srgb, var(--asm-warn) 35%, transparent); }

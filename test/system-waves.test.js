@@ -6,10 +6,12 @@ import assert from 'node:assert/strict';
 import { systemWaves, systemVcd } from '../core/system-waves.js';
 import { readVcd } from '../core/vcd.js';
 import { SystemSim } from '../core/system-sim.js';
-import { AvrNode } from '../core/system-sim-avr.js';
+import { AvrNode, loadAvr8js } from '../core/system-sim-avr.js';
 import { echoProgram } from './avr-asm.mjs';
 import { uartNode } from './system-sim-lib.mjs';
 import * as V from '../core/values.js';
+
+await loadAvr8js();   // (avr8js, before an AvrNode is made: core/system-sim-avr.js, #4701)
 
 // the changes as the waves keep them: a value null for unknown, a change to the same value dropped, the last of a time
 function kept(changes) {

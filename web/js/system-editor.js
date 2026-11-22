@@ -3,13 +3,15 @@
 //
 //   import { mountSystemEditor } from './system-editor.js';
 //   const ed = mountSystemEditor(container, { model, onChange(model), onProblems(diags), onCheck(diags), onMessage(text, isError),
-//     check(model) -> diags, modules() -> [name], portsOf(module) -> [{ name, dir }], firmwares() -> [path], readOnly, banner });
+//     check(model) -> diags, modules() -> [name], portsOf(module) -> [{ name, dir }], firmwares() -> [path], readOnly, banner,
+//     mountSim(host, { system() }) -> its simulation view (system-sim-view.js) });
 //   ed.getModel(); ed.setModel(m); ed.undo(); ed.redo(); ed.canUndo(); ed.canRedo(); ed.fit(); ed.check(); ed.select({ kind, id });
-//   ed.deleteSelection(); ed.canDelete(); ed.destroy();
+//   ed.deleteSelection(); ed.canDelete(); ed.showSim(); ed.sim (its simulation view, open); ed.destroy();
 //
 // Tools: select and move, a node placed (an FPGA, an Arduino Uno or Nano, a serial terminal: a click on the canvas), a
 // link (a click on an interface's row, then on another's). Every edit is core/system-edit.js's, as the MCP server's
-// edit_system; one refused says why in the console. The side panel (system-side.js) edits the selection and the System;
+// edit_system; one refused says why in the console. Simulate opens the bottom panel, the System's simulation view
+// (#4701, `mountSim`), resized and docked as the other editors' panels (dock-panel.js). The side panel (system-side.js) edits the selection and the System;
 // its drawing is system-draw.js. No hint line: the counts in its status line; its problems (`onProblems`, after every
 // change: the System's check, core/system-check.js; `onCheck`, Check's) and its messages go to the console (#2718).
 import { h } from './ui.js';
@@ -21,6 +23,7 @@ import { panelToggle, PROPS_KEY } from './narrow.js';
 import { pressTool } from './editor-tools.js';
 import { statusLine } from './status-line.js';
 import { onLayoutToggled } from './layout-fit.js';
+import { mountDockPanel } from './dock-panel.js';
 import { normalizeSystem, newSystem } from '/core/system-doc.js';
 import { addNode, changeNode, removeNode, removeLink, removeInterface, addLink } from '/core/system-edit.js';
 import { mountSystemDraw, NODE_W, nodeHeight } from './system-draw.js';
@@ -59,13 +62,15 @@ export function mountSystemEditor(container, opts = {}) {
   };
   const delBtn = toolIcon('delete', 'del', 'Delete the selection (Del)', () => deleteSelection(), 'asm-danger');
   const checkBtn = toolWide('check', 'Check', 'Check the System for errors and warnings', () => opts.onCheck?.(check()), 'sys-check');
+  const simBtn = toolWide('sim', 'Simulate', 'Simulate the System: its nodes run together, its links decoded, its waves', () => toggleSim(), 'sys-sim-btn try-btn');
   const zoomLbl = h('span', { class: 'asm-zoom', title: 'Zoom level' }, '100%');
   const info = statusLine();
   const toolbar = h('div', { class: 'asm-toolbar sys-toolbar' },
     h('div', { class: 'asm-group' }, ...Object.values(tools)), sep(),
     h('div', { class: 'asm-group' }, delBtn), sep(),
     h('div', { class: 'asm-group' }, ...zoomTools(f => zoomBtn(f), () => fit()), zoomLbl), sep(),
-    h('div', { class: 'asm-group' }, checkBtn),
+    h('div', { class: 'asm-group' }, checkBtn), sep(),
+    h('div', { class: 'asm-group' }, simBtn),
     h('div', { class: 'asm-spacer' }),
     h('div', { class: 'asm-group' }, panelToggle(root, btn('☰ Properties', 'Show / hide the properties panel'), { key: PROPS_KEY })));
 
@@ -77,7 +82,22 @@ export function mountSystemEditor(container, opts = {}) {
   const sysBody = h('div', { class: 'sys-body' });
   const side = h('aside', { class: 'asm-side' }, h('div', { class: 'asm-cap' }, 'Properties'), selSection, h('section', { class: 'asm-section sys-system' }, h('h3', {}, 'System'), sysBody));
   mountSideFold({ root, side, key: 'silinx.system.props.folded' });
-  root.append(toolbar, h('div', { class: 'asm-body' }, h('div', { class: 'asm-main' }, canvasWrap), side), info.el);
+  const simBody = h('div', { class: 'sys-sim-host' });
+  const bottom = h('div', { class: 'asm-codepanel sys-sim-panel', hidden: true },
+    h('div', { class: 'asm-codebar' }, h('span', { class: 'asm-code-title' }, 'Simulate System'), h('div', { class: 'asm-spacer' }), btn('✕', 'Close the panel', () => toggleSim(false))), simBody);
+  const mainCol = h('div', { class: 'asm-main' }, canvasWrap, bottom);
+  root.append(toolbar, h('div', { class: 'asm-body' }, mainCol, side), info.el);
+  const dock = mountDockPanel({ main: mainCol, panel: bottom, bar: bottom.querySelector('.asm-codebar'), btn, kind: 'system', changed: () => { if (!destroyed) applyView(); }, fit: () => { if (!destroyed) fit(); } });
+  let simView = null;
+  // the simulation view: opened (its System the editor's as it is then), closed (its run ended)
+  function toggleSim(on = bottom.hidden) {
+    if (on && !opts.mountSim) return;
+    bottom.hidden = !on;
+    simBtn.classList.toggle('active', on);
+    if (on && !simView) simView = opts.mountSim(simBody, { system: () => normalizeSystem(M) });
+    if (!on && simView) { simView.destroy(); simView = null; }
+    dock.apply?.();
+  }
   if (readOnly) { for (const b of [...Object.values(tools).slice(1), delBtn]) b.hidden = true; root.classList.add('asm-readonly'); if (opts.banner) toolbar.append(opts.banner); }
 
   // ---------------------------------------------------------------- edits, history
@@ -218,6 +238,7 @@ export function mountSystemEditor(container, opts = {}) {
     deleteSelection, canDelete: () => !readOnly && !!sel,
     check, fit, refresh: () => render(),
     select(ref) { if (exists(ref)) { sel = { kind: ref.kind, id: ref.id }; render(); } },
-    destroy() { destroyed = true; ro?.disconnect(); offLayout(); container.innerHTML = ''; },
+    showSim: () => toggleSim(true), get sim() { return simView; },
+    destroy() { destroyed = true; simView?.destroy(); dock.destroy(); ro?.disconnect(); offLayout(); container.innerHTML = ''; },
   };
 }

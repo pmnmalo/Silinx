@@ -5,9 +5,11 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { UartLinkDecoder, decodeUart, parseFrame, uartWarnings, linkTraffic, byteText, usText } from '../core/system-decode.js';
 import { SystemSim } from '../core/system-sim.js';
-import { AvrNode } from '../core/system-sim-avr.js';
+import { AvrNode, loadAvr8js } from '../core/system-sim-avr.js';
 import { echoProgram } from './avr-asm.mjs';
 import { uartNode } from './system-sim-lib.mjs';
+
+await loadAvr8js();   // (avr8js, before an AvrNode is made: core/system-sim-avr.js, #4701)
 
 // the changes of frames of `bytes` from t0 (ps), an independent encoder: [t, level…], the line idle at 1 first;
 // over: a frame's bits changed ({ parity: flipped, stop: 0 })

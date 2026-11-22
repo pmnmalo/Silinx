@@ -101,3 +101,38 @@ test('#4700 edit_system: edits applied in order, written, checked (its warnings)
   const none = await call('edit_system', { project: 'u', file: 'e.sys.json', edits: [{ action: 'spin' }] });
   assert.deepEqual([none.isError, none.text], [true, 'edit_system: edits[0].action: one of add_node, change_node, remove_node, add_interface, change_interface, remove_interface, add_link, change_link, remove_link']);
 });
+
+test('#4701 simulate of a System (Simulate System): an AVR and the uart example\'s FPGA by UART, each wire\'s bytes, the waves\' VCD; what cannot be simulated', async () => {
+  const { intelHex, echoProgram } = await import('./avr-asm.mjs');
+  await write('fw/echo.hex', intelHex(echoProgram()));
+  const uno = { id: 'uno', kind: 'mcu', board: 'arduino-uno', firmware: 'fw/echo.hex', interfaces: [{ name: 'Serial', kind: 'uart', baud: 9600, frame: '8N1' }] };
+  const m = system({ nodes: [uno] }); m.links[0].a = 'uno.Serial';
+  m.nodes = m.nodes.filter(n => n.id !== 'term');
+  await write('sim.sys.json', m);
+  const r = await ok('simulate', { project: 'u', top: 'sim.sys.json', time_ns: 8e6 });
+  const { untrusted, ...data } = r.data;
+  assert.match(untrusted.content, /the bytes its nodes sent/);
+  const text = w => String.fromCharCode(...data.traffic.find(t => t.wire === w).bytes.map(b => b.byte));
+  assert.deepEqual(data.traffic.map(t => [t.wire, t.from, t.to]), [['console_uno', 'uno.D1', 'fpga.rx'], ['console_fpga', 'fpga.tx', 'uno.D0']]);
+  assert.equal(text('console_uno').slice(0, 6), 'HiIjJk');
+  assert.equal(text('console_fpga').slice(0, 5), 'HiIjJ');
+  assert.deepEqual([data.time, data.warnings, data.errors, data.vcd, data.terminals], ['8 ms', [], [], 'build/uart_avr.vcd', {}]);
+  const lines = r.text.split('\n');
+  assert.equal(lines[0], 'Simulate System: 8 ms simulated.');
+  assert.match(lines[1], /^console_uno \(uno\.D1 → fpga\.rx, 9600 8N1\): \d+ byte\(s\), the first at [\d.]+ µs: "HiIjJk/);
+  assert.equal(lines.at(-1), 'The waves: build/uart_avr.vcd.');
+  const vcd = (await ok('read_file', { project: 'u', path: 'build/uart_avr.vcd' })).text;
+  assert.match(vcd, /\$scope module uart_avr \$end/);
+  assert.match(vcd, /\$var wire 1 \S+ console_uno \$end/);
+  // a terminal typing to the FPGA, read back
+  const t = system({ nodes: [] });
+  await write('term.sys.json', t);
+  const e = await ok('simulate', { project: 'u', top: 'term.sys.json', time_ns: 6e6, type: { term: 'OK' } });
+  assert.deepEqual(e.data.terminals, { term: 'OK' });
+  // what cannot be simulated: said, nothing run
+  const bad = async (args, message) => { const x = await call('simulate', args); assert.deepEqual([x.isError, x.text], [true, `simulate: ${message}`]); };
+  await write('nofw.sys.json', { ...m, nodes: m.nodes.map(n => (n.id === 'uno' ? { ...n, firmware: null } : n)) });
+  await bad({ project: 'u', top: 'nofw.sys.json' }, 'nofw.sys.json: uno: no firmware: a .hex or an .elf of the project');
+  await bad({ project: 'u', top: 'term.sys.json', type: { nope: 'x' } }, 'type: no terminal \'nope\' in the System');
+  await bad({ project: 'u', type: { term: 'x' } }, 'type: a System\'s terminals (top: a .sys.json)');
+});

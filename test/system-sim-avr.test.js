@@ -6,11 +6,13 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { CPU, avrInstruction, AVRIOPort, AVRUSART, AVRTimer, portBConfig, portDConfig, usart0Config, timer0Config } from 'avr8js';
-import { AvrNode, CYCLE_PS, AVR_HZ, avrPin } from '../core/system-sim-avr.js';
+import { AvrNode, CYCLE_PS, AVR_HZ, avrPin, loadAvr8js } from '../core/system-sim-avr.js';
 import { SystemSim } from '../core/system-sim.js';
 import { UartDecoder, uartFrames } from '../core/uart.js';
 import { avrElf, echoProgram, intelHex } from './avr-asm.mjs';
 import { bytesOf, uartNode } from './system-sim-lib.mjs';
+
+await loadAvr8js();   // (avr8js, before an AvrNode is made: core/system-sim-avr.js, #4701)
 
 const BIT = 1664 * CYCLE_PS;   // 9600 baud: UBRR 103, 16 cycles a bit
 const hexNode = (o = {}) => new AvrNode({ firmware: { name: 'fw/echo.hex', data: intelHex(echoProgram(o)) } });
