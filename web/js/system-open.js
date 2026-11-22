@@ -15,6 +15,7 @@ import { filesState } from './state-files.js';
 import { elaborate } from '/core/compile.js';
 import { ucfPort } from '/core/board-constraints.js';
 import { readSystem, writeSystem } from '/core/system-doc.js';
+import { codesignOn, CODESIGN_OFF } from '/core/build-channel.js';
 import { checkSystem } from '/core/system-check.js';
 import { systemInputs } from '/core/system-run.js';
 import { mountSystemSim } from './system-sim-view.js';
@@ -60,6 +61,8 @@ const portsOf = name => (designState.modules || []).find(m => m.name === name)?.
 const firmwares = () => (filesState.fileTree || []).filter(f => /\.(hex|elf)$/i.test(f));
 
 export async function openSystem(path) {
+  // (co-design not in a release yet, #5202: said in the console, no editor)
+  if (!codesignOn()) { logError(`cannot open ${path}: ${CODESIGN_OFF}`); return; }
   const id = `sys:${path}`;
   if (findDoc(id)) return activateDoc(findDoc(id));
   const pj = S.project.name;

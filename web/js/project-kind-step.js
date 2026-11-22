@@ -3,6 +3,7 @@
 // roadmap #4695, #4702: its System document, its editor and its simulation), each said in a few words: what it is for,
 // what it shows (core/project-kind.js).
 import { CODESIGN_KIND, DESIGN_KIND, PROJECT_KINDS } from '/core/project-kind.js';
+import { codesignOn, CODESIGN_OFF } from '/core/build-channel.js';
 import { h } from './ui.js';
 
 /**
@@ -12,14 +13,17 @@ import { h } from './ui.js';
 export function kindStep(value = 'fpga', onChange = () => {}) {
   let kind = value;
   const card = k => {
-    const input = h('input', { type: 'radio', name: 'project-kind', value: k.id });
+    // (co-design not in a release yet: its card disabled, the reason said, #5202)
+    const off = k.id === CODESIGN_KIND && !codesignOn();
+    const input = h('input', { type: 'radio', name: 'project-kind', value: k.id, disabled: off });
     input.checked = k.id === kind;
     input.addEventListener('change', () => { if (input.checked) { kind = k.id; onChange(kind); } });
-    return h('label', { class: 'kind-card', 'data-kind': k.id },
+    return h('label', { class: `kind-card${off ? ' off' : ''}`, 'data-kind': k.id },
       input,
       h('div', { class: 'kind-text' },
         h('div', { class: 'kind-name' }, k.name),
-        h('div', { class: 'kind-about' }, k.about)));
+        h('div', { class: 'kind-about' }, k.about),
+        off ? h('div', { class: 'kind-not-yet' }, CODESIGN_OFF) : null));
   };
   const page = {
     title: 'Project Kind',

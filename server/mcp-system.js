@@ -5,6 +5,7 @@
 import * as P from './projects.js';
 import { toolError, STR, PROJECT, projectText, readProject, elaborateView } from './mcp-util.js';
 import { readSystem, writeSystem, isSystemFile } from '../core/system-doc.js';
+import { codesignOn, CODESIGN_OFF } from '../core/build-channel.js';
 import { editSystem, describeSystem, EDIT_ACTIONS } from '../core/system-edit.js';
 import { checkSystem, systemCheckLines } from '../core/system-check.js';
 import { ucfPort } from '../core/board-constraints.js';
@@ -36,6 +37,7 @@ async function checkSystemFile(name, file, text) {
 
 // a System document of the project read: { text, system }, or the tool's error (not a System, unreadable)
 async function readSystemFile(name, file) {
+  if (!codesignOn()) throw toolError(CODESIGN_OFF);   // (co-design not in a release yet, #5202)
   if (!isSystemFile(file)) throw toolError(`'${file}' is not a System document (.sys.json)`);
   const text = await projectText(name, file, `no System '${file}' in the project '${name}'`);
   const r = readSystem(text);

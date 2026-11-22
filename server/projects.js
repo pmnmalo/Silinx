@@ -2,6 +2,7 @@
 import fs from 'node:fs/promises';
 import fsSync from 'node:fs';
 import path from 'node:path';
+import './build-channel.js';   // (the build's channel set, #5202: every server imports this module)
 import os from 'node:os';
 import crypto from 'node:crypto';
 import { fileURLToPath } from 'node:url';

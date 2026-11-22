@@ -5,22 +5,10 @@
 // source archive): the version alone.
 import { execFileSync } from 'node:child_process';
 import path from 'node:path';
+// (the commit's test, the local server's too: server/build-commit.js, #5202)
+export { buildInfo } from '../server/build-commit.js';
 
 const git = (root, ...args) => execFileSync('git', args, { cwd: root, encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] }).trim();
-
-/** null for the release's commit (or no git), else { commit, date } (the short hash, the commit's date and time, YYYY-MM-DD HH:MM). */
-export function buildInfo(root, version, env = process.env) {
-  // the release workflow (a pushed tag v<VERSION>, its shallow checkout)
-  if (env.GITHUB_REF === `refs/tags/v${version}`) return null;
-  let commit;
-  try { commit = git(root, 'rev-parse', '--short=7', 'HEAD'); } catch { return null; }
-  let tags = [];
-  try { tags = git(root, 'tag', '--points-at', 'HEAD').split('\n'); } catch { /* none */ }
-  if (tags.includes(`v${version}`)) return null;
-  let date = null;
-  try { date = git(root, 'log', '-1', '--date=format:%Y-%m-%d %H:%M', '--format=%cd', 'HEAD') || null; } catch { /* none */ }
-  return { commit, date };
-}
 
 /**
  * A development build's changes since the last release, for its Development menu: { since, changes }, since the
