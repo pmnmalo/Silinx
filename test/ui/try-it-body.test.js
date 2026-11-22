@@ -1,5 +1,5 @@
 // UI (#3924): the Try it's body a lighter green than its bar, in every drawing editor that has one: the panel of the state
-// diagram (FSM), the ASM chart and the Petri net, and the schematic's and the circuit's side panels while they are tried out (the
+// diagram (FSM), the ASM chart, the Petri net and the System (co-design, #5194), and the schematic's and the circuit's side panels while they are tried out (the
 // circuit's Try it bar, #4067, as the schematic's: its toolbar's Try it pressed, its bar's Stop); in both interfaces
 // and both themes (dark: a darker, muted green), its text readable (WCAG AA, 4.5:1); the FSM's Tables, the Petri net's
 // Analysis and the schematic's and the circuit's Properties, outside Try it, not green. No message in the console.
@@ -11,6 +11,7 @@ import { newModel } from '../../core/asm.js';
 import { newPetri } from '../../core/petri.js';
 import { newDoc } from '../../core/schdoc.js';
 import { newCircuit } from '../../core/circuit.js';
+import { newSystemFile } from '../../core/system-doc.js';
 
 let env;
 before(async () => { env = await setupUi(); });
@@ -31,6 +32,8 @@ const EDITORS = [
   { kind: 'petri', file: 'src/n.pn.json', model: newPetri('n'), panel: '.pn-panel', bar: '.asm-codebar', body: '.pn-panel-body', api: 'petriEditor', other: 'analysis' },
   { kind: 'sch', file: 'src/s.sch.json', model: schematic(), panel: '.sch-editor', bar: '.se-simbar', body: '.se-props' },
   { kind: 'circ', file: 'src/b.circ.json', model: newCircuit('b'), panel: '.circuit-editor', bar: '.circ-simbar', body: '.asm-side' },
+  // (a co-design System's Try it, its bottom panel, #5194)
+  { kind: 'system', file: newSystemFile('x').path, text: newSystemFile('x').text, panel: '.sys-sim-panel', bar: '.asm-codebar', body: '.sys-sim-host' },
 ];
 
 /** The bar's and the body's backgrounds (the body's as painted: blended over what is behind it) and the lowest contrast
@@ -62,9 +65,9 @@ const look = (page, ed) => page.eval((doc, p, b, y) => {
 const messages = (page) => page.eval(() => ['#console-errors', '#console-warnings'].map((s) => [...document.querySelectorAll(`${s} .diag`)].map((r) => r.textContent)));
 const green = ([r, g, b]) => g > r && g > b;
 
-uiTest('#3924 the Try it\'s body a lighter green than its bar in the FSM, ASM, Petri net, schematic and circuit editors, light and dark', E, async (page) => {
+uiTest('#3924 #5194 the Try it\'s body a lighter green than its bar in the FSM, ASM, Petri net, schematic, circuit and System editors, light and dark', E, async (page) => {
   await page.setViewport(1600, 900);
-  await makeProject(env, { name: 'TryBody', top: '', files: Object.fromEntries(EDITORS.map((e) => [e.file, JSON.stringify(e.model, null, 2)])) });
+  await makeProject(env, { name: 'TryBody', top: '', files: Object.fromEntries(EDITORS.map((e) => [e.file, e.text ?? JSON.stringify(e.model, null, 2)])) });
   await page.openProject('TryBody');
   const before0 = await messages(page);
   for (const ed of EDITORS) {

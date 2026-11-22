@@ -10,8 +10,8 @@
 //
 // Tools: select and move, a node placed (an FPGA, an Arduino Uno or Nano, a serial terminal: a click on the canvas), a
 // link (a click on an interface's row, then on another's). Every edit is core/system-edit.js's, as the MCP server's
-// edit_system; one refused says why in the console. Simulate opens the bottom panel, the System's simulation view
-// (#4701, `mountSim`), resized and docked as the other editors' panels (dock-panel.js). The side panel (system-side.js) edits the selection and the System;
+// edit_system; one refused says why in the console. Try it opens the bottom panel, the System's simulation view
+// (#4701, `mountSim`; the green Try it panel, #5194), resized and docked as the other editors' panels (dock-panel.js). The side panel (system-side.js) edits the selection and the System;
 // its drawing is system-draw.js. No hint line: the counts in its status line; its problems (`onProblems`, after every
 // change: the System's check, core/system-check.js; `onCheck`, Check's) and its messages go to the console (#2718).
 import { h } from './ui.js';
@@ -62,7 +62,7 @@ export function mountSystemEditor(container, opts = {}) {
   };
   const delBtn = toolIcon('delete', 'del', 'Delete the selection (Del)', () => deleteSelection(), 'asm-danger');
   const checkBtn = toolWide('check', 'Check', 'Check the System for errors and warnings', () => opts.onCheck?.(check()), 'sys-check');
-  const simBtn = toolWide('sim', 'Simulate', 'Simulate the System: its nodes run together, its links decoded, its waves', () => toggleSim(), 'sys-sim-btn try-btn');
+  const simBtn = toolWide('sim', 'Try it', 'Try the System out: its nodes run together, its links decoded, its waves', () => toggleSim(), 'sys-sim-btn try-btn');
   const zoomLbl = h('span', { class: 'asm-zoom', title: 'Zoom level' }, '100%');
   const info = statusLine();
   const toolbar = h('div', { class: 'asm-toolbar sys-toolbar' },
@@ -82,9 +82,10 @@ export function mountSystemEditor(container, opts = {}) {
   const sysBody = h('div', { class: 'sys-body' });
   const side = h('aside', { class: 'asm-side' }, h('div', { class: 'asm-cap' }, 'Properties'), selSection, h('section', { class: 'asm-section sys-system' }, h('h3', {}, 'System'), sysBody));
   mountSideFold({ root, side, key: 'silinx.system.props.folded' });
-  const simBody = h('div', { class: 'sys-sim-host' });
-  const bottom = h('div', { class: 'asm-codepanel sys-sim-panel', hidden: true },
-    h('div', { class: 'asm-codebar' }, h('span', { class: 'asm-code-title' }, 'Simulate System'), h('div', { class: 'asm-spacer' }), btn('✕', 'Close the panel', () => toggleSim(false))), simBody);
+  // (the green Try it panel of the other drawing editors, its body the lighter green: docs/UI-GUIDELINES.md, #5194)
+  const simBody = h('div', { class: 'sys-sim-host try-it-body' });
+  const bottom = h('div', { class: 'asm-codepanel sys-sim-panel try-it', hidden: true },
+    h('div', { class: 'asm-codebar' }, h('span', { class: 'asm-code-title' }, 'Try it'), h('div', { class: 'asm-spacer' }), btn('✕', 'Close the panel', () => toggleSim(false))), simBody);
   const mainCol = h('div', { class: 'asm-main' }, canvasWrap, bottom);
   root.append(toolbar, h('div', { class: 'asm-body' }, mainCol, side), info.el);
   const dock = mountDockPanel({ main: mainCol, panel: bottom, bar: bottom.querySelector('.asm-codebar'), btn, kind: 'system', changed: () => { if (!destroyed) applyView(); }, fit: () => { if (!destroyed) fit(); } });

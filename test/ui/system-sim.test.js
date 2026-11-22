@@ -37,8 +37,12 @@ const consoleLines = (page) => page.eval(() => [...document.querySelectorAll('#c
 uiTest('#4701 Simulate System: an AVR and the FPGA by UART, their bytes in the link inspector, the waves; Portuguese', E, async (page) => {
   await codesign('CoSim', doc([UNO, FPGA], [{ id: 'serial', kind: 'uart', a: 'uno.Serial', b: 'fpga.uart' }]));
   await openSystem(page, 'CoSim');
+  // (its toolbar's Try it, the green Try it panel of the other drawing editors, #5194)
+  assert.equal(await page.eval((ed) => document.querySelector(`${ed} .sys-sim-btn`).textContent.trim(), ED), 'Try it');
   await page.click(`${ED} .sys-sim-btn`);
   await page.waitFor((ed) => document.querySelector(`${ed} .sys-sim-panel:not([hidden]) .sys-run-for`), [ED], { what: 'the simulation view' });
+  assert.deepEqual(await page.eval((ed) => { const p = document.querySelector(`${ed} .sys-sim-panel`); return [p.classList.contains('try-it'), p.querySelector('.asm-code-title').textContent, p.querySelector('.sys-sim-host').classList.contains('try-it-body'), document.querySelector(`${ed} .sys-sim-btn`).classList.contains('active')]; }, ED),
+    [true, 'Try it', true, true]);
   await page.click(`${ED} .sys-run-for`);
   await page.waitFor(() => { const s = window.Silinx.active.systemEditor.sim?.state(); return s && !s.running && s.now >= 100e9; }, [], { what: '100 ms run', timeout: 60000 });
   const s = await state(page);
@@ -64,6 +68,8 @@ uiTest('#4701 Simulate System: an AVR and the FPGA by UART, their bytes in the l
   await page.click('.doc-tab', { text: 'uart_avr.sys.json' }).catch(() => page.eval(() => window.SilinxApp.activateDoc(window.SilinxApp.findDoc('sys:uart_avr.sys.json'))));
   await page.eval(async () => (await import('/js/i18n.js')).setLanguage('pt'));
   await page.waitFor((ed) => document.querySelector(`${ed} .sys-run-for`)?.textContent === 'Correr 100 ms' && document.querySelector(`${ed} .sys-waves`)?.textContent === 'Ondas', [ED], { what: 'Portuguese' });
+  assert.deepEqual(await page.eval((ed) => [document.querySelector(`${ed} .sys-sim-btn`).textContent.trim(), document.querySelector(`${ed} .sys-sim-btn`).title, document.querySelector(`${ed} .sys-sim-panel .asm-code-title`).textContent], ED),
+    ['Experimentar', 'Experimentar o Sistema: os nós a correr juntos, as ligações descodificadas, as ondas', 'Experimentar']);
   await page.eval(async () => (await import('/js/i18n.js')).setLanguage('en'));
   assert.deepEqual(page.console.filter((c) => c.type === 'warning' || c.type === 'warn' || c.type === 'error').map((c) => c.text), []);
 });
