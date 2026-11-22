@@ -128,6 +128,19 @@ read / write. Silinx generates both sides:
 - the slave in VHDL and Verilog (SPI, or AXI-Lite through `core/c-axi-lite.js`);
 - the firmware's header (`.h`, or a MicroPython module).
 
+The map is a document of the project, `<name>.regs.json` (#5288, `core/regmap.js`): its bus (`spi`, or `i2c` with its
+7-bit address) and its registers, each `{ name, addr, width, access: 'rw' | 'ro' | 'wo', reset, strobe }`. A register
+takes `ceil(width / 8)` byte addresses, the least significant byte first. `rw` is an output of the module, the value the
+program wrote, read back; `ro` an input, read; `wo` an output, read as 0; `strobe` a one-cycle `<name>_wr` when its last
+byte is written. The protocol: on SPI (mode 0, MSB first, SS low) a command byte, `R << 7 | address`, then the data
+bytes, the address incremented after each, a read's bytes on MISO from the second byte; on I²C a write
+`[address+W, register, data…]`, a read `[address+W, register]`, a repeated START and `[address+R, data…]`. Generated:
+the module `<name>` in VHDL and in Verilog (`core/regmap-hdl.js`: its lines sampled with `clk`, I²C's SDA an `inout`
+port pulled low or released), the Arduino's header `<name>.h` (`core/regmap-c.js`: its addresses, its read and write
+functions through `SPI` or `Wire`), and the accesses a link's transfers make (`core/regmap-decode.js`: `write duty =
+0xa5`, `read count → 0x0123`). Next: the map in the project as a drawing (its HDL always generated from it, a table
+editor, the MCP's tools, Try it's lines), then an example.
+
 ## Simulating everything together
 
 **Simulate System** (#4701) is the System editor's bottom panel, opened by its toolbar's **Try it** (the green Try it panel of the drawing editors, #5194): the page compiles each FPGA node's module (Yosys) and
