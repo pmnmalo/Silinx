@@ -1,12 +1,14 @@
 // The MCP server's set_output_logic (server/mcp-tables.js, #2950, #2951): an output's HDL logic and the minimal solution
 // it uses set as the editor sets them (core/logic-choice.js setOutputLogic), the table written and its HDL file made again
-// (traffic's lamps: its VHDL module follows); related_view's results say them; the errors.
+// (traffic's lamps: its VHDL module follows); related_view's results say them; the errors. Its inputs and outputs set as its
+// Inputs and Outputs boxes set them (core/logic.js shapeTable): one name changed in place a rename, its
+// column or its rows kept (#5165), names added or removed following their names; its refusals, nothing written.
 import { test, before, after } from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
 import { scratchEnv } from './server-helpers.js';
-import { newTable, normalizeTable, setOutputLogic, generateTableHdl } from '../core/logic.js';
+import { newTable, normalizeTable, setOutputLogic, generateTableHdl, shapeTable } from '../core/logic.js';
 
 let tmp;
 const { handle } = await import('../server/mcp.js');
@@ -73,10 +75,70 @@ test('set_output_logic refuses: not a table, nothing to set, an output, a form o
   await call('new_project_from_example', { name: 'b', example: 'traffic' });
   const before = read('b', 'src/lamps.bool.json');
   await fails({ project: 'b', path: 'src/top.vhd', output: 'f', form: 'sop' }, 'src/top.vhd: a truth table (.bool.json, .tt.json) has outputs');
-  await fails({ project: 'b', path: 'src/lamps.bool.json', output: 'car_r' }, 'form or solution: what to set');
+  await fails({ project: 'b', path: 'src/lamps.bool.json', output: 'car_r' }, 'form or solution (or inputs, outputs): what to set');
+  await fails({ project: 'b', path: 'src/lamps.bool.json', form: 'sop' }, 'output: the output whose logic to set');
   await fails({ project: 'b', path: 'src/lamps.bool.json', output: 'f', form: 'sop' }, "src/lamps.bool.json: no output 'f' (outputs: car_r, car_y, car_g, walk_r, walk_g)");
   await fails({ project: 'b', path: 'src/lamps.bool.json', output: 'car_r', form: 'esop' }, 'form: one of sop, pos, qsop, qpos, xor, nand, nor, gates, delay, csop, cpos');
   await fails({ project: 'b', path: 'src/lamps.bool.json', output: 'car_r', solution: { sop: 3 } }, 'src/lamps.bool.json: solution sop: one minimal solution (0)');
   await fails({ project: 'b', path: 'src/none.bool.json', output: 'f', form: 'sop' }, "no file 'src/none.bool.json' in the project 'b'");
   assert.equal(read('b', 'src/lamps.bool.json'), before, 'nothing written');
+});
+
+// ------------------------------------------------------------------ set_output_logic: the inputs and outputs (#5165)
+const TABLE = { ...newTable('m', ['a', 'b'], ['f', 'g']), table: { f: '0111', g: '0001' }, exprs: { f: 'a + b' } };
+const table = () => JSON.parse(read('p', 'src/m.bool.json'));
+const ports = (inputs, outputs, rel = 'src/m.bool.json') => call('set_output_logic', { project: 'p', path: rel, inputs, outputs });
+const portsOk = async (inputs, outputs) => { const r = await ports(inputs, outputs); assert.equal(r.isError, false, r.text); return r; };
+const fresh = () => call('write_file', { project: 'p', path: 'src/m.bool.json', text: JSON.stringify(TABLE) });
+
+test('set_output_logic, inputs and outputs: an output renamed keeps its column, an input renamed its rows (#5165); the HDL made again', async () => {
+  await call('new_project', { name: 'p' });
+  await fresh();
+  let r = await portsOk(['a', 'b'], ['f', 'match']);
+  assert.equal(r.text.split('\n')[0], 'src/m.bool.json: inputs a, b; outputs f, match');
+  assert.deepEqual([r.data.table, table().table, table().exprs], [{ f: '0111', match: '0001' }, { f: '0111', match: '0001' }, { f: 'a + b' }]);
+  assert.match(read('p', r.data.hdl.file), /match\s*:\s*out/i);
+  r = await portsOk(['a', 'flash'], ['f', 'match']);
+  assert.deepEqual([table().inputs, table().table, table().exprs], [['a', 'flash'], { f: '0111', match: '0001' }, { f: 'a + flash' }]);
+  // the editor's function: the same document (with the HDL file it makes)
+  assert.deepEqual(table(), { ...shapeTable(normalizeTable(TABLE), ['a', 'flash'], ['f', 'match']), generatedFile: 'src/m.vhd' });
+  assert.match(read('p', r.data.hdl.file), /flash\s*:\s*in/i);
+});
+
+test('set_output_logic, inputs and outputs: traffic\'s lamps, blink renamed flash: the same table (#5165)', async () => {
+  await call('new_project_from_example', { name: 'l', example: 'traffic' });
+  const before = JSON.parse(read('l', 'src/lamps.bool.json'));
+  const r = await call('set_output_logic', { project: 'l', path: 'src/lamps.bool.json', inputs: ['phase2', 'phase1', 'phase0', 'flash'], outputs: before.outputs });
+  assert.equal(r.isError, false, r.text);
+  const after = JSON.parse(read('l', 'src/lamps.bool.json'));
+  assert.deepEqual([after.inputs, after.table], [['phase2', 'phase1', 'phase0', 'flash'], before.table]);
+});
+
+test('set_output_logic: an output renamed and its logic set at once, the logic of the new name', async () => {
+  await fresh();
+  const r = await call('set_output_logic', { project: 'p', path: 'src/m.bool.json', outputs: ['y', 'g'], output: 'y', form: 'csop' });
+  assert.equal(r.isError, false, r.text);
+  assert.deepEqual([table().table, table().forms, r.data.form], [{ y: '0111', g: '0001' }, { y: 'csop' }, 'csop']);
+});
+
+test('set_output_logic, inputs and outputs: names added and removed follow their names, a new output is 0s; two changed at once are new', async () => {
+  await fresh();
+  await portsOk(['a', 'b', 'c'], ['g', 'h']);
+  assert.deepEqual(table().table, { g: '00000011', h: '00000000' });
+  await fresh();
+  await portsOk(['a', 'b'], ['x', 'y']);
+  assert.deepEqual(table().table, { x: '0000', y: '0000' });
+});
+
+test('set_output_logic, inputs and outputs: refused as the editor does, nothing written: a name twice, a reserved word, not a table', async () => {
+  await fresh();
+  const before = read('p', 'src/m.bool.json');
+  const refused = async (inputs, outputs, message, rel) => {
+    const r = await ports(inputs, outputs, rel);
+    assert.deepEqual([r.isError, r.text], [true, `set_output_logic: ${message}`]);
+    assert.equal(read('p', 'src/m.bool.json'), before);
+  };
+  await refused(['a', 'b'], ['f', 'a'], "src/m.bool.json: the name 'a' is used twice");
+  await refused(['a', 'signal'], ['f', 'g'], "src/m.bool.json: 'signal' is a reserved word of VHDL: choose another name.");
+  await refused(['a'], ['f'], 'src/m.vhd: a truth table (.bool.json, .tt.json) has outputs', 'src/m.vhd');
 });

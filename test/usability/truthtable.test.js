@@ -149,8 +149,7 @@ uiTest('usability: truth table: the lock\'s digit_ok (six inputs): an output add
   await s.undoRedo();
 });
 
-uiTest('usability: truth table: an output renamed in the Outputs box keeps its column (#5165)', E, async (page, _env, t) => {
-  t.todo('#5165: a name changed in the Outputs box is a new output of 0s: the renamed output\'s column is lost (core/logic.js reshapeTable)');
+uiTest('usability: truth table: an output renamed in the Outputs box keeps its column (#5165)', E, async (page) => {
   const s = await table(page, 'output renamed', { template: 'lock', file: 'src/digit_ok.bool.json' });
   await s.step('outputs', { names: 'match' }, () => s.a.outputs('match'), {
     expect: (d, b) => { assert.deepEqual(d.outputs, ['match']); col('match', b.table.ok)(d); },
@@ -158,8 +157,7 @@ uiTest('usability: truth table: an output renamed in the Outputs box keeps its c
   await s.undoRedo();
 });
 
-uiTest('usability: truth table: an input renamed in the Inputs box keeps the table (#5165)', E, async (page, _env, t) => {
-  t.todo('#5165: a name changed in the Inputs box is an input dropped and a new one: the rows of the renamed input at 1 become copies of those at 0 (core/logic.js reshapeTable)');
+uiTest('usability: truth table: an input renamed in the Inputs box keeps the table (#5165)', E, async (page) => {
   const s = await table(page, 'input renamed', { template: 'traffic', file: 'src/lamps.bool.json' });
   await s.step('inputs', { names: 'phase2, phase1, phase0, flash' }, () => s.a.inputs('phase2, phase1, phase0, flash'), {
     expect: (d, b) => { assert.deepEqual(d.inputs, ['phase2', 'phase1', 'phase0', 'flash']); assert.deepEqual(d.table, b.table); },
