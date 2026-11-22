@@ -177,6 +177,36 @@ confirmed by #4696's benchmark in a Worker:
   baud takes about 0.3 s with it.
 - **The FPGA nodes' UART and clock generics** are scaled as the Board Emulator does (`autoTimeScale`).
 
+## The System and the circuit: one model, two views
+
+Decided with the maintainer (#5200). The System document is the model: blocks and protocols (nodes, their interfaces,
+links by protocol, each link's decoder and quantum). It is what makes the decoded bytes, a fast co-simulation, and
+later the register map and the SPI and I²C transactions. The circuit (the breadboard: wires, pins, electrical levels,
+LEDs and resistors) is a second view of it, not a replacement:
+
+- **The circuit gets the boards as parts**: the Arduino Uno / Nano and the FPGA boards, with their real pins.
+- **A circuit can be a node of the System**: what lies between the boards (a level shifter, LEDs, buttons, a
+  sensor), wired pin by pin, its pins the System's links (phase 2).
+- **The System editor gets a wiring view**: each link pin by pin, from one board's connector to the other's (the
+  pins are already the System's: an FPGA node's `J3`, an Arduino's `D0`; the 5 V warning comes from them).
+
+A System drawn only as a circuit would lose the protocol level: the decoders, the speed and the links' checks.
+
+## The System's actions
+
+The parts are developed together: the System gets the project's actions, for all its nodes at once and for each
+node alone, as the Design pane's processes do for a module.
+
+| Action | The whole System | One node |
+| --- | --- | --- |
+| Check | its document and every node (done, #4697) | its module's Check Syntax; its firmware read |
+| Try it | every node simulated together (done, #4701) | an FPGA node's test bench; a microcontroller alone with a terminal on its UART |
+| Emulate | the System Emulator, every board drawn (phase 2) | the Board Emulator, as today |
+| Implement | every FPGA node implemented, every firmware compiled (phases 3 and 5) | Implement Design for its board; its firmware compiled |
+| Program | every board programmed, one after another (phase 3) | Program for its board; the AVR over Web Serial |
+
+Each action says its nodes' results in the console, one line a node; the MCP server does the same (#2674).
+
 ## Emulation
 
 The Board Emulator gets a **system** mode.
@@ -298,13 +328,15 @@ The existing `program_board` and `capture` serve the FPGA nodes.
    - GPIO, SPI and I²C links and their checks;
    - the peripheral nodes (#3902);
    - the register map generating both sides;
-   - a circuit as a node, its Arduino simulated (#4396's AVR step).
+   - a circuit as a node, its Arduino simulated (#4396's AVR step); the boards as the circuit's parts;
+   - the System editor's wiring view, each link pin by pin (#5200).
 3. **Real boards:**
    - Web Serial;
    - programming the AVR;
    - the real board's terminal;
    - hardware in the loop over UART;
-   - the logic analyzer on the links.
+   - the logic analyzer on the links;
+   - Implement System and Program System: every node at once (#5200).
 4. **RP2040, then ESP32, in MicroPython** (the Pico first: exact and in every browser):
    - rp2040js;
    - MicroPython in WebAssembly with Silinx's `machine`;
@@ -321,7 +353,10 @@ The existing `program_board` and `capture` serve the FPGA nodes.
 
 - The System is a co-design project's top, its one System document (#5041); its FPGA nodes are modules of that project.
 - The AVR comes first; the ESP32 comes in MicroPython.
-- The firmware is a given `.hex` first; a compiler on the server comes later.
+- The firmware is a given `.hex` or `.elf` first; a compiler on the server comes later.
+- The System is the model, the circuit a second view of it: the boards are the circuit's parts, a circuit can be a
+  System's node, and the System editor gets a wiring view (#5200).
+- The System has the project's actions for every node at once and for each node alone (#5200).
 - Links are pins on the FPGA's side, the microcontrollers' peripherals converted by the links' adapters; one
   window, bounded by the links' lookahead (measured, see Speed).
 - The boards' drawings are Silinx's own; co-design is a project kind, chosen in New Project (#5041).
