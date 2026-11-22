@@ -93,7 +93,7 @@ test('#5111 lock: Check Syntax and the simulation with no warning, the drawings\
   const run = async (lang) => {
     for (const simulation of [false, true]) {
       const cs = await tool('check_syntax', { project: 'Lock', simulation });
-      assert.match(cs.text, /^Process "Check Syntax" of <(top|tb_lock)> completed successfully \(\d+ signals, \d+ processes\)\.$/, `${lang}: ${cs.text}`);
+      assert.match(cs.text, /^Process "Check Syntax" of <(top|tb_lock)> completed successfully \(\d+ signals?, \d+ process(?:es)?\)\.$/, `${lang}: ${cs.text}`);
     }
     const sim = await tool('simulate', { project: 'Lock', time_ns: 100000, signals: [] });
     assert.deepEqual(sim.data.log.filter((l) => /WARNING|ERROR|finished/.test(l.text)).map((l) => l.text), ['Simulation finished OK'], lang);

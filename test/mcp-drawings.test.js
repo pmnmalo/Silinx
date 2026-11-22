@@ -150,7 +150,7 @@ test('set_design_properties preferred_language: the drawings\' HDL in Verilog, t
     assert.deepEqual(r.data.warnings, []);
     assert.equal(r.data.preferredLanguage, 'verilog');
     assert.ok(!fs.existsSync(path.join(P.projectDir(name), `${hdl}.vhd`)));
-    assert.match((await ok('check_syntax', { project: name, simulation: true })).text, /^Process "Check Syntax" of <tb_\w+> completed successfully \(\d+ signals, \d+ processes\)\.$/);
+    assert.match((await ok('check_syntax', { project: name, simulation: true })).text, /^Process "Check Syntax" of <tb_\w+> completed successfully \(\d+ signals?, \d+ process(?:es)?\)\.$/);
     await passes(name, messages);
   }
   const r = await call('set_design_properties', { project: 'l_gates', preferred_language: 'c' });

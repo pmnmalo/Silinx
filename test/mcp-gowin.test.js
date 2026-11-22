@@ -104,8 +104,8 @@ test('a project instantiating an rPLL and an OSC: set_top, check_syntax and simu
   await ok('write_file', { project: 'pll', path: 'src/top.v', text: PLL_TOP });
   await ok('write_file', { project: 'pll', path: 'sim/tb_top.v', text: PLL_TB });
   await ok('set_top', { project: 'pll', top: 'top', sim_top: 'tb_top' });
-  assert.match((await ok('check_syntax', { project: 'pll' })).text, /^Process "Check Syntax" of <top> completed successfully \(\d+ signals, \d+ processes\)\.$/);
-  assert.match((await ok('check_syntax', { project: 'pll', simulation: true })).text, /^Process "Check Syntax" of <tb_top> completed successfully \(\d+ signals, \d+ processes\)\.$/);
+  assert.match((await ok('check_syntax', { project: 'pll' })).text, /^Process "Check Syntax" of <top> completed successfully \(\d+ signals?, \d+ process(?:es)?\)\.$/);
+  assert.match((await ok('check_syntax', { project: 'pll', simulation: true })).text, /^Process "Check Syntax" of <tb_top> completed successfully \(\d+ signals?, \d+ process(?:es)?\)\.$/);
   const s = await ok('simulate', { project: 'pll', time_ns: 600, signals: [] });
   // CLKIN rises at 18.5, 55.5 … ns: locked at the third (92.5 ns), CLKOUT (54 MHz) from the fourth (129.5 ns), a rising edge every
   // 18.5 ns: 21 to 499.5 ns, n = 21 mod 16; OSCOUT (25 MHz) rises at 20, 60 … 460 ns: 12

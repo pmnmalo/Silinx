@@ -41,11 +41,13 @@ export const trustAction = name => ({ label: 'Trust Project', trust: name, run: 
 // location: the project's file and line the line is of, its writer's (#4749: SSim's line of an assertion); none: the
 // ones its text names. Its entry of the Errors / Warnings tabs is made from its message (core/message.js entryOf: its
 // tool, location and action), its text not read again.
+// link: an error's or a warning's line that names a project's file and line a link to it (#5221), but a line its writer
+// makes a link of its own (SSim's, web/js/messages.js mirror) or one with a goto (a drawing's Check)
 // draw: the line as it is drawn, in the interface's language (#4749, step 5: its message's text stays English, what the
 // followers and the MCP get; drawn again when the language changes); none: an application's line (src 'app') its
 // translation (appText), any other line (a tool's output) as it is.
 // Returns the lines' elements.
-export function log(text, cls = '', { diag = true, action = null, src = null, goto = null, run = undefined, process = undefined, location = null, draw = null } = {}) {
+export function log(text, cls = '', { diag = true, action = null, src = null, goto = null, run = undefined, process = undefined, location = null, draw = null, link = true } = {}) {
   const el = $('console-log');
   const atBottom = el.scrollTop + el.clientHeight >= el.scrollHeight - 4;
   const refused = !action && cls === 'err' && refusedProject(text);
@@ -70,6 +72,7 @@ export function log(text, cls = '', { diag = true, action = null, src = null, go
     el.append(div);
     divs.push(div);
     if (diag) consoleMessage(msg, goto, div.draw);
+    if (link && !goto) fileLink(div, msg);
     if (run === undefined && RUN_END.test(line)) { consoleRun = null; consoleProcess = null; lastConsoleDiag = null; }   // (the lines after a run's result: no run's)
     for (const fn of lineWatchers) { try { fn(line, cls, msg); } catch { /* a watcher's own error: not the console's */ } }
   });
@@ -90,6 +93,19 @@ export function log(text, cls = '', { diag = true, action = null, src = null, go
   if (atBottom) el.scrollTop = el.scrollHeight;
   return divs;
 }
+
+// An error's or a warning's line that names a project's file and line (#5221: Check Syntax's, synthesis', simulation's):
+// a link, clicked, to its file at that line, as its entry of the Errors / Warnings tabs is (a drawing's Check line its
+// item's: tasks-check.js, editor-problems.js)
+const FILE_LINK = 'Open the file at this line';
+function fileLink(div, msg) {
+  const at = msg.location;
+  if (!at?.line || (msg.severity !== 'error' && msg.severity !== 'warning')) return;
+  div.classList.add('mc-link', 'mc-file');
+  div.title = t(FILE_LINK);
+  div.addEventListener('click', () => app.openFile(at.file, at.line, at.col));
+}
+onLanguageChange(() => { for (const ln of document.querySelectorAll('#console-log .ln.mc-file')) ln.title = t(FILE_LINK); });
 
 // An application's line as it is drawn (#4749, step 5): its translation, its ERROR: / WARNING: / INFO: tag kept.
 const TAGGED = /^(\s*(?:ERROR|WARNING|INFO)\s*:\s*)(.*)$/s;

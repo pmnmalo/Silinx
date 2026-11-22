@@ -107,8 +107,8 @@ test('a project instantiating EHXPLLL and OSCG on the ULX3S: set_top, check_synt
   await ok('write_file', { project: 'pll', path: 'src/top.v', text: PLL_TOP });
   await ok('write_file', { project: 'pll', path: 'sim/tb_top.v', text: PLL_TB });
   await ok('set_top', { project: 'pll', top: 'top', sim_top: 'tb_top' });
-  assert.match((await ok('check_syntax', { project: 'pll' })).text, /^Process "Check Syntax" of <top> completed successfully \(\d+ signals, \d+ processes\)\.$/);
-  assert.match((await ok('check_syntax', { project: 'pll', simulation: true })).text, /^Process "Check Syntax" of <tb_top> completed successfully \(\d+ signals, \d+ processes\)\.$/);
+  assert.match((await ok('check_syntax', { project: 'pll' })).text, /^Process "Check Syntax" of <top> completed successfully \(\d+ signals?, \d+ process(?:es)?\)\.$/);
+  assert.match((await ok('check_syntax', { project: 'pll', simulation: true })).text, /^Process "Check Syntax" of <tb_top> completed successfully \(\d+ signals?, \d+ process(?:es)?\)\.$/);
   const s = await ok('simulate', { project: 'pll', time_ns: 1100, signals: [] });
   // CLKI (25 MHz) rises at 20, 60 … ns: locked at the third (100 ns), CLKOP (50 MHz) from the fourth (140 ns), a rising edge
   // every 20 ns: 43 to 1000 ns (its last at 980), n = 43 mod 16; the oscillator's 10 MHz rises at 50, 150 … 950 ns: 10

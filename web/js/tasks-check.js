@@ -44,5 +44,5 @@ export function initCheckMessages(showConsole, log) {
     if (doc && docsState.active !== doc) activateDoc(doc);
     then();
   });
-  onLanguageChange(() => { for (const ln of document.querySelectorAll('#console-log .ln.mc-link')) ln.title = t(SHOW); });
+  onLanguageChange(() => { for (const ln of document.querySelectorAll('#console-log .ln.mc-link:not(.mc-file)')) ln.title = t(SHOW); });
 }

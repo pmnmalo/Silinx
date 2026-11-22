@@ -11,7 +11,7 @@ import { checkC } from '/core/c-check.js';
 import { blackboxChecks } from '/core/c-blackbox.js';
 import * as wiz from './wizards.js';
 import { designDiags, lintEnabled, sevWord } from './diaghelp.js';
-import { hdlCheck } from '/core/hdl-check.js';
+import { designSize, hdlCheck } from '/core/hdl-check.js';
 import { checkLive } from './hdl-check-client.js';
 import { S, flushDoc, openFile, openFpgaView, openImpact, openPinPlanner, openSummary, openUcf,
   status, viewRoots, withPrimitives } from './app.js';
@@ -343,7 +343,7 @@ async function checkSyntaxInner(mod, sim, id, hierarchy) {
   for (const d of diags) R.log(`${sevWord(d)}:${d.tool || 'HDLCompiler'} - ${d.drawn || (!d.line && designOnly()) ? `"${d.file}"` : `"${d.file}" Line ${d.line}`}: ${d.message}`, d.severity === 'error' ? 'err' : 'warn', { diag: false, location: diagLocation(d) });
   showProblems(diags);   // (the Errors tab, else the Warnings tab, in front: run again too, #2803)
   if (ne) { R.log(`\nProcess "${checkLabel()}" failed (${ne} error(s), ${nw} warning(s))`, 'err', { diag: false }); setStatus(id, 'err'); return false; }
-  R.log(`${designOnly() ? 'Checking' : 'Elaborating'} top module <${mod}>: ${design.signals.length} signals, ${design.procs.length} processes.`);
+  R.log(`${designOnly() ? 'Checking' : 'Elaborating'} top module <${mod}>: ${designSize(design)}.`);
   R.log(`\nProcess "${checkLabel()}" completed successfully${nw ? ` with ${nw} warning(s)` : ''}`, 'ok');
   setStatus(id, nw ? 'warn' : 'ok');
   return true;
