@@ -43,7 +43,7 @@ export function mountForces(ctx) {
     truncateForces(sig, start, false);
     const f = { id: st.forceSeq++, sig, pattern, start, repeat: Math.round(repeat), end: cancel == null ? null : Math.round(cancel), endRelease: true, desc };
     st.forces.push(f);
-    if (sim.finished) { logLine('WARNING: simulation has finished; the force takes effect after restart', 'warning'); }
+    if (sim.finished) { logLine('WARNING: simulation has finished; the force takes effect after restart', 'warning', { app: true }); }
     else {
       injectForce(f);
       // apply immediately when starting now, so the change is visible without running
@@ -60,7 +60,7 @@ export function mountForces(ctx) {
     if (!st.forces.some(f => f.sig === sig)) return;
     truncateForces(sig, sim.now, true);
     sim.release(sig);
-    if (!silent) { logLine(`Force removed from ${pathOf(sig)}`, 'info'); invalidate(false); }
+    if (!silent) { logLine(`Force removed from ${pathOf(sig)}`, 'info', { app: true }); invalidate(false); }
   }
 
   return { findSignal, findInst, injectForce, isForced, addForce, removeForces };

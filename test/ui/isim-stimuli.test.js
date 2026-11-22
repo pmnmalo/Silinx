@@ -155,12 +155,12 @@ uiTest('#405 ISim drawn stimuli: Edit Stimuli on, the timing dialog and its erro
   assert.match(out.busErr, /./, 'a value too wide for 4 bits: an error, the dialog open');
   assert.equal(out.b, ['0000', '0000', ...Array(30).fill('0101')].join(' '));
   assert.deepEqual(out.afterB.map((c) => c[0]), ['selectRow', 'onChange', 'restart', 'echo', 'enqueue', 'runTo', 'logLine']);
-  assert.deepEqual(out.afterB.at(-1), ['logLine', 'Stimuli: 32 cycles, the expected outputs match', 'info']);
+  assert.deepEqual(out.afterB.at(-1), ['logLine', 'Stimuli: 32 cycles, the expected outputs match', 'info', { app: true }]);
   assert.deepEqual(out.outside, [false, false]);
   assert.equal(out.filled, `00${'1'.repeat(30)}`);
   assert.deepEqual(out.statusFilled, ['32 cycles (combinational, step 10 ns): expected outputs OK', false]);
   assert.deepEqual(out.afterFill.map((c) => c[0]), ['logLine', 'onChange', 'invalidate']);
-  assert.deepEqual(out.afterFill[0], ['logLine', 'Stimuli: the expected outputs filled in from the simulation', 'info']);
+  assert.deepEqual(out.afterFill[0], ['logLine', 'Stimuli: the expected outputs filled in from the simulation', 'info', { app: true }]);
   assert.deepEqual(out.statusBad, ['32 cycles (combinational, step 10 ns): 1 mismatch(es)', true]);
   // (the cycles 0 to 8 in the 800 px)
   assert.deepEqual(out.fills, ['rgba(230, 40, 40, 0.35)', '#ff6b6b', ...Array(8).fill('#5fbf6a')]);
@@ -206,8 +206,8 @@ uiTest('#405 ISim drawn stimuli: saved stimuli run and their mismatches logged; 
   });
   assert.deepEqual(out.run.filter((c) => c[0] !== 'logLine'), [['restart', true], ['echo', 'run 40 ns'], ['enqueue', 'run 40 ns'], ['runTo', 40000, 'Run']]);
   assert.deepEqual(out.run.filter((c) => c[0] === 'logLine'), [
-    ['logLine', 'Stimuli: 1 mismatch(es) of the expected outputs', 'warning'],
-    ['logLine', '  y at cycle 0 (0 ns): expected 1, got 0', 'warning']]);
+    ['logLine', 'Stimuli: 1 mismatch(es) of the expected outputs', 'warning', { app: true }],
+    ['logLine', '  y at cycle 0 (0 ns): expected 1, got 0', 'warning', { app: true }]]);
   assert.deepEqual(out.status, ['2 cycles (clock a, period 20 ns): 1 mismatch(es)', true]);
   assert.deepEqual(out.fields, { clock: 'a', period: '20', step: '10 (disabled)', cycles: '2' });
   assert.deepEqual(out.noClock, { clock: '', period: '20 (hidden)', step: '10 (hidden)', cycles: '2 (hidden)' });

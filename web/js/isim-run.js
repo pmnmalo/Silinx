@@ -3,6 +3,8 @@
 // and Step. mountRun(ctx) is called by mountISim where this code was.
 import { fmtTime } from './isim.js';
 
+const APP = { app: true };   // (its console's lines: the application's, in the interface's language, #5223)
+
 /** { enqueue, runTo, followEnd, step, breakCommands, destroy, isDestroyed } of an SSim window. */
 export function mountRun(ctx) {
   const { st, sim, runAllCap, logLine, setMsg, invalidate, setCursor, tOf, width, applyFit, objectsChanged } = ctx;
@@ -19,7 +21,7 @@ export function mountRun(ctx) {
       try {
         while (st.running) await runDone;
         if (destroyed) return;
-        if (gen !== cmdGen) { logLine(`Command '${s}' cancelled (Break)`, 'warning'); return; }
+        if (gen !== cmdGen) { logLine(`Command '${s}' cancelled (Break)`, 'warning', APP); return; }
         await fn();
       } catch (e) { console.error(e); } finally { cmdPending--; }
     };
@@ -35,7 +37,7 @@ export function mountRun(ctx) {
     const gen = cmdGen;
     while (st.running) await runDone;
     if (destroyed || gen !== cmdGen) return;
-    if (sim.finished) { logLine(`Simulation has already finished (${sim.finished}); use Restart to run again.`, 'warning'); return; }
+    if (sim.finished) { logLine(`Simulation has already finished (${sim.finished}); use Restart to run again.`, 'warning', APP); return; }
     const target = sim.now + dur;
     let endRun;
     runDone = new Promise((r) => { endRun = r; });
@@ -69,14 +71,14 @@ export function mountRun(ctx) {
         }
       }
     } catch (e) {
-      logLine(`ERROR: internal simulator error: ${e.message}`, 'error');
+      logLine(`ERROR: internal simulator error: ${e.message}`, 'error', APP);
       console.error(e);
     }
     st.running = false;
     endRun();   // (whoever waits for it goes on after the rest of this, all synchronous)
-    if (st.breakReq) logLine(`Simulation interrupted (Break) at ${fmtTime(sim.now)}`, 'warning');
-    else if (stalled) logLine(`Simulation stopped: no more events scheduled (time ${fmtTime(sim.now)})`, 'info');
-    else if (!sim.finished && target !== Infinity && sim.now >= st.runStart + (runAllCap) && label === 'Run All') logLine(`Run All stopped at the ${fmtTime(runAllCap)} limit (time ${fmtTime(sim.now)})`, 'warning');
+    if (st.breakReq) logLine(`Simulation interrupted (Break) at ${fmtTime(sim.now)}`, 'warning', APP);
+    else if (stalled) logLine(`Simulation stopped: no more events scheduled (time ${fmtTime(sim.now)})`, 'info', APP);
+    else if (!sim.finished && target !== Infinity && sim.now >= st.runStart + (runAllCap) && label === 'Run All') logLine(`Run All stopped at the ${fmtTime(runAllCap)} limit (time ${fmtTime(sim.now)})`, 'warning', APP);
     if (sim.waveTruncated) setMsg('Waveform recording limit reached');
     else setMsg(sim.finished ? `Simulation ${sim.finished === 'error' ? 'stopped with an error' : 'finished'} at ${fmtTime(sim.now)}` : `Ready`);
     if (follow) followEnd();
@@ -92,11 +94,11 @@ export function mountRun(ctx) {
   // Step: to the next scheduled event
   function step() {
     if (st.running) return;
-    if (sim.finished) { logLine('Simulation has finished; use Restart.', 'warning'); return; }
+    if (sim.finished) { logLine('Simulation has finished; use Restart.', 'warning', APP); return; }
     if (!sim.started) sim.run(sim.now); // time-0 initialisation
     const top = sim.heap.peek();
-    if (!top) { sim.run(sim.now); logLine('No more events scheduled', 'info'); }
-    else { sim.run(top.t); logLine(`Stepped to ${fmtTime(sim.now)}`, 'info'); }
+    if (!top) { sim.run(sim.now); logLine('No more events scheduled', 'info', APP); }
+    else { sim.run(top.t); logLine(`Stepped to ${fmtTime(sim.now)}`, 'info', APP); }
     followEnd(); setCursor(sim.now); invalidate();
   }
 

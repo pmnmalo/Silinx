@@ -77,7 +77,7 @@ export function mountToolbar(ctx) {
 
   function runForUi() {
     const ps = parseTime(rfVal.value, rfUnit.value);
-    if (!(ps > 0)) { logLine(`ERROR: invalid run time '${rfVal.value} ${rfUnit.value}'`, 'error'); return; }
+    if (!(ps > 0)) { logLine(`ERROR: invalid run time '${rfVal.value} ${rfUnit.value}'`, 'error', { app: true }); return; }
     const s = `run ${rfVal.value} ${rfUnit.value}`;
     echo(s);
     enqueue(s, () => api().runFor(Math.max(1, ps)));

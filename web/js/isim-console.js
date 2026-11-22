@@ -4,18 +4,27 @@
 import { h } from './dom.js';
 import { fmtTime, parseTime, formatValue, parseValue } from './isim.js';
 import { makeMessage } from '/core/message.js';
+import { t, onLanguageChange } from './i18n.js';
 
-/** The Console of the SSim window: { logLine(text, kind), echo(cmd), execCommand(line) }. */
+// an application's line (#5223: Silinx's own, not the simulator's output) as it is drawn: in the interface's language,
+// its ERROR: / WARNING: tag kept (web/js/console.js appText's); its message keeps its English
+const TAGGED = /^(\s*(?:ERROR|WARNING|INFO)\s*:\s*)(.*)$/s;
+const appText = (line) => { const m = TAGGED.exec(line); return m ? m[1] + t(m[2]) : t(line); };
+
+/** The Console of the SSim window: { logLine(text, kind, { app }), echo(cmd), execCommand(line) } (app: an application's
+ *  line, drawn in the interface's language, #5223). */
 export function mountConsole(ctx) {
   const { st, sim, design, cons, cmdInput, $, cleanups, onOpenSource, rfVal, rfUnit, enqueue, findSignal, findInst, addSignals,
     addInstance, addForce, removeForces, addMarker, zoomFit, zoomAt } = ctx;
   const KIND_LABEL = { note: 'Note', warning: 'Warning', error: 'Error', failure: 'Failure' };
   let consoleLines = 0;
   const KIND_SEVERITY = { 'k-error': 'error', 'k-failure': 'error', 'k-warning': 'warning', 'k-cmd': 'header', 'k-info': 'info' };
-  function appendConsole(text, cls, src) {
+  function appendConsole(text, cls, src, app = false) {
     const atBottom = cons.scrollHeight - cons.scrollTop - cons.clientHeight < 30;
     const d = h('div', { class: 'isim-ln ' + (cls || '') });
-    d.textContent = text;
+    d.textContent = app ? appText(text) : text;
+    // (drawn again when the language changes; the Console's copy of it too, web/js/messages.js)
+    if (app) d.draw = () => appText(text);
     // (its message, #4749: the console's copy of the line is made from it, its location the assertion's)
     d.message = makeMessage({ text, severity: KIND_SEVERITY[cls] ?? 'text', source: 'sim', location: src?.file ? { file: src.file, line: src.line } : null });
     if (src && src.file && onOpenSource) {
@@ -26,7 +35,9 @@ export function mountConsole(ctx) {
     if (++consoleLines > 5000) { cons.firstChild.remove(); consoleLines--; }
     if (atBottom) cons.scrollTop = cons.scrollHeight;
   }
-  function logLine(text, kind = 'info') { appendConsole(text, 'k-' + kind); }
+  function logLine(text, kind = 'info', { app = false } = {}) { appendConsole(text, 'k-' + kind, null, app); }
+  const offLang = onLanguageChange(() => { for (const d of cons.children) if (d.draw) d.textContent = d.draw(); });
+  cleanups.push(offLang);
   function echo(cmd) { appendConsole(`SSim> ${cmd}`, 'k-cmd'); }
   function formatLog(e) {
     if (e.kind === 'print') return e.text;

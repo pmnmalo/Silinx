@@ -10,7 +10,7 @@ import { hierarchyOrder, instanceOrder } from '/core/hier-order.js';
 import { isUnisimPrimitive } from '/core/unisim.js';
 import { S, addToProject, closeDoc, fixMissingTops, instancesOf, moduleInfo, openFile, projectUndo, syncFpgaView,
   viewRoots } from './app.js';
-import { commandInfo, log } from './console.js';
+import { appLog, commandInfo, log } from './console.js';
 import { closeProject, reloadProject } from './project.js';
 import { checkUcfFile } from './implement.js';
 import { asmContextMenu, clashTip, convertToAsm, convertToFsm, convertToSchematic, fsmContextMenu, openAsm, openFsm,
@@ -505,7 +505,7 @@ export async function setTop(mod, sim = designState.view === 'sim') {
   await saveProjectJson();
   markStale();
   renderHierarchy();
-  log(`Top-level ${sim ? 'simulation ' : ''}module set to '${mod}'.`, 'info');
+  appLog(`Top-level ${sim ? 'simulation ' : ''}module set to '${mod}'.`, 'info');   // (in the interface's language, #5223)
 }
 
 // project.json saved one save at a time, in the order asked (#593): two saves in flight together (the stimuli
