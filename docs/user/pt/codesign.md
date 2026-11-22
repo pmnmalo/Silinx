@@ -26,6 +26,13 @@ ligados por UART e GPIO.
   Propriedades, e **Ligação** junta-a ao GPIO de outro nó com tantos pinos. A sua verificação: duas saídas no mesmo
   fio, duas entradas (nada comanda o fio), um pino ligado duas vezes, e a saída de 5 V numa entrada de 3,3 V da FPGA.
   Experimentar corre-a como um fio, as suas alterações no inspetor de ligações e nas ondas.
+- **As ligações SPI** juntam um Arduino, o mestre, a uma FPGA, o periférico: **+ SPI** no Arduino acrescenta o SPI da
+  placa (SCK D13, MOSI D11, MISO D12; o SS é o D10, um pino do próprio programa), **+ SPI** num nó FPGA os quatro portos
+  do seu módulo (encontrados pelos nomes: sck, mosi, miso, ss), e **Ligação** junta-os. Cada ponta indica o ritmo do SCK
+  (pelo menos o do programa: 125000 Hz com SPI_CLOCK_DIV128) e o modo (0 a 3), os mesmos nas duas. Experimentar mostra os
+  bytes de cada transferência, os do MOSI e os do MISO, nas linhas da consola. O exemplo **spi-avr**: um Arduino envia
+  uma contagem a cada 47 ms, mais ou menos, a FPGA mostra-a nos seus LEDs e responde com a anterior mais um, mostrada nos
+  D2..D7 do Arduino.
 
 ## Experimentar
 

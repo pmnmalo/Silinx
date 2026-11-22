@@ -1,7 +1,12 @@
--- Silinx test design (#5214): an SPI peripheral, mode 0, MSB first. Each byte it receives on MOSI is shown on its
--- LEDs, and it answers each transfer on MISO with the last byte it received plus one (the first: 0x00). SCK, MOSI
--- and SS are sampled with the clock (two flip-flops each): SCK much slower than clk. Copyright 2026 Pedro Malo.
--- AGPL-3.0-only.
+----------------------------------------------------------------------------------
+-- spi_echo: the spi-avr example's FPGA module, an SPI peripheral (mode 0, MSB first)
+--   sck, mosi, ss : from the Arduino Uno, the master (its D13, D11, D10)
+--   miso          : back to it (its D12)
+--   LD7..LD0      : the last byte received
+-- Each transfer is answered with the last byte received plus one (the first: 0x00).
+-- SCK, MOSI and SS are sampled with the clock (two flip-flops each): SCK much slower
+-- than clk (125 kHz against 50 MHz).
+----------------------------------------------------------------------------------
 library IEEE;
 use IEEE.STD_LOGIC_1164.ALL;
 use IEEE.NUMERIC_STD.ALL;

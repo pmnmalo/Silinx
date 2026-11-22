@@ -60,7 +60,7 @@ export async function simulateSystem(name, file, { ms = 100, type = {}, controls
   await P.writeFile(name, vcd, systemVcd(ready.sim, { name: sys.name }));
   const bytes = t => t.bytes.map(b => ({ t: b.t, byte: b.byte, ...(b.error ? { error: b.error } : {}) }));
   return { text: [...rep.lines, ...(shown ? boardLines(shown) : []), `The waves: ${vcd}.`].join('\n'), isError: false,
-    data: { project: name, file, time: runTimeText(rep.now), traffic: rep.traffic.map(t => ({ wire: t.wire, link: t.link, from: t.from, to: t.to, bytes: bytes(t) })), terminals: rep.terminals, warnings: rep.warnings, errors: rep.errors, vcd, ...(shown ? { boards: shown } : {}) },
+    data: { project: name, file, time: runTimeText(rep.now), traffic: rep.traffic.map(t => ({ wire: t.wire, link: t.link, from: t.from, to: t.to, bytes: bytes(t) })), spi: rep.spi.map(x => ({ link: x.link, from: x.from, to: x.to, hz: x.hz, mode: x.mode, transfers: x.transfers })), terminals: rep.terminals, warnings: rep.warnings, errors: rep.errors, vcd, ...(shown ? { boards: shown } : {}) },
     untrusted: 'the System\'s names and the bytes its nodes sent' };
 }
 

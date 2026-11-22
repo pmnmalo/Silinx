@@ -6,8 +6,13 @@
 
 export const EXAMPLE_ORDER = ['gates', 'breadboard', 'traffic', 'blinky', 'pong', 'stopwatch', 'clock', 'vga', 'isqrt', 'uart', 'micro80', 'lock'];
 
-/** Example names in the listing order: the known ones first (EXAMPLE_ORDER), then any other, by name. */
+/** The co-design examples, in their order after the FPGA ones (core/project-kind.js CODESIGN_EXAMPLES, #5214). */
+export const CODESIGN_ORDER = ['uart-avr', 'spi-avr'];
+
+/** Example names in the listing order: the known ones first (EXAMPLE_ORDER, then the co-design ones'), then any other,
+ *  by name. */
 export function orderExamples(names) {
-  const rank = n => { const i = EXAMPLE_ORDER.indexOf(n); return i < 0 ? EXAMPLE_ORDER.length : i; };
+  const known = [...EXAMPLE_ORDER, ...CODESIGN_ORDER];
+  const rank = n => { const i = known.indexOf(n); return i < 0 ? known.length : i; };
   return [...names].sort((a, b) => rank(a) - rank(b) || (a < b ? -1 : a > b ? 1 : 0));
 }

@@ -25,6 +25,12 @@ UART and GPIO links. Its design is in [CODESIGN.md](../../CODESIGN.md); its road
   another node's GPIO with as many pins. Its check: two outputs on one wire, two inputs (nothing drives the wire), a pin
   linked twice, and the 5 V output on a 3.3 V FPGA input. Try it runs it as a wire, its changes in the link inspector
   and the waves.
+- **SPI links** join an Arduino, the master, to an FPGA, the peripheral: **+ SPI** on the Arduino adds its board's SPI
+  (SCK D13, MOSI D11, MISO D12; SS is D10, the program's own pin), **+ SPI** on an FPGA node its module's four ports
+  (found by their names: sck, mosi, miso, ss), then **Link** joins them. Each end says its SCK rate (at least the
+  program's: 125000 Hz at SPI_CLOCK_DIV128) and its mode (0 to 3), the same at both. Try it shows each transfer's bytes,
+  MOSI's and MISO's, in the console's lines. The **spi-avr** example: an Arduino sends a count every 47 ms or so, the FPGA
+  shows it on its LEDs and answers with the one before plus one, shown on the Arduino's D2..D7.
 
 ## Try it
 
