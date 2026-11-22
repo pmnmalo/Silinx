@@ -130,7 +130,7 @@ test('set_output_logic, inputs and outputs: names added and removed follow their
   assert.deepEqual(table().table, { x: '0000', y: '0000' });
 });
 
-test('set_output_logic, inputs and outputs: refused as the editor does, nothing written: a name twice, a reserved word, not a table', async () => {
+test('set_output_logic, inputs and outputs: refused as the editor does, nothing written: a name twice, a reserved word, an empty list, not a table', async () => {
   await fresh();
   const before = read('p', 'src/m.bool.json');
   const refused = async (inputs, outputs, message, rel) => {
@@ -140,5 +140,7 @@ test('set_output_logic, inputs and outputs: refused as the editor does, nothing 
   };
   await refused(['a', 'b'], ['f', 'a'], "src/m.bool.json: the name 'a' is used twice");
   await refused(['a', 'signal'], ['f', 'g'], "src/m.bool.json: 'signal' is a reserved word of VHDL: choose another name.");
+  await refused([], ['f'], 'src/m.bool.json: 1 to 16 inputs');   // (an empty list: the tool's refusal, no minItems in the MCP's schemas, #5201)
+  await refused(['a'], [], 'src/m.bool.json: At least 1 output');
   await refused(['a'], ['f'], 'src/m.vhd: a truth table (.bool.json, .tt.json) has outputs', 'src/m.vhd');
 });
