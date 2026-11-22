@@ -11,9 +11,10 @@ const NEAR = 28;   // (px: a drop beside a small part, an LED, still on it)
 /**
  * ctx: { list (the panel's body), root (the planner: its .pp-target elements, the board's parts and the rows of Board
  * Resources, are the drop targets), board, ports, assignments() (the planner's, read at each drawing), drop(result,
- * port) (applies a boardDrop's result: undoable), remove(nets) (takes them off their pins) }. Returns { render() }.
+ * port) (applies a boardDrop's result: undoable), remove(nets) (takes them off their pins), readOnly (#5247: shown only, no
+ * drag, no ✕) }. Returns { render() }.
  */
-export function mountPinPorts({ list, root, board, ports, assignments, drop, remove }) {
+export function mountPinPorts({ list, root, board, ports, assignments, drop, remove, readOnly = false }) {
   const open = new Set();   // (the buses expanded, kept when the panel is drawn again)
   const resOf = (name) => board.resources.find((r) => r.name === name);
   // where a net is: the board's name of its pin (led<3>), or the pin
@@ -23,13 +24,14 @@ export function mountPinPorts({ list, root, board, ports, assignments, drop, rem
     const r = resourceOfPin(board, loc);
     return r ? pinLabels(r.res)[r.idx] : loc;
   };
-  const xBtn = (nets, title) => h('button', { type: 'button', class: 'pp-x', title, onclick: () => remove(nets) }, '✕');
+  const xBtn = (nets, title) => (readOnly ? null : h('button', { type: 'button', class: 'pp-x', title, onclick: () => remove(nets) }, '✕'));
+  const DRAG = readOnly ? undefined : 'Drag it onto a part of the board or a row of Board Resources';
 
   function render() {
     const a = assignments();
     list.replaceChildren(...ports.flatMap((p) => {
       const nets = portNets(p), n = nets.filter((x) => a[x.net]?.loc).length, exp = open.has(p.name);
-      const row = h('div', { class: `pp-port${n === nets.length ? ' placed' : n ? ' partial' : ''}`, 'data-port': p.name, title: 'Drag it onto a part of the board or a row of Board Resources' },
+      const row = h('div', { class: `pp-port${n === nets.length ? ' placed' : n ? ' partial' : ''}`, 'data-port': p.name, title: DRAG },
         p.bus
           ? h('button', { type: 'button', class: `pp-exp${exp ? ' open' : ''}`, title: exp ? 'Collapse its bits' : 'Expand its bits', 'aria-expanded': String(exp), onclick: () => { if (exp) open.delete(p.name); else open.add(p.name); render(); } }, '▸')
           : h('span', { class: 'pp-exp' }),
@@ -43,7 +45,7 @@ export function mountPinPorts({ list, root, board, ports, assignments, drop, rem
       const bits = p.msb >= p.lsb ? [...nets].reverse() : nets;
       return [row, ...bits.map((x) => {
         const at = where(x.net);
-        const b = h('div', { class: `pp-port pp-bit${at ? ' placed' : ''}`, 'data-net': x.net, title: 'Drag it onto a part of the board or a row of Board Resources' },
+        const b = h('div', { class: `pp-port pp-bit${at ? ' placed' : ''}`, 'data-net': x.net, title: DRAG },
           h('span', { class: 'pp-pname', 'data-no-i18n': true }, x.net), h('span', { class: 'pp-pcount', 'data-no-i18n': true }, at || '—'),
           at ? xBtn([x.net], 'Remove it from its pin') : null);
         dragFrom(b, portBit(p, x.bit));
@@ -54,6 +56,7 @@ export function mountPinPorts({ list, root, board, ports, assignments, drop, rem
 
   // dragging a port or a bit: a ghost under the pointer, the target under it (or near it) lit, dropped on release
   function dragFrom(chip, p) {
+    if (readOnly) return;
     chip.addEventListener('pointerdown', (e) => {
       if (e.button || e.target.closest('button')) return;
       e.preventDefault();
