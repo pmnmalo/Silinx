@@ -15,7 +15,7 @@
 //   form: the logic of the HDL module and schematic (#694): the minimal SOP, POS (the K-map's), Quine-McCluskey's (#3939),
 //   the XOR form where cheaper (#435, else the minimal SOP), NAND or NOR gates only (from the minimal SOP / POS), …
 
-import { VHDL93_WORDS, VERILOG_WORDS } from './reserved.js';
+import { VHDL93_WORDS, VERILOG_WORDS, reservedError } from './reserved.js';
 import { NAME_RE } from './ident.js';
 import { reservedWarning } from './asm.js';
 import { DRAWING_NESTING, DRAWING_NESTING_MESSAGE, deeperThanLimit, overlineToSlash } from './asm-expr.js';
@@ -618,8 +618,37 @@ export function validateTable(doc, { maxInputs = MAX_INPUTS } = {}) {
   return errs;
 }
 
-/** Change the inputs/outputs of a table: kept columns follow their names, new ones are 0. */
-export function reshapeTable(doc, inputs, outputs) {
+// A name changed in place (#5165): as many names as before, only one of them different (in more than its letter case)
+// and new to the list: its place, else -1 (names added, removed, reordered, or two changed: those follow their names).
+const renamedAt = (old, next) => {
+  if (old.length !== next.length) return -1;
+  const diff = next.flatMap((v, j) => (v.toLowerCase() === old[j].toLowerCase() ? [] : [j]));
+  return diff.length === 1 && !old.some(o => o.toLowerCase() === next[diff[0]].toLowerCase()) ? diff[0] : -1;
+};
+const renameKey = (m, from, to) => m && Object.fromEntries(Object.entries(m).map(([k, v]) => [k.toLowerCase() === from.toLowerCase() ? to : k, v]));
+
+/** reshapeTable's part: the table with its input and / or output renamed in place (renamedAt), its column, expression,
+ *  form and solutions under the new name, an input's name changed in the expressions. */
+function renamedTable(doc, inputs, outputs) {
+  const i = renamedAt(doc.inputs, inputs), o = renamedAt(doc.outputs, outputs);
+  const d = { ...doc };
+  if (o >= 0) {
+    const from = doc.outputs[o], to = outputs[o];
+    d.outputs = doc.outputs.map((v, j) => (j === o ? to : v));
+    for (const k of ['table', 'exprs', 'forms', 'solutions']) d[k] = renameKey(doc[k], from, to);
+  }
+  if (i >= 0) {
+    const word = new RegExp(`(?<!\\w)${doc.inputs[i]}(?!\\w)`, 'gi');
+    d.inputs = doc.inputs.map((v, j) => (j === i ? inputs[i] : v));
+    d.exprs = d.exprs && Object.fromEntries(Object.entries(d.exprs).map(([k, e]) => [k, String(e).replace(word, inputs[i])]));
+  }
+  return d;
+}
+
+/** Change the inputs/outputs of a table: kept columns follow their names, new ones are 0; one name changed in place is
+ *  a rename, its column (or its rows) kept (#5165). */
+export function reshapeTable(docIn, inputs, outputs) {
+  const doc = renamedTable(docIn, inputs, outputs);
   const old = doc.inputs, n0 = old.length, n = inputs.length;
   const pos = inputs.map(v => old.findIndex(o => o.toLowerCase() === v.toLowerCase()));
   const table = {};
@@ -638,6 +667,22 @@ export function reshapeTable(doc, inputs, outputs) {
   const exprs = {};
   for (const o of outputs) { const k = Object.keys(doc.exprs || {}).find(x => x.toLowerCase() === o.toLowerCase()); if (k && inputs.length === n0 && inputs.every((v, j) => v === old[j])) exprs[o] = doc.exprs[k]; }
   return { ...doc, inputs: [...inputs], outputs: [...outputs], table, exprs, ...newOutputForms(doc, inputs, outputs) };
+}
+
+/** The table with the names typed in its editor's Inputs and Outputs boxes (and the MCP's set_output_logic's inputs
+ *  and outputs): reshapeTable's, normalized; throws a LogicError on a shape refused (the counts, a new name that is a
+ *  reserved word, #679, the table's errors). */
+export function shapeTable(docIn, inputs, outputs) {
+  const doc = normalizeTable(docIn);
+  if (inputs.length < 1 || inputs.length > MAX_EDIT_INPUTS) throw new LogicError(`1 to ${MAX_EDIT_INPUTS} inputs`);
+  if (outputs.length < 1) throw new LogicError('At least 1 output');
+  // a new name: not a reserved word of VHDL or Verilog, in any letter case (#679)
+  const bad = [...inputs, ...outputs].filter(n => !doc.inputs.includes(n) && !doc.outputs.includes(n)).map(n => reservedError(n)).find(Boolean);
+  if (bad) throw new LogicError(`${bad}: choose another name.`);
+  const next = normalizeTable(reshapeTable(doc, inputs, outputs));
+  const errs = validateTable(next).filter(x => x.severity === 'error');
+  if (errs.length) throw new LogicError(errs[0].message);
+  return next;
 }
 
 /**

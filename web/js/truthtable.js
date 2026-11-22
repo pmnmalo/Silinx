@@ -26,10 +26,9 @@ import { ttDivider } from './tt-divider.js';
 import { ICON } from './editor-icons.js';
 import { setChoice, toolbarMenu } from './toolbar-menu.js';
 import {
-  normalizeTable, validateTable, reshapeTable, analyzeOutput, parseExpr, exprColumn,
+  normalizeTable, shapeTable, analyzeOutput, parseExpr, exprColumn,
   kmapLayout, kmapRects, MAX_EDIT_INPUTS, MAX_KMAP_INPUTS, setOutputLogic, formOf,
 } from '/core/logic.js';
-import { reservedError } from '/core/reserved.js';
 import { cellText, placeKmap } from './tt-kmap3d.js';
 import { domSnapshot } from './print-view.js';
 import { t as tr } from './i18n.js';
@@ -127,15 +126,9 @@ export function mountTtEditor(container, opts = {}) {
   // (a refused shape or expression: its error in the console, #4747: no message in the editor's window)
   const refuse = text => message(text, 'error');
   const applyShape = () => {
-    const ins = names(inIn.value), outs = names(outIn.value);
-    if (ins.length < 1 || ins.length > MAX_EDIT_INPUTS) { refuse(`1 to ${MAX_EDIT_INPUTS} inputs`); return; }
-    if (outs.length < 1) { refuse('At least 1 output'); return; }
-    // a new name: not a reserved word of VHDL or Verilog, in any letter case (#679)
-    const bad = [...ins, ...outs].filter(n => !M.inputs.includes(n) && !M.outputs.includes(n)).map(reservedError).find(Boolean);
-    if (bad) { refuse(`${bad}: choose another name.`); return; }
-    const next = normalizeTable(reshapeTable(M, ins, outs));
-    const errs = validateTable(next).filter(x => x.severity === 'error');
-    if (errs.length) { refuse(errs[0].message); return; }
+    // (its checks and a name changed in place, a rename, #5165: the MCP's set_output_logic's too)
+    let next;
+    try { next = shapeTable(M, names(inIn.value), names(outIn.value)); } catch (e) { refuse(e.message); return; }
     if (JSON.stringify(next) === JSON.stringify(M)) return;
     M = next;
     if (!M.outputs.includes(out)) out = M.outputs[0];
