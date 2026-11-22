@@ -41,7 +41,7 @@ test('clock_manager on a Spartan-3E: the DCM\'s outputs, the nearest CLKFX, made
   // in Verilog
   assert.equal((await ok('clock_manager', { project: 'p', name: 'clk_v', language: 'verilog', outputs: [{ pin: 'CLK0', port: 'clk50' }, { pin: 'CLKFX', port: 'clk100', mhz: 100 }] })).text,
     'Clocking Wizard: created src/clk_v.v, the module clk_v: clk50 50 MHz, clk100 100 MHz.');
-  assert.match(await checks('p', 'clk_v'), /^Process "Check Syntax" of <clk_v> completed successfully \(\d+ signals, \d+ processes\)\.$/);
+  assert.match(await checks('p', 'clk_v'), /^Process "Check Syntax" of <clk_v> completed successfully \(\d+ signals?, \d+ process(?:es)?\)\.$/);
   // CLK0 not an output, in both languages: its feedback is used (#2716)
   for (const ext of ['vhd', 'v']) {
     await ok('clock_manager', { project: 'p', name: `fx_${ext}`, language: ext === 'v' ? 'verilog' : 'vhdl', outputs: [{ pin: 'CLKFX', port: 'f', mhz: 100 }] });
@@ -56,7 +56,7 @@ test('block_memory on a Spartan-3E: a RAM, a ROM from a .mem file, in VHDL and i
   for (const [lang, ext] of [['vhdl', 'vhd'], ['verilog', 'v']]) {
     const m = await ok('block_memory', { project: 'p', name: `rom_${ext}`, language: lang, kind: 'rom', width: 8, depth: 16, init: 'src/rom.mem' });
     assert.equal(m.text, `Block Memory: created src/rom_${ext}.${ext}, the module rom_${ext}: 16 x 8, 1 RAMB16_S9.\nBlock RAMs: 1 RAMB16 of the 12 on this device; RAMB16_S9 of 2048 x 9, 1 side by side.`);
-    assert.match(await checks('p', `rom_${ext}`), new RegExp(`^Process "Check Syntax" of <rom_${ext}> completed successfully \\(\\d+ signals, \\d+ processes\\)\\.$`));
+    assert.match(await checks('p', `rom_${ext}`), new RegExp(`^Process "Check Syntax" of <rom_${ext}> completed successfully \\(\\d+ signals?, \\d+ process(?:es)?\\)\\.$`));
   }
   const e = await ok('block_memory', { project: 'p', edit: 'src/bram.vhd', width: 16, depth: 2048, style: 'inferred' });
   assert.equal(e.text, 'Block Memory: wrote again src/bram.vhd, the module bram: 2048 x 16, inferable HDL.\nBlock RAMs: 2 RAMB16 of the 12 on this device; RAMB16_S9 of 2048 x 9, 2 side by side.');
@@ -103,10 +103,10 @@ test('the Spartan-6: a PLL\'s outputs and phases, a dual-port block RAM in halve
   assert.equal(c.text, 'Clocking Wizard: created src/clkgen.vhd, the module clkgen: c200 200 MHz, c50 50 MHz.\nVCO: 100.000 MHz x 10 / 1 = 1000.000 MHz (its range 400 to 1080 MHz).');
   assert.equal(c.data.primitive, 'PLL_BASE');
   // (its feedback used, #2716)
-  assert.match(await checks('s6', 'clkgen'), /^Process "Check Syntax" of <clkgen> completed successfully \(\d+ signals, \d+ processes\)\.$/);
+  assert.match(await checks('s6', 'clkgen'), /^Process "Check Syntax" of <clkgen> completed successfully \(\d+ signals?, \d+ process(?:es)?\)\.$/);
   const m = await ok('block_memory', { project: 's6', ports: 'dual', width: 16, depth: 2048 });
   assert.equal(m.text, 'Block Memory: created src/bram.vhd, the module bram: 2048 x 16, 2 RAMB16BWER.\nBlock RAMs: 2 RAMB16BWER (4 of the 64 halves of 9 Kbit on this device); RAMB16BWER of 2048 x 9, 2 side by side.');
-  assert.match(await checks('s6', 'bram'), /^Process "Check Syntax" of <bram> completed successfully \(\d+ signals, \d+ processes\)\.$/);
+  assert.match(await checks('s6', 'bram'), /^Process "Check Syntax" of <bram> completed successfully \(\d+ signals?, \d+ process(?:es)?\)\.$/);
   await fails('clock_manager', { project: 's6', name: 'k', divide_input_by_2: true }, 'divide_input_by_2 and phase_shift: a Spartan-3E DCM\'s (a Spartan-6 PLL output has its own phase)');
 });
 

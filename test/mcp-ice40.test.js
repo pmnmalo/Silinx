@@ -46,8 +46,8 @@ test('a project instantiating SB_PLL40_PAD and SB_HFOSC on the iCEBreaker: set_t
   await ok('write_file', { project: 'pll', path: 'src/top.v', text: PLL_TOP });
   await ok('write_file', { project: 'pll', path: 'sim/tb_top.v', text: PLL_TB });
   await ok('set_top', { project: 'pll', top: 'top', sim_top: 'tb_top' });
-  assert.match((await ok('check_syntax', { project: 'pll' })).text, /^Process "Check Syntax" of <top> completed successfully \(\d+ signals, \d+ processes\)\.$/);
-  assert.match((await ok('check_syntax', { project: 'pll', simulation: true })).text, /^Process "Check Syntax" of <tb_top> completed successfully \(\d+ signals, \d+ processes\)\.$/);
+  assert.match((await ok('check_syntax', { project: 'pll' })).text, /^Process "Check Syntax" of <top> completed successfully \(\d+ signals?, \d+ process(?:es)?\)\.$/);
+  assert.match((await ok('check_syntax', { project: 'pll', simulation: true })).text, /^Process "Check Syntax" of <tb_top> completed successfully \(\d+ signals?, \d+ process(?:es)?\)\.$/);
   const s = await ok('simulate', { project: 'pll', time_ns: 1100, signals: [] });
   // the reference rises at 41.667, 125.001 … ns: locked at the third (208.3 ns), the 48 MHz from the fourth (291.669 ns), a
   // rising edge every 20 833 ps (its period to the picosecond): 35 to 1000 ns, n = 35 mod 16; the 6 MHz rises at 83.3, 250 …

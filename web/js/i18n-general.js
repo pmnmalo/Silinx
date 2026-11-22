@@ -373,6 +373,7 @@ export const PT = {
   // its message centre (web/js/messages.js, #798)
   'Emulator': 'Emulador', 'Emulation': 'Emulação', 'Synthesis': 'Síntese', 'Messages from': 'Mensagens de', 'Command line': 'Linha de comandos',
   'Show it in the drawing': 'Mostrar no desenho',   // a schematic's Check's line in the console below (#993)
+  'Open the file at this line': 'Abrir o ficheiro nesta linha',   // an HDL error's line in the console (#5221)
   'Type an SSim command (help)': 'Escreva um comando do SSim (help)', 'Type a command or a file name': 'Escreva um comando ou o nome de um ficheiro',
   // the Silinx interface (web/js/silinx.js, web/js/palette.js): View ▸ Interface / Theme, header, design flow, command palette
   'Interface': 'Interface', 'ISE style': 'Estilo ISE',   // (Silinx: a proper name, the same, #2451)

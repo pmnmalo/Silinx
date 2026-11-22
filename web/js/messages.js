@@ -145,8 +145,8 @@ function showLast() {
 // goes to its source, double-clicked, goes there here too, each line of it, with its message's location, #4749)
 // (an application's line of SSim's, #5223: its English, drawn in the interface's language as SSim's is)
 function mirror(text, cls, src, el) {
-  const lines = el?.draw ? app.log(el.message.text, cls, { diag: false, src, location: el.message.location ?? null, draw: el.draw })
-    : app.log(text, cls, { diag: false, src, location: el?.message?.location ?? null });
+  const lines = el?.draw ? app.log(el.message.text, cls, { diag: false, src, location: el.message.location ?? null, draw: el.draw, link: false })
+    : app.log(text, cls, { diag: false, src, location: el?.message?.location ?? null, link: false });
   if (!el?.classList.contains('link')) return;
   for (const ln of lines) {
     ln.classList.add('mc-link');

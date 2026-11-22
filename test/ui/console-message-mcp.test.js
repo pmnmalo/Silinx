@@ -52,7 +52,7 @@ uiTest('#4749 Check Syntax\'s console messages are check_syntax\'s: warnings, an
     const ui = await uiCheck(page, mod);
     const m = (await mcp('check_syntax', { project })).messages.map(fields);
     // (the MCP's result line names its top, `of <top>`, and counts the signals: the interface's says neither)
-    const result = (x) => x.text.replace(/ of <\w+>/, '').replace(/ \(\d+ signals, \d+ processes\)/, '').replace(/\.$/, '');
+    const result = (x) => x.text.replace(/ of <\w+>/, '').replace(/ \(\d+ signals?, \d+ process(?:es)?\)/, '').replace(/\.$/, '');
     assert.deepEqual(ui.slice(0, -1), m.slice(0, -1), project);
     assert.deepEqual({ ...ui.at(-1), text: result(ui.at(-1)) }, { ...m.at(-1), text: result(m.at(-1)) }, project);
     assert.ok(m.length >= 2, project);

@@ -6,7 +6,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { hdlCheck } from '../core/hdl-check.js';
+import { designSize, hdlCheck } from '../core/hdl-check.js';
 import { compile, elaborate, parseStats } from '../core/compile.js';
 import { reservedModuleDiags } from '../core/reserved.js';
 import { designChecks } from '../core/lint.js';
@@ -14,7 +14,9 @@ import { designChecks } from '../core/lint.js';
 const KEEP = { keep: true };
 const ROOT = path.join(path.dirname(fileURLToPath(import.meta.url)), '..');
 
-// web/js/processes.js hdlDiagnostics as it was before #4773 (S and the page aside): the reference
+// web/js/processes.js hdlDiagnostics as it was before #4773 (S and the page aside): the reference (#5222: one signal,
+// one process said in the singular)
+const counted = (n, one, many) => `${n} ${n === 1 ? one : many}`;
 function oldCheck(path, sources, lint) {
   const info = [];
   const lib = compile(sources);
@@ -26,7 +28,7 @@ function oldCheck(path, sources, lint) {
     let checks;
     try { checks = designChecks(lib, design, { lint }); } catch { checks = []; }
     diags.push(...design.diags, ...checks);
-    if (design.top) info.push(`Elaborating module <${u.name}>: ${design.signals.length} signals, ${design.procs.length} processes.`);
+    if (design.top) info.push(`Elaborating module <${u.name}>: ${counted(design.signals.length, 'signal', 'signals')}, ${counted(design.procs.length, 'process', 'processes')}.`);
   }
   return { diags, info };
 }
@@ -74,6 +76,17 @@ test('#4773 hdlCheck clean: a file that does not read is not elaborated (its par
   const warned = hdlCheck({ path: 'a.v', sources: [verilog('wire unused;\nassign y = x;')], clean: true });
   assert.equal(warned.info.length, 1);
   assert.ok(warned.diags.every(d => d.severity !== 'error'));
+});
+
+test('#5222 designSize: one signal and one process in the singular, none and several in the plural; Check Syntax\'s line', () => {
+  const of = (s, p) => designSize({ signals: Array(s).fill({}), procs: Array(p).fill({}) });
+  assert.equal(of(4, 1), '4 signals, 1 process');
+  assert.equal(of(1, 2), '1 signal, 2 processes');
+  assert.equal(of(0, 0), '0 signals, 0 processes');
+  assert.equal(of(1, 1), '1 signal, 1 process');
+  const one = hdlCheck({ path: 'a.v', sources: [verilog('assign y = ~x;')] });
+  assert.deepEqual(one.info, ['Elaborating module <a>: 2 signals, 1 process.']);
+  assert.deepEqual(one.diags, [], 'no warnings');
 });
 
 test('#4773 compile keeps the parses: the same sources parsed once; a change parses its file only; what it includes and its package types too', () => {

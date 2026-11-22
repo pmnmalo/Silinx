@@ -44,7 +44,7 @@ test('import_source: a source, a constraints file (the project\'s, it had none) 
     untrusted: { content: 'the names of the files copied', nonce: 'N', note: NOTE } });
   assert.equal(await P.readFile('p', 'src/inv.vhd'), INV);
   await ok('set_top', { project: 'p', top: 'inv' });
-  assert.equal((await ok('check_syntax', { project: 'p' })).text, 'Process "Check Syntax" of <inv> completed successfully (2 signals, 1 processes).');
+  assert.equal((await ok('check_syntax', { project: 'p' })).text, 'Process "Check Syntax" of <inv> completed successfully (2 signals, 1 process).');
 });
 
 test('import_source: Import Test Bench (association sim) to sim/; Implementation only; a file the project has, replaced only with replace', async () => {

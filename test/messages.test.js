@@ -219,5 +219,5 @@ test('#4729 the application\'s own messages state their source: logError / logWa
     assert.match(src, /import \{ appLog(, \w+)* \} from '\.\/console\.js';/, f);
   }
   assert.match(read('web/js/capture-ui.js'), /const log = \(text, cls = '', opts = \{\}\) => consoleLog\(text, cls, \{ \.\.\.opts, src: 'impl' \}\);/);
-  assert.match(read('web/js/messages.js'), /app\.log\(text, cls, \{ diag: false, src, location: el\?\.message\?\.location \?\? null \}\);/);
+  assert.match(read('web/js/messages.js'), /app\.log\(text, cls, \{ diag: false, src, location: el\?\.message\?\.location \?\? null, link: false \}\);/);
 });
