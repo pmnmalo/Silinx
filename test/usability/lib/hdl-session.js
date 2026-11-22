@@ -13,7 +13,8 @@ export class HdlSession extends Session {
 
   /** A design of lib/hdl-designs.js typed from empty (its first line not indented): a step a line (Enter, the indentation corrected, the line typed),
    *  the text after each the model's. `strict`: 'indent', the indentation the editor gives left as it is (it must be
-   *  the one intended); 'enter', no completion list closed before an Enter; either typed with no mistake. */
+   *  the one intended, a closing word's brought back as it is typed, #5218, #5219); 'enter', typed with no mistake,
+   *  each Enter after a word typed whole (the completion list on it) a new line (#5220); either typed with no mistake. */
   async typeDesign(lang, { strict = null } = {}) {
     const D = DESIGNS[lang], m = new TypingModel(), typed = (l) => (strict ? l.line : l.typed ?? l.line);
     this.model = m;
@@ -21,7 +22,7 @@ export class HdlSession extends Session {
     for (const [i, l] of D.lines.entries()) {
       await this.step('type a line', { n: i + 1, indent: l.indent, line: typed(l) }, async () => {
         if (i) {
-          await this.a.enter({ escape: strict !== 'enter' });
+          await this.a.enter();
           m.enter(l.indent);
           if (strict !== 'indent') await this.a.indentTo(l.indent);
         }
@@ -29,7 +30,7 @@ export class HdlSession extends Session {
       }, { expect: same });
     }
     await this.step('Enter at the end', {}, async () => {
-      await this.a.enter({ escape: strict !== 'enter' });
+      await this.a.enter();
       m.enter(0);
       if (strict !== 'indent') await this.a.indentTo(0);
     }, { expect: same });
