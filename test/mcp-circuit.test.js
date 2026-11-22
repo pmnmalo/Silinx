@@ -130,6 +130,8 @@ test('edit_circuit: a breadboard moved with its parts, its wires kept or not; a 
   assert.deepEqual([r.data.parts, r.data.wires, r.data.errors.map((d) => d.item)], [14, 26, ['U3', 'U4']]);
   assert.deepEqual(m().parts.find((p) => p.id === 'U1'), { id: 'U1', type: '7486', x: -7, y: 4, rot: 1 });
   await fails('edit_circuit', { project: 'c', path: P, operations: [{ op: 'copy', id: 'U9' }] }, 'operation 0 (copy): no part U9 in the circuit (nothing written)');
+  // (#5162) a part moved onto the leads of another: refused, as in the editor
+  await fails('edit_circuit', { project: 'c', path: P, operations: [{ op: 'move', id: 'S3', at: 'S1.out' }] }, 'operation 0 (move): S3 cannot be moved there: it would land on the leads of S1, joining them (nothing written)');
   // (#4064) how its wires are drawn, the editor's ⋮ Curved wires
   r = await ok('edit_circuit', { project: 'c', path: P, operations: [{ op: 'wires', style: 'curved' }] });
   assert.equal(r.text.split('\n')[0], 'the wires drawn curved');
