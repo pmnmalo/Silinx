@@ -1,6 +1,6 @@
 // Usability tests (#5148): the schematic's vocabulary of random actions (lib/random.js), on the gates example: move an
 // inverter, drag a wire's inner segment, place an inverter in the free corner, wire two of the new ones, change a new
-// one's width, delete one, Undo, Redo. Each action's arguments are drawn so that the person's step is a sound one
+// one's width, delete one, name a new wire's net, delete a new wire, Undo, Redo. Each action's arguments are drawn so that the person's step is a sound one
 // (no symbol dropped on another, no segment dragged onto another wire: what is left is the editor's doing). The known
 // bugs' cases are not drawn (their issues say which), so that a failure is a new one.
 import assert from 'node:assert/strict';
@@ -30,6 +30,11 @@ function clear(doc, box, except = null) {
   }));
 }
 const onSheet = (d, b) => b.x >= 10 && b.y >= 10 && b.x + b.w <= (d.sheet?.w ?? 1700) - 10 && b.y + b.h <= (d.sheet?.h ?? 1100) - 10;
+/** The wires on a new inverter's pin. */
+const newWires = (d) => {
+  const pins = new Set(d.symbols.filter((x) => isNew(x)).flatMap((x) => symbolPins(x)).map((p) => `${p.x},${p.y}`));
+  return d.wires.filter((w) => [w.points[0], w.points.at(-1)].some((p) => pins.has(`${p.x},${p.y}`)));
+};
 const isNew = (s) => /^inst_\d+$/.test(s.name);
 const inverters = (d) => d.symbols.filter((s) => s.type === 'inv');
 const pinAt = (d, s, name) => symbolPins(s).find((p) => p.name === name);
@@ -129,6 +134,38 @@ export const SCH_VOCAB = [
         return before.wires.filter((w) => [w.points[0], w.points.at(-1)].some((p) => pins.has(`${p.x},${p.y}`))).map((w) => w.id);
       },
       expect: (d, b) => assert.equal(d.symbols.length, b.symbols.length - 1),
+    }),
+  },
+  {
+    // a net name (n1, n2…: none taken) on a new inverters' wire, in the middle of its first segment
+    name: 'netName', weight: 1,
+    gen(d, rng) {
+      const w = rng.pick(newWires(d));
+      if (!w) return null;
+      const [a, b] = w.points;
+      const at = { x: Math.round((a.x + b.x) / 20) * 10, y: Math.round((a.y + b.y) / 20) * 10 };
+      if (Math.abs(a.x - b.x) + Math.abs(a.y - b.y) < 20 || d.labels.some((l) => l.x === at.x && l.y === at.y)) return null;
+      let k = 1;
+      while (d.labels.some((l) => l.net === `n${k}`)) k++;
+      return { wire: w.id, x: at.x, y: at.y, name: `n${k}` };
+    },
+    run: (s, { wire, x, y, name }) => s.step('netName', { wire, x, y, name }, () => s.a.netName(x, y, name), {
+      expect: (d, b) => { sameNets(d, b); assert.equal(d.labels.length, b.labels.length + 1); },
+    }),
+  },
+  {
+    // a new inverters' wire deleted (its whole branch, Select whole branch on): the wires on it freed
+    name: 'deleteWire', weight: 1,
+    gen(d, rng) {
+      const w = rng.pick(newWires(d));
+      if (!w) return null;
+      const [a, b] = w.points;
+      if (Math.abs(a.x - b.x) + Math.abs(a.y - b.y) < 20) return null;
+      return { wire: w.id, x: Math.round((a.x + b.x) / 20) * 10, y: Math.round((a.y + b.y) / 20) * 10 };
+    },
+    run: (s, { wire, x, y }) => s.step('deleteWire', { wire, x, y }, () => s.a.deleteWire(x, y), {
+      frees: (after) => after.wires.map((w) => w.id),
+      expect: (d, b) => assert.ok(d.wires.length < b.wires.length),
     }),
   },
   { name: 'undo', weight: 2, gen: (d, rng) => (rng.next() < 0.9 ? {} : null), run: (s) => s.undo() },
