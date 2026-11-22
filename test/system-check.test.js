@@ -86,7 +86,7 @@ test('the links: their ids, kinds and ends', () => {
   assert.deepEqual(run(s => s.links.push({ id: 'w3', kind: 'gpio', a: 'fpga', b: 'nobody.x' }, { id: 'w4', kind: 'gpio', a: 'uno.nothing', b: 'fpga.sw0' })), [
     'error: w3: its end \'fpga\' is not node.interface [link:w3]', 'error: w3: no node nobody [link:w3]', 'error: w4: uno has no interface nothing [link:w4]']);
   assert.deepEqual(run(s => s.links.push({ id: 'w1', kind: 'gpio', a: 'uno.out', b: 'fpga.sw0' }, { id: '', kind: 'gpio', a: 'uno.out', b: 'fpga.sw0' }, { id: 'w5', kind: 'can', a: 'uno.out', b: 'fpga.sw0' })), [
-    'error: Two links are named w1 [link:w1]', 'error: A link (uno.out to fpga.sw0) has no id [link:]', 'error: w5: no link kind \'can\' (the kinds: uart, gpio, spi) [link:w5]']);
+    'error: Two links are named w1 [link:w1]', 'error: A link (uno.out to fpga.sw0) has no id [link:]', 'error: w5: no link kind \'can\' (the kinds: uart, gpio, spi, i2c) [link:w5]']);
   assert.deepEqual(run(s => { s.links.splice(1, 1); }), ['warning: uno joins nothing: no link reaches it [node:uno]']);
 });
 
@@ -106,7 +106,7 @@ test('the interfaces: names, kinds, pins, directions', () => {
   assert.deepEqual(run(s => N(s, 'uno').interfaces.push({ name: '', kind: 'gpio' }, { name: 'btn', kind: 'gpio', pins: ['D7'], dir: 'in' }, { name: 'g', kind: 'gpio', pins: [], dir: 'in' },
     { name: 'h', kind: 'gpio', pins: ['D8'], dir: 'both' }, { name: 's', kind: 'can' }, { name: 'k', kind: 'gpio', pins: ['D20', 'A9'], dir: 'in' })), [
     'error: uno: an interface has no name [node:uno]', 'error: uno: two interfaces are named btn [node:uno]', 'error: uno.g: a GPIO interface with no pins [node:uno]',
-    'error: uno.h: its direction \'both\' is not in or out [node:uno]', 'error: uno.s: no interface kind \'can\' (the kinds: uart, gpio, spi) [node:uno]',
+    'error: uno.h: its direction \'both\' is not in or out [node:uno]', 'error: uno.s: no interface kind \'can\' (the kinds: uart, gpio, spi, i2c) [node:uno]',
     'error: uno.k: D20, A9 are not pins of the Arduino Uno [node:uno]']);
   assert.deepEqual(run(s => N(s, 'term').interfaces.push({ name: 'g', kind: 'gpio', pins: ['x'], dir: 'in' })), ['error: term: a serial terminal has UART interfaces only (g is gpio) [node:term]']);
   assert.deepEqual(run(s => { N(s, 'uno').board = 'arduino-nano'; F(s, 'uno', 'out').pins = ['A6', 'A7']; }), ['error: uno.out: A6, A7 of the Arduino Nano are inputs only [node:uno]']);

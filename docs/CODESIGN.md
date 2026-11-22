@@ -78,10 +78,23 @@ and warns when the program's SCK is faster than the interface says. The System e
 FPGA node's ports found by their names), and the **spi-avr** example shows it: an Arduino's count every 47 ms, the FPGA's
 LEDs, its answer on the Arduino's D2..D7.
 
+**I²C** (#5214): an Arduino is the master on its board's `Wire` (SCL A5, SDA A4), an FPGA node the peripheral on two
+ports of its module (`{ name, kind: 'i2c', scl, sda, hz }`), its SDA an `inout` port (driven low or released, read
+back: the compiled engine's pads, #4709). The AVR node draws SCL and SDA from each step its program asks the TWI for (a
+START, an address, a byte written or read, a STOP: `core/system-sim-avr-twi.js`), at TWBR's rate, each line pulled low
+or released, and reads SDA at the middle of each SCL high (the peripheral's ACK, the bytes it sends). The link is three
+wires: SCL to the peripheral, and SDA each way, what each end drives on it (0, or released: the pull-up's 1), at a
+sixteenth of SCL's period; each end reads the other's, and its own where it pulls the line low. The decoder
+(`decodeI2c`, SDA the bus's: low while either end pulls it) gives each transfer's address, read or write, its bytes and
+their ACKs, and warns when SCL is faster than the interface says or an address is not acknowledged. One master, no
+arbitration, no clock stretching (the peripheral answers in time). The System editor's **+ I²C** adds either end, and
+the **i2c-avr** example shows it: an Arduino writes a count every 47 ms to the FPGA at the address 0x42 (its LEDs),
+then reads its switches back, shown on the Arduino's D2..D7.
+
 **How an interface is declared.** It is declared once:
 
 - on an FPGA node, as a set of the top's ports;
-- on a microcontroller, as a peripheral and its board's pins (`Serial` on D0 / D1, `SPI` on D10–D13);
+- on a microcontroller, as a peripheral and its board's pins (`Serial` on D0 / D1, `SPI` on D10–D13, `Wire` on A4 / A5);
 - on a connector, as a pin map (a Pmod on the Arduino's header).
 
 The check (`core/system-check.js`, the MCP's `check_system`) runs when the system is saved and when it is built, its
@@ -326,7 +339,7 @@ The existing `program_board` and `capture` serve the FPGA nodes.
   would be a contribution to avr8js.
 - **`inout` ports in the compiled engine** (#4709, done): a top-level `inout` is three signals there, its input
   (`set`), its output and its enable (`get('p')`, `get('p:en')`), so an FPGA's I²C slave (an open-drain SDA) runs
-  on it; the I²C links resolve the line (a pull-up, a low from either end).
+  on it; the I²C links resolve the line (a pull-up, a low from either end: #5214, done).
 - **MicroPython's WebAssembly build needs JSPI** (no Safari).
   - One MicroPython node can call the scheduler from inside its `sleep`.
   - Several need to be suspended and resumed, through JSPI, or each needs a Worker of its own.

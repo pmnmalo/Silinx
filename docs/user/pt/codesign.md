@@ -33,6 +33,14 @@ ligados por UART e GPIO.
   bytes de cada transferência, os do MOSI e os do MISO, nas linhas da consola. O exemplo **spi-avr**: um Arduino envia
   uma contagem a cada 47 ms, mais ou menos, a FPGA mostra-a nos seus LEDs e responde com a anterior mais um, mostrada nos
   D2..D7 do Arduino.
+- **As ligações I²C** juntam um Arduino, o mestre, a uma FPGA, o periférico: **+ I²C** no Arduino acrescenta o
+  barramento I²C da placa, o Wire (SCL A5, SDA A4), **+ I²C** num nó FPGA os dois portos do seu módulo (encontrados
+  pelos nomes: scl, sda), o SDA um porto inout (`sda <= '0' when pull = '1' else 'Z'`: puxado a 0 ou largado, nunca
+  comandado a 1), e **Ligação** junta-os. Cada ponta indica o ritmo do SCL (pelo menos o do programa: 100000 Hz com o
+  Wire), o mesmo nas duas. Experimentar mostra cada transferência nas linhas da consola: W ou R, o endereço, os bytes
+  (NACK onde um não foi confirmado), e avisa de um endereço que nenhum periférico confirmou. O exemplo **i2c-avr**: um
+  Arduino escreve uma contagem a cada 47 ms, mais ou menos, na FPGA no endereço 0x42, mostrada nos seus LEDs, e lê de
+  volta os interruptores da FPGA, mostrados nos D2..D7 do Arduino.
 
 ## Experimentar
 

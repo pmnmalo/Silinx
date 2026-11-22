@@ -3,8 +3,9 @@
 // at a baud and a frame (data bits 5 to 8, parity N / E / O, stop bits 1 or 2, a System document's `8N1`), each with its
 // time; a framing error (a stop bit at 0) and a parity error are the decoder's warnings, as the console says them. An
 // SPI bus's transfers from its four lines (#5214: a byte each way, MOSI's and MISO's, at the mode's sampling edges while
-// SS is low); a SCK faster than its interface says, a warning. I²C comes with its links (phase 2). Isomorphic ES module,
-// no DOM.
+// SS is low); a SCK faster than its interface says, a warning. An I²C bus's transfers from SCL and SDA (#5214: its
+// address, read or write, its bytes, each ACK), SDA low while either end pulls it low; a SCL faster than its interface
+// says and an address no peripheral acknowledged, its warnings. Isomorphic ES module, no DOM.
 
 /** A frame's text read ('8N1', '7E2'): { bits, parity: 'N' | 'E' | 'O', stop }, or null. */
 export function parseFrame(frame) {
@@ -133,3 +134,63 @@ export function decodeSpi({ sck = [], mosi = [], miso = [], ss = null }, { mode 
 /** An SPI bus's warnings: its SCK faster than its interface says (its link's latency set by it). */
 export const spiWarnings = (link, { hz, declared }) => (hz > declared * 1.01
   ? [`${link}: SCK at ${hz} Hz, faster than its interface's ${declared} Hz: its MISO may be read late (the interface's SCK rate at least the program's)`] : []);
+
+// two open-drain lines' changes [t, level, …] as the bus's level: low while either end pulls it low (null: released,
+// the pull-up's 1)
+export function wiredAnd(a = [], b = []) {
+  const ts = [...new Set([...a.filter((_, k) => k % 2 === 0), ...b.filter((_, k) => k % 2 === 0)])].sort((x, y) => x - y);
+  const out = [];
+  for (const t of ts) {
+    const v = levelAt(a, t) === 0 || levelAt(b, t) === 0 ? 0 : 1;
+    if (out.at(-1) !== v) out.push(t, v);
+  }
+  return out;
+}
+
+/**
+ * An I²C bus's transfers from its lines' changes (ps) { scl, sda } (SDA the bus's, both ends': wiredAnd): [{ t (its
+ * START's), addr (7 bits), read, ack (the address acknowledged), data: [{ byte, ack }] }] and its SCL's fastest rate
+ * (Hz). A transfer is from a START (SDA falling while SCL is high) to the next START or a STOP (SDA rising while SCL is
+ * high); each bit read as SCL rises, each byte's ninth bit its ACK (SDA low); a byte cut short is dropped.
+ */
+export function decodeI2c({ scl = [], sda = [] }) {
+  const ev = [];
+  for (let k = 0; k < scl.length; k += 2) ev.push([scl[k], 0, scl[k + 1] === 0 ? 0 : 1]);
+  for (let k = 0; k < sda.length; k += 2) ev.push([sda[k], 1, sda[k + 1] === 0 ? 0 : 1]);
+  ev.sort((x, y) => x[0] - y[0] || x[1] - y[1]);
+  const out = [];
+  let c = 1, d = 1, cur = null, bits = [], rise = null, fastest = 0;
+  const close = () => { if (cur?.addr != null) out.push(cur); cur = null; };
+  for (const [t, line, v] of ev) {
+    if (line === 0) {
+      if (v === 1 && c === 0) {
+        if (rise != null && t > rise) fastest = Math.max(fastest, 1e12 / (t - rise));
+        rise = t;
+        if (cur) bits.push(d);
+        if (cur && bits.length === 9) {
+          const byte = bits.slice(0, 8).reduce((b, x) => (b << 1) | x, 0), ack = bits[8] === 0;
+          if (cur.addr == null) Object.assign(cur, { addr: byte >> 1, read: !!(byte & 1), ack });
+          else cur.data.push({ byte, ack });
+          bits = [];
+        }
+      }
+      c = v;
+    } else {
+      if (c === 1 && d === 1 && v === 0) { close(); cur = { t, addr: null, read: false, ack: false, data: [] }; bits = []; }
+      else if (c === 1 && d === 0 && v === 1) close();
+      d = v;
+    }
+  }
+  close();
+  return { transfers: out, hz: Math.round(fastest) };
+}
+
+/** An I²C bus's warnings: its SCL faster than its interface says (its link's latency set by it); an address no
+ *  peripheral acknowledged. */
+export function i2cWarnings(link, { hz, declared, transfers = [] }) {
+  const out = hz > declared * 1.01 ? [`${link}: SCL at ${hz} Hz, faster than its interface's ${declared} Hz: its peripheral's answers may be read late (the interface's SCL rate at least the program's)`] : [];
+  const nack = new Map();
+  for (const x of transfers) if (!x.ack) nack.set(x.addr, (nack.get(x.addr) ?? 0) + 1);
+  for (const [a, n] of nack) out.push(`${link}: no peripheral acknowledged the address 0x${a.toString(16).padStart(2, '0')} (${n} time(s))`);
+  return out;
+}

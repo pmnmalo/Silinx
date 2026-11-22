@@ -5,7 +5,9 @@
 //            of the wrong direction (a TX that is an input: TX and RX crossed), with no pin or a pin not on its board,
 //            two ports on one pin; a microcontroller's pin not on its board, its UART's TX and RX not the board's; a
 //            link's end unknown, of another kind, the same node at both ends; the baud or the frame different at its
-//            ends; GPIO widths different; a pin driven twice; a pin (an interface) used by two links
+//            ends; GPIO widths different; a pin driven twice; a pin (an interface) used by two links; an SPI or I²C
+//            link's master not a microcontroller, its peripheral not an FPGA, its rate (and SPI's mode) different at its
+//            ends; an I²C peripheral's SDA not an inout port (#5214)
 //   warning  a baud that is no standard rate; a GPIO wire nothing drives; a 5 V output on a 3.3 V FPGA's input; a node
 //            that joins nothing
 import { NODE_KINDS, LINK_KINDS, INTERFACE_KINDS, FRAME_RE, mcuBoard, linkEnd } from './system-doc.js';
@@ -95,6 +97,10 @@ function checkInterface(n, f, at, { err, warn }) {
     if (![0, 1, 2, 3].includes(f.mode)) { err(`${n.id}.${f.name}: its mode '${f.mode ?? ''}' is not an SPI mode (0 to 3)`, ref); return false; }
     return true;
   }
+  if (f.kind === 'i2c') {
+    if (!(Number(f.hz) > 0)) { err(`${n.id}.${f.name}: its SCL rate '${f.hz ?? ''}' is not a rate (Hz)`, ref); return false; }
+    return true;
+  }
   err(`${n.id}.${f.name}: no interface kind '${f.kind}' (the kinds: ${INTERFACE_KINDS.join(', ')})`, ref);
   return false;
 }
@@ -145,6 +151,13 @@ function checkFpga(n, at, { modules }, { err, warn }) {
       const none = SPI_LINES.filter(k => !f[k]);
       if (none.length) { err(`${n.id}.${f.name}: an SPI bus with no ${none.join(', ')} port`, ref); continue; }
       at.ifaces.set(lc(f.name), { f, spi: Object.fromEntries(SPI_LINES.map(k => [k, pinOf(f, f[k], k === 'miso' ? 'out' : 'in')])) });
+    } else if (f.kind === 'i2c') {
+      // (the peripheral: SCL its input, SDA an inout port, pulled low or released and read back, #5214)
+      const none = I2C_LINES.filter(k => !f[k]);
+      if (none.length) { err(`${n.id}.${f.name}: an I²C bus with no ${none.join(', ')} port`, ref); continue; }
+      const sda = ports ? portOf(ports, f.sda) : null;
+      if (sda && sda.dir !== 'inout') { err(`${n.id}.${f.name}: ${f.sda} is an ${sda.dir === 'in' ? 'input' : 'output'} of ${n.module}: an I²C bus's SDA is an inout port (pulled low or released, and read)`, ref); continue; }
+      at.ifaces.set(lc(f.name), { f, i2c: { scl: pinOf(f, f.scl, 'in'), sda: pinOf(f, f.sda, 'in') } });
     } else at.ifaces.set(lc(f.name), { f, pins: f.pins.map(p => pinOf(f, p, f.dir)) });
   }
 }
@@ -181,6 +194,14 @@ function checkMcu(n, at, { files }, { err, warn }) {
       at.ifaces.set(lc(f.name), { f, spi: Object.fromEntries(SPI_LINES.map(k => [k, pin(s[k], k === 'miso' ? 'in' : 'out')])) });
       continue;
     }
+    if (f.kind === 'i2c') {
+      // (the master, on its board's I²C pins, #5214)
+      if (!b) continue;
+      const s = Object.entries(b.i2cs || {}).find(([k]) => lc(k) === lc(f.name))?.[1];
+      if (!s) { err(`${n.id}: the ${b.name} has no I²C bus ${f.name} (its I²C: ${Object.keys(b.i2cs || {}).join(', ') || 'none'})`, ref); continue; }
+      at.ifaces.set(lc(f.name), { f, i2c: { scl: pin(s.scl, 'out'), sda: pin(s.sda, 'out') } });
+      continue;
+    }
     const bad = f.pins.filter(p => !has(p));
     if (bad.length) { err(`${n.id}.${f.name}: ${bad.join(', ')} ${bad.length > 1 ? 'are not pins' : 'is not a pin'} of the ${b.name}`, ref); continue; }
     const inOnly = f.dir === 'out' && b?.inputOnly ? f.pins.filter(p => b.inputOnly.includes(String(p).toUpperCase())) : [];
@@ -188,6 +209,10 @@ function checkMcu(n, at, { files }, { err, warn }) {
     at.ifaces.set(lc(f.name), { f, pins: f.pins.map(p => pin(p, f.dir)) });
   }
 }
+
+// a kind's name in a sentence: a GPIO link, an I²C link
+const KIND_NAME = { uart: 'UART', gpio: 'GPIO', spi: 'SPI', i2c: 'I²C' };
+const KIND_A = { uart: 'a', gpio: 'a', spi: 'an', i2c: 'an' };
 
 // the links: their ends, their settings, the wires they make; the nodes they reach
 function checkLinks(sys, nodes, { err, warn }) {
@@ -206,7 +231,7 @@ function checkLinks(sys, nodes, { err, warn }) {
       used.add(lc(x.node));
       const f = at.n.interfaces.find(i => lc(i.name) === lc(x.iface));
       if (!f) { err(`${l.id}: ${x.node} has no interface ${x.iface}`, ref); return null; }
-      if (f.kind !== l.kind) { err(`${l.id}: a ${l.kind.toUpperCase()} link, ${e} is ${f.kind === 'uart' ? 'a UART' : `a ${String(f.kind).toUpperCase()} interface`}`, ref); return null; }
+      if (f.kind !== l.kind) { err(`${l.id}: ${KIND_A[l.kind]} ${KIND_NAME[l.kind]} link, ${e} is ${f.kind === 'uart' ? 'a UART' : `${KIND_A[f.kind] ?? 'a'} ${KIND_NAME[f.kind] ?? String(f.kind).toUpperCase()} interface`}`, ref); return null; }
       const prev = byIface.get(`${lc(x.node)}.${lc(x.iface)}`);
       if (prev) { err(`${l.id}: ${e} is already ${prev}'s`, ref); return null; }
       byIface.set(`${lc(x.node)}.${lc(x.iface)}`, l.id);
@@ -216,7 +241,7 @@ function checkLinks(sys, nodes, { err, warn }) {
     const [a, b] = ends;
     if (a.at === b.at) { err(`${l.id}: both ends on ${a.at.n.id}: a link joins two nodes`, ref); continue; }
     if (!a.r || !b.r) continue;   // (an interface in error: said)
-    const wires = l.kind === 'uart' ? uartWires(l, a, b, { err }) : l.kind === 'spi' ? spiWires(l, a, b, { err }) : gpioWires(l, a, b, { err });
+    const wires = l.kind === 'uart' ? uartWires(l, a, b, { err }) : l.kind === 'spi' ? spiWires(l, a, b, { err }) : l.kind === 'i2c' ? i2cWires(l, a, b, { err }) : gpioWires(l, a, b, { err });
     for (const [x, y] of wires) checkWire(l, x, y, byPin, { err, warn });
   }
   return used;
@@ -244,6 +269,17 @@ function spiWires(l, a, b, { err }) {
   if (m.r.f.mode !== p.r.f.mode) err(`${l.id}: ${m.name} in mode ${m.r.f.mode}, ${p.name} in mode ${p.r.f.mode}: an SPI bus's ends in one mode`, ref);
   return SPI_LINES.map(k => (k === 'miso' ? [p.r.spi[k] && { end: p, ...p.r.spi[k] }, m.r.spi[k] && { end: m, ...m.r.spi[k] }] : [m.r.spi[k] && { end: m, ...m.r.spi[k] }, p.r.spi[k] && { end: p, ...p.r.spi[k] }]))
     .filter(([x, y]) => x && y);
+}
+
+// an I²C link's wires: the master's (a microcontroller's) SCL and SDA to the peripheral's (an FPGA's), checked as the
+// master's outputs (SDA: either end pulls it low, its levels the master's pull-up's); one SCL rate at both ends (#5214)
+const I2C_LINES = ['scl', 'sda'];
+function i2cWires(l, a, b, { err }) {
+  const ref = link(l.id);
+  const [m, p] = a.at.n.kind === 'mcu' ? [a, b] : [b, a];
+  if (m.at.n.kind !== 'mcu' || p.at.n.kind !== 'fpga') { err(`${l.id}: an I²C link joins a microcontroller (the master) and an FPGA (the peripheral)`, ref); return []; }
+  if (Number(m.r.f.hz) !== Number(p.r.f.hz)) err(`${l.id}: ${m.name}'s SCL at ${m.r.f.hz} Hz, ${p.name}'s at ${p.r.f.hz}: an I²C bus's ends at one rate`, ref);
+  return I2C_LINES.map(k => [m.r.i2c[k] && { end: m, ...m.r.i2c[k] }, p.r.i2c[k] && { end: p, ...p.r.i2c[k] }]).filter(([x, y]) => x && y);
 }
 
 // a GPIO link's wires: its ends' pins in order, as many at each end

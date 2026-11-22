@@ -1,0 +1,29 @@
+{
+  "name": "i2c-avr",
+  "version": 1,
+  "kind": "codesign",
+  "device": {
+    "family": "spartan3e",
+    "part": "xc3s250e",
+    "package": "cp132",
+    "speed": "-4"
+  },
+  "board": null,
+  "top": "",
+  "simTop": "",
+  "files": [
+    {
+      "path": "src/i2c_leds.vhd",
+      "lang": "vhdl",
+      "role": "design"
+    }
+  ],
+  "constraints": null,
+  "stimuli": {},
+  "impl": {
+    "optMode": "Speed",
+    "optLevel": 1,
+    "startupClk": "JtagClk"
+  },
+  "preferredLanguage": "vhdl"
+}

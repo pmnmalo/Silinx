@@ -11,11 +11,11 @@
 // avr8js: node_modules in Node, the page's import map, a Web Worker's own (#4701). Isomorphic ES module, no DOM.
 // avr8js's names, bound on first use (bind): node_modules in Node, the page's import map, the browser edition's bundle
 // (loadAvr8js); a Web Worker, which has no import map, gives it as SILINX_AVR8JS (web/js/system-worker.js, #4701)
-let CPU, avrInstruction, AVRIOPort, AVRUSART, AVRTimer, AVRSPI, portBConfig, portCConfig, portDConfig, usart0Config, timer0Config, timer1Config, timer2Config, spiConfig, PinState;
+let CPU, avrInstruction, AVRIOPort, AVRUSART, AVRTimer, AVRSPI, AVRTWI, portBConfig, portCConfig, portDConfig, usart0Config, timer0Config, timer1Config, timer2Config, spiConfig, twiConfig, PinState;
 let lib = null;
 function bind(l) {
   lib = l;
-  ({ CPU, avrInstruction, AVRIOPort, AVRUSART, AVRTimer, AVRSPI, portBConfig, portCConfig, portDConfig, usart0Config, timer0Config, timer1Config, timer2Config, spiConfig, PinState } = l);
+  ({ CPU, avrInstruction, AVRIOPort, AVRUSART, AVRTimer, AVRSPI, AVRTWI, portBConfig, portCConfig, portDConfig, usart0Config, timer0Config, timer1Config, timer2Config, spiConfig, twiConfig, PinState } = l);
 }
 /** avr8js loaded (once), before an AvrNode is made: the worker's, else imported by its name. */
 export async function loadAvr8js() {
@@ -24,6 +24,7 @@ export async function loadAvr8js() {
 }
 import { readFirmware } from './avr-firmware.js';
 import { AvrSpi } from './system-sim-avr-spi.js';
+import { AvrTwi } from './system-sim-avr-twi.js';
 import { mcuBoard } from './system-doc.js';
 
 /** The ATmega328P's clock on the Uno and the Nano (Hz), and a cycle's time (ps). */
@@ -72,6 +73,8 @@ export class AvrNode {
     this.usart = new AVRUSART(this.cpu, usart0Config, AVR_HZ);
     // (its SPI master: SCK D13, MOSI D11, MISO D12, #5214)
     this.spi = new AvrSpi(this, { AVRSPI, spiConfig }, AVR_HZ, CYCLE_PS);
+    // (its I²C master: SCL A5, SDA A4, each pulled low or released)
+    this.twi = new AvrTwi(this, { AVRTWI, twiConfig }, AVR_HZ, CYCLE_PS, b.i2cs?.Wire);
     this.pins = b.pins.filter((p) => avrPin(p));
     this.inputs = [...this.pins];
     this.outputs = [...this.pins];
@@ -92,6 +95,7 @@ export class AvrNode {
   driven(name) {
     if (name === 'D1' && this.usart.txEnable) return this.txLevel(this.time);
     if (this.spi?.drives(name)) return this.spi.level(name);
+    if (this.twi?.drives(name)) return this.twi.level(name);
     const { port, bit } = avrPin(name);
     return level(this.ports[port].pinState(bit));
   }
@@ -157,6 +161,7 @@ export class AvrNode {
     else port.setPin(p.bit, !!v);
     if (P === 'D0' && was === 1 && v === 0 && !this.rx.busy && this.usart.rxEnable) this.receive();
     if (P === 'D12') this.spi.gotMiso(this.now, v);
+    if (P === this.twi.sda) this.twi.gotSda(this.now, v);
   }
 
   // a start bit on D0 now: the frame sampled at the middle of each bit, the byte to the USART at its stop bit's middle
@@ -213,6 +218,8 @@ export class AvrNode {
     }
     // SCK's and MOSI's (the SPI's) up to t
     for (const e of this.spi.take(t)) if (this.spi.on && e.value !== this.last.get(e.pin)) { this.last.set(e.pin, e.value); this.out.push(e); }
+    // SCL's and SDA's (the TWI's)
+    for (const e of this.twi.take(t)) if (this.twi.on && e.value !== this.last.get(e.pin)) { this.last.set(e.pin, e.value); this.out.push(e); }
     return this.out.splice(0).sort((a, b) => a.t - b.t);
   }
 

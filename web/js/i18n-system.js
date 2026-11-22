@@ -22,6 +22,11 @@ export const SYSTEM_PT = {
   "Add the board's SPI bus, the master: SCK D13, MOSI D11, MISO D12, SS D10": 'Acrescentar o barramento SPI da placa, o mestre: SCK D13, MOSI D11, MISO D12, SS D10',
   'SCK (an input of the module)': 'SCK (uma entrada do módulo)', 'MOSI (an input)': 'MOSI (uma entrada)', 'MISO (an output)': 'MISO (uma saída)', 'SS (an input)': 'SS (uma entrada)',
   'SCK rate (Hz)': 'Ritmo do SCK (Hz)', 'Mode': 'Modo', "at least the program's: 125000 at SPI_CLOCK_DIV128": 'pelo menos o do programa: 125000 com SPI_CLOCK_DIV128',
+  // an I²C bus (#5214)
+  '+ I²C': '+ I²C', 'Add an I²C bus, the peripheral: its SCL port and its SDA, an inout port': 'Acrescentar um barramento I²C, o periférico: o seu porto SCL e o seu SDA, um porto inout',
+  "Add the board's I²C bus (Wire), the master: SCL A5, SDA A4": 'Acrescentar o barramento I²C da placa (Wire), o mestre: SCL A5, SDA A4',
+  'SCL (an input of the module)': 'SCL (uma entrada do módulo)', 'SDA (an inout port)': 'SDA (um porto inout)',
+  'SCL rate (Hz)': 'Ritmo do SCL (Hz)', "at least the program's: 100000 with Wire": 'pelo menos o do programa: 100000 com Wire',
   'Baud': 'Débito (baud)', 'Frame': 'Trama', 'data bits, parity, stop bits: 8N1, 7E1…': 'bits de dados, paridade, bits de paragem: 8N1, 7E1…',
   'Pins': 'Pinos', "the module's ports, a bus's bit as led<0>": 'os portos do módulo, um bit de um barramento como led<0>', "the board's pins: D2, A0…": 'os pinos da placa: D2, A0…',
   'Direction': 'Direção', 'in': 'in', 'out': 'out', 'Remove Interface': 'Remover Interface', 'Remove the interface and its link': 'Remover a interface e a sua ligação',

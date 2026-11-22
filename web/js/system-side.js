@@ -28,6 +28,11 @@ export function mountSystemSide(ctx) {
     const ps = (opts.portsOf?.(n.module) || []).map(p => p.name), find = re => ps.find(p => re.test(p));
     return Object.fromEntries(Object.entries({ sck: /^s?sclk$|^sck$/i, mosi: /^mosi$|^sdi$/i, miso: /^miso$|^sdo$/i, ss: /^(ss|cs)_?n?$/i }).map(([k, re]) => [k, find(re)]).filter(([, v]) => v));
   };
+  // and its I²C ports: scl, sda (#5214)
+  const i2cPorts = n => {
+    const ps = (opts.portsOf?.(n.module) || []).map(p => p.name), find = re => ps.find(p => re.test(p));
+    return Object.fromEntries(Object.entries({ scl: /^(i2c_)?scl$/i, sda: /^(i2c_)?sda$/i }).map(([k, re]) => [k, find(re)]).filter(([, v]) => v));
+  };
   function nodeFields(n) {
     const out = [h('h3', {}, `${NODE_KIND_NAMES[n.kind] || n.kind} ${n.id}`), field('Id', text(n.id, v => take(changeNode(M(), n.id, { id: v }), 'node')))];
     if (n.kind === 'fpga') {
@@ -37,18 +42,20 @@ export function mountSystemSide(ctx) {
         field('Board', choose(n.board, BOARDS.map(b => [b.id, b.name]), v => take(changeNode(M(), n.id, { board: v, variant: null }), 'node'), 'sys-board')));
       if (board?.variants?.length) out.push(field('Variant', choose(n.variant || '', [['', '(the board\'s)'], ...board.variants.map(v => [v.id, v.id])], v => take(changeNode(M(), n.id, { variant: v }), 'node'), 'sys-variant')));
       // the pins of the ports its interfaces name
-      const ports = [...new Set(n.interfaces.flatMap(f => (f.kind === 'uart' ? [f.tx, f.rx] : f.kind === 'spi' ? [f.sck, f.mosi, f.miso, f.ss] : f.pins)).filter(Boolean))];
+      const ports = [...new Set(n.interfaces.flatMap(f => (f.kind === 'uart' ? [f.tx, f.rx] : f.kind === 'spi' ? [f.sck, f.mosi, f.miso, f.ss] : f.kind === 'i2c' ? [f.scl, f.sda] : f.pins)).filter(Boolean))];
       if (ports.length) out.push(h('div', { class: 'asm-label' }, 'Pins of the board'), ...ports.map(p => field(p, text(n.pins[p], v => take(changeNode(M(), n.id, { pins: { [p]: v } }), 'node'), 'mono sys-pin'))));
       out.push(h('div', { class: 'asm-row' },
         btn('+ UART', 'Add a UART interface: its TX and RX ports', () => take(addInterface(M(), n.id, { kind: 'uart' }), 'iface'), 'asm-small sys-add-uart'),
         btn('+ GPIO', 'Add GPIO wires: their ports and direction', () => take(addInterface(M(), n.id, { kind: 'gpio' }), 'iface'), 'asm-small sys-add-gpio'),
-        btn('+ SPI', 'Add an SPI bus, the peripheral: its SCK, MOSI, MISO and SS ports', () => take(addInterface(M(), n.id, { kind: 'spi', ...spiPorts(n) }), 'iface'), 'asm-small sys-add-spi')));
+        btn('+ SPI', 'Add an SPI bus, the peripheral: its SCK, MOSI, MISO and SS ports', () => take(addInterface(M(), n.id, { kind: 'spi', ...spiPorts(n) }), 'iface'), 'asm-small sys-add-spi'),
+        btn('+ I²C', 'Add an I²C bus, the peripheral: its SCL port and its SDA, an inout port', () => take(addInterface(M(), n.id, { kind: 'i2c', ...i2cPorts(n) }), 'iface'), 'asm-small sys-add-i2c')));
     } else if (n.kind === 'mcu') {
       const fw = opts.firmwares?.() || [];
       out.push(field('Board', choose(n.board, MCU_BOARDS.map(b => [b.id, b.name]), v => take(changeNode(M(), n.id, { board: v }), 'node'), 'sys-board')),
         field('Firmware', choose(n.firmware || '', [['', '(none)'], ...[...new Set([...fw, ...(n.firmware ? [n.firmware] : [])])].map(f => [f, f])], v => take(changeNode(M(), n.id, { firmware: v }), 'node'), 'sys-firmware'), 'a .hex or an .elf of the project'),
         h('div', { class: 'asm-row' }, btn('+ GPIO', 'Add GPIO wires: the board\'s pins and their direction', () => take(addInterface(M(), n.id, { kind: 'gpio' }), 'iface'), 'asm-small sys-add-gpio'),
-          btn('+ SPI', 'Add the board\'s SPI bus, the master: SCK D13, MOSI D11, MISO D12, SS D10', () => take(addInterface(M(), n.id, { kind: 'spi' }), 'iface'), 'asm-small sys-add-spi')));
+          btn('+ SPI', 'Add the board\'s SPI bus, the master: SCK D13, MOSI D11, MISO D12, SS D10', () => take(addInterface(M(), n.id, { kind: 'spi' }), 'iface'), 'asm-small sys-add-spi'),
+          btn('+ I²C', 'Add the board\'s I²C bus (Wire), the master: SCL A5, SDA A4', () => take(addInterface(M(), n.id, { kind: 'i2c' }), 'iface'), 'asm-small sys-add-i2c')));
     }
     return out;
   }
@@ -57,7 +64,7 @@ export function mountSystemSide(ctx) {
     const n = M().nodes.find(x => x.id === nid), f = n?.interfaces.find(x => x.name === name);
     if (!f) return [];
     const change = fields => take(changeInterface(M(), nid, name, fields), 'iface');
-    const out = [h('h3', {}, `${{ uart: 'UART', gpio: 'GPIO', spi: 'SPI' }[f.kind] || f.kind} ${nid}.${name}`)];
+    const out = [h('h3', {}, `${{ uart: 'UART', gpio: 'GPIO', spi: 'SPI', i2c: 'I²C' }[f.kind] || f.kind} ${nid}.${name}`)];
     if (n.kind === 'fpga' || f.kind === 'gpio') out.push(field('Name', text(f.name, v => change({ name: v }))));
     if (f.kind === 'uart') {
       if (n.kind === 'fpga') {
@@ -80,6 +87,16 @@ export function mountSystemSide(ctx) {
       const hz = h('input', { type: 'number', class: 'asm-input sys-hz', value: String(f.hz), min: '1' });
       hz.addEventListener('change', () => change({ hz: Math.round(+hz.value) }));
       out.push(field('SCK rate (Hz)', hz, 'at least the program\'s: 125000 at SPI_CLOCK_DIV128'), field('Mode', choose(String(f.mode), [0, 1, 2, 3].map(m => [String(m), String(m)]), v => change({ mode: Number(v) }), 'sys-mode')));
+    } else if (f.kind === 'i2c') {
+      // (#5214: the peripheral's ports, an FPGA's, its SDA an inout port; the master's pins its board's)
+      if (n.kind === 'fpga') {
+        const ports = opts.portsOf?.(n.module) || [];
+        const portChoice = (k, dirs) => choose(f[k] || '', [['', '(none)'], ...ports.filter(p => dirs.includes(p.dir)).map(p => [p.name, p.name]), ...(f[k] && !ports.some(p => p.name === f[k]) ? [[f[k], f[k]]] : [])], x => change({ [k]: x }), `sys-${k}`);
+        out.push(field('SCL (an input of the module)', portChoice('scl', ['in', 'inout'])), field('SDA (an inout port)', portChoice('sda', ['inout'])));
+      }
+      const hz = h('input', { type: 'number', class: 'asm-input sys-hz', value: String(f.hz), min: '1' });
+      hz.addEventListener('change', () => change({ hz: Math.round(+hz.value) }));
+      out.push(field('SCL rate (Hz)', hz, 'at least the program\'s: 100000 with Wire'));
     } else {
       out.push(field('Pins', text(f.pins.join(', '), v => change({ pins: v.split(/[,;\s]+/).filter(Boolean) }), 'mono sys-pins'), n.kind === 'fpga' ? 'the module\'s ports, a bus\'s bit as led<0>' : 'the board\'s pins: D2, A0…'),
         field('Direction', choose(f.dir, [['in', 'in'], ['out', 'out']], v => change({ dir: v }), 'sys-dir')));
