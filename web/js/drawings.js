@@ -31,6 +31,7 @@ import { openCircuitSchematic, refreshCircuitSchematic } from './drawings-circ-s
 import { openFsmSchematic, refreshFsmSchematic } from './drawings-fsm-sch.js';
 export { openCircuitSchematic, openFsmSchematic };
 import { following, followNotice, editsDrawingHere } from './collab-state.js';
+import { phoneOnly } from './phone-readonly.js';
 import { ucfPort } from '/core/board-constraints.js';
 import { syncState } from './state-sync.js';
 import { panes } from './state-panes.js';
@@ -42,9 +43,10 @@ export { openPetriFsm };
 // (its Try it there, a schematic's too: the owner's followed, or the follower's own, #4244)
 // a drawing a newer Silinx saved (#4756, core/doc-format.js): read only too, its notice at the end of its toolbar and
 // why in the console's warnings, so that it is not saved in the older format, losing what that Silinx added
+// (on a phone, #5121: read only, its Try it kept, the phone's notice; a newer Silinx's notice first)
 const followOnly = (path = null, model = null) => {
   if (following() && !(path && editsDrawingHere(path))) return { readOnly: true, simulate: true, banner: followNotice() };
-  return newerOnly(path, model);
+  return { ...phoneOnly(), ...newerOnly(path, model) };
 };
 export function newerOnly(path, model) {
   const n = path && newerDrawing(path, model);

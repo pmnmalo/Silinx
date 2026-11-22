@@ -9,6 +9,7 @@ import { log, logError } from './console.js';
 import { schModules } from './drawings.js';
 import { reloadProject } from './project.js';
 import { following, followNotice } from './collab-state.js';
+import { phoneOnly } from './phone-readonly.js';
 import { findMod, newSymbol, readSymbol, symbolFileOf, symbolText } from '/core/schdoc.js';
 import { filesState } from './state-files.js';
 import { docsState } from './state-docs.js';
@@ -56,7 +57,7 @@ export async function openSymbol(path) {
       const host = h('div', { class: 'doc-body' });
       el.append(host);
       const ed = mountSymbolEditor(host, {
-        symbol, module, ...(following() ? { readOnly: true, banner: followNotice() } : {}),
+        symbol, module, ...(following() ? { readOnly: true, banner: followNotice() } : phoneOnly()),   // (a phone's, #5121)
         onChange: () => setDirty(d, true),
         onMessage: (msg, warn) => log(warn ? `WARNING: ${msg}` : msg, warn ? 'warn' : 'info'),
         onExit: () => closeDoc(d),   // (as the tab's ×: saved first, asked if it cannot be, #3943)
