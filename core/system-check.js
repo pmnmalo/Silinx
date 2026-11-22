@@ -122,7 +122,10 @@ function checkFpga(n, at, { modules }, { err, warn }) {
         : `${n.id}.${f.name}: ${name} is ${is}, the interface an ${dir === 'out' ? 'output' : 'input'}`, ref);
       return null;
     }
-    const key = Object.keys(n.pins).find(k => lc(k) === lc(name));
+    // (a 1-bit port's pin by either spelling, x or x<0>, as a UCF may have it and the Board Emulator reads it, #5213)
+    const alt = /<0>$/.test(name) ? name.slice(0, -3) : `${name}<0>`;
+    const one = (p?.width ?? 1) === 1;
+    const key = Object.keys(n.pins).find(k => lc(k) === lc(name)) ?? (one ? Object.keys(n.pins).find(k => lc(k) === lc(alt)) : undefined);
     if (key == null) { err(`${n.id}.${f.name}: ${name} has no pin of the board`, ref); return null; }
     const P = String(n.pins[key]).toUpperCase();
     return { pin: name, dir, loc: n.pins[key], volts: board?.pins.has(P) ? ioVolts(board.pins.get(P)) : null, std: board?.pins.get(P) || null };

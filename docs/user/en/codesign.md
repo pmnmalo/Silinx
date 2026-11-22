@@ -20,6 +20,11 @@ UART and GPIO links. Its design is in [CODESIGN.md](../../CODESIGN.md); its road
   module's port that is no port of it, TX and RX crossed, different bauds at the two ends of a link, a node that joins
   nothing, and a 5 V output on a 3.3 V FPGA input (an Arduino's TX on an FPGA's RX: on the real boards, a level shifter
   or a divider).
+- **GPIO links** join pins one to one: **+ GPIO** on a node adds its interface, its pins (an FPGA node's module ports,
+  a bus's bit as `led<0>`; an Arduino's D2, A0…) and its direction in the Properties panel, then **Link** joins it to
+  another node's GPIO with as many pins. Its check: two outputs on one wire, two inputs (nothing drives the wire), a pin
+  linked twice, and the 5 V output on a 3.3 V FPGA input. Try it runs it as a wire, its changes in the link inspector
+  and the waves.
 
 ## Try it
 

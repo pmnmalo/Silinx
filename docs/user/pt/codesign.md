@@ -21,6 +21,11 @@ ligados por UART e GPIO.
   porto que não é do módulo, TX e RX trocados, bauds diferentes nas duas pontas de uma ligação, um nó que não liga a
   nada, e uma saída de 5 V numa entrada de 3,3 V da FPGA (o TX de um Arduino no RX de uma FPGA: nas placas reais, um
   conversor de nível ou um divisor).
+- **As ligações GPIO** juntam pinos um a um: **+ GPIO** num nó acrescenta a sua interface, os seus pinos (os portos do
+  módulo de um nó FPGA, um bit de um barramento como `led<0>`; os D2, A0… de um Arduino) e a sua direção no painel de
+  Propriedades, e **Ligação** junta-a ao GPIO de outro nó com tantos pinos. A sua verificação: duas saídas no mesmo
+  fio, duas entradas (nada comanda o fio), um pino ligado duas vezes, e a saída de 5 V numa entrada de 3,3 V da FPGA.
+  Experimentar corre-a como um fio, as suas alterações no inspetor de ligações e nas ondas.
 
 ## Experimentar
 

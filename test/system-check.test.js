@@ -122,3 +122,16 @@ test('the console\'s lines: each message, then the summary', () => {
   const w = base(); F(w, 'term', 'serial').baud = 250000; F(w, 'fpga', 'uart').baud = 250000;
   assert.equal(systemCheckLines('demo.sys.json', checkSystem(normalizeSystem(w), CTX)).at(-1), 'Process "Check System" of demo.sys.json completed successfully with 2 warning(s).');
 });
+
+test('#5213 a 1-bit port\'s pin by either spelling (btn, btn<0>: a UCF\'s): found, its levels checked; a bus\'s bit by its own only', () => {
+  const MODS = { ...MODULES, uart: [...MODULES.uart, { name: 'btn', dir: 'in', width: 1 }] };
+  const press = (s, pins) => {
+    N(s, 'fpga').pins['btn<0>'] = 'G12';
+    N(s, 'fpga').interfaces.push({ name: 'press', kind: 'gpio', pins, dir: 'in' });
+    s.links.push({ id: 'p', kind: 'gpio', a: 'uno.out', b: 'fpga.press' });
+  };
+  const W = 'warning: p: uno\'s D3, a 5 V output, drives fpga\'s btn (pin G12), a 3.3 V input of the FPGA (LVCMOS33): a level shifter or a divider on the real boards [link:p]';
+  assert.deepEqual(run(s => press(s, ['btn']), { ...CTX, modules: MODS }), [W]);
+  // (an 8-bit port's: its bit's pin, led<0>, is not the whole port's, led)
+  assert.deepEqual(run(s => { F(s, 'fpga', 'led0').pins = ['led']; }), ['error: fpga.led0: led has no pin of the board [node:fpga]']);
+});

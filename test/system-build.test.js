@@ -9,8 +9,9 @@ import { fpgaClock, systemPlan, buildSystem, wireFrames } from '../core/system-b
 import { TerminalNode } from '../core/system-sim-terminal.js';
 import { linkTraffic, decodeUart } from '../core/system-decode.js';
 import { normalizeSystem } from '../core/system-doc.js';
-import { intelHex, echoProgram } from './avr-asm.mjs';
-import { uartModel } from './system-sim-lib.mjs';
+import { intelHex, echoProgram, avrAssemble } from './avr-asm.mjs';
+import { uartModel, uartNetlist } from './system-sim-lib.mjs';
+import { systemFromInputs, systemReport } from '../core/system-run.js';
 import { loadAvr8js } from '../core/system-sim-avr.js';
 
 await loadAvr8js();   // (avr8js, before an AvrNode is made: core/system-sim-avr.js, #4701)
@@ -43,7 +44,8 @@ test('#4701 the plan: the FPGA node\'s module, clock and pins; a UART link\'s tw
   const g = systemPlan(system([fpgaNode({ interfaces: [{ name: 'leds', kind: 'gpio', pins: ['led<0>', 'led<1>'], dir: 'out' }] }),
     { ...uno, interfaces: [...uno.interfaces, { name: 'ins', kind: 'gpio', pins: ['D2', 'D3'], dir: 'in' }] }],
   [{ id: 'w', kind: 'gpio', a: 'uno.ins', b: 'fpga.leds' }]), { ports: PORTS });
-  assert.deepEqual(g.wires.map(w => [w.name, w.from, w.to, w.kind]), [['w_0', 'fpga.led<0>', 'uno.D2', 'wire'], ['w_1', 'fpga.led<1>', 'uno.D3', 'wire']]);
+  // (a bus's bits as the scheduler names them, led[0], #5213: led<0> was not a pin of the node)
+  assert.deepEqual(g.wires.map(w => [w.name, w.from, w.to, w.kind]), [['w_0', 'fpga.led[0]', 'uno.D2', 'wire'], ['w_1', 'fpga.led[1]', 'uno.D3', 'wire']]);
   assert.deepEqual(g.idle, [{ node: 'uno', pin: 'D0', value: 1 }]);
 });
 
@@ -92,4 +94,30 @@ test('#4701 a terminal\'s frames: 7E2 sent as the decoder reads them; a wrong ba
   assert.ok(r.messages().every(m => m.kind === 'warning' && /^RX: a (framing|parity) error at 9600 baud$/.test(m.text)));
   assert.throws(() => r.setPin('tx', 1), /'tx' is not an input of the terminal/);
   assert.throws(() => new TerminalNode({ baud: 0 }), /a terminal's baud above 0/);
+});
+
+test('#5213 GPIO links simulated: the Uno\'s D2 presses the FPGA\'s BTN0 (its message to the terminal), the FPGA\'s LD0 (a bus\'s bit, led<0>) read on the Uno\'s D8', async () => {
+  const sys = system([
+    fpgaNode({ pins: { clk: 'B8', rx: 'J3', tx: 'A3', 'btn<0>': 'G12', 'led<0>': 'M5' }, interfaces: [{ name: 'uart', kind: 'uart', tx: 'tx', rx: 'rx', baud: 9600, frame: '8N1' },
+      { name: 'press', kind: 'gpio', pins: ['btn'], dir: 'in' }, { name: 'ld0', kind: 'gpio', pins: ['led<0>'], dir: 'out' }] }),
+    term,
+    { id: 'uno', kind: 'mcu', board: 'arduino-uno', firmware: 'fw/p.hex', interfaces: [{ name: 'out', kind: 'gpio', pins: ['D2'], dir: 'out' }, { name: 'in', kind: 'gpio', pins: ['D8'], dir: 'in' }] },
+  ], [{ id: 'console', kind: 'uart', a: 'term.serial', b: 'fpga.uart' }, { id: 'p', kind: 'gpio', a: 'uno.out', b: 'fpga.press' }, { id: 'l', kind: 'gpio', a: 'fpga.ld0', b: 'uno.in' }]);
+  const plan = systemPlan(sys, { ports: PORTS });
+  // (the bus's bit as the scheduler names it: led[0])
+  assert.deepEqual(plan.wires.filter((w) => w.kind === 'wire'), [{ name: 'p_uno', link: 'p', kind: 'wire', from: 'uno.D2', to: 'fpga.btn' }, { name: 'l_fpga', link: 'l', kind: 'wire', from: 'fpga.led[0]', to: 'uno.D8' }]);
+  assert.deepEqual([plan.errors, plan.fpga[0].pins], [[], ['tx', 'led[0]']]);
+  // the Uno: D2 an output, high (its button held: the FPGA's debouncer sees a press)
+  const prog = ['ldi r16, 0x04', 'out 0x0a, r16', 'out 0x0b, r16', 'loop:', 'rjmp loop'];
+  const r = systemFromInputs(sys, { plan, netlists: { fpga: await uartNetlist() }, firmware: { uno: { name: 'fw/p.hex', data: intelHex(avrAssemble(prog)) } } });
+  assert.equal(r.error, undefined);
+  r.terminals.get('term').send([0x41]);
+  r.sim.run(60e9);
+  const rep = systemReport(r);
+  // (the FPGA's echo of A after the frame it was sending, H: the uart design's pending byte)
+  assert.equal(rep.terminals.term, 'HAello from Silinx!\r\n');
+  assert.equal(r.sim.nodes.get('uno').value('D8'), 1, 'LD0: A\'s bit 0');
+  // (each wire's changes, its level at 0 among them: D2 floating, low, then high; LD0 low, then high)
+  assert.deepEqual(rep.traffic.filter((t) => t.kind === 'wire').map((t) => [t.wire, t.from, t.to, t.changes]), [['p_uno', 'uno.D2', 'fpga.btn', 3], ['l_fpga', 'fpga.led[0]', 'uno.D8', 2]]);
+  assert.deepEqual([rep.warnings, rep.errors], [[], []]);
 });
