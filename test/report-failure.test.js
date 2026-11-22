@@ -35,6 +35,30 @@ test('report-failure: the lines that say what failed, each once, their timestamp
   assert.deepEqual(failureLines('all fine\n ok 1 - x\n'), []);
 });
 
+test('report-failure: a usability scenario\'s report (#5148): its lines all, in order, repeated steps too, cleaned', () => {
+  const log = [
+    '2026-11-22T04:30:00.0000000Z # USABILITY: scenario \'schematic random, seed 8\' (test/usability/schematic-random.test.js), interface ise, language en, seed 8',
+    '2026-11-22T04:30:00.0000001Z # USABILITY: failed at step 4: moveSymbol',
+    '2026-11-22T04:30:00.0000002Z # USABILITY: wires come off: wire W88\'s last end came off its pin',
+    '2026-11-22T04:30:00.0000003Z # USABILITY:   2. undo {}',
+    '2026-11-22T04:30:00.0000004Z # USABILITY:   3. undo {}',
+    '2026-11-22T04:30:00.0000005Z # USABILITY:   3. undo {}',
+    '2026-11-22T04:30:00.0000006Z # USABILITY: replay: SILINX_USABILITY_SEED=8 SILINX_UI_INTERFACE=ise node --test test/usability/schematic-random.test.js',
+    '2026-11-22T04:30:00.0000007Z # USABILITY: report in /home/runner/work/x/report.md',
+    '2026-11-22T04:30:01.0000000Z ok 3 - the usability of it',
+  ].join('\n');
+  assert.deepEqual(failureLines(log), [
+    "# USABILITY: scenario 'schematic random, seed 8' (test/usability/schematic-random.test.js), interface ise, language en, seed 8",
+    '# USABILITY: failed at step 4: moveSymbol',
+    "# USABILITY: wires come off: wire W88's last end came off its pin",
+    '# USABILITY:   2. undo {}',
+    '# USABILITY:   3. undo {}',
+    '# USABILITY:   3. undo {}',
+    '# USABILITY: replay: SILINX_USABILITY_SEED=8 SILINX_UI_INTERFACE=ise node --test test/usability/schematic-random.test.js',
+    '# USABILITY: report in /home/<user>/work/x/report.md',
+  ]);
+});
+
 test('report-failure: clean takes off home folders, logins, addresses and e-mails, not loopback', () => {
   assert.equal(clean('/home/you/x and C:\\Users\\you\\y'), '/home/<user>/x and C:\\Users/<user>\\y');
   assert.equal(clean('mail someone@uni.example, ssh me@203.0.113.9 or me@mini.test'), 'mail <e-mail>, ssh <user>@<host> or <e-mail>');

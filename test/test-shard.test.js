@@ -167,6 +167,20 @@ test('test shard: the command line — the dry run lists the parts, a part runs 
   const uiTimes = JSON.parse(fs.readFileSync(path.join(dir, 'times-ui.json'), 'utf8'));
   assert.deepEqual(Object.keys(uiTimes), ['test/ui/x.test.js', 'test/ui/y.test.js', 'test/ui/z.test.js'], 'the test files, not the helper');
   for (const v of Object.values(uiTimes)) assert.ok(v >= 0.3 && v < 30, String(v));
+  // a usability part (#5148): test/usability's files only (not its lib/ nor test/ui's), one at a time
+  fs.mkdirSync(path.join(dir, 'test', 'usability', 'lib'), { recursive: true });
+  fs.writeFileSync(path.join(dir, 'test', 'usability', 'lib', 'helper.js'), "export * from '../../ui/helper.js';\n");
+  for (const n of ['u', 'v']) fs.writeFileSync(path.join(dir, 'test', 'usability', `${n}.test.js`), `import { slow } from './lib/helper.js'; slow('${n}');\n`);
+  fs.rmSync(path.join(dir, 'order.log'));
+  const us = spawnSync(process.execPath, ['scripts/test-shard.mjs', '1/1', '--usability', '--test-concurrency=1', '--test-reporter=tap', '--test-reporter-destination=stdout'],
+    { cwd: dir, encoding: 'utf8', env });
+  assert.equal(us.status, 0, us.stdout + us.stderr);
+  assert.match(us.stdout, /^usability tests, part 1\/1: 2 of 2 files, ~0 min measured\n/);
+  assert.equal(fs.readFileSync(path.join(dir, 'order.log'), 'utf8'), 'start u\nend u\nstart v\nend v\n', 'one file at a time');
+  // the repository's: every file of test/usability in one of the parts
+  const usDry = run('1/2', '--usability', '--dry-run');
+  assert.equal(usDry.status, 0, usDry.stderr);
+  assert.equal(usDry.stdout.trim().split('\n').reduce((x, l) => x + Number(/: (\d+) files/.exec(l)[1]), 0), testFiles(ROOT, 'test/usability').length);
 });
 
 test('test times reporter: each file\'s own summary (#912), the run\'s and the tests\' events ignored', () => {

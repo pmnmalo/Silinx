@@ -6,7 +6,8 @@
 //
 //   node scripts/test-shard.mjs <i>/<n> [--ui] [node --test options …]
 //   → runs node --test with those options on the files of part i of n (the unit tests, UNIT_DIRS; with --ui the UI
-//     tests, test/ui/*.test.js, #912); --dry-run prints the parts and their estimated times instead
+//     tests, test/ui/*.test.js, #912; with --usability the usability tests, test/usability/*.test.js, #5148); --dry-run
+//     prints the parts and their estimated times instead
 //     (--light: the unit tests but the toolchain's heaviest, HEAVY, which CI runs on Linux only, #3124)
 //
 // The options go before the files: after them node --test takes no option (CI's UI tests were given
@@ -98,10 +99,10 @@ function main() {
   const [arg, ...args] = process.argv.slice(2);
   let shard;
   try { shard = parseShard(arg); } catch (e) { console.error(e.message); process.exit(2); }
-  const ui = args.includes('--ui'), light = args.includes('--light');
-  const rest = args.filter(a => a !== '--ui' && a !== '--light');
+  const ui = args.includes('--ui'), light = args.includes('--light'), usability = args.includes('--usability');
+  const rest = args.filter(a => a !== '--ui' && a !== '--light' && a !== '--usability');
   const dry = rest.includes('--dry-run');
-  const files = ui ? testFiles(ROOT, 'test/ui') : unitFiles(ROOT).filter(f => !light || !HEAVY.includes(f));
+  const files = usability ? testFiles(ROOT, 'test/usability') : ui ? testFiles(ROOT, 'test/ui') : unitFiles(ROOT).filter(f => !light || !HEAVY.includes(f));
   const w = weights(files, readTimings());
   const parts = balance(files, w, shard.n);
   if (dry) {
@@ -109,7 +110,7 @@ function main() {
     return;
   }
   const part = parts[shard.i - 1];
-  console.log(`${ui ? 'UI' : 'unit'} tests, part ${shard.i}/${shard.n}: ${part.files.length} of ${files.length} files, ~${Math.round(part.time / 60)} min measured`);
+  console.log(`${usability ? 'usability' : ui ? 'UI' : 'unit'} tests, part ${shard.i}/${shard.n}: ${part.files.length} of ${files.length} files, ~${Math.round(part.time / 60)} min measured`);
   if (!part.files.length) return;
   const r = spawnSync(process.execPath, ['--test', ...rest, ...part.files], { cwd: ROOT, stdio: 'inherit' });
   process.exit(r.status ?? 1);
