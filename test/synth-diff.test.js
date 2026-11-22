@@ -261,6 +261,7 @@ test('example projects: RTL and Yosys netlist agree',{ timeout: 600000 }, async 
     const pj = path.join('examples', name, 'silinx.json');
     if (!fs.existsSync(path.join(ROOT, pj))) continue;
     const proj = JSON.parse(read(pj));
+    if (proj.kind === 'codesign') continue;   // (a co-design example: no top module, its FPGA's the uart example's, #4702)
     await t.test(name, async () => {
       // (a C source's module too, its HDL made from the C, #1966)
       const sources = example(name).design.map(({ path, lang, text }) => ({ path, lang, text }));

@@ -33,10 +33,9 @@ export const PROJECT_KINDS = [
  *  browser edition's stores, the MCP's new_project: one rule, one message), or null. */
 export function createRefusal(kind, template = 'empty') {
   const empty = !template || template === 'empty';
-  if (kind != null && kind !== DESIGN_KIND && kind !== CODESIGN_KIND && kind !== 'fpga') return `unknown project kind '${kind}'`;
+  if (kind != null && kind !== DESIGN_KIND && kind !== CODESIGN_KIND) return `unknown project kind '${kind}'`;
   if (kind === DESIGN_KIND && !empty) return 'a design and simulation project starts empty: no example';
   if (kind === CODESIGN_KIND && !empty && !CODESIGN_EXAMPLES.includes(template)) return `a co-design project starts empty or from a co-design example (${CODESIGN_EXAMPLES.join(', ')})`;
-  if (kind != null && kind !== CODESIGN_KIND && CODESIGN_EXAMPLES.includes(template)) return `${template} is a co-design example: a co-design project's`;
   return null;
 }
 
@@ -44,7 +43,6 @@ export function createRefusal(kind, template = 'empty') {
  *  none (its System names each FPGA node's). */
 export function boardRefusal(json, { board, device } = {}) {
   return isCodesign(json) && (board || device) ? `${json.name}: a co-design project has no board: its System names each FPGA node's` : null;
-  return null;
 }
 
 /** A new co-design project's silinx.json: no board, no constraints, no top module (its System is its top). */

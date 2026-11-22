@@ -44,10 +44,10 @@ test('#4702 the kinds\' rules: a co-design project empty or from a co-design exa
   assert.equal(createRefusal('codesign', 'empty'), null);
   assert.equal(createRefusal('codesign', 'uart-avr'), null);
   assert.equal(createRefusal(null, 'uart'), null);
-  assert.equal(createRefusal('fpga', 'uart'), null);
   assert.equal(createRefusal('codesign', 'uart'), 'a co-design project starts empty or from a co-design example (uart-avr)');
   assert.equal(createRefusal(null, 'uart-avr'), null);   // (the example's kind)
-  assert.equal(createRefusal('fpga', 'uart-avr'), 'uart-avr is a co-design example: a co-design project\'s');
+  assert.equal(createRefusal('design', 'uart-avr'), 'a design and simulation project starts empty: no example');
+  assert.equal(createRefusal('fpga', 'uart-avr'), 'unknown project kind \'fpga\'');   // (an FPGA project's kind is none)
   assert.equal(boardRefusal({ name: 'uart-avr', kind: 'codesign' }, { board: 'basys2' }), 'uart-avr: a co-design project has no board: its System names each FPGA node\'s');
   assert.equal(boardRefusal({ name: 'uart', board: 'basys2' }, { board: 'nexys2' }), null);
   assert.equal(createRefusal('design', 'uart'), 'a design and simulation project starts empty: no example');
@@ -59,6 +59,10 @@ test('#4702 the kinds\' rules: a co-design project empty or from a co-design exa
 });
 
 test('#4702 uart-avr made with the MCP server: its System checked (the 5 V warning) and simulated (the Arduino\'s hello echoed)', async () => {
+  // (listed after the FPGA examples, as a co-design one)
+  const ex = await ok('list_examples', {});
+  assert.equal(ex.text.split('\n').at(-1), 'uart-avr: a co-design example (FPGA and microcontroller nodes in a System), 5 file(s)');
+  assert.deepEqual(ex.data.examples.at(-1), { name: 'uart-avr', kind: 'codesign', top: null, simTop: null, board: null, device: null, files: 5 });
   await ok('new_project_from_example', { name: 'ua', example: 'uart-avr' });
   const warn = "serial: uno's D1, a 5 V output, drives fpga's rx (pin J3), a 3.3 V input of the FPGA (LVCMOS33): a level shifter or a divider on the real boards";
   const c = await ok('check_system', { project: 'ua', file: 'uart_avr.sys.json' });

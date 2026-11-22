@@ -630,7 +630,7 @@ export function projectOps(getStore, examples = {}) {
       const json = newProjectJson(name, { device, board, kind });   // (core/project-defaults.js, as the server's, #4766)
       await recordOwn(name);
       const sysFile = kind === CODESIGN_KIND ? newSystemFile(name) : null;
-      await S().create(name, json, sysFile ? { [sysFile.path]: sysFile.text } : {}, { dirs: kind && kind !== 'fpga' ? ['src', 'sim'] : ['src', 'sim', 'constraints'] });
+      await S().create(name, json, sysFile ? { [sysFile.path]: sysFile.text } : {}, { dirs: kind ? ['src', 'sim'] : ['src', 'sim', 'constraints'] });
       return clone(json);
     },
     /** A whole project at once (imports, bundles, copies): its description normalised (what it drops
