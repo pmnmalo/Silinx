@@ -27,7 +27,7 @@ export async function buildSite(tmp, { route = null, relays = [] } = {}) {
   } catch { return { skip: 'esbuild / @codemirror / elkjs not installed (npm install): standalone build test skipped' }; }
   const root = path.join(tmp, 'site-build');
   await fs.mkdir(path.join(root, 'scripts'), { recursive: true });
-  for (const f of ['build-standalone.mjs', 'build-info.mjs', 'changelog-release.mjs', 'pwa.mjs']) await fs.copyFile(path.join(ROOT, 'scripts', f), path.join(root, 'scripts', f));
+  for (const f of ['build-standalone.mjs', 'build-info.mjs', 'changelog-release.mjs', 'pwa.mjs', 'inline-scripts.mjs']) await fs.copyFile(path.join(ROOT, 'scripts', f), path.join(root, 'scripts', f));
   const git = (...a) => spawnSync('git', a, { cwd: root, encoding: 'utf8' });
   git('init', '-q'); git('-c', 'user.name=t', '-c', 'user.email=t@t', '-c', 'commit.gpgsign=false', 'commit', '-q', '--allow-empty', '-m', 'build');
   for (const d of ['web', 'core', 'packages', 'server', 'examples', 'test-designs', 'research', 'changes']) await fs.symlink(path.join(ROOT, d), path.join(root, d), 'dir');
