@@ -6,7 +6,9 @@
 // the hierarchy's kit (#5206, phase 4): a project's modules from its files, a symbol's pins against its module's ports,
 // the instances out of date, a schematic's HDL compiled with the modules below it; the Board Emulator's reference and
 // I/O Pin Planning's kit (#5206, phase 5): the examples' displays, serial port and VGA picture simulated and read as a
-// person reads them, a UCF's pins, the planner's table checked.
+// person reads them, a UCF's pins, the planner's table checked; a narrow screen, touch and the keyboard (#5206, phase
+// 6): the fingers' paths of a pinch and a two-finger pan, a drawing's view read from its transform, a key pressed until
+// its target is reached.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
@@ -27,6 +29,8 @@ import { FSM_VOCAB, fsmModel, fsmTolerate } from './usability/lib/fsm-random.js'
 import { ASM_VOCAB, asmModel, asmTolerate } from './usability/lib/asm-random.js';
 import { PN_VOCAB, pnModel } from './usability/lib/pn-random.js';
 import { TT_VOCAB, ttModel, column } from './usability/lib/tt-random.js';
+import { pinchPaths, panPaths, viewOfTransform } from './usability/lib/touch-actions.js';
+import { pressUntil } from './usability/lib/key-actions.js';
 import { STATE_R } from '../core/fsm.js';
 import { shapeTable, parseExpr, exprColumn, normalizeTable } from '../core/logic.js';
 import { modulesOf, symbolPortsWrong, staleInstances, hierHdlErrors, topErrors } from './usability/lib/hier-kit.js';
@@ -571,4 +575,43 @@ test('usability: I/O Pin Planning\'s kit: a UCF\'s pins and its clock\'s period;
   assert.deepEqual(pinInvariants(doc), []);
   assert.deepEqual(pinInvariants({ ...doc, status: '2/3 E/S atribuídas' }), []);
   assert.deepEqual(pinInvariants({ ...doc, status: '3/3 I/Os assigned', conflicts: ['a'] }), ["the status line '3/3 I/Os assigned', 2/3 expected", 'the pins marked as given twice: ["a"], ["a","b"] expected']);
+});
+
+test('usability: touch: a pinch\'s fingers spread about their middle (the zoom their spread\'s ratio), a two-finger pan\'s moved together; a drawing\'s view read from its transform', () => {
+  const c = { x: 200, y: 300 };
+  const dist = ([a, b]) => Math.hypot(b.x - a.x, b.y - a.y);
+  const [f1, f2] = pinchPaths(c, 30, 60);
+  assert.deepEqual([f1, f2], [[{ x: 170, y: 300 }, { x: 140, y: 300 }], [{ x: 230, y: 300 }, { x: 260, y: 300 }]]);
+  assert.equal(dist([f1[1], f2[1]]) / dist([f1[0], f2[0]]), 2);
+  // (at an angle: the middle kept, the spread the same)
+  const [g1, g2] = pinchPaths(c, 50, 75, Math.PI / 2);
+  for (const i of [0, 1]) { assert.ok(Math.abs((g1[i].x + g2[i].x) / 2 - c.x) < 1e-9 && Math.abs((g1[i].y + g2[i].y) / 2 - c.y) < 1e-9); }
+  assert.ok(Math.abs(dist([g1[1], g2[1]]) / dist([g1[0], g2[0]]) - 1.5) < 1e-9);
+  // a pan: both fingers by (dx, dy), `gap` apart
+  const [p1, p2] = panPaths(c, -60, 20, 40);
+  assert.deepEqual([p1, p2], [[{ x: 180, y: 300 }, { x: 120, y: 320 }], [{ x: 220, y: 300 }, { x: 160, y: 320 }]]);
+  assert.deepEqual(viewOfTransform('translate(12.5,-40) scale(1.2)'), { tx: 12.5, ty: -40, s: 1.2 });
+  assert.deepEqual(viewOfTransform('translate(3, 4)'), { tx: 3, ty: 4, s: 1 });
+  assert.deepEqual(viewOfTransform(null), { tx: 0, ty: 0, s: 1 });
+  assert.deepEqual(viewOfTransform('translate(-1e-3,7) scale(.5)'), { tx: -0.001, ty: 7, s: 0.5 });
+});
+
+test('usability: the keyboard: a key pressed until its target is reached (none when it is already), else the error says the key, the presses and where they went', async () => {
+  // a fake page: Tab moves the focus along a ring of four places
+  const ring = ['the page', 'button "Open"', 'tree "Design"', 'textbox "a"'];
+  const fake = () => { const p = { i: 0, keys: [], async key(k, o) { p.keys.push([k, o.modifiers]); p.i = (p.i + 1) % ring.length; } }; return p; };
+  let page = fake();
+  const at = (p, w) => async () => ring[p.i] === w;
+  assert.equal(await pressUntil(page, 'Tab', at(page, 'tree "Design"'), { where: async () => ring[page.i] }), 2);
+  assert.deepEqual(page.keys, [['Tab', 0], ['Tab', 0]]);
+  assert.equal(await pressUntil(page, 'Tab', at(page, 'tree "Design"')), 0);
+  // (`prep` before each press; Shift+Tab's modifiers passed on)
+  page = fake();
+  let preps = 0;
+  assert.equal(await pressUntil(page, 'Tab', at(page, 'textbox "a"'), { modifiers: 8, prep: async () => { preps++; } }), 3);
+  assert.deepEqual([preps, page.keys.map((k) => k[1])], [3, [8, 8, 8]]);
+  page = fake();
+  await assert.rejects(pressUntil(page, 'ArrowDown', async () => false, { max: 5, what: 'the row x', where: async () => ring[page.i] }),
+    { message: 'the row x not reached after 5 × ArrowDown: button "Open" → tree "Design" → textbox "a" → the page → button "Open"' });
+  assert.equal(page.keys.length, 5);
 });
