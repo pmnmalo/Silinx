@@ -40,6 +40,9 @@ uiTest('#2161 schematic: a flip-flop\'s Inverted output QN in its properties: a 
   assert.equal(await page.eval((d) => document.querySelector(`${d} [data-param=qn]`).checked, D), false);
   await page.click(`${D} [data-param=qn]`);
   await page.waitFor(async () => JSON.parse(await (await fetch('/api/projects/FfQn/file?path=src%2Fqn.sch.json')).text()).symbols[0].params.qn === true, [], { what: 'qn saved' });
+  // (and its HDL made again and in the project's sources: arriving after Try it started below, a compile of changed
+  // sources would end it, #4601, as it did on a loaded runner, #5179)
+  await page.waitFor(() => /"qn":true/.test(window.Silinx.sources.find((s) => s.path === 'src/qn.vhd')?.text || ''), [], { what: 'qn.vhd made again' });
   // the pin /Q: its name barred, level with C, below Q
   await page.waitFor((d) => document.querySelectorAll(`${d} .se-svg g.sym[data-id="S1"] text.pname`).length === 4, [D], { what: '/Q drawn' });
   assert.deepEqual(await pnames(), ['D', 'C', 'Q', 'Q/']);
