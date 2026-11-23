@@ -13,5 +13,10 @@ export function inlineScripts(html, inline, { keep = [] } = {}) {
   return html.replace(TAG, (m, src) => inline(src));
 }
 
-/** Code put inside a `<script>` element: its `</script` (any case) escaped, so it cannot close the element. */
-export const safeJs = js => js.replace(/<\/script/gi, '<\\/script');
+/** Code put inside a `<script>` element: its `</script` (any case) escaped, so it cannot close the element; its
+ *  `<script` written `<\x73cript`, the same text in a string, a template or a regular expression, so that none is a tag
+ *  in the page (a development build's changes quoting `<script src="…">`, #5389). */
+export const safeJs = js => js.replace(/<\/script/gi, '<\\/script').replace(/<(s)(cript)/gi, (m, s, rest) => `<\\x${s.charCodeAt(0).toString(16)}${rest}`);
+
+/** Text put inside a `<script type="text/plain">` element (the notices): only its `</script` escaped. */
+export const safeText = text => text.replace(/<\/script/gi, '<\\/script');

@@ -4,7 +4,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
-import { inlineScripts, safeJs } from '../scripts/inline-scripts.mjs';
+import { inlineScripts, safeJs, safeText } from '../scripts/inline-scripts.mjs';
 
 const APP = '<script type="module" src="/js/app.js"></script>';
 const inline = src => `<script>/* ${src} */</script>`;
@@ -37,4 +37,16 @@ test('#5343 inlineScripts on web/index.html: its two external scripts inlined, t
 test('#5343 safeJs: </script in any case escaped (as <\\/script)', () => {
   assert.equal(safeJs('a("</script>"); b("</SCRIPT >")'), 'a("<\\/script>"); b("<\\/script >")');
   assert.equal(safeJs('x < y'), 'x < y');
+});
+
+// #5389: a development build carries its changes' text, which may quote a script tag (#5343's did): no `<script` in
+// the page's code, the same text at run time in a string, a template and a regular expression; the notices' text as it is
+test('#5389 safeJs: <script in any case written <\\x73cript, the same text when run; safeText: only </script escaped', () => {
+  const code = 'const a = "<script src=\\"x.js\\"></script>", t = `<Script>`, r = /<SCRIPT\\b/;';
+  const safe = safeJs(code);
+  assert.doesNotMatch(safe, /<script/i);
+  assert.equal(safe, 'const a = "<\\x73cript src=\\"x.js\\"><\\/script>", t = `<\\x53cript>`, r = /<\\x53CRIPT\\b/;');
+  const run = new Function(`${safe}; return [a, t, r.test('<SCRIPT src'), r.test('<scripts')];`)();
+  assert.deepEqual(run, ['<script src="x.js"></script>', '<Script>', true, false]);
+  assert.equal(safeText('see <script src="x.js"></script>'), 'see <script src="x.js"><\\/script>');
 });
