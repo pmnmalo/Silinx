@@ -29,7 +29,10 @@ const VERSION = JSON.parse(fs.readFileSync(path.join(ROOT, 'package.json'), 'utf
 // the HDL front end's package (#1710, 0.2 MB): the zip 40.6 MB, unzipped 134.6 MB (#3615). The README's and the guide's
 // pictures (docs/images, 1.3 MB of WebP, which zip does not compress) took it to 42.9 MB, unzipped 139.4 MB: kept, for
 // the guide read offline, zipMB 42 → 44 and appMB 140 → 142 (#4556)
-const BUDGET = { zipMB: 44, appMB: 142 };
+// zipMB 44 → 46 and appMB 142 → 148 (#5303): the Zynq-7000's bit databases (#4680, 0.7 MB of gzip, which zip does
+// not compress), co-design's AVR simulator (avr8js) and its editors, the new circuit parts and the CHANGELOG took it from
+// 43.2 MB (2026-11-20) to 44.3 MB, unzipped 142.3 MB; nothing in it the app does not use (the chipdbs still downloaded)
+const BUDGET = { zipMB: 46, appMB: 148 };
 
 const has = (cmd) => { try { execFileSync(cmd, ['-v'], { stdio: 'ignore' }); return true; } catch { return false; } };
 const SKIP = process.platform === 'win32' ? 'the release is packaged on Linux (zip): not on Windows'
