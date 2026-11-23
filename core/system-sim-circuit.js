@@ -52,6 +52,9 @@ export class CircuitNode {
   /** Its temperature sensors' states (#5342). */
   sensors() { return this.sim.sensors(); }
 
+  /** Its servos' states (#5347). */
+  servos() { return this.sim.servos(); }
+
   /** A pin set weak while weak() says so (an AVR's input with its pull-up). */
   weakWhile(name, weak) { this.weak.set(name, weak); }
 
@@ -84,6 +87,9 @@ export class CircuitNode {
     }
     step(t);
     this.now = t;
+    // (a servo's pulses that are no servo's, #5347: once each)
+    for (const w of this.sim.servoWarnings().slice(this.saidServo ?? 0)) this.log.push({ kind: 'warning', text: w, time: t });
+    this.saidServo = this.sim.servoWarnings().length;
     for (const i of this.sim.shorts()) {
       if (this.shorted.has(i)) continue;
       this.shorted.add(i);

@@ -16,6 +16,7 @@ import { MEMORY_ICS } from './circuit-model-memory.js';
 import { BOARD_PARTS } from './circuit-boards.js';
 import { LCD_1602 } from './circuit-lcd.js';
 import { LM75 } from './circuit-lm75.js';
+import { SERVO_SG90 } from './circuit-servo.js';
 import { OLED_SSD1306 } from './circuit-oled.js';
 import { codesignOn } from './build-channel.js';
 
@@ -89,6 +90,8 @@ const OTHERS = [
   OLED_SSD1306,
   // a temperature sensor on I²C (#5342, core/circuit-lm75.js)
   LM75,
+  // a servo on PWM (#5347, core/circuit-servo.js)
+  SERVO_SG90,
 ];
 
 // ------------------------------------------------------------------ the library

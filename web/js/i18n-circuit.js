@@ -76,6 +76,9 @@ export const CIRCUIT_PT = {
   'Reads 1 (a TTL input)': 'Lê 1 (uma entrada TTL)', 'Reads X (unknown): connect every CMOS input': 'Lê X (desconhecido): ligue todas as entradas CMOS',
   'input': 'entrada', 'output': 'saída', 'open-collector output': 'saída de coletor aberto', 'supply +5 V': 'alimentação +5 V', 'supply GND': 'alimentação GND',
   'not connected': 'não ligado', 'contact': 'contacto', 'weak output': 'saída fraca', 'tip': 'ponta',
+  // (a servo, #5347)
+  "Its arm at the angle its signal's pulses ask for: 0.5 ms 0°, 2.5 ms 180°, every 20 ms (an Arduino's or an FPGA's PWM), moving at 60° in 0.1 s. Not a port of the HDL.":
+    'O seu braço no ângulo que os impulsos do sinal pedem: 0,5 ms 0°, 2,5 ms 180°, a cada 20 ms (o PWM de um Arduino ou de uma FPGA), a mover-se 60° em 0,1 s. Não é uma porta do HDL.',
   // (a temperature sensor, #5342)
   "Its temperature, set while trying it (its − and +, its Properties), read on I²C at 0x48 + A2..A0: 9 bits, 0.5 °C; its OS output (open drain) over TOS (80 °C) and under THYST (75 °C). Not a port of the HDL.":
     'A sua temperatura, escolhida ao experimentá-lo (o seu − e +, as suas Propriedades), lida por I²C em 0x48 + A2..A0: 9 bits, 0,5 °C; a sua saída OS (dreno aberto) acima de TOS (80 °C) e abaixo de THYST (75 °C). Não é uma porta do HDL.',
@@ -129,7 +132,7 @@ const TITLE = { 'Arduino Uno': 'Arduino Uno', 'Arduino Nano': 'Arduino Nano', 'D
   'DIP switch (4)': 'Interruptor DIP (4)', 'DIP switch (8)': 'Interruptor DIP (8)', 'Clock source': 'Fonte de relógio',
   'Pull-up (a weak 1)': 'Pull-up (um 1 fraco)', 'Pull-down (a weak 0)': 'Pull-down (um 0 fraco)', LED: 'LED',
   '7-segment display, common cathode': 'Mostrador de 7 segmentos, cátodo comum', '7-segment display, common anode': 'Mostrador de 7 segmentos, ânodo comum',
-  'LED bar (10)': 'Barra de LEDs (10)', 'Character LCD 16×2 (HD44780)': 'LCD de caracteres 16×2 (HD44780)', 'Temperature sensor LM75 (I²C)': 'Sensor de temperatura LM75 (I²C)', 'Graphic OLED 128×64 (SSD1306, I²C)': 'OLED gráfico 128×64 (SSD1306, I²C)', 'Logic probe': 'Sonda lógica', 'Hex inverter': 'Seis inversores', 'Hex Schmitt-trigger inverter': 'Seis inversores Schmitt-trigger',
+  'LED bar (10)': 'Barra de LEDs (10)', 'Character LCD 16×2 (HD44780)': 'LCD de caracteres 16×2 (HD44780)', 'Temperature sensor LM75 (I²C)': 'Sensor de temperatura LM75 (I²C)', 'Servo (SG90, PWM)': 'Servo (SG90, PWM)', 'Graphic OLED 128×64 (SSD1306, I²C)': 'OLED gráfico 128×64 (SSD1306, I²C)', 'Logic probe': 'Sonda lógica', 'Hex inverter': 'Seis inversores', 'Hex Schmitt-trigger inverter': 'Seis inversores Schmitt-trigger',
   // (KiCad's other gates, #4397)
   'Hex buffer, open collector': 'Seis buffers, coletor aberto', 'Hex buffer': 'Seis buffers', 'Hex inverting buffer': 'Seis buffers inversores',
   'Dual 4-input NAND, Schmitt trigger': 'Duas portas NAND de 4 entradas, Schmitt-trigger', 'Quad 2-input NAND, Schmitt trigger': 'Quatro portas NAND de 2 entradas, Schmitt-trigger',
@@ -333,6 +336,8 @@ export const CIRCUIT_PT_PATTERNS = [
   [/^(\S+)'s (SCL|SDA) \(pin (\d)\) has no pull-up: the I²C bus's lines are released high by a pull-up each$/, (m, p, n, k) => `O ${n} (pino ${k}) de ${p} não tem pull-up: as linhas do bus I²C são soltas a 1 por um pull-up cada`],
   // (a character LCD's RW, #5330)
   [/^(\S+)'s RW \(pin 5\) is not on GND: its reads are not simulated \(tie it low, as LiquidCrystal's wiring does\)$/, (m, p) => `O RW (pino 5) de ${p} não está no GND: as suas leituras não são simuladas (ligue-o a 0, como a ligação da LiquidCrystal)`],
+  // (a servo's signal, #5347)
+  [/^(\S+)'s signal \(pin (\d)\) is driven by nothing: its arm stays where it is$/, (m, p, k) => `O sinal (pino ${k}) de ${p} não é conduzido por nada: o seu braço fica onde está`],
   [/^(\S+) \((.+)\) joins nothing$/, (m, p, d) => `${p} (${CIRCUIT_PT[d] ?? title(d)}) não liga a nada`],
   [/^(\S+) never lights: its anode and its cathode are joined$/, '$1 nunca acende: o seu ânodo e o seu cátodo estão ligados'],
   [/^(\S+) never lights: it is the wrong way round \((.+)\)$/, (m, p, w) => `${p} nunca acende: está ao contrário (${w.replace("its anode on the supply's −", 'o seu ânodo no − da fonte').replace("its cathode on the supply's +", 'o seu cátodo no + da fonte')})`],

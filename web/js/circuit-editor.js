@@ -45,7 +45,7 @@ export function mountCircuitEditor(container, opts = {}) {
   let sel = null;                       // { kind: 'part' | 'wire', id }
   let tool = 'select';                  // select | wire | place:<type>
   let view = { tx: 60, ty: 120, k: 1 };
-  let drag = null, draft = null, ghost = null, sim = null, steps = null, fitted = false, destroyed = false;
+  let drag = null, draft = null, ghost = null, sim = null, steps = null, fitted = false, destroyed = false, saidServo = 0;
   let ticks = [];                       // the clocks' timers while trying it (each ticking at its frequency, in real time)
   const readOnly = !!opts.readOnly;
   const hist = [JSON.stringify(M)];
@@ -129,7 +129,7 @@ export function mountCircuitEditor(container, opts = {}) {
     const errs = checkCircuit(M, undefined, opts.hdl?.() ?? {}).filter((d) => d.severity === 'error');
     if (errs.length) { status(`The circuit cannot be simulated: ${errs.map((d) => d.message).join('; ')}`, true); stopSim(); return; }
     stopTicks();
-    sim = createCircuitSim(M, { runner: opts.hdl?.()?.runner });
+    sim = createCircuitSim(M, { runner: opts.hdl?.()?.runner }); saidServo = 0;
     recordCircuit(sim, steps = tryOps(null));   // (its steps, as live sharing sends them, #4244)
     runSim();
     // (a clock source flips its level every half period, in real time; the simulated time moves on by as much; held
@@ -146,6 +146,7 @@ export function mountCircuitEditor(container, opts = {}) {
   function runSim() {
     const r = sim.run();
     for (const line of runMessages(sim, r)) status(line.replace(/^(ERROR|WARNING): /, ''), true);
+    const ws = sim.servoWarnings(); for (const w of ws.slice(saidServo)) status(w, true); saidServo = ws.length;   // (a servo's pulses that are no servo's, #5347: once each)
     render();
   }
   function stopSim() { stopTicks(); sim = null; steps = null; render(); }
@@ -177,7 +178,7 @@ export function mountCircuitEditor(container, opts = {}) {
   function render() {
     if (destroyed) return;
     applyView();
-    world.replaceChildren(drawCircuit({ ...M, wireStyle: wireStyle() }, { sel, draft, ghost, inside: inside(), hops: hops(), handles: !readOnly && !sim, levels: sim ? (id, n) => sim.pin(id, n) : null, leds: sim?.leds(), lcds: sim?.lcds(), oleds: sim?.oleds(), sensors: sim?.sensors(), inputs: sim?.inputs() }));
+    world.replaceChildren(drawCircuit({ ...M, wireStyle: wireStyle() }, { sel, draft, ghost, inside: inside(), hops: hops(), handles: !readOnly && !sim, levels: sim ? (id, n) => sim.pin(id, n) : null, leds: sim?.leds(), lcds: sim?.lcds(), oleds: sim?.oleds(), sensors: sim?.sensors(), servos: sim?.servos(), inputs: sim?.inputs() }));
     sync();   // (the Wires' ✓: an undo, a model set)
     for (const b of [delBtn]) b.disabled = !sel;
     rotBtn.disabled = sel?.kind !== 'part';

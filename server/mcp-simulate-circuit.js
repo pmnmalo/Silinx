@@ -29,7 +29,9 @@ export async function simulateCircuitFile(m0, steps, base, hdl = {}) {
   // (the logic probes' levels, by label or id: 0, 1, Z open, X; said when the circuit has any, #3900)
   const probeName = new Map(m.parts.filter((p) => p.type === 'probe').map((p) => [p.id, p.label || p.id]));
   const probes = () => Object.fromEntries(Object.entries(sim.probes()).map(([id, v]) => [probeName.get(id), v]));
-  const probeText = () => (probeName.size ? `; probes ${Object.entries(probes()).map(([k, v]) => `${k}=${v}`).join(' ')}` : '') + lcdText() + oledText() + sensorText();
+  const probeText = () => (probeName.size ? `; probes ${Object.entries(probes()).map(([k, v]) => `${k}=${v}`).join(' ')}` : '') + lcdText() + oledText() + sensorText() + servoText();
+  // (a servo's arm, #5347)
+  const servoText = () => Object.entries(sim.servos()).map(([id, s]) => `; ${id} at ${Math.round(s.angle)}°`).join('');
   // (a temperature sensor's temperature and OS, #5342)
   const sensorText = () => Object.entries(sim.sensors()).map(([id, s]) => `; ${id} ${s.temp.toFixed(1)} °C, OS ${s.os ? 'active' : 'inactive'}`).join('');
   const sensorIds = new Map(m.parts.filter((p) => p.type === 'lm75').map((p) => [p.id.toLowerCase(), p.id]));
