@@ -151,6 +151,30 @@ export const SHOTS = [
     },
   },
   {
+    name: 'try-it', lang: ['en', 'pt'],
+    about: 'Try it: the breadboard example\'s circuit running, its LEDs lit',
+    async run(page, env) {
+      await example(page, env, 'breadboard', 'breadboard');
+      await open(page, 'src/breadboard.circ.json');
+      await panels(page, { side: false, console: false });
+      await foldProps(page, { all: true });
+      const ed = '.doc:not([hidden]) .circuit-editor';
+      await page.click(`${ed} .circ-sim-btn`);
+      await page.waitFor((e) => document.querySelector(e).classList.contains('circ-simulating'), [ed], { what: 'Try it' });
+      const at = (sel) => page.eval((s) => { const r = document.querySelector(s).getBoundingClientRect(); return { x: r.left + r.width / 2, y: r.top + r.height / 2 }; }, sel);
+      const lit = (n) => page.waitFor((e, k) => document.querySelectorAll(`${e} .circ-led.lit`).length === k, [ed, n], { what: `${n} LEDs lit`, timeout: 30000 });
+      // SW0 on (the counter no longer cleared), then BTN0 pressed three times (held over its 1 Hz clock's edges): a count
+      // of 3 on LD1..LD0, the third press still held (LD4..LD7, the button through the shift register)
+      await page.click(await at(`${ed} [data-id=S1] .circ-sw-body`));
+      const btn = await at(`${ed} [data-id=B1] .circ-btn-body`);
+      for (const [count, ones] of [[1, 1], [2, 1], [3, 2]]) {
+        await page.mouse('mousePressed', btn.x, btn.y);
+        await lit(4 + ones);   // the count's LEDs and the shift register's four
+        if (count < 3) { await page.mouse('mouseReleased', btn.x, btn.y); await lit(ones); }
+      }
+    },
+  },
+  {
     name: 'simulation', lang: ['en', 'pt'],
     about: 'The waveforms of a simulation: the traffic example\'s test bench',
     async run(page, env) {
