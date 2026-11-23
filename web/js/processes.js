@@ -338,15 +338,25 @@ async function checkSyntaxInner(mod, sim, id, hierarchy) {
   const all = withDrawingErrors(diagsFor(lib, design, [...(design ? designDiags(lib, design) : []), ...stale, ...cErrs, ...reservedNameDiags()]), designState.failedDrawings, { top: mod, design: designOnly() });   // + design checks (core/lint.js)
   const owners = Object.entries(cState.cFailed || {}).map(([file, c]) => ({ file, module: c.module }));
   const diags = (hierarchy ? hierarchyDiags(all, lib, mod, owners) : all).map(shownDiag);
+  const { ne, nw } = checkedLines(R, diags, checkLabel(), () => [`${designOnly() ? 'Checking' : 'Elaborating'} top module <${mod}>: ${designSize(design)}.`]);
+  setStatus(id, ne ? 'err' : nw ? 'warn' : 'ok');
+  return !ne;
+}
+
+// the lines a Check Syntax ends with, run from the Process menu (the processes' tree) or from the editor's toolbar
+// (#5332): its diagnostics, then, with no error, its elaboration's lines (as XST's: a design with a syntax error is not
+// elaborated) and its result. -> its counts of errors and warnings
+function checkedLines(R, diags, label, elaborated) {
   setDiagnostics(diags);
   const ne = diags.filter(d => d.severity === 'error').length, nw = diags.length - ne;
   for (const d of diags) R.log(`${sevWord(d)}:${d.tool || 'HDLCompiler'} - ${d.drawn || (!d.line && designOnly()) ? `"${d.file}"` : `"${d.file}" Line ${d.line}`}: ${d.message}`, d.severity === 'error' ? 'err' : 'warn', { diag: false, location: diagLocation(d) });
   showProblems(diags);   // (the Errors tab, else the Warnings tab, in front: run again too, #2803)
-  if (ne) { R.log(`\nProcess "${checkLabel()}" failed (${ne} error(s), ${nw} warning(s))`, 'err', { diag: false }); setStatus(id, 'err'); return false; }
-  R.log(`${designOnly() ? 'Checking' : 'Elaborating'} top module <${mod}>: ${designSize(design)}.`);
-  R.log(`\nProcess "${checkLabel()}" completed successfully${nw ? ` with ${nw} warning(s)` : ''}`, 'ok');
-  setStatus(id, nw ? 'warn' : 'ok');
-  return true;
+  if (ne) R.log(`\nProcess "${label}" failed (${ne} error(s), ${nw} warning(s))`, 'err', { diag: false });
+  else {
+    for (const l of elaborated()) R.log(l);
+    R.log(`\nProcess "${label}" completed successfully${nw ? ` with ${nw} warning(s)` : ''}`, 'ok');
+  }
+  return { ne, nw };
 }
 
 // Check Syntax of one HDL file (editor toolbar / right-click): parses the project, elaborates every
@@ -379,15 +389,10 @@ export async function checkFileSyntax(path) {
   R.log(cFile ? `Analyzing Silinx HLS file "${path}"` : `${/\.vhdl?$/i.test(path) ? 'Parsing VHDL' : 'Analyzing Verilog'} file "${path}" into library work`);
   const info = [];
   const diags = cFile ? await cDiagnostics(path, info) : hdlDiagnostics(path, null, info);
-  for (const l of info) R.log(l);
-  setDiagnostics(diags);
-  const ne = diags.filter(d => d.severity === 'error').length, nw = diags.length - ne;
-  for (const d of diags) R.log(`${sevWord(d)}:${d.tool || 'HDLCompiler'} - "${d.file}" Line ${d.line}: ${d.message}`, d.severity === 'error' ? 'err' : 'warn', { diag: false, location: diagLocation(d) });
-  showProblems(diags);   // (the Errors tab, else the Warnings tab, in front: run again too, #2803)
-  if (ne) { R.log(`\nProcess "Check Syntax" failed (${ne} error(s), ${nw} warning(s))`, 'err', { diag: false }); status(`Check Syntax: ${ne} error(s)`); return false; }
-  R.log(`\nProcess "Check Syntax" completed successfully${nw ? ` with ${nw} warning(s)` : ''}`, 'ok');
-  status(`Check Syntax: ${path.split('/').pop()} OK${nw ? ` (${nw} warning(s))` : ''}`);
-  return true;
+  if (cFile) for (const l of info) R.log(l);   // (a C source's top function, its analysis's; an HDL file's modules elaborated: with no error only, #5332)
+  const { ne, nw } = checkedLines(R, diags, 'Check Syntax', () => (cFile ? [] : info));
+  status(ne ? `Check Syntax: ${ne} error(s)` : `Check Syntax: ${path.split('/').pop()} OK${nw ? ` (${nw} warning(s))` : ''}`);
+  return !ne;
 }
 
 // Silinx HLS (#1524): the checks of a C source (core/c-check.js), its top function said
