@@ -35,6 +35,7 @@ export function checkCircuit(m, nets = circuitNets(m), { modules = null, runner 
     else if (d?.kind === 'model') continue;   // (checkModels, below)
     else if (d?.kind === 'drawn') say.warn(`${p.id} (${d.kicad.value}) is drawn only: it is not simulated and its pins drive nothing`, part(p.id));
     else if (d?.kind === 'lcd') checkLcd(p, d, nets, say);
+    else if (d?.kind === 'oled') checkOled(p, d, nets, say, (id) => m.parts.find((x) => x.id === id)?.type);
     else if (d && d.kind !== 'breadboard') checkOther(p, d, nets, say);
   }
   checkModels(m.parts, partDef, modules, say, part, runner);
@@ -170,6 +171,18 @@ function checkLcd(p, d, nets, say) {
   const vdd = netSupply(netOf('VDD')), vss = netSupply(netOf('VSS'));
   if (!vdd.vcc || !vss.gnd) say.warn(`${p.id} (${d.title}) is not powered: ${[!vdd.vcc && 'its VDD (pin 2) is not on the supply\'s +', !vss.gnd && 'its VSS (pin 1) is not on the supply\'s −'].filter(Boolean).join(' and ')}`, part(p.id));
   if (!netSupply(netOf('RW')).gnd) say.warn(`${p.id}'s RW (pin 5) is not on GND: its reads are not simulated (tie it low, as LiquidCrystal's wiring does)`, part(p.id));
+}
+
+// a graphic OLED on I²C (#5336): joined to something; powered by its VCC and GND; its SCL and SDA each pulled up (the
+// bus's lines released high: a resistor to +5 V each, the module's own not drawn)
+function checkOled(p, d, nets, say, typeOf) {
+  const pinOf = (name) => d.pins.find((q) => q.name === name), netOf = (name) => nets.nets[nets.pinNet.get(`${p.id}.${pinOf(name).n}`)];
+  if (partPins(p).every((q) => { const net = nets.nets[nets.pinNet.get(`${p.id}.${q.n}`)]; return net.pins.length < 2 && !net.wires.length; })) { say.warn(`${p.id} (${d.title}) joins nothing`, part(p.id)); return; }
+  const vcc = netSupply(netOf('VCC')), gnd = netSupply(netOf('GND'));
+  if (!vcc.vcc || !gnd.gnd) say.warn(`${p.id} (${d.title}) is not powered: ${[!vcc.vcc && 'its VCC (pin 2) is not on the supply\'s +', !gnd.gnd && 'its GND (pin 1) is not on the supply\'s −'].filter(Boolean).join(' and ')}`, part(p.id));
+  for (const name of ['SCL', 'SDA']) {
+    if (!netOf(name).pins.some((q) => q.dir === 'weak' && partDef(typeOf(q.part))?.pulls?.[0]?.value === '1')) say.warn(`${p.id}'s ${name} (pin ${pinOf(name).n}) has no pull-up: the I²C bus's lines are released high by a pull-up each`, part(p.id));
+  }
 }
 
 /** The circuit's errors only (what keeps its HDL from being generated). */

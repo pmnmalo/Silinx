@@ -16,6 +16,7 @@ import { digitalTop } from './circuit-digital.js';
 import { vhdlEntity, vlogModule } from './hdl-emit.js';
 import { coreText, verilogCoreDigital } from './circuit-hdl-core.js';
 import { vhdlLcd, verilogLcd, lcdEntity, LCD_PORTS } from './circuit-hdl-lcd.js';
+import { vhdlOled, verilogOled, oledEntity } from './circuit-hdl-oled.js';
 
 // (a KiCad part modelled by a module of the project, #4283: that module)
 const entityOf = (m, d) => (d.kind === 'model' ? d.module : `${m.name}_${d.chip.toLowerCase()}`);
@@ -24,7 +25,7 @@ const partLabel = (d) => (!d.kicad ? d.chip : d.behaves ? `${d.kicad.value}, as 
 const isSupply = (q) => !!q.supply || q.name === '+' || q.name === '-';   // (a board's 5V and GND too, #5215)
 const WHILE = { level: 'on', momentary: 'pressed', clock: 'high' };
 // (a character LCD's entity, #5330; another part: none)
-const lcdOf = (m, p) => (partDef(p.type)?.kind === 'lcd' ? lcdEntity(m.name) : null);
+const lcdOf = (m, p) => (partDef(p.type)?.kind === 'lcd' ? lcdEntity(m.name) : partDef(p.type)?.kind === 'oled' ? oledEntity(m.name) : null);
 
 /** The circuit's HDL: { filename, code, module }, or an Error with its diagnostics when it has errors. */
 export function generateCircuit(model, lang, { source } = {}) {
@@ -69,12 +70,16 @@ export function generateCircuit(model, lang, { source } = {}) {
   // (a character LCD's entity, #5330: simulation only, its lines reported)
   const lcds = m.parts.filter((p) => partDef(p.type)?.kind === 'lcd');
   if (lcds.length) { const T = []; (V ? vhdlLcd : verilogLcd)(T, lcdEntity(m.name)); L.push(OFF, ...T.slice(0, -1), ON, ''); }
+  // (a graphic OLED's, #5336: its I²C peripheral and its controller, simulation only)
+  if (m.parts.some((p) => partDef(p.type)?.kind === 'oled')) { const T = []; (V ? vhdlOled : verilogOled)(T, oledEntity(m.name)); L.push(OFF, ...T.slice(0, -1), ON, ''); }
 
   // the circuit's module: its ports (a bus's bits one vector, led[0]…), its two bodies
   const decls = portDecls(ports);
   // (a module's instance, #4283: its pins that are ports)
   const lcdMap = (p) => LCD_PORTS.map((k) => [k, plan.pinNet(p.id, partDef(p.type).pins.find((q) => q.name.toLowerCase() === k).n)]);
-  const icMap = (p) => (partDef(p.type).kind === 'lcd' ? lcdMap(p) : (partDef(p.type).kind === 'model' ? partDef(p.type).pins.filter((q) => q.port) : icPorts(partDef(p.type))).map((q) => [pinPort(q), plan.pinNet(p.id, q.n, q.dir)]));
+  // (an OLED's SDA: its driven side, `sda`, and the net read, `sda_rd`)
+  const oledMap = (p) => { const n = (k) => partDef(p.type).pins.find((q) => q.name === k).n; return [['gnd', plan.pinNet(p.id, n('GND'))], ['vcc', plan.pinNet(p.id, n('VCC'))], ['scl', plan.pinNet(p.id, n('SCL'))], ['sda_rd', plan.pinNet(p.id, n('SDA'))], ['sda', plan.pinNet(p.id, n('SDA'), 'oc')]]; };
+  const icMap = (p) => (partDef(p.type).kind === 'lcd' ? lcdMap(p) : partDef(p.type).kind === 'oled' ? oledMap(p) : (partDef(p.type).kind === 'model' ? partDef(p.type).pins.filter((q) => q.port) : icPorts(partDef(p.type))).map((q) => [pinPort(q), plan.pinNet(p.id, q.n, q.dir)]));
   const lamps = m.parts.flatMap((p) => partLamps(p).map((x) => [portRef(x.port, V), plan.pinNet(p.id, x.a), plan.pinNet(p.id, x.k)]));
   const dig = digitalTop(m, V, (d) => entityOf(m, d));
   if (V) {
@@ -135,7 +140,8 @@ function netPlan(m, V, ports) {
   });
   // (a character LCD too, #5330: its entity's instance, simulation only)
   if (m.parts.some((p) => partDef(p.type)?.kind === 'lcd')) used.add(lcdEntity(m.name).toLowerCase());
-  const inst = new Map(m.parts.filter((p) => ['ic', 'model', 'lcd'].includes(partDef(p.type)?.kind)).map((p) => [p.id, fresh(`u_${p.id}`)]));
+  if (m.parts.some((p) => partDef(p.type)?.kind === 'oled')) used.add(oledEntity(m.name).toLowerCase());
+  const inst = new Map(m.parts.filter((p) => ['ic', 'model', 'lcd', 'oled'].includes(partDef(p.type)?.kind)).map((p) => [p.id, fresh(`u_${p.id}`)]));
   const Z = V ? "'Z'" : "1'bz", lit = (v) => (V ? `'${v}'` : `1'b${v.toLowerCase()}`);
   const netOf = (id, n) => nets.pinNet.get(`${id}.${n}`);
   // (an output drives the net's strong side, an input reads the net)

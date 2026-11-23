@@ -12,6 +12,8 @@ import { circuitNets, netText } from './circuit-net.js';
 import { savedInputs, partLamps } from './circuit-io.js';
 import { coreModel, MODEL_TPD } from './circuit-live-model.js';
 import { createLcd } from './circuit-lcd.js';
+import { createSsd1306 } from './circuit-oled.js';
+import { createI2cPeripheral } from './circuit-i2c.js';
 
 const SETTLE_NS = 1000;   // a circuit still changing after this long is said to oscillate
 
@@ -56,6 +58,15 @@ export function createCircuitSim(m, { nets = circuitNets(m), onLevel = null, run
         bus: ['D0', 'D1', 'D2', 'D3', 'D4', 'D5', 'D6', 'D7'].map(at), was: { e: null, on: false } };
       ics.push(ic);
       for (const net of [ic.vcc, ic.gnd, ic.e]) readers[net].add(ic);
+    }
+    // (a graphic OLED, #5336: its I²C peripheral on SCL and SDA, its ACK pulling SDA low, its controller fed each byte)
+    if (d.kind === 'oled') {
+      const at = (name) => netOfPin(p.id, d.pins.find((q) => q.name === name).n);
+      const oled = createSsd1306();
+      const ic = { part: p, def: d, oled, vcc: at('VCC'), gnd: at('GND'), scl: at('SCL'), sda: at('SDA'), sdaDrv: addDriver(at('SDA'), 'Z'),
+        bus: createI2cPeripheral(d.address, { onStart: () => oled.start(), onByte: (b) => oled.write(b) }), was: false };
+      ics.push(ic);
+      for (const net of [ic.vcc, ic.gnd, ic.scl, ic.sda]) readers[net].add(ic);
     }
     if (d.kind === 'ic') {
       const pinOf = (dir) => d.pins.find((q) => q.dir === dir).n;
@@ -107,6 +118,13 @@ export function createCircuitSim(m, { nets = circuitNets(m), onLevel = null, run
       if (!on) ic.lcd.reset();
       else if (ic.was.on && ic.was.e === '1' && e === '0') ic.lcd.write(levels[ic.rs] === '1', ic.bus.reduce((v, net, k) => v | (levels[net] === '1' ? 1 << k : 0), 0));
       ic.was = { e, on };
+      return;
+    }
+    if (ic.oled) {   // (its controller and its bus reset while unpowered; its ACK SDA's driver)
+      const on = powered(ic);
+      if (!on) { if (ic.was) { ic.oled.reset(); ic.bus.reset(); } drive(ic.sdaDrv, 'Z'); }
+      else drive(ic.sdaDrv, ic.bus.feed(levels[ic.scl], levels[ic.sda]) ? '0' : 'Z');
+      ic.was = on;
       return;
     }
     if (ic.live) {   // (a module: its inputs' levels in, its outputs' out)
@@ -249,6 +267,8 @@ export function createCircuitSim(m, { nets = circuitNets(m), onLevel = null, run
     shorts: () => levels.map((_, i) => i).filter((i) => shorted[i]),
     /** each character LCD's display: { on, lines, cursor, blink } (#5330) */
     lcds: () => Object.fromEntries(ics.filter((x) => x.lcd).map((x) => [x.part.id, x.lcd.state()])),
+    /** each graphic OLED's display: { on, lit, pages, rows } (#5336) */
+    oleds: () => Object.fromEntries(ics.filter((x) => x.oled).map((x) => [x.part.id, x.oled.state()])),
     powered: (id) => { const ic = ics.find((x) => x.part.id === id); return ic ? powered(ic) : null; },
     /** each part's lamps: an LED's state, a display's or a bar's list of them */
     leds: () => Object.fromEntries(lit.map((p) => { const s = partLamps(p).map(lampState); return [p.id, s.length === 1 ? s[0] : s]; })),

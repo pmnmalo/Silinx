@@ -15,6 +15,7 @@ import { MUX_ICS } from './circuit-model-mux.js';
 import { MEMORY_ICS } from './circuit-model-memory.js';
 import { BOARD_PARTS } from './circuit-boards.js';
 import { LCD_1602 } from './circuit-lcd.js';
+import { OLED_SSD1306 } from './circuit-oled.js';
 import { codesignOn } from './build-channel.js';
 
 // ------------------------------------------------------------------ the breadboards
@@ -83,6 +84,8 @@ const OTHERS = [
   { type: 'probe', title: 'Logic probe', kind: 'probe', pins: [pin(1, 'tip', 'probe', 0, 0)] },
   // a character LCD 16×2 (#5330, core/circuit-lcd.js)
   LCD_1602,
+  // a graphic OLED 128×64 on I²C (#5336, core/circuit-oled.js)
+  OLED_SSD1306,
 ];
 
 // ------------------------------------------------------------------ the library

@@ -29,8 +29,9 @@ export async function simulateCircuitFile(m0, steps, base, hdl = {}) {
   // (the logic probes' levels, by label or id: 0, 1, Z open, X; said when the circuit has any, #3900)
   const probeName = new Map(m.parts.filter((p) => p.type === 'probe').map((p) => [p.id, p.label || p.id]));
   const probes = () => Object.fromEntries(Object.entries(sim.probes()).map(([id, v]) => [probeName.get(id), v]));
-  const probeText = () => (probeName.size ? `; probes ${Object.entries(probes()).map(([k, v]) => `${k}=${v}`).join(' ')}` : '') + lcdText();
+  const probeText = () => (probeName.size ? `; probes ${Object.entries(probes()).map(([k, v]) => `${k}=${v}`).join(' ')}` : '') + lcdText() + oledText();
   // (a character LCD's lines, #5330: off, or its two lines as it shows them)
+  const oledText = () => Object.entries(sim.oleds()).map(([id, s]) => `; ${id} ${s.on ? `on, ${s.lit} pixel(s) lit` : 'off'}`).join('');
   const lcdText = () => Object.entries(sim.lcds()).map(([id, s]) => `; ${id} ${s.on ? s.lines.map((l) => `|${l}|`).join('') : 'off'}`).join('');
   lines.push(`start: t = ${first.time} ns; LEDs ${Object.entries(leds()).map(([k, v]) => `${k}=${v}`).join(' ') || 'none'}${probeText()}`, ...note(first));
   for (const [k, step] of steps.entries()) {
@@ -45,7 +46,8 @@ export async function simulateCircuitFile(m0, steps, base, hdl = {}) {
     const outs = leds();
     lines.push(`step ${k}: inputs ${inputs.map((i) => `${i.name}=${at(i)}`).join(' ') || 'none'}; t = ${r.time} ns${r.quiet ? '' : ' (still changing)'}; LEDs ${Object.entries(outs).map(([a, b]) => `${a}=${b}`).join(' ') || 'none'}${probeText()}`, ...note(r));
     const lcds = Object.fromEntries(Object.entries(sim.lcds()).map(([id, s]) => [id, s.on ? s.lines : null]));
-    rows.push({ step: k, time: r.time, quiet: r.quiet, inputs: Object.fromEntries(inputs.map((i) => [i.name, at(i)])), leds: Object.fromEntries(Object.entries(outs).map(([a, b]) => [a, Number(b)])), ...(probeName.size ? { probes: probes() } : {}), ...(Object.keys(lcds).length ? { lcds } : {}) });
+    const oleds = Object.fromEntries(Object.entries(sim.oleds()).map(([id, s]) => [id, s.on ? { lit: s.lit, rows: s.rows } : null]));
+    rows.push({ step: k, time: r.time, quiet: r.quiet, inputs: Object.fromEntries(inputs.map((i) => [i.name, at(i)])), leds: Object.fromEntries(Object.entries(outs).map(([a, b]) => [a, Number(b)])), ...(probeName.size ? { probes: probes() } : {}), ...(Object.keys(lcds).length ? { lcds } : {}), ...(Object.keys(oleds).length ? { oleds } : {}) });
   }
   return { lines, rows, warnings };
 }

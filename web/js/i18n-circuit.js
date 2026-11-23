@@ -79,6 +79,9 @@ export const CIRCUIT_PT = {
   // (a character LCD, #5330)
   "Two lines of 16 characters, its HD44780 controller simulated: a write on E's falling edge, RS 0 a command, 1 a character; 8-bit or 4-bit (D7..D4) mode; off until its program turns it on. Not a port of the HDL.":
     'Duas linhas de 16 caracteres, o seu controlador HD44780 simulado: uma escrita no flanco descendente de E, RS a 0 um comando, a 1 um carácter; modo de 8 bits ou de 4 bits (D7..D4); apagado até o seu programa o ligar. Não é uma porta do HDL.',
+  // (a graphic OLED, #5336)
+  "128 × 64 pixels, its SSD1306 controller simulated on I²C at 0x3C: a control byte, then commands or its display's bytes (8 pages of 128, bit 0 a page's top row); lit while on and its charge pump on. SCL and SDA need a pull-up each. Not a port of the HDL.":
+    '128 × 64 píxeis, o seu controlador SSD1306 simulado em I²C no 0x3C: um byte de controlo, depois comandos ou os bytes do seu ecrã (8 páginas de 128, o bit 0 a linha de cima de uma página); aceso quando ligado e com a bomba de carga ligada. O SCL e o SDA precisam de um pull-up cada. Não é uma porta do HDL.',
   // (the boards, #5215)
   "the board's pin": 'pino da placa', 'supply 3.3 V': 'alimentação 3,3 V', 'Boards': 'Placas',
   "Its headers' pins, the board's (D0…D13, A0…A5; SDA and SCL are A4 and A5): its 5V, 3V3 and GND power the breadboard; its other pins are its program's, in a System (alone, they drive nothing).":
@@ -122,7 +125,7 @@ const TITLE = { 'Arduino Uno': 'Arduino Uno', 'Arduino Nano': 'Arduino Nano', 'D
   'DIP switch (4)': 'Interruptor DIP (4)', 'DIP switch (8)': 'Interruptor DIP (8)', 'Clock source': 'Fonte de relógio',
   'Pull-up (a weak 1)': 'Pull-up (um 1 fraco)', 'Pull-down (a weak 0)': 'Pull-down (um 0 fraco)', LED: 'LED',
   '7-segment display, common cathode': 'Mostrador de 7 segmentos, cátodo comum', '7-segment display, common anode': 'Mostrador de 7 segmentos, ânodo comum',
-  'LED bar (10)': 'Barra de LEDs (10)', 'Character LCD 16×2 (HD44780)': 'LCD de caracteres 16×2 (HD44780)', 'Logic probe': 'Sonda lógica', 'Hex inverter': 'Seis inversores', 'Hex Schmitt-trigger inverter': 'Seis inversores Schmitt-trigger',
+  'LED bar (10)': 'Barra de LEDs (10)', 'Character LCD 16×2 (HD44780)': 'LCD de caracteres 16×2 (HD44780)', 'Graphic OLED 128×64 (SSD1306, I²C)': 'OLED gráfico 128×64 (SSD1306, I²C)', 'Logic probe': 'Sonda lógica', 'Hex inverter': 'Seis inversores', 'Hex Schmitt-trigger inverter': 'Seis inversores Schmitt-trigger',
   // (KiCad's other gates, #4397)
   'Hex buffer, open collector': 'Seis buffers, coletor aberto', 'Hex buffer': 'Seis buffers', 'Hex inverting buffer': 'Seis buffers inversores',
   'Dual 4-input NAND, Schmitt trigger': 'Duas portas NAND de 4 entradas, Schmitt-trigger', 'Quad 2-input NAND, Schmitt trigger': 'Quatro portas NAND de 2 entradas, Schmitt-trigger',
@@ -322,6 +325,8 @@ export const CIRCUIT_PT_PATTERNS = [
   [/^(\S+) pin (\d+) \((.+)\) floats while (the button (\S+) is released|(\S+) is (off|on)): (a 74LS input reads high|a CMOS input reads X)$/,
     (m, p, n, q, w, b, c, o, r) => `${p} pino ${n} (${q}) flutua enquanto ${b ? `o botão ${b} está solto` : `${c} está ${HOW[o]}`}: ${READS[r]}`],
   [/^(\S+) pin (\d+) \((.+)\) is floating: (a 74LS input reads high|a CMOS input reads X)$/, (m, p, n, q, r) => `${p} pino ${n} (${q}) está a flutuar: ${READS[r]}`],
+  // (a graphic OLED's lines, #5336)
+  [/^(\S+)'s (SCL|SDA) \(pin (\d)\) has no pull-up: the I²C bus's lines are released high by a pull-up each$/, (m, p, n, k) => `O ${n} (pino ${k}) de ${p} não tem pull-up: as linhas do bus I²C são soltas a 1 por um pull-up cada`],
   // (a character LCD's RW, #5330)
   [/^(\S+)'s RW \(pin 5\) is not on GND: its reads are not simulated \(tie it low, as LiquidCrystal's wiring does\)$/, (m, p) => `O RW (pino 5) de ${p} não está no GND: as suas leituras não são simuladas (ligue-o a 0, como a ligação da LiquidCrystal)`],
   [/^(\S+) \((.+)\) joins nothing$/, (m, p, d) => `${p} (${CIRCUIT_PT[d] ?? title(d)}) não liga a nada`],
