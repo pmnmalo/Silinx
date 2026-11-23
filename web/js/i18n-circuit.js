@@ -76,6 +76,14 @@ export const CIRCUIT_PT = {
   'Reads 1 (a TTL input)': 'Lê 1 (uma entrada TTL)', 'Reads X (unknown): connect every CMOS input': 'Lê X (desconhecido): ligue todas as entradas CMOS',
   'input': 'entrada', 'output': 'saída', 'open-collector output': 'saída de coletor aberto', 'supply +5 V': 'alimentação +5 V', 'supply GND': 'alimentação GND',
   'not connected': 'não ligado', 'contact': 'contacto', 'weak output': 'saída fraca', 'tip': 'ponta',
+  // (the boards, #5215)
+  "the board's pin": 'pino da placa', 'supply 3.3 V': 'alimentação 3,3 V', 'Boards': 'Placas',
+  "Its headers' pins, the board's (D0…D13, A0…A5; SDA and SCL are A4 and A5): its 5V, 3V3 and GND power the breadboard; its other pins are its program's, in a System (alone, they drive nothing).":
+    'Os pinos dos seus conectores, os da placa (D0…D13, A0…A5; SDA e SCL são A4 e A5): os seus 5V, 3V3 e GND alimentam a placa de ensaio; os outros pinos são do seu programa, num Sistema (sozinha, não conduzem nada).',
+  "A DIP-30 that straddles a breadboard's channel, its pins the board's (D0…D13, A0…A7; A6 and A7 inputs only): its 5V, 3V3 and GND power the breadboard; its other pins are its program's, in a System (alone, they drive nothing).":
+    'Um DIP-30 que fica sobre o canal de uma placa de ensaio, os seus pinos os da placa (D0…D13, A0…A7; A6 e A7 só entradas): os seus 5V, 3V3 e GND alimentam a placa de ensaio; os outros pinos são do seu programa, num Sistema (sozinha, não conduzem nada).',
+  "Its Pmod connectors' pins (JA1…, each its FPGA's package pin): its 3V3 and GND power the breadboard; its other pins are its design's, in a System (alone, they drive nothing).":
+    'Os pinos dos seus conectores Pmod (JA1…, cada um com o pino do encapsulamento da FPGA): os seus 3V3 e GND alimentam a placa de ensaio; os outros pinos são do seu projeto, num Sistema (sozinha, não conduzem nada).',
   'Plug the parts into its holes: the five holes a–e of a column are joined, and f–j; each rail along its edges is joined along the board, for +5 V and GND.':
     'Encaixe as peças nos seus furos: os cinco furos a–e de uma coluna estão ligados, e f–j; cada linha ao longo das suas margens está ligada ao longo da placa, para +5 V e GND.',
   'Plug the parts into its holes: the five holes a–e of a column are joined, and f–j; each rail along its edges is joined along half the board, cut in the middle.':
@@ -104,7 +112,8 @@ export const CIRCUIT_PT = {
   'a wire joins two different places': 'um fio liga dois sítios diferentes',   // (#5164)
 };
 // the parts' titles (core/circuit-parts.js, core/circuit-ics.js)
-const TITLE = { 'Half breadboard': 'Meia placa de ensaio', 'Full breadboard (its rails split in the middle)': 'Placa de ensaio inteira (as linhas de alimentação cortadas ao meio)',
+const TITLE = { 'Arduino Uno': 'Arduino Uno', 'Arduino Nano': 'Arduino Nano', 'Digilent Basys2': 'Digilent Basys2', 'Digilent Nexys2': 'Digilent Nexys2',
+  'Half breadboard': 'Meia placa de ensaio', 'Full breadboard (its rails split in the middle)': 'Placa de ensaio inteira (as linhas de alimentação cortadas ao meio)',
   'Power supply (+5 V, GND)': 'Fonte de alimentação (+5 V, GND)', 'Logic switch': 'Interruptor lógico',
   'Push button (momentary, normally open)': 'Botão de pressão (momentâneo, normalmente aberto)', 'Slide switch (SPDT)': 'Comutador deslizante (SPDT)',
   'DIP switch (4)': 'Interruptor DIP (4)', 'DIP switch (8)': 'Interruptor DIP (8)', 'Clock source': 'Fonte de relógio',

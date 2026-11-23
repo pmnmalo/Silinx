@@ -5,6 +5,7 @@ import { partDef, partPins, partHoles, LED_COLORS, WIRE_COLORS, CLOCK_HZ } from 
 import { normalizeCircuit, newId } from './circuit.js';
 import { circuitNets } from './circuit-net.js';
 import { clone } from './util.js';
+import { codesignOn, CODESIGN_OFF } from './build-channel.js';
 import { WIRE_STYLES, isWireStyle, setWireStyle as setStyleOf } from './wire-style.js';
 
 /** A place's grid point: [x, y], or { error }. */
@@ -31,6 +32,7 @@ const partIn = (c, id) => c.parts.find((p) => p.id.toLowerCase() === String(id ?
 export function addPart(m, { type, at, rot = 0, label, id } = {}) {
   const d = partDef(type);
   if (!d) return { error: `no part '${type}' in the library` };
+  if (d.kind === 'board' && !codesignOn()) return { error: `${type}: ${CODESIGN_OFF}` };   // (a board, #5215: co-design's, #5202)
   let pid = null;
   const r = edit(m, (c) => {
     const pt = pointOf(c, at ?? [0, 0]);

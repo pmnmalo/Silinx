@@ -1,12 +1,14 @@
 // UI (#5202): co-design off in a release (core/build-channel.js), the local server's channel 'release'
 // (SILINX_CHANNEL): New Project's Co-design card disabled, the reason said under it (in Portuguese too), the FPGA kind's
 // Start from with no co-design example; a co-design project made in a development build: no System row in the Design
-// pane, its .sys.json opened, or emulated, says why in the console (no editor, no emulator). Both interfaces. (In the development build:
+// pane, its .sys.json opened, or emulated, says why in the console (no editor, no emulator); the Circuit editor's Parts
+// panel without its Boards (#5215). Both interfaces. (In the development build:
 // test/ui/codesign-new-project.test.js.)
 import { before, after } from 'node:test';
 import assert from 'node:assert/strict';
 import { setupUi, uiTest, makeProject } from './harness.js';
 import { EXAMPLE_ORDER } from '../../core/examples.js';
+import { newCircuit } from '../../core/circuit.js';
 
 let env;
 before(async () => { process.env.SILINX_CHANNEL = 'release'; env = await setupUi(); delete process.env.SILINX_CHANNEL; });
@@ -34,6 +36,16 @@ uiTest('#5202 a release: New Project\'s Co-design card disabled with its reason,
   await page.dialogButton('Cancelar');
   await page.waitNoDialog();
   await page.eval(async () => (await import('/js/i18n.js')).setLanguage('en'));
+  assert.deepEqual(page.console.filter((c) => c.type === 'warning' || c.type === 'warn' || c.type === 'error').map((c) => c.text), []);
+});
+
+uiTest('#5215 a release: the Circuit editor\'s Parts panel has no Boards (co-design\'s)', E, async (page) => {
+  await makeProject(env, { name: 'CircRel', top: '', files: { 'src/c.circ.json': JSON.stringify(newCircuit('c'), null, 2) } });
+  await page.openProject('CircRel');
+  await page.eval(() => window.SilinxApp.openFile('src/c.circ.json'));
+  const ed = '.doc:not([hidden]) .circuit-editor';
+  await page.waitFor((e) => document.querySelector(`${e} .circ-lib-part[data-part="supply"]`), [ed], { what: 'the Parts panel' });
+  assert.deepEqual(await page.eval((e) => [document.querySelectorAll(`${e} .circ-lib-part[data-group="Boards"]`).length, [...document.querySelectorAll(`${e} .circ-lib-title > span:first-child`)].map((t) => t.textContent).includes('Boards')], ed), [0, false]);
   assert.deepEqual(page.console.filter((c) => c.type === 'warning' || c.type === 'warn' || c.type === 'error').map((c) => c.text), []);
 });
 

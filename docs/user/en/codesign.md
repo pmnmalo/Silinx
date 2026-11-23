@@ -43,6 +43,10 @@ UART and GPIO links. Its design is in [CODESIGN.md](../../CODESIGN.md); its road
   Arduino's `D1`), the levels and an arrow towards the input. A wire with a 5 V output on a 3.3 V input is orange, its
   warning its tip, as are an FPGA pin's place on its board (`UART RX on a PmodUSBUART in JA…`). The view is read
   only: the links are edited in the System view; a click on a wire selects its link. Wiring again goes back.
+- **The boards in a circuit**: the Circuit editor's Parts panel has **Boards**, the Arduino Uno and Nano, the Basys2 and
+  the Nexys2, with their real pins (D0…D13, A0…; an FPGA board's Pmod pins JA1…, each with its package pin in its tip).
+  A Nano sits across a breadboard's channel. A board's 5V, 3V3 and GND power the breadboard; its other pins are its
+  program's or its design's, driven once the circuit is a node of the System (alone, in Try it, they drive nothing).
 
 ## Register maps
 

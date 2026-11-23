@@ -86,8 +86,15 @@ test('#5202 the MCP server in a release: new_project kind codesign, the co-desig
     const ex = await call('list_examples');
     assert.deepEqual(ex.data.examples.map(e => e.name), EXAMPLE_ORDER);
     assert.doesNotMatch(ex.text, /uart-avr|co-design/);
+    // (the boards as a circuit's parts, #5215: not listed, not placed)
+    const parts = await call('circuit_parts');
+    assert.equal(parts.data.parts.some((p) => p.kind === 'board'), false);
+    assert.equal((await call('circuit_parts', { type: 'arduino-uno' })).isError, true);
     // (the other projects as before)
     assert.equal((await call('new_project', { name: 'f1' })).isError, false);
+    assert.equal((await call('new_source', { project: 'f1', type: 'circuit', name: 'c' })).isError, false);
+    const added = await call('edit_circuit', { project: 'f1', path: 'src/c.circ.json', operations: [{ op: 'add', type: 'arduino-uno', at: [0, 30] }] });
+    assert.deepEqual([added.isError, added.text.includes(`arduino-uno: ${OFF}`)], [true, true], added.text);
   } finally { setBuildChannel('dev'); }
   const c = await call('check_system', { project: 'ua', file: 'uart_avr.sys.json' });
   assert.equal(c.isError, false, c.text);

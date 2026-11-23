@@ -22,10 +22,15 @@ const ABOUT = {
   'seg7-ca': 'Seven segments a–g and a point DP, each an LED; common anode: a segment lights while its pin is at 0 and COM at 1. Outputs of the HDL.',
   'led-bar-10': 'Ten LEDs side by side, each lighting while its anode is at 1 and its cathode at 0. Outputs of the HDL.',
   probe: 'Shows the level of the net its tip touches: H (1), L (0), – (open) or X (unknown). Not a port of the HDL.',
+  // (the boards, #5215)
+  'arduino-uno': "Its headers' pins, the board's (D0…D13, A0…A5; SDA and SCL are A4 and A5): its 5V, 3V3 and GND power the breadboard; its other pins are its program's, in a System (alone, they drive nothing).",
+  'arduino-nano': "A DIP-30 that straddles a breadboard's channel, its pins the board's (D0…D13, A0…A7; A6 and A7 inputs only): its 5V, 3V3 and GND power the breadboard; its other pins are its program's, in a System (alone, they drive nothing).",
+  'fpga-basys2': "Its Pmod connectors' pins (JA1…, each its FPGA's package pin): its 3V3 and GND power the breadboard; its other pins are its design's, in a System (alone, they drive nothing).",
+  'fpga-nexys2': "Its Pmod connectors' pins (JA1…, each its FPGA's package pin): its 3V3 and GND power the breadboard; its other pins are its design's, in a System (alone, they drive nothing).",
 };
 /** A pin's role by its direction. */
 export const PIN_ROLES = { in: 'input', out: 'output', oc: 'open-collector output', vcc: 'supply +5 V', gnd: 'supply GND', nc: 'not connected',
-  pass: 'contact', weak: 'weak output', probe: 'tip', none: 'not simulated' };
+  pass: 'contact', weak: 'weak output', probe: 'tip', none: 'not simulated', board: "the board's pin", vcc33: 'supply 3.3 V' };
 const FAMILY = { ttl: '74LS (TTL)', cmos: '4000 (CMOS)' };
 const FN = { and: 'AND', or: 'OR', nand: 'NAND', nor: 'NOR', xor: 'XOR', xnor: 'XNOR', not: 'NOT', buf: 'BUF' };
 
@@ -58,6 +63,8 @@ export function partInfo(type) {
     info.about = d.behaves ? `Behaves as the ${PARTS[d.behaves]?.kind === 'ic' ? d.behaves : PARTS[d.behaves]?.title ?? d.behaves} of the library (by its ${d.how}).` : d.kind === 'model' ? `Simulated by the project's module ${d.module}, in Try it and in the HDL.`
       : 'Drawn only: not simulated, its pins drive nothing.';
   }
-  info.pins = d.pins.map((p) => ({ n: p.kicadN ?? p.n, name: p.name, role: PIN_ROLES[p.dir] ?? p.dir, ...(p.port ? { port: p.port } : {}), ...(p.kicadType ? { kicadType: p.kicadType } : {}) }));
+  // (a board's pins, #5215: a 3V3 its supply's; an FPGA board's its package pin)
+  const role = (p) => (p.supply && p.volts === 3.3 ? PIN_ROLES.vcc33 : PIN_ROLES[p.dir] ?? p.dir);
+  info.pins = d.pins.map((p) => ({ n: p.kicadN ?? p.n, name: p.name, role: role(p), ...(p.loc ? { loc: p.loc } : {}), ...(p.port ? { port: p.port } : {}), ...(p.kicadType ? { kicadType: p.kicadType } : {}) }));
   return info;
 }

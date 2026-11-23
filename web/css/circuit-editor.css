@@ -47,6 +47,12 @@
 .circuit-editor .circ-sw-knob.on { fill: var(--asm-accent); }
 .circuit-editor .circ-btn-cap { fill: #444; stroke: #222; }
 .circuit-editor .circ-btn-cap.down { fill: var(--asm-accent); }
+.circuit-editor .circ-board-body { stroke: var(--asm-border); stroke-width: 1.2; }
+.circuit-editor .circ-board-mcu { fill: color-mix(in srgb, var(--asm-panel) 55%, #00878f 45%); }
+.circuit-editor .circ-board-fpga { fill: color-mix(in srgb, var(--asm-panel) 60%, #7a2e2e 40%); }
+.circuit-editor .circ-board-name { font: bold 13px var(--asm-mono, monospace); fill: var(--asm-fg); }
+.circuit-editor .circ-board-pin { font: 7px var(--asm-mono, monospace); fill: var(--asm-fg); }
+.circuit-editor .circ-board-conn { font: bold 10px var(--asm-mono, monospace); fill: var(--asm-fg); }
 .circuit-editor .circ-label, .circuit-editor .circ-supply-text { font: 10px var(--asm-mono, monospace); fill: var(--asm-fg); }
 .circuit-editor .circ-led { stroke: #555; stroke-width: 1; opacity: .45; }
 .circuit-editor .circ-led.lit { opacity: 1; filter: drop-shadow(0 0 4px currentColor); }

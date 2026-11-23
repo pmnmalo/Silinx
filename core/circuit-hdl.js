@@ -6,7 +6,7 @@
 // written in the same file and named after the circuit (<circuit>_sn74ls00: two circuits of a project never define the
 // same entity). A closed contact copies its driven side's net to its other side (one between two driven nets is an
 // error of the check, core/circuit-check.js). Isomorphic module.
-import { partDef } from './circuit-parts.js';
+import { partDef, supplyPins } from './circuit-parts.js';
 import { circuitNets } from './circuit-net.js';
 import { normalizeCircuit, circuitPorts } from './circuit.js';
 import { partInputs, partLamps, portRef, portDecls } from './circuit-io.js';
@@ -20,7 +20,7 @@ import { coreText, verilogCoreDigital } from './circuit-hdl-core.js';
 const entityOf = (m, d) => (d.kind === 'model' ? d.module : `${m.name}_${d.chip.toLowerCase()}`);
 // (a part as the header names it: an IC's chip; a project's KiCad part's number, #4280, and its library IC's)
 const partLabel = (d) => (!d.kicad ? d.chip : d.behaves ? `${d.kicad.value}, as the ${d.chip}` : d.kind === 'model' ? `${d.kicad.value}, by its module ${d.module}` : `${d.kicad.value}, drawn only`);
-const isSupply = (q) => q.name === '+' || q.name === '-';
+const isSupply = (q) => !!q.supply || q.name === '+' || q.name === '-';   // (a board's 5V and GND too, #5215)
 const WHILE = { level: 'on', momentary: 'pressed', clock: 'high' };
 
 /** The circuit's HDL: { filename, code, module }, or an Error with its diagnostics when it has errors. */
@@ -137,7 +137,8 @@ function netPlan(m, V, ports) {
   for (const p of m.parts) {
     const d = partDef(p.type);
     if (!d) continue;
-    if (d.kind === 'supply') { add(netOf(p.id, 1), lit('1'), `${p.id} +`); add(netOf(p.id, 2), lit('0'), `${p.id} −`); }
+    // (the supply's terminals; a board's 5V, 3V3 and GND, #5215, its pins joined inside it driven once)
+    for (const x of supplyPins(d)) if (!targets.has(netOf(p.id, x.n))) add(netOf(p.id, x.n), lit(x.value), d.kind === 'supply' ? `${p.id} ${x.value === '1' ? '+' : '−'}` : `${p.id} ${d.pins.find((q) => q.n === x.n).name}`);
     const inputs = partInputs(p);
     for (const s of d.sources || []) add(netOf(p.id, s.pin), portRef(inputs[s.input].port, V), p.id);
     for (const ct of nets.contacts.filter((x) => x.part === p.id)) {

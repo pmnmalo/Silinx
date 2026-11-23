@@ -18,6 +18,8 @@ const OTHER_TESTS = {
   'dip-8': 'circuit-parts.test.js', clock: 'circuit-parts.test.js', 'pull-up': 'circuit-parts.test.js', 'pull-down': 'circuit-parts.test.js',
   led: 'circuit.test.js', 'seg7-cc': 'circuit-parts.test.js', 'seg7-ca': 'circuit-parts.test.js', 'led-bar-10': 'circuit-parts.test.js',
   probe: 'circuit-probe.test.js',
+  // (the boards, #5215: their pins against the boards' descriptions)
+  'arduino-uno': 'circuit-boards.test.js', 'arduino-nano': 'circuit-boards.test.js', 'fpga-basys2': 'circuit-boards.test.js', 'fpga-nexys2': 'circuit-boards.test.js',
 };
 // a part with a model and no reference test yet: its issue (none today; never a part left out silently)
 const GAPS = {};

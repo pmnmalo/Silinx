@@ -240,6 +240,14 @@ the check's (`analyzeSystem` of `core/system-check.js`), so the view and the war
 server's `check_system` says them too, a line each after the System described (`wiringLines`), and gives them in its
 data (`wires`).
 
+**The boards as the circuit's parts** (#5215, `core/circuit-boards.js`): the Circuit editor's Parts panel has a Boards
+group, the Arduino Uno and Nano, the Basys2 and the Nexys2, each as large as the board and with its real pins. An
+Arduino's pins are its board's (`MCU_BOARDS`: D0…D13, A0…; the Uno's SDA and SCL joined to A4 and A5 inside it; the
+Nano a DIP-30 across a breadboard's channel); an FPGA board's are its Pmod connectors' (JA1…, each with its package pin
+from `core/boards.js`: the Basys2's JA2 and JA3 its UART's). A board powers the breadboard: its 5V, 3V3 and GND drive a
+1 and a 0, as the supply's terminals, in Try it, the checks and the HDL. Its other pins drive nothing in the circuit
+alone; a circuit as a System's node (the next step) gives them to the System's nodes.
+
 A System drawn only as a circuit would lose the protocol level: the decoders, the speed and the links' checks.
 
 ## The System's actions

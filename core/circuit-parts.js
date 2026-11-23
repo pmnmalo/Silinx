@@ -13,6 +13,8 @@ import { SHIFT_ICS } from './circuit-model-shift.js';
 import { DECODER_ICS } from './circuit-model-decoders.js';
 import { MUX_ICS } from './circuit-model-mux.js';
 import { MEMORY_ICS } from './circuit-model-memory.js';
+import { BOARD_PARTS } from './circuit-boards.js';
+import { codesignOn } from './build-channel.js';
 
 // ------------------------------------------------------------------ the breadboards
 export const BB_COLS = 30;
@@ -81,9 +83,9 @@ const OTHERS = [
 ];
 
 // ------------------------------------------------------------------ the library
-export const PARTS = Object.fromEntries([...OTHERS, ...ICS, ...MSI, ...SEQ, ...MODEL_ICS, ...COUNTER_ICS, ...SHIFT_ICS, ...DECODER_ICS, ...MUX_ICS, ...MEMORY_ICS].map((d) => [d.type, d]));
-/** The order of the library (the side panel's, circuit_parts'): the parts as written, then the ICs. */
-export const PART_ORDER = [...OTHERS, ...ICS, ...MSI, ...SEQ, ...MODEL_ICS, ...COUNTER_ICS, ...SHIFT_ICS, ...DECODER_ICS, ...MUX_ICS, ...MEMORY_ICS].map((d) => d.type);
+export const PARTS = Object.fromEntries([...OTHERS, ...BOARD_PARTS, ...ICS, ...MSI, ...SEQ, ...MODEL_ICS, ...COUNTER_ICS, ...SHIFT_ICS, ...DECODER_ICS, ...MUX_ICS, ...MEMORY_ICS].map((d) => [d.type, d]));
+/** The order of the library (the side panel's, circuit_parts'): the parts as written, the boards (#5215), then the ICs. */
+export const PART_ORDER = [...OTHERS, ...BOARD_PARTS, ...ICS, ...MSI, ...SEQ, ...MODEL_ICS, ...COUNTER_ICS, ...SHIFT_ICS, ...DECODER_ICS, ...MUX_ICS, ...MEMORY_ICS].map((d) => d.type);
 export const LED_COLORS = ['red', 'green', 'yellow', 'blue', 'white'];
 export const WIRE_COLORS = ['red', 'black', 'blue', 'green', 'yellow', 'orange', 'white', 'purple'];
 /** A clock's frequency (Hz): the live simulation's, in real time. */
@@ -112,6 +114,13 @@ export const projectParts = () => [...theParts().values()];
 /** A part's description by its type (the library's, or one of the project's own parts), or null. */
 export const partDef = (type) => (Object.hasOwn(PARTS, String(type)) ? PARTS[type] : theParts().get(String(type)) ?? null);
 
+/** The pins a part drives as a supply's terminals: [{ n, value: '1' | '0' }] (the supply's + and −, a board's 5V, 3V3 and
+ *  GND, #5215). */
+export function supplyPins(d) {
+  if (d?.kind === 'supply') return [{ n: 1, value: '1' }, { n: 2, value: '0' }];
+  return (d?.pins || []).filter((p) => p.supply).map((p) => ({ n: p.n, value: p.dir === 'vcc' ? '1' : '0' }));
+}
+
 /** A pin's place unturned (dx, dy) turned by `rot` quarter turns clockwise. */
 function turn(dx, dy, rot = 0) {
   let x = dx, y = dy;
@@ -123,7 +132,7 @@ function turn(dx, dy, rot = 0) {
 export function partPins(part) {
   const d = partDef(part.type);
   if (!d) return [];
-  return d.pins.map((p) => { const [dx, dy] = turn(p.dx, p.dy, part.rot || 0); return { n: p.n, name: p.name, dir: p.dir, ...(p.tri ? { tri: true } : {}), ...(p.io ? { io: true } : {}), x: part.x + dx, y: part.y + dy }; });
+  return d.pins.map((p) => { const [dx, dy] = turn(p.dx, p.dy, part.rot || 0); return { n: p.n, name: p.name, dir: p.dir, ...(p.tri ? { tri: true } : {}), ...(p.io ? { io: true } : {}), ...(p.supply ? { supply: true } : {}), x: part.x + dx, y: part.y + dy }; });
 }
 
 /** A breadboard part's holes on the grid, turned with it (#4065): [{ name, strip, x, y }] (none for any other part). */
@@ -169,9 +178,11 @@ export function kicadPartFunction(d) {
 }
 
 export function partsList() {
-  return [...PART_ORDER.map((t) => PARTS[t]), ...projectParts()].map((d) => ({
+  // (the boards, #5215: co-design's, not in a release yet, #5202)
+  return [...PART_ORDER.map((t) => PARTS[t]).filter((d) => d.kind !== 'board' || codesignOn()), ...projectParts()].map((d) => ({
     type: d.type, title: d.title, kind: d.kind, ...(d.chip ? { chip: d.chip, family: d.family, tpd: d.tpd, ...(d.oc ? { openCollector: true } : {}) } : {}),
-    pins: d.pins.map((p) => ({ n: p.n, name: p.name, dir: p.dir, dx: p.dx, dy: p.dy })),
+    pins: d.pins.map((p) => ({ n: p.n, name: p.name, dir: p.dir, dx: p.dx, dy: p.dy, ...(p.loc ? { loc: p.loc } : {}), ...(p.volts ? { volts: p.volts } : {}) })),
+    ...(d.kind === 'board' ? { board: d.board } : {}),
     ...(d.gates ? { gates: d.gates.map((g) => `${g.fn} (${g.ins.join(', ')}) → ${g.out}`) } : {}),
     ...(d.model || d.seq ? { function: d.title } : {}),
     // (a project's KiCad part: its file, its symbol, its source; the library part it behaves as, or none: drawn only)
