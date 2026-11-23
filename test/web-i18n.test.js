@@ -676,3 +676,12 @@ test('#5185 the Petri net\'s and the circuit\'s Check messages in Portuguese', a
   };
   for (const [en, pt] of Object.entries(T)) assert.equal(t(en), pt, en);
 });
+
+// #5396: a circuit part's heading (U1: Logic switch) and I/O Pin Planning's board field (Board: Digilent Basys2), each
+// with its own translation: the boards, circuit parts since #5215, made the first take the second
+test('#5396 "Board: <board>" is I/O Pin Planning\'s field, not a circuit part\'s heading, in Portuguese', () => {
+  assert.equal(t('Board: Digilent Basys2'), 'Placa: Digilent Basys2');
+  assert.equal(t('Board: Digilent Nexys2'), 'Placa: Digilent Nexys2');
+  assert.equal(t('SW1: Logic switch'), 'SW1: Interruptor lógico');
+  assert.equal(t('F1: Digilent Basys2'), 'F1: Digilent Basys2');
+});

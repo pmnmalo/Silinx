@@ -262,7 +262,8 @@ export const CIRCUIT_PT_PATTERNS = [
   // the library's parts and ICs, their tips, the selection's title, a pinout's
   [new RegExp(`^(\\d{4,5}) (${TITLES})$`), (m, n, t) => `${n} ${title(t)}`],
   [new RegExp(`^(${TITLES}): click it, then the drawing \\(Esc: done\\)$`), (m, t) => `${title(t)}: clique nela e depois no desenho (Esc: terminar)`],
-  [new RegExp(`^([A-Za-z]\\w*): (${TITLES})$`), (m, id, t) => `${id}: ${title(t)}`],
+  // (a part's heading, U1: Logic switch; not I/O Pin Planning's Board: Digilent Basys2, its own field, #5396)
+  [new RegExp(`^(?!Board: )([A-Za-z]\\w*): (${TITLES})$`), (m, id, t) => `${id}: ${title(t)}`],
   [new RegExp(`^(${TITLES}): pinout$`), (m, t) => `${title(t)}: pinos`],
   [new RegExp(`^(${TITLES})$`), (m, t) => title(t)],
   [/^((?:SN74LS|CD)\d{2,4}B?): pinout$/, '$1: pinos'],
