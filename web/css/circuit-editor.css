@@ -233,3 +233,14 @@ html[data-theme="dark"] .circuit-editor .circ-sim-badge { color: var(--m-success
 .circuit-editor .sym-tip .sym-tip-name { font-weight: bold; }
 .circuit-editor .sym-tip .sym-tip-how { opacity: .75; font-size: 11px; }
 .kicad-ics-choice, .kicad-with { display: flex; align-items: center; gap: 6px; margin-top: 6px; }   /* (Export ICs as KiCad Symbols…, #4282; the package's choice, #4290) */
+/* a 4×4 membrane keypad (#5364): its black membrane, its keys white (the letters red, * and # blue), down while pressed */
+.circuit-editor .circ-keypad-body { fill: #1c1c1e; stroke: #5e5e62; stroke-width: 1.2; }
+.circuit-editor .circ-keypad-ribbon { fill: #d9d2bf; stroke: #a89b78; }
+.circuit-editor .circ-keypad-trace { stroke: #8a8f96; stroke-width: 2; }
+.circuit-editor .circ-keypad-pin { font: 8px var(--asm-mono, monospace); fill: #333; pointer-events: none; }
+.circuit-editor .circ-key { cursor: pointer; }
+.circuit-editor .circ-key rect { fill: #f2f2f2; stroke: #8a8f96; stroke-width: 1.2; }
+.circuit-editor .circ-key text { font: bold 26px Arial, sans-serif; fill: #1c1c1e; pointer-events: none; }
+.circuit-editor .circ-key-letter rect { fill: #d32f2f; } .circuit-editor .circ-key-letter text { fill: #fff; }
+.circuit-editor .circ-key-sym rect { fill: #2f6fd6; } .circuit-editor .circ-key-sym text { fill: #fff; }
+.circuit-editor .circ-key.down rect { stroke: var(--asm-accent); stroke-width: 4; filter: brightness(.8); }

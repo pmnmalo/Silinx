@@ -13,6 +13,7 @@ import { drawLcd } from './circuit-draw-lcd.js';
 import { drawOled } from './circuit-draw-oled.js';
 import { drawLm75 } from './circuit-draw-lm75.js';
 import { drawServo } from './circuit-draw-servo.js';
+import { drawKeypad } from './circuit-draw-keypad.js';
 import { icInside, stripsSvg } from './circuit-draw-inside.js';
 import { wirePaths } from '/core/circuit-wires.js';
 import { wireHandles } from '/core/circuit-wire-edit.js';
@@ -238,6 +239,7 @@ function partSvg(turned, selected, { levels, leds, lcds = null, oleds = null, se
   else if (d.kind === 'oled') drawOled(g, p, d, oleds?.[p.id]);   // (#5336)
   else if (d.kind === 'sensor') drawLm75(g, p, box, sensors?.[p.id]);   // (#5342)
   else if (d.kind === 'servo') drawServo(g, p, servos?.[p.id]);   // (#5347)
+  else if (d.type === 'keypad-4x4') drawKeypad(g, p, d, inputs?.[p.id]);   // (#5364)
   else if (d.kind === 'supply') {
     // (a bench supply's terminals, #5367: its red + and its black −, each a binding post)
     g.append(sv('rect', { x: box.x0 - P * 2.6, y: box.y0 - P * 0.5, width: P * 2.3, height: box.y1 - box.y0 + P, rx: 3, class: 'circ-supply-body' }),
