@@ -220,6 +220,13 @@ export async function shareRoom({ url, token = null, doc, user, editors = false,
   if (signer && !ownerKey) doc.getMap('meta').set('editors', signer.pub); else doc.getMap('meta').delete('editors');
   if (!ownerKey) doc.getMap('meta').delete('editorsList');
   let verifier = signer ? await verifierOf(signer.pub) : null;
+  // (#5115: the editor link's keys before its renewals, each with the participants in the room then: their requests to be
+  // listed signed with it, one handled after the renewal, or sent again at a rejoin, still taken; the last few)
+  const before = [];
+  const invitedBefore = async (req, client) => {
+    for (const b of before) if (b.clients.has(client) && await checkEnrol(b.verifier, room, req)) return true;
+    return false;
+  };
   // (#4745: the editors' keys listed, signed, given to the room and to every participant)
   const publishList = async () => {
     const list = await signList(ownerKey.key, room, ++listN, [...listed.keys()]);
@@ -273,7 +280,7 @@ export async function shareRoom({ url, token = null, doc, user, editors = false,
   const enrolIn = async (bytes, client) => {
     let req = null;
     try { req = JSON.parse(new TextDecoder().decode(bytes)); } catch { return; }
-    if (!await checkEnrol(verifier, room, req)) { await sendRole(cur, client, { role: 'viewer', reason: NOT_INVITED }); return; }
+    if (!await checkEnrol(verifier, room, req) && !await invitedBefore(req, client)) { await sendRole(cur, client, { role: 'viewer', reason: NOT_INVITED }); return; }
     if (listed.has(req.pub)) { listed.set(req.pub, client); return; }
     if (listed.size >= MAX_EDITORS) {
       onEvent({ type: 'error', message: `an editor could not join: this shared project has ${MAX_EDITORS} editors already` });
@@ -395,6 +402,8 @@ export async function shareRoom({ url, token = null, doc, user, editors = false,
     const here = new Set(p.peers().map(x => keyOfPeer(x.client)).filter(Boolean));
     let out = 0;
     for (const pub of [...listed.keys()]) if (!here.has(pub)) { listed.delete(pub); out++; }
+    before.push({ verifier, clients: new Set(p.peers().filter(x => x.role !== 'owner').map(x => x.client)) });
+    if (before.length > 4) before.shift();
     signer = await newSigner();
     verifier = await verifierOf(signer.pub);
     await publishList();

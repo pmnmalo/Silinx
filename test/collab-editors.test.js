@@ -15,7 +15,7 @@ import { keyId, isList, signList, checkList, editorKeys, signEdit, verifyEdit, M
 import { collabRooms, ROOM_LIMITS, NEWER_NEEDED } from '../core/collab-room.js';
 import { KIND, PROTOCOL } from '../core/collab-client.js';
 import { OLDER_PROTOCOL } from '../core/collab-wire.js';
-import { newKey, seal } from '../core/collab-crypto.js';
+import { newKey, seal, keyOf, unseal } from '../core/collab-crypto.js';
 import { newSigner, verifierOf, signFrame, editIvs } from '../core/collab-sign.js';
 
 const settle = () => new Promise(r => setTimeout(r, 30));
@@ -257,4 +257,51 @@ test('#4745 the editor link renewed: copies of the old one, and the editors away
   const plain = await shareRoom({ url: 'silinx-host:', doc: projectDoc(), user: { name: 'Ana' }, WebSocket: hostedRooms().owner, reconnect: false });
   await assert.rejects(plain.renew(), /this project is shared with no editors/);
   for (const p of [here, back, fresh, plain, owner]) await p.close();
+});
+
+test('#5115 the editor link renewed while an editor\'s request to be listed is on its way: an editor in the room then is listed, keeps editing; one not in it, told it follows read only', async () => {
+  const { hostedRooms, socketPair } = await import('../core/collab-loop.js');
+  const { shareRoom, followRoom, NOT_INVITED } = await import('../core/collab-client.js');
+  const { projectDoc, publishProject, docFile, editFile } = await import('../core/collab-doc.js');
+  const until = async (fn, what, ms = 5000) => { const t0 = Date.now(); for (;;) { if (await fn()) return; if (Date.now() - t0 > ms) throw new Error(`timed out: ${what}`); await new Promise(r => setTimeout(r, 5)); } };
+  const h = hostedRooms();
+  const doc = projectDoc();
+  publishProject(doc, { project: { name: 'p', files: [{ path: 'a.vhd', lang: 'vhdl' }], fileTree: ['a.vhd'] }, files: { 'a.vhd': '-- a\n' }, owner: 'Ana' });
+  const owner = await shareRoom({ url: 'silinx-host:', doc, user: { name: 'Ana' }, editors: true, WebSocket: h.owner, reconnect: false });
+  const key = await keyOf(owner.key), old = owner.editKey;
+  // (a follower's socket whose requests to be listed are held until `release()`, its other frames sent in their order)
+  const held = [];
+  const holding = () => { let order = Promise.resolve(), on = true; const S = function S() {
+    const { client, room } = socketPair(); h.follower(room);
+    const send = client.send.bind(client);
+    client.send = (data) => {
+      if (typeof data === 'string') { order = order.then(() => send(data)); return; }
+      const bytes = new Uint8Array(data);
+      order = order.then(async () => { const kind = await unseal(key, owner.room, bytes).then(u => u.kind, () => null); if (on && kind === KIND.enrol) held.push(() => send(bytes)); else send(bytes); });   // (an edit, signed: not a frame unseal opens)
+    };
+    return client;
+  }; return { S, release: () => { on = false; for (const f of held.splice(0)) f(); } }; };
+  const join = (name, S, errs) => followRoom({ url: 'silinx-host:', room: owner.room, key: owner.key, owner: owner.ownerKey, sign: old, user: { name }, WebSocket: S, reconnect: false, onEvent: e => { if (e.type === 'error') errs.push(e.message); } });
+  const open = [owner];
+  try {
+  const ruiErrs = [], rui = holding(), here = await join('Rui', rui.S, ruiErrs);
+  open.push(here);
+  // in the room (the owner has his awareness), his request not handled yet: the link renewed, then it arrives
+  await until(() => owner.peers().length === 1 && held.length === 1, 'Rui in, his request held');
+  assert.equal(here.listed, false);
+  await owner.renew();
+  rui.release();
+  await until(() => here.listed, 'Rui listed');
+  editFile(here.doc, 'a.vhd', '-- Rui\n');
+  await until(() => docFile(doc, 'a.vhd') === '-- Rui\n', 'Rui edits');
+  assert.deepEqual(ruiErrs, []);
+  // one who joins with the old link after the renewal, its request held as well: not in the room then, refused
+  const lateErrs = [], late = holding(), copy = await join('Copy', late.S, lateErrs);
+  open.push(copy);
+  await until(() => owner.peers().length === 2 && held.length === 1, 'the copy in, its request held');
+  late.release();
+  await until(() => lateErrs.length, 'the copy told');
+  assert.deepEqual(lateErrs, [NOT_INVITED]);
+  assert.equal(copy.editor, false);
+  } finally { for (const p of open.reverse()) await p.close().catch(() => {}); }
 });
