@@ -17,6 +17,7 @@ import { BOARD_PARTS } from './circuit-boards.js';
 import { LCD_1602 } from './circuit-lcd.js';
 import { LM75 } from './circuit-lm75.js';
 import { SERVO_SG90 } from './circuit-servo.js';
+import { KEYPAD_4X4 } from './circuit-keypad.js';
 import { OLED_SSD1306 } from './circuit-oled.js';
 import { codesignOn } from './build-channel.js';
 
@@ -76,6 +77,8 @@ const OTHERS = [
   { type: 'spdt', title: 'Slide switch (SPDT)', kind: 'input', pins: [pin(1, 'A', 'pass', 0, 0), pin(2, 'C', 'pass', 1, 0), pin(3, 'B', 'pass', 2, 0)],
     inputs: [{ k: null, kind: 'level' }], contacts: [{ a: 2, b: 1, input: 0, when: false }, { a: 2, b: 3, input: 0, when: true }] },
   dipSwitch(4), dipSwitch(8),
+  // a 4×4 matrix keypad (#5364, core/circuit-keypad.js)
+  KEYPAD_4X4,
   { type: 'clock', title: 'Clock source', kind: 'input', pins: [pin(1, 'out', 'out', 0, 0)], inputs: [{ k: null, kind: 'clock' }], sources: [{ pin: 1, input: 0 }] },
   { type: 'pull-up', title: 'Pull-up (a weak 1)', kind: 'pull', pins: [pin(1, 'out', 'weak', 0, 0)], pulls: [{ pin: 1, value: '1' }] },
   { type: 'pull-down', title: 'Pull-down (a weak 0)', kind: 'pull', pins: [pin(1, 'out', 'weak', 0, 0)], pulls: [{ pin: 1, value: '0' }] },

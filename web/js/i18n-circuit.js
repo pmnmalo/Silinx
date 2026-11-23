@@ -108,6 +108,8 @@ export const CIRCUIT_PT = {
   'Joins its two pins while it is pressed (momentary, normally open): with a pull-up or a pull-down, it gives a 0 or a 1. An input of the HDL.':
     'Liga os seus dois pinos enquanto está premido (momentâneo, normalmente aberto): com um pull-up ou um pull-down, dá um 0 ou um 1. Uma entrada do HDL.',
   'Joins its middle pin C to A or to B, as it is set. An input of the HDL.': 'Liga o seu pino do meio C a A ou a B, conforme a posição. Uma entrada do HDL.',
+  'A membrane keypad, 16 keys in 4 rows and 4 columns: a key joins its row (R1…R4) to its column (C1…C4) while pressed. A program scans it: its rows driven low one at a time, its columns pulled up and read. Each key an input of the HDL.':
+    'Um teclado de membrana, 16 teclas em 4 linhas e 4 colunas: uma tecla liga a sua linha (R1…R4) à sua coluna (C1…C4) enquanto premida. Um programa varre-o: as linhas postas a 0 uma de cada vez, as colunas com pull-up e lidas. Cada tecla é uma entrada do HDL.',
   'A row of switches, each joining its pin to the one opposite while it is on. Inputs of the HDL.':
     'Uma fila de interruptores, cada um a ligar o seu pino ao oposto enquanto está ligado. Entradas do HDL.',
   'Drives its output to 1 and 0 in turn, at its frequency. An input of the HDL.': 'Põe a sua saída a 1 e a 0 alternadamente, à sua frequência. Uma entrada do HDL.',
@@ -129,7 +131,7 @@ const TITLE = { 'Arduino Uno': 'Arduino Uno', 'Arduino Nano': 'Arduino Nano', 'D
   'Half breadboard': 'Meia placa de ensaio', 'Full breadboard (its rails split in the middle)': 'Placa de ensaio inteira (as linhas de alimentação cortadas ao meio)',
   'Power supply (+5 V, GND)': 'Fonte de alimentação (+5 V, GND)', 'Logic switch': 'Interruptor lógico',
   'Push button (momentary, normally open)': 'Botão de pressão (momentâneo, normalmente aberto)', 'Slide switch (SPDT)': 'Comutador deslizante (SPDT)',
-  'DIP switch (4)': 'Interruptor DIP (4)', 'DIP switch (8)': 'Interruptor DIP (8)', 'Clock source': 'Fonte de relógio',
+  'DIP switch (4)': 'Interruptor DIP (4)', 'DIP switch (8)': 'Interruptor DIP (8)', 'Keypad 4×4 (matrix)': 'Teclado 4×4 (matricial)', 'Clock source': 'Fonte de relógio',
   'Pull-up (a weak 1)': 'Pull-up (um 1 fraco)', 'Pull-down (a weak 0)': 'Pull-down (um 0 fraco)', LED: 'LED',
   '7-segment display, common cathode': 'Mostrador de 7 segmentos, cátodo comum', '7-segment display, common anode': 'Mostrador de 7 segmentos, ânodo comum',
   'LED bar (10)': 'Barra de LEDs (10)', 'Character LCD 16×2 (HD44780)': 'LCD de caracteres 16×2 (HD44780)', 'Temperature sensor LM75 (I²C)': 'Sensor de temperatura LM75 (I²C)', 'Servo (SG90, PWM)': 'Servo (SG90, PWM)', 'Graphic OLED 128×64 (SSD1306, I²C)': 'OLED gráfico 128×64 (SSD1306, I²C)', 'Logic probe': 'Sonda lógica', 'Hex inverter': 'Seis inversores', 'Hex Schmitt-trigger inverter': 'Seis inversores Schmitt-trigger',
@@ -325,13 +327,13 @@ export const CIRCUIT_PT_PATTERNS = [
   [/^Short circuit: (.+) drive one net \(a short whenever they differ\)$/, (m, q) => `Curto-circuito: ${pins(q)} comandam uma rede (um curto-circuito sempre que forem diferentes)`],
   [/^(.+): open collector with no pull-up: the net floats while (they are|it is) off \(a 74LS input reads it high, an LED stays off\)$/,
     (m, q, w) => `${pins(q)}: coletor aberto sem pull-up: a rede flutua enquanto ${w === 'they are' ? 'estiverem desligados' : 'estiver desligado'} (uma entrada 74LS lê-a a 1, um LED fica apagado)`],
-  [/^Short circuit while (\S+) is (pressed|on|off): it joins the supply's \+ and −$/, (m, p, w) => `Curto-circuito enquanto ${p} está ${HOW[w]}: liga o + e o − da fonte`],
-  [/^(\S+) joins two driven nets while (pressed|on|off) \((.+); (.+)\): one of its sides must be driven by nothing else$/,
-    (m, p, w, a, b) => `${p} liga duas redes comandadas enquanto ${HOW[w]} (${pins(a)}; ${pins(b)}): um dos seus lados não pode ser comandado por mais nada`],
+  [/^Short circuit while (\S+) is (pressed|on|off)(?: \(its key (\S+)\))?: it joins the supply's \+ and −$/, (m, p, w, k) => `Curto-circuito enquanto ${p} está ${HOW[w]}${k ? ` (a sua tecla ${k})` : ''}: liga o + e o − da fonte`],
+  [/^(\S+) joins two driven nets while (pressed|on|off)(?: \(its key (\S+)\))? \((.+); (.+)\): one of its sides must be driven by nothing else$/,
+    (m, p, w, k, a, b) => `${p} liga duas redes comandadas enquanto ${HOW[w]}${k ? ` (a sua tecla ${k})` : ''} (${pins(a)}; ${pins(b)}): um dos seus lados não pode ser comandado por mais nada`],
   [/^(\S+) \((.+)\) is powered the wrong way round: its (\S+) \(pin (\d+)\) on the supply's − and its (\S+) \(pin (\d+)\) on its \+$/, '$1 ($2) está alimentado ao contrário: o seu $3 (pino $4) no − da fonte e o seu $5 (pino $6) no +'],
   [/^(\S+) \((.+)\) is not powered: (.+)$/, (m, p, v, w) => `${p} (${v}) não está alimentado: ${w.replace(/its (\S+) \(pin (\d+)\) is not on the supply's ([+−])/g, 'o seu $1 (pino $2) não está no $3 da fonte').replace(/ and /g, ' e ')}`],
-  [/^(\S+) pin (\d+) \((.+)\) floats while (the button (\S+) is released|(\S+) is (off|on)): (a 74LS input reads high|a CMOS input reads X)$/,
-    (m, p, n, q, w, b, c, o, r) => `${p} pino ${n} (${q}) flutua enquanto ${b ? `o botão ${b} está solto` : `${c} está ${HOW[o]}`}: ${READS[r]}`],
+  [/^(\S+) pin (\d+) \((.+)\) floats while (the button (\S+) is released|no key of (\S+) is pressed|(\S+) is (off|on)): (a 74LS input reads high|a CMOS input reads X)$/,
+    (m, p, n, q, w, b, kp, c, o, r) => `${p} pino ${n} (${q}) flutua enquanto ${b ? `o botão ${b} está solto` : kp ? `nenhuma tecla de ${kp} está premida` : `${c} está ${HOW[o]}`}: ${READS[r]}`],
   [/^(\S+) pin (\d+) \((.+)\) is floating: (a 74LS input reads high|a CMOS input reads X)$/, (m, p, n, q, r) => `${p} pino ${n} (${q}) está a flutuar: ${READS[r]}`],
   // (a graphic OLED's lines, #5336)
   [/^(\S+)'s (SCL|SDA) \(pin (\d)\) has no pull-up: the I²C bus's lines are released high by a pull-up each$/, (m, p, n, k) => `O ${n} (pino ${k}) de ${p} não tem pull-up: as linhas do bus I²C são soltas a 1 por um pull-up cada`],

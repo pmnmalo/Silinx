@@ -91,6 +91,8 @@ export function mountSystemEmulator(host, opts) {
       // (a temperature sensor's − and +, #5342: a degree less or more)
       if (i.dataset.input === 'temp-up' || i.dataset.input === 'temp-down') { const t = cur?.sensors?.[id]?.temp ?? 25; ready?.set(b.id, id, t + (i.dataset.input === 'temp-up' ? 1 : -1)); }
       else if (i.dataset.input === 'button') { set(id, true); window.addEventListener('pointerup', () => set(id, false), { once: true }); }
+      // (a keypad's key, #5364: held while the mouse is down, its pin `KP1:<n>`)
+      else if (i.dataset.input === 'key') { const k = `${id}:${Number(i.dataset.lever) + 1}`; set(k, true); window.addEventListener('pointerup', () => set(k, false), { once: true }); }
       else if (i.dataset.input === 'dip') { const k = Number(i.dataset.lever); set(`${id}:${k + 1}`, !(Array.isArray(now) && now[k])); }
       else set(id, !now);
       e.preventDefault();

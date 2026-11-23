@@ -173,7 +173,7 @@ function netPlan(m, V, ports) {
       const f = from(ct);   // (both strongly driven: an error of the check; neither driven: nothing to copy)
       if (f == null) continue;
       const to = f === ct.a ? ct.b : ct.a, port = portRef(inputs[ct.input].port, V);
-      if (name[f]) add(to, V ? `${name[f]} when ${port} = '${ct.when ? 1 : 0}' else 'Z'` : `${ct.when ? port : `!${port}`} ? ${name[f]} : 1'bz`, `${p.id} ${p.type === 'button' ? 'pressed' : ct.when ? 'on' : 'off'}`);
+      if (name[f]) add(to, V ? `${name[f]} when ${port} = '${ct.when ? 1 : 0}' else 'Z'` : `${ct.when ? port : `!${port}`} ? ${name[f]} : 1'bz`, `${p.id} ${p.type === 'button' || p.type === 'keypad-4x4' ? 'pressed' : ct.when ? 'on' : 'off'}`);
     }
   }
   nets.nets.forEach((net, i) => {
