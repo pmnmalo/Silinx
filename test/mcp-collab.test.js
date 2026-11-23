@@ -697,7 +697,8 @@ test('#4002 follow_project gives the owner\'s activity: its open documents and t
     owner.publish('sim', { docs: [] });
     owner.publish('emu', null);
     owner.publish('try', { docs: null });
-    const g = await until(async () => { const r = await ok('follow_project', { link }); return r.data.ownerActivity?.view?.view === 'impl' && r; }, 'the activity changed');
+    // (every channel's new value: each comes in a message of its own, the emulator's after the view's, #4999)
+    const g = await until(async () => { const r = await ok('follow_project', { link }), a = r.data.ownerActivity; return a?.view?.view === 'impl' && ['layout', 'design', 'sim', 'emu', 'try'].every((k) => a[k] === null) && r; }, 'the activity changed');
     assert.deepEqual(g.data.ownerActivity, { view: { open: ['file:src/top.vhd'], active: 'file:src/top.vhd', split: null, page: 'files', view: 'impl' }, layout: null, design: null, runs: null, sim: null, emu: null, try: null });
     assert.match(g.text, /\nThe owner is in the Implementation view, the files page\.\nTheir open documents: file:src\/top\.vhd \(in front\)\.$/);
     await ok('follow_project', { link, stop: true });
