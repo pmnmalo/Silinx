@@ -27,7 +27,7 @@ mostrados ao vivo. Sem bancada de teste.</td>
 <b>Simule.</b> O simulador do próprio Silinx corre VHDL e Verilog no browser: bancadas de teste feitas por um assistente
 ou desenhadas nas formas de onda, os sinais de qualquer instância, cursores e marcadores.</td>
 <td><a href="docs/user/pt/emulator.md"><img src="docs/images/emulator-basys2-pt.webp" alt="O Emulador da Placa: uma Basys2"></a>
-<b>Experimente numa placa emulada.</b> O projeto corre numa imagem da placa: carregue nos botões, mude os
+<b>Corra-o numa placa emulada.</b> O projeto corre numa imagem da placa: carregue nos botões, mude os
 interruptores, veja os LEDs, os mostradores e o ecrã VGA.</td>
 </tr>
 <tr>

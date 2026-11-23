@@ -25,7 +25,7 @@ breadboard, its inputs clicked, its clock stepped, its signals, states and LEDs 
 <b>Simulate.</b> Silinx's own simulator runs VHDL and Verilog in the browser: test benches made by a wizard or drawn
 on the waveforms, any instance's signals added, cursors and markers.</td>
 <td><a href="docs/user/en/emulator.md"><img src="docs/images/emulator-basys2.webp" alt="The Board Emulator: a Basys2"></a>
-<b>Try it on an emulated board.</b> The design runs on a picture of the board: press its buttons, flip its switches,
+<b>Run it on an emulated board.</b> The design runs on a picture of the board: press its buttons, flip its switches,
 watch its LEDs, displays and VGA screen.</td>
 </tr>
 <tr>
