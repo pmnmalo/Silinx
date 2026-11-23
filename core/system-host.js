@@ -5,7 +5,7 @@
 // the run as it is then (systemReport).
 //
 // The messages, page -> host: init { system, inputs, emulate }, run { id, until } (ps), send { node, bytes } (a
-// terminal's line), set { node, pin, value } (a board's switch or button, the System Emulator's), waves { id }; host ->
+// terminal's line), set { node, pin, value } (a board's switch or button, a circuit's, #5322: the System Emulator's), waves { id }; host ->
 // page: ready { nodes, wires, terminals, boards } or failed { error }, state { id, report, finished, boards }, waves
 // { id, design } (core/system-waves.js), error { id, message }. emulate: the boards emulated too (core/system-emu.js,
 // #5212): `ready`'s boards, each state's what they show since the last.
@@ -27,7 +27,8 @@ export function hostSystemRun(port) {
       run = r; name = system.name; shown = 0; prev = {};
       if (boards) watchBoards(r.sim, boards);
       post({ type: 'ready', nodes: [...r.sim.nodes.keys()], wires: r.wires, terminals: [...r.terminals.keys()],
-        boards: boards && boards.map(b => ({ id: b.id, kind: b.kind, board: b.kind === 'fpga' ? b.board.board.id : b.board.id, variant: b.board.variant?.id ?? null, inputs: b.inputs ?? [], outputs: b.outputs })) });
+        boards: boards && boards.map(b => (b.kind === 'circuit' ? { id: b.id, kind: b.kind, inputs: b.inputs, outputs: [] }
+          : { id: b.id, kind: b.kind, board: b.kind === 'fpga' ? b.board.board.id : b.board.id, variant: b.board.variant?.id ?? null, inputs: b.inputs ?? [], outputs: b.outputs })) });
     },
     run({ id, until }) {
       if (!run) throw new Error('no System: init first');
@@ -38,7 +39,7 @@ export function hostSystemRun(port) {
     },
     set({ node, pin, value }) {
       const b = boards?.find(x => x.id === node);
-      if (!b || b.kind !== 'fpga') throw new Error(`no board of an FPGA node '${node}'`);
+      if (!b || b.kind === 'mcu') throw new Error(`no board of an FPGA node or a circuit '${node}'`);
       setBoardInput(run.sim, b, pin, value);
     },
     send({ node, bytes }) {

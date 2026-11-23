@@ -168,7 +168,7 @@ test('#5212 simulate of a System with controls (Emulate System): BTN0 pressed on
   // (with no controls: no board emulated, as before)
   assert.equal((await ok('simulate', { project: 'u', top: 'emu.sys.json', time_ns: 2e6 })).data.boards, undefined);
   const bad = async (controls, message) => { const x = await call('simulate', { project: 'u', top: 'emu.sys.json', time_ns: 2e6, controls }); assert.deepEqual([x.isError, x.text], [true, `simulate: ${message}`]); };
-  await bad([{ node: 'term', control: 'btn0', on: true }], 'controls[0]: no FPGA node \'term\' with a board in the System');
+  await bad([{ node: 'term', control: 'btn0', on: true }], 'controls[0]: no FPGA node \'term\' with a board, nor a circuit, in the System');
   await bad([{ node: 'fpga', control: 'sw3', on: true }], 'controls[0]: no switch or button \'sw3\' of fpga\'s board linked to its module (btn0)');
   await bad([{ node: 'fpga', control: 'btn0', on: true, at_ns: 5e6 }], 'controls[0]: at_ns from 0 to the run\'s time');
 });
@@ -207,4 +207,23 @@ test('#5215 a circuit node by edit_system, checked and simulated: the Uno\'s D2 
   const x = await call('simulate', { project: 'u', top: 'bench.sys.json', time_ns: 1e6 });
   assert.equal(x.isError, true);
   assert.match(x.text, /^simulate: bench\.sys\.json: bench: its circuit src\/none\.circ\.json cannot be read: /);
+});
+
+test('#5322 simulate with controls on a circuit node: its switch S1 set at 5 ms presses the FPGA\'s button (its message); what its LEDs show; a wrong control refused', async () => {
+  // the bench: the Basys2's JB1 (the FPGA's btn<0>, C6) driven by the logic switch S1, its JB3 (led<0>, C5) lighting D2
+  await write('src/emu.circ.json', { format: 'silinx-circuit', version: 1, name: 'emu', lang: 'vhdl',
+    parts: [{ id: 'F1', type: 'fpga-basys2', x: 0, y: 30, label: 'fpga' }, { id: 'S1', type: 'logic-switch', x: 8, y: 25 }, { id: 'D2', type: 'led', x: 12, y: 26, color: 'red' }],
+    wires: [{ id: 'w1', points: [[8, 25], [8, 30]], color: 'blue' }, { id: 'w5', points: [[10, 30], [12, 26]], color: 'blue' }, { id: 'w6', points: [[13, 26], [4, 30]], color: 'black' }] });
+  const m = system({ nodes: [{ id: 'bench', kind: 'circuit', circuit: 'src/emu.circ.json', interfaces: [] }] });
+  m.nodes[0].pins = { clk: 'B8', rx: 'J3', tx: 'A3', 'btn<0>': 'C6', 'led<0>': 'C5' };
+  await write('emuc.sys.json', m);
+  const r = await ok('simulate', { project: 'u', top: 'emuc.sys.json', time_ns: 60e6, type: { term: 'A' }, controls: [{ node: 'bench', control: 'S1', on: true, at_ns: 5e6 }] });
+  assert.equal(r.data.terminals.term, 'AHello from Silinx!\r\n');
+  assert.deepEqual(r.data.boards.bench, { leds: { D2: 'on' }, inputs: { S1: true }, lit: ['D2'] }, 'LD0: the last byte\'s bit 0');
+  assert.deepEqual(r.text.split('\n').slice(-3, -1), ['fpga\'s board: LEDs off.', 'bench\'s circuit: lit D2.'], r.text);
+  assert.deepEqual([r.data.warnings, r.data.errors], [[], []]);
+  const x = await call('simulate', { project: 'u', top: 'emuc.sys.json', time_ns: 2e6, controls: [{ node: 'bench', control: 'S9', on: true }] });
+  assert.deepEqual([x.isError, x.text], [true, 'simulate: controls[0]: no switch or button \'S9\' in the circuit bench (S1)']);
+  const y = await call('simulate', { project: 'u', top: 'emuc.sys.json', time_ns: 2e6, controls: [{ node: 'term', control: 'S1', on: true }] });
+  assert.deepEqual([y.isError, y.text], [true, 'simulate: controls[0]: no FPGA node \'term\' with a board, nor a circuit, in the System']);
 });

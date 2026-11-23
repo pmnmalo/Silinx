@@ -3,8 +3,9 @@
 // delay). Its pins are its boards' pins the circuit wires to something ('A1:D2', core/system-circuit.js), each an input
 // and an output of the node: set (setPin), it drives the board's pin in the circuit (strong, or weak while `weak(pin)`
 // says so: an AVR's input with its pull-up); its value is the pin's net's level (1, 0, null: open or unknown). Its
-// switches are as saved and its clocks stopped (the System drives it); its LEDs' states and the times each lit are kept
-// (lamps()); a short is said, once a net.
+// switches and buttons are as saved, or set (setInput: the System Emulator's clicks, the MCP's controls, #5322); its
+// clocks tick at their frequency from 0; its LEDs' states and the times each lit are kept (lamps()); a short is said,
+// once a net.
 //
 //   const node = new CircuitNode({ model, pins: [{ name: 'A1:D2', part: 'A1', n: 5 }] });
 //
@@ -38,7 +39,12 @@ export class CircuitNode {
     this.shorted = new Set();
     this.finished = null;
     this.lit = new Map(Object.entries(this.sim.outputs()).map(([k, v]) => [k, { on: v === '1', times: v === '1' ? 1 : 0 }]));
+    // (its clocks: each its half period, ps, and its next edge, #5322)
+    this.clocks = model.parts.filter((p) => p.type === 'clock').map((p) => ({ id: p.id, half: Math.round(5e11 / (p.hz || 1)), next: Math.round(5e11 / (p.hz || 1)) }));
   }
+
+  /** One of its parts' inputs set now (a switch on, a button pressed; `index`: a DIP switch's lever), #5322. */
+  setInput(part, value, index = 0) { this.sim.set(part, !!value, index); }
 
   /** A pin set weak while weak() says so (an AVR's input with its pull-up). */
   weakWhile(name, weak) { this.weak.set(name, weak); }
@@ -62,8 +68,15 @@ export class CircuitNode {
     if (t < this.now) throw new Error(`the node is at ${this.now} ps, not back at ${t}`);
     // (a pin's strength as its driver's now: an AVR's pin from an output to an input with its pull-up, the same 1)
     for (const [name, weak] of this.weak) if (this.set.has(name)) this.sim.drive(this.refs.get(name), lvl(this.set.get(name)), weak() ? 'w' : 's');
-    const ns = this.base + t / 1000 - this.sim.time;
-    if (ns > 0) this.sim.advance(ns);
+    const step = (to) => { const ns = this.base + to / 1000 - this.sim.time; if (ns > 0) this.sim.advance(ns); };
+    // (its clocks' edges up to t, each at its time)
+    for (;;) {
+      const e = Math.min(...this.clocks.map((c) => c.next));
+      if (!(e <= t)) break;
+      step(e);
+      for (const c of this.clocks.filter((x) => x.next === e)) { this.sim.set(c.id, !this.sim.inputs()[c.id]); c.next += c.half; }
+    }
+    step(t);
     this.now = t;
     for (const i of this.sim.shorts()) {
       if (this.shorted.has(i)) continue;

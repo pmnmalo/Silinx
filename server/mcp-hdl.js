@@ -202,7 +202,7 @@ export const HDL_TOOLS = [
     inputSchema: { type: 'object', properties: {
       project: PROJECT, top: STR('The simulation top (default: the project\'s test bench); a co-design project\'s System (.sys.json, its default): each link\'s bytes, build/<name>.vcd.'),
       type: { type: 'object', description: 'A System\'s terminals: { terminal: text }.' },
-      controls: { type: 'array', items: { type: 'object' }, description: 'Emulate System: [{ node, control: btn0, sw3…, on, at_ns }] in time; then what the boards show.' },
+      controls: { type: 'array', items: { type: 'object' }, description: 'Emulate System: [{ node, control: btn0, a circuit\'s S1…, on, at_ns }]; then what the boards show.' },
       time_ns: { type: 'number', description: 'How long to simulate, in ns (default 1000; at most 1e9).' },
       signals: { type: 'array', items: { type: 'string' }, description: 'The signals to return (names of the top, or paths through instances: uut/count).' },
       max_changes: { type: 'integer', description: `The changes of each signal returned at most (default 20, the last ones; from 1 to ${SIM_LIMITS.maxChanges}, and ${nth(SIM_LIMITS.changes)} in all).` },

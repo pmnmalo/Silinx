@@ -3,7 +3,8 @@
 // system-emu.js). An FPGA node's board is the Board Emulator's drawing and parts (web/js/emulator-board.js
 // mountBoardParts: its switches and buttons set the node's pins, its LEDs and digits painted from what the worker says
 // they showed); an Arduino's is Silinx's own (web/js/emulator-arduino.js); a serial terminal per terminal node in the
-// side panel. Run / Pause and Restart in its toolbar; its status line the time and the rate against real time; the
+// side panel; a circuit node's circuit as the Circuit editor draws it (#5322: its LEDs lit from the run, a click on a
+// switch or a DIP switch's lever turning it, a button held down while pressed). Run / Pause and Restart in its toolbar; its status line the time and the rate against real time; the
 // nodes' and the decoders' messages in the console (`onMessage`), never in the view (docs/UI-GUIDELINES.md).
 //
 //   const v = mountSystemEmulator(host, { system, prepare(system) -> { run, inputs } | { error }, onMessage(text, level) });
@@ -22,6 +23,8 @@ import { emulationBoards, pinOf } from '/core/system-emu.js';
 import { pressHolds } from '/core/emulate-press.js';
 import { runTimeText } from '/core/system-run.js';
 import { nextFrame, watchSeen } from './when-hidden.js';
+import { sv } from './dom.js';
+import { drawCircuit } from './circuit-draw.js';
 
 const MAX_STEP = 50e9;     // the most one run goes ahead (ps): 50 ms
 const BEHIND = 200e9;      // behind real time by more (ps): the backlog dropped
@@ -75,9 +78,35 @@ export function mountSystemEmulator(host, opts) {
       digits.forEach((d, k) => d && d.set(s?.digits[k] ?? null));
     } };
   }
+  // a circuit node: its circuit drawn, its lamps and inputs painted from what the worker says (#5322)
+  function circuitView(b) {
+    const svg = sv('svg', { class: 'sys-emu-circ', 'data-no-i18n': 'true' });
+    const el = h('div', { class: 'sys-emu-board circuit-editor sys-emu-circuit', 'data-node': b.id }, h('div', { class: 'sys-emu-cap', 'data-no-i18n': 'true' }, b.id), svg);
+    let cur = null, said = null;
+    const set = (pin, on) => ready?.set(b.id, pin, on ? 1 : 0);
+    svg.addEventListener('pointerdown', e => {
+      const i = e.target.closest?.('[data-input]'), g = e.target.closest?.('[data-kind="part"]');
+      if (!i || !g || !ready) return;
+      const id = g.dataset.id, now = cur?.inputs?.[id];
+      if (i.dataset.input === 'button') { set(id, true); window.addEventListener('pointerup', () => set(id, false), { once: true }); }
+      else if (i.dataset.input === 'dip') { const k = Number(i.dataset.lever); set(`${id}:${k + 1}`, !(Array.isArray(now) && now[k])); }
+      else set(id, !now);
+      e.preventDefault();
+    });
+    return { el, paint(s) {
+      const key = JSON.stringify([s?.leds, s?.inputs]);
+      if (key === said) return;
+      said = key; cur = s;
+      svg.replaceChildren(drawCircuit(b.model, { leds: s?.leds ?? null, inputs: s?.inputs ?? null }));
+      // (its size the drawing's, at most 720 pixels wide)
+      const r = svg.firstChild.getBBox?.();
+      if (r && r.width) { svg.setAttribute('viewBox', `${r.x - 10} ${r.y - 10} ${r.width + 20} ${r.height + 20}`); svg.style.width = `${Math.min(720, r.width + 20)}px`; }
+    } };
+  }
   function layout() {
     views = new Map(boards.map(b => {
       if (b.kind === 'fpga') return [b.id, fpgaView(b)];
+      if (b.kind === 'circuit') return [b.id, circuitView(b)];
       const a = arduinoLayout({ h, board: b.board, title: b.id });
       return [b.id, { el: h('div', { class: 'sys-emu-board', 'data-node': b.id }, a.wrap), paint: a.paint }];
     }));

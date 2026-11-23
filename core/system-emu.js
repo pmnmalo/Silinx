@@ -4,7 +4,9 @@
 // the module's inputs that no link drives, its LEDs and displays the outputs, watched (compiled with the link's pins,
 // their changes kept by the scheduler's watch) and shown as the Board Emulator shows them (boardOutputs: each LED's
 // brightness, each digit's segments, over the window since the last). A microcontroller's board: its pins' levels and
-// its LED L (D13 on an Arduino), the fraction of the window it was on.
+// its LED L (D13 on an Arduino), the fraction of the window it was on. A circuit node (#5322): its circuit drawn as the
+// Circuit editor draws it, its switches and buttons set (setBoardInput: a part's id, a DIP switch's lever `S1:3`), its
+// lamps and its inputs as they are at the window's end.
 //
 //   const boards = emulationBoards(sys, inputs);              // inputs: core/system-run.js systemInputs'
 //   const r = systemFromInputs(sys, withBoards(inputs, boards)); watchBoards(r.sim, boards);
@@ -14,6 +16,7 @@
 import { boardWiring, boardOutputs } from './emulate.js';
 import { resolveBoard } from './devices.js';
 import { mcuBoard } from './system-doc.js';
+import { partInputs } from './circuit-io.js';
 
 // a netlist's top's ports: [{ name, dir, width }]
 function portsOf(netlist) {
@@ -27,13 +30,22 @@ export const pinOf = b => (b.sig.t.w === 1 ? b.port : `${b.port}[${b.pos}]`);
 
 /**
  * The System's boards to emulate: [{ id, kind: 'fpga', board, wiring, inputs: [{ pin, kind, res, idx }], outputs: [pin] }
- * | { id, kind: 'mcu', board, outputs: [pin], led }] (`inputs`: systemInputs'; an FPGA node with no board: none). An FPGA
- * board's inputs are its switches' and buttons' pins that no link drives; its outputs, its LEDs' and displays'.
+ * | { id, kind: 'mcu', board, outputs: [pin], led } | { id, kind: 'circuit', model, inputs: [{ pin, part, index, kind }],
+ * outputs: [] }] (`inputs`: systemInputs'; an FPGA node with no board: none). An FPGA board's inputs are its switches'
+ * and buttons' pins that no link drives; its outputs, its LEDs' and displays'. A circuit's inputs are its parts'
+ * (switches, buttons, a DIP switch's levers: `S1`, `DIP1:2`; its clocks tick themselves).
  */
 export function emulationBoards(sys, inputs) {
   const out = [];
   const driven = new Set(inputs.plan.wires.map(w => w.to));
   for (const n of sys.nodes) {
+    if (n.kind === 'circuit') {
+      const c = inputs.plan.circuits?.find(x => x.id === n.id);
+      if (!c) continue;
+      const ins = c.model.parts.flatMap(p => partInputs(p).filter(x => x.kind !== 'clock').map((x, i, all) => ({ pin: all.length > 1 ? `${p.id}:${x.index + 1}` : p.id, part: p.id, index: x.index, kind: x.kind })));
+      out.push({ id: n.id, kind: 'circuit', model: c.model, inputs: ins, outputs: [] });
+      continue;
+    }
     if (n.kind === 'mcu') {
       const b = mcuBoard(n.board);
       if (b) out.push({ id: n.id, kind: 'mcu', board: b, outputs: b.pins.filter(p => !/^A[67]$/.test(p)), led: 'D13' });
@@ -92,6 +104,12 @@ export function boardStates(sim, boards, t0, t1, prev = {}) {
   const out = {};
   for (const b of boards) {
     const trace = p => sim.watched.get(`${b.id}.${p}`);
+    if (b.kind === 'circuit') {
+      // (its lamps and its inputs now, #5322)
+      const node = sim.nodes.get(b.id);
+      out[b.id] = { leds: node.sim.leds(), inputs: node.sim.inputs(), lit: Object.entries(node.sim.outputs()).filter(([, v]) => v === '1').map(([k]) => k) };
+      continue;
+    }
     if (b.kind === 'fpga') {
       // (each bit its own waveform: the wiring's bits as boardOutputs reads them, at position 0 of theirs)
       const bits = b.wiring.bits.map(x => (b.outputs.includes(pinOf(x)) ? { ...x, pos: 0, sig: { wave: waveOf(trace(pinOf(x))) } } : x));
@@ -105,8 +123,15 @@ export function boardStates(sim, boards, t0, t1, prev = {}) {
   return out;
 }
 
-/** An FPGA board's switch or button set (`value`: on 1, off 0; its pin at the level its board gives it). */
+/** An FPGA board's switch or button set (`value`: on 1, off 0; its pin at the level its board gives it); a circuit's
+ *  switch or button (its part's id; a DIP switch's lever, `DIP1:2`). */
 export function setBoardInput(sim, board, pin, value) {
+  if (board.kind === 'circuit') {
+    const c = board.inputs.find(x => x.pin === pin);
+    if (!c) throw new Error(`'${pin}' is not a switch or a button of the circuit ${board.id}`);
+    sim.nodes.get(board.id).setInput(c.part, value, c.index);
+    return;
+  }
   const i = board.inputs.find(x => x.pin === pin);
   if (!i) throw new Error(`'${pin}' is not a switch or a button of ${board.id}'s board`);
   sim.nodes.get(board.id).setPin(pin, (value ? 1 : 0) ^ (i.activeLow ? 1 : 0));

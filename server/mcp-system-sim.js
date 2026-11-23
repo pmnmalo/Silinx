@@ -86,15 +86,22 @@ async function emulated(sys, how) {
 }
 
 // the controls set at their times (as the System Emulator's clicks), the run to `end` (ps); what each board shows over
-// its last 10 ms: { node: { leds, digits } | { pins, led } }
+// its last 10 ms: { node: { leds, digits } | { pins, led } | { leds, inputs, lit } (a circuit's, #5322) }
 function runControls(sim, boards, controls, end) {
   const list = (Array.isArray(controls) ? controls : []).map((c, i) => {
+    const t = Number(c?.at_ns ?? 0) * 1e3;
+    // (a circuit's switch or button: its part's id, a DIP switch's lever DIP1:2, #5322)
+    const cb = boards.find(x => x.id === c?.node && x.kind === 'circuit');
+    if (cb) {
+      if (!cb.inputs.some(x => x.pin === String(c.control ?? ''))) throw toolError(`controls[${i}]: no switch or button '${c.control}' in the circuit ${cb.id} (${cb.inputs.map(x => x.pin).join(', ') || 'none'})`);
+      if (!(t >= 0) || t > end) throw toolError(`controls[${i}]: at_ns from 0 to the run's time`);
+      return { t, b: cb, pin: String(c.control), on: !!c.on };
+    }
     const b = boards.find(x => x.id === c?.node && x.kind === 'fpga');
-    if (!b) throw toolError(`controls[${i}]: no FPGA node '${c?.node}' with a board in the System`);
+    if (!b) throw toolError(`controls[${i}]: no FPGA node '${c?.node}' with a board, nor a circuit, in the System`);
     const m = /^([a-z_]+?)(\d+)$/i.exec(String(c.control ?? ''));
     const x = m && b.wiring.bits.find(y => y.res.name === m[1].toLowerCase() && y.idx === Number(m[2]));
     if (!x || !b.inputs.some(i2 => i2.pin === pinOf(x))) throw toolError(`controls[${i}]: no switch or button '${c.control}' of ${b.id}'s board linked to its module (${b.inputs.map(i2 => `${i2.res}${i2.idx}`).join(', ') || 'none'})`);
-    const t = Number(c.at_ns ?? 0) * 1e3;
     if (!(t >= 0) || t > end) throw toolError(`controls[${i}]: at_ns from 0 to the run's time`);
     return { t, b, pin: pinOf(x), on: !!c.on };
   }).sort((a, b) => a.t - b.t);
@@ -107,7 +114,7 @@ function runControls(sim, boards, controls, end) {
 }
 
 // what the boards show, a line each
-const boardLines = shown => Object.entries(shown).map(([id, s]) => (s.leds
+const boardLines = shown => Object.entries(shown).map(([id, s]) => (s.inputs && s.lit ? `${id}'s circuit: lit ${s.lit.join(' ') || 'none'}.` : s.leds
   ? `${id}'s board: LEDs ${s.leds.map((v, k) => [v, k]).filter(([v]) => v > 0.5).map(([, k]) => `LD${k}`).join(' ') || 'off'}${s.digits?.some(Boolean) ? `; display ${s.digits.map(d => (d ? digitText(d) : ' ')).reverse().join('')}` : ''}.`
   : `${id}'s board: LED L ${s.led > 0.5 ? 'on' : 'off'}; pins high ${Object.entries(s.pins).filter(([, v]) => v === 1).map(([p]) => p).join(' ') || 'none'}.`));
 // a digit's segments as the hexadecimal digit they draw, or ? (other patterns)
