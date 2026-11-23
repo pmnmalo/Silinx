@@ -241,9 +241,9 @@ test('the compiled design\'s slice (state-design.js): S\'s fields are its own, b
 
 test('the processes\' slice (state-proc.js): S\'s fields are its own, both ways, nothing run at the start', async () => {
   const { procState } = await import('../web/js/state-proc.js');
-  const FIELDS = ['status', 'diags', 'busy', 'diagsCleared'];
+  const FIELDS = ['status', 'diags', 'busy', 'diagsCleared', 'actions'];
   assert.deepEqual(Object.keys(procState), FIELDS);
-  assert.deepEqual([procState.status, procState.diags, procState.busy, procState.diagsCleared], [{}, [], false, 0]);
+  assert.deepEqual([procState.status, procState.diags, procState.busy, procState.diagsCleared, procState.actions], [{}, [], false, 0, 0]);
   assert.throws(() => { procState.other = 1; }, TypeError, 'its fields only');
   const block = app.slice(app.indexOf('export const S = {'), app.indexOf('\n};', app.indexOf('export const S = {')));
   for (const k of FIELDS) assert.ok(block.includes(`get ${k}() { return procState.${k}; }, set ${k}(v) { procState.${k} = v; }`), k);
@@ -260,7 +260,7 @@ test('the processes\' slice (state-proc.js): S\'s fields are its own, both ways,
   assert.deepEqual([procState.status, procState.diags, procState.diagsCleared], [{ synth: 'ok' }, [{ file: 'top.vhd', line: 3 }], 1]);
   procState.busy = true;
   assert.equal(S.busy, true);
-  Object.assign(procState, { status: {}, diags: [], busy: false, diagsCleared: 0 });
+  Object.assign(procState, { status: {}, diags: [], busy: false, diagsCleared: 0, actions: 0 });
 });
 
 test('S\'s fields, sliced: the project, its devices and its toolchain are the only ones S holds itself (#4767)', () => {
