@@ -24,7 +24,7 @@ import { THIRD_PARTY } from '../core/third-party.js';
 import { contentSecurityPolicy, inlineScriptHashes, withMetaCsp, relaySources, siteSource, WORKERS_SOURCES } from '../server/csp.js';
 import { withManifestLink, writePwa } from './pwa.mjs';
 import { relayList } from '../core/collab-link.js';
-import { inlineScripts, safeJs } from './inline-scripts.mjs';
+import { inlineScripts, safeJs, safeText } from './inline-scripts.mjs';
 
 const ROOT = path.join(path.dirname(fileURLToPath(import.meta.url)), '..');
 const OUT = path.join(ROOT, 'dist', 'Silinx.html');
@@ -232,7 +232,7 @@ if (!html.includes(safeJs(appJs))) throw new Error('the app bundle was not inser
   const parts = embedded.map(c => sections.get(`${c.name} ${c.version}`));
   if (!embedded.length || parts.some(p => !p)) throw new Error('THIRD-PARTY-NOTICES.md: the sections of the embedded components were not found (run node scripts/third-party.mjs)');
   const text = `${fs.readFileSync(path.join(ROOT, 'NOTICE'), 'utf8')}\n${fs.readFileSync(path.join(ROOT, 'LICENSE'), 'utf8')}\n# Embedded components\n\n${parts.join('\n')}`;
-  html = html.replace('</head>', () => `<script type="text/plain" id="silinx-notices">\n${safeJs(text)}\n</script>\n</head>`);
+  html = html.replace('</head>', () => `<script type="text/plain" id="silinx-notices">\n${safeText(text)}\n</script>\n</head>`);
 }
 // the Content-Security-Policy (#487), last: the hashes of the page's inline scripts as they are; the
 // single file also loads Yosys from the assets' site and fetches the assets from it

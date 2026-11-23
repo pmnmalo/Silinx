@@ -17,7 +17,8 @@ import { VERSION } from '../core/version.js';
 const ROOT = path.join(path.dirname(fileURLToPath(import.meta.url)), '..');
 const TOKEN = 'test-token-not-in-the-file';
 const LABELS = { 5: ['bug', 'synthesis'], 6: ['enhancement', 'interface'], 7: ['tests & CI'] };
-const FRAG = n => `In detail:\n\n- **Change ${n} (#${n}):** its text.\n`;
+// (#5389: a fragment that quotes a script tag, as #5343's did: no such tag in the page)
+const FRAG = n => `In detail:\n\n- **Change ${n} (#${n}):** its text${n === 6 ? ', `<script src="x.js"></script>` inlined' : ''}.\n`;
 let root, api, asked = [], skip;
 
 before(async () => {
@@ -74,6 +75,9 @@ test('a development build: its changes since the last release typed by their lab
   const dev = await build();
   assert.match(dev.log, /development build dev:[0-9a-f]{7}, 3 change\(s\) since 15\.0\.0/);
   assert.match(dev.html, /since:"15\.0\.0",changes:\[/);
+  // (#5389: the change quoting a script tag carried, no such tag in the page)
+  assert.match(dev.html, /x\.js/);
+  assert.doesNotMatch(dev.html, /<script[^>]+src=/);
   assert.deepEqual(changesOf(dev.html), [[7, 'other'], [6, 'feature'], [5, 'bugfix']]);
   assert.deepEqual(asked.map(a => a[0]).sort(), ['/repos/pmnmalo/Silinx/issues/5', '/repos/pmnmalo/Silinx/issues/6', '/repos/pmnmalo/Silinx/issues/7']);
   assert.ok(asked.every(a => a[1] === `Bearer ${TOKEN}`));
