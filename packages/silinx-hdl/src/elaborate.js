@@ -12,7 +12,7 @@ import { walk } from './bound-walk.js';
 import { MAX_BITS, MAX_ELEMENTS, walkItems, widthMessage } from './util.js';
 import { evalE, newBudget, runSync, exec, strToVal } from './interp.js';
 import { purityErrors } from './vhdl/purity.js';
-import { declaredNames, interfaceNames, labelErrors } from './vhdl/labels.js';
+import { declaredNames, interfaceNames, labelErrors, declarationErrors } from './vhdl/labels.js';
 import {
   BUILTIN_SUBPROGRAMS, bindExpr, defSubAlias, fieldNode, hierResolve, notDeclared, packedElem, positional, sliceNode,
 } from './elab-expr.js';
@@ -149,10 +149,10 @@ export function buildLibrary(parsedFiles) {
     if (!ent) { lib.errors.push({ file: a.file, line: a.loc?.line || 1, col: 1, severity: 'error', message: `architecture '${a.name}' of unknown entity '${a.entity}'` }); continue; }
     // the labels of an architecture of an entity of another file: not the names of its ports,
     // generics, declarations (#192; those of the architecture itself were checked by the parser)
-    if (a.labels) {
-      const names = [...interfaceNames(ent), ...(ent.entityOnly ? declaredNames(ent.decls) : [])].map(n => ({ ...n, file: ent.file }));
-      lib.errors.push(...labelErrors(a.labels, names, a.file, { labels: false }));
-    }
+    const names = [...interfaceNames(ent), ...(ent.entityOnly ? declaredNames(ent.decls) : [])].map(n => ({ ...n, file: ent.file }));
+    if (a.labels) lib.errors.push(...labelErrors(a.labels, names, a.file, { labels: false }));
+    // (and its declarations: an entity and its architecture are one region, #5360)
+    lib.errors.push(...declarationErrors(a.decls.slice(0, a.ownDecls ?? a.decls.length), names, a.file));
     ent.decls = [...(ent.decls || []), ...a.decls];
     if (a.components) ent.components = a.components;
     ent.items = a.items;
