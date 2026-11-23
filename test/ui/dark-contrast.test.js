@@ -70,9 +70,9 @@ async function themed(page, theme) {
   await page.reload();
   await page.waitFor(() => window.SilinxApp && document.querySelector('#menubar .item'), [], { what: 'app boot' });
   // (the drawer of a narrow screen, #266; the Silinx interface's layout by tasks and its arrangement, #1149)
-  // (no project open: <html data-no-project>, #4257)
-  assert.deepEqual(await page.eval(() => { const d = { ...document.documentElement.dataset }; if ('noProject' in d === !window.Silinx.project) delete d.noProject; return d; }), UI === 'ise' ? { ui: 'ise', theme, drawer: 'open' }
-    : { ui: 'silinx', theme, drawer: 'open', layout: 'tasks', task: 'edit', side: 'open', console: 'open', max: 'off', nodocs: 'on' });   // (no document yet: no tab bar, #1289)
+  // (no project open: <html data-no-project>, #4257; the phone's pane, set on every screen, the side panel, #5121)
+  assert.deepEqual(await page.eval(() => { const d = { ...document.documentElement.dataset }; if ('noProject' in d === !window.Silinx.project) delete d.noProject; return d; }), UI === 'ise' ? { ui: 'ise', theme, drawer: 'open', pane: 'side' }
+    : { ui: 'silinx', theme, drawer: 'open', layout: 'tasks', task: 'edit', side: 'open', console: 'open', max: 'off', nodocs: 'on', pane: 'side' });   // (no document yet: no tab bar, #1289)
   await page.eval(CONTRAST);
   const bad = [];
   const skip = EXCEPTIONS.filter((x) => !x.theme || x.theme === theme).map((x) => x.skip).join(', ');
