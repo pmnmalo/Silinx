@@ -19,14 +19,13 @@ before(async () => { env = await setupUi(); });
 after(async () => { await env?.teardown?.(); });
 const E = () => env;
 
-// each language: Check Syntax's lines with the mistake, and once fixed (the console's own, in English in any language;
+// each language: Check Syntax's lines with the mistake (not elaborated, #5332), and once fixed (the console's own, in English in any language;
 // Verilog's one process in the singular: #5222)
 const CHECK = {
   vhdl: {
     failed: [
       'Started : "Check Syntax" of src/counter.vhd.',
       'Parsing VHDL file "src/counter.vhd" into library work',
-      'Elaborating module <counter>: 5 signals, 2 processes.',
       'ERROR:HDLCompiler - "src/counter.vhd" Line 21: expected \';\' after \'1\'',
       'Process "Check Syntax" failed (1 error(s), 0 warning(s))',
     ],
@@ -42,7 +41,6 @@ const CHECK = {
     failed: [
       'Started : "Check Syntax" of src/counter.v.',
       'Analyzing Verilog file "src/counter.v" into library work',
-      'Elaborating module <counter>: 4 signals, 1 process.',
       'ERROR:HDLCompiler - "src/counter.v" Line 3: expected \';\' after \'4\'d0\'',
       'Process "Check Syntax" failed (1 error(s), 0 warning(s))',
     ],
@@ -128,7 +126,7 @@ uiTest('usability: hdl edit: vhdl: Enter after a keyword typed whole makes the n
 
 // the console's line of Check Syntax's error clicked: the editor at its line, as the Errors tab's row does
 uiTest('usability: hdl edit: vhdl: Check Syntax\'s error line in the console clicked goes to its line (#5221)', E, async (page) => {
-  const D = DESIGNS.vhdl, C = CHECK.vhdl;
+  const D = DESIGNS.vhdl, C = CHECK.vhdl, error = C.failed.find((l) => l.startsWith('ERROR'));
   const name = 'UsabHdlConsoleLink';
   await makeProject(env, { name, files: { [D.file]: D.text.replace('r <= r + 1;', 'r <= r + 1') }, top: 'counter' });
   await page.openProject(name);
@@ -137,9 +135,9 @@ uiTest('usability: hdl edit: vhdl: Check Syntax\'s error line in the console cli
   await checkSyntax(s, C.failed);
   // the error's line a link, its tooltip in the interface's language; the other lines none
   const links = await page.eval(() => [...document.querySelectorAll('#console-log .ln.mc-link')].map((l) => [l.textContent, l.title]));
-  assert.deepEqual(links, [[C.failed[3], RUN.lang === 'pt' ? 'Abrir o ficheiro nesta linha' : 'Open the file at this line']]);
+  assert.deepEqual(links, [[error, RUN.lang === 'pt' ? 'Abrir o ficheiro nesta linha' : 'Open the file at this line']]);
   assert.notEqual((await editorState(page)).line, C.line, 'the cursor elsewhere before the click');
-  await s.step('click the console\'s error line', {}, () => s.a.clickConsoleLine(C.failed[3]), {
+  await s.step('click the console\'s error line', {}, () => s.a.clickConsoleLine(error), {
     changes: false,
     expect: async () => { const e = await editorState(page); assert.deepEqual([e.line, e.focused], [C.line, true]); },
   });
