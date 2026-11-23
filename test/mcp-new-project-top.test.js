@@ -23,7 +23,8 @@ const fails = async (name, args, message) => { const r = await call(name, args);
 const read = (pj, rel) => fs.readFileSync(`${P.projectDir(pj)}/${rel}`, 'utf8');
 
 test('new_project top_source_type: each type\'s project as the wizard makes it, its HDL in the language, its check clean', async () => {
-  for (const t of TOP_TYPES) {
+  // (system: a co-design project, no board, test/mcp-system-top.test.js, #5402)
+  for (const t of TOP_TYPES.filter((x) => x.id !== 'system')) {
     for (const lang of ['vhdl', 'verilog']) {
       const name = `T_${t.id}_${lang}`;
       const r = await ok('new_project', { name, board: 'basys2', top_source_type: t.id, language: lang });
@@ -64,7 +65,7 @@ test('new_project top_source_type in a design and simulation project: a drawing\
   // refused, nothing made
   await fails('new_project', { name: 'D_c', kind: 'design', top_source_type: 'c' }, 'top_source_type c: a design and simulation project\'s top is a drawing (sch, fsm, asm, tt, petri, circuit)');
   await fails('new_project', { name: 'D_hdl', kind: 'design', top_source_type: 'hdl' }, 'top_source_type hdl: a design and simulation project\'s top is a drawing (sch, fsm, asm, tt, petri, circuit)');
-  await fails('new_project', { name: 'X_bad', top_source_type: 'vhdl' }, 'top_source_type: one of hdl, sch, fsm, asm, tt, petri, circuit, c, cpp');
+  await fails('new_project', { name: 'X_bad', top_source_type: 'vhdl' }, 'top_source_type: one of hdl, sch, fsm, asm, tt, petri, circuit, c, cpp, system');
   await fails('new_project', { name: 'X_lang', language: 'c' }, 'language: one of vhdl, verilog');
   for (const n of ['D_c', 'D_hdl', 'X_bad', 'X_lang']) assert.equal(fs.existsSync(P.projectDir(n)), false, n);
 });

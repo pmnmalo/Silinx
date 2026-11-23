@@ -16,7 +16,8 @@ import { confirmDeviceChange } from './device-change.js';
 import { boardTop } from './board-top.js';
 import { CODESIGN_NOTE, KIND_OPTIONS, kindFields, kindNote, makeDesignProject, openNewSystem, syncTemplates } from './project-kind-ui.js';
 import { kindStep } from './project-kind-step.js';
-import { HDL_TOP_TYPES, TOP_TYPES, projectTopType } from '/core/top-types.js';
+import { HDL_TOP_TYPES, TOP_TYPES, offeredTopTypes, projectTopType } from '/core/top-types.js';
+import { SYSTEM_TOP } from '/core/system-top.js';
 import { topSourceFiles } from '/core/top-source.js';
 import { CODESIGN_KIND, DESIGN_KIND, DESIGN_ONLY_LABEL, asFpgaProject, isDesignOnly } from '/core/project-kind.js';
 import { placeLines, placeText } from '/core/project-place.js';
@@ -213,14 +214,14 @@ export async function newProjectWizard({ template = 'empty' } = {}) {
   dp.lockSynth(synthSel, null);   // (the device's first: Silinx, or on the Artix-7 AMD Vivado, #3146)
   const langSel = select([['vhdl', 'VHDL'], ['verilog', 'Verilog']], 'vhdl');
   // the type of the top-level source: HDL, or a diagram / table whose HDL module is kept in sync
-  const topType = select(TOP_TYPES.map(t => [t.id, t.label]), 'hdl');
+  const topType = select(offeredTopTypes().map(t => [t.id, t.label]), 'hdl');
   const topNote = h('div', { class: 'hint', style: { gridColumn: '1 / -1', marginTop: '-4px' } });
   const syncTop = () => {
     const ex = tplSel.value !== 'empty';
     topType.disabled = ex;
     if (ex) topType.value = 'hdl';
     const t = TOP_TYPES.find(x => x.id === topType.value);
-    topNote.textContent = !ex ? (t.id === 'hdl' ? '' : isDesign() ? `The project starts with ${t.file} (the top module 'top').` : `The project starts with ${t.file} (the top module 'top') and its HDL module, generated from it.`)
+    topNote.textContent = !ex ? (t.id === 'hdl' ? '' : t.id === SYSTEM_TOP ? 'The project is a co-design project: its System is its top, each FPGA node on a board of its own (the board above is not used).' : isDesign() ? `The project starts with ${t.file} (the top module 'top').` : `The project starts with ${t.file} (the top module 'top') and its HDL module, generated from it.`)
       : 'The example has its own sources.';
     topNote.style.display = topNote.textContent ? '' : 'none';
   };
@@ -286,7 +287,7 @@ export async function newProjectWizard({ template = 'empty' } = {}) {
   if (!ok) return;
   try {
     if (st.replace) await removeExistingProject(name.value.trim());
-    const design = isDesign(), codesign = kinds.codesign();
+    const design = isDesign(), codesign = kinds.codesign() || topType.value === SYSTEM_TOP;   // (a System's top: co-design, #5402)
     const pj = await api.createProject(codesign ? { name: name.value.trim(), template: tplSel.value, kind: CODESIGN_KIND } : design ? { name: name.value.trim(), template: 'empty', kind: DESIGN_KIND } : {
       name: name.value.trim(), template: tplSel.value,
       device: dp.value(),
@@ -294,7 +295,7 @@ export async function newProjectWizard({ template = 'empty' } = {}) {
     });
     countEvent('new-project');
     pj.preferredLanguage = design ? 'vhdl' : langSel.value;
-    pj.topSourceType = topType.value;
+    pj.topSourceType = codesign ? SYSTEM_TOP : topType.value;
     if (!design && !codesign) pj.synthTool = synthSel.value;
     await api.saveProject(pj.name, pj);
     // a diagram / table top: its document and its synchronized HDL module 'top'
@@ -497,7 +498,7 @@ export async function projectProperties() {
   // (the Top-Level Source Type: a setting, saved, nothing made, #4105; a design project's a drawing's)
   // (a design project's from before: an HDL type shown, and kept, as a Schematic)
   const top0 = isDesignOnly(pj) && HDL_TOP_TYPES.includes(projectTopType(pj).id) ? 'sch' : projectTopType(pj).id;
-  const topSel = select(TOP_TYPES.map(t => [t.id, t.label]), top0);
+  const topSel = select(offeredTopTypes().map(t => [t.id, t.label]), top0);
   const fpgaFields = kindFields(() => kindSel.value === DESIGN_KIND, [boardSel, dp.famSel, dp.partSel, dp.pkgSel, dp.spdSel, synth, lang], topSel);
   // (what the kind chosen does, or why it cannot: OK disabled then, #5041)
   const note = kindNote(kindSel, pj);
@@ -531,6 +532,8 @@ export async function projectProperties() {
   const topChanged = topSel.value !== top0;
   if (topChanged) pj.topSourceType = topSel.value;
   const topLine = () => topChanged && appLog(`Top-Level Source Type: ${TOP_TYPES.find(t => t.id === topSel.value).label}.`, 'info');
+  // (System: the project made a co-design project, its System its top, #5402)
+  if (topSel.value === SYSTEM_TOP && kindSel.value !== DESIGN_KIND) return (await import('./system-top-ui.js')).makeSystemTop(null, 'Design Properties');
   if (kindSel.value === DESIGN_KIND) {
     if (!isDesignOnly(pj)) return await makeDesignProject(pj) && topLine();
     if (topChanged) { await app.saveProjectJson(); topLine(); }

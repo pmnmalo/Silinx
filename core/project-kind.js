@@ -54,7 +54,7 @@ export function boardRefusal(json, { board, device } = {}) {
 }
 
 /** A new co-design project's silinx.json: no board, no constraints, no top module (its System is its top). */
-export const asCodesignProject = json => ({ ...json, kind: CODESIGN_KIND, board: null, constraints: null, top: '' });
+export const asCodesignProject = json => ({ ...json, kind: CODESIGN_KIND, board: null, constraints: null, top: '', topSourceType: 'system' });   // (its top type System, core/system-top.js SYSTEM_TOP, #5402)
 
 /** Whether a project (its silinx.json) is a design and simulation project. */
 export const isDesignOnly = pj => pj?.kind === DESIGN_KIND;

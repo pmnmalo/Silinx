@@ -22,14 +22,15 @@ const fails = async (name, args, message) => { const r = await call(name, args);
 const DRAWN = 'top_source_type c: a design and simulation project\'s top is a drawing (sch, fsm, asm, tt, petri, circuit)';
 
 test('the types, a project\'s, the refusals', () => {
-  assert.deepEqual(TOP_TYPES.map(t => t.id), ['hdl', 'sch', 'fsm', 'asm', 'tt', 'petri', 'circuit', 'c', 'cpp']);
-  assert.deepEqual(TOP_TYPES.filter(t => !t.file).map(t => t.id), ['hdl']);
+  // (system: a co-design project's System, #5402, test/system-top.test.js)
+  assert.deepEqual(TOP_TYPES.map(t => t.id), ['hdl', 'sch', 'fsm', 'asm', 'tt', 'petri', 'circuit', 'c', 'cpp', 'system']);
+  assert.deepEqual(TOP_TYPES.filter(t => !t.file).map(t => t.id), ['hdl', 'system']);
   assert.deepEqual(HDL_TOP_TYPES, ['hdl', 'c', 'cpp']);
   assert.deepEqual([topType('petri').label, topType('nope'), projectTopType({}).id, projectTopType(null).id, projectTopType({ topSourceType: 'cpp' }).label], ['Petri Net', null, 'hdl', 'hdl', 'C++ Function (HLS)']);
   assert.equal(topTypeRefusal({}, 'cpp'), null);
   assert.equal(topTypeRefusal({ kind: 'design' }, 'circuit'), null);
   assert.equal(topTypeRefusal({ kind: 'design' }, 'c'), DRAWN);
-  assert.equal(topTypeRefusal({}, 'vhdl'), 'top_source_type: one of hdl, sch, fsm, asm, tt, petri, circuit, c, cpp');
+  assert.equal(topTypeRefusal({}, 'vhdl'), 'top_source_type: one of hdl, sch, fsm, asm, tt, petri, circuit, c, cpp, system');
 });
 
 test('set_design_properties top_source_type: saved alone, nothing made; with the rest; a design project\'s drawings only', async () => {
@@ -52,5 +53,5 @@ test('set_design_properties top_source_type: saved alone, nothing made; with the
   await fails('set_design_properties', { project: 't3', kind: 'design', top_source_type: 'hdl' }, 'top_source_type hdl: a design and simulation project\'s top is a drawing (sch, fsm, asm, tt, petri, circuit)');
   await ok('set_design_properties', { project: 't3', kind: 'fpga', top_source_type: 'hdl' });
   assert.deepEqual([(await P.readProject('t3')).kind, (await P.readProject('t3')).topSourceType], [undefined, 'hdl']);
-  await fails('set_design_properties', { project: 't1', top_source_type: 'vhdl' }, 'top_source_type: one of hdl, sch, fsm, asm, tt, petri, circuit, c, cpp');
+  await fails('set_design_properties', { project: 't1', top_source_type: 'vhdl' }, 'top_source_type: one of hdl, sch, fsm, asm, tt, petri, circuit, c, cpp, system');
 });
