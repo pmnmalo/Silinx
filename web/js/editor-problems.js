@@ -37,7 +37,7 @@ export function editorProblems({ file, tool, what = 'Validate', goto, inLanguage
         log(l.text, l.cls, { diag: false });   // (the tabs: set's, kept as the chart is edited)
         if (!l.diag) continue;
         const ln = document.getElementById('console-log').lastElementChild;
-        ln.classList.add('mc-link');
+        ln.classList.add('mc-link', 'mc-draw');
         ln.title = t(SHOW);
         ln.addEventListener('click', () => goto(l.diag));
       }
@@ -47,4 +47,4 @@ export function editorProblems({ file, tool, what = 'Validate', goto, inLanguage
     clear: () => { offLang(); set([]); },
   };
 }
-onLanguageChange(() => { for (const ln of document.querySelectorAll('#console-log .ln.mc-link:not(.mc-file)')) ln.title = t(SHOW); });
+onLanguageChange(() => { for (const ln of document.querySelectorAll('#console-log .ln.mc-draw')) ln.title = t(SHOW); });

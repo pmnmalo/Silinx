@@ -32,7 +32,7 @@ export function initCheckMessages(showConsole, log) {
       log(l.text, l.cls, { diag: !!l.diag, ...own, ...(l.diag ? { goto: () => show(e.target, () => focus(l.diag)) } : {}) });
       if (!l.diag) continue;
       const ln = document.getElementById('console-log').lastElementChild;
-      ln.classList.add('mc-link');
+      ln.classList.add('mc-link', 'mc-draw');
       ln.title = t(SHOW);   // (the console's lines are not translated: their tooltip here, again when the language changes)
       ln.addEventListener('click', () => focus(l.diag));
     }
@@ -44,5 +44,5 @@ export function initCheckMessages(showConsole, log) {
     if (doc && docsState.active !== doc) activateDoc(doc);
     then();
   });
-  onLanguageChange(() => { for (const ln of document.querySelectorAll('#console-log .ln.mc-link:not(.mc-file)')) ln.title = t(SHOW); });
+  onLanguageChange(() => { for (const ln of document.querySelectorAll('#console-log .ln.mc-draw')) ln.title = t(SHOW); });
 }

@@ -1,0 +1,2 @@
+In detail:
+- SSim's and the emulator's lines mirrored in the main Console keep their tooltip, their location's `file:line`, when the language changes (#5240): the drawings' Check lines' language handlers (`web/js/tasks-check.js`, `web/js/editor-problems.js`) set "Show it in the drawing" on every link line of the console; they now mark their own lines (`mc-draw`) and retitle only those. Test: the UI's console-mirror-title (a mirrored assertion's `sim/tb_msg.vhd:7` kept in Portuguese and back; both interfaces).
