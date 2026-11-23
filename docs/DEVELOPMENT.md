@@ -47,7 +47,9 @@ run every week on GitHub's runners (`.github/workflows/usability.yml`), and by h
 Run workflow), never on a pull request: long sessions of a person's steps through the interface (wires drawn and moved,
 symbols moved and widened, Undo and Redo), scripted and random with a fixed seed (the schematic, the circuit, the state
 diagram, the ASM chart, the Petri net, the truth table), a module's symbol made, edited and updated in the schematics that
-use it, a hierarchy gone down and back up (`symbols`, `hierarchy`), the drawing checked after every step;
+use it, a hierarchy gone down and back up (`symbols`, `hierarchy`), an example's pins given in I/O Pin Planning and
+implemented (`constraints`), the Board Emulator on the stopwatch, the vga and the uart against the design's simulation for
+the same inputs (`emulator`), the drawing checked after every step;
 a failure's report (its seed, its steps shrunk, what broke) is quoted in the issue the scheduled run opens, its
 screenshots kept as the job's artifact.
 
