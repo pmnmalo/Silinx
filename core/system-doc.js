@@ -5,7 +5,8 @@
 //   { format: 'silinx-system', version: 1, name,
 //     nodes: [ { id, kind: 'fpga', module, board, variant?, pins: { <port>: <pin of the board> }, interfaces, x, y }
 //              { id, kind: 'mcu', board: 'arduino-uno' | 'arduino-nano', firmware: <a .hex / .elf of the project>, interfaces, x, y }
-//              { id, kind: 'terminal', interfaces, x, y } ],
+//              { id, kind: 'terminal', interfaces, x, y }
+//              { id, kind: 'circuit', circuit: <a .circ.json of the project>, interfaces: [], x, y } ],
 //     links: [ { id, kind: 'uart' | 'gpio' | 'spi' | 'i2c', a: '<node>.<interface>', b: '<node>.<interface>' } ] }
 //
 // An interface is declared once, on its node: a UART { name, kind: 'uart', tx, rx, baud, frame } (an FPGA node's tx and
@@ -18,11 +19,13 @@
 // its board's Wire, the master; hz its SCL's rate). A UART link joins a's TX to b's RX and b's TX to a's RX; a
 // GPIO link its ends' pins in order; an SPI link the master's SCK, MOSI and SS to the peripheral's, its MISO back; an I²C link the master's SCL
 // to the peripheral's, and their SDA, each end pulling it low or releasing it (pulled up). An FPGA node is a module of the co-design project itself (HDL or a drawing), on a board of its own: a
-// co-design project has no `board`.
+// co-design project has no `board`. A circuit node (#5215) is what lies between the boards, a circuit of the project:
+// its boards (an Arduino, an FPGA board, core/circuit-boards.js) are the System's nodes their labels name, its wires to
+// their pins the links (core/system-circuit.js); it has no interfaces.
 
 export const SYSTEM_FORMAT = 'silinx-system';
 export const SYSTEM_VERSION = 1;
-export const NODE_KINDS = ['fpga', 'mcu', 'terminal'];
+export const NODE_KINDS = ['fpga', 'mcu', 'terminal', 'circuit'];
 export const LINK_KINDS = ['uart', 'gpio', 'spi', 'i2c'];
 export const INTERFACE_KINDS = ['uart', 'gpio', 'spi', 'i2c'];
 /** An SPI bus's default SCK rate (Hz): the Arduino's SPI_CLOCK_DIV128, 125 kHz. */
@@ -77,7 +80,7 @@ function normalNode(n) {
     out.pins = n.pins && typeof n.pins === 'object' ? { ...n.pins } : {};
   } else if (out.kind === 'mcu') {
     out.board = n.board ?? null; out.firmware = n.firmware ?? null;
-  }
+  } else if (out.kind === 'circuit') out.circuit = n.circuit ?? null;
   out.interfaces = Array.isArray(n?.interfaces) ? n.interfaces.map(normalInterface) : [];
   out.x = Number.isFinite(n?.x) ? n.x : 0; out.y = Number.isFinite(n?.y) ? n.y : 0;
   return out;

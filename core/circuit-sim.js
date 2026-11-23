@@ -17,9 +17,10 @@ const SETTLE_NS = 1000;   // a circuit still changing after this long is said to
 /**
  * A circuit's simulation, at time 0 with its switches as saved and its buttons released (run() settles it).
  * nets: its nets (circuitNets), onLevel(net, level, time): each change of a net's level; runner(module): a KiCad part
- * modelled by a module of the project, run live (core/circuit-live-model.js modelRunners, #4284; none: not run).
+ * modelled by a module of the project, run live (core/circuit-live-model.js modelRunners, #4284; none: not run);
+ * external: pins ('A1.5') driven from outside (a board's, by its System's node, #5215: drive()), nothing at first.
  */
-export function createCircuitSim(m, { nets = circuitNets(m), onLevel = null, runner = null } = {}) {
+export function createCircuitSim(m, { nets = circuitNets(m), onLevel = null, runner = null, external = [] } = {}) {
   const N = nets.nets.length;
   const drivers = [];                       // { net, value, strength, pending, gen, tpd }
   const byNet = Array.from({ length: N }, () => []);
@@ -62,6 +63,8 @@ export function createCircuitSim(m, { nets = circuitNets(m), onLevel = null, run
       for (const net of [ic.vcc, ic.gnd, ...ic.gates.flatMap((x) => [...x.ins, ...x.en.map(([n]) => n)]), ...(ic.ins || []).map((x) => x.net)]) readers[net].add(ic);
     }
   }
+  // (the pins driven from outside, #5215: a driver each, nothing (Z) until drive())
+  const outside = new Map(external.map((ref) => [ref, addDriver(nets.pinNet.get(ref), 'Z')]));
   const closed = (c) => state.get(c.part)[c.input] === c.when;
 
   // the nodes: the nets joined by the closed contacts
@@ -200,6 +203,17 @@ export function createCircuitSim(m, { nets = circuitNets(m), onLevel = null, run
     update();
   }
 
+  /** A pin driven from outside (one of `external`), now: its level ('0', '1', 'Z': nothing) and strength ('s' strong,
+   *  'w' weak: an AVR's pull-up), #5215. */
+  function driveOutside(ref, level, strength = 's') {
+    const d = outside.get(ref);
+    if (!d) throw new Error(`${ref} is not a pin driven from outside the circuit`);
+    if (d.value === level && d.strength === strength) return;
+    d.value = level;
+    d.strength = strength;
+    update();
+  }
+
   // a lamp: on (its anode 1, its cathode 0), x (either unknown) or off
   const lampState = (x) => {
     const a = levels[netOfPin(x.part, x.a)], k = levels[netOfPin(x.part, x.k)];
@@ -207,7 +221,7 @@ export function createCircuitSim(m, { nets = circuitNets(m), onLevel = null, run
   };
   const lit = m.parts.filter((p) => partDef(p.type)?.lamps);
   return {
-    nets, run, set,
+    nets, run, set, drive: driveOutside,
     /** the simulated time moved on by `ns` (a clock's half period between its ticks), the circuit run meanwhile */
     advance(ns) { const r = run({ maxNs: ns }); if (r.quiet) time = r.start + ns; return { ...r, time }; },
     /** each logic probe's tip level: 0, 1, Z (open), X */

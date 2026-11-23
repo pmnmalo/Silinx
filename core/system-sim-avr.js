@@ -108,6 +108,12 @@ export class AvrNode {
     return d ?? this.inVals?.get(String(name).toUpperCase()) ?? null;
   }
 
+  /** Whether a pin is an input with its pull-up now (a weak 1: a circuit's button to GND pulls it low, #5215). */
+  pulled(name) {
+    const p = avrPin(name);
+    return !!p && this.driven(String(name).toUpperCase()) === 1 && this.ports[p.port].pinState(p.bit) === PinState.InputPullUp;
+  }
+
   // a port's DDR or PORT written: a floating input read as its pull-up; its pins' changes (D1 while the USART sends: its
   // frames')
   portChanged(k) {

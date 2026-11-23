@@ -9,6 +9,7 @@ import { compiledNodeModel } from './system-sim-compiled.js';
 import { loadAvr8js } from './system-sim-avr.js';
 import { linkTraffic, usText, decodeSpi, spiWarnings, decodeI2c, i2cWarnings, wiredAnd } from './system-decode.js';
 import { regAccesses, accessText } from './regmap-decode.js';
+import { normalizeCircuit } from './circuit.js';
 
 /** A run's time as Simulate System says it: ms or s. */
 export const runTimeText = ps => (ps >= 1e12 ? `${+(ps / 1e12).toFixed(3)} s` : `${+(ps / 1e9).toFixed(3)} ms`);
@@ -17,10 +18,15 @@ export const runTimeText = ps => (ps >= 1e12 ? `${+(ps / 1e12).toFixed(3)} s` : 
  * What the run needs, read where the System is (the page, the MCP server): { plan, netlists: { id: { json, top } },
  * firmware: { id: { name, data } }, regmaps: { id: map } }, or { error } (a node that cannot be simulated, a module that
  * does not compile, a firmware not read). ports: { module: [{ name, dir, width }] }; regmap(module): the register map
- * the module is made from or instances (core/regmap.js regmapFor), or null (#5288: its link's accesses said).
+ * the module is made from or instances (core/regmap.js regmapFor), or null (#5288: its link's accesses said); circuit(path):
+ * a circuit node's .circ.json's text (#5215).
  */
-export async function systemInputs(sys, { ports = {}, netlist, firmware, regmap = null }) {
-  const plan = systemPlan(sys, { ports });
+export async function systemInputs(sys, { ports = {}, netlist, firmware, regmap = null, circuit = null }) {
+  const circuits = {};
+  for (const n of sys.nodes.filter(x => x.kind === 'circuit' && x.circuit)) {
+    try { circuits[n.id] = normalizeCircuit(JSON.parse(await circuit(n.circuit))); } catch (e) { return { error: `${n.id}: its circuit ${n.circuit} cannot be read: ${e.message}` }; }
+  }
+  const plan = systemPlan(sys, { ports, circuits });
   if (plan.errors.length) return { error: plan.errors.join('; ') };
   const netlists = {}, fw = {};
   for (const f of plan.fpga) {
@@ -56,8 +62,8 @@ export async function prepareSystem(sys, opts) {
 export const bytesText = bytes => bytes.map(({ byte: b }) => (b >= 0x20 && b < 0x7f) || b === 10 || b === 13 || b === 9 ? String.fromCharCode(b) : `\\x${b.toString(16).padStart(2, '0')}`).join('');
 
 /**
- * What a run said: { now, traffic: [{ wire, link, from, to, baud, frame, bytes }], terminals: { id: text }, warnings,
- * errors, lines } (lines: the console's, a wire's bytes as its text).
+ * What a run said: { now, traffic: [{ wire, link, from, to, baud, frame, bytes }], terminals: { id: text }, circuits:
+ * { id: { lamp: { on, times } } } (#5215), warnings, errors, lines } (lines: the console's, a wire's bytes as its text).
  */
 export function systemReport({ sim, wires, terminals, regmaps = {} }) {
   const traffic = linkTraffic(sim, { frames: wireFrames(wires) }).map((t, i) => ({ wire: t.link, link: wires[i].link, from: wires[i].from, to: wires[i].to, baud: wires[i].baud ?? null, frame: wires[i].frame ?? null, kind: t.kind, bytes: t.bytes, decoded: t.warnings, changes: t.changes }));
@@ -77,9 +83,12 @@ export function systemReport({ sim, wires, terminals, regmaps = {} }) {
   for (const s of i2c) lines.push(`${s.link} (I²C ${s.from} → ${s.to}, ${s.hz} Hz): ${s.transfers.length} transfer(s)${s.transfers.length ? `: ${s.transfers.slice(0, 16).map(i2cText).join('; ')}` : ''}`);
   for (const r of regs) lines.push(`${r.link} (registers of ${r.map}): ${r.accesses.length} access(es)${r.accesses.length ? `: ${r.accesses.slice(0, 16).map(a => a.text).join('; ')}` : ''}`);
   for (const [id, text] of Object.entries(term)) lines.push(`terminal ${id}: ${JSON.stringify(text)}`);
+  // (a circuit node's lamps: lit now or not, the times each lit, #5215)
+  const circuits = Object.fromEntries([...sim.nodes].filter(([, a]) => a.lamps).map(([id, a]) => [id, a.lamps()]));
+  for (const [id, ls] of Object.entries(circuits)) lines.push(`circuit ${id}: ${Object.entries(ls).map(([k, l]) => `${k} ${l.on ? 'on' : 'off'}${l.times ? `, lit ${l.times} time(s)` : ', never lit'}`).join('; ') || 'no lamps'}`);
   for (const w of warnings) lines.push(`WARNING: ${w}`);
   for (const e of errors) lines.push(`ERROR: ${e}`);
-  return { now: sim.now, traffic, spi, i2c, regs, terminals: term, warnings, errors, lines };
+  return { now: sim.now, traffic, spi, i2c, regs, terminals: term, circuits, warnings, errors, lines };
 }
 
 const hexByte = b => b.toString(16).toUpperCase().padStart(2, '0');

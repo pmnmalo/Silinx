@@ -246,7 +246,18 @@ Arduino's pins are its board's (`MCU_BOARDS`: D0…D13, A0…; the Uno's SDA and
 Nano a DIP-30 across a breadboard's channel); an FPGA board's are its Pmod connectors' (JA1…, each with its package pin
 from `core/boards.js`: the Basys2's JA2 and JA3 its UART's). A board powers the breadboard: its 5V, 3V3 and GND drive a
 1 and a 0, as the supply's terminals, in Try it, the checks and the HDL. Its other pins drive nothing in the circuit
-alone; a circuit as a System's node (the next step) gives them to the System's nodes.
+alone; a circuit as a System's node gives them to the System's nodes.
+
+**A circuit as a System's node** (#5215, `core/system-circuit.js`, `core/system-sim-circuit.js`): a node of kind
+`circuit` names a `.circ.json` of the project (the System editor's Circuit tool, its Properties' Circuit; the MCP's
+`edit_system`). It has no interfaces: its boards are the System's nodes their labels name (an Uno labelled `uno` is the
+node uno; no label, its id), and each board pin the circuit wires to something is a link. An Arduino's pin goes both
+ways (the AVR's pin is an input or an output as its program says; an input with its pull-up drives the circuit weakly);
+an FPGA board's pin is the port of the node's module on that package pin, its direction the port's (an inout port is
+not joined yet). The scheduler runs the circuit's own simulation as a node, a wire of 1 µs each way. The check says a
+board that names no node or a node of another board, an FPGA pin on no port, a pin both a link's and the circuit's, and
+a 5 V Arduino pin on one net with a 3.3 V FPGA input. A run says each circuit's lamps (lit at the end, the times each
+lit) and a short. The System Emulator does not draw a circuit node yet.
 
 A System drawn only as a circuit would lose the protocol level: the decoders, the speed and the links' checks.
 

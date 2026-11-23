@@ -154,6 +154,8 @@ test('#5288 regs-avr: its map\'s slave generated from it, its firmware regs.asm 
   const c = await ok('check_system', { project: 'ra', file: 'regs_avr.sys.json' });
   assert.deepEqual(c.text.split('\n'), ['System regs_avr: 2 nodes, 1 link', 'node uno: Arduino Uno, firmware firmware/regs.hex', '  SPI: SPI 125000 Hz mode 0, SCK D13, MOSI D11, MISO D12, SS D10',
     'node fpga: FPGA, module pwm_top on basys2-250', '  bus: SPI 125000 Hz mode 0, SCK sck (B2), MOSI mosi (A3), MISO miso (J3), SS ss (B5)', 'link spi: SPI uno.SPI ↔ fpga.bus',
+    // (its wires, the Wiring view's, #5216, #5320)
+    'spi SCK: uno D13 → fpga sck (pin B2), 5 V → 3.3 V', 'spi MOSI: uno D11 → fpga mosi (pin A3), 5 V → 3.3 V', 'spi MISO: fpga miso (pin J3) → uno D12', 'spi SS: uno D10 → fpga ss (pin B5), 5 V → 3.3 V',
     W('D13', 'sck', 'B2'), W('D11', 'mosi', 'A3'), W('D10', 'ss', 'B5'), 'Process "Check System" of regs_avr.sys.json completed successfully with 3 warning(s).']);
   assert.equal((await ok('check_drawing', { project: 'ra', file: 'src/pwm_regs.regs.json' })).text, 'Process "Check Register Map" of pwm_regs.regs.json completed successfully.');
   assert.match((await ok('check_syntax', { project: 'ra', top: 'pwm_top' })).text, /^Process "Check Syntax" of <pwm_top> completed successfully \(\d+ signals, \d+ process(es)?\)\.$/);

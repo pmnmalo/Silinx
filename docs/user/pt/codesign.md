@@ -52,6 +52,12 @@ ligados por UART e GPIO.
   pino do encapsulamento na dica). Um Nano fica sobre o canal de uma placa de ensaio. Os 5V, 3V3 e GND de uma placa
   alimentam a placa de ensaio; os outros pinos são do seu programa ou do seu projeto, conduzidos quando o circuito for um
   nó do Sistema (sozinhos, no Try it, não conduzem nada).
+- **Um circuito entre as placas**: **Circuito**, na barra do editor de Sistema, acrescenta um nó circuito, um circuito do
+  projeto (o Circuito das suas Propriedades). Dê a cada placa do circuito a etiqueta do id do seu nó (um Uno com a
+  etiqueta `uno` é o nó uno): os pinos que o circuito liga são então ligações do Sistema, os de um Arduino nos dois
+  sentidos, os de uma FPGA no sentido do porto desse pino. O Check diz uma placa que não nomeia nenhum nó, um pino que é
+  também de uma ligação, e um pino de 5 V de um Arduino numa entrada de 3,3 V da FPGA; o Try it corre o circuito com as
+  placas e diz cada LED (aceso no fim, as vezes que acendeu).
 
 ## Mapas de registos
 

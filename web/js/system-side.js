@@ -56,6 +56,10 @@ export function mountSystemSide(ctx) {
         h('div', { class: 'asm-row' }, btn('+ GPIO', 'Add GPIO wires: the board\'s pins and their direction', () => take(addInterface(M(), n.id, { kind: 'gpio' }), 'iface'), 'asm-small sys-add-gpio'),
           btn('+ SPI', 'Add the board\'s SPI bus, the master: SCK D13, MOSI D11, MISO D12, SS D10', () => take(addInterface(M(), n.id, { kind: 'spi' }), 'iface'), 'asm-small sys-add-spi'),
           btn('+ I²C', 'Add the board\'s I²C bus (Wire), the master: SCL A5, SDA A4', () => take(addInterface(M(), n.id, { kind: 'i2c' }), 'iface'), 'asm-small sys-add-i2c')));
+    } else if (n.kind === 'circuit') {
+      // (its circuit, #5215: a .circ.json of the project, its boards the nodes their labels name)
+      const cs = opts.circuits?.() || [];
+      out.push(field('Circuit', choose(n.circuit || '', [['', '(none)'], ...[...new Set([...cs, ...(n.circuit ? [n.circuit] : [])])].map(f => [f, f])], v => take(changeNode(M(), n.id, { circuit: v }), 'node'), 'sys-circuit'), 'a .circ.json of the project: its boards are the nodes their labels name'));
     }
     return out;
   }

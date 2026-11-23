@@ -9,10 +9,11 @@
 //            link's master not a microcontroller, its peripheral not an FPGA, its rate (and SPI's mode) different at its
 //            ends; an I²C peripheral's SDA not an inout port (#5214)
 //   warning  a baud that is no standard rate; a GPIO wire nothing drives; a 5 V output on a 3.3 V FPGA's input; a node
-//            that joins nothing
+//            that joins nothing (a circuit node's: core/system-check-circuit.js, #5215)
 import { NODE_KINDS, LINK_KINDS, INTERFACE_KINDS, FRAME_RE, mcuBoard, linkEnd } from './system-doc.js';
 import { resolveBoard } from './devices.js';
 import { BAUDS } from './uart.js';
+import { checkCircuitFields, checkCircuitNodes } from './system-check-circuit.js';
 
 const node = id => ({ kind: 'node', id });
 const link = id => ({ kind: 'link', id });
@@ -54,13 +55,15 @@ export const checkSystem = (sys, ctx = {}) => analyzeSystem(sys, ctx).diags;
  * signal (TX, SCK, MOSI…, a GPIO wire's index), from, to (its driver first: { node, pin (a port of the FPGA's module,
  * a pin of a microcontroller's board), loc (an FPGA's package pin), dir, volts, std, place (what the FPGA board's
  * pin is: its resource's label) }), warnings (its level's) } of each
- * link whose ends resolve, in the links' order.
+ * link whose ends resolve, in the links' order. `circuits`: the circuit nodes' circuits read ({ path: circuit }; null: their
+ * boards and pins not checked, #5215).
  */
-export function analyzeSystem(sys, { modules = null, files = null } = {}) {
+export function analyzeSystem(sys, { modules = null, files = null, circuits = null } = {}) {
   const out = [], wires = [];
   const say = { err: (message, ref) => out.push({ severity: 'error', message, ref }), warn: (message, ref) => out.push({ severity: 'warning', message, ref }) };
   const nodes = checkNodes(sys, { modules, files }, say);
   const used = checkLinks(sys, nodes, say, wires);
+  for (const id of checkCircuitNodes(sys, { circuits, modules }, wires, say)) used.add(id);
   for (const n of sys.nodes) if (n.id && nodes.has(lc(n.id)) && !used.has(lc(n.id))) say.warn(`${n.id} joins nothing: no link reaches it`, node(n.id));
   return { diags: out, wires };
 }
@@ -76,6 +79,7 @@ function checkNodes(sys, ctx, { err, warn }) {
     nodes.set(lc(n.id), at);
     if (n.kind === 'fpga') checkFpga(n, at, ctx, { err, warn });
     else if (n.kind === 'mcu') checkMcu(n, at, ctx, { err, warn });
+    else if (n.kind === 'circuit') checkCircuitFields(n, ctx, { err, warn });
     else for (const f of n.interfaces) {
       if (!checkInterface(n, f, at, { err, warn })) continue;
       if (f.kind !== 'uart') { err(`${n.id}: a serial terminal has UART interfaces only (${f.name} is ${f.kind})`, node(n.id)); continue; }

@@ -47,6 +47,11 @@ UART and GPIO links. Its design is in [CODESIGN.md](../../CODESIGN.md); its road
   the Nexys2, with their real pins (D0…D13, A0…; an FPGA board's Pmod pins JA1…, each with its package pin in its tip).
   A Nano sits across a breadboard's channel. A board's 5V, 3V3 and GND power the breadboard; its other pins are its
   program's or its design's, driven once the circuit is a node of the System (alone, in Try it, they drive nothing).
+- **A circuit between the boards**: **Circuit** in the System editor's toolbar adds a circuit node, a circuit of the
+  project (its Properties' Circuit). Label each board in the circuit with its node's id (an Uno labelled `uno` is the
+  node uno): the pins the circuit wires are then the System's links, an Arduino's both ways, an FPGA's the way the port
+  on that pin goes. Check says a board that names no node, a pin that is also a link's, and a 5 V Arduino pin on a
+  3.3 V FPGA input; Try it runs the circuit with the boards, and says each LED (lit at the end, the times it lit).
 
 ## Register maps
 

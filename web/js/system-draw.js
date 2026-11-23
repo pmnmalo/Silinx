@@ -16,6 +16,7 @@ const boardName = id => BOARDS.find(b => b.id === id)?.name || id || t('no board
 function nodeText(n) {
   if (n.kind === 'fpga') return `${n.module || t('no module')} · ${boardName(n.board)}${n.variant ? `-${n.variant}` : ''}`;
   if (n.kind === 'mcu') return `${mcuBoard(n.board)?.name || n.board} · ${n.firmware ? n.firmware.split('/').pop() : t('no firmware')}`;
+  if (n.kind === 'circuit') return n.circuit ? n.circuit.split('/').pop() : t('no circuit');   // (#5215)
   return t('Serial terminal');
 }
 const ifaceText = f => (f.kind === 'uart' ? `${f.name} · UART ${f.baud} ${f.frame}` : f.kind === 'spi' ? `${f.name} · SPI ${f.hz / 1000} kHz mode ${f.mode}` : f.kind === 'i2c' ? `${f.name} · I²C ${f.hz / 1000} kHz` : `${f.name} · GPIO ${f.dir} ${f.pins.length}`);
