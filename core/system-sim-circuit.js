@@ -91,6 +91,9 @@ export class CircuitNode {
     return this.out.splice(0).sort((a, b) => a.t - b.t);
   }
 
+  /** Its character LCDs' displays (#5330): { id: { on, lines, cursor, blink } }. */
+  lcds() { return this.sim.lcds(); }
+
   /** Its lamps (an LED, a display's segments): { port: { on, times } } (lit now, the times it lit, seen at the windows' ends). */
   lamps() { return Object.fromEntries([...this.lit].map(([k, v]) => [k, { ...v }])); }
 

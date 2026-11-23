@@ -34,6 +34,7 @@ export function checkCircuit(m, nets = circuitNets(m), { modules = null, runner 
     // (a project's KiCad part with no logic, #4280: drawn only)
     else if (d?.kind === 'model') continue;   // (checkModels, below)
     else if (d?.kind === 'drawn') say.warn(`${p.id} (${d.kicad.value}) is drawn only: it is not simulated and its pins drive nothing`, part(p.id));
+    else if (d?.kind === 'lcd') checkLcd(p, d, nets, say);
     else if (d && d.kind !== 'breadboard') checkOther(p, d, nets, say);
   }
   checkModels(m.parts, partDef, modules, say, part, runner);
@@ -159,6 +160,16 @@ function checkOther(p, d, nets, { warn }) {
     const com = netSupply(netOf(3)), cc = p.type === 'seg7-cc';
     if (cc ? com.vcc : com.gnd) warn(`${p.id} never lights: its common ${cc ? 'cathode is on the supply\'s + (a common anode display\'s place)' : 'anode is on the supply\'s − (a common cathode display\'s place)'}`, part(p.id));
   }
+}
+
+// a character LCD (#5330): joined to something; powered by its VDD and VSS (else it shows nothing); its RW low (its reads
+// not simulated: tied to GND, as LiquidCrystal's wiring)
+function checkLcd(p, d, nets, say) {
+  const netOf = (name) => nets.nets[nets.pinNet.get(`${p.id}.${d.pins.find((q) => q.name === name).n}`)];
+  if (partPins(p).every((q) => { const net = nets.nets[nets.pinNet.get(`${p.id}.${q.n}`)]; return net.pins.length < 2 && !net.wires.length; })) { say.warn(`${p.id} (${d.title}) joins nothing`, part(p.id)); return; }
+  const vdd = netSupply(netOf('VDD')), vss = netSupply(netOf('VSS'));
+  if (!vdd.vcc || !vss.gnd) say.warn(`${p.id} (${d.title}) is not powered: ${[!vdd.vcc && 'its VDD (pin 2) is not on the supply\'s +', !vss.gnd && 'its VSS (pin 1) is not on the supply\'s −'].filter(Boolean).join(' and ')}`, part(p.id));
+  if (!netSupply(netOf('RW')).gnd) say.warn(`${p.id}'s RW (pin 5) is not on GND: its reads are not simulated (tie it low, as LiquidCrystal's wiring does)`, part(p.id));
 }
 
 /** The circuit's errors only (what keeps its HDL from being generated). */

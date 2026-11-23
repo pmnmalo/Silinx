@@ -15,27 +15,27 @@ board; and build them for a real one, with Silinx's own open toolchain. Nothing 
 <tr>
 <td width="50%"><a href="docs/user/en/designing.md"><img src="docs/images/schematic.webp" alt="The schematic editor"></a>
 <b>Design your way.</b> VHDL and Verilog with live errors explained for beginners, schematics, state diagrams, ASM
-charts, Boolean algebra and Karnaugh maps, Petri nets, even C. Every drawing makes its HDL.</td>
+charts, Boolean algebra and Karnaugh maps, Petri nets, even C. Every drawing generates its HDL.</td>
 <td width="50%"><a href="docs/user/en/simulating.md#three-ways-to-see-a-design-work"><img src="docs/images/try-it.webp" alt="Try it: a circuit on a breadboard running, its LEDs lit"></a>
-<b>Try it.</b> Click a drawing's inputs and step its clock: a schematic, a state diagram, an ASM chart, a Petri net or
-a circuit on a breadboard shows its signals, states and LEDs live. No test bench needed.</td>
+<b>Try it.</b> A drawing steps as you click: a schematic, a state diagram, an ASM chart, a Petri net or a circuit on a
+breadboard, its inputs clicked, its clock stepped, its signals, states and LEDs shown live. No test bench needed.</td>
 </tr>
 <tr>
 <td><a href="docs/user/en/simulating.md"><img src="docs/images/simulation.webp" alt="The waveforms of a simulation"></a>
 <b>Simulate.</b> Silinx's own simulator runs VHDL and Verilog in the browser: test benches made by a wizard or drawn
-on the waveforms, any instance's signals added, cursors, markers, values in hexadecimal.</td>
+on the waveforms, any instance's signals added, cursors and markers.</td>
 <td><a href="docs/user/en/emulator.md"><img src="docs/images/emulator-basys2.webp" alt="The Board Emulator: a Basys2"></a>
-<b>Run it on an emulated board.</b> The design runs on a picture of the board, a Basys2, a Nexys3 or another one:
-press its buttons, flip its switches, watch its LEDs, its displays and its VGA screen.</td>
+<b>Run it on an emulated board.</b> The design runs on a picture of the board: press its buttons, flip its switches,
+watch its LEDs, displays and VGA screen.</td>
 </tr>
 <tr>
 <td><a href="docs/user/en/boards.md"><img src="docs/images/implement-nexys2.webp" alt="The Design Summary after an implementation"></a>
-<b>Build for a real board.</b> Synthesis, place and route and the bitstream with Silinx's open toolchain (or Xilinx
-ISE and AMD Vivado, if installed), and the board programmed over USB, from the browser.</td>
+<b>Build for a real board.</b> Synthesis, place and route and the bitstream with Silinx's open toolchain, and the
+board programmed over USB, from the browser.</td>
 <td><a href="docs/user/en/teaching.md#sharing"><img src="docs/images/share.webp" alt="Share Project: the project shared live"></a>
 <b>Collaboration.</b> Share a project live: others follow it read only, or edit it with you, peer to peer or through
-<a href="docs/user/en/live-relay.md">a free relay of your own</a>. A design in a link for your slides, a project on
-GitHub.</td>
+<a href="docs/user/en/live-relay.md">a free relay of your own</a>. A design in a link for the slides, a project on
+GitHub, a group's copies merged back.</td>
 </tr>
 </table>
 

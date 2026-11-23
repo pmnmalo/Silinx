@@ -16,27 +16,28 @@ Nada a instalar.
 <tr>
 <td width="50%"><a href="docs/user/pt/designing.md"><img src="docs/images/schematic.webp" alt="O editor de esquemáticos"></a>
 <b>Projete à sua maneira.</b> VHDL e Verilog com erros explicados para principiantes, esquemáticos, diagramas de
-estados, fluxogramas ASM, álgebra de Boole, mapas de Karnaugh, redes de Petri, até C. Cada desenho gera o seu HDL.</td>
+estados, fluxogramas ASM, álgebra de Boole e mapas de Karnaugh, redes de Petri, até C. Cada desenho gera o seu HDL.</td>
 <td width="50%"><a href="docs/user/pt/simulating.md#três-formas-de-ver-um-projeto-a-funcionar"><img src="docs/images/try-it-pt.webp" alt="Experimentar: um circuito numa breadboard a funcionar, os seus LEDs acesos"></a>
-<b>Experimente.</b> Clique nas entradas de um desenho e avance o relógio: um esquemático, um diagrama de estados, um
-fluxograma ASM, uma rede de Petri ou um circuito numa breadboard mostra os sinais, estados e LEDs ao vivo.</td>
+<b>Experimente.</b> Um desenho avança a cada clique: um esquemático, um diagrama de estados, um fluxograma ASM, uma
+rede de Petri ou um circuito numa breadboard, as entradas clicadas, o relógio avançado, os sinais, estados e LEDs
+mostrados ao vivo. Sem bancada de teste.</td>
 </tr>
 <tr>
 <td><a href="docs/user/pt/simulating.md"><img src="docs/images/simulation-pt.webp" alt="As formas de onda de uma simulação"></a>
-<b>Simule.</b> O simulador do próprio Silinx corre VHDL e Verilog no browser: bancadas de teste de um assistente ou
-desenhadas nas formas de onda, os sinais de cada instância, cursores, marcadores, valores em hexadecimal.</td>
+<b>Simule.</b> O simulador do próprio Silinx corre VHDL e Verilog no browser: bancadas de teste feitas por um assistente
+ou desenhadas nas formas de onda, os sinais de qualquer instância, cursores e marcadores.</td>
 <td><a href="docs/user/pt/emulator.md"><img src="docs/images/emulator-basys2-pt.webp" alt="O Emulador da Placa: uma Basys2"></a>
-<b>Corra-o numa placa emulada.</b> O projeto corre numa imagem da placa, uma Basys2, uma Nexys3 ou outra: carregue nos
-seus botões, mude os seus interruptores, veja os seus LEDs, os seus mostradores e o seu ecrã VGA.</td>
+<b>Corra-o numa placa emulada.</b> O projeto corre numa imagem da placa: carregue nos botões, mude os
+interruptores, veja os LEDs, os mostradores e o ecrã VGA.</td>
 </tr>
 <tr>
 <td><a href="docs/user/pt/boards.md"><img src="docs/images/implement-nexys2-pt.webp" alt="O Resumo do Projeto depois de uma implementação"></a>
 <b>Implemente para uma placa real.</b> A síntese, o posicionamento e encaminhamento e o bitstream com as ferramentas
-abertas do Silinx (ou o Xilinx ISE e o AMD Vivado, se instalados), e a placa programada por USB, no browser.</td>
+abertas do Silinx, e a placa programada por USB, a partir do browser.</td>
 <td><a href="docs/user/pt/teaching.md#partilhar"><img src="docs/images/share-pt.webp" alt="Partilhar Projeto: o projeto partilhado ao vivo"></a>
-<b>Colaboração.</b> Partilhe um projeto ao vivo: os outros acompanham-no só a ver, ou editam-no consigo, diretamente
-ou por <a href="docs/user/pt/live-relay.md">um relay gratuito seu</a>. Um projeto num link para slides, um projeto no
-GitHub, cópias de um grupo juntadas.</td>
+<b>Colaboração.</b> Partilhe um projeto ao vivo: os outros acompanham-no só a ver, ou editam-no consigo, diretamente ou
+por <a href="docs/user/pt/live-relay.md">um relay gratuito seu</a>. Um projeto num link para os slides, um projeto no GitHub, as cópias
+de um grupo juntadas de volta.</td>
 </tr>
 </table>
 

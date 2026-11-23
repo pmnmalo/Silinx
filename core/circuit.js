@@ -89,6 +89,6 @@ export function circuitPorts(m) {
 /** The circuit's counts, as its status line says them: "2 ICs · 3 switches · 2 LEDs · 9 wires". */
 export function circuitCounts(m) {
   const n = (f) => m.parts.filter(f).length;
-  const ics = n((p) => ['ic', 'drawn', 'model'].includes(partDef(p.type)?.kind)), sw = n((p) => partDef(p.type)?.kind === 'input'), leds = n((p) => partDef(p.type)?.kind === 'output');
+  const ics = n((p) => ['ic', 'drawn', 'model'].includes(partDef(p.type)?.kind)), sw = n((p) => partDef(p.type)?.kind === 'input'), leds = n((p) => ['output', 'lcd'].includes(partDef(p.type)?.kind));
   return `${ics} IC(s) · ${sw} input(s) · ${leds} display(s) · ${m.wires.length} wire(s)`;
 }
