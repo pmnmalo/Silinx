@@ -1,14 +1,18 @@
 // Silinx - Board Emulator: the Digilent Nexys2 drawn as the real board (#2480; out of emulator.js, #405). Our own
 // drawing, after the board's photos and its reference manual: each part where it is, as it is turned, in proportion
 // (the board 860 x 720), with its silkscreen names (the parts' FPGA pins in brackets, as on the board).
-import { holes4, boardFrame, svgText as text, ic, POWER_V_CSS } from './emulator-pcb.js';
+// Its drawing (nexys2Art) and its parts' places (nexys2Places) are the circuit editor's Nexys2 too (#5366): its Pmods'
+// pins where the circuit's part has them (core/circuit-boards.js BOARD_ART, PMOD_W).
+import { holes4, boardFrame, svgText as text, ic, POWER_V_CSS, putPlaces } from './emulator-pcb.js';
+import { BOARD_ART, PMOD_W } from '/core/circuit-boards.js';
 
-const W = 860, H = 720;
+const { w: W, h: H, pitch: PITCH, pin1: [JA1_X, PIN_Y] } = BOARD_ART.nexys2;
+const PMOD_X = (k) => JA1_X - 13.5 + k * PMOD_W * PITCH;
 const pinsOf = (board, res) => board.resources.find((r) => r.name === res)?.pins ?? [];
 // a Pmod (2 x 6 right-angle header) on the top edge, its blue power jumper on its right, its name under it
 const pmod12Top = (x, name) => `<rect x="${x}" y="0" width="104" height="42" rx="2" fill="#141414"/>`
-  + Array.from({ length: 12 }, (_, i) => `<rect x="${x + 10 + (i % 6) * 15.5}" y="${46 + Math.floor(i / 6) * 12}" width="7" height="7" fill="#c9a94a"/>`).join('')
-  + `<rect x="${x + 110}" y="20" width="12" height="22" rx="2" fill="#2a6fd1"/>` + text(x + 52, 82, name, { size: 11 });
+  + Array.from({ length: 12 }, (_, i) => `<rect x="${x + 10 + (i % 6) * PITCH}" y="${PIN_Y - 3.5 + Math.floor(i / 6) * PITCH}" width="7" height="7" fill="#c9a94a"/>`).join('')
+  + `<rect x="${x + 110}" y="20" width="12" height="22" rx="2" fill="#2a6fd1"/>` + text(x + 52, 86, name, { size: 11 });
 // a D-sub on the left edge, its face out of the board: the metal shell, the black body, the screw locks
 const dsubLeft = (y, hgt, name, sub) => `<rect x="0" y="${y}" width="16" height="${hgt}" rx="2" fill="#b9bec6" stroke="#6b7079"/>`
   + `<rect x="16" y="${y + 12}" width="58" height="${hgt - 24}" rx="2" fill="#151515"/>`
@@ -22,14 +26,10 @@ const LED_Y = 584;                                       // LD7 .. LD0, each ove
 const BTN_X = (i) => 486 + i * 64, BTN_Y = 660;          // BTN3 (left) .. BTN0, on the bottom edge
 const DIG_X = (i) => 486 + i * 64, DIG_Y = 580;          // AN3 (left) .. AN0, over the buttons
 
-/** Digilent Nexys2: dark green PCB. The top edge: the 5 V jack and the upright POWER SWITCH beside it (left), the
- *  Pmods JA..JD (2 x 6, each with its blue power jumper), the RESET button in the top-right corner; the left edge: the
- *  VGA and RS-232 connectors, the mini-USB, the PS/2 connector; the right edge: the Hirose FX2 connector (J1); the FPGA
- *  in the middle with the RAM and the flash above it, the 50 MHz oscillator and the clock socket; LD7..LD0 over the slide
- *  switches SW7..SW0 along the bottom edge (left), the 4-digit display DISP1 over BTN3..BTN0 (right). */
-export function nexys2Layout({ board, title, h, mkDigit, mkLed, mkSwitch, mkButton, portLabel, bitFor, clockNote, mkPower }) {
+/** Its drawing (an SVG's body, 860 x 720): the PCB, its connectors, chips and silkscreen. */
+export function nexys2Art(board) {
   const pin = (res, k = 0) => pinsOf(board, res)[k] ?? '';
-  const art = `
+  return `
     <defs><linearGradient id="nx2pcb" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#26493a"/><stop offset="1" stop-color="#1d3b2e"/></linearGradient></defs>
     <rect x="4" y="4" width="${W - 8}" height="${H - 8}" rx="8" fill="url(#nx2pcb) #26493a" stroke="#0f2219" stroke-width="3"/>
     ${holes4(W, H)}
@@ -38,7 +38,7 @@ export function nexys2Layout({ board, title, h, mkDigit, mkLed, mkSwitch, mkButt
     ${text(150, 128, 'BAT', { size: 7, weight: 'normal' })}<rect x="140" y="104" width="22" height="12" fill="#141414"/>
     <rect x="232" y="100" width="12" height="22" rx="2" fill="#2a6fd1"/>${text(250, 106, 'WALL', { size: 6, anchor: 'start', weight: 'normal' })}${text(250, 114, 'BAT', { size: 6, anchor: 'start', weight: 'normal' })}${text(250, 122, 'USB', { size: 6, anchor: 'start', weight: 'normal' })}
     ${text(238, 136, 'POWER SELECT', { size: 6, weight: 'normal' })}
-    ${pmod12Top(286, 'JA')}${pmod12Top(424, 'JB')}${pmod12Top(562, 'JC')}${pmod12Top(700, 'JD')}
+    ${pmod12Top(PMOD_X(0), 'JA')}${pmod12Top(PMOD_X(1), 'JB')}${pmod12Top(PMOD_X(2), 'JC')}${pmod12Top(PMOD_X(3), 'JD')}
     <rect x="818" y="${POWER[1] + 52}" width="30" height="30" rx="2" fill="#c9ccd1" stroke="#7b8088"/><circle cx="833" cy="${POWER[1] + 67}" r="8" fill="#1a1a1a"/>${text(833, POWER[1] + 96, 'RESET', { size: 7 })}
     ${dsubLeft(118, 118, 'VGA', '')}${dsubLeft(256, 100, 'RS-232', `RX (${pin('rs232_rx')}) TX (${pin('rs232_tx')})`)}
     <rect x="0" y="378" width="40" height="30" rx="3" fill="#c3c7cd" stroke="#6b7079"/><rect x="0" y="386" width="24" height="14" rx="2" fill="#55595f"/>${text(48, 397, 'USB', { anchor: 'start' })}
@@ -57,37 +57,48 @@ export function nexys2Layout({ board, title, h, mkDigit, mkLed, mkSwitch, mkButt
     <rect x="132" y="444" width="146" height="34" rx="4" fill="none" stroke="#fff" stroke-width="2"/>${text(205, 471, 'NEXYS 2', { size: 24, weight: '900', family: 'Arial Black, Arial' })}
     ${text(48, 640, 'HIGH', { size: 7, rotate: true })}${text(48, 684, 'LOW', { size: 7, rotate: true })}
     <rect x="${DIG_X(0) - 34}" y="${DIG_Y - 36}" width="${DIG_X(3) - DIG_X(0) + 68}" height="72" rx="3" fill="#0b0b0b" stroke="#2a2a2a"/>${text(DIG_X(0) - 34, DIG_Y - 42, 'DISP1', { size: 7, anchor: 'start', weight: 'normal' })}`;
-  const { put, wrap } = boardFrame({ h, W, H, art, board, title, clockNote });
-  const part = (w, name) => { w.dataset.part = name; return w; };
-  const silkText = (t, x, y) => put(h('span', { class: 'emu-silk nx2-silk' }, t), x, y);
-  const port = (res, k, x, y) => put(h('span', { class: `emu-port${bitFor(res, k) ? '' : ' nc'}` }, portLabel(res, k)), x, y);
+}
+
+/** Its parts' places, in the order the layout puts them (as emulator-basys2.js basys2Places). */
+export function nexys2Places(board) {
+  const out = [], at = (kind, x, y, more = {}) => out.push({ kind, x, y, ...more });
   // the power switch, upright on the top edge beside the 5 V jack (ON up), the POWER LED beside it
-  const power = part(put(mkPower(), POWER[0], POWER[1] - 18), 'power');
-  power.firstChild.classList.add('emu-power-v', 'nx2-power');
+  at('power', POWER[0], POWER[1] - 18, { cls: ['emu-power-v', 'nx2-power'] });
   // LD7..LD0 over SW7..SW0 (left part of the bottom edge), their FPGA pins in brackets
   for (let i = 0; i < 8; i++) {
     const k = 7 - i, x = SW_X(i);
-    silkText(`LD${k}`, x, LED_Y - 22);
-    part(put(mkLed(k, 'emu-led b2-led'), x, LED_Y - 8), `led${k}`);
-    silkText(`(${pinsOf(board, 'led')[k] ?? ''})`, x, LED_Y + 3);
-    port('led', k, x, LED_Y + 14);
-    part(put(mkSwitch(k, 'emu-sw nx2-sw'), x, SW_Y - 28), `sw${k}`);
-    silkText(`SW${k} (${pinsOf(board, 'sw')[k] ?? ''})`, x, SW_Y + 30);
-    port('sw', k, x, SW_Y + 41);
+    at('silk', x, LED_Y - 22, { text: `LD${k}` });
+    at('led', x, LED_Y - 8, { k, cls: 'emu-led b2-led', w: 16, h: 10 });
+    at('silk', x, LED_Y + 3, { text: `(${pinsOf(board, 'led')[k] ?? ''})` });
+    at('port', x, LED_Y + 14, { res: 'led', k });
+    at('sw', x, SW_Y - 28, { k, cls: 'emu-sw nx2-sw', w: 30, h: 54 });
+    at('silk', x, SW_Y + 30, { text: `SW${k} (${pinsOf(board, 'sw')[k] ?? ''})` });
+    at('port', x, SW_Y + 41, { res: 'sw', k });
   }
   // the 4-digit display (AN3..AN0) and, under it, BTN3..BTN0
   for (let i = 0; i < 4; i++) {
     const k = 3 - i, x = DIG_X(i);
-    part(put(mkDigit(k), x, DIG_Y - 27), `an${k}`);
-    port('an', k, x, DIG_Y + 37);
+    at('digit', x, DIG_Y - 27, { k });
+    at('port', x, DIG_Y + 37, { res: 'an', k });
   }
   for (let i = 0; i < 4; i++) {
     const k = 3 - i, x = BTN_X(i);
-    silkText(`BTN${k}`, x, BTN_Y - 34);
-    part(put(mkButton(k, 'emu-btn nx2-btn'), x, BTN_Y - 18), `btn${k}`);
-    silkText(`(${pinsOf(board, 'btn')[k] ?? ''})`, x, BTN_Y + 20);
-    port('btn', k, x, BTN_Y + 31);
+    at('silk', x, BTN_Y - 34, { text: `BTN${k}` });
+    at('btn', x, BTN_Y - 18, { k, cls: 'emu-btn nx2-btn', w: 34, h: 34, look: 'grey' });
+    at('silk', x, BTN_Y + 20, { text: `(${pinsOf(board, 'btn')[k] ?? ''})` });
+    at('port', x, BTN_Y + 31, { res: 'btn', k });
   }
+  return out;
+}
+
+/** Digilent Nexys2: dark green PCB. The top edge: the 5 V jack and the upright POWER SWITCH beside it (left), the
+ *  Pmods JA..JD (2 x 6, each with its blue power jumper), the RESET button in the top-right corner; the left edge: the
+ *  VGA and RS-232 connectors, the mini-USB, the PS/2 connector; the right edge: the Hirose FX2 connector (J1); the FPGA
+ *  in the middle with the RAM and the flash above it, the 50 MHz oscillator and the clock socket; LD7..LD0 over the slide
+ *  switches SW7..SW0 along the bottom edge (left), the 4-digit display DISP1 over BTN3..BTN0 (right). */
+export function nexys2Layout({ board, title, h, mkDigit, mkLed, mkSwitch, mkButton, portLabel, bitFor, clockNote, mkPower }) {
+  const { put, wrap } = boardFrame({ h, W, H, art: nexys2Art(board), board, title, clockNote });
+  putPlaces(nexys2Places(board), { h, put, silk: 'emu-silk nx2-silk', mkDigit, mkLed, mkSwitch, mkButton, mkPower, portLabel, bitFor });
   return wrap;
 }
 // its parts' look: the upright power switch (the POWER LED beside it), the slide switches, the square tact buttons

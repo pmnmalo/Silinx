@@ -180,8 +180,8 @@ test('#5215 a circuit node by edit_system, checked and simulated: the Uno\'s D2 
   // the bench: the Uno's D2 to the Basys2's JB1 (the FPGA's btn<0>, C6) and to the LED D1; the Basys2's JB3 (led<0>, C5) to D2
   await write('src/bench.circ.json', { format: 'silinx-circuit', version: 1, name: 'bench', lang: 'vhdl',
     parts: [{ id: 'A1', type: 'arduino-uno', x: 0, y: 0, label: 'uno' }, { id: 'F1', type: 'fpga-basys2', x: 0, y: 30, label: 'fpga' }, { id: 'D1', type: 'led', x: 20, y: -5, color: 'red' }, { id: 'D2', type: 'led', x: 12, y: 26, color: 'red' }],
-    wires: [{ id: 'w1', points: [[16, 0], [8, 30]], color: 'blue' }, { id: 'w2', points: [[16, 0], [20, -5]], color: 'blue' }, { id: 'w3', points: [[21, -5], [3, 0]], color: 'black' },
-      { id: 'w5', points: [[10, 30], [12, 26]], color: 'blue' }, { id: 'w6', points: [[13, 26], [4, 30]], color: 'black' }] });
+    wires: [{ id: 'w1', points: [[16, 0], [9, 30]], color: 'blue' }, { id: 'w2', points: [[16, 0], [20, -5]], color: 'blue' }, { id: 'w3', points: [[21, -5], [3, 0]], color: 'black' },
+      { id: 'w5', points: [[11, 30], [12, 26]], color: 'blue' }, { id: 'w6', points: [[13, 26], [4, 30]], color: 'black' }] });
   const m = system({ nodes: [{ id: 'uno', kind: 'mcu', board: 'arduino-uno', firmware: 'fw/d2.hex', interfaces: [] }] });
   m.nodes[0].pins = { clk: 'B8', rx: 'J3', tx: 'A3', 'btn<0>': 'C6', 'led<0>': 'C5' };
   await write('bench.sys.json', m);
@@ -213,7 +213,7 @@ test('#5322 simulate with controls on a circuit node: its switch S1 set at 5 ms 
   // the bench: the Basys2's JB1 (the FPGA's btn<0>, C6) driven by the logic switch S1, its JB3 (led<0>, C5) lighting D2
   await write('src/emu.circ.json', { format: 'silinx-circuit', version: 1, name: 'emu', lang: 'vhdl',
     parts: [{ id: 'F1', type: 'fpga-basys2', x: 0, y: 30, label: 'fpga' }, { id: 'S1', type: 'logic-switch', x: 8, y: 25 }, { id: 'D2', type: 'led', x: 12, y: 26, color: 'red' }],
-    wires: [{ id: 'w1', points: [[8, 25], [8, 30]], color: 'blue' }, { id: 'w5', points: [[10, 30], [12, 26]], color: 'blue' }, { id: 'w6', points: [[13, 26], [4, 30]], color: 'black' }] });
+    wires: [{ id: 'w1', points: [[8, 25], [9, 30]], color: 'blue' }, { id: 'w5', points: [[11, 30], [12, 26]], color: 'blue' }, { id: 'w6', points: [[13, 26], [4, 30]], color: 'black' }] });
   const m = system({ nodes: [{ id: 'bench', kind: 'circuit', circuit: 'src/emu.circ.json', interfaces: [] }] });
   m.nodes[0].pins = { clk: 'B8', rx: 'J3', tx: 'A3', 'btn<0>': 'C6', 'led<0>': 'C5' };
   await write('emuc.sys.json', m);

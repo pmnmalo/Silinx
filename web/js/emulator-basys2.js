@@ -1,15 +1,19 @@
 // Silinx - Board Emulator: the Digilent Basys2 drawn as the real board (#2479; out of emulator.js, #405). Our own
 // drawing, after the board's photos and its reference manual: each part where it is, as it is turned, in proportion
 // (the board 840 x 556), with its silkscreen names (the switches', buttons', digits' and Pmods' with their FPGA pins).
-import { holes4, boardFrame, svgText as text, ic, POWER_V_CSS } from './emulator-pcb.js';
+// Its drawing (basys2Art) and its parts' places (basys2Places) are the circuit editor's Basys2 too (#5366): its Pmods'
+// pins where the circuit's part has them (core/circuit-boards.js BOARD_ART, PMOD_W).
+import { holes4, boardFrame, svgText as text, ic, POWER_V_CSS, putPlaces } from './emulator-pcb.js';
+import { BOARD_ART, PMOD_W } from '/core/circuit-boards.js';
 
-const W = 840, H = 556;
+const { w: W, h: H, pitch: PITCH, pin1: [JA1_X, PIN_Y] } = BOARD_ART.basys2;
+const PMOD_X = (k) => JA1_X - 14 + k * PMOD_W * PITCH;
 const pinsOf = (board, res) => board.resources.find((r) => r.name === res)?.pins ?? [];
 // a Pmod (6-pin right-angle header) on the top edge: its black body on the edge, its pins on the board under it, each
 // with its FPGA pin (then GND, VCC), the header's name on its left
 const pmodTop = (x, name, pins) => `<rect x="${x}" y="0" width="125" height="40" rx="2" fill="#141414"/>`
-  + [...pins, 'GND', 'VCC'].map((p, i) => `<circle cx="${x + 14 + i * 19.4}" cy="48" r="5" fill="#d8c67e"/><circle cx="${x + 14 + i * 19.4}" cy="48" r="2" fill="#5a4a1a"/>`
-    + text(x + 17 + i * 19.4, 58, i < 4 ? `(${p})` : p, { size: 7, weight: 'normal', anchor: 'end', rotate: true })).join('')
+  + [...pins, 'GND', 'VCC'].map((p, i) => `<circle cx="${x + 14 + i * PITCH}" cy="${PIN_Y}" r="5" fill="#d8c67e"/><circle cx="${x + 14 + i * PITCH}" cy="${PIN_Y}" r="2" fill="#5a4a1a"/>`
+    + text(x + 17 + i * PITCH, PIN_Y + 10, i < 4 ? `(${p})` : p, { size: 7, weight: 'normal', anchor: 'end', rotate: true })).join('')
   + text(x - 12, 52, name, { size: 11 });
 
 // where the parts are (their centres)
@@ -19,18 +23,14 @@ const LED_Y = 410;                                        // LD7 .. LD0, each ov
 const BTN_X = (i) => 558 + i * 64.4, BTN_Y = 492;         // BTN3 (left) .. BTN0, on the bottom edge
 const DIG_X = (i) => 620 + i * 60 + (i > 1 ? 14 : 0), DIG_Y = 409;   // AN3 (left) .. AN0, a colon between AN2 and AN1
 
-/** Digilent Basys2 (rev C): royal blue PCB. The Pmods JA..JD along the top edge; on the left edge the PS/2
- *  connector (J1), the mini-USB (J3), the battery connector, the STATUS LED and, in the bottom-left corner, the upright
- *  power switch SW8 (ON up); the VGA connector (J2) on the right edge, the mode jumper JP3 above it; the FPGA (IC3)
- *  in the middle, the clock jumper JP4 above it, the socket IC6; LD7..LD0 over the big slide switches SW7..SW0 along
- *  the bottom edge (left), the 4-digit display DISP1 over BTN3..BTN0 (right). */
-export function basys2Layout({ board, title, h, mkDigit, mkLed, mkSwitch, mkButton, portLabel, bitFor, clockNote, mkPower }) {
+/** Its drawing (an SVG's body, 840 x 556): the PCB, its connectors, chips and silkscreen. */
+export function basys2Art(board) {
   const segs = ['CA', 'CB', 'CC', 'CD', 'CE', 'CF', 'CG'].map((s, i) => `${s}(${pinsOf(board, 'seg')[i] ?? ''})`).concat(`DP(${pinsOf(board, 'dp')[0] ?? ''})`);
-  const art = `
+  return `
     <defs><linearGradient id="b2pcb" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#2156b3"/><stop offset="1" stop-color="#18449a"/></linearGradient></defs>
     <rect x="4" y="4" width="${W - 8}" height="${H - 8}" rx="8" fill="url(#b2pcb) #2156b3" stroke="#0e2a66" stroke-width="3"/>
     ${holes4(W, H)}
-    ${pmodTop(99, 'JA', [pinsOf(board, 'ja')[0], ...pinsOf(board, 'tx'), ...pinsOf(board, 'rx'), pinsOf(board, 'ja')[1]])}${pmodTop(278, 'JB', pinsOf(board, 'jb'))}${pmodTop(457, 'JC', pinsOf(board, 'jc'))}${pmodTop(635, 'JD', pinsOf(board, 'jd'))}
+    ${pmodTop(PMOD_X(0), 'JA', [pinsOf(board, 'ja')[0], ...pinsOf(board, 'tx'), ...pinsOf(board, 'rx'), pinsOf(board, 'ja')[1]])}${pmodTop(PMOD_X(1), 'JB', pinsOf(board, 'jb'))}${pmodTop(PMOD_X(2), 'JC', pinsOf(board, 'jc'))}${pmodTop(PMOD_X(3), 'JD', pinsOf(board, 'jd'))}
     <rect x="0" y="91" width="54" height="96" rx="3" fill="#c3c7cd" stroke="#6b7079"/><rect x="0" y="104" width="30" height="70" fill="#9da2a9"/><rect x="34" y="96" width="14" height="86" fill="#d9dce1"/>
     ${text(10, 86, 'J1', { size: 8, anchor: 'start' })}${text(64, 108, `PS2C(${pinsOf(board, 'ps2_clk')[0] ?? ''})`, { size: 7, anchor: 'start', weight: 'normal' })}${text(64, 118, `PS2D(${pinsOf(board, 'ps2_data')[0] ?? ''})`, { size: 7, anchor: 'start', weight: 'normal' })}
     <rect x="0" y="244" width="60" height="44" rx="3" fill="#c3c7cd" stroke="#6b7079"/><rect x="0" y="256" width="36" height="20" rx="2" fill="#55595f"/>${text(10, 238, 'J3', { size: 8, anchor: 'start' })}
@@ -56,37 +56,50 @@ export function basys2Layout({ board, title, h, mkDigit, mkLed, mkSwitch, mkButt
     <rect x="585" y="378" width="253" height="62" rx="2" fill="#0b0b0b" stroke="#2a2a2a"/><circle cx="${DIG_X(1) + 33}" cy="400" r="2.5" fill="#3a0d08"/><circle cx="${DIG_X(1) + 33}" cy="418" r="2.5" fill="#3a0d08"/>
     ${text(585, 372, 'DISP1', { size: 7, anchor: 'start', weight: 'normal' })}
     ${segs.map((s, i) => text(580, 383 + i * 8, s, { size: 6, anchor: 'end', weight: 'normal' })).join('')}`;
-  const { put, wrap } = boardFrame({ h, W, H, art, board, title, clockNote });
-  const part = (w, name) => { w.dataset.part = name; return w; };
-  const silkText = (t, x, y) => put(h('span', { class: 'emu-silk b2-silk' }, t), x, y);
-  const port = (res, k, x, y) => put(h('span', { class: `emu-port${bitFor(res, k) ? '' : ' nc'}` }, portLabel(res, k)), x, y);
+}
+
+/** Its parts' places, in the order the layout puts them: { kind, k, x, y } (an LED's, a switch's, a digit's, a button's,
+ *  the power switch's top middle), { kind: 'silk', text }, { kind: 'port', res } (the design's port: the emulator's
+ *  only); cls its look's classes, w and h a part's size (its CSS's). */
+export function basys2Places(board) {
+  const out = [], at = (kind, x, y, more = {}) => out.push({ kind, x, y, ...more });
   // the power switch SW8, upright in the bottom-left corner (ON up), its STATUS LED over it
-  const power = part(put(mkPower(), POWER[0], POWER[1] - 18), 'power');
-  power.firstChild.classList.add('emu-power-v', 'b2-power');
+  at('power', POWER[0], POWER[1] - 18, { cls: ['emu-power-v', 'b2-power'] });
   // LD7..LD0 over SW7..SW0 (left part of the bottom edge): the LED's name over it, its FPGA pin under it
   for (let i = 0; i < 8; i++) {
     const k = 7 - i, x = SW_X(i);
-    silkText(`LD${k}`, x, LED_Y - 20);
-    part(put(mkLed(k, 'emu-led b2-led'), x, LED_Y - 5), `led${k}`);
-    silkText(`(${pinsOf(board, 'led')[k] ?? ''})`, x, LED_Y + 6);
-    port('led', k, x, LED_Y + 17);
-    part(put(mkSwitch(k, 'emu-sw bs2-sw'), x, SW_Y - 38), `sw${k}`);
-    silkText(`SW${k}-${pinsOf(board, 'sw')[k] ?? ''}`, x, SW_Y + 40);
-    port('sw', k, x, SW_Y + 51);
+    at('silk', x, LED_Y - 20, { text: `LD${k}` });
+    at('led', x, LED_Y - 5, { k, cls: 'emu-led b2-led', w: 16, h: 10 });
+    at('silk', x, LED_Y + 6, { text: `(${pinsOf(board, 'led')[k] ?? ''})` });
+    at('port', x, LED_Y + 17, { res: 'led', k });
+    at('sw', x, SW_Y - 38, { k, cls: 'emu-sw bs2-sw', w: 40, h: 72 });
+    at('silk', x, SW_Y + 40, { text: `SW${k}-${pinsOf(board, 'sw')[k] ?? ''}` });
+    at('port', x, SW_Y + 51, { res: 'sw', k });
   }
   // the 4-digit display (AN3..AN0) and, under it, BTN3..BTN0
   for (let i = 0; i < 4; i++) {
     const k = 3 - i, x = DIG_X(i);
-    part(put(mkDigit(k), x, DIG_Y - 27), `an${k}`);
-    silkText(`AN${k}(${pinsOf(board, 'an')[k] ?? ''})`, x, DIG_Y + 33);
-    port('an', k, x, DIG_Y + 44);
+    at('digit', x, DIG_Y - 27, { k });
+    at('silk', x, DIG_Y + 33, { text: `AN${k}(${pinsOf(board, 'an')[k] ?? ''})` });
+    at('port', x, DIG_Y + 44, { res: 'an', k });
   }
   for (let i = 0; i < 4; i++) {
     const k = 3 - i, x = BTN_X(i);
-    part(put(mkButton(k, 'emu-btn b2-btn bs2-btn'), x, BTN_Y - 18), `btn${k}`);
-    silkText(`BTN${k}-${pinsOf(board, 'btn')[k] ?? ''}`, x, BTN_Y + 23);
-    port('btn', k, x, BTN_Y + 34);
+    at('btn', x, BTN_Y - 18, { k, cls: 'emu-btn b2-btn bs2-btn', w: 38, h: 38, look: 'dark' });
+    at('silk', x, BTN_Y + 23, { text: `BTN${k}-${pinsOf(board, 'btn')[k] ?? ''}` });
+    at('port', x, BTN_Y + 34, { res: 'btn', k });
   }
+  return out;
+}
+
+/** Digilent Basys2 (rev C): royal blue PCB. The Pmods JA..JD along the top edge; on the left edge the PS/2
+ *  connector (J1), the mini-USB (J3), the battery connector, the STATUS LED and, in the bottom-left corner, the upright
+ *  power switch SW8 (ON up); the VGA connector (J2) on the right edge, the mode jumper JP3 above it; the FPGA (IC3)
+ *  in the middle, the clock jumper JP4 above it, the socket IC6; LD7..LD0 over the big slide switches SW7..SW0 along
+ *  the bottom edge (left), the 4-digit display DISP1 over BTN3..BTN0 (right). */
+export function basys2Layout({ board, title, h, mkDigit, mkLed, mkSwitch, mkButton, portLabel, bitFor, clockNote, mkPower }) {
+  const { put, wrap } = boardFrame({ h, W, H, art: basys2Art(board), board, title, clockNote });
+  putPlaces(basys2Places(board), { h, put, silk: 'emu-silk b2-silk', mkDigit, mkLed, mkSwitch, mkButton, mkPower, portLabel, bitFor });
   return wrap;
 }
 // its parts' look: the upright power switch (the STATUS LED over it), the big black slide switches, the tact buttons

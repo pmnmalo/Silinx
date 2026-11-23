@@ -35,8 +35,8 @@ const system = (nodes = [FPGA, TERM, UNO, BENCH], links = [{ id: 'console', kind
 function bench({ more = [], wires = [], noSwitch = false } = {}) {
   return normalizeCircuit({ name: 'bench', parts: [{ id: 'A1', type: 'arduino-uno', x: 0, y: 0, label: 'uno' }, { id: 'F1', type: 'fpga-basys2', x: 0, y: 30, label: 'fpga' },
     { id: 'D1', type: 'led', x: 20, y: -5 }, { id: 'D2', type: 'led', x: 12, y: 26 }, ...(noSwitch ? [] : [{ id: 'S1', type: 'logic-switch', x: 15, y: -8 }]), ...more],
-  wires: [{ id: 'w1', points: [[16, 0], [8, 30]] }, { id: 'w2', points: [[16, 0], [20, -5]] }, { id: 'w3', points: [[21, -5], [3, 0]] },
-    { id: 'w4', points: [[10, 30], [9, 0]] }, { id: 'w5', points: [[10, 30], [12, 26]] }, { id: 'w6', points: [[13, 26], [4, 30]] },
+  wires: [{ id: 'w1', points: [[16, 0], [9, 30]] }, { id: 'w2', points: [[16, 0], [20, -5]] }, { id: 'w3', points: [[21, -5], [3, 0]] },
+    { id: 'w4', points: [[11, 30], [9, 0]] }, { id: 'w5', points: [[11, 30], [12, 26]] }, { id: 'w6', points: [[13, 26], [4, 30]] },
     ...(noSwitch ? [] : [{ id: 'w7', points: [[15, -8], [15, 0]] }]), ...wires] });
 }
 const HOT = 'bench: A1 D2 (uno\'s, 5 V) and F1 JB1 (fpga\'s btn, pin C6, a 3.3 V input) are on one net: a level shifter or a divider on the real boards';
@@ -62,14 +62,14 @@ test('#5215 a circuit node\'s problems: a board naming no node, or a node of ano
   assert.deepEqual(of({ parts: [{ id: 'A1', type: 'arduino-nano', x: 0, y: 0, label: 'uno' }, { id: 'F1', type: 'fpga-nexys2', x: 0, y: 30, label: 'fpga' }, { id: 'X', type: 'arduino-uno', x: 0, y: 60, label: 'term' }], wires: [] }),
     ['error: bench: its circuit\'s A1 is an Arduino Nano, the node uno is on arduino-uno', 'error: bench: its circuit\'s F1 is a Digilent Nexys2, the node fpga is on basys2', 'error: bench: its circuit\'s X is an Arduino Uno, the node term is a terminal node']);
   // JB2 (B6): no port of the module on it; JA1 (B2) named in the UCF as a port the module does not have; an inout port
-  const f = { parts: [{ id: 'F1', type: 'fpga-basys2', x: 0, y: 30, label: 'fpga' }, { id: 'D1', type: 'led', x: 0, y: 20 }], wires: [{ id: 'a', points: [[9, 30], [0, 20]] }, { id: 'b', points: [[0, 30], [1, 20]] }] };
+  const f = { parts: [{ id: 'F1', type: 'fpga-basys2', x: 0, y: 30, label: 'fpga' }, { id: 'D1', type: 'led', x: 0, y: 20 }], wires: [{ id: 'a', points: [[10, 30], [0, 20]] }, { id: 'b', points: [[0, 30], [1, 20]] }] };
   const sys2 = system([{ ...FPGA, pins: { ...FPGA.pins, ghost: 'B2' } }, TERM, UNO, BENCH]);
   assert.deepEqual(circuitNodePins(sys2, BENCH, normalizeCircuit(f), { ports: PORTS }).problems.map((p) => p.message), [
     'bench: F1 JA1 is fpga\'s ghost (pin B2), no port of uart', 'bench: F1 JB2 (pin B6) is wired in the circuit, but no port of fpga\'s module is on that pin']);
   assert.deepEqual(circuitNodePins(sys2, BENCH, normalizeCircuit(f), { ports: { uart: [...PORTS.uart, { name: 'ghost', dir: 'inout', width: 1 }] } }).problems.map((p) => p.message)[0],
     'bench: F1 JA1 is fpga\'s ghost, an inout port: not joined to the circuit yet (an input or an output)');
   // the Uno's SDA and its A4 (joined inside it) both wired: the node's A4 once
-  const u = { parts: [{ id: 'A1', type: 'arduino-uno', x: 0, y: 0, label: 'uno' }, { id: 'D1', type: 'led', x: 0, y: -4 }, { id: 'D2', type: 'led', x: 14, y: 23 }], wires: [{ id: 'a', points: [[1, 0], [0, -4]] }, { id: 'b', points: [[14, 19], [14, 23]] }] };
+  const u = { parts: [{ id: 'A1', type: 'arduino-uno', x: 0, y: 0, label: 'uno' }, { id: 'D1', type: 'led', x: 0, y: -4 }, { id: 'D2', type: 'led', x: 14, y: 23 }], wires: [{ id: 'a', points: [[1, 0], [0, -4]] }, { id: 'b', points: [[17, 19], [14, 23]] }] };
   assert.deepEqual(circuitNodePins(sys, BENCH, normalizeCircuit(u)).pins.map((p) => [p.name, p.nodePin]), [['A1:SDA', 'A4']]);
 });
 
@@ -143,7 +143,7 @@ test('#5215 the circuit\'s adapter alone: its pins, set strong or weak, its valu
   // the Uno's D2 into a 7404's 1A, its 1Y on D3; the 7404 powered by the Uno's 5V and GND
   const at = (name) => { const q = PARTS['arduino-uno'].pins.find((x) => x.name === name); return { n: q.n, xy: [q.dx, q.dy] }; };
   const m = normalizeCircuit({ name: 'c', parts: [{ id: 'A1', type: 'arduino-uno', x: 0, y: 0 }, { id: 'U1', type: '7404', x: 20, y: 5 }],
-    wires: [{ id: 'a', points: [at('D2').xy, [20, 5]] }, { id: 'b', points: [at('D3').xy, [21, 5]] }, { id: 'c', points: [at('5V').xy, [20, 2]] }, { id: 'd', points: [[6, 19], [26, 5]] }] });
+    wires: [{ id: 'a', points: [at('D2').xy, [20, 5]] }, { id: 'b', points: [at('D3').xy, [21, 5]] }, { id: 'c', points: [at('5V').xy, [20, 2]] }, { id: 'd', points: [[9, 19], [26, 5]] }] });
   const c = new CircuitNode({ model: m, pins: [{ name: 'A1:D2', part: 'A1', n: at('D2').n }, { name: 'A1:D3', part: 'A1', n: at('D3').n }] });
   assert.deepEqual([c.inputs, c.outputs, c.value('A1:D2'), c.value('A1:D3')], [['A1:D2', 'A1:D3'], ['A1:D2', 'A1:D3'], null, 0], 'D2 open: a 74LS input reads it high');
   c.setPin('A1:D2', 0);
@@ -173,7 +173,7 @@ test('#5215 a circuit node edited: added with its circuit, changed, no interface
 // (off), its JB3 (led<0>) lighting D2; a clock CK1 at 50 Hz lighting D3
 const EMU_BENCH = normalizeCircuit({ name: 'bench', parts: [{ id: 'F1', type: 'fpga-basys2', x: 0, y: 30, label: 'fpga' }, { id: 'S1', type: 'logic-switch', x: 8, y: 25 },
   { id: 'D2', type: 'led', x: 12, y: 26 }, { id: 'CK1', type: 'clock', x: 20, y: 20, hz: 50 }, { id: 'D3', type: 'led', x: 22, y: 22 }],
-wires: [{ id: 'w1', points: [[8, 25], [8, 30]] }, { id: 'w5', points: [[10, 30], [12, 26]] }, { id: 'w6', points: [[13, 26], [4, 30]] },
+wires: [{ id: 'w1', points: [[8, 25], [9, 30]] }, { id: 'w5', points: [[11, 30], [12, 26]] }, { id: 'w6', points: [[13, 26], [4, 30]] },
   { id: 'w7', points: [[20, 20], [22, 22]] }, { id: 'w8', points: [[23, 22], [4, 30]] }] });
 
 test('#5322 a circuit node emulated: its switch set at 5 ms (the FPGA\'s message), its LEDs\' states, its clock ticking; its inputs; a wrong one refused', async () => {

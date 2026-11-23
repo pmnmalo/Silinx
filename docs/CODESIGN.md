@@ -241,7 +241,10 @@ server's `check_system` says them too, a line each after the System described (`
 data (`wires`).
 
 **The boards as the circuit's parts** (#5215, `core/circuit-boards.js`): the Circuit editor's Parts panel has a Boards
-group, the Arduino Uno and Nano, the Basys2 and the Nexys2, each as large as the board and with its real pins. An
+group, the Arduino Uno and Nano, the Basys2 and the Nexys2, each as large as the board and with its real pins, drawn as
+the emulators draw it (#5366: the Board Emulator's Basys2 and Nexys2, their LEDs, switches, buttons and digits where it
+puts them; the System Emulator's Uno and Nano; `BOARD_ART` gives each drawing's size, pitch and pin 1, the part's body
+on the grid; the Pmods 0.9 inch apart, the Uno's headers where the real ones are). An
 Arduino's pins are its board's (`MCU_BOARDS`: D0…D13, A0…; the Uno's SDA and SCL joined to A4 and A5 inside it; the
 Nano a DIP-30 across a breadboard's channel); an FPGA board's are its Pmod connectors' (JA1…, each with its package pin
 from `core/boards.js`: the Basys2's JA2 and JA3 its UART's). A board powers the breadboard: its 5V, 3V3 and GND drive a
