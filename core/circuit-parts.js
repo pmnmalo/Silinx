@@ -14,6 +14,7 @@ import { DECODER_ICS } from './circuit-model-decoders.js';
 import { MUX_ICS } from './circuit-model-mux.js';
 import { MEMORY_ICS } from './circuit-model-memory.js';
 import { BOARD_PARTS } from './circuit-boards.js';
+import { LCD_1602 } from './circuit-lcd.js';
 import { codesignOn } from './build-channel.js';
 
 // ------------------------------------------------------------------ the breadboards
@@ -80,6 +81,8 @@ const OTHERS = [
   ledBar(10),
   // a logic probe (#3900): it shows its tip's level (H, L, open, X) and records it in the waveforms; no port of the HDL
   { type: 'probe', title: 'Logic probe', kind: 'probe', pins: [pin(1, 'tip', 'probe', 0, 0)] },
+  // a character LCD 16×2 (#5330, core/circuit-lcd.js)
+  LCD_1602,
 ];
 
 // ------------------------------------------------------------------ the library
@@ -133,6 +136,14 @@ export function partPins(part) {
   const d = partDef(part.type);
   if (!d) return [];
   return d.pins.map((p) => { const [dx, dy] = turn(p.dx, p.dy, part.rot || 0); return { n: p.n, name: p.name, dir: p.dir, ...(p.tri ? { tri: true } : {}), ...(p.io ? { io: true } : {}), ...(p.supply ? { supply: true } : {}), x: part.x + dx, y: part.y + dy }; });
+}
+
+/** A part's body's corners on the grid, turned with it, when it is larger than its pins (a board, #5215; a character
+ *  LCD, #5330: its description's `size`): [[x, y]…], none for another part (the editor's Fit and print, #5330). */
+export function partCorners(part) {
+  const s = partDef(part.type)?.size;
+  if (!s) return [];
+  return [[s.x0, s.y0], [s.x1, s.y0], [s.x0, s.y1], [s.x1, s.y1]].map(([dx, dy]) => { const [x, y] = turn(dx, dy, part.rot || 0); return [part.x + x, part.y + y]; });
 }
 
 /** A breadboard part's holes on the grid, turned with it (#4065): [{ name, strip, x, y }] (none for any other part). */

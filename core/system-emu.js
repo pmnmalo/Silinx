@@ -107,7 +107,7 @@ export function boardStates(sim, boards, t0, t1, prev = {}) {
     if (b.kind === 'circuit') {
       // (its lamps and its inputs now, #5322)
       const node = sim.nodes.get(b.id);
-      out[b.id] = { leds: node.sim.leds(), inputs: node.sim.inputs(), lit: Object.entries(node.sim.outputs()).filter(([, v]) => v === '1').map(([k]) => k) };
+      out[b.id] = { leds: node.sim.leds(), lcds: node.sim.lcds(), inputs: node.sim.inputs(), lit: Object.entries(node.sim.outputs()).filter(([, v]) => v === '1').map(([k]) => k) };
       continue;
     }
     if (b.kind === 'fpga') {

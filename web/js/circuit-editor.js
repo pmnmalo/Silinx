@@ -20,7 +20,7 @@ import { viewGestures } from './view-gestures.js';
 import { sv } from './dom.js';
 import { mountSideFold } from './side-fold.js';
 import { normalizeCircuit, newCircuit, circuitCounts } from '/core/circuit.js';
-import { partPins, partHoles } from '/core/circuit-parts.js';
+import { partPins, partHoles, partCorners } from '/core/circuit-parts.js';
 import { addPart, movePart, rotatePart, deleteItem } from '/core/circuit-edit.js';
 import { mountCircuitOptions } from './circuit-options.js';
 import { adoptOps, recordCircuit, replayCircuit, replayPlan, tryOps } from '/core/collab-try.js';
@@ -177,7 +177,7 @@ export function mountCircuitEditor(container, opts = {}) {
   function render() {
     if (destroyed) return;
     applyView();
-    world.replaceChildren(drawCircuit({ ...M, wireStyle: wireStyle() }, { sel, draft, ghost, inside: inside(), hops: hops(), handles: !readOnly && !sim, levels: sim ? (id, n) => sim.pin(id, n) : null, leds: sim?.leds(), inputs: sim?.inputs() }));
+    world.replaceChildren(drawCircuit({ ...M, wireStyle: wireStyle() }, { sel, draft, ghost, inside: inside(), hops: hops(), handles: !readOnly && !sim, levels: sim ? (id, n) => sim.pin(id, n) : null, leds: sim?.leds(), lcds: sim?.lcds(), inputs: sim?.inputs() }));
     sync();   // (the Wires' ✓: an undo, a model set)
     for (const b of [delBtn]) b.disabled = !sel;
     rotBtn.disabled = sel?.kind !== 'part';
@@ -281,6 +281,8 @@ export function mountCircuitEditor(container, opts = {}) {
   function bounds() {
     const xs = [], ys = [];
     for (const p of M.parts) for (const q of [...partPins(p), ...partHoles(p)]) { xs.push(q.x); ys.push(q.y); }
+    // (a board's, an LCD's body larger than its pins, #5330)
+    for (const p of M.parts) for (const [x, y] of partCorners(p)) { xs.push(x); ys.push(y); }
     for (const w of M.wires) for (const [x, y] of w.points) { xs.push(x); ys.push(y); }
     return xs.length ? { l: (Math.min(...xs) - 4) * P, r: (Math.max(...xs) + 3) * P, t: (Math.min(...ys) - 3) * P, b: (Math.max(...ys) + 3) * P } : null;
   }

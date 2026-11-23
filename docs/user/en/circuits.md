@@ -102,6 +102,7 @@ generated HDL and the MCP server.
 | | SPDT slide switch (break before make), DIP switch (4 / 8), pull-up and pull-down (weak 1 / weak 0), clock source (its frequency, 0.1 to 50 Hz, ticking in real time) | 2 |
 | Outputs | LED (anode, cathode; its colour) | 1 |
 | | 7-segment display (common cathode and common anode, with its point), LED bar (10) | 2 |
+| | character LCD 16×2 (HD44780, #5330): its 16 pins in a row (VSS, VDD, V0, RS, RW, E, D0..D7, A, K), its controller simulated (a write on E's falling edge, RS a command or a character, 8-bit or 4-bit mode as LiquidCrystal drives it, the cursor and display shifts), its two lines drawn on its glass; off until its program turns it on; its RW tied to GND (reads are not simulated). In the HDL an instance of its own entity, simulation only, that reports its lines after each write (`LCD1 \|Hello …\|`), in VHDL and in Verilog | 5 |
 | Gates (74xx, as the 74LS) | 7400 NAND, 7404 NOT, 7408 AND, 7432 OR, 7486 XOR | 1 |
 | | 7402 NOR, 7410 / 7411 / 7420 / 7427 / 7430 (3, 4, 8 inputs), 7414 (Schmitt NOT), 7401 / 7403 / 7405 / 7406 (open collector) | 2 |
 | Gates (4000) | 4001, 4011, 4030 / 4070, 4069, 4071, 4081 | 2 |
