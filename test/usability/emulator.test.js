@@ -22,8 +22,10 @@ let env;
 before(async () => { env = await setupUi(); });
 after(async () => { await env?.teardown?.(); });
 const E = () => env;
-// (the emulator's note on its compiled engine and the display, after its first line)
-const COMPILED = "Board Emulator: the design is compiled (its netlist, by Yosys) and runs at up to the board's clock rate; registers without an initial value start at 0, as on the FPGA; the event-driven engine shows X values and the design's messages. Each display digit keeps the last pattern it showed between its refreshes, as your eye does on the real board.";
+// (the emulator's note on its compiled engine, after its first line; the display's digits, for a design that drives
+// the display, #5292)
+const NOTE = "Board Emulator: the design is compiled (its netlist, by Yosys) and runs at up to the board's clock rate; registers without an initial value start at 0, as on the FPGA; the event-driven engine shows X values and the design's messages.";
+const COMPILED = `${NOTE} Each display digit keeps the last pattern it showed between its refreshes, as your eye does on the real board.`;
 /** The lines of the Check Syntax the emulator runs first: its files parsed, its top elaborated. */
 const checked = (files, top, signals, processes) => ['Started : "Check Syntax".', ...files.map((f) => `Parsing VHDL file "src/${f}.vhd" into library work`),
   `Elaborating top module <${top}>: ${signals} signals, ${processes} processes.`, 'Process "Check Syntax" completed successfully'];
@@ -131,8 +133,8 @@ const FRAME = 840000, VGA_WATCH = ['vga_hsync', 'vga_vsync', 'vga_red', 'vga_gre
 
 uiTest('usability: emulator: the vga: the VGA monitor\'s picture and timing the design\'s simulation\'s; SW0 on, BTN0 held: the square moved four pixels a frame', E, async (page) => {
   const { s, lines, files } = await start(page, 'vga', 'UsabEmuVga',
-    // (its note on the display's digits it has not: #5292)
-    [...checked(['vga_sync', 'vga'], 'vga', 31, 17), "Board Emulator: 'vga' (RTL, compiled) on Digilent Basys2 — 16 port bit(s) on board resources.", COMPILED]);
+    // (its note: nothing of a display it has not, #5292)
+    [...checked(['vga_sync', 'vga'], 'vga', 31, 17), "Board Emulator: 'vga' (RTL, compiled) on Digilent Basys2 — 16 port bit(s) on board resources.", NOTE]);
   const a = s.a;
   // the picture after three frames, against the reference's first (its frame and its timing over two)
   await s.step('run', { cycles: 3 * FRAME }, async () => { await a.pause(); await a.runFor(3 * FRAME); });
@@ -165,11 +167,10 @@ uiTest('usability: emulator: the vga: the VGA monitor\'s picture and timing the 
   await lines([]);
 }, { timeout: 300000 });
 
-// (#5292: the emulator's note speaks of the display's digits for a design with no display wired)
-uiTest('usability: emulator: the vga: its note says nothing of a display it has not (#5292)', E, async (page, _env, t) => {
-  t.todo('#5292: the note\'s sentence on the display\'s digits, for a design whose UCF wires no display');
-  const note = COMPILED.replace(/ Each display digit .*$/, '');
-  await start(page, 'vga', 'UsabEmuVgaNote', [...checked(['vga_sync', 'vga'], 'vga', 31, 17), "Board Emulator: 'vga' (RTL, compiled) on Digilent Basys2 — 16 port bit(s) on board resources.", note]);
+// (#5292: the emulator's note spoke of the display's digits for a design with no display wired)
+uiTest('usability: emulator: the vga: its note says nothing of a display it has not (#5292)', E, async (page) => {
+  const { lines } = await start(page, 'vga', 'UsabEmuVgaNote', [...checked(['vga_sync', 'vga'], 'vga', 31, 17), "Board Emulator: 'vga' (RTL, compiled) on Digilent Basys2 — 16 port bit(s) on board resources.", NOTE]);
+  await lines([]);
 }, { timeout: 120000 });
 
 // the uart: 9600 baud, a bit 5208 cycles (50 MHz / 9600)

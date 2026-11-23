@@ -82,12 +82,15 @@ export function mountEmuSide(ctx) {
   }
   const logEl = h('div', { class: 'emu-log' });
   side.append(h('div', { class: 'emu-box' }, h('h4', {}, 'Messages'), logEl));
-  // what it says of the design, in the console (#2718): the engine and why, the timing, the ports on no pin of the board
+  // what it says of the design, in the console (#2718): the engine and why, the timing, the ports on no pin of the board;
+  // the display's persistence only when a digit's anode is on a pin (#5292)
+  const digits = wiring.bits.some((b) => b.kind === 'an');
+  const persist = 'display digit keeps the last pattern it showed between its refreshes, as your eye does on the real board.';
   note(compiled()
     ? 'the design is compiled (its netlist, by Yosys) and runs at up to the board\'s clock rate; registers without an initial value start at 0, as on the FPGA; '
-      + 'the event-driven engine shows X values and the design\'s messages. Each display digit keeps the last pattern it showed between its refreshes, as your eye does on the real board.'
-    : 'the design is simulated from its HDL (behavioural RTL) at a reduced clock rate; registers without an initial value start at 0, as on the FPGA; '
-      + 'each display digit keeps the last pattern it showed between its refreshes, as your eye does on the real board.');
+      + `the event-driven engine shows X values and the design's messages.${digits ? ` Each ${persist}` : ''}`
+    : 'the design is simulated from its HDL (behavioural RTL) at a reduced clock rate; registers without an initial value start at 0, as on the FPGA'
+      + (digits ? `; each ${persist}` : '.'));
   if (engineNote()) note(`not compiled (${engineNote()}): the event-driven simulator runs the design.`, 'warn');
   else if (engine?.auto && !compiled()) note(`the event-driven engine by default on this device (${engine.auto}): choose Engine ▸ Compiled to run the design at the board's real speed.`);
   for (const w of compiled()?.warnings || []) note(`compiled engine: ${w}`, 'warn');

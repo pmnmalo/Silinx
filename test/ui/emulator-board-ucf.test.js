@@ -27,9 +27,9 @@ end rtl;
 // the Basys2's pins
 const BASYS2 = 'NET "clk" LOC = "B8";\nNET "sw<0>" LOC = "P11";\nNET "sw<1>" LOC = "L3";\nNET "led<0>" LOC = "M5";\nNET "led<1>" LOC = "M11";\n';
 const BAD = 'WARNING: Board Emulator: constraints/top.ucf uses 4 pin(s) that are not on the Numato Mimas V2 (constraints made for another board): sw<0>=P11, sw<1>=L3, led<0>=M5, led<1>=M11';
-// the emulator's notes on a compiled design: the engine's only, no warning
+// the emulator's notes on a compiled design: the engine's only (no display wired: nothing of its digits, #5292), no warning
 const COMPILED = ['the design is compiled (its netlist, by Yosys) and runs at up to the board\'s clock rate; registers without an initial value start at 0, as on the FPGA; '
-  + 'the event-driven engine shows X values and the design\'s messages. Each display digit keeps the last pattern it showed between its refreshes, as your eye does on the real board.'];
+  + 'the event-driven engine shows X values and the design\'s messages.'];
 const TITLE = 'Constraints do not match the board';
 const DOC = '.doc:not([hidden])';
 const lines = (page) => page.eval(() => [...document.querySelectorAll('#console-log .ln')].map((l) => l.textContent));
