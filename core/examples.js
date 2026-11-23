@@ -7,7 +7,7 @@
 export const EXAMPLE_ORDER = ['gates', 'breadboard', 'traffic', 'blinky', 'pong', 'stopwatch', 'clock', 'vga', 'isqrt', 'uart', 'micro80', 'lock'];
 
 /** The co-design examples, in their order after the FPGA ones (core/project-kind.js CODESIGN_EXAMPLES, #5214). */
-export const CODESIGN_ORDER = ['uart-avr', 'spi-avr', 'i2c-avr'];
+export const CODESIGN_ORDER = ['uart-avr', 'spi-avr', 'i2c-avr', 'regs-avr'];
 
 /** Example names in the listing order: the known ones first (EXAMPLE_ORDER, then the co-design ones'), then any other,
  *  by name. */

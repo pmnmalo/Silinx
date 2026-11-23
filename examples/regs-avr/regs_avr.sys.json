@@ -1,0 +1,67 @@
+{
+  "format": "silinx-system",
+  "version": 1,
+  "name": "regs_avr",
+  "nodes": [
+    {
+      "id": "uno",
+      "kind": "mcu",
+      "board": "arduino-uno",
+      "firmware": "firmware/regs.hex",
+      "interfaces": [
+        {
+          "name": "SPI",
+          "kind": "spi",
+          "hz": 125000,
+          "mode": 0
+        }
+      ],
+      "x": 0,
+      "y": 0
+    },
+    {
+      "id": "fpga",
+      "kind": "fpga",
+      "module": "pwm_top",
+      "board": "basys2",
+      "variant": "250",
+      "pins": {
+        "clk": "B8",
+        "sck": "B2",
+        "mosi": "A3",
+        "miso": "J3",
+        "ss": "B5",
+        "led<0>": "M5",
+        "led<1>": "M11",
+        "led<2>": "P7",
+        "led<3>": "P6",
+        "led<4>": "N5",
+        "led<5>": "N4",
+        "led<6>": "P4",
+        "led<7>": "G1"
+      },
+      "interfaces": [
+        {
+          "name": "bus",
+          "kind": "spi",
+          "sck": "sck",
+          "mosi": "mosi",
+          "miso": "miso",
+          "ss": "ss",
+          "hz": 125000,
+          "mode": 0
+        }
+      ],
+      "x": 320,
+      "y": 0
+    }
+  ],
+  "links": [
+    {
+      "id": "spi",
+      "kind": "spi",
+      "a": "uno.SPI",
+      "b": "fpga.bus"
+    }
+  ]
+}

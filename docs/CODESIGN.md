@@ -142,7 +142,9 @@ functions through `SPI` or `Wire`), and the accesses a link's transfers make (`c
 generated from it (`core/view-hdl.js`), its row in the Design pane (its **Registers** badge first); its editor a table
 (`web/js/regmap-editor.js`), its Check (the MCP's `check_drawing`), its Header button (the MCP's `related_view` header, written by `write_file`); the
 MCP edits it through `write_file`, as its editor saves it; Simulate System says a link's accesses when its FPGA end is
-a module made from a map. Next: an example.
+a module made from a map or one that instances its slave (the node's hierarchy, `hierModules`), its lines in the
+console when a run stops. The **regs-avr** example (step 3) shows it: the Arduino writes `clear`, then `duty`, and reads
+`count`, the FPGA's `pwm_top` the map's slave, a PWM and a millisecond counter.
 
 ## Simulating everything together
 

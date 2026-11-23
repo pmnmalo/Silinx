@@ -117,16 +117,18 @@ export function checkRegmap(m) {
   return out;
 }
 
-/** The register map a module is made from, among the project's maps' texts ({ path: text }): the one named as it (its
- *  case aside), or null (#5288: Simulate System says its accesses). */
-export function regmapFor(texts, module) {
-  for (const [p, text] of Object.entries(texts || {})) {
-    if (!isRegmapFile(p)) continue;
-    const r = readRegmap(text);
-    if (r.regmap && r.regmap.name.toLowerCase() === String(module).toLowerCase()) return r.regmap;
-  }
+/** The register map a module is made from, or one of its instances (`modules`: the names of its hierarchy, itself
+ *  first; an elaborated design's: hierModules), among the project's maps' texts ({ path: text }): the first named as
+ *  one of them (their case aside), or null (#5288: Simulate System says its link's accesses). */
+export function regmapFor(texts, modules) {
+  const names = (Array.isArray(modules) ? modules : [modules]).map(m => String(m).toLowerCase());
+  const maps = Object.entries(texts || {}).filter(([p]) => isRegmapFile(p)).map(([, t]) => readRegmap(t).regmap).filter(Boolean);
+  for (const n of names) { const m = maps.find(x => x.name.toLowerCase() === n); if (m) return m; }
   return null;
 }
+
+/** The modules of an elaborated design's hierarchy (core/compile.js elaborate's top), itself first. */
+export const hierModules = node => (node ? [node.module || node.name, ...(node.children || []).flatMap(hierModules)] : []);
 
 /** The map's registers in address order, each with its bytes ({ ...r, bytes }), for the generators. */
 export const regsByAddr = m => m.registers.map(r => ({ ...r, bytes: regBytes(r) })).sort((a, b) => a.addr - b.addr);

@@ -181,6 +181,11 @@ test('#5288 the map a module is made from, among the project\'s maps: by its nam
   assert.equal(regmapFor(texts, 'PWM_REGS')?.name, 'pwm_regs');
   assert.equal(regmapFor(texts, 'other'), null);
   assert.equal(regmapFor({}, 'pwm_regs'), null);
+  // (a top that instances the map's slave: found in its hierarchy, the top first)
+  const { hierModules } = await import('../core/regmap.js');
+  const top = { name: 'top', module: 'pwm_top', children: [{ name: 'u', module: 'other', children: [{ name: 'r', module: 'pwm_regs', children: [] }] }] };
+  assert.deepEqual(hierModules(top), ['pwm_top', 'other', 'pwm_regs']);
+  assert.equal(regmapFor(texts, hierModules(top))?.name, 'pwm_regs');
 });
 
 test('#5288 the program side: the header for SPI and for I²C, its addresses, its functions by access', () => {

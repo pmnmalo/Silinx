@@ -17,7 +17,7 @@ export const runTimeText = ps => (ps >= 1e12 ? `${+(ps / 1e12).toFixed(3)} s` : 
  * What the run needs, read where the System is (the page, the MCP server): { plan, netlists: { id: { json, top } },
  * firmware: { id: { name, data } }, regmaps: { id: map } }, or { error } (a node that cannot be simulated, a module that
  * does not compile, a firmware not read). ports: { module: [{ name, dir, width }] }; regmap(module): the register map
- * the module is made from (core/regmap.js), or null (#5288: its link's accesses said).
+ * the module is made from or instances (core/regmap.js regmapFor), or null (#5288: its link's accesses said).
  */
 export async function systemInputs(sys, { ports = {}, netlist, firmware, regmap = null }) {
   const plan = systemPlan(sys, { ports });

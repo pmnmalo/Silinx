@@ -19,7 +19,7 @@ import { readSystem, writeSystem } from '/core/system-doc.js';
 import { codesignOn, CODESIGN_OFF } from '/core/build-channel.js';
 import { checkSystem, analyzeSystem } from '/core/system-check.js';
 import { systemInputs } from '/core/system-run.js';
-import { regmapFor } from '/core/regmap.js';
+import { regmapFor, hierModules } from '/core/regmap.js';
 import { mountSystemSim } from './system-sim-view.js';
 import { openSystemWaves } from './system-waves-view.js';
 
@@ -50,7 +50,7 @@ export async function prepareHere(sys, { emulate = false } = {}) {
     ports,
     netlist: m => { if (!designs[m]) throw new Error(`no module '${m}' that elaborates (Check Syntax says why)`); return netlistOf(designs[m], { run }); },
     firmware: async p => (/\.elf$/i.test(p) ? api.readFileBytes(S.project.name, p) : api.readFile(S.project.name, p)),   // (an .elf's bytes, #5198)
-    regmap: m => regmapFor(designState.viewTexts, m),   // (a module made from a register map: its accesses, #5288)
+    regmap: m => regmapFor(designState.viewTexts, designs[m] ? hierModules(designs[m].top) : [m]),   // (a module made from a register map, or one instancing it: its accesses, #5288)
   });
   if (inputs.error) return inputs;
   // (the System Emulator's: its boards too, and the inputs it draws them from, #5212)

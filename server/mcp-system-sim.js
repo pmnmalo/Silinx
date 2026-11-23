@@ -11,7 +11,7 @@ import { emulationBoards, withBoards, watchBoards, boardStates, setBoardInput, p
 import { loadAvr8js } from '../core/system-sim-avr.js';
 import { systemVcd } from '../core/system-waves.js';
 import { ucfPort } from '../core/board-constraints.js';
-import { isRegmapFile, regmapFor } from '../core/regmap.js';
+import { isRegmapFile, regmapFor, hierModules } from '../core/regmap.js';
 
 // the System's FPGA nodes' modules elaborated: their ports ({ module: [{ name, dir, width }] }) and designs
 async function modulesOf(name, sys) {
@@ -52,7 +52,7 @@ export async function simulateSystem(name, file, { ms = 100, type = {}, controls
     ports,
     netlist: m => { if (!designs[m]) throw new Error(`no module '${m}' that elaborates in the project`); return netlistOf(designs[m], { run: yosysNode }); },
     firmware: async p => (/\.elf$/i.test(p) ? P.readFileBytes(name, p) : P.readFile(name, p)),   // (the page's reads, #5198)
-    regmap: async m => regmapFor(await mapTexts(name), m),   // (a module made from a register map: its accesses, #5288)
+    regmap: async m => regmapFor(await mapTexts(name), designs[m] ? hierModules(designs[m].top) : [m]),   // (a module made from a register map, or one instancing it: its accesses, #5288)
   };
   const emu = controls ? await emulated(sys, how) : null;
   const ready = emu ? emu.ready : await prepareSystem(sys, how);

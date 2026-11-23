@@ -1,0 +1,31 @@
+{
+  "format": "silinx-regmap",
+  "version": 1,
+  "name": "pwm_regs",
+  "bus": "spi",
+  "registers": [
+    {
+      "name": "duty",
+      "addr": 0,
+      "width": 8,
+      "access": "rw",
+      "reset": 0
+    },
+    {
+      "name": "count",
+      "addr": 1,
+      "width": 16,
+      "access": "ro"
+    },
+    {
+      "name": "clear",
+      "addr": 3,
+      "width": 1,
+      "access": "wo",
+      "reset": 0,
+      "strobe": true
+    }
+  ],
+  "lang": "vhdl",
+  "generatedFile": "src/pwm_regs.vhd"
+}

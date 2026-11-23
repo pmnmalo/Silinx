@@ -63,7 +63,11 @@ adds one after the last; the toolbar chooses the bus (SPI, or I²C and its addre
 (two registers at one address, a name the module uses itself…) in the console. On SPI, a transaction is a command byte
 (`R << 7 | address`) and then the data bytes; on I²C, the register's address and then the data, a read after a
 repeated START. In **Try it**, a link to an FPGA node made from a map says its accesses in the console's lines:
-`write duty = 0xa5`, `read count → 0x0123`.
+`write duty = 0xa5`, `read count → 0x0123`, when the run stops (after each SPI and I²C link's transfers). The
+**regs-avr** example shows it: its FPGA module, `pwm_top`, instances the slave of the map `pwm_regs.regs.json`
+(`duty`, the PWM of LD0, its bits on LD7..LD1; `count`, the milliseconds since `clear`; `clear`, a strobe); the
+Arduino writes `clear` once, then every 47 ms or so writes `duty` with a count and reads `count`, its low byte on
+D2..D7.
 
 ## Try it
 
