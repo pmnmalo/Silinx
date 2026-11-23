@@ -180,7 +180,10 @@ export function mountDesignRules(ctx) {
         if (!inf || inf.sim || w.kind === 'native') continue;
         // (a primitive's model, core/unisim.js: a clock primitive's output, a BSCAN's DRCK, #3176)
         if (String(fileOf(w) || '').startsWith('<silinx>/')) continue;
-        if (w.kind === 'glue') {
+        // (a port connection's glue; a concurrent assignment that copies a signal as it is, clk <= clk_i: a name of it,
+        // its source the signal's, as clock-as-data's copy, #5112, #5351)
+        const copy = w.kind === 'assign' && w.body?.k === 'asg' && w.body.target?.k === 'sig' && !w.body.delay && ['sig', 'c'].includes(w.body.value?.k);
+        if (w.kind === 'glue' || copy) {
           const v = w.body?.value;
           if (v && v.k === 'sig') { const r = logicSource(v.sig, depth + 1); if (r) return r; continue; }
           if (v && v.k === 'c') continue;
