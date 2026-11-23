@@ -37,6 +37,7 @@ import { panes } from './state-panes.js';
 import { filesState } from './state-files.js';
 import { designState } from './state-design.js';
 import { docsState } from './state-docs.js';
+import { openFocused } from './doc-focus.js';
 
 import { codesign, systemRow } from './design-system.js';
 const $ = id => document.getElementById(id);
@@ -283,7 +284,8 @@ export function treeItem({ label, meta, ico, open = false, onSelect, onOpen, onC
   });
   tw.addEventListener('dblclick', e => e.stopPropagation());
   row.addEventListener('click', () => selectRow(row, key, onSelect));
-  row.addEventListener('dblclick', () => { if (onOpen) onOpen(); else if (ul.childElementCount) tw.click(); });
+  // (what it opens kept, for Enter's document to take the keyboard, #5300)
+  row.addEventListener('dblclick', () => { row.opening = onOpen ? onOpen() : null; if (!onOpen && ul.childElementCount) tw.click(); });
   row.addEventListener('contextmenu', e => { e.preventDefault(); row.click(); onContext?.(e); });
   longPressMenu(row);   // (its badges' menus too: a touch's long press, #263)
   return { li, ul, row, setLeaf() { tw.textContent = ''; } };
@@ -305,7 +307,7 @@ function markSelRow(row) {
 }
 
 // The Design tree from the keyboard (it takes the focus): ↑ / ↓ select, → / ← expand / collapse (←
-// on a collapsed or leaf row: its parent), Enter opens (as a double-click), the context-menu key or
+// on a collapsed or leaf row: its parent), Enter opens (as a double-click; its document takes the keyboard, #5300), the context-menu key or
 // Shift+F10 shows the row's menu, Tab reaches the selected row's badges (Enter opens that view).
 function treeKeys(e) {
   if (e.target.closest?.('.badge') || e.altKey || e.ctrlKey || e.metaKey) return;
@@ -320,7 +322,7 @@ function treeKeys(e) {
   else if (e.key === 'ArrowUp') go(rows[Math.max(i - 1, 0)]);
   else if (e.key === 'ArrowRight' && cur) { if (sub?.childElementCount && sub.hidden) tw.click(); else if (sub?.childElementCount) go(sub.querySelector('.row')); }
   else if (e.key === 'ArrowLeft' && cur) { if (sub?.childElementCount && !sub.hidden) tw.click(); else go(cur.parentElement.parentElement.closest('li')?.querySelector(':scope > .row')); }
-  else if (e.key === 'Enter' && cur) cur.dispatchEvent(new MouseEvent('dblclick', { bubbles: true }));
+  else if (e.key === 'Enter' && cur) openFocused(() => { cur.dispatchEvent(new MouseEvent('dblclick', { bubbles: true })); return cur.opening; }, tree);   // (its document takes the keyboard, #5300)
   else if ((e.key === 'ContextMenu' || (e.key === 'F10' && e.shiftKey)) && cur) {
     const b = cur.getBoundingClientRect();
     cur.dispatchEvent(new MouseEvent('contextmenu', { bubbles: true, cancelable: true, clientX: b.left + 24, clientY: b.bottom }));
