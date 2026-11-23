@@ -66,6 +66,8 @@ export const SYSTEM_PT_PATTERNS = [
   [/^(FPGA|Microcontroller|Serial terminal|Circuit) ([A-Za-z]\w*)$/, (m, k, id) => `${{ FPGA: 'FPGA', Microcontroller: 'Microcontrolador', 'Serial terminal': 'Terminal série', Circuit: 'Circuito' }[k]} ${id}`],
   [/^Link ([A-Za-z]\w*)$/, 'Ligação $1'], [/^Waves \((.+)\)$/, 'Ondas ($1)'],
   [/^Emulate \((.+)\)$/, 'Emular ($1)'], [/^(\d+)% of real time$/, '$1% do tempo real'],
+  // (the register map's Header, its map in error: web/js/drawings-regs.js)
+  [/^([^:]+): (.+): no header written$/, '$1: $2: cabeçalho não escrito'],
   [/^(\d+) registers? · (\d+) bytes?$/, (m, n, b) => `${n} ${n === '1' ? 'registo' : 'registos'} · ${b} byte${b === '1' ? '' : 's'}`],
   [/^(\d+) wires? · (\d+) links?$/, (m, n, l) => `${n} ${n === '1' ? 'fio' : 'fios'} · ${l} ${l === '1' ? 'ligação' : 'ligações'}`],
   [/^(\d+) nodes? · (\d+) links?$/, (m, n, l) => `${n} ${n === '1' ? 'nó' : 'nós'} · ${l} ${l === '1' ? 'ligação' : 'ligações'}`],
