@@ -95,7 +95,7 @@ function adderTpl(w, bits, adsu) {
       const bv = bits ? vecVh(P, bn) : P(`B(${msb}:0)`);
       L.push(adsu ? `${b} <= ${bv} when ${P('ADD')} = '1' else not (${bv});` : `${b} <= ${bv};`);
       const sum = `resize(unsigned(${a}), ${w + 1}) + resize(unsigned(${b}), ${w + 1})`;
-      L.push(`${s} <= ${sum} + unsigned'(0 => ${P('CI')});`);   // (one sum, the carry its operand, #4780)
+      L.push(`${s} <= ${sum} + 1 when ${P('CI')} = '1' else ${sum};`);
       if (bits) sn.forEach((x, i) => L.push(`${P(x)} <= ${s}(${msb - i});`)); else L.push(`${P(`S(${msb}:0)`)} <= std_logic_vector(${s}(${msb} downto 0));`);
       L.push(`${P('CO')} <= ${s}(${w});`);
       L.push(`${P('OFL')} <= (${a}(${msb}) xnor ${b}(${msb})) and (${a}(${msb}) xor ${s}(${msb}));`);

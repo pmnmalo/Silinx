@@ -1,0 +1,5 @@
+In short:
+- In the Circuit editor's Try it the circuit is no longer edited: its parts are not dragged, and nothing is deleted, turned, pasted, drawn or placed; its switches and buttons are still clicked (#5365).
+
+In detail:
+- While a circuit is tried out its edits are refused, as the schematic's Try it (#5365): web/js/circuit-editor.js (no part dragged nor a wire's end or bend, no wire drawn nor part placed: the Select tool; applyEdit, Undo, Redo, Delete and Rotate do nothing; Edit's Undo, Redo, Copy, Paste and Delete off; Delete and Rotate off in its toolbar), web/js/circuit-keys.js (Delete, R, Ctrl+Z, Y, X, V ignored, Copy kept; Esc stops Try it), web/js/circuit-side.js (its Properties' fields disabled); its switches, buttons, DIP levers and a sensor's − and + still clicked. Tests: the UI's circuit-try-frozen (the breadboard dragged, the keys, Edit ▸ Undo, the Wire tool, a part placed, its Properties: nothing changed; a switch clicked; stopped: dragged again; both interfaces; failing on the old code).
