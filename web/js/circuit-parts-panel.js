@@ -22,7 +22,7 @@ import { codesignOn } from '/core/build-channel.js';
 const GROUPS = [['Breadboards', ['breadboard-half', 'breadboard-full']], ['Power', ['supply', 'pull-up', 'pull-down']],
   // (the boards, #5215: an Arduino, an FPGA board, with their real pins)
   ['Boards', PART_ORDER.filter((t) => PARTS[t].kind === 'board')],
-  ['Inputs', ['logic-switch', 'button', 'spdt', 'dip-4', 'dip-8', 'clock']], ['Outputs', ['led', 'seg7-cc', 'seg7-ca', 'led-bar-10', 'probe']],
+  ['Inputs', ['logic-switch', 'button', 'spdt', 'dip-4', 'dip-8', 'clock']], ['Outputs', ['led', 'seg7-cc', 'seg7-ca', 'led-bar-10', 'lcd-1602', 'probe']],
   ['Gates (74LS)', PART_ORDER.filter((t) => PARTS[t].gates && PARTS[t].family === 'ttl')], ['Gates (4000)', PART_ORDER.filter((t) => PARTS[t].gates && PARTS[t].family === 'cmos')],
   // (an IC written once in VHDL whose function is a decoder's, a multiplexer's…: an MSI IC, #4397)
   ['MSI (74LS, 4000)', PART_ORDER.filter((t) => PARTS[t].model || PARTS[t].msi)], ['Sequential (74LS, 4000)', PART_ORDER.filter((t) => (PARTS[t].seq || PARTS[t].core) && !PARTS[t].msi)]];
