@@ -37,20 +37,28 @@ test('check_system: a valid System, no warnings; an Arduino at 5 V, its warning;
   assert.deepEqual(sys0.nodes.map(n => n.id), ['fpga', 'term']);
   assert.deepEqual([v.isError, v.text], [false, ['System uart_avr: 2 nodes, 1 link', 'node fpga: FPGA, module uart on basys2-250', '  uart: UART 9600 baud 8N1, TX tx (A3), RX rx (J3)',
     'node term: Serial terminal', '  serial: UART 9600 baud 8N1', 'link console: UART term.serial ↔ fpga.uart',
+    'console TX: term serial.tx → fpga rx (pin J3)', 'console TX: fpga tx (pin A3) → term serial.rx',   // (its wiring, #5216)
     'Process "Check System" of uart_avr.sys.json completed successfully.'].join('\n')]);
-  assert.deepEqual(data0, { project: 'u', file: 'uart_avr.sys.json', ok: true, errors: [], warnings: [] });
+  const { wires: w0, ...rest0 } = data0;
+  assert.deepEqual(rest0, { project: 'u', file: 'uart_avr.sys.json', ok: true, errors: [], warnings: [] });
+  // (its wires, the Wiring view's, #5216: each end's pin, package pin, levels and what the board says the pin is)
+  assert.deepEqual(w0[0], { link: 'console', kind: 'uart', signal: 'TX', warnings: [],
+    from: { node: 'term', pin: 'serial.tx', loc: null, dir: 'out', volts: null, std: null, place: null },
+    to: { node: 'fpga', pin: 'rx', loc: 'J3', dir: 'in', volts: 3.3, std: 'LVCMOS33', place: 'UART RX on a PmodUSBUART in JA (its TXD, JA3)' } });
   // the Arduino on the FPGA's UART: its 5 V TX on the FPGA's input; the terminal then joins nothing
   await write('fw/echo.hex', ':00000001FF\n');
   const uno = { id: 'uno', kind: 'mcu', board: 'arduino-uno', firmware: 'fw/echo.hex', interfaces: [{ name: 'Serial', kind: 'uart', baud: 9600, frame: '8N1' }] };
   const m = system({ nodes: [uno] }); m.links[0].a = 'uno.Serial';
   await write('uart_avr.sys.json', m);
   const r = await ok('check_system', { project: 'u', file: 'uart_avr.sys.json' });
-  const { untrusted, system: _s, ...data } = r.data;
+  const { untrusted, system: _s, wires, ...data } = r.data;
+  assert.deepEqual(wires.map(w => [w.from.node, w.to.node, w.warnings.length]), [['uno', 'fpga', 1], ['fpga', 'uno', 0]]);
   assert.match(untrusted.content, /the System's names/, 'the names quoted: untrusted');
   assert.deepEqual(data, { project: 'u', file: 'uart_avr.sys.json', ok: true, errors: [], warnings: [
     { message: 'console: uno\'s D1, a 5 V output, drives fpga\'s rx (pin J3), a 3.3 V input of the FPGA (LVCMOS33): a level shifter or a divider on the real boards', item: 'console' },
     { message: 'term joins nothing: no link reaches it', item: 'term' }] });
   const desc = t => t.split('\n').filter(l => !/^(WARNING|ERROR|Process)/.test(l));
+  assert.ok(r.text.includes('console TX: uno D1 → fpga rx (pin J3), 5 V → 3.3 V\n'), r.text);
   assert.equal(r.text, [...desc(r.text), ...data.warnings.map(w => `WARNING: ${w.message}`), 'Process "Check System" of uart_avr.sys.json completed successfully with 2 warning(s).'].join('\n'));
   // the module's ports, elaborated: TX and RX crossed; a module not in the project; a firmware not in it
   const bad = system({ nodes: [{ ...uno, firmware: 'fw/none.hex' }, { id: 'f2', kind: 'fpga', module: 'nothing', board: 'nexys2', pins: {}, interfaces: [] }] });

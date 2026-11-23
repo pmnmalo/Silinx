@@ -38,6 +38,11 @@ UART and GPIO links. Its design is in [CODESIGN.md](../../CODESIGN.md); its road
   transfer in the console's lines: W or R, the address, the bytes (NACK where one was not acknowledged), and warns of an
   address no peripheral acknowledged. The **i2c-avr** example: an Arduino writes a count every 47 ms or so to the FPGA
   at the address 0x42, shown on its LEDs, then reads the FPGA's switches back, shown on the Arduino's D2..D7.
+- **Wiring** in the System editor's toolbar shows each link pin by pin: the two boards facing each other, a row for
+  each wire with its signal (TX, SCK, SDA…), the pin at each end (an FPGA's port and its package pin, `rx · J3`; an
+  Arduino's `D1`), the levels and an arrow towards the input. A wire with a 5 V output on a 3.3 V input is orange, its
+  warning its tip, as are an FPGA pin's place on its board (`UART RX on a PmodUSBUART in JA…`). The view is read
+  only: the links are edited in the System view; a click on a wire selects its link. Wiring again goes back.
 
 ## Register maps
 

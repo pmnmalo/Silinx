@@ -2,7 +2,7 @@
 // warnings, each on its node or link (the nodes, the interfaces, the links, the wires, the levels); the console's lines.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { checkSystem, systemCheckLines } from '../core/system-check.js';
+import { checkSystem, systemCheckLines, analyzeSystem, wiringLines } from '../core/system-check.js';
 import { normalizeSystem } from '../core/system-doc.js';
 
 // the uart example's top (its ports), and a module of the project whose ports are not known (it does not elaborate)
@@ -134,4 +134,26 @@ test('#5213 a 1-bit port\'s pin by either spelling (btn, btn<0>: a UCF\'s): foun
   assert.deepEqual(run(s => press(s, ['btn']), { ...CTX, modules: MODS }), [W]);
   // (an 8-bit port's: its bit's pin, led<0>, is not the whole port's, led)
   assert.deepEqual(run(s => { F(s, 'fpga', 'led0').pins = ['led']; }), ['error: fpga.led0: led has no pin of the board [node:fpga]']);
+});
+
+test('#5216 the wires, pin by pin (the Wiring view\'s): each link\'s, its signal, driver first, its levels\' warning; their lines', () => {
+  const s = base();
+  s.links[0].a = 'uno.Serial';   // (the Arduino's 5 V TX on the FPGA's rx; the terminal then joins nothing)
+  s.links.push({ id: 'w2', kind: 'gpio', a: 'uno.out', b: 'fpga.sw0' });
+  const { diags, wires } = analyzeSystem(normalizeSystem(s), CTX);
+  assert.deepEqual(diags.map(d => d.message), checkSystem(normalizeSystem(s), CTX).map(d => d.message), 'its check: checkSystem\'s');
+  const W = '5 V output, drives', pin = w => [w.link, w.signal, `${w.from.node}.${w.from.pin}@${w.from.loc}:${w.from.volts}`, `${w.to.node}.${w.to.pin}@${w.to.loc}:${w.to.volts}`, w.warnings.length];
+  assert.deepEqual(wires.map(pin), [
+    ['console', 'TX', 'uno.D1@null:5', 'fpga.rx@J3:3.3', 1], ['console', 'TX', 'fpga.tx@A3:3.3', 'uno.D0@null:5', 0],
+    ['w1', '0', 'fpga.led<0>@M5:3.3', 'uno.D2@null:5', 0], ['w2', '0', 'uno.D3@null:5', 'fpga.sw<0>@P11:3.3', 1]]);
+  assert.ok(wires[0].warnings[0].includes(W) && wires[3].warnings[0].includes(W), wires.map(w => w.warnings).join());
+  // (what the board says the pin is, its I/O standard)
+  assert.deepEqual([wires[0].to.place, wires[0].to.std, wires[2].from.place], ['UART RX on a PmodUSBUART in JA (its TXD, JA3)', 'LVCMOS33', 'LEDs LD0..LD7']);
+  assert.deepEqual(wiringLines(wires), ['console TX: uno D1 → fpga rx (pin J3), 5 V → 3.3 V', 'console TX: fpga tx (pin A3) → uno D0',
+    'w1 0: fpga led<0> (pin M5) → uno D2', 'w2 0: uno D3 → fpga sw<0> (pin P11), 5 V → 3.3 V']);
+  // a link in error (its widths): no wires of it; none at all: said
+  s.links.splice(0, 3, { id: 'w3', kind: 'gpio', a: 'fpga.led0', b: 'uno.btn' });
+  F(s, 'uno', 'btn').pins = ['D2', 'D4'];
+  assert.deepEqual(analyzeSystem(normalizeSystem(s), CTX).wires, []);
+  assert.deepEqual(wiringLines([]), ['No wires: no link joins two resolved interfaces.']);
 });
