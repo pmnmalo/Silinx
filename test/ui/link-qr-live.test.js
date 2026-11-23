@@ -308,8 +308,8 @@ uiTest('#4617 Share Project: the window keeps its place and size switching betwe
       await page.eval(async () => { (await import('/js/share-how.js')).shareCopyDialog(); });
       await page.waitDialog('Share Project');
       const box = await windowBox(page), what = `${width} px`;
-      // (as wide as the window allows on a phone, as tall as the screen allows)
-      assert.equal(box[2], width > 800 ? 720 : Math.round(width * 0.96), what);
+      // (on a phone the whole screen, as every dialog under 600 px since the phones' phase 2, #5210)
+      assert.equal(box[2], width > 800 ? 720 : width, what);
       const steps = [];
       const step = async (name) => steps.push([name, await windowBox(page)]);
       await switchTo(page, 'live'); await step('live');
