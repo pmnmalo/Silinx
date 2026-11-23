@@ -3,6 +3,8 @@
 // (artifact unit-times-<part>, scripts/test-times-reporter.mjs), and each UI job its UI files' (artifact
 // ui-times-<interface>-<part>, #912); this merges them, the files that no longer exist left out, a UI file's
 // time the slower interface's, and writes the timings that scripts/test-shard.mjs balances the parts by.
+// The usability tests run in a workflow of their own (usability.yml, artifacts usability-times-…, #5295): a run of
+// either refreshes its own files' times and keeps the others' as they were.
 //
 //   node scripts/update-test-timings.mjs <run id>     (gh, logged in; or --from <folder> of the artifacts)
 import fs from 'node:fs';
@@ -10,15 +12,20 @@ import os from 'node:os';
 import path from 'node:path';
 import { execFileSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
-import { TIMINGS, testFiles, unitFiles } from './test-shard.mjs';
+import { TIMINGS, readTimings, testFiles, unitFiles } from './test-shard.mjs';
 
 const ROOT = path.join(path.dirname(fileURLToPath(import.meta.url)), '..');
 
+const usability = f => f.startsWith('test/usability/');
+
 /** The timings of the existing files from the parts' JSON objects, sorted by file; a file measured more
- *  than once (a UI file, in each interface) the longest. */
-export function merge(parts, files) {
+ *  than once (a UI file, in each interface) the longest. The usability files and the others are measured by runs
+ *  of their own (#5295): those of the two this run measured none of keep their times of before (keep). */
+export function merge(parts, files, keep = {}) {
   const all = {};
   for (const p of parts) for (const [f, t] of Object.entries(p)) if (typeof t === 'number') all[f] = Math.max(all[f] ?? 0, t);
+  const measured = new Set(Object.keys(all).map(usability));
+  for (const [f, t] of Object.entries(keep)) if (!measured.has(usability(f)) && typeof t === 'number') all[f] = t;
   return Object.fromEntries(files.filter(f => f in all).map(f => [f, all[f]]));
 }
 
@@ -36,12 +43,13 @@ function main() {
   if (args[0] === '--from') dir = args[1];
   else if (/^\d+$/.test(args[0] ?? '')) {
     dir = fs.mkdtempSync(path.join(os.tmpdir(), 'silinx-test-times-'));
-    execFileSync('gh', ['run', 'download', args[0], '--pattern', 'unit-times-*', '--pattern', 'ui-times-*', '--dir', dir], { cwd: ROOT, stdio: 'inherit' });
+    execFileSync('gh', ['run', 'download', args[0], '--pattern', 'unit-times-*', '--pattern', 'ui-times-*',
+      '--pattern', 'usability-times-*', '--dir', dir], { cwd: ROOT, stdio: 'inherit' });
   } else { console.error('usage: node scripts/update-test-timings.mjs <run id> | --from <folder>'); process.exit(2); }
   const parts = readParts(dir);
   if (!parts.length) { console.error(`no test-times.json in ${dir}`); process.exit(1); }
-  const files = [...unitFiles(ROOT), ...testFiles(ROOT, 'test/ui')].sort();
-  const t = merge(parts, files);
+  const files = [...unitFiles(ROOT), ...testFiles(ROOT, 'test/ui'), ...testFiles(ROOT, 'test/usability')].sort();
+  const t = merge(parts, files, readTimings(ROOT));
   fs.writeFileSync(path.join(ROOT, TIMINGS), `${JSON.stringify(t, null, 2)}\n`);
   const missing = files.filter(f => !(f in t));
   console.log(`${TIMINGS}: ${Object.keys(t).length} files, ${Math.round(Object.values(t).reduce((a, b) => a + b, 0) / 60)} min in all${missing.length ? `; not measured: ${missing.join(', ')}` : ''}`);
