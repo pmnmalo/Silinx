@@ -40,6 +40,8 @@ uiTest('#5212 Emulate: the System\'s boards side by side, the terminal\'s line o
   // its document: the Basys2 drawn as the Board Emulator's, the Uno's pins, the terminal
   await page.waitFor((e) => document.querySelector(`${e} [data-node=fpga] .emu-pcb`) && document.querySelector(`${e} [data-node=uno] .sys-pin`) && document.querySelector(`${e} .sys-term-in`), [EMU], { what: 'the boards', timeout: 60000 });
   assert.equal(await page.eval(() => window.Silinx.active.id), 'sysemu:emu.sys.json');
+  // (in the Emulate task, as the Board Emulator, #5337; the ISE style has no tasks)
+  assert.equal(await page.eval(() => document.documentElement.dataset.task ?? null), process.env.SILINX_UI_INTERFACE === 'ise' ? null : 'emu');
   assert.deepEqual(await page.eval((e) => [document.querySelectorAll(`${e} [data-node=fpga] .emu-led`).length, document.querySelectorAll(`${e} [data-node=uno] .sys-pin`).length], EMU), [8, 20]);
   await page.click(`${EMU} .sysemu-run`);
   await page.click(`${EMU} .sys-term-in`);

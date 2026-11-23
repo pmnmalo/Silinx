@@ -65,6 +65,8 @@ uiTest('#4701 Simulate System: an AVR and the FPGA by UART, their bytes in the l
   // the waves: a scope a node, and the links
   await page.click(`${ED} .sys-waves`);
   await page.waitFor(() => window.Silinx.active?.id === 'syswaves:CoSim' && document.querySelector('.doc:not([hidden]) .isim'), [], { what: 'the waves' });
+  // (in the Simulate task, as a module's waves, #5337; the ISE style has no tasks)
+  assert.equal(await page.eval(() => document.documentElement.dataset.task ?? null), process.env.SILINX_UI_INTERFACE === 'ise' ? null : 'sim');
   const rows = await page.eval(() => window.SilinxApp.findDoc('syswaves:CoSim').view.getState().rows.map((r) => r.path));
   assert.deepEqual(rows, ['uart_avr.uno.D1', 'uart_avr.uno.D0', 'uart_avr.fpga.rx', 'uart_avr.fpga.tx', 'uart_avr.links.serial_uno', 'uart_avr.links.serial_fpga']);
   // in Portuguese
