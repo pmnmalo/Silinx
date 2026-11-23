@@ -84,8 +84,9 @@ test('test shard: the repository\'s timings — measured files that exist, in se
     const n = l.filter(f => f in t).length;
     assert.ok(n >= l.length * 0.8, `${n} of ${l.length} ${what} files measured (node scripts/update-test-timings.mjs <run id>)`);
   }
+  const usFiles = testFiles(ROOT, 'test/usability');
   for (const f of keys) {
-    assert.ok(files.includes(f) || uiFiles.includes(f), `${TIMINGS}: ${f} is not a test file any more`);
+    assert.ok(files.includes(f) || uiFiles.includes(f) || usFiles.includes(f), `${TIMINGS}: ${f} is not a test file any more`);
     assert.ok(typeof t[f] === 'number' && t[f] >= 0, `${f}: ${t[f]}`);
   }
   assert.deepEqual(keys, [...keys].sort(), 'sorted (a refresh changes only the times)');
@@ -183,6 +184,29 @@ test('test shard: the command line — the dry run lists the parts, a part runs 
   assert.equal(usDry.stdout.trim().split('\n').reduce((x, l) => x + Number(/: (\d+) files/.exec(l)[1]), 0), testFiles(ROOT, 'test/usability').length);
 });
 
+// #5295: the weekly usability job's two parts a configuration (usability.yml): every file once, each part about the
+// same time and well under the step's 15 minutes (a third part when they are not)
+test('test shard: the usability tests\' two parts — every file once, measured or estimated, each part well under 15 minutes', () => {
+  const files = testFiles(ROOT, 'test/usability'), t = readTimings();
+  assert.ok(files.length >= 20 && files.every(f => /^test\/usability\/[\w.-]+\.test\.js$/.test(f)), String(files.length));
+  const unmeasured = files.filter(f => !(f in t));
+  assert.ok(unmeasured.length <= 3, `not in ${TIMINGS}: ${unmeasured.join(', ')} (node scripts/update-test-timings.mjs <a Usability run's id>)`);
+  assertBalanced(files, t, 2);
+  const parts = balance(files, weights(files, t), 2);
+  for (const p of parts) assert.ok(p.time < 10 * 60, `a part of ${Math.round(p.time)} s: three parts in usability.yml`);
+  // the workflow's parts are these: 2 a configuration, the files asked for by hand in one
+  const yml = fs.readFileSync(path.join(ROOT, '.github/workflows/usability.yml'), 'utf8');
+  assert.match(yml, /^ {10}n=2; \[ -n "\$FILES" \] && n=1$/m);
+  assert.match(yml, /scripts\/test-shard\.mjs "\$PART\/\$PARTS" --usability/);
+  assert.match(yml, /name: usability-times-\$\{\{ matrix\.interface \}\}-\$\{\{ matrix\.lang \}\}-\$\{\{ matrix\.part \}\}$/m);
+  // --dry-run --list: each part's files, every file once
+  const r = spawnSync(process.execPath, [path.join(ROOT, 'scripts/test-shard.mjs'), '1/2', '--usability', '--dry-run', '--list'], { cwd: ROOT, encoding: 'utf8' });
+  assert.equal(r.status, 0, r.stderr);
+  const lines = r.stdout.trim().split('\n');
+  assert.deepEqual(lines.filter(l => !l.startsWith('  ')), parts.map((p, k) => `${k + 1}/2: ${p.files.length} files, ~${Math.round(p.time / 60)} min`));
+  assert.deepEqual(lines.filter(l => l.startsWith('  ')).map(l => l.trim().split(' ')[0]).sort(), files);
+});
+
 test('test times reporter: each file\'s own summary (#912), the run\'s and the tests\' events ignored', () => {
   const times = {};
   const sum = (file, ms) => ({ type: 'test:summary', data: { file, duration_ms: ms, success: true, counts: {} } });
@@ -198,6 +222,14 @@ test('test timings: merged from the parts, the files that no longer exist left o
     { 'test/a.test.js': 1.5, 'test/b.test.js': 2 });
   // a UI file measured in each interface (#912): the longer time
   assert.deepEqual(merge([{ 'test/ui/u.test.js': 4 }, { 'test/ui/u.test.js': 6 }, { 'test/ui/u.test.js': 5 }], ['test/ui/u.test.js']), { 'test/ui/u.test.js': 6 });
+  // the usability files are measured by a workflow of their own (#5295): a CI run keeps their times, a Usability
+  // run the others'; a file measured replaces its time, one that no longer exists is left out
+  const all = ['test/a.test.js', 'test/b.test.js', 'test/ui/u.test.js', 'test/usability/p.test.js', 'test/usability/q.test.js'];
+  const before = { 'test/a.test.js': 1, 'test/b.test.js': 2, 'test/ui/u.test.js': 3, 'test/usability/p.test.js': 40, 'test/usability/q.test.js': 50, 'test/usability/gone.test.js': 9 };
+  assert.deepEqual(merge([{ 'test/a.test.js': 1.5 }, { 'test/ui/u.test.js': 4 }], all, before),
+    { 'test/a.test.js': 1.5, 'test/ui/u.test.js': 4, 'test/usability/p.test.js': 40, 'test/usability/q.test.js': 50 });
+  assert.deepEqual(merge([{ 'test/usability/p.test.js': 42 }, { 'test/usability/p.test.js': 45 }], all, before),
+    { 'test/a.test.js': 1, 'test/b.test.js': 2, 'test/ui/u.test.js': 3, 'test/usability/p.test.js': 45 });
   const dir = tmp(t);
   for (const [k, v] of [['unit-times-1', { 'test/a.test.js': 1 }], ['ui-times-silinx-2', { 'test/b.test.js': 2 }]]) {
     fs.mkdirSync(path.join(dir, k));

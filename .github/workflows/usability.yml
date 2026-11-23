@@ -4,10 +4,10 @@ name: Usability
 # scripted scenarios and random sequences of a fixed seed (the week's seed too). Every week, and by hand (Actions ▸
 # Usability ▸ Run workflow, on any branch: a new scenario tried before it merges); never on pull requests nor on pushes.
 # On GitHub's runners only. In parts of about the same time (scripts/test-shard.mjs --usability, by test/timings.json),
-# each under 15 minutes, in both interfaces and, one job of them, in Portuguese. A failure: the report of its scenario
-# (its seed, the steps that reproduce it, shrunk, what broke, the documents) and the screenshots of its last steps kept
-# as the job's artifact; a scheduled run's failed job opens an issue that quotes the report's lines (USABILITY:,
-# scripts/report-failure.mjs).
+# two a configuration, each about 7 minutes and under 15 (#5295), in both interfaces and, one configuration of them,
+# in Portuguese. A failure: the report of its scenario (its seed, the steps that reproduce it, shrunk, what broke, the
+# documents) and the screenshots of its last steps kept as the job's artifact; a scheduled run's failed job opens an
+# issue that quotes the report's lines (USABILITY:, scripts/report-failure.mjs).
 on:
   schedule:
     - cron: '23 4 * * 0'      # Sundays 04:23 UTC (after the quality comparison of Saturday night)
@@ -59,12 +59,15 @@ jobs:
             [ "$ui" != silinx ] && rows+=('{"interface":"ise","lang":"en"}')
           fi
           [ "$lang" != en ] && [ "$ui" != ise ] && rows+=('{"interface":"silinx","lang":"pt"}')
+          # the parts of a configuration (#5295): 2, each about 7 minutes; the files asked for by hand, one
+          n=2; [ -n "$FILES" ] && n=1
           parts=()
-          for r in "${rows[@]}"; do for p in 1; do parts+=("${r%\}},\"part\":$p}"); done; done
+          for r in "${rows[@]}"; do for p in $(seq 1 $n); do parts+=("${r%\}},\"part\":$p,\"parts\":$n}"); done; done
           echo "matrix={\"include\":[$(IFS=,; echo "${parts[*]}")]}" >> "$GITHUB_OUTPUT"
         env:
           UI: ${{ inputs.interface }}
           LANG_IN: ${{ inputs.language }}
+          FILES: ${{ inputs.files }}
 
   usability:
     needs: plan
@@ -75,7 +78,7 @@ jobs:
       matrix: ${{ fromJSON(needs.plan.outputs.matrix) }}
     runs-on: ubuntu-latest
     timeout-minutes: 20
-    name: usability (${{ matrix.interface }}, ${{ matrix.lang }}, ${{ matrix.part }}/1)
+    name: usability (${{ matrix.interface }}, ${{ matrix.lang }}, ${{ matrix.part }}/${{ matrix.parts }})
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -86,13 +89,14 @@ jobs:
           if [ -n "$FILES" ]; then
             node --test --test-concurrency=1 --test-reporter=tap --test-reporter-destination=stdout $FILES
           else
-            node scripts/test-shard.mjs "$PART/1" --usability --test-concurrency=1 \
+            node scripts/test-shard.mjs "$PART/$PARTS" --usability --test-concurrency=1 \
               --test-reporter=tap --test-reporter-destination=stdout \
               --test-reporter=./scripts/test-times-reporter.mjs --test-reporter-destination=test-times.json
           fi
         timeout-minutes: 15
         env:
           PART: ${{ matrix.part }}
+          PARTS: ${{ matrix.parts }}
           FILES: ${{ inputs.files }}
           CHROME_PATH: /usr/bin/google-chrome
           SILINX_UI_INTERFACE: ${{ matrix.interface == 'ise' && 'ise' || '' }}

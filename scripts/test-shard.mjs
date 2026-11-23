@@ -7,14 +7,16 @@
 //   node scripts/test-shard.mjs <i>/<n> [--ui] [node --test options …]
 //   → runs node --test with those options on the files of part i of n (the unit tests, UNIT_DIRS; with --ui the UI
 //     tests, test/ui/*.test.js, #912; with --usability the usability tests, test/usability/*.test.js, #5148); --dry-run
-//     prints the parts and their estimated times instead
+//     prints the parts and their estimated times instead (--list: each part's files too, #5295)
 //     (--light: the unit tests but the toolchain's heaviest, HEAVY, which CI runs on Linux only, #3124)
 //
 // The options go before the files: after them node --test takes no option (CI's UI tests were given
 // --test-concurrency=1 after their files, and ran three files at a time, #912). The UI tests' timings are in
-// the same file, under test/ui/; a UI file not measured weighs the median of the UI files.
+// the same file, under test/ui/ (and the usability tests' under test/usability/, #5295); a UI file not measured weighs
+// the median of the UI files.
 // The timings are refreshed from a run of CI (its unit jobs on Linux and its UI jobs upload their
-// measurements, scripts/test-times-reporter.mjs): node scripts/update-test-timings.mjs <run id>.
+// measurements, scripts/test-times-reporter.mjs): node scripts/update-test-timings.mjs <run id> (the usability
+// tests' from a run of the Usability workflow, its usability-times artifacts).
 import fs from 'node:fs';
 import path from 'node:path';
 import { spawnSync } from 'node:child_process';
@@ -101,12 +103,15 @@ function main() {
   try { shard = parseShard(arg); } catch (e) { console.error(e.message); process.exit(2); }
   const ui = args.includes('--ui'), light = args.includes('--light'), usability = args.includes('--usability');
   const rest = args.filter(a => a !== '--ui' && a !== '--light' && a !== '--usability');
-  const dry = rest.includes('--dry-run');
+  const dry = rest.includes('--dry-run'), list = rest.includes('--list');
   const files = usability ? testFiles(ROOT, 'test/usability') : ui ? testFiles(ROOT, 'test/ui') : unitFiles(ROOT).filter(f => !light || !HEAVY.includes(f));
   const w = weights(files, readTimings());
   const parts = balance(files, w, shard.n);
   if (dry) {
-    parts.forEach((p, k) => console.log(`${k + 1}/${shard.n}: ${p.files.length} files, ~${Math.round(p.time / 60)} min`));
+    parts.forEach((p, k) => {
+      console.log(`${k + 1}/${shard.n}: ${p.files.length} files, ~${Math.round(p.time / 60)} min`);
+      if (list) for (const f of p.files) console.log(`  ${f} ${w[f]} s`);
+    });
     return;
   }
   const part = parts[shard.i - 1];
