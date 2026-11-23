@@ -1,0 +1,2 @@
+In detail:
+- createCircuitSim's devices (the character LCD, the graphic OLED, the servo, the temperature sensor) moved as they were to `core/circuit-sim-devices.js` (their setup, their evaluation, their views), and the circuit editor's Try it to `web/js/circuit-try.js` (`mountCircuitTry`, called where it was), both functions back under 300 lines; #5347's compacted lines written as the code around them; no behaviour changed (#5357).

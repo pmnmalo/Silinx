@@ -23,12 +23,11 @@ import { normalizeCircuit, newCircuit, circuitCounts } from '/core/circuit.js';
 import { partPins, partHoles, partCorners } from '/core/circuit-parts.js';
 import { addPart, movePart, rotatePart, deleteItem } from '/core/circuit-edit.js';
 import { mountCircuitOptions } from './circuit-options.js';
-import { adoptOps, recordCircuit, replayCircuit, replayPlan, tryOps } from '/core/collab-try.js';
 import { mountCircuitClip } from './circuit-clip.js';
 import { mountCircuitKeys } from './circuit-keys.js';
+import { mountCircuitTry } from './circuit-try.js';
 import { wireDragStart, wireDragTo, bendRemoved } from './circuit-wire-drag.js';
 import { checkCircuit } from '/core/circuit-check.js';
-import { createCircuitSim, runMessages } from '/core/circuit-sim.js';
 import { clone } from '/core/util.js';
 import { drawCircuit, draftSvg, P } from './circuit-draw.js';
 import { addStyledWire } from '/core/circuit-route.js';
@@ -38,15 +37,13 @@ import { mountCircuitParts } from './circuit-parts-panel.js';
 import { printDiagram, svgSnapshot } from './print.js';
 import { onLayoutToggled } from './layout-fit.js';
 import { onSymbolStandard } from './symbol-standard.js';
-import { intervalWhileSeen } from './when-hidden.js';
 
 export function mountCircuitEditor(container, opts = {}) {
   let M = normalizeCircuit(opts.model || newCircuit('circuit'));
   let sel = null;                       // { kind: 'part' | 'wire', id }
   let tool = 'select';                  // select | wire | place:<type>
   let view = { tx: 60, ty: 120, k: 1 };
-  let drag = null, draft = null, ghost = null, sim = null, steps = null, fitted = false, destroyed = false, saidServo = 0;
-  let ticks = [];                       // the clocks' timers while trying it (each ticking at its frequency, in real time)
+  let drag = null, draft = null, ghost = null, fitted = false, destroyed = false;
   const readOnly = !!opts.readOnly;
   const hist = [JSON.stringify(M)];
   let hi = 0, shared = null;
@@ -68,7 +65,7 @@ export function mountCircuitEditor(container, opts = {}) {
   // its time in the status line
   const simBar = h('div', { class: 'circ-simbar', hidden: true },
     h('span', { class: 'circ-sim-badge' }, 'Try it'),
-    btn('Reset', 'Start the simulation again from time 0', () => { if (sim) startSim(); }, 'circ-reset'),
+    btn('Reset', 'Start the simulation again from time 0', () => { if (tryIt.sim()) startSim(); }, 'circ-reset'),
     h('span', { class: 'asm-spacer' }),
     btn('Stop', 'Stop trying it out and go back to editing the circuit (Esc)', () => stopSim(), 'circ-stop'));
   const world = sv('g', { class: 'circ-world' });
@@ -103,11 +100,11 @@ export function mountCircuitEditor(container, opts = {}) {
     const s = JSON.stringify(M);
     if (s !== hist[hi] && shared) { hist.length = 0; hist.push(s); hi = 0; opts.onChange?.(clone(M)); problems(); shared.push(clone(M)); }   // (its merge may change M)
     else if (s !== hist[hi]) { hist.length = hi + 1; hist.push(s); if (hist.length > 200) hist.shift(); hi = hist.length - 1; opts.onChange?.(clone(M)); problems(); }
-    if (sim) startSim();
+    if (tryIt.sim()) startSim();
     render();
   }
   const problems = () => opts.onProblems?.(checkCircuit(M, undefined, opts.hdl?.() ?? {}));
-  const restore = (i) => { hi = i; M = normalizeCircuit(JSON.parse(hist[hi])); if (sel && !itemOf(sel.id)) sel = null; opts.onChange?.(clone(M)); problems(); if (sim) startSim(); render(); };
+  const restore = (i) => { hi = i; M = normalizeCircuit(JSON.parse(hist[hi])); if (sel && !itemOf(sel.id)) sel = null; opts.onChange?.(clone(M)); problems(); if (tryIt.sim()) startSim(); render(); };
   const undo = () => { if (shared) shared.undo(); else if (hi > 0) restore(hi - 1); };
   const redo = () => { if (shared) shared.redo(); else if (hi < hist.length - 1) restore(hi + 1); };
   const itemOf = (id) => M.parts.find((p) => p.id === id) || M.wires.find((w) => w.id === id);
@@ -124,52 +121,16 @@ export function mountCircuitEditor(container, opts = {}) {
   function rotateSelection() { if (sel?.kind === 'part' && !readOnly) applyEdit(rotatePart(M, sel.id, 1, { keep: keep() })); }
   const clip = mountCircuitClip({ M: () => M, sel: () => sel, setSel: (s) => { sel = s; }, readOnly, applyEdit });
 
-  // ---------------------------------------------------------------- the live simulation
-  function startSim() {
-    const errs = checkCircuit(M, undefined, opts.hdl?.() ?? {}).filter((d) => d.severity === 'error');
-    if (errs.length) { status(`The circuit cannot be simulated: ${errs.map((d) => d.message).join('; ')}`, true); stopSim(); return; }
-    stopTicks();
-    sim = createCircuitSim(M, { runner: opts.hdl?.()?.runner }); saidServo = 0;
-    recordCircuit(sim, steps = tryOps(null));   // (its steps, as live sharing sends them, #4244)
-    runSim();
-    // (a clock source flips its level every half period, in real time; the simulated time moves on by as much; held
-    // while the circuit is not seen, its time standing still, and on again with no burst of ticks, #5276)
-    ticks = M.parts.filter((p) => p.type === 'clock').map((p) => intervalWhileSeen(root, 500 / (p.hz || 1), () => {
-      if (!sim || destroyed) return;
-      sim.advance(5e8 / (p.hz || 1));
-      setInput(p.id, !sim.inputs()[p.id]);
-    }));
-  }
-  function stopTicks() { for (const t of ticks) t.stop(); ticks = []; }
-  // one of a part's inputs set while trying it, then run
-  function setInput(id, v, index = 0) { sim.set(id, v, index); runSim(); }
-  function runSim() {
-    const r = sim.run();
-    for (const line of runMessages(sim, r)) status(line.replace(/^(ERROR|WARNING): /, ''), true);
-    const ws = sim.servoWarnings(); for (const w of ws.slice(saidServo)) status(w, true); saidServo = ws.length;   // (a servo's pulses that are no servo's, #5347: once each)
-    render();
-  }
-  function stopSim() { stopTicks(); sim = null; steps = null; render(); }
-  // (shared live, #4244, web/js/collab-try.js: the owner's Try it as its steps, replayed by its follower, its own clocks
-  // stopped: the owner's ticks are among them)
-  function tryState() {
-    if (!sim || !steps) return null;
-    const lv = (v) => (Array.isArray(v) ? v.map((x) => (x ? '1' : '0')).join('') : v ? '1' : '0');
-    return { kind: 'circ', sum: { state: null, steps: steps.n, inputs: Object.fromEntries(Object.entries(sim.inputs()).slice(0, 64).map(([k, v]) => [k, lv(v)])), outputs: sim.outputs() }, ...steps.wire() };
-  }
-  function setTryState(o, applied) {
-    if (!o) { if (sim) stopSim(); return null; }
-    if (!sim) startSim();
-    if (!sim) return null;
-    stopTicks();
-    const plan = replayPlan(applied, o);
-    if (plan.restart) recordCircuit(sim = createCircuitSim(M, { runner: opts.hdl?.()?.runner }), steps = tryOps(null));
-    replayCircuit(sim, plan.ops);
-    adoptOps(steps, o);
-    runSim();
-    return plan;
-  }
-  function toggleSim() { if (sim) stopSim(); else startSim(); }
+  // ---------------------------------------------------------------- the live simulation (web/js/circuit-try.js)
+  const tryIt = mountCircuitTry({ M: () => M, opts, root, status, render: (...a) => render(...a), destroyed: () => destroyed });
+  // (its functions as the mount had them: hoisted, used before this line, the toolbar's Try it among them)
+  function startSim() { tryIt.startSim(); }
+  function stopSim() { tryIt.stopSim(); }
+  function setInput(...a) { tryIt.setInput(...a); }
+  function runSim() { tryIt.runSim(); }
+  function tryState() { return tryIt.tryState(); }
+  function setTryState(...a) { return tryIt.setTryState(...a); }
+  function toggleSim() { tryIt.toggleSim(); }
 
   // ---------------------------------------------------------------- drawing
   const toWorld = (cx, cy) => { const r = svg.getBoundingClientRect(); return { x: (cx - r.left - view.tx) / view.k, y: (cy - r.top - view.ty) / view.k }; };
@@ -177,6 +138,7 @@ export function mountCircuitEditor(container, opts = {}) {
   const applyView = () => { world.setAttribute('transform', `translate(${view.tx},${view.ty}) scale(${view.k})`); zoomLbl.textContent = `${Math.round(view.k * 100)}%`; };
   function render() {
     if (destroyed) return;
+    const sim = tryIt.sim();
     applyView();
     world.replaceChildren(drawCircuit({ ...M, wireStyle: wireStyle() }, { sel, draft, ghost, inside: inside(), hops: hops(), handles: !readOnly && !sim, levels: sim ? (id, n) => sim.pin(id, n) : null, leds: sim?.leds(), lcds: sim?.lcds(), oleds: sim?.oleds(), sensors: sim?.sensors(), servos: sim?.servos(), inputs: sim?.inputs() }));
     sync();   // (the Wires' ✓: an undo, a model set)
@@ -212,7 +174,7 @@ export function mountCircuitEditor(container, opts = {}) {
   svg.addEventListener('pointerdown', (e) => {
     root.focus({ preventScroll: true });
     fitted = true;
-    const w = toWorld(e.clientX, e.clientY), g = toGrid(w), t = hit(e);
+    const w = toWorld(e.clientX, e.clientY), g = toGrid(w), t = hit(e), sim = tryIt.sim();
     if (sim && t?.input) {
       // (a temperature sensor's − and +, #5342: a degree less or more, now)
       if (t.input === 'temp-up' || t.input === 'temp-down') { sim.setTemp(t.id, sim.sensors()[t.id].temp + (t.input === 'temp-up' ? 1 : -1)); runSim(); }
@@ -263,7 +225,7 @@ export function mountCircuitEditor(container, opts = {}) {
   svg.addEventListener('pointerup', () => {
     const d = drag;
     drag = null;
-    if (d?.kind === 'press' && sim) setInput(d.id, false);
+    if (d?.kind === 'press' && tryIt.sim()) setInput(d.id, false);
     if (d?.kind === 'move' || d?.kind === 'wire') { if (d.moved) commit(); else { M = d.base; render(); } }
     if (d?.refused) status(d.refused, true);
   });
@@ -279,7 +241,7 @@ export function mountCircuitEditor(container, opts = {}) {
   }
   function zoomBtn(f) { const r = svg.getBoundingClientRect(); zoomAt(f, r.left + r.width / 2, r.top + r.height / 2); }
   // (its keys, circuit-keys.js)
-  mountCircuitKeys({ root, readOnly, sel: () => sel, sim: () => sim, tool: () => tool, draft: () => draft, clip, undo, redo, deleteSelection, stopSim, endWire, setTool, rotateSelection, zoomBtn, fit });
+  mountCircuitKeys({ root, readOnly, sel: () => sel, sim: tryIt.sim, tool: () => tool, draft: () => draft, clip, undo, redo, deleteSelection, stopSim, endWire, setTool, rotateSelection, zoomBtn, fit });
 
   function bounds() {
     const xs = [], ys = [];
@@ -317,7 +279,7 @@ export function mountCircuitEditor(container, opts = {}) {
     getModel: () => clone(M), wireStyle, setWireStyle, ownWireStyle, tryState, setTryState,   // (a shared project's participant's own wires' style, #4239; its Try it shared live, #4244)
     // (its selection, as live sharing's view sends it, #4192: core/collab-select.js)
     sharedSelection: () => (sel ? { items: [`${sel.kind}:${sel.id}`] } : null),
-    setModel(m) { M = normalizeCircuit(m); hist.length = 0; hist.push(JSON.stringify(M)); hi = 0; sel = null; if (sim) startSim(); render(); },
+    setModel(m) { M = normalizeCircuit(m); hist.length = 0; hist.push(JSON.stringify(M)); hi = 0; sel = null; if (tryIt.sim()) startSim(); render(); },
     undo, redo, canUndo: () => (shared ? shared.canUndo() : hi > 0), canRedo: () => (shared ? shared.canRedo() : hi < hist.length - 1),
     setShared(s) { shared = s; hist.length = 0; hist.push(JSON.stringify(M)); hi = 0; },
     // the merged circuit in place: the view, the tool and the selection kept (its part's id renamed by the merge, #4203)
@@ -325,7 +287,7 @@ export function mountCircuitEditor(container, opts = {}) {
       M = normalizeCircuit(m); hist.length = 0; hist.push(JSON.stringify(M)); hi = 0;
       if (sel && renamed?.has(sel.id)) sel = { ...sel, id: renamed.get(sel.id) };
       if (sel && !itemOf(sel.id)) sel = null;
-      problems(); if (sim) startSim();
+      problems(); if (tryIt.sim()) startSim();
       render(); if (mine) opts.onChange?.(clone(M));
     },
     // (a change under way the merge must wait for: a part moved, a wire being drawn, a field of the side panel typed)
@@ -335,7 +297,7 @@ export function mountCircuitEditor(container, opts = {}) {
     canCopy: () => sel?.kind === 'part', canPaste: () => !readOnly && clip.has(), canDelete: () => !readOnly && !!sel, deleteSelection: () => deleteSelection(),
     // its HDL file linked (generatedFile, #245): nothing else changes, Undo / Redo keep the link
     setLink(file) { M.generatedFile = file; hist.forEach((x, i) => { hist[i] = JSON.stringify(normalizeCircuit({ ...JSON.parse(x), generatedFile: file })); }); },
-    fit, print, simulating: () => !!sim, toggleSim, sim: () => sim,
+    fit, print, simulating: () => !!tryIt.sim(), toggleSim, sim: tryIt.sim,
     select(ref) { if (!ref?.id || !itemOf(ref.id)) return; sel = { kind: ref.kind || 'part', id: ref.id }; render(); },
     destroy() { destroyed = true; stopTicks(); ro?.disconnect(); offLayout(); offSymbols(); container.innerHTML = ''; },
   };
