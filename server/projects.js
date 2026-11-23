@@ -424,8 +424,8 @@ export async function createProject({ name, template = 'empty', device, board, k
   // (core/project-defaults.js, as the browser edition's, #4766; Optimization Fast, #4828)
   const json = { ...newProjectJson(name, { device, board, kind }), ...(fromOutside ? { trusted: false } : {}), ...(madeBy === 'mcp' ? { trusted: false, madeBy } : {}) };
   await recordMade(dir, { fromOutside, madeBy });
-  // (a co-design project: its System document, its top, #4702)
-  if (kind === CODESIGN_KIND) { const f = newSystemFile(name); await fs.writeFile(path.join(dir, f.path), f.text); }
+  // (a co-design project: its System document, its top, #4702; inside its folder as every project path, #5344)
+  if (kind === CODESIGN_KIND) { const f = newSystemFile(name); await fs.writeFile(safeJoin(dir, f.path), f.text); }
   return writeProject(name, json);
 }
 
