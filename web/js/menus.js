@@ -28,6 +28,7 @@ import { openEmulator, openSchematic, runSimulation } from './viewers.js';
 import { printActive, printable } from './print-doc.js';
 import { hasGit, hookGitStatus, openFromRepositoryDialog, gitMenuItems } from './git.js';
 import { besideItems, splitState, toggleSplit } from './split-view.js';
+import { openFocused } from './doc-focus.js';   // (a file opened from the palette takes the keyboard, #5300)
 import { downloadBlob } from './download.js';
 import { runState } from './state-run.js';
 import { panes } from './state-panes.js';
@@ -280,7 +281,7 @@ export function refreshSteps() {
 // Command palette: every enabled menu command and every project file
 export function showPalette() {
   // (a design project's: a drawn module's drawing for its HDL file, the rest of the HDL side left out, #3891)
-  const files = S.project ? shownFiles([...new Set(S.project.files.map(f => (designOnly() && designState.hdlToSch?.[f.path]) || f.path))]).sort().map(path => ({ path, open: () => openFile(path) })) : [];
+  const files = S.project ? shownFiles([...new Set(S.project.files.map(f => (designOnly() && designState.hdlToSch?.[f.path]) || f.path))]).sort().map(path => ({ path, open: () => openFocused(() => openFile(path)) })) : [];
   return openPalette({ commands: menuCommands(panes.menus), files });
 }
 

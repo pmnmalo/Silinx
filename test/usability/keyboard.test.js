@@ -53,12 +53,11 @@ const CLEAN = [...CHECKED, 'Elaborating top module <counter>: 5 signals, 2 proce
 
 uiTest('usability: keyboard: the counter typed in its file, Check Syntax from the Process menu, the mistake fixed by the arrows, Undo to the start and Redo; no mouse', E, async (page) => {
   const { K, lines } = await keyProject(page, 'UsabKeyHdl', { files: { [D.file]: '' }, top: 'counter' });
-  // the file from the Design tree (↓ to its row, Enter): its text editor, then Tab to it (the keyboard left in the
-  // tree, #5300)
+  // the file from the Design tree (↓ to its row, Enter): its text editor, the keyboard in it (#5300)
   await K.treeTo('counter.vhd');
   await page.key('Enter');
   await page.waitFor((p) => window.Silinx.active?.id === `file:${p}` && window.Silinx.active.editor?.view, [D.file], { what: 'the file in its editor' });
-  await K.tabTo('.doc:not([hidden]) .cm-content');
+  await page.waitFor(() => !!document.activeElement?.closest('.doc:not([hidden]) .cm-editor'), [], { what: 'the keyboard in the editor' });
   const s = new HdlSession(page, env, { file: FILE, title: 'keyboard: the counter' });
   s.docs.push(await s.settled());
   await s.typeDesign('vhdl');
@@ -122,8 +121,8 @@ uiTest('usability: keyboard: the traffic\'s state diagram: opened from the Desig
   const s = new Session(page, env, { file: FILE, title: 'keyboard: traffic: the state diagram', kit: FSM_KIT });
   s.docs.push(await s.settled());
   const ed = '.doc:not([hidden]) .fsm-editor';
-  // the diagram's own keys (Tab to it): + zooms in, - out, F the full view; the diagram as it was
-  await K.tabTo(ed);
+  // the diagram's own keys (the keyboard in it, #5300): + zooms in, - out, F the full view; the diagram as it was
+  assert.ok(await page.eval((e) => !!document.activeElement?.closest(e), ed), `the keyboard on ${await K.where()}, not in the state diagram`);
   const view = async () => viewOfTransform(await page.eval((e) => document.querySelector(`${e} .fsm-vp`).getAttribute('transform'), ed));
   let v0;
   for (const [key, k] of [['+', 1.2], ['-', 1 / 1.2]]) {
@@ -203,10 +202,11 @@ uiTest('usability: keyboard: the gates\' bench simulated from the menus, its wav
 }, { timeout: 120000 });
 
 // (#5300: a file opened from the command palette left the keyboard on the page, not in its editor)
-uiTest('usability: keyboard: a file opened from the command palette has the keyboard in its editor (#5300)', E, async (page, _env, t) => {
-  t.todo('#5300: the keyboard left on the page after the palette opened a file');
-  const { K } = await keyProject(page, 'UsabKeyPalette', { files: { [D.file]: D.text }, top: 'counter' });
+uiTest('usability: keyboard: a file opened from the command palette has the keyboard in its editor (#5300)', E, async (page) => {
+  const { K, lines } = await keyProject(page, 'UsabKeyPalette', { files: { [D.file]: D.text }, top: 'counter' });
   await K.palette('counter.vhd', D.file);
   await page.waitFor((p) => window.Silinx.active?.id === `file:${p}`, [D.file], { what: 'the file in its editor' });
+  await page.waitFor(() => !!document.activeElement?.closest('.doc:not([hidden]) .cm-editor'), [], { what: 'the keyboard in the editor', timeout: 3000 }).catch(() => {});
   assert.ok(await page.eval(() => !!document.activeElement?.closest('.doc:not([hidden]) .cm-editor')), `the keyboard on ${await K.where()}, not in the editor`);
+  await lines([]);
 });
