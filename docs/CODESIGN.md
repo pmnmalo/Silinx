@@ -452,6 +452,9 @@ changelog fragment.
 ## Decided
 
 - The System is a co-design project's top, its one System document (#5041); its FPGA nodes are modules of that project.
+  A System made the top of an FPGA project (Top-Level Source Type System, Set as Top Module on it, the MCP's `set_top`,
+  `set_design_properties`, `new_project`) makes it a co-design project, its board kept in `fpga`; a module made the top
+  of a co-design project makes it an FPGA project again, on its FPGA node's board (`core/system-top.js`, #5402).
 - The AVR comes first; the ESP32 comes in MicroPython.
 - The firmware is a given `.hex` or `.elf` first; a compiler on the server comes later.
 - The System is the model, the circuit a second view of it: the boards are the circuit's parts, a circuit can be a

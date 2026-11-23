@@ -54,7 +54,7 @@ test('#4702 the kinds\' rules: a co-design project empty or from a co-design exa
   assert.equal(createRefusal('pico', 'empty'), 'unknown project kind \'pico\'');
   const j = newProjectJson('sys1', { kind: 'codesign' });
   assert.deepEqual([j.kind, j.board, j.constraints, j.top, isCodesign(j)], ['codesign', null, null, '', true]);
-  assert.deepEqual(asCodesignProject({ name: 'x', board: 'basys2', constraints: 'c.ucf', top: 'uart' }), { name: 'x', board: null, constraints: null, top: '', kind: 'codesign' });
+  assert.deepEqual(asCodesignProject({ name: 'x', board: 'basys2', constraints: 'c.ucf', top: 'uart' }), { name: 'x', board: null, constraints: null, top: '', kind: 'codesign', topSourceType: 'system' });   // (its top type System, #5402)
   assert.deepEqual(newSystemFile('sys1'), { path: 'sys1.sys.json', text: '{\n  "format": "silinx-system",\n  "version": 1,\n  "name": "sys1",\n  "nodes": [],\n  "links": []\n}\n' });
 });
 

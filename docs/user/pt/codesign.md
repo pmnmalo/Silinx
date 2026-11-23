@@ -11,6 +11,10 @@ ligados por UART e GPIO.
 - **Novo Projeto ▸ Co-design.** Não tem placa própria: cada nó FPGA do seu Sistema indica a sua placa e os pinos, cada
   microcontrolador o seu firmware. Comece **Vazio** (o seu Sistema, `<nome>.sys.json`, ainda sem nós) ou pelo exemplo
   **uart-avr** (um Arduino e a FPGA do exemplo `uart` ligados por UART).
+- **Um Sistema como topo de um projeto FPGA**: o Tipo de Fonte de Topo **Sistema (co-design)** (Novo Projeto,
+  Propriedades do Projeto), ou **Definir como Módulo de Topo** num Sistema (`.sys.json`, na vista Ficheiros), torna o
+  projeto um projeto de co-design, esse Sistema o seu topo; a placa fica guardada. **Definir como Módulo de Topo** num dos
+  seus módulos torna-o de novo um projeto FPGA, na placa do nó FPGA que corre esse módulo (senão, na placa que tinha).
 - **O seu Sistema** é o topo, no painel Design como `<nome> [System]`, com os módulos dos nós FPGA por baixo. Abre no
   **editor de Sistema**: as ferramentas põem um nó FPGA, um Arduino Uno ou Nano, um terminal série; **Ligação** junta
   duas interfaces do mesmo tipo (um clique numa, depois na outra); o painel de Propriedades indica o módulo, a placa e

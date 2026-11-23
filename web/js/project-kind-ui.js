@@ -8,6 +8,7 @@ import { CODESIGN_EXAMPLES, CODESIGN_KIND, DESIGN_KIND, DESIGN_ONLY_LABEL, DESIG
 import { isSystemFile } from '/core/system-doc.js';
 import { api } from './api.js';
 import { HDL_TOP_TYPES } from '/core/top-types.js';
+import { SYSTEM_TOP } from '/core/system-top.js';
 import { S, app } from './app.js';
 import { h } from './ui.js';
 import { logError } from './console.js';
@@ -49,8 +50,8 @@ export function kindFields(isDesign, fpga, topType = null) {
     const d = isDesign();
     for (const el of fpga) for (const x of [el, el.previousElementSibling]) if (x) x.style.display = d ? 'none' : '';
     if (!topType) return;
-    // (no HDL nor C / C++ top: a drawing's, #4105)
-    for (const o of topType.options) if (HDL_TOP_TYPES.includes(o.value)) o.hidden = o.disabled = d;
+    // (no HDL nor C / C++ top: a drawing's, #4105; nor a System, a co-design project's, #5402)
+    for (const o of topType.options) if (HDL_TOP_TYPES.includes(o.value) || o.value === SYSTEM_TOP) o.hidden = o.disabled = d;
     if (d && HDL_TOP_TYPES.includes(topType.value)) { topType.value = 'sch'; topType.dispatchEvent(new Event('change')); }
   };
   apply();

@@ -16,6 +16,9 @@ import { topSourceFiles } from '../core/top-source.js';
 import { designProjectInfo } from './mcp-design-only.js';
 import { flowFiles } from '../core/flow-files.js';
 import { topRefusal } from '../core/project-entries.js';
+import { makeSystemTop, makeModuleTop } from './mcp-system-top.js';
+import { SYSTEM_TOP } from '../core/system-top.js';
+import { isSystemFile } from '../core/system-doc.js';
 import { toolError, clip, projectPath, readProject, viewSourcesOf, STR, PROJECT, deviceName, boardDevice, redactor } from './mcp-util.js';
 import { backupOfDir } from './backup-store.js';
 import { lastBackup, BACKUP_HOW } from '../core/backup.js';
@@ -111,17 +114,18 @@ export const PROJECT_TOOLS = [
   },
   {
     name: 'new_project', title: 'New empty project',
-    description: 'Make a new empty project in the workspace for a board (list_devices; default: the Basys2-250\'s device, no board); then write_file its sources (a test bench in sim/) and set_top. kind: New Project\'s first page (fpga, design, codesign). kind design (Digital Logic): no board, device or constraints; drawings (new_source) simulated with test_bench_wizard and simulate; no implementation, emulation or programming (set_design_properties with a board makes it an FPGA project). top_source_type: the project starts with that top document, module \'top\' (a drawing: its HDL generated from it; top.c / .cpp: Silinx HLS\'s function top; hdl: none).',
+    description: 'Make a new empty project in the workspace for a board (list_devices; default: the Basys2-250\'s device, no board); then write_file its sources (a test bench in sim/) and set_top. kind: New Project\'s first page (fpga, design, codesign). kind design (Digital Logic): no board, device or constraints; drawings (new_source) simulated with test_bench_wizard and simulate; no implementation, emulation or programming (set_design_properties with a board makes it an FPGA project). top_source_type: its top document, module \'top\' (a drawing\'s HDL generated; top.c / .cpp: HLS\'s function; hdl: none; system: a co-design project).',
     inputSchema: { type: 'object', properties: { name: STR('The new project\'s name: a letter, then up to 63 letters, digits, - and _.'), board: STR('The board (list_devices).'), variant: STR('The board\'s variant (default: the board\'s), e.g. 100 or 250 for the Basys2.'), kind: { type: 'string', enum: ['fpga', DESIGN_KIND, CODESIGN_KIND], description: `Its kind, New Project's first page: ${PROJECT_KINDS.map(k => `${k.id} (${k.name}: ${k.short})`).join(', ')}.` },
-      top_source_type: { type: 'string', enum: TOP_TYPES.map(t => t.id), description: 'Its Top-Level Source Type, as New Project\'s: hdl, sch (schematic), fsm, asm, tt (Boolean algebra), petri, circuit, c, cpp (a design and simulation project\'s: a drawing); saved as the project\'s, its top document made.' },
+      top_source_type: { type: 'string', enum: TOP_TYPES.map(t => t.id), description: 'Its Top-Level Source Type, as New Project\'s (tt: Boolean algebra; a design project\'s: a drawing; system: a co-design project); saved, its top document made.' },
       language: { type: 'string', enum: ['vhdl', 'verilog'], description: 'Its Preferred Language, as New Project\'s (default vhdl): the top document\'s HDL module\'s.' } }, required: ['name'], additionalProperties: false },
     annotations: { readOnlyHint: false, destructiveHint: false },
     async run({ name, board, variant, kind: given, top_source_type: type, language }) {
       // (its kind, #4103; design_only, its deprecated name: server/mcp-aliases.js)
       // (a co-design project, #4702: no board, its System document, no top document)
-      if (given === CODESIGN_KIND) {
+      // (top_source_type system: a co-design project too, its System its top, #5402)
+      if (given === CODESIGN_KIND || (type === SYSTEM_TOP && given !== DESIGN_KIND)) {
         if (!codesignOn()) throw toolError(CODESIGN_OFF);   // (#5202)
-        if (board || variant || type !== undefined) throw toolError('a co-design project (kind codesign) has no board nor top document: its System (edit_system) names each FPGA node\'s board');
+        if (board || variant || (type !== undefined && type !== SYSTEM_TOP)) throw toolError('a co-design project (kind codesign) has no board nor top document: its System (edit_system) names each FPGA node\'s board');
         try { await P.createProject({ name, kind: CODESIGN_KIND, madeBy: 'mcp' }); } catch (e) { throw toolError(e.message); }
         const sys = `${name}.sys.json`;
         return { text: `Empty co-design project '${name}' made: its System ${sys} (no node yet). Write its modules with write_file, its firmware (.hex, .elf), then edit_system.${UNTRUSTED}`, data: { project: name, kind: CODESIGN_KIND, board: null, system: sys, trusted: false } };
@@ -144,12 +148,14 @@ export const PROJECT_TOOLS = [
   },
   {
     name: 'set_top', title: 'Set the top module and the test bench',
-    description: 'Choose a project\'s top module (what run_process builds) and / or its test bench (what simulate runs), as Set as Top Module does: any module of its view, even one with errors. update_constraints: the constraints file written again from the board\'s pins for the new top\'s ports, as Update Constraints does: its pin locations replaced.',
+    description: 'Choose a project\'s top module (what run_process builds) and / or its test bench (what simulate runs), as Set as Top Module does: any module of its view, even one with errors; a System (.sys.json): a co-design project then, its module an FPGA one. update_constraints: the constraints file written again from the board\'s pins, as Update Constraints does.',
     inputSchema: { type: 'object', properties: { project: PROJECT, top: STR('The top module (an entity or module of the project\'s design sources).'), sim_top: STR('The test bench (a simulation source\'s entity or module).'), update_constraints: { type: 'boolean', description: 'Write the constraints file again from the board\'s pins (default false).' } }, required: ['project'], additionalProperties: false },
     annotations: { readOnlyHint: false, destructiveHint: true, idempotentHint: true },
     async run({ project: name, top, sim_top: simTop, update_constraints: constraints = false }) {
       const before = await readProject(name);
       if (!top && !simTop) throw toolError('give top, sim_top or both');
+      // (a System: the project made a co-design project, it its top, #5402)
+      if (top && isSystemFile(top)) { if (simTop) throw toolError('a System as the top: give no sim_top with it'); return makeSystemTop(name, top); }
       // each a module of its view, even one with errors (core/project-entries.js topRefusal, the interface's rule, #4733:
       // check_syntax says its errors); a C source's or a drawing's module not made for now too (#2995)
       for (const [mod, sim] of [[top, false], [simTop, true]]) {
@@ -163,6 +169,8 @@ export const PROJECT_TOOLS = [
         const refusal = topRefusal(mod, sim, () => names.some(same) || failed.some(v => same(v.module)));
         if (refusal) throw toolError(refusal);
       }
+      // (a module of a co-design project: an FPGA project again, on its FPGA node's board, #5402)
+      if (top && isCodesign(before)) { const r = await makeModuleTop(name, top); if (simTop) await P.updateProject(name, pj => ({ ...pj, simTop })); return r; }
       if (constraints && !before.board) throw toolError(`the project '${name}' has no board: its constraints cannot come from a board's pins`);
       await P.updateProject(name, pj => ({ ...pj, ...(top ? { top } : {}), ...(simTop ? { simTop } : {}) }));
       const pj = await P.readProject(name);

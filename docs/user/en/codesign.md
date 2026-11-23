@@ -11,6 +11,10 @@ UART and GPIO links. Its design is in [CODESIGN.md](../../CODESIGN.md); its road
 - **New Project ▸ Co-design.** It has no board of its own: each FPGA node of its System names its board and pins, each
   microcontroller its firmware. Start from **Empty** (its System, `<name>.sys.json`, with no node yet) or from the
   example **uart-avr** (an Arduino and the `uart` example's FPGA linked by UART).
+- **A System as the top of an FPGA project**: the Top-Level Source Type **System (co-design)** (New Project, Design
+  Properties), or **Set as Top Module** on a System (`.sys.json`, in the Files view), makes the project a co-design
+  project, that System its top; its board is kept. **Set as Top Module** on one of its modules makes it an FPGA project
+  again, on the board of the FPGA node that runs that module (else the board it had).
 - **Its System** is its top, shown in the Design pane as `<name> [System]`, the FPGA nodes' modules under it. It opens
   in the **System editor**: the tools place an FPGA node, an Arduino Uno or Nano, a serial terminal; **Link** joins two
   interfaces of one kind (a click on one, then on the other); the Properties panel sets a node's module, board and pins,

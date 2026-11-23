@@ -2,6 +2,8 @@
 // project then (Design Properties, the MCP server's set_design_properties: saved as ISE's property is, nothing made).
 // A design and simulation project's (#3780): the drawings' only, no HDL nor C / C++. Isomorphic module (browser + Node).
 import { isDesignOnly } from './project-kind.js';
+import { codesignOn } from './build-channel.js';
+import { SYSTEM_TOP, systemTopRefusal } from './system-top.js';
 
 /** The types: id, label (the interface's), the top document New Project makes (none: HDL, its module written by hand). */
 export const TOP_TYPES = [
@@ -14,7 +16,11 @@ export const TOP_TYPES = [
   { id: 'circuit', label: 'Digital Electronic Circuit', file: 'src/top.circ.json' },
   { id: 'c', label: 'C Function (HLS)', file: 'src/top.c' },
   { id: 'cpp', label: 'C++ Function (HLS)', file: 'src/top.cpp' },
+  // (a co-design System, #5402: the project made a co-design project, its System its top; core/system-top.js)
+  { id: SYSTEM_TOP, label: 'System (co-design)' },
 ];
+/** The types offered in this build: the System's only where co-design is on (#5202). */
+export const offeredTopTypes = () => TOP_TYPES.filter(t => t.id !== SYSTEM_TOP || codesignOn());
 /** The types of the HDL side, none of a design and simulation project's. */
 export const HDL_TOP_TYPES = ['hdl', 'c', 'cpp'];
 /** A type by its id, or null. */
@@ -24,6 +30,7 @@ export const projectTopType = pj => topType(pj?.topSourceType) || TOP_TYPES[0];
 /** Why the type `id` is not one of the project `pj`'s, or null. */
 export function topTypeRefusal(pj, id) {
   if (!topType(id)) return `top_source_type: one of ${TOP_TYPES.map(t => t.id).join(', ')}`;
-  if (isDesignOnly(pj) && HDL_TOP_TYPES.includes(id)) return `top_source_type ${id}: a design and simulation project's top is a drawing (${TOP_TYPES.filter(t => !HDL_TOP_TYPES.includes(t.id)).map(t => t.id).join(', ')})`;
+  if (id === SYSTEM_TOP) { const why = systemTopRefusal(pj); return why && `top_source_type system: ${why}`; }
+  if (isDesignOnly(pj) && HDL_TOP_TYPES.includes(id)) return `top_source_type ${id}: a design and simulation project's top is a drawing (${TOP_TYPES.filter(t => !HDL_TOP_TYPES.includes(t.id) && t.id !== SYSTEM_TOP).map(t => t.id).join(', ')})`;
   return null;
 }

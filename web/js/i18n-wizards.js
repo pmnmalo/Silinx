@@ -33,6 +33,10 @@ export const WIZARDS_PT = {
     'O HDL e o fluxo da FPGA passam a ver-se, nada se perde: escolha a placa ou o dispositivo.',
   'A co-design project has no board of its own: each FPGA node of its System names its board and pins, each microcontroller its firmware.':
     'Um projeto de co-design não tem placa própria: cada nó FPGA do seu Sistema indica a sua placa e os pinos, cada microcontrolador o seu firmware.',
+  // a System as the top (#5402, core/system-top.js)
+  'System (co-design)': 'Sistema (co-design)',
+  'The project is a co-design project: its System is its top, each FPGA node on a board of its own (the board above is not used).':
+    'O projeto é um projeto de co-design: o seu Sistema é o topo, cada nó FPGA numa placa própria (a placa acima não é usada).',
   'Replace Project': 'Substituir Projeto',   // (New Project's and the imports', #3538)
   // Rename Project… (#4641)
   'Rename Project…': 'Mudar o Nome do Projeto…', 'Rename Project': 'Mudar o Nome do Projeto',
@@ -133,6 +137,10 @@ export const WIZARDS_PT = {
 const label = what => (WIZARDS_PT[`${what}:`] || `${what}:`).replace(/:$/, '');
 
 export const WIZARDS_PT_PATTERNS = [
+  // (a System as the top, #5402: web/js/system-top-ui.js)
+  [/^(\S+): a co-design project now, its System (\S+) its top \(its board kept: Set as Top Module on a module makes it an FPGA project again\)\.$/,
+    '$1: agora um projeto de co-design, o seu Sistema $2 é o topo (a placa fica guardada: Definir como Módulo de Topo num módulo torna-o de novo um projeto FPGA).'],
+  [/^(\S+): an FPGA project now, its top module '(\S+)' on (.+) \((\S+)\)\.$/, "$1: agora um projeto FPGA, o seu módulo de topo '$2' na $3 ($4)."],
   // (the browser edition's first run, #4962)
   [/^This browser's storage has (\d+) project\(s\): (.*)\. Copy them into the folder '(.*)'\? Move… copies them, then deletes them from this browser's storage once you confirm\.$/,
     "O armazenamento deste navegador tem $1 projeto(s): $2. Copiá-los para a pasta '$3'? Mover… copia-os e depois apaga-os do armazenamento deste navegador, depois de confirmar."],
