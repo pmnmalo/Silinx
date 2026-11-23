@@ -9,7 +9,7 @@ import { toolError, projectPath, readProject, viewSourcesOf, STR, PROJECT } from
 import { hdlSideFile, isDesignOnly } from '../core/project-kind.js';
 import { addToProject, addsToProject, declares, missingTops, removeFromProject } from '../core/project-entries.js';
 
-const VIEW_RE = /\.(sch|asm|tt|bool|fsm|pn|circ)\.json$/i;
+const VIEW_RE = /\.(sch|asm|tt|bool|fsm|pn|circ|regs)\.json$/i;
 
 // the tops of a project no longer declared by its sources: the view's one root, else none; the messages of the
 // interface's console (core/project-entries.js missingTops, the interface's, #4733: a C source's or a drawing's module
@@ -124,7 +124,7 @@ export const SOURCE_TOOLS = [
         const np = remap(d.generatedFile);
         if (!np) continue;
         d.generatedFile = np;
-        await P.writeFile(name, f, JSON.stringify(d, null, /\.(asm|tt|bool|fsm)\.json$/i.test(f) ? 2 : 1));
+        await P.writeFile(name, f, JSON.stringify(d, null, /\.(asm|tt|bool|fsm|regs)\.json$/i.test(f) ? 2 : 1));
         links.push(f);
       }
       return { text: `Rename: ${a} → ${b}${links.length ? ` (the link of ${links.join(', ')} updated)` : ''}.`, data: { project: name, from: a, to: b, links } };

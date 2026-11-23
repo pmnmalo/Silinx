@@ -3,7 +3,8 @@
 // nothing written: an HDL source's translation to the other language (core/translate.js, #2711), a state diagram's ASM
 // chart and an ASM chart's state diagram (core/fsm-asm.js), a Petri net's state machine (core/petri-fsm.js, #2696), a
 // truth table's schematic (core/logic.js, #694), a state diagram's (its gate-level implementation, core/fsm-schematic.js,
-// #4910) and a truth table's results, the editor's results panel (#2927). The others are read_file's (a drawing's HDL), c_generated's and
+// #4910) and a truth table's results, the editor's results panel (#2927); a register map's Arduino header (core/regmap-c.js,
+// #5288), what its editor's Header button writes, written by write_file. The others are read_file's (a drawing's HDL), c_generated's and
 // c_synthesis_report's (a C source's).
 import * as P from './projects.js';
 import { toolError, readProject, STR, PROJECT, projectText } from './mcp-util.js';
@@ -13,7 +14,7 @@ import { notationSetting } from './mcp-notation.js';
 import { NOTATION_IDS, showExpr } from '../core/expr-notation.js';
 import { MAX_NODES, litsOf, part, sizeOf } from '../core/expr-part.js';
 
-const VIEWS = ['translation', 'asm', 'fsm', 'schematic', 'results'];
+const VIEWS = ['translation', 'asm', 'fsm', 'schematic', 'results', 'header'];
 // (Settings ▸ Boolean Notation's, #3915, then the older ones formatExpr has)
 const NOTATIONS = [...NOTATION_IDS, 'slash-compact', 'textbook', 'compact', 'ascii'];
 const base = p => p.split('/').pop();
@@ -26,8 +27,8 @@ const json = (text, rel) => { try { return JSON.parse(text); } catch (e) { throw
 export const VIEW_TOOLS = [
   {
     name: 'related_view', title: 'A read-only view related to a source',
-    description: 'A read-only view the interface shows beside a source: translation (an HDL source in the other language), asm (a state diagram\'s ASM chart, JSON), fsm (an ASM chart\'s state diagram, or a Petri net\'s state machine, a state per marking; JSON), schematic (a truth table\'s or a circuit\'s logic drawn, or a state diagram\'s in gates and D flip-flops; JSON), results (a truth table\'s results per output, as its editor shows them: least-gates and least-delay forms, Karnaugh SOP and POS (up to 6 inputs, every minimal solution), Quine-McCluskey\'s, canonical, XOR, NAND and NOR forms, minterms, maxterms, each form\'s gates; the HDL logic set_output_logic sets). convert_drawing makes a drawing a new module.',
-    inputSchema: { type: 'object', properties: { project: PROJECT, path: STR('The source: .vhd, .v, .fsm.json, .asm.json, .pn.json, .bool.json, .tt.json or .circ.json.'), view: { type: 'string', enum: VIEWS, description: 'The view.' }, notation: { type: 'string', enum: NOTATIONS, description: 'results, fsm: the expressions\' notation (default: the table\'s own, else set_notation\'s Boolean Notation, else engineering, a̅.b + c).' } }, required: ['project', 'path', 'view'], additionalProperties: false },
+    description: 'A read-only view the interface shows beside a source: translation (an HDL source\'s other language), asm (a state diagram\'s ASM chart, JSON), fsm (an ASM chart\'s state diagram, or a Petri net\'s state machine; JSON), schematic (a truth table\'s or a circuit\'s logic drawn, or a state diagram\'s in gates and D flip-flops; JSON), results (a truth table\'s results per output, as its editor: least-gates and least-delay forms, Karnaugh SOP and POS (up to 6 inputs, every minimal solution), Quine-McCluskey\'s, canonical, XOR, NAND and NOR forms, minterms, maxterms, each form\'s gates; the HDL logic set_output_logic sets), header (a register map\'s .h). convert_drawing makes a drawing a new module.',
+    inputSchema: { type: 'object', properties: { project: PROJECT, path: STR('A .vhd, .v or a drawing (.fsm.json, .asm.json, .pn.json, .bool.json, .circ.json, .regs.json).'), view: { type: 'string', enum: VIEWS, description: 'The view.' }, notation: { type: 'string', enum: NOTATIONS, description: 'results, fsm: the expressions\' notation (default: the table\'s own, else set_notation\'s Boolean Notation, else engineering, a̅.b + c).' } }, required: ['project', 'path', 'view'], additionalProperties: false },
     annotations: { readOnlyHint: true, destructiveHint: false },
     // (every view holds the source's names, a translation its text: labelled, #4174)
     async run(args) { return { ...await relatedView(args), untrusted: `the view of ${args.path}, which holds its names and text` }; },
@@ -47,6 +48,16 @@ async function relatedView({ project: name, path: rel, view, notation }) {
     const r = translateSource(text, { path: rel, to, sources });
     if (!r.ok) throw toolError(`${base(rel)} cannot be translated to ${to === 'vhdl' ? 'VHDL' : 'Verilog'}: ${r.errors.map(e => `${e.line ? `line ${e.line}: ` : ''}${e.message}`).join('; ')}`);
     return { text: r.text, data: { project: name, path: rel, view, lang: to, name: translatedPath(base(rel), to), text: r.text } };
+  }
+  if (view === 'header') {
+    const R = await import('../core/regmap.js');
+    if (!R.isRegmapFile(rel)) throw toolError(`${rel}: a register map (.regs.json) has a header`);
+    const read = R.readRegmap(text);
+    if (read.error) throw toolError(`${rel}: ${read.error}`);
+    const errors = R.checkRegmap(read.regmap).filter(d => d.severity === 'error').map(d => d.message);
+    if (errors.length) throw toolError(`${rel}: ${errors.join('; ')}: no header`);
+    const { code, file } = (await import('../core/regmap-c.js')).regmapHeader(read.regmap);
+    return { text: code, data: { project: name, path: rel, view, name: file, text: code } };
   }
   if (view === 'results') {
     if (!/\.(tt|bool)\.json$/i.test(rel)) throw toolError(`${rel}: a truth table (.bool.json, .tt.json) has results`);

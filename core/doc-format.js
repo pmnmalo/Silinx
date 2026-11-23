@@ -11,7 +11,7 @@ export const PROJECT_VERSION = 1;
 // a drawing's kind by its file's name: [pattern, its version, what it is]
 const DRAWINGS = [
   [/\.sch\.json$/i, 7, 'schematic'], [/\.fsm\.json$/i, 1, 'state diagram'], [/\.asm\.json$/i, 1, 'ASM chart'],
-  [/\.(tt|bool)\.json$/i, 1, 'truth table'], [/\.pn\.json$/i, 1, 'Petri net'], [/\.circ\.json$/i, 1, 'circuit'],
+  [/\.(tt|bool)\.json$/i, 1, 'truth table'], [/\.pn\.json$/i, 1, 'Petri net'], [/\.circ\.json$/i, 1, 'circuit'], [/\.regs\.json$/i, 1, 'register map'],
 ];
 
 /** The version of the format of the drawing at `path` that this Silinx writes, or null (no drawing). */

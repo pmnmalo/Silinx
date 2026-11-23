@@ -6,7 +6,7 @@ import { cTemplate, cppTemplate } from './c-templates.js';
 import { constraintsFormatOf } from '../packages/silinx-fpga/src/parts.js';
 
 /** The kinds of source (the MCP's new_source's types). */
-export const SOURCE_KINDS = ['module', 'package', 'test_bench', 'constraints', 'mem', 'c', 'cpp', 'schematic', 'asm', 'fsm', 'petri', 'circuit', 'boolean', 'lab'];
+export const SOURCE_KINDS = ['module', 'package', 'test_bench', 'constraints', 'mem', 'c', 'cpp', 'schematic', 'asm', 'fsm', 'petri', 'circuit', 'boolean', 'regmap', 'lab'];
 const CONSTRAINTS = { ucf: T.ucfTemplate, pcf: T.pcfTemplate, lpf: T.lpfTemplate, cst: T.cstTemplate, ccf: T.ccfTemplate, xdc: T.xdcTemplate };
 // a drawing's or a C function's name from the file's
 const ident = n => String(n).replace(/[^A-Za-z0-9_]/g, '_');
@@ -39,6 +39,7 @@ export async function sourceText(kind, { file, lang = 'vhdl', pj = {}, entity, a
     case 'circuit': return JSON.stringify(template ? (await import('./circuit-templates.js')).circuitTemplate(template.id, template.params, { name: n, lang })
       : (await import('./circuit.js')).newCircuit(n, lang), null, 2);
     case 'boolean': return JSON.stringify({ ...(await import('./logic.js')).newTable(n, ['a', 'b', 'c'], ['f']), lang }, null, 2);
+    case 'regmap': return (await import('./regmap.js')).writeRegmap((await import('./regmap.js')).newRegmap(n, 'spi', lang));   // (#5288)
     case 'lab': return `${JSON.stringify((await import('./labs.js')).newLab(file, { top: pj.top, simTop: pj.simTop }), null, 2)}\n`;
     default: throw new Error(`no source of kind '${kind}'`);
   }

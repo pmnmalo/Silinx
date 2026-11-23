@@ -37,8 +37,8 @@ export const isRegmapFile = path => /\.regs\.json$/i.test(String(path || ''));
 /** A register's bytes (its addresses). */
 const regBytes = r => Math.max(1, Math.ceil(Number(r.width) / 8));
 
-/** A new register map named `name`, on SPI, with one register. */
-export const newRegmap = (name, bus = 'spi') => normalizeRegmap({ name, bus, registers: [{ name: 'ctrl', addr: 0, width: 8, access: 'rw' }] });
+/** A new register map named `name`, on SPI, with one register (lang: its HDL's). */
+export const newRegmap = (name, bus = 'spi', lang = null) => normalizeRegmap({ name, bus, lang, registers: [{ name: 'ctrl', addr: 0, width: 8, access: 'rw' }] });
 
 const normalReg = r => {
   const out = { name: String(r?.name ?? ''), addr: r?.addr, width: r?.width ?? 8, access: r?.access ?? 'rw' };
@@ -52,7 +52,9 @@ export function normalizeRegmap(m) {
   const bus = String(m?.bus ?? 'spi');
   return { format: REGMAP_FORMAT, version: REGMAP_VERSION, name: String(m?.name ?? 'regs'), bus,
     ...(bus === 'i2c' ? { address: m?.address ?? 0x42 } : {}),
-    registers: Array.isArray(m?.registers) ? m.registers.map(normalReg) : [] };
+    registers: Array.isArray(m?.registers) ? m.registers.map(normalReg) : [],
+    // (as a drawing's: its HDL's language, its HDL file, #5288)
+    ...(m?.lang ? { lang: m.lang === 'verilog' ? 'verilog' : 'vhdl' } : {}), ...(m?.generatedFile ? { generatedFile: String(m.generatedFile) } : {}) };
 }
 
 /** A register map's text read: { regmap } or { error }. */
@@ -113,6 +115,17 @@ export function checkRegmap(m) {
   if (names.has(m.name.toLowerCase())) err(`the map's name ${m.name} is a register's: the module and its port one name`);
   for (const r of m.registers) if (r.strobe && names.has(`${r.name}_wr`.toLowerCase())) err(`${r.name}'s strobe ${r.name}_wr and the register ${names.get(`${r.name}_wr`.toLowerCase()).name}: one port's name`);
   return out;
+}
+
+/** The register map a module is made from, among the project's maps' texts ({ path: text }): the one named as it (its
+ *  case aside), or null (#5288: Simulate System says its accesses). */
+export function regmapFor(texts, module) {
+  for (const [p, text] of Object.entries(texts || {})) {
+    if (!isRegmapFile(p)) continue;
+    const r = readRegmap(text);
+    if (r.regmap && r.regmap.name.toLowerCase() === String(module).toLowerCase()) return r.regmap;
+  }
+  return null;
 }
 
 /** The map's registers in address order, each with its bytes ({ ...r, bytes }), for the generators. */

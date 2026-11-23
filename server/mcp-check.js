@@ -10,6 +10,8 @@ const KINDS = [
   { re: /\.pn\.json$/i, what: 'Check Petri Net', check: async m => (await import('../core/petri-analysis.js')).checkPetri(m) },
   // a circuit's (#3897): its shorts, unpowered ICs, floating inputs, parts and wires that join nothing
   // (with the project's modules: its KiCad parts modelled by one checked against it, #4283)
+  // a register map's (#5288): its names, addresses, widths, accesses, resets
+  { re: /\.regs\.json$/i, what: 'Check Register Map', check: async m => { const R = await import('../core/regmap.js'); return R.checkRegmap(R.normalizeRegmap(m)); } },
   { re: /\.circ\.json$/i, what: 'Check Circuit', check: async (m, ctx) => (await import('../core/circuit-check.js')).checkCircuit((await import('../core/circuit.js')).normalizeCircuit(m), undefined, { modules: ctx.modules ?? null, runner: ctx.runner ?? null }) },
 ];
 // the item a message is about (the editor selects it when the message is clicked)
@@ -34,12 +36,12 @@ export async function checkDrawing(file, m, ctx = {}) {
 export const CHECK_TOOLS = [
   {
     name: 'check_drawing', title: 'Check a drawing',
-    description: 'Check an ASM chart (.asm.json: its Validate), a state diagram (.fsm.json), a Petri net (.pn.json: also transitions that never fire, deadlocks) or a circuit (.circ.json: short circuits, unpowered ICs, floating inputs, unconnected parts and wires) as its editor\'s Check does: its errors and warnings and their items. A schematic is checked by check_syntax.',
+    description: 'Check an ASM chart (.asm.json: its Validate), a state diagram (.fsm.json), a Petri net (.pn.json: also transitions that never fire, deadlocks), a circuit (.circ.json: shorts, unpowered ICs, floating inputs, unconnected parts and wires) or a register map (.regs.json) as its editor\'s Check: its errors, warnings and their items. A schematic\'s: check_syntax.',
     inputSchema: { type: 'object', properties: { project: PROJECT, file: STR('The drawing (e.g. src/ctl.pn.json).') }, required: ['project', 'file'], additionalProperties: false },
     annotations: { readOnlyHint: true },
     async run({ project: name, file }) {
       const kind = KINDS.find(k => k.re.test(file));
-      if (!kind) throw toolError(`'${file}' is not an ASM chart, a state diagram, a Petri net or a circuit (.asm.json, .fsm.json, .pn.json, .circ.json)`);
+      if (!kind) throw toolError(`'${file}' is not an ASM chart, a state diagram, a Petri net, a circuit or a register map (.asm.json, .fsm.json, .pn.json, .circ.json, .regs.json)`);
       let m;
       const text = await projectText(name, file, `no drawing '${file}' in the project '${name}'`);
       try { m = JSON.parse(text); } catch { throw toolError(`no drawing '${file}' in the project '${name}'`); }

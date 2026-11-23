@@ -11,6 +11,7 @@ import { emulationBoards, withBoards, watchBoards, boardStates, setBoardInput, p
 import { loadAvr8js } from '../core/system-sim-avr.js';
 import { systemVcd } from '../core/system-waves.js';
 import { ucfPort } from '../core/board-constraints.js';
+import { isRegmapFile, regmapFor } from '../core/regmap.js';
 
 // the System's FPGA nodes' modules elaborated: their ports ({ module: [{ name, dir, width }] }) and designs
 async function modulesOf(name, sys) {
@@ -30,6 +31,13 @@ async function modulesOf(name, sys) {
  * System's boards emulated (Emulate System, #5212: core/system-emu.js): [{ node, control: 'btn0' | 'sw3', on, at_ns }],
  * each set at its time as its click does; then what each board shows over the run's last 10 ms.
  */
+// the project's register maps' texts ({ path: text })
+async function mapTexts(name) {
+  const out = {};
+  for (const f of (await P.fileTree(name)).filter(isRegmapFile)) out[f] = await P.readFile(name, f);
+  return out;
+}
+
 export async function simulateSystem(name, file, { ms = 100, type = {}, controls = null } = {}) {
   if (!codesignOn()) throw toolError(CODESIGN_OFF);   // (co-design not in a release yet, #5202)
   if (!isSystemFile(file)) throw toolError(`'${file}' is not a System document (.sys.json)`);
@@ -44,6 +52,7 @@ export async function simulateSystem(name, file, { ms = 100, type = {}, controls
     ports,
     netlist: m => { if (!designs[m]) throw new Error(`no module '${m}' that elaborates in the project`); return netlistOf(designs[m], { run: yosysNode }); },
     firmware: async p => (/\.elf$/i.test(p) ? P.readFileBytes(name, p) : P.readFile(name, p)),   // (the page's reads, #5198)
+    regmap: async m => regmapFor(await mapTexts(name), m),   // (a module made from a register map: its accesses, #5288)
   };
   const emu = controls ? await emulated(sys, how) : null;
   const ready = emu ? emu.ready : await prepareSystem(sys, how);
@@ -60,7 +69,7 @@ export async function simulateSystem(name, file, { ms = 100, type = {}, controls
   await P.writeFile(name, vcd, systemVcd(ready.sim, { name: sys.name }));
   const bytes = t => t.bytes.map(b => ({ t: b.t, byte: b.byte, ...(b.error ? { error: b.error } : {}) }));
   return { text: [...rep.lines, ...(shown ? boardLines(shown) : []), `The waves: ${vcd}.`].join('\n'), isError: false,
-    data: { project: name, file, time: runTimeText(rep.now), traffic: rep.traffic.map(t => ({ wire: t.wire, link: t.link, from: t.from, to: t.to, bytes: bytes(t) })), spi: rep.spi.map(x => ({ link: x.link, from: x.from, to: x.to, hz: x.hz, mode: x.mode, transfers: x.transfers })), i2c: rep.i2c.map(x => ({ link: x.link, from: x.from, to: x.to, hz: x.hz, transfers: x.transfers })), terminals: rep.terminals, warnings: rep.warnings, errors: rep.errors, vcd, ...(shown ? { boards: shown } : {}) },
+    data: { project: name, file, time: runTimeText(rep.now), traffic: rep.traffic.map(t => ({ wire: t.wire, link: t.link, from: t.from, to: t.to, bytes: bytes(t) })), spi: rep.spi.map(x => ({ link: x.link, from: x.from, to: x.to, hz: x.hz, mode: x.mode, transfers: x.transfers })), i2c: rep.i2c.map(x => ({ link: x.link, from: x.from, to: x.to, hz: x.hz, transfers: x.transfers })), regs: rep.regs.map(x => ({ link: x.link, map: x.map, accesses: x.accesses.map(({ text, ...y }) => y) })), terminals: rep.terminals, warnings: rep.warnings, errors: rep.errors, vcd, ...(shown ? { boards: shown } : {}) },
     untrusted: 'the System\'s names and the bytes its nodes sent' };
 }
 

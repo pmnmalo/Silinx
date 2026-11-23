@@ -311,7 +311,7 @@ function primTemplatesMenu(d, lang) {
   return { label: 'Device Primitives', disabled: !list.length, submenu: list.map(t => ({ label: t.name, action: () => d.editor.insertText(t.text) })) };
 }
 // (a read-only document, the HDL generated from a drawing (#1176): none, its Undo / Redo greyed out, #1192)
-export const docEditor = d => d && (d.editor ? (d.editor.readOnly?.() ? null : { undo: () => d.editor.exec('undo'), redo: () => d.editor.exec('redo') }) : d.schEditor || d.asmEditor || d.fsmEditor || d.ttEditor || d.petriEditor || d.circuitEditor || d.symEditor || d.pinPlanner || d.systemEditor || null);
+export const docEditor = d => d && (d.editor ? (d.editor.readOnly?.() ? null : { undo: () => d.editor.exec('undo'), redo: () => d.editor.exec('redo') }) : d.schEditor || d.asmEditor || d.fsmEditor || d.ttEditor || d.petriEditor || d.circuitEditor || d.regsEditor || d.symEditor || d.pinPlanner || d.systemEditor || null);
 export const undoesProject = () => history.canUndo() && !(docsState.active?._editedAt > history.lastAt() && docEditor(docsState.active));
 export const redoesProject = () => history.canRedo() && !(docsState.active?._editedAt > history.redoAt() && docEditor(docsState.active));
 export async function projectUndo() {
@@ -479,7 +479,7 @@ export async function flushDoc(doc, opts) {
     // as it has no errors (#207)
     const vp = docPath(doc);
     if (isLabFile(vp) && S.project) import('./lab-view.js').then(m => m.labFileSaved(vp)).catch(() => {});   // (a guided lab checked as it is edited, #3179)
-    if (vp && /\.(sch|asm|tt|bool|fsm|pn|circ)\.json$/.test(vp) && !designState.schOwners?.[vp] && S.project) {
+    if (vp && /\.(sch|asm|tt|bool|fsm|pn|circ|regs)\.json$/.test(vp) && !designState.schOwners?.[vp] && S.project) {
       try {
         designState.viewTexts = { ...(designState.viewTexts || {}), [vp]: await api.readFile(S.project.name, vp) }; compileProject();
         if (await adoptDrawnHdl()) { await reloadProject(false); markStale(); } else { await drawnHdlClashes(); renderHierarchy(); }
@@ -526,7 +526,8 @@ export async function openFile(path, line, col, { task } = {}) {
   if (path.endsWith('.fsm.json')) return openFsm(path);
   if (path.endsWith('.pn.json')) return openPetri(path);
   if (path.endsWith('.circ.json')) return (await import('./drawings.js')).openCircuit(path);   // (a digital circuit, #3897)
-  if (path.endsWith('.sys.json')) return (await import('./system-open.js')).openSystem(path);   // (a co-design project's System, #4700)
+  if (path.endsWith('.sys.json')) return (await import('./system-open.js')).openSystem(path);
+  if (path.endsWith('.regs.json')) return (await import('./drawings-regs.js')).openRegs(path);   // (a co-design's register map, #5288)   // (a co-design project's System, #4700)
   if (/\.sym\.json$/i.test(path)) return (await import('./symbol-doc.js')).openSymbol(path);   // (a module's symbol, #3755)
   if (path.endsWith('.exercise.json')) return (await import('./exercise-view.js')).openExercise(path);   // (#3192)
   if (/(^|\/)([^/]+\.)?grades\.json$/i.test(path)) return (await import('./grade-results-view.js')).openResultsFile(path);   // (a class's results, #3864)
@@ -757,7 +758,7 @@ async function renameFolder(dir) {
   if (filesState.fileTree.some(f => f === to || f.startsWith(`${to}/`))) return commandError('Rename Folder', `'${to}' already exists.`);
   if (!await saveAll()) return;
   const remap = p => (p && p.startsWith(`${dir}/`) ? to + p.slice(dir.length) : p);
-  const views = filesState.fileTree.filter(f => /\.(sch|asm|tt|bool|fsm|pn|circ)\.json$/i.test(f));
+  const views = filesState.fileTree.filter(f => /\.(sch|asm|tt|bool|fsm|pn|circ|regs)\.json$/i.test(f));
   // the editors of moved files are closed and reopened at their new paths
   const reopen = [];
   for (const d of [...docsState.docs]) if (d.path && d.path.startsWith(`${dir}/`)) { reopen.push(remap(d.path)); d.dirty = false; clearTimeout(d._autosave); await closeDoc(d); }
@@ -770,7 +771,7 @@ async function renameFolder(dir) {
       try { d = JSON.parse(await api.readFile(S.project.name, at)); } catch { continue; }
       if (d.generatedFile && d.generatedFile.startsWith(`${dir}/`)) {
         d.generatedFile = remap(d.generatedFile);
-        await api.writeFile(S.project.name, at, JSON.stringify(d, null, /\.(asm|tt|bool|fsm)\.json$/i.test(at) ? 2 : 1));
+        await api.writeFile(S.project.name, at, JSON.stringify(d, null, /\.(asm|tt|bool|fsm|regs)\.json$/i.test(at) ? 2 : 1));
       }
     }
     log(`Folder ${dir} renamed to ${to}.`, 'ok');

@@ -7,6 +7,7 @@ import assert from 'node:assert/strict';
 import { setupUi, uiTest, makeProject } from './harness.js';
 import { newTable, generateTableHdl } from '../../core/logic.js';
 import { newPetri } from '../../core/petri.js';
+import { writeRegmap, newRegmap } from '../../core/regmap.js';
 
 let env;
 before(async () => { env = await setupUi(); });
@@ -138,7 +139,7 @@ async function follower(page) {
 }
 
 uiTest('#3181 a project followed: "Read-only, following Ana\'s project" at the right of the toolbar of a text file, a truth table and a Petri net, each in its read-only mode', E, async (page) => {
-  await makeProject(env, { name: 'RoNoteFollow', top: 'ctl', files: { ...ttFiles(), 'src/ctl.pn.json': JSON.stringify(newPetri('ctl', 'vhdl'), null, 2), 'src/neg.v': NEG } });
+  await makeProject(env, { name: 'RoNoteFollow', top: 'ctl', files: { ...ttFiles(), 'src/ctl.pn.json': JSON.stringify(newPetri('ctl', 'vhdl'), null, 2), 'src/neg.v': NEG, 'src/regs.regs.json': writeRegmap(newRegmap('regs')) } });
   await page.openProject('RoNoteFollow');
   const fp = await follower(page);
   const NOTE = 'Read-only, following Ana\'s project';
@@ -176,6 +177,11 @@ uiTest('#3181 a project followed: "Read-only, following Ana\'s project" at the r
     assert.equal(await fp.eval((p) => !!document.querySelector(`${p} .pn-place[data-id=p1]`), P), true);
     assert.equal(await fp.eval(() => window.Silinx.active.petriEditor.canDelete()), false);
     assert.equal(await fp.eval(() => !!window.Silinx.active.dirty), false);
+    // a register map (#5288): its cells and its bus disabled, no + Register nor Remove
+    await fp.eval(() => window.SilinxApp.openFile('src/regs.regs.json'));
+    await fp.waitFor(() => window.Silinx.active?.id === 'regs:src/regs.regs.json' && document.querySelector('.doc:not([hidden]) .regmap-editor [data-follow-notice]'), [], { what: 'the register map' });
+    await check(fp, NOTE, 'a register map followed');
+    assert.deepEqual(await fp.eval(() => { const r = '.doc:not([hidden]) .regmap-editor'; return { add: !!document.querySelector(`${r} .regs-add`), disabled: [...document.querySelectorAll(`${r} :is(.regs-table input, .regs-table select, .regs-bus)`)].every((x) => x.disabled) }; }), { add: false, disabled: true });
     assert.deepEqual(fp.console.filter((c) => c.type === 'warning' || c.type === 'warn').map((c) => c.text), []);
     assert.deepEqual(fp.errors, []);
   } finally { await fp.close(); await page.eval(async () => (await import('/js/collab-share.js')).stopSharing()); }

@@ -151,11 +151,11 @@ export function syncDrawingHdl(path) {
   });
 }
 // (what its HDL editor's banner and its link call it)
-const STALE_NOUN = { sch: 'schematic', asm: 'ASM chart', tt: 'truth table', fsm: 'state diagram', pn: 'Petri net', circ: 'circuit' };
+const STALE_NOUN = { sch: 'schematic', asm: 'ASM chart', tt: 'truth table', fsm: 'state diagram', pn: 'Petri net', circ: 'circuit', regs: 'register map' };
 // a drawing's editor, when it is open
 function drawingEditor(path) {
   const d = findDoc(`${viewKind(path)}:${path}`);
-  return d?.schEditor || d?.asmEditor || d?.ttEditor || d?.fsmEditor || d?.petriEditor || d?.circuitEditor || null;
+  return d?.schEditor || d?.asmEditor || d?.ttEditor || d?.fsmEditor || d?.petriEditor || d?.circuitEditor || d?.regsEditor || null;
 }
 
 async function asmFromHdlFile(hdlPath, opts = {}) {
@@ -531,14 +531,18 @@ export const isTt = p => /\.(tt|bool)\.json$/i.test(p || '');
 export const isFsm = p => /\.fsm\.json$/i.test(p || '');
 export const isPn = p => /\.pn\.json$/i.test(p || '');
 export const isCirc = p => /\.circ\.json$/i.test(p || '');
-export const viewNoun = p => (isAsm(p) ? 'state machine' : isTt(p) ? 'Boolean algebra' : isFsm(p) ? 'state diagram' : isPn(p) ? 'Petri net' : isCirc(p) ? 'circuit' : 'schematic');
-export const viewTitle = p => (isAsm(p) ? 'State Machine' : isTt(p) ? 'Boolean Algebra' : isFsm(p) ? 'State Diagram' : isPn(p) ? 'Petri Net' : isCirc(p) ? 'Circuit' : 'Schematic');
-export const viewIcon = p => (isAsm(p) ? 'asm' : isTt(p) ? 'algebra' : isFsm(p) ? 'fsm' : isPn(p) ? 'petri' : isCirc(p) ? 'circuit' : 'schematic');
-export const viewKind = p => (isAsm(p) ? 'asm' : isTt(p) ? 'tt' : isFsm(p) ? 'fsm' : isPn(p) ? 'pn' : isCirc(p) ? 'circ' : 'sch');
-export const viewContextMenu = (e, f) => (isAsm(f) ? asmContextMenu : isTt(f) ? ttContextMenu : isFsm(f) ? fsmContextMenu : isPn(f) ? petriContextMenu : isCirc(f) ? circuitContextMenu : schContextMenu)(e, f);
-export function openView(p) { return isAsm(p) ? openAsm(p) : isTt(p) ? openTt(p) : isFsm(p) ? openFsm(p) : isPn(p) ? openPetri(p) : isCirc(p) ? openCircuit(p) : openSch(p); }
+const isRegs = p => /\.regs\.json$/i.test(p || '');   // (a co-design's register map, #5288)
+export const viewNoun = p => (isAsm(p) ? 'state machine' : isTt(p) ? 'Boolean algebra' : isFsm(p) ? 'state diagram' : isPn(p) ? 'Petri net' : isCirc(p) ? 'circuit' : isRegs(p) ? 'register map' : 'schematic');
+export const viewTitle = p => (isAsm(p) ? 'State Machine' : isTt(p) ? 'Boolean Algebra' : isFsm(p) ? 'State Diagram' : isPn(p) ? 'Petri Net' : isCirc(p) ? 'Circuit' : isRegs(p) ? 'Register Map' : 'Schematic');
+export const viewIcon = p => (isAsm(p) ? 'asm' : isTt(p) ? 'algebra' : isFsm(p) ? 'fsm' : isPn(p) ? 'petri' : isCirc(p) ? 'circuit' : isRegs(p) ? 'regmap' : 'schematic');
+export const viewKind = p => (isAsm(p) ? 'asm' : isTt(p) ? 'tt' : isFsm(p) ? 'fsm' : isPn(p) ? 'pn' : isCirc(p) ? 'circ' : isRegs(p) ? 'regs' : 'sch');
+export const viewContextMenu = (e, f) => (isAsm(f) ? asmContextMenu : isTt(f) ? ttContextMenu : isFsm(f) ? fsmContextMenu : isPn(f) ? petriContextMenu : isCirc(f) ? circuitContextMenu : isRegs(f) ? regsMenu : schContextMenu)(e, f);
+export function openView(p) { return isAsm(p) ? openAsm(p) : isTt(p) ? openTt(p) : isFsm(p) ? openFsm(p) : isPn(p) ? openPetri(p) : isCirc(p) ? openCircuit(p) : isRegs(p) ? openRegsLazy(p) : openSch(p); }
 // a view's badge in the Design tree (#207)
-export const viewBadge = p => (isAsm(p) ? 'ASM' : isTt(p) ? 'Algebra' : isFsm(p) ? 'FSM' : isPn(p) ? 'Petri' : isCirc(p) ? 'Circuit' : 'Schematic');
+export const viewBadge = p => (isAsm(p) ? 'ASM' : isTt(p) ? 'Algebra' : isFsm(p) ? 'FSM' : isPn(p) ? 'Petri' : isCirc(p) ? 'Circuit' : isRegs(p) ? 'Registers' : 'Schematic');
+// (the register maps' module loaded when one is opened, #5288)
+const openRegsLazy = async p => (await import('./drawings-regs.js')).openRegs(p);
+const regsMenu = async (e, f) => (await import('./drawings-regs.js')).regsContextMenu(e, f);
 
 // the commands of a module's drawing (the drawing its base, its HDL file generated from it, #220), in the module's menu,
 // on its name and on every badge of its row alike (#2872)
@@ -820,7 +824,7 @@ export async function setViewAsTop(path) {
   const r = viewHdl(path, designState.viewTexts?.[path] ?? await api.readFile(S.project.name, path), { linked: hdlInProject });
   commandError('Set as Top Module', r?.errors?.length ? [`${path.split('/').pop()} cannot be the top yet:`, ...r.errors.slice(0, 8)] : `${path.split('/').pop()} defines no module that can be the top.`);
 }
-export const viewSel = () => (['sch', 'asm', 'tt', 'fsm', 'pn', 'circ'].includes(panes.sel?.type) ? panes.sel.file : null);
+export const viewSel = () => (['sch', 'asm', 'tt', 'fsm', 'pn', 'circ', 'regs'].includes(panes.sel?.type) ? panes.sel.file : null);
 // the module a drawing is (its HDL file's, or its own while it has none): Set or Unset as Top Module (#1220)
 export const drawnTop = path => designState.modules.find(m => m.file === path && m.kind !== 'package')?.name || topOfView(path);
 export const topOfView = path => { const gen = designState.schOwners?.[path] || path; return designState.modules.find(m => m.file === gen && m.kind !== 'package')?.name || null; };

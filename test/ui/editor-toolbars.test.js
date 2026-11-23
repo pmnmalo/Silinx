@@ -6,6 +6,7 @@
 import { before, after } from 'node:test';
 import assert from 'node:assert/strict';
 import { newPetri } from '../../core/petri.js';
+import { writeRegmap } from '../../core/regmap.js';
 import { halfAdder } from '../circuit-helpers.mjs';
 import { setupUi, uiTest, makeProject } from './harness.js';
 
@@ -141,7 +142,8 @@ uiTest('#2505 the Petri net, FSM and ASM side panels fold to a strip and expand,
 
 // (#2763) every editor's status line: its last line, the Schematic editor's look, what it says; its toolbar says none of it
 uiTest('#2763 the drawing editors\' status line, as the Schematic\'s: their counts and encoding there, not in their toolbars; Portuguese', E, async (page) => {
-  await makeProject(env, { name: 'StatT', template: 'traffic', files: { 'src/net.pn.json': JSON.stringify(newPetri('net')), 'src/half_adder.circ.json': JSON.stringify(halfAdder()) } });
+  await makeProject(env, { name: 'StatT', template: 'traffic', files: { 'src/net.pn.json': JSON.stringify(newPetri('net')), 'src/half_adder.circ.json': JSON.stringify(halfAdder()),
+    'src/pwm_regs.regs.json': writeRegmap({ name: 'pwm_regs', bus: 'spi', registers: [{ name: 'duty', addr: 0, width: 8, access: 'rw' }, { name: 'count', addr: 1, width: 12, access: 'ro' }] }) } });
   await makeProject(env, { name: 'StatB', template: 'blinky' });
   await makeProject(env, { name: 'StatG', template: 'gates' });
   await page.setViewport(1440, 900);
@@ -160,6 +162,7 @@ uiTest('#2763 the drawing editors\' status line, as the Schematic\'s: their coun
     petri: ['src/net.pn.json', '.petri-editor', ['2 places · 2 transitions · 4 arcs', '1 token'], ['2 lugares · 2 transições · 4 arcos', '1 marca']],
     circuit: ['src/half_adder.circ.json', '.circuit-editor', ['2 IC(s) · 2 input(s) · 2 display(s) · 15 wire(s)'], ['2 CI(s) · 2 entrada(s) · 2 mostrador(es) · 15 fio(s)']],   // (#3897)
     tt: ['src/lamps.bool.json', '.tt-editor', null, null],
+    regs: ['src/pwm_regs.regs.json', '.regmap-editor', ['2 registers · 3 bytes'], ['2 registos · 3 bytes']],   // (a register map, #5288)
     asm: ['src/speed_ctrl.asm.json', '.asm-editor:not(.fsm-editor):not(.petri-editor):not(.circuit-editor)', null, null],
   };
   for (const [name, [file, root, en, pt]] of Object.entries(want)) {

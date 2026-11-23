@@ -30,7 +30,7 @@ import { familyProfile } from '../core/family-profile.js';
 import { checkBody, pathFree, IMPLEMENT_BODY, CAPTURE_BODY } from './http-errors.js';
 
 // files that only Silinx understands: not part of an exported Xilinx ISE project
-export const SILINX_ONLY = /(^|\/)(silinx\.json|[^/]+\.(asm|sch|tt|bool|fsm|sym)\.json)$/i;   // (a module's symbol too, #3828)
+export const SILINX_ONLY = /(^|\/)(silinx\.json|[^/]+\.(asm|sch|tt|bool|fsm|sym|regs)\.json)$/i;   // (a module's symbol too, #3828)
 
 const implJobs = new Map();   // project name -> id of its latest implementation job
 

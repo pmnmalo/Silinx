@@ -16,6 +16,7 @@ import { designOnly } from './design-only.js';
 import { panes } from './state-panes.js';
 import { filesState } from './state-files.js';
 import { designState } from './state-design.js';
+import { codesignOn } from '/core/build-channel.js';
 export { cTemplate, cppTemplate } from './c-templates.js';
 
 const SOURCE_TYPES = [
@@ -29,6 +30,8 @@ const SOURCE_TYPES = [
   { id: 'fsm', label: 'Finite State Machine (FSM)', ico: 'fsm', ext: '.fsm.json', dir: 'src', wiz: 'fsm', drawn: true },
   { id: 'asm', label: 'Algorithmic State Machine (ASM)', ico: 'asm', ext: '.asm.json', dir: 'src', wiz: 'asm', drawn: true },
   { id: 'petri', label: 'Petri Net', ico: 'petri', ext: '.pn.json', dir: 'src', wiz: 'petri', drawn: true },
+  // (a co-design's register map, its FPGA slave generated from it, #5288; not in a release yet, #5202)
+  { id: 'regmap', label: 'Register Map', ico: 'regmap', ext: '.regs.json', dir: 'src', drawn: true, get hidden() { return !codesignOn(); } },
   { id: 'clkwiz', label: 'Clock Manager (DCM / PLL)', ico: 'template', ext: null, dir: 'src', wiz: 'clock', only: true },
   { id: 'bramwiz', label: 'Block Memory', ico: 'template', ext: null, dir: 'src', wiz: 'memory', only: true },
   { id: 'tb', label: 'Test Bench', ico: 'vhdl', ext: null, dir: 'sim', wiz: 'testbench' },
@@ -55,7 +58,7 @@ const CONSTRAINTS = ['ucf', 'pcf', 'lpf', 'cst', 'ccf', 'xdc'];
 // New Source's types as core/new-source-text.js (the MCP's new_source) names them
 const KIND_OF = { hdl: 'module', 'vhdl-pkg': 'package', tb: 'test_bench', ucf: 'constraints', pcf: 'constraints', lpf: 'constraints',
   cst: 'constraints', ccf: 'constraints', xdc: 'constraints', mem: 'mem', lab: 'lab', c: 'c', cpp: 'cpp', sch: 'schematic', asm: 'asm',
-  fsm: 'fsm', petri: 'petri', circuit: 'circuit', tt: 'boolean' };
+  fsm: 'fsm', petri: 'petri', circuit: 'circuit', tt: 'boolean', regmap: 'regmap' };
 
 export async function newSourceWizard({ type, name = '', location = null, lang = null, atFile = false } = {}) {
   if (!S.project) return;

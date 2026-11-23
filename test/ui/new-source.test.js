@@ -18,7 +18,7 @@ after(async () => { await env?.teardown?.(); });
 const E = () => env;
 
 // (the digital electronic circuit second, #4061)
-const TYPES = ['Boolean Algebra', 'Digital Electronic Circuit', 'Module (HDL)', 'Schematic', 'Finite State Machine (FSM)', 'Algorithmic State Machine (ASM)', 'Petri Net',
+const TYPES = ['Boolean Algebra', 'Digital Electronic Circuit', 'Module (HDL)', 'Schematic', 'Finite State Machine (FSM)', 'Algorithmic State Machine (ASM)', 'Petri Net', 'Register Map',
   'Clock Manager (DCM / PLL)', 'Block Memory', 'Test Bench', 'Implementation Constraints File', 'Memory Initialization File (.mem)', 'Guided Lab',
   'C Function (HLS)', 'C++ Function (HLS)'];
 // each type: its wizard's dialog (null: none), only a wizard (Next > disabled)
