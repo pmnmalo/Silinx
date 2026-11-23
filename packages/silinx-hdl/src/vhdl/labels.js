@@ -18,6 +18,9 @@
 //
 //   declaredNames(decls) -> [{ name, what, line }]   the names declared by IR declarations
 //   interfaceNames(unit) -> [{ name, what, line }]   the generics and ports of an entity
+//   declarationErrors(decls, names, file) -> the same: an architecture's declarations with the name of one of its
+//     entity's generics, ports or declarations (#5360: an entity and its architecture are one declarative region;
+//     a VHDL name ignores case): XST's HDLParsers:1202 at the declaration's line
 //   labelErrors(labels, names, file) -> [{ file, line, col, severity, message, tool, check }]
 //     labels: [{ name, written, what, line, col, at: { line, col } }] in source order (written:
 //     as written, which the message shows, as XST; what: 'process', 'instance'…; at: where it is
@@ -74,4 +77,20 @@ export function labelErrors(labels, names, file, { labels: again = true } = {}) 
     if (!seen.has(l.name)) seen.set(l.name, { name: l.name, what: 'label', line: l.line });
   }
   return out.sort((a, b) => a.line - b.line || a.col - b.col);
+}
+
+/**
+ * The declarations of an architecture (IR decls) that have the name of one of its entity's generics, ports or
+ * declarations (`names`, interfaceNames and declaredNames of the entity): a redeclaration, as XST reports it (#5360):
+ *     ERROR:HDLParsers:1202 - "top.vhd" Line 70. Redeclaration of symbol tick.
+ */
+export function declarationErrors(decls, names, file) {
+  const byName = new Map();
+  for (const n of names) if (!byName.has(n.name)) byName.set(n.name, n);
+  return declaredNames(decls).filter(d => byName.has(d.name)).map(d => {
+    const n = byName.get(d.name);
+    const where = n.line != null ? ` (line ${n.line}${n.file && n.file !== file ? ` of ${n.file}` : ''})` : '';
+    return { file, line: d.line ?? 1, col: 1, severity: 'error', message: `Redeclaration of symbol ${d.name}: the ${d.what} (line ${d.line}) has the name of ${n.what} '${n.name}'${where} of its entity.`,
+      tool: 'HDLParsers:1202', check: LABEL_CHECK };
+  });
 }

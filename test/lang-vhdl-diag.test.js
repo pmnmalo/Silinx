@@ -201,6 +201,27 @@ test('a statement label with the name of a declaration of its region (the archit
     ["error 4:3 Redeclaration of symbol clk: the label of the assignment (line 4) is also the name of port 'clk' (line 2 of e.vhd)."]);
 });
 
+test('#5360 an architecture\'s declaration with the name of its entity\'s generic, port or declaration, in any case, is an error, at its line, as XST\'s HDLParsers:1202 (an entity and its architecture are one region)', () => {
+  const all = (src, top = 'tb') => diags(src, top, { lang: 'vhdl' }).map(d => `${d.severity} ${d.line}:${d.col} ${d.message}`);
+  const ent = `entity tb is generic (TICK : integer := 0); port (clk : in std_logic; q : out std_logic);\n  constant K : integer := 2;\nend;\n`;
+  const unit = (decls, body = '  q <= clk;\n') => `${H}${ent}architecture r of tb is\n${decls}begin\n${body}end;\n`;
+  const R = (name, what, line, decl, at, file = '') => `error ${line}:1 Redeclaration of symbol ${name}: the ${what} (line ${line}) has the name of ${decl} (line ${at}${file}) of its entity.`;
+  // the lock example's (#5180): a signal tick, the generic TICK
+  assert.deepEqual(all(unit('  signal tick : std_logic;\n', '  tick <= clk;\n  q <= tick;\n')), [R('tick', 'signal', 6, "generic 'tick'", 2)]);
+  // a port, the entity's constant; a constant, a type, a function
+  assert.deepEqual(all(unit('  signal Clk : std_logic;\n  constant k : integer := 3;\n')), [R('clk', 'signal', 6, "port 'clk'", 2), R('k', 'constant', 7, "constant 'k'", 3)]);
+  assert.deepEqual(all(unit('  type q is (a, b);\n  function tick return integer is begin return 1; end function;\n')),
+    [R('q', 'type', 6, "port 'q'", 2), R('tick', 'function', 7, "generic 'tick'", 2)]);
+  // an entity of another file
+  assert.deepEqual(all({ 'e.vhd': `${H}${ent}`, 'a.vhd': `${H}architecture r of tb is\n  signal tick : std_logic;\nbegin\n  q <= clk;\nend;\n` }),
+    [R('tick', 'signal', 3, "generic 'tick'", 2, ' of e.vhd')]);
+  // other regions and other names: none (a process's variable, a function's parameter named as a port)
+  assert.deepEqual(all(unit('  signal ticks : std_logic;\n  function f(clk : std_logic) return std_logic is begin return clk; end function;\n',
+    '  process (clk)\n    variable q : std_logic;\n  begin\n    q := f(clk);\n  end process;\n  q <= ticks;\n')), []);
+  // a block's signal named as a port: not this error (a block is a region of its own)
+  assert.ok(!all(unit('', '  b : block\n    signal clk : std_logic;\n  begin\n  end block b;\n')).some(d => /Redeclaration/.test(d)));
+});
+
 test('a label may have the name of a declaration of an outer region, of a library unit, of the architecture / entity, of an attribute; a sequential label (loop, if, case…) that of a variable, as XST for the Spartan-3E accepts them (#192)', () => {
   const unit = (decls, body) => `${H}entity tb is port (clk : in std_logic; d : in std_logic_vector(3 downto 0); q : out std_logic_vector(3 downto 0)); end;\narchitecture r of tb is\n${decls}begin\n${body}end;\n`;
   const none = src => assert.deepEqual(diags(src, 'tb', { lang: 'vhdl' }).filter(d => d.severity === 'error' || /Redeclaration/.test(d.message)), []);

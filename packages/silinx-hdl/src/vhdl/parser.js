@@ -40,7 +40,7 @@
 
 import { lex, tokenText } from './lexer.js';
 import { purityErrors } from './purity.js';
-import { declaredNames, interfaceNames } from './labels.js';
+import { declaredNames, interfaceNames, declarationErrors } from './labels.js';
 import { declarationMethods } from './parse-decls.js';
 import { concurrentMethods } from './parse-concurrent.js';
 import { sequentialMethods } from './parse-seq.js';
@@ -429,13 +429,19 @@ class Parser {
       arch.decls = this.parseDeclarativePart(arch.uses);
       if (this.components.length) arch.components = this.components;
       const names = declaredNames(arch.decls);   // (before the declarations of its blocks join them)
+      const own = arch.decls.length;   // (its own: a block's join them after, #5360)
       this.expectKw('begin');
       arch.items = this.parseConcurrentItems(arch.decls);
       this.expectKw('end');
       this.endOf('architecture');
       // its entity's ports, generics and declarations: of this file, else when the library is built
       const ent = this.entities.get(entity);
-      if (ent) names.push(...interfaceNames(ent), ...declaredNames(ent.decls));
+      const entNames = ent ? [...interfaceNames(ent), ...declaredNames(ent.decls)] : [];
+      names.push(...entNames);
+      // (its declarations named as its entity's generics, ports or declarations: one region, #5360; else once the
+      // library is built, core/elaborate.js)
+      if (ent) this.errors.push(...declarationErrors(arch.decls.slice(0, own), entNames, this.file));
+      else arch.ownDecls = own;
       const errors = this.checkLabels(region, names);
       if (!ent) arch.labels = region.labels.filter(l => !errors.some(e => [l, l.at].some(p => e.line === p.line && e.col === p.col)));
     });
@@ -504,7 +510,7 @@ class Parser {
       } else if (u.kind === 'architecture' && !entityNames.has(u.entity)) {
         out.push({ kind: 'architecture', name: u.name, entity: u.entity, lang: 'vhdl', file: this.file,
           loc: u.loc, decls: u.decls, items: u.items, uses: dedupe(u.uses), ...(u.slvArith ? { slvArith: u.slvArith } : {}),
-          ...(u.labels?.length ? { labels: u.labels } : {}), ...(u.components ? { components: u.components } : {}) });
+          ...(u.labels?.length ? { labels: u.labels } : {}), ...(u.components ? { components: u.components } : {}), ownDecls: u.ownDecls });
       }
     }
     // merge architectures into their entity (last one wins)
