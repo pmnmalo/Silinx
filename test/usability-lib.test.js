@@ -4,7 +4,9 @@
 // wave window's values against the reference simulator (#5206); the model of a project's lifecycle (#5206, phase 2); the
 // drawings' random steps on their models (#5206, phase 3): the same from a seed, each a person's, the drawing sound;
 // the hierarchy's kit (#5206, phase 4): a project's modules from its files, a symbol's pins against its module's ports,
-// the instances out of date, a schematic's HDL compiled with the modules below it.
+// the instances out of date, a schematic's HDL compiled with the modules below it; the Board Emulator's reference and
+// I/O Pin Planning's kit (#5206, phase 5): the examples' displays, serial port and VGA picture simulated and read as a
+// person reads them, a UCF's pins, the planner's table checked.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
@@ -28,6 +30,10 @@ import { TT_VOCAB, ttModel, column } from './usability/lib/tt-random.js';
 import { STATE_R } from '../core/fsm.js';
 import { shapeTable, parseExpr, exprColumn, normalizeTable } from '../core/logic.js';
 import { modulesOf, symbolPortsWrong, staleInstances, hierHdlErrors, topErrors } from './usability/lib/hier-kit.js';
+import { boardReference, displayOf, serialOf, serialFrames, vgaFrameOf, vgaSummary } from './usability/lib/board-ref.js';
+import { displayText } from './usability/lib/emu-actions.js';
+import { ucfPins, pinInvariants } from './usability/lib/pin-actions.js';
+import { uartFrames, serialText } from '../core/uart.js';
 import { instanceParams, generateHdl } from '../core/schdoc.js';
 import { symbolPins as pinsOf } from '../core/schdoc-symbols.js';
 
@@ -484,4 +490,85 @@ test('usability: the hierarchy\'s kit: the instances out of date; a schematic\'s
     assert.deepEqual(topErrors({ ...files, [g.filename]: g.code }, 'top'), []);
     assert.deepEqual(topErrors({ [g.filename]: g.code }, 'top'), ["elaborate: module/entity 'pick' not found (instance 'u1')"]);
   }
+});
+
+// (an example's design files, as the project made from it has them)
+const exampleFiles = (ex) => fs.readdirSync(path.join(ROOT, 'examples', ex, 'src')).map((f) => ({ path: `src/${f}`, text: fs.readFileSync(path.join(ROOT, 'examples', ex, 'src', f), 'utf8') }));
+
+test('usability: the Board Emulator\'s reference: the stopwatch\'s display read as a person reads it, its time the design\'s counter; its buttons at rest until set; a display read leaves the time where it is', () => {
+  const ref = boardReference(exampleFiles('stopwatch'), 'stopwatch', { generics: { CS: 5, STABLE: 4, REFRESH: 3 }, watch: ['an', 'seg', 'dp'] });
+  ref.run(40);
+  assert.equal(ref.value('btn'), '0000');
+  assert.equal(displayText(displayOf(ref, { refresh: 3 })), ' 0.00');
+  assert.equal(ref.cycle(), 40, 'the reference not run on by a read');
+  // started, run, stopped: the display the counter's value in decimal, the point after the seconds, no leading zero
+  const press = (b) => { ref.set('btn', b, 1); ref.run(ref.cycle() + 10); ref.set('btn', b, 0); ref.run(ref.cycle() + 10); };
+  press(0);
+  ref.run(ref.cycle() + 5 * 1234);
+  press(0);
+  ref.run(ref.cycle() + 40);
+  const elapsed = Number(ref.signal('elapsed').val.v);
+  assert.ok(elapsed > 1200 && elapsed < 1240, String(elapsed));
+  const d = String(elapsed).padStart(4, ' ');
+  assert.equal(displayText(displayOf(ref, { refresh: 3 })), `${d.slice(0, 2)}.${d.slice(2)}`);
+  assert.equal(ref.value('led'), '00000000');
+  // the glyphs: blank, the digits, hexadecimal's letters; a digit never on dark
+  assert.equal(displayText([{ seg: '1111110', dp: '0' }, { seg: '0111101', dp: '1' }, { seg: '1001110', dp: '0' }, null]), ' Cd.0');
+  assert.equal(displayText([{ seg: '1010101', dp: '0' }, null, null, null]), '   ?');
+});
+
+test('usability: the Board Emulator\'s reference: the uart\'s RX frames (core\'s uartFrames\' levels), its echo decoded on TX, its LEDs and display the bytes received', () => {
+  const BIT = 20;
+  // (the frames of core/uart.js, the terminal's: the same levels at the same cycles)
+  const frames = serialFrames([0x48, 0x0D], { at: 100, bitCycles: BIT });
+  assert.deepEqual(frames.map((f) => [f.cycle, f.level]), uartFrames([0x48, 0x0D], BIT).slice(0, -1).map((f) => [100 + f.dt, f.level]));
+  const ref = boardReference(exampleFiles('uart'), 'uart', { generics: { CLK_HZ: BIT * 9600, STABLE: 4, REFRESH: 3 }, watch: ['tx', 'an', 'seg', 'dp'], idle: { rx: 1 } });
+  assert.equal(ref.value('rx'), '1');
+  for (const f of frames) { ref.run(f.cycle); ref.set('rx', null, f.level); }
+  ref.run(100 + 5 * 10 * BIT);
+  assert.deepEqual(serialOf(ref, { bitCycles: BIT }), [{ byte: 0x48, error: false }, { byte: 0x0D, error: false }]);
+  assert.equal(serialText(serialOf(ref, { bitCycles: BIT })).text, 'H\n');
+  assert.equal(ref.value('led'), '00001101');
+  assert.equal(displayText(displayOf(ref, { refresh: 3 })), '02.0d');
+  // (a TX line with no stop bit: the frame's error)
+  const cut = boardReference(exampleFiles('uart'), 'uart', { generics: { CLK_HZ: BIT * 9600, STABLE: 4, REFRESH: 3 }, watch: ['tx'], idle: { rx: 1 } });
+  cut.run(30 * BIT);
+  assert.deepEqual(serialOf(cut, { bitCycles: BIT }), []);
+});
+
+test('usability: the Board Emulator\'s reference: the vga\'s first frame found from its sync pulses, the picture its comment draws (the white frame, eight bars, the square in their opposite colours), its timing; the square held elsewhere', () => {
+  const watch = ['vga_hsync', 'vga_vsync', 'vga_red', 'vga_green', 'vga_blue'];
+  const ref = boardReference(exampleFiles('vga'), 'vga', { watch });
+  const f = vgaFrameOf(ref);
+  // (the picture from examples/vga/src/vga.vhd's comment: white, yellow, cyan, green, magenta, red, blue, black bars of
+  // 80 pixels; red the low 3 bits, green the next 3, blue the top 2; the square 32 pixels from (304, 224), inverted)
+  const BARS = [0xFF, 0xFC, 0x1F, 0x1C, 0xE3, 0xE0, 0x03, 0x00].map((v) => (v >> 5) | (((v >> 2) & 7) << 3) | ((v & 3) << 6));
+  const row = (y, sx = 304, sy = 224) => {
+    const px = Array.from({ length: 640 }, (_, x) => {
+      if (x === 0 || x === 639 || y === 0 || y === 479) return 255;
+      const c = BARS[Math.floor(x / 80)];
+      return x >= sx && x < sx + 32 && y >= sy && y < sy + 32 ? 255 - c : c;
+    });
+    const runs = [];
+    for (const v of px) { if (runs.length && runs.at(-1)[0] === v) runs.at(-1)[1]++; else runs.push([v, 1]); }
+    return runs.map(([v, n]) => `${v}x${n}`).join(',');
+  };
+  assert.deepEqual(f.rows, Array.from({ length: 480 }, (_, y) => row(y)));
+  assert.deepEqual([f.lineUs.toFixed(2), f.hsyncUs.toFixed(2)], ['32.00', '3.84']);
+  assert.equal(vgaSummary({ frameHz: 59.5238, lineUs: 32, lines: 525 }), '640×480 · 59.52 Hz · line 32.00 µs · 525 lines');
+  // the square's corner held at the right edge: drawn there
+  const moved = boardReference(exampleFiles('vga'), 'vga', { watch });
+  moved.force('sx', 608);
+  assert.deepEqual(vgaFrameOf(moved).rows.slice(220, 260), Array.from({ length: 40 }, (_, k) => row(220 + k, 608)));
+});
+
+test('usability: I/O Pin Planning\'s kit: a UCF\'s pins and its clock\'s period; the table\'s status line and the pins marked as given twice', () => {
+  const ex = ucfPins(fs.readFileSync(path.join(ROOT, 'examples/stopwatch/constraints/top.ucf'), 'utf8'));
+  assert.equal(Object.keys(ex.pins).length, 26);
+  assert.deepEqual([ex.pins.clk, ex.pins['led<0>'], ex.pins.dp, ex.periods], ['B8', 'M5', 'N13', { clk: '20 ns' }]);
+  assert.deepEqual(ucfPins('NET "a" LOC = P1 ;\nNET "a" PERIOD = 10 ns ;\n'), { pins: { a: 'P1' }, periods: { a: '10 ns' } });
+  const doc = { pins: { a: 'M5', b: 'M5', c: '' }, periods: {}, conflicts: ['a', 'b'], status: '2/3 I/Os assigned' };
+  assert.deepEqual(pinInvariants(doc), []);
+  assert.deepEqual(pinInvariants({ ...doc, status: '2/3 E/S atribuídas' }), []);
+  assert.deepEqual(pinInvariants({ ...doc, status: '3/3 I/Os assigned', conflicts: ['a'] }), ["the status line '3/3 I/Os assigned', 2/3 expected", 'the pins marked as given twice: ["a"], ["a","b"] expected']);
 });
