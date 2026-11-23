@@ -89,7 +89,15 @@ uiTest('#4214 Pull from GitHub: text files merged by their lines; the same lines
   await commitMine(page, TIMER, CARS(8), 'Mine: cars');
   const from = (await page.consoleText()).length;
   await page.menu('File', 'Pull from GitHub');
-  await page.waitConsole(/ERROR: git pull: a conflict in src\/timer\.vhd: nothing was pulled, the project's files are as they were\nHint: The same lines of a file changed here and on GitHub: choose mine, theirs or both for each conflict, or write its lines, then Pull again\.\nMerge: 1 conflict\(s\) in 1 file\(s\), the same lines changed on both sides: choose Mine, Theirs or Both for each, or edit its lines, then Pull from GitHub\./);
+  // (the error with its hint, then the merge view's line: the merge view's module loaded between them, and the watcher's
+  // "Changed outside Silinx: src/timer.vhd." of the merge git aborted, a pull's changes told to the page, #3195, could
+  // come in between on a loaded runner, #5139)
+  const ERR = /ERROR: git pull: a conflict in src\/timer\.vhd: nothing was pulled, the project's files are as they were\nHint: The same lines of a file changed here and on GitHub: choose mine, theirs or both for each conflict, or write its lines, then Pull again\./;
+  const MERGE = /Merge: 1 conflict\(s\) in 1 file\(s\), the same lines changed on both sides: choose Mine, Theirs or Both for each, or edit its lines, then Pull from GitHub\./;
+  await page.waitConsole(ERR);
+  await page.waitConsole(MERGE);
+  const said = (await page.consoleText()).slice(from);
+  assert.ok(said.search(ERR) >= 0 && said.search(ERR) < said.search(MERGE), said);
   const v = await page.waitFor(() => document.querySelector('.merge-view .merge-choice') && {
     tab: window.SilinxApp.S.active?.title,
     bar: [...document.querySelectorAll('.merge-bar button')].map((b) => b.textContent),
