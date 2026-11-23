@@ -182,7 +182,7 @@ export function mountCircuitEditor(container, opts = {}) {
       if (t.input === 'temp-up' || t.input === 'temp-down') { sim.setTemp(t.id, sim.sensors()[t.id].temp + (t.input === 'temp-up' ? 1 : -1)); runSim(); }
       else if (t.input === 'switch') setInput(t.id, !sim.inputs()[t.id]);
       else if (t.input === 'dip') setInput(t.id, !sim.inputs()[t.id][t.lever], t.lever);
-      else { setInput(t.id, true); drag = { kind: 'press', id: t.id }; }
+      else { setInput(t.id, true, t.lever); drag = { kind: 'press', id: t.id, lever: t.lever }; }   // (a button, a keypad's key, #5364)
       return;
     }
     if ((readOnly || sim) && tool !== 'select') setTool('select');
@@ -227,7 +227,7 @@ export function mountCircuitEditor(container, opts = {}) {
   svg.addEventListener('pointerup', () => {
     const d = drag;
     drag = null;
-    if (d?.kind === 'press' && tryIt.sim()) setInput(d.id, false);
+    if (d?.kind === 'press' && tryIt.sim()) setInput(d.id, false, d.lever);
     if (d?.kind === 'move' || d?.kind === 'wire') { if (d.moved) commit(); else { M = d.base; render(); } }
     if (d?.refused) status(d.refused, true);
   });

@@ -14,6 +14,7 @@ const ABOUT = {
   spdt: 'Joins its middle pin C to A or to B, as it is set. An input of the HDL.',
   'dip-4': 'A row of switches, each joining its pin to the one opposite while it is on. Inputs of the HDL.',
   'dip-8': 'A row of switches, each joining its pin to the one opposite while it is on. Inputs of the HDL.',
+  'keypad-4x4': 'A membrane keypad, 16 keys in 4 rows and 4 columns: a key joins its row (R1…R4) to its column (C1…C4) while pressed. A program scans it: its rows driven low one at a time, its columns pulled up and read. Each key an input of the HDL.',
   clock: 'Drives its output to 1 and 0 in turn, at its frequency. An input of the HDL.',
   'pull-up': 'A weak 1 (a resistor to +5 V): its net reads 1 unless something drives it to 0.',
   'pull-down': 'A weak 0 (a resistor to GND): its net reads 0 unless something drives it to 1.',
