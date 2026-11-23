@@ -145,8 +145,9 @@ function latchPreview(q = null) {
 
 // a part's drawing fitted to a preview, kept by key
 function fitted(g, key) {
-  // (its name and tips left out, the row's name says it; its marks kept: the supply's +5V and GND, a pull's arrow)
-  for (const x of g.querySelectorAll('text.circ-label, text.circ-ic-text, title')) x.remove();   // (a KiCad part's id and number too, #4281)
+  // (its name and tips left out, the row's name says it; its marks kept: the supply's +5V and GND, a pull's arrow; its
+  // print left out, too small there: a DIP switch's numbers and ON, a module's, the servo's, #5367)
+  for (const x of g.querySelectorAll('text.circ-label, text.circ-ic-text, text.circ-dip-num, text.circ-dip-on, text.circ-silk, text.circ-servo-text, title')) x.remove();   // (a KiCad part's id and number too, #4281)
   // (fitted to its drawing's box, measured off the page once: its body as drawn, not its pins', #4124; a small part not
   // magnified past MAX)
   const m = sv('svg', { width: 0, height: 0, style: 'position:absolute;visibility:hidden' }, g);

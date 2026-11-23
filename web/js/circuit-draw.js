@@ -207,29 +207,43 @@ function partSvg(turned, selected, { levels, leds, lcds = null, oleds = null, se
   } else if (d.type === 'logic-switch') {
     const on = inputs ? inputs[p.id] : p.on;
     g.dataset.input = 'switch';
-    g.append(sv('rect', { x: box.x0 - P * 1.6, y: box.y0 - P * 0.6, width: P * 1.4, height: P * 1.2, rx: 3, class: 'circ-sw-body' }),
+    // (a slide switch, #5367: its metal frame, its slot, its black lever toward its pin while on)
+    g.append(sv('rect', { x: box.x0 - P * 1.6, y: box.y0 - P * 0.6, width: P * 1.4, height: P * 1.2, rx: 2, class: 'circ-sw-body' }),
+      sv('rect', { x: box.x0 - P * 1.5, y: box.y0 - P * 0.35, width: P * 1.2, height: P * 0.7, rx: 1, class: 'circ-sw-slot' }),
       sv('rect', { x: box.x0 - P * (on ? 0.95 : 1.5), y: box.y0 - P * 0.45, width: P * 0.55, height: P * 0.9, rx: 2, class: `circ-sw-knob${on ? ' on' : ''}` }),
       sv('text', { x: box.x0 - P * 0.9, y: box.y0 - P * 0.8, 'text-anchor': 'middle', class: 'circ-label', 'data-no-i18n': 'true' }, portName(p)));
   } else if (d.type === 'button') {
     const down = inputs ? inputs[p.id] : false;
     g.dataset.input = 'button';
-    g.append(sv('rect', { x: box.x0, y: box.y0 - P * 0.8, width: box.x1 - box.x0, height: P * 1.6, rx: 3, class: 'circ-btn-body' }),
-      sv('circle', { cx: (box.x0 + box.x1) / 2, cy: box.y0, r: P * 0.55, class: `circ-btn-cap${down ? ' down' : ''}` }),
-      sv('text', { x: (box.x0 + box.x1) / 2, y: box.y0 - P * 1, 'text-anchor': 'middle', class: 'circ-label', 'data-no-i18n': 'true' }, portName(p)));
+    // (a 6 mm tactile switch, #5367: its black base over its legs, its metal plate and its four studs, its round cap)
+    const bx = (box.x0 + box.x1) / 2, s = P * 1.3;
+    g.append(sv('rect', { x: bx - s, y: box.y0 - s, width: 2 * s, height: 2 * s, rx: 2, class: 'circ-btn-body' }),
+      sv('rect', { x: bx - s * 0.82, y: box.y0 - s * 0.82, width: 1.64 * s, height: 1.64 * s, rx: 1, class: 'circ-btn-plate' }),
+      ...[[-1, -1], [1, -1], [-1, 1], [1, 1]].map(([i, j]) => sv('circle', { cx: bx + i * s * 0.62, cy: box.y0 + j * s * 0.62, r: P * 0.13, class: 'circ-btn-stud' })),
+      sv('circle', { cx: bx, cy: box.y0, r: P * 0.6, class: `circ-btn-cap${down ? ' down' : ''}` }),
+      sv('text', { x: bx, y: box.y0 - s - P * 0.3, 'text-anchor': 'middle', class: 'circ-label', 'data-no-i18n': 'true' }, portName(p)));
   } else if (d.type === 'led') {
     const st = leds?.[p.id];   // (on, off, x)
     const cx = (box.x0 + box.x1) / 2, cy = (box.y0 + box.y1) / 2;
-    g.append(sv('circle', { cx, cy: cy - P * 0.6, r: P * 0.55, class: `circ-led circ-led-${p.color || 'red'}${st === 'on' ? ' lit' : st === 'x' ? ' unknown' : ''}` }),
-      sv('text', { x: cx, y: cy - P * 1.35, 'text-anchor': 'middle', class: 'circ-label', 'data-no-i18n': 'true' }, portName(p)));
+    // (a 5 mm LED seen from its side, #5367: its two legs, the anode's bent, its rim flat on the cathode's side, its dome
+    // lit in its colour)
+    const r = P * 0.85, yb = cy - P * 0.9, yt = yb - P * 1.9, c = p.color || 'red';
+    g.append(sv('path', { d: `M${cx - r},${yb}V${yt + r}a${r},${r} 0 0 1 ${2 * r},0V${yb}z`, class: `circ-led circ-led-${c}${st === 'on' ? ' lit' : st === 'x' ? ' unknown' : ''}` }),
+      sv('path', { d: `M${box.x0},${box.y0}v${-P * 0.35}l${P * 0.3},${-P * 0.25}V${yb} M${box.x1},${box.y1}V${yb}`, class: 'circ-led-leg' }),
+      sv('path', { d: `M${cx - r - P * 0.12},${yb}h${2 * r + P * 0.02}v${P * 0.22}h${-2 * r - P * 0.02}z`, class: `circ-led-rim circ-led-${c}` }),
+      sv('path', { d: `M${cx - r * 0.55},${yb - P * 0.2}V${yt + r}a${r * 0.55},${r * 0.55} 0 0 1 ${r * 0.4},${-r * 0.45}`, class: 'circ-led-shine' }),
+      sv('text', { x: cx, y: yt - P * 0.3, 'text-anchor': 'middle', class: 'circ-label', 'data-no-i18n': 'true' }, portName(p)));
   } else if (d.kind === 'board') drawBoard(g, p, d);
   else if (d.kind === 'lcd') drawLcd(g, p, d, lcds?.[p.id]);   // (#5330)
   else if (d.kind === 'oled') drawOled(g, p, d, oleds?.[p.id]);   // (#5336)
   else if (d.kind === 'sensor') drawLm75(g, p, box, sensors?.[p.id]);   // (#5342)
   else if (d.kind === 'servo') drawServo(g, p, servos?.[p.id]);   // (#5347)
   else if (d.kind === 'supply') {
+    // (a bench supply's terminals, #5367: its red + and its black −, each a binding post)
     g.append(sv('rect', { x: box.x0 - P * 2.6, y: box.y0 - P * 0.5, width: P * 2.3, height: box.y1 - box.y0 + P, rx: 3, class: 'circ-supply-body' }),
-      sv('text', { x: box.x0 - P * 1.45, y: box.y0 + 4, 'text-anchor': 'middle', class: 'circ-supply-text' }, '+5V'),
-      sv('text', { x: box.x0 - P * 1.45, y: box.y1 + 4, 'text-anchor': 'middle', class: 'circ-supply-text' }, 'GND'));
+      sv('circle', { cx: box.x0 - P * 0.6, cy: box.y0, r: P * 0.28, class: 'circ-post circ-post-plus' }), sv('circle', { cx: box.x0 - P * 0.6, cy: box.y1, r: P * 0.28, class: 'circ-post circ-post-minus' }),
+      sv('text', { x: box.x0 - P * 1.55, y: box.y0 + 4, 'text-anchor': 'middle', class: 'circ-supply-text' }, '+5V'),
+      sv('text', { x: box.x0 - P * 1.55, y: box.y1 + 4, 'text-anchor': 'middle', class: 'circ-supply-text' }, 'GND'));
   }
   // the pins (their levels while simulating), an IC's numbered on hover (their names in the tip)
   for (const q of pins) {
