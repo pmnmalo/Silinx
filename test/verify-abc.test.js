@@ -121,7 +121,9 @@ async function mutated(ex, file, from, to) {
   const ref = { path: 'sim/ref.sv', lang: 'verilog', role: 'simulation', text: toVerilog(d, { name: `${top}_ref` }).text };
   const srcs = [...design.map(s => (s.path.endsWith(file) ? { ...s, text: s.text.replace(from, to) } : s)), ref];
   assert.ok(srcs.some((s, i) => s.text !== design[i]?.text && s !== ref), `${ex}: ${from} not found`);
-  const r = await verifyEquivalence(srcs, { top, reference: `${top}_ref`, timeLimit: 120, run });
+  // (a limit the check never nears, #5129: the time is Yosys's, not ABC's, whose bmc3 finds the difference at once; the
+  // stopwatch's 33 s here (its structural proof 20, its miter's AIG 12) went past 120 s on a runner 3 times slower)
+  const r = await verifyEquivalence(srcs, { top, reference: `${top}_ref`, timeLimit: 900, run });
   const replays = ['vhdl', 'verilog'].map(lang => {
     const tb = { path: `sim/${benchName(top)}.${lang === 'vhdl' ? 'vhd' : 'v'}`, lang, role: 'simulation', text: counterexampleBench(r, { lang }) };
     const s = simulate([...primitiveSources([...srcs, tb]), ...srcs, tb], benchName(top), { until: 1e15 });
