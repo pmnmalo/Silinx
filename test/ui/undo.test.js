@@ -136,6 +136,46 @@ uiTest('Edit ▸ Undo: an edit typed while a project command still runs is the u
   await page.waitFor(() => window.Silinx.active.editor.getValue().startsWith('-- y\n'), [], { what: 'text redo' });
 });
 
+// the project's GETs held (the command's end reads the settings again), let go one at a time
+const holdProjectReads = (page, name) => page.eval((n) => {
+  const real = window.fetch;
+  window.__held = [];
+  window.fetch = (url, opts) => (window.__hold && String(url) === `/api/projects/${encodeURIComponent(n)}` && (!opts?.method || opts.method === 'GET')
+    ? new Promise((r) => window.__held.push(r)).then(() => real(url, opts)) : real(url, opts));
+  window.__hold = true;
+}, name);
+const heldReads = (page, k) => page.waitFor((x) => window.__held.length >= x, [k], { what: `${k} project read(s) held` });
+
+uiTest('#5263 Edit ▸ Undo right after Remove from Project\'s question, the command before still ending: the removal undone', E, async (page) => {
+  await makeProject(env, { name: 'UndoRace', files: { 'src/top.vhd': TOP, 'src/inv.vhd': INV, 'src/other.vhd': INV.replaceAll('inv', 'other') }, top: 'top', board: 'basys2' });
+  await page.openProject('UndoRace');
+  const n = (await page.consoleText()).split('\n').length;
+  await holdProjectReads(page, 'UndoRace');
+  // Set as Top Module of other: done, its end (the settings read again) held
+  await page.treeRow('#hier', 'other', { right: true, exact: true });
+  await page.click('body > .menu-popup .mi', { text: 'Set as Top Module' });
+  await heldReads(page, 1);
+  // Remove from Project of top, started while Set as Top Module ends: Yes, its project's reload held
+  await page.treeRow('#hier', 'top', { right: true, exact: true });
+  await page.click('body > .menu-popup .mi', { text: 'Remove from Project' });
+  await page.waitDialog('Remove Source');
+  await page.dialogButton('Yes');
+  await page.waitNoDialog();
+  await heldReads(page, 2);
+  // Set as Top Module's end let go (its step made), the removal still running: Edit ▸ Undo waits for it
+  await page.eval(() => window.__held.shift()());
+  await new Promise((r) => setTimeout(r, 300));
+  assert.ok((await editMenu(page)).includes('Undo Remove from Project'), 'the removal offered');
+  await page.menu('Edit', 'Undo Remove from Project');
+  await page.eval(() => { window.__hold = false; for (const r of window.__held.splice(0)) r(); });
+  await page.waitFor(() => document.querySelector('#console-log')?.textContent.includes('Undo: Remove from Project.'), [], { what: 'the removal undone' });
+  await page.waitFor(() => window.Silinx.project?.files?.some((f) => (f.path || f) === 'src/top.vhd'), [], { what: 'top.vhd back in the project' });
+  assert.deepEqual((await page.consoleText()).split('\n').slice(n - 1).filter((l) => /^(Top-level|Removed|Undo:|WARNING|ERROR)/.test(l)), [
+    "Top-level module set to 'other'.", 'Removed src/top.vhd from the project (the file is kept in the project folder).', 'Undo: Remove from Project.']);
+  // the next Undo: Set as Top Module's
+  assert.ok((await editMenu(page)).includes('Undo Set as Top Module'), 'Set as Top Module next');
+});
+
 uiTest('Edit ▸ Undo / Redo reach every editor: text, truth table, pin planner (and a newer edit comes before a project command)', E, async (page) => {
   await makeProject(env, { name: 'UndoEd', files: { 'src/top.vhd': TOP, 'src/inv.vhd': INV }, top: 'top', board: 'basys2' });
   await page.openProject('UndoEd');

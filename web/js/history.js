@@ -60,7 +60,7 @@ export function createHistory(api, hooks) {
     // (the project settings as the command starts: renaming or deleting a file changes them too)
     const entry = cur = { label: String(label || 'Change').replace(/…$/, ''), project: name, files: new Map(), pj: null, at: Date.now() };
     let done;
-    pending = new Promise(r => { done = r; });
+    const end = pending = new Promise(r => { done = r; });
     try {
       // (taken at once, so that the command starts as it is chosen: a toggle acts immediately)
       entry.pj = hooks.settings ? hooks.settings() : await settingsOf(name);
@@ -68,7 +68,8 @@ export function createHistory(api, hooks) {
     } finally {
       cur = null;
       finishing = entry;
-      try { await finish(entry); } finally { finishing = null; pending = null; done(); }
+      // (a command started while this one finishes keeps its own end: an Undo clicked during it waits for it, #5263)
+      try { await finish(entry); } finally { if (finishing === entry) finishing = null; if (pending === end) pending = null; done(); }
     }
   }
   async function finish(e) {

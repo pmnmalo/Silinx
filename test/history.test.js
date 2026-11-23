@@ -171,3 +171,34 @@ test('#4817 settled: nothing running nor finishing; an Undo while a command that
   assert.equal((await h.undo()).label, 'Design Properties');
   assert.equal(b.pj().top, 'a');
 });
+
+test('#5263 a command started while the one before finishes: an Undo clicked during it waits for it and undoes it', async () => {
+  let slow = null;
+  const b = backend();
+  const project = b.api.project;
+  b.api.project = async (...a) => { if (slow) await slow; return project(...a); };
+  // (the settings as a command starts: the page's, at once, as web/js/app.js gives them)
+  const h = createHistory(b.api, { project: () => 'P', files: () => [...b.files.keys()], settings: () => JSON.stringify(b.pj()) });
+  // New Source: its end (the settings read again) slow
+  let go;
+  slow = new Promise(r => { go = r; });
+  const first = h.run('New Source', () => b.api.writeFile('P', 'src/new.vhd', 'N'));
+  await new Promise(r => setTimeout(r, 5));
+  // Remove from Project started meanwhile (its dialog open), ended once New Source has
+  let confirm;
+  const asked = new Promise(r => { confirm = r; });
+  const second = h.run('Remove from Project', async () => { await asked; await b.api.saveProject('P', { ...b.pj(), files: ['src/a.vhd'] }); });
+  slow = null;
+  go();
+  await first;
+  assert.equal(h.undoLabel(), 'Remove from Project');
+  assert.equal(h.settled(), false, 'the removal still running');
+  // Undo clicked as the dialog closes: it waits for the removal and undoes it, not nothing
+  const undone = h.undo();
+  confirm();
+  await second;
+  assert.equal((await undone)?.label, 'Remove from Project');
+  assert.deepEqual(b.pj().files, ['src/a.vhd', 'src/b.v']);
+  assert.equal(h.undoLabel(), 'New Source');
+  assert.equal(h.settled(), true);
+});
