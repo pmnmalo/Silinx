@@ -71,7 +71,7 @@ export async function openAsm(path) {
       const host = h('div', { class: 'doc-body' });
       el.append(host);
       // (its problems in the console's Errors and Warnings, a click selecting the box, #2730)
-      const problems = editorProblems({ file: path, tool: 'ASM', goto: (x) => { activateDoc(d); if (x.nodeId) ed.focusNode(x.nodeId); } });
+      const problems = editorProblems({ file: path, tool: 'ASM', goto: (x) => { activateDoc(d); if (x.nodeId) ed.focusNode(x.nodeId); }, inLanguage: true });   // (its parser's errors in Portuguese, #5196)
       const ed = mountAsmEditor(host, {
         model, ...followOnly(path, model),
         onChange: () => setDirty(d, true),

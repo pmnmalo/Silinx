@@ -672,7 +672,7 @@ test('#5185 the Petri net\'s and the circuit\'s Check messages in Portuguese', a
     'U2 pin 1 (1A) is floating: a 74LS input reads high': 'U2 pino 1 (1A) está a flutuar: uma entrada 74LS lê 1',
     'Short circuit: the supply\'s + and − are joined (U1 pin 14 (VCC), U1 pin 7 (GND), …)': 'Curto-circuito: o + e o − da fonte estão ligados (U1 pino 14 (VCC), U1 pino 7 (GND), …)',
     '\'x\' is used twice (place and transition)': '\'x\' é usado duas vezes (lugar e transição)',
-    'transition t1: guard \'go &\': unexpected end of expression': 'transição t1: guarda \'go &\': unexpected end of expression',
+    'transition t1: guard \'go &\': unexpected end of expression': 'transição t1: guarda \'go &\': fim inesperado da expressão',
   };
   for (const [en, pt] of Object.entries(T)) assert.equal(t(en), pt, en);
 });
