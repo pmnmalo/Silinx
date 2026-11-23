@@ -284,8 +284,9 @@ export function shardOf({ unit, ui }, { i, n }, timings = {}) {
 
 /** A part's planned time (#1982): the PR tests' job stops at 60 minutes, and a part of the whole suite took 35 minutes
  *  for its unit tests at three parts (#1979's). The unit tests run at once on GitHub's runner (node --test's three, two
- *  in effect: #3311's parts of 80 minutes measured took 40 and 46), the UI tests one at a time. */
-export const PART_MINUTES = 20, PART_CONCURRENCY = 2, MAX_PARTS = 16;
+ *  in effect: #3311's parts of 80 minutes measured took 40 and 46), the UI tests one at a time. At most 20 parts (16
+ *  until #5314: the whole suite's 539 minutes measured by 15.30.0 made parts of 34, past half the job's limit). */
+export const PART_MINUTES = 20, PART_CONCURRENCY = 2, MAX_PARTS = 20;
 
 /** The parts the tests need: their estimated minutes (each file's measured time, test/timings.json, an unmeasured
  *  one the median of the others: weights()), in parts of about `minutes` each, from 1 (a small change: one part)

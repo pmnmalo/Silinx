@@ -202,7 +202,7 @@ test('#1982 related tests: the parts planned by the tests\' measured time — on
   // never more parts than files: two files of an hour each
   assert.equal(planShards({ unit: ['test/a.test.js', 'test/b.test.js'], ui: [] }, { 'test/a.test.js': 7200, 'test/b.test.js': 7200 }).n, 2);
   // a huge selection: at most MAX_PARTS
-  assert.equal(MAX_PARTS, 16);
+  assert.equal(MAX_PARTS, 20);
   const huge = Object.fromEntries(unit('u', 500).map((f) => [f, 600]));
   assert.equal(planShards({ unit: unit('u', 500), ui: [] }, huge).n, MAX_PARTS);
   // the repository's whole suite by its timings: every part under 45 minutes estimated, a part of #3311's 161 files more than one
