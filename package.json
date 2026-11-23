@@ -40,7 +40,7 @@
     "@codemirror/commands": "^6.11.1",
     "@codemirror/language": "^6.13.1",
     "@codemirror/legacy-modes": "^6.5.5",
-    "@codemirror/lint": "^6.9.7",
+    "@codemirror/lint": "^6.9.8",
     "@codemirror/search": "^6.7.2",
     "@codemirror/state": "^6.7.6",
     "@codemirror/view": "^6.43.15",
@@ -48,12 +48,12 @@
     "@silinx/nextpnr-himbaechel-spartan3e": "1.5.2",
     "@silinx/nextpnr-himbaechel-spartan6": "0.5.2",
     "@silinx/nextpnr-himbaechel-xc7": "0.5.0",
-    "@trystero-p2p/torrent": "^0.26.0",
+    "@trystero-p2p/torrent": "^0.27.0",
     "@yowasp/yosys": "0.70.1258",
     "avr8js": "^0.21.1",
     "elkjs": "^0.12.1",
     "express": "^5.3.0",
-    "ws": "^8.22.2",
+    "ws": "^8.23.0",
     "y-codemirror.next": "^0.3.6",
     "y-protocols": "^1.0.7",
     "yjs": "^13.6.33"
@@ -66,7 +66,7 @@
     "@yowasp/nextpnr-machxo2": "0.11.825",
     "esbuild": "^0.28.2",
     "jsqr": "1.4.0",
-    "playwright": "1.65.0"
+    "playwright": "1.65.1"
   },
   "repository": {
     "type": "git",
