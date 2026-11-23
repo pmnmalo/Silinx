@@ -10,7 +10,7 @@ import { generateHdl } from '../core/schdoc-hdl.js';
 import { mountSymbolHdl } from '../core/schdoc-hdl-symbol.js';
 import { mountSymbolCases } from '../core/schdoc-hdl-cases.js';
 import { mountSymbolCasesMore } from '../core/schdoc-hdl-more.js';
-import { compile, elaborate } from '../core/compile.js';
+import { compile, elaborate, simulate } from '../core/compile.js';
 
 const { normalizeDoc, symbolPins } = schdoc;
 // a sheet of one symbol, its pins wired to I/O markers or not
@@ -321,4 +321,53 @@ test('#4846 a bus marker whose bits are named on other wires is connected to the
   const doc = normalizeDoc(d);
   assert.deepEqual(netlist(doc).diagnostics, []);
   for (const lang of ['vhdl', 'verilog']) assert.deepEqual(generateHdl({ ...doc, lang }, { lang }).diagnostics, [], lang);
+});
+
+// #4780: an ADD's carry in, a SUB's borrow in: one sum with the carry an operand (resize(A) + resize(B) + unsigned'(0 =>
+// CI)), not two sums and a choice (… + 1 when CI = '1' else …: two carry chains on the Silinx toolchain, two subtractors in
+// XST); its sums as the integers', bus and pin-per-bit forms, simulated in VHDL
+test('#4780 schematic HDL: ADD with CI / SUB with BI, one sum with the carry as an operand; its results the integers\', in VHDL', () => {
+  for (const [type, params] of [['add', { width: 8, cin: true, cout: true }], ['sub', { width: 16, bin: true, bout: true }],
+    ['add', { width: 4, bits: true, cin: true, cout: true }], ['sub', { width: 1, bin: true, bout: true }]]) {
+    const w = params.width, sub = type === 'sub', [ci, o, co] = sub ? ['BI', 'D', 'BO'] : ['CI', 'S', 'CO'];
+    const sym = { id: 'S1', type, name: 'U1', x: 400, y: 400, params };
+    const pins = symbolPins(normalizeDoc({ symbols: [sym] }).symbols[0]);
+    const ports = pins.map((p, i) => ({ id: `P${i}`, name: p.name, dir: p.dir, width: p.width || 1, x: p.x, y: p.y }));
+    const g = generateHdl(normalizeDoc({ name: 'sheet', lang: 'vhdl', symbols: [sym], ports, wires: [], labels: [] }), {});
+    const what = `${type} ${JSON.stringify(params)}`;
+    assert.deepEqual(g.diagnostics, [], what);
+    const sums = g.code.split('\n').filter((l) => /U1_(sum|diff)\w* <= /.test(l));
+    assert.equal(sums.length, 1, `${what}: one sum\n${sums.join('\n')}`);
+    assert.match(sums[0], new RegExp(`^\\s*U1_(sum|diff)\\w* <= .* ${sub ? '-' : '\\+'} unsigned'\\(0 => ${ci}\\);`), what);
+    assert.doesNotMatch(g.code, /when \w+ = '1' else/, what);
+    // a test bench: the corners of each operand, the carry 0 and 1, each result against the integers' (modulo 2^(w+1))
+    const vals = [...new Set([0, 1, 2, 2 ** (w - 1) - 1, 2 ** (w - 1), 2 ** w - 2, 2 ** w - 1].filter((v) => v >= 0 && v < 2 ** w))];
+    const map = params.bits ? [...Array(w).keys()].flatMap((i) => [`A${i} => a(${i})`, `B${i} => b(${i})`, `${o}${i} => r(${i})`]) : [`A => a${w === 1 ? '(0)' : ''}`, `B => b${w === 1 ? '(0)' : ''}`, `${o} => r${w === 1 ? '(0)' : ''}`];
+    const tb = `library ieee; use ieee.std_logic_1164.all; use ieee.numeric_std.all;
+entity tb is end;
+architecture s of tb is
+  type ints is array (natural range <>) of integer;
+  constant V : ints := (${vals.join(', ')}, ${vals[0]});
+  signal a, b, r : std_logic_vector(${w - 1} downto 0);
+  signal c, k : std_logic;
+begin
+  u : entity work.sheet port map (${[...map, `${ci} => c`, `${co} => k`].join(', ')});
+  process
+    variable e, bad, n : integer := 0;
+  begin
+    for i in V'range loop for j in V'range loop for x in 0 to 1 loop
+      a <= std_logic_vector(to_unsigned(V(i), ${w})); b <= std_logic_vector(to_unsigned(V(j), ${w}));
+      c <= '0'; if x = 1 then c <= '1'; end if;
+      wait for 1 ns;
+      e := (V(i) ${sub ? '-' : '+'} V(j) ${sub ? '-' : '+'} x + ${2 ** (w + 1)}) mod ${2 ** (w + 1)};
+      n := n + 1;
+      if to_integer(unsigned(r)) /= e mod ${2 ** w} or (k = '1') /= (e >= ${2 ** w}) then bad := bad + 1; end if;
+    end loop; end loop; end loop;
+    report "checked " & integer'image(n) & ", wrong " & integer'image(bad);
+    wait;
+  end process;
+end;`;
+    const r = simulate([{ path: g.filename, text: g.code }, { path: 'tb.vhd', text: tb }], 'tb', { until: 1e9 });
+    assert.deepEqual(r.sim.log.map((l) => l.text.replace(/^.*?(checked)/, '$1')), [`checked ${(vals.length + 1) ** 2 * 2}, wrong 0`], what);
+  }
 });
