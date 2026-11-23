@@ -15,6 +15,7 @@ import { MUX_ICS } from './circuit-model-mux.js';
 import { MEMORY_ICS } from './circuit-model-memory.js';
 import { BOARD_PARTS } from './circuit-boards.js';
 import { LCD_1602 } from './circuit-lcd.js';
+import { LM75 } from './circuit-lm75.js';
 import { OLED_SSD1306 } from './circuit-oled.js';
 import { codesignOn } from './build-channel.js';
 
@@ -86,6 +87,8 @@ const OTHERS = [
   LCD_1602,
   // a graphic OLED 128×64 on I²C (#5336, core/circuit-oled.js)
   OLED_SSD1306,
+  // a temperature sensor on I²C (#5342, core/circuit-lm75.js)
+  LM75,
 ];
 
 // ------------------------------------------------------------------ the library

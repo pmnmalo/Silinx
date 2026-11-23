@@ -95,6 +95,11 @@ function runControls(sim, boards, controls, end) {
     if (cb) {
       if (!cb.inputs.some(x => x.pin === String(c.control ?? ''))) throw toolError(`controls[${i}]: no switch or button '${c.control}' in the circuit ${cb.id} (${cb.inputs.map(x => x.pin).join(', ') || 'none'})`);
       if (!(t >= 0) || t > end) throw toolError(`controls[${i}]: at_ns from 0 to the run's time`);
+      // (a temperature sensor's: its value, °C, #5342)
+      if (cb.inputs.find(x => x.pin === String(c.control)).kind === 'temp') {
+        if (!Number.isFinite(Number(c.value))) throw toolError(`controls[${i}]: ${c.control}'s value: a temperature (°C)`);
+        return { t, b: cb, pin: String(c.control), on: Number(c.value) };
+      }
       return { t, b: cb, pin: String(c.control), on: !!c.on };
     }
     const b = boards.find(x => x.id === c?.node && x.kind === 'fpga');
@@ -114,7 +119,7 @@ function runControls(sim, boards, controls, end) {
 }
 
 // what the boards show, a line each
-const boardLines = shown => Object.entries(shown).map(([id, s]) => (s.inputs && s.lit ? `${id}'s circuit: lit ${s.lit.join(' ') || 'none'}.` : s.leds
+const boardLines = shown => Object.entries(shown).map(([id, s]) => (s.inputs && s.lit ? `${id}'s circuit: lit ${s.lit.join(' ') || 'none'}${Object.entries(s.sensors || {}).map(([k, x]) => `; ${k} ${x.temp.toFixed(1)} °C`).join('')}.` : s.leds
   ? `${id}'s board: LEDs ${s.leds.map((v, k) => [v, k]).filter(([v]) => v > 0.5).map(([, k]) => `LD${k}`).join(' ') || 'off'}${s.digits?.some(Boolean) ? `; display ${s.digits.map(d => (d ? digitText(d) : ' ')).reverse().join('')}` : ''}.`
   : `${id}'s board: LED L ${s.led > 0.5 ? 'on' : 'off'}; pins high ${Object.entries(s.pins).filter(([, v]) => v === 1).map(([p]) => p).join(' ') || 'none'}.`));
 // a digit's segments as the hexadecimal digit they draw, or ? (other patterns)

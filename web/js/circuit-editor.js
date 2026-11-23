@@ -177,7 +177,7 @@ export function mountCircuitEditor(container, opts = {}) {
   function render() {
     if (destroyed) return;
     applyView();
-    world.replaceChildren(drawCircuit({ ...M, wireStyle: wireStyle() }, { sel, draft, ghost, inside: inside(), hops: hops(), handles: !readOnly && !sim, levels: sim ? (id, n) => sim.pin(id, n) : null, leds: sim?.leds(), lcds: sim?.lcds(), oleds: sim?.oleds(), inputs: sim?.inputs() }));
+    world.replaceChildren(drawCircuit({ ...M, wireStyle: wireStyle() }, { sel, draft, ghost, inside: inside(), hops: hops(), handles: !readOnly && !sim, levels: sim ? (id, n) => sim.pin(id, n) : null, leds: sim?.leds(), lcds: sim?.lcds(), oleds: sim?.oleds(), sensors: sim?.sensors(), inputs: sim?.inputs() }));
     sync();   // (the Wires' ✓: an undo, a model set)
     for (const b of [delBtn]) b.disabled = !sel;
     rotBtn.disabled = sel?.kind !== 'part';
@@ -213,7 +213,9 @@ export function mountCircuitEditor(container, opts = {}) {
     fitted = true;
     const w = toWorld(e.clientX, e.clientY), g = toGrid(w), t = hit(e);
     if (sim && t?.input) {
-      if (t.input === 'switch') setInput(t.id, !sim.inputs()[t.id]);
+      // (a temperature sensor's − and +, #5342: a degree less or more, now)
+      if (t.input === 'temp-up' || t.input === 'temp-down') { sim.setTemp(t.id, sim.sensors()[t.id].temp + (t.input === 'temp-up' ? 1 : -1)); runSim(); }
+      else if (t.input === 'switch') setInput(t.id, !sim.inputs()[t.id]);
       else if (t.input === 'dip') setInput(t.id, !sim.inputs()[t.id][t.lever], t.lever);
       else { setInput(t.id, true); drag = { kind: 'press', id: t.id }; }
       return;

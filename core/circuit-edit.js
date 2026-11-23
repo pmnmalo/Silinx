@@ -5,6 +5,7 @@ import { partDef, partPins, partHoles, LED_COLORS, WIRE_COLORS, CLOCK_HZ } from 
 import { normalizeCircuit, newId } from './circuit.js';
 import { circuitNets } from './circuit-net.js';
 import { clone } from './util.js';
+import { LM75_TEMP } from './circuit-lm75.js';
 import { codesignOn, CODESIGN_OFF } from './build-channel.js';
 import { WIRE_STYLES, isWireStyle, setWireStyle as setStyleOf } from './wire-style.js';
 
@@ -178,19 +179,21 @@ export function addWire(m, { from, to, via = [], color, id } = {}) {
 
 /**
  * A part's properties set: its label (its ports' name), an LED's or a display's colour, a switch's position as saved (`on`:
- * a DIP switch's list of its levers, or { lever: k, on }), a clock's frequency (`hz`, in real time).
+ * a DIP switch's list of its levers, or { lever: k, on }), a clock's frequency (`hz`, in real time), a temperature sensor's
+ * temperature (`temp`, °C, #5342).
  */
 export const setPartProps = (m, id, props = {}) => edit(m, (c) => {
   const p = partIn(c, id);
   if (!p) return `no part ${id} in the circuit`;
   const d = partDef(p.type);
   const levels = (d?.inputs || []).filter((x) => x.kind === 'level').length;
-  const has = ['label', ...(d?.kind === 'output' && !d.kicad ? ['color'] : []), ...(levels ? ['on'] : []), ...(d?.type === 'clock' ? ['hz'] : [])];
+  const has = ['label', ...(d?.kind === 'output' && !d.kicad ? ['color'] : []), ...(levels ? ['on'] : []), ...(d?.type === 'clock' ? ['hz'] : []), ...(d?.kind === 'sensor' ? ['temp'] : [])];
   for (const [k, v] of Object.entries(props)) {
     const named = d?.inputs || d?.lamps || d?.kind === 'probe';   // (a probe's label: its row's name in the waveforms)
     if (!has.includes(k) || (k === 'label' && !named)) return `${p.id} (${p.type}) has no property '${k}' (${has.filter((x) => x !== 'label' || named).join(', ') || 'none'})`;
     if (k === 'label') { if (v == null || v === '') delete p.label; else p.label = String(v); }
     else if (k === 'color') { if (!LED_COLORS.includes(v)) return `color: one of ${LED_COLORS.join(', ')}`; p.color = v; }
+    else if (k === 'temp') { const t = Number(v); if (!Number.isFinite(t) || t < LM75_TEMP.min || t > LM75_TEMP.max) return `temp: a temperature from ${LM75_TEMP.min} to ${LM75_TEMP.max} °C`; p.temp = Math.round(t * 2) / 2; }
     else if (k === 'hz') { const hz = Number(v); if (!Number.isFinite(hz) || hz < CLOCK_HZ.min || hz > CLOCK_HZ.max) return `hz: a frequency from ${CLOCK_HZ.min} to ${CLOCK_HZ.max} Hz`; p.hz = hz; }
     else if (levels === 1) p.on = !!v;
     else if (Array.isArray(v)) { if (v.length !== levels) return `on: a list of ${levels} levers' positions`; p.on = v.map(Boolean); }

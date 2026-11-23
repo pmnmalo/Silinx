@@ -88,16 +88,18 @@ export function mountSystemEmulator(host, opts) {
       const i = e.target.closest?.('[data-input]'), g = e.target.closest?.('[data-kind="part"]');
       if (!i || !g || !ready) return;
       const id = g.dataset.id, now = cur?.inputs?.[id];
-      if (i.dataset.input === 'button') { set(id, true); window.addEventListener('pointerup', () => set(id, false), { once: true }); }
+      // (a temperature sensor's − and +, #5342: a degree less or more)
+      if (i.dataset.input === 'temp-up' || i.dataset.input === 'temp-down') { const t = cur?.sensors?.[id]?.temp ?? 25; ready?.set(b.id, id, t + (i.dataset.input === 'temp-up' ? 1 : -1)); }
+      else if (i.dataset.input === 'button') { set(id, true); window.addEventListener('pointerup', () => set(id, false), { once: true }); }
       else if (i.dataset.input === 'dip') { const k = Number(i.dataset.lever); set(`${id}:${k + 1}`, !(Array.isArray(now) && now[k])); }
       else set(id, !now);
       e.preventDefault();
     });
     return { el, paint(s) {
-      const key = JSON.stringify([s?.leds, s?.inputs, s?.lcds, s?.oleds]);
+      const key = JSON.stringify([s?.leds, s?.inputs, s?.lcds, s?.oleds, s?.sensors]);
       if (key === said) return;
       said = key; cur = s;
-      svg.replaceChildren(drawCircuit(b.model, { leds: s?.leds ?? null, lcds: s?.lcds ?? null, oleds: s?.oleds ?? null, inputs: s?.inputs ?? null }));
+      svg.replaceChildren(drawCircuit(b.model, { leds: s?.leds ?? null, lcds: s?.lcds ?? null, oleds: s?.oleds ?? null, sensors: s?.sensors ?? null, inputs: s?.inputs ?? null }));
       // (its size the drawing's, at most 720 pixels wide)
       const r = svg.firstChild.getBBox?.();
       if (r && r.width) { svg.setAttribute('viewBox', `${r.x - 10} ${r.y - 10} ${r.width + 20} ${r.height + 20}`); svg.style.width = `${Math.min(720, r.width + 20)}px`; }

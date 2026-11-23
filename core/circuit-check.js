@@ -35,7 +35,7 @@ export function checkCircuit(m, nets = circuitNets(m), { modules = null, runner 
     else if (d?.kind === 'model') continue;   // (checkModels, below)
     else if (d?.kind === 'drawn') say.warn(`${p.id} (${d.kicad.value}) is drawn only: it is not simulated and its pins drive nothing`, part(p.id));
     else if (d?.kind === 'lcd') checkLcd(p, d, nets, say);
-    else if (d?.kind === 'oled') checkOled(p, d, nets, say, (id) => m.parts.find((x) => x.id === id)?.type);
+    else if (d?.kind === 'oled' || d?.kind === 'sensor') checkOled(p, d, nets, say, (id) => m.parts.find((x) => x.id === id)?.type);
     else if (d && d.kind !== 'breadboard') checkOther(p, d, nets, say);
   }
   checkModels(m.parts, partDef, modules, say, part, runner);
@@ -179,10 +179,13 @@ function checkOled(p, d, nets, say, typeOf) {
   const pinOf = (name) => d.pins.find((q) => q.name === name), netOf = (name) => nets.nets[nets.pinNet.get(`${p.id}.${pinOf(name).n}`)];
   if (partPins(p).every((q) => { const net = nets.nets[nets.pinNet.get(`${p.id}.${q.n}`)]; return net.pins.length < 2 && !net.wires.length; })) { say.warn(`${p.id} (${d.title}) joins nothing`, part(p.id)); return; }
   const vcc = netSupply(netOf('VCC')), gnd = netSupply(netOf('GND'));
-  if (!vcc.vcc || !gnd.gnd) say.warn(`${p.id} (${d.title}) is not powered: ${[!vcc.vcc && 'its VCC (pin 2) is not on the supply\'s +', !gnd.gnd && 'its GND (pin 1) is not on the supply\'s −'].filter(Boolean).join(' and ')}`, part(p.id));
+  if (!vcc.vcc || !gnd.gnd) say.warn(`${p.id} (${d.title}) is not powered: ${[!vcc.vcc && `its VCC (pin ${pinOf('VCC').n}) is not on the supply's +`, !gnd.gnd && `its GND (pin ${pinOf('GND').n}) is not on the supply's −`].filter(Boolean).join(' and ')}`, part(p.id));
+  const pulled = (name) => netOf(name).pins.some((q) => q.dir === 'weak' && partDef(typeOf(q.part))?.pulls?.[0]?.value === '1');
   for (const name of ['SCL', 'SDA']) {
-    if (!netOf(name).pins.some((q) => q.dir === 'weak' && partDef(typeOf(q.part))?.pulls?.[0]?.value === '1')) say.warn(`${p.id}'s ${name} (pin ${pinOf(name).n}) has no pull-up: the I²C bus's lines are released high by a pull-up each`, part(p.id));
+    // (a line joined to something: an unused one is not a bus, #5342)
+    if ((netOf(name).pins.length > 1 || netOf(name).wires.length) && !pulled(name)) say.warn(`${p.id}'s ${name} (pin ${pinOf(name).n}) has no pull-up: the I²C bus's lines are released high by a pull-up each`, part(p.id));
   }
+
 }
 
 /** The circuit's errors only (what keeps its HDL from being generated). */

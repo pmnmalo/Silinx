@@ -22,6 +22,8 @@ const ABOUT = {
   'seg7-ca': 'Seven segments a–g and a point DP, each an LED; common anode: a segment lights while its pin is at 0 and COM at 1. Outputs of the HDL.',
   'led-bar-10': 'Ten LEDs side by side, each lighting while its anode is at 1 and its cathode at 0. Outputs of the HDL.',
   probe: 'Shows the level of the net its tip touches: H (1), L (0), – (open) or X (unknown). Not a port of the HDL.',
+  // (a temperature sensor, #5342)
+  lm75: "Its temperature, set while trying it (its − and +, its Properties), read on I²C at 0x48 + A2..A0: 9 bits, 0.5 °C; its OS output (open drain) over TOS (80 °C) and under THYST (75 °C). Not a port of the HDL.",
   // (a character LCD, #5330)
   'lcd-1602': "Two lines of 16 characters, its HD44780 controller simulated: a write on E's falling edge, RS 0 a command, 1 a character; 8-bit or 4-bit (D7..D4) mode; off until its program turns it on. Not a port of the HDL.",
   // (a graphic OLED, #5336)

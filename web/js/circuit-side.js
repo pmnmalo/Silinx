@@ -4,6 +4,7 @@
 // the circuit's shown only while nothing is selected (#4303). Its edits are core/circuit-edit.js's.
 import { h } from './ui.js';
 import { partDef, LED_COLORS, WIRE_COLORS, CLOCK_HZ } from '/core/circuit-parts.js';
+import { LM75_TEMP } from '/core/circuit-lm75.js';
 import { setPartProps, setWireProps } from '/core/circuit-edit.js';
 import { portName } from '/core/circuit.js';
 import { partInfo } from '/core/circuit-part-info.js';
@@ -54,6 +55,12 @@ export function mountCircuitSide(ctx) {
         const boxes = Array.from({ length: levels }, (_, i) => h('input', { type: 'checkbox', class: 'circ-on-in', checked: levels === 1 ? !!p.on : !!p.on?.[i], title: levels === 1 ? 'On' : `Lever ${i + 1}` }));
         for (const b of boxes) b.addEventListener('change', () => apply(setPartProps(M(), p.id, { on: levels === 1 ? boxes[0].checked : boxes.map((x) => x.checked) })));
         kids.push(field(levels === 1 ? 'On' : 'Levers on', h('span', { class: 'circ-on' }, ...boxes)));
+      }
+      // (a temperature sensor's saved temperature, #5342)
+      if (d?.kind === 'sensor') {
+        const t = h('input', { type: 'number', class: 'circ-temp-in', min: String(LM75_TEMP.min), max: String(LM75_TEMP.max), step: String(LM75_TEMP.step), value: String(p.temp ?? LM75_TEMP.default) });
+        t.addEventListener('change', () => apply(setPartProps(M(), p.id, { temp: Number(t.value) })));
+        kids.push(field('Temperature (°C)', t));
       }
       if (d?.type === 'clock') {
         const hz = h('input', { type: 'number', class: 'circ-hz-in', min: String(CLOCK_HZ.min), max: String(CLOCK_HZ.max), step: '0.1', value: String(p.hz ?? CLOCK_HZ.default) });

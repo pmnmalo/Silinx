@@ -76,6 +76,10 @@ export const CIRCUIT_PT = {
   'Reads 1 (a TTL input)': 'Lê 1 (uma entrada TTL)', 'Reads X (unknown): connect every CMOS input': 'Lê X (desconhecido): ligue todas as entradas CMOS',
   'input': 'entrada', 'output': 'saída', 'open-collector output': 'saída de coletor aberto', 'supply +5 V': 'alimentação +5 V', 'supply GND': 'alimentação GND',
   'not connected': 'não ligado', 'contact': 'contacto', 'weak output': 'saída fraca', 'tip': 'ponta',
+  // (a temperature sensor, #5342)
+  "Its temperature, set while trying it (its − and +, its Properties), read on I²C at 0x48 + A2..A0: 9 bits, 0.5 °C; its OS output (open drain) over TOS (80 °C) and under THYST (75 °C). Not a port of the HDL.":
+    'A sua temperatura, escolhida ao experimentá-lo (o seu − e +, as suas Propriedades), lida por I²C em 0x48 + A2..A0: 9 bits, 0,5 °C; a sua saída OS (dreno aberto) acima de TOS (80 °C) e abaixo de THYST (75 °C). Não é uma porta do HDL.',
+  'Temperature (°C)': 'Temperatura (°C)',
   // (a character LCD, #5330)
   "Two lines of 16 characters, its HD44780 controller simulated: a write on E's falling edge, RS 0 a command, 1 a character; 8-bit or 4-bit (D7..D4) mode; off until its program turns it on. Not a port of the HDL.":
     'Duas linhas de 16 caracteres, o seu controlador HD44780 simulado: uma escrita no flanco descendente de E, RS a 0 um comando, a 1 um carácter; modo de 8 bits ou de 4 bits (D7..D4); apagado até o seu programa o ligar. Não é uma porta do HDL.',
@@ -125,7 +129,7 @@ const TITLE = { 'Arduino Uno': 'Arduino Uno', 'Arduino Nano': 'Arduino Nano', 'D
   'DIP switch (4)': 'Interruptor DIP (4)', 'DIP switch (8)': 'Interruptor DIP (8)', 'Clock source': 'Fonte de relógio',
   'Pull-up (a weak 1)': 'Pull-up (um 1 fraco)', 'Pull-down (a weak 0)': 'Pull-down (um 0 fraco)', LED: 'LED',
   '7-segment display, common cathode': 'Mostrador de 7 segmentos, cátodo comum', '7-segment display, common anode': 'Mostrador de 7 segmentos, ânodo comum',
-  'LED bar (10)': 'Barra de LEDs (10)', 'Character LCD 16×2 (HD44780)': 'LCD de caracteres 16×2 (HD44780)', 'Graphic OLED 128×64 (SSD1306, I²C)': 'OLED gráfico 128×64 (SSD1306, I²C)', 'Logic probe': 'Sonda lógica', 'Hex inverter': 'Seis inversores', 'Hex Schmitt-trigger inverter': 'Seis inversores Schmitt-trigger',
+  'LED bar (10)': 'Barra de LEDs (10)', 'Character LCD 16×2 (HD44780)': 'LCD de caracteres 16×2 (HD44780)', 'Temperature sensor LM75 (I²C)': 'Sensor de temperatura LM75 (I²C)', 'Graphic OLED 128×64 (SSD1306, I²C)': 'OLED gráfico 128×64 (SSD1306, I²C)', 'Logic probe': 'Sonda lógica', 'Hex inverter': 'Seis inversores', 'Hex Schmitt-trigger inverter': 'Seis inversores Schmitt-trigger',
   // (KiCad's other gates, #4397)
   'Hex buffer, open collector': 'Seis buffers, coletor aberto', 'Hex buffer': 'Seis buffers', 'Hex inverting buffer': 'Seis buffers inversores',
   'Dual 4-input NAND, Schmitt trigger': 'Duas portas NAND de 4 entradas, Schmitt-trigger', 'Quad 2-input NAND, Schmitt trigger': 'Quatro portas NAND de 2 entradas, Schmitt-trigger',

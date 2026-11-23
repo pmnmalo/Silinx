@@ -5,6 +5,7 @@
 import { partDef, LED_COLORS, WIRE_COLORS, CLOCK_HZ, BB_COLS, BB_RAILS } from './circuit-parts.js';
 import { portName, partInputs, partLamps } from './circuit-io.js';
 import { isName } from './ident.js';
+import { LM75_TEMP } from './circuit-lm75.js';
 import { wireStyleOf } from './wire-style.js';
 
 export { portName };
@@ -29,6 +30,8 @@ export function normalizeCircuit(m = {}) {
     else if (levels > 1) out.on = Array.from({ length: levels }, (_, i) => !!(Array.isArray(p.on) && p.on[i]));
     // (a KiCad LED, #4349: its own colour, its part's)
     if (d?.kind === 'output') out.color = d.kicad ? d.color : LED_COLORS.includes(p.color) ? p.color : 'red';
+    // (a temperature sensor's temperature, #5342: its saved one, in 0.5 °C)
+    if (d?.kind === 'sensor') { const t = Number(p.temp); out.temp = Number.isFinite(t) ? Math.min(LM75_TEMP.max, Math.max(LM75_TEMP.min, Math.round(t * 2) / 2)) : LM75_TEMP.default; }
     if (d?.type === 'clock') {
       const hz = Number(p.hz);
       out.hz = Number.isFinite(hz) ? Math.min(CLOCK_HZ.max, Math.max(CLOCK_HZ.min, Math.round(hz * 10) / 10)) : CLOCK_HZ.default;
