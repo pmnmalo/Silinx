@@ -28,6 +28,10 @@ const TARGETS = [{ board: 'basys2', variant: '250' }, { board: 'nexys3' }];
 // expects them, its VHDL read from the project's folder; on the Nexys3 those of XST and map)
 const WARNINGS = { basys2: { micro80: micro80S3eWarnings('/work/src') }, nexys3: { micro80: MICRO80_S6_WARNINGS } };
 const expectedWarnings = (example, t) => (WARNINGS[t.board][example] || []).slice().sort();
+// what the export says of a project: none, but lock's schematic, whose blocks are the project's own modules (#5180):
+// ISE builds them from their HDL sources, with the .sym symbols the export writes for them
+const projectModule = (sch, m) => `${sch}: '${m}': project module — ISE uses its HDL source and the ${m}.sym symbol (or regenerate it with Create Schematic Symbol)`;
+const EXPORT_NOTES = { lock: ['digit_ok', 'lock', 'alarm', 'timer'].map(m => projectModule('src/control.sch', m)) };
 
 const RUN_SH = '[ -n "$ISE_SETTINGS" ] && . "$ISE_SETTINGS" > /dev/null\nxtclsh interop.tcl\n';
 const interopTcl = xise => `project open ${xise}
@@ -106,7 +110,7 @@ for (const example of EXAMPLES) {
       const { project } = exampleProject(example, t, process.env.SILINX_WORKSPACE);
       fs.writeFileSync(path.join(process.env.SILINX_WORKSPACE, name, 'silinx.json'), JSON.stringify({ ...project, name }, null, 2));
       const out = await exportToFolder(name);
-      assert.deepEqual(out.warnings, []);
+      assert.deepEqual(out.warnings, EXPORT_NOTES[example] || []);
 
       const job = await runInIse(name, out.dir, out.xise);
       assert.equal(job.status, 'ok', job.lines.filter(l => /ERROR|INTEROP|invalid|couldn't/i.test(l)).slice(0, 30).join('\n'));

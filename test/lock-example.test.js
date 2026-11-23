@@ -105,3 +105,18 @@ test('#5111 lock: Check Syntax and the simulation with no warning, the drawings\
     ['alarm.v', 'control.v', 'debounce.vhd', 'digit_ok.v', 'lock.v', 'sevenseg.v', 'sync.v', 'timer.v', 'top.vhd']);
   await run('verilog');
 });
+
+// (#5180) XST refused top.vhd: its signal tick redeclared its generic TICK (a VHDL name ignores case, and an entity and
+// its architecture are one declarative region; Silinx's front end did not say so). No name of top's architecture is
+// one of its entity's generics or ports.
+test('#5180 lock: top.vhd declares none of its generics\' or ports\' names again, in any case', () => {
+  const src = read('src/top.vhd').replace(/--.*$/gm, '');
+  const entity = /\bentity\s+top\s+is([\s\S]*?)\bend\s+top\s*;/i.exec(src)[1];
+  const names = (decls) => [...decls.matchAll(/(?:^|[(;])\s*((?:\w+\s*,\s*)*\w+)\s*:(?!=)/g)].flatMap((m) => m[1].split(',').map((n) => n.trim().toLowerCase()));
+  const own = new Set(names(entity));
+  assert.ok(own.has('tick') && own.has('clk'), 'its generics and ports read');
+  const arch = /\barchitecture\s+\w+\s+of\s+top\s+is([\s\S]*?)^begin\b/im.exec(src)[1];
+  const declared = [...arch.matchAll(/^\s*(?:signal|constant|variable)\s+([\w\s,]+?)\s*:/gim)].flatMap((m) => m[1].split(',').map((n) => n.trim().toLowerCase()));
+  assert.ok(declared.includes('sec_tick'), 'its signals read');
+  assert.deepEqual(declared.filter((n) => own.has(n)), []);
+});

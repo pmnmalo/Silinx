@@ -67,7 +67,7 @@ architecture Structural of top is
                dp     : out std_logic;
                an     : out std_logic_vector(3 downto 0) );
     end component;
-    signal rst, enter, clear, tick : STD_LOGIC;
+    signal rst, enter, clear, sec_tick : STD_LOGIC;   -- (not "tick": VHDL's names ignore case, the generic TICK)
     signal count               : integer range 0 to TICK_N - 1 := 0;
     signal digit               : STD_LOGIC_VECTOR (3 downto 0);
     signal opened, locked, alarm : STD_LOGIC;
@@ -95,7 +95,7 @@ begin
             if count = TICK_N - 1 then count <= 0; else count <= count + 1; end if;
         end if;
     end process;
-    tick <= '1' when count = TICK_N - 1 else '0';
+    sec_tick <= '1' when count = TICK_N - 1 else '0';
 
     u_sync : entity work.sync
         port map ( clk => clk, d => swOn, q => digit );
@@ -107,7 +107,7 @@ begin
         port map ( clk => clk, btn => btnOn(1), press => clear );
 
     u_control : entity work.control
-        port map ( clk => clk, rst => rst, enter => enter, clear => clear, digit => digit, tick => tick, secs => secs,
+        port map ( clk => clk, rst => rst, enter => enter, clear => clear, digit => digit, tick => sec_tick, secs => secs,
                    opened => opened, locked => locked, alarm => alarm, fails => fails, left => left );
 
     -- the penalty of the failures so far (C), kept when each call is done
