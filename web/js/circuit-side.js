@@ -33,7 +33,7 @@ function kicadRows(k, v) {
 
 /** { renderSide } of mountCircuitEditor (M(), sel(): its current values; setM(m) and commit() an edit; status(msg, err)). */
 export function mountCircuitSide(ctx) {
-  const { M, setM, sel, commit, status, selSection, circBody, readOnly } = ctx;
+  const { M, setM, sel, commit, status, selSection, circBody, readOnly, trying = () => false } = ctx;
   const field = (label, input) => h('label', { class: 'asm-field' }, h('span', {}, label), input);
   const apply = (r) => { if (r.error) { status(r.error, true); renderSide(); return; } setM(r.model); commit(); };
 
@@ -94,7 +94,8 @@ export function mountCircuitSide(ctx) {
     renderCircuit();
     // (a part or a wire selected: its section only, the circuit's hidden, #4303)
     circBody.parentElement.hidden = selSection.childElementCount > 0;
-    if (readOnly) for (const x of [selSection, circBody].flatMap((e) => [...e.querySelectorAll('input, select, button')])) x.disabled = true;
+    // (read only; while trying it, #5365: its fields not edited)
+    if (readOnly || trying()) for (const x of [selSection, circBody].flatMap((e) => [...e.querySelectorAll('input, select, button')])) x.disabled = true;
   }
   return { renderSide };
 }
