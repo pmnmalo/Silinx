@@ -15,6 +15,7 @@ import { phoneOnly } from './phone-readonly.js';
 import { filesState } from './state-files.js';
 import { elaborate } from '/core/compile.js';
 import { ucfPort } from '/core/board-constraints.js';
+import { normalizeCircuit } from '/core/circuit.js';
 import { readSystem, writeSystem } from '/core/system-doc.js';
 import { codesignOn, CODESIGN_OFF } from '/core/build-channel.js';
 import { checkSystem, analyzeSystem } from '/core/system-check.js';
@@ -50,6 +51,7 @@ export async function prepareHere(sys, { emulate = false } = {}) {
     ports,
     netlist: m => { if (!designs[m]) throw new Error(`no module '${m}' that elaborates (Check Syntax says why)`); return netlistOf(designs[m], { run }); },
     firmware: async p => (/\.elf$/i.test(p) ? api.readFileBytes(S.project.name, p) : api.readFile(S.project.name, p)),   // (an .elf's bytes, #5198)
+    circuit: p => designState.viewTexts?.[p] ?? api.readFile(S.project.name, p),   // (a circuit node's, #5215)
     regmap: m => regmapFor(designState.viewTexts, designs[m] ? hierModules(designs[m].top) : [m]),   // (a module made from a register map, or one instancing it: its accesses, #5288)
   });
   if (inputs.error) return inputs;
@@ -59,14 +61,23 @@ export async function prepareHere(sys, { emulate = false } = {}) {
 }
 
 /** A System's problems, as Check System says them (the MCP server's check_system's). */
-const checkProjectSystem = sys => checkSystem(sys, { modules: projectModules(sys), files: filesState.fileTree || [] });
+const checkProjectSystem = sys => checkSystem(sys, { modules: projectModules(sys), files: filesState.fileTree || [], circuits: projectCircuits(sys) });
+// the circuit nodes' circuits, as the project has them (#5215: their boards and pins checked; one not read left out)
+function projectCircuits(sys) {
+  const out = {};
+  for (const n of sys.nodes.filter(x => x.kind === 'circuit' && x.circuit)) {
+    try { out[n.circuit] = normalizeCircuit(JSON.parse(designState.viewTexts?.[n.circuit] ?? '')); } catch { /* (not read: not checked) */ }
+  }
+  return out;
+}
 /** Its wires, pin by pin (the Wiring view's, #5216: the MCP's check_system wiring). */
-const projectWires = sys => analyzeSystem(sys, { modules: projectModules(sys), files: filesState.fileTree || [] }).wires;
+const projectWires = sys => analyzeSystem(sys, { modules: projectModules(sys), files: filesState.fileTree || [], circuits: projectCircuits(sys) }).wires;
 // the editor's lists: the project's design modules (the roots of its hierarchy first: a new FPGA node's), a module's
 // ports, the project's firmware files
 const modules = () => [...new Set([...viewRoots(false), ...(designState.modules || []).filter(m => m.role !== 'sim').map(m => m.name)])];
 const portsOf = name => (designState.modules || []).find(m => m.name === name)?.portList || [];
 const firmwares = () => (filesState.fileTree || []).filter(f => /\.(hex|elf)$/i.test(f));
+const circuits = () => (filesState.fileTree || []).filter(f => /\.circ\.json$/i.test(f));   // (a circuit node's, #5215)
 
 export async function openSystem(path) {
   // (co-design not in a release yet, #5202: said in the console, no editor)
@@ -93,7 +104,7 @@ export async function openSystem(path) {
         onProblems: diags => problems.set(diags),
         onCheck: diags => problems.log(diags),
         onMessage: (text, err) => log(err ? `WARNING: ${name}: ${text}` : `${name}: ${text}`, err ? 'warn' : 'info'),
-        check: checkProjectSystem, modules, portsOf, firmwares,
+        check: checkProjectSystem, modules, portsOf, firmwares, circuits,
         // (a project followed, #3181: read only, the follower's notice at the end of its toolbar; no live editing yet)
         ...(following() ? { readOnly: true, banner: followNotice() } : phoneOnly()),   // (a phone's, #5121)
         // (Simulate: the System's simulation view, #4701)

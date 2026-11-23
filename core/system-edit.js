@@ -10,7 +10,7 @@ const copy = sys => normalizeSystem(JSON.parse(JSON.stringify(sys)));
 /** A new UART interface's settings. */
 export const UART_DEFAULTS = { baud: 9600, frame: '8N1' };
 /** The node kinds' names, as the editor's Add menu and the MCP server say them. */
-export const NODE_KIND_NAMES = { fpga: 'FPGA', mcu: 'Microcontroller', terminal: 'Serial terminal' };
+export const NODE_KIND_NAMES = { fpga: 'FPGA', mcu: 'Microcontroller', terminal: 'Serial terminal', circuit: 'Circuit' };
 
 /** An id not used by a node or a link of the System: `base`, else base2, base3… */
 export function freeId(sys, base) {
@@ -34,12 +34,13 @@ const reaching = (sys, node, iface = null) => sys.links.filter(l => [l.a, l.b].s
 /**
  * A node added ({ kind, id?, board?, module?, x?, y? }): an FPGA node with its module and board (no interface yet: its
  * ports are named in its UART's or GPIO's fields), a microcontroller with its board's UART (`Serial`), a serial terminal
- * with its UART (`serial`). Returns { system, id } or { error }.
+ * with its UART (`serial`), a circuit (#5215) with its circuit (a .circ.json of the project; no interface: its boards'
+ * pins are its links). Returns { system, id } or { error }.
  */
-export function addNode(sys, { kind, id = null, board = null, module = null, x = 0, y = 0 } = {}) {
+export function addNode(sys, { kind, id = null, board = null, module = null, circuit = null, x = 0, y = 0 } = {}) {
   if (!NODE_KINDS.includes(kind)) return { error: `no node kind '${kind}': ${NODE_KINDS.join(', ')}` };
   const out = copy(sys);
-  const nid = id ?? freeId(out, kind === 'mcu' ? 'mcu' : kind === 'terminal' ? 'term' : 'fpga');
+  const nid = id ?? freeId(out, kind === 'mcu' ? 'mcu' : kind === 'terminal' ? 'term' : kind === 'circuit' ? 'circuit' : 'fpga');
   const bad = idError(out, nid);
   if (bad) return { error: bad };
   let n;
@@ -48,7 +49,8 @@ export function addNode(sys, { kind, id = null, board = null, module = null, x =
     const b = mcuBoard(board ?? 'arduino-uno');
     if (!b) return { error: `no microcontroller board '${board}': ${MCU_BOARDS.map(m => m.id).join(', ')}` };
     n = { id: nid, kind, board: b.id, firmware: null, interfaces: Object.keys(b.uarts).map(name => ({ name, kind: 'uart', ...UART_DEFAULTS })) };
-  } else n = { id: nid, kind, interfaces: [{ name: 'serial', kind: 'uart', ...UART_DEFAULTS }] };
+  } else if (kind === 'circuit') n = { id: nid, kind, circuit, interfaces: [] };
+  else n = { id: nid, kind, interfaces: [{ name: 'serial', kind: 'uart', ...UART_DEFAULTS }] };
   out.nodes.push({ ...n, x: Math.round(+x || 0), y: Math.round(+y || 0) });
   return { system: normalizeSystem(out), id: nid };
 }
@@ -69,7 +71,7 @@ function renameEnds(sys, { node, to, iface = null, toIface = null }) {
 export function changeNode(sys, id, fields = {}) {
   const out = copy(sys), n = nodeOf(out, id);
   if (!n) return { error: `no node '${id}' in the System` };
-  const allowed = { fpga: ['id', 'module', 'board', 'variant', 'pins', 'x', 'y'], mcu: ['id', 'board', 'firmware', 'x', 'y'], terminal: ['id', 'x', 'y'] }[n.kind] || ['id', 'x', 'y'];
+  const allowed = { fpga: ['id', 'module', 'board', 'variant', 'pins', 'x', 'y'], mcu: ['id', 'board', 'firmware', 'x', 'y'], terminal: ['id', 'x', 'y'], circuit: ['id', 'circuit', 'x', 'y'] }[n.kind] || ['id', 'x', 'y'];
   for (const k of Object.keys(fields)) if (!allowed.includes(k)) return { error: `${id}: a ${NODE_KIND_NAMES[n.kind] || n.kind} node has no field '${k}' (${allowed.join(', ')})` };
   if (fields.id != null && fields.id !== n.id) {
     const bad = idError(out, fields.id, n);
@@ -84,6 +86,7 @@ export function changeNode(sys, id, fields = {}) {
   } else if (fields.board !== undefined) n.board = fields.board || null;
   if (fields.module !== undefined) n.module = fields.module || null;
   if (fields.firmware !== undefined) n.firmware = fields.firmware || null;
+  if (fields.circuit !== undefined) n.circuit = fields.circuit || null;
   if (fields.variant !== undefined) { if (fields.variant == null || fields.variant === '') delete n.variant; else n.variant = String(fields.variant); }
   if (fields.pins) for (const [port, pin] of Object.entries(fields.pins)) { if (pin == null || pin === '') delete n.pins[port]; else n.pins[port] = String(pin).trim().toUpperCase(); }
   for (const k of ['x', 'y']) if (fields[k] !== undefined) n[k] = Math.round(+fields[k] || 0);
@@ -129,6 +132,7 @@ export function addInterface(sys, id, f = {}) {
   const kind = f.kind ?? 'uart';
   if (n.kind === 'mcu' && kind === 'uart') return { error: `${id}: a microcontroller's UARTs are its board's (${n.interfaces.filter(i => i.kind === 'uart').map(i => i.name).join(', ') || 'none'})` };
   if (n.kind === 'terminal') return { error: `${id}: a serial terminal has one UART, its own` };
+  if (n.kind === 'circuit') return { error: `${id}: a circuit node has no interfaces: its boards' pins it wires are its links` };
   const spis = n.kind === 'mcu' ? Object.keys(mcuBoard(n.board)?.spis || {}) : null;
   if (kind === 'spi' && spis && !spis.some(s => lc(s) === lc(f.name ?? spis[0]))) return { error: `${id}: a microcontroller's SPI bus is its board's (${spis.join(', ') || 'none'})` };
   const i2cs = n.kind === 'mcu' ? Object.keys(mcuBoard(n.board)?.i2cs || {}) : null;
@@ -275,7 +279,7 @@ export function describeSystem(sys) {
   const lines = [`System ${sys.name}: ${sys.nodes.length} node${sys.nodes.length === 1 ? '' : 's'}, ${sys.links.length} link${sys.links.length === 1 ? '' : 's'}`];
   for (const n of sys.nodes) {
     const what = n.kind === 'fpga' ? `FPGA, module ${n.module ?? '(none)'} on ${n.board ?? '(no board)'}${n.variant ? `-${n.variant}` : ''}`
-      : n.kind === 'mcu' ? `${mcuBoard(n.board)?.name ?? n.board}, firmware ${n.firmware ?? '(none)'}` : NODE_KIND_NAMES[n.kind] || n.kind;
+      : n.kind === 'mcu' ? `${mcuBoard(n.board)?.name ?? n.board}, firmware ${n.firmware ?? '(none)'}` : n.kind === 'circuit' ? `circuit ${n.circuit ?? '(none)'}` : NODE_KIND_NAMES[n.kind] || n.kind;
     lines.push(`node ${n.id}: ${what}`);
     for (const f of n.interfaces) lines.push(`  ${ifaceText(n, f)}`);
   }

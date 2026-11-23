@@ -172,3 +172,39 @@ test('#5212 simulate of a System with controls (Emulate System): BTN0 pressed on
   await bad([{ node: 'fpga', control: 'sw3', on: true }], 'controls[0]: no switch or button \'sw3\' of fpga\'s board linked to its module (btn0)');
   await bad([{ node: 'fpga', control: 'btn0', on: true, at_ns: 5e6 }], 'controls[0]: at_ns from 0 to the run\'s time');
 });
+
+test('#5215 a circuit node by edit_system, checked and simulated: the Uno\'s D2 lights its LED and presses the FPGA\'s button; the FPGA\'s LD0 lights the other', async () => {
+  const { intelHex, avrAssemble } = await import('./avr-asm.mjs');
+  // the Uno: D2 an output, high
+  await write('fw/d2.hex', intelHex(avrAssemble(['ldi r16, 0x04', 'out 0x0a, r16', 'out 0x0b, r16', 'loop:', 'rjmp loop'])));
+  // the bench: the Uno's D2 to the Basys2's JB1 (the FPGA's btn<0>, C6) and to the LED D1; the Basys2's JB3 (led<0>, C5) to D2
+  await write('src/bench.circ.json', { format: 'silinx-circuit', version: 1, name: 'bench', lang: 'vhdl',
+    parts: [{ id: 'A1', type: 'arduino-uno', x: 0, y: 0, label: 'uno' }, { id: 'F1', type: 'fpga-basys2', x: 0, y: 30, label: 'fpga' }, { id: 'D1', type: 'led', x: 20, y: -5, color: 'red' }, { id: 'D2', type: 'led', x: 12, y: 26, color: 'red' }],
+    wires: [{ id: 'w1', points: [[16, 0], [8, 30]], color: 'blue' }, { id: 'w2', points: [[16, 0], [20, -5]], color: 'blue' }, { id: 'w3', points: [[21, -5], [3, 0]], color: 'black' },
+      { id: 'w5', points: [[10, 30], [12, 26]], color: 'blue' }, { id: 'w6', points: [[13, 26], [4, 30]], color: 'black' }] });
+  const m = system({ nodes: [{ id: 'uno', kind: 'mcu', board: 'arduino-uno', firmware: 'fw/d2.hex', interfaces: [] }] });
+  m.nodes[0].pins = { clk: 'B8', rx: 'J3', tx: 'A3', 'btn<0>': 'C6', 'led<0>': 'C5' };
+  await write('bench.sys.json', m);
+  const e = await ok('edit_system', { project: 'u', file: 'bench.sys.json', edits: [{ action: 'add_node', fields: { kind: 'circuit', id: 'bench', circuit: 'src/bench.circ.json', x: 300, y: 0 } }] });
+  const HOT = 'bench: A1 D2 (uno\'s, 5 V) and F1 JB1 (fpga\'s btn<0>, pin C6, a 3.3 V input) are on one net: a level shifter or a divider on the real boards';
+  assert.deepEqual(e.text.split('\n'), ['add_node bench', `WARNING: ${HOT}`, 'Process "Check System" of bench.sys.json completed successfully with 1 warning(s).']);
+  // checked: described (the circuit node), its 5 V pin on the FPGA's 3.3 V input; the Uno, reached by the circuit, joins something
+  const c = await ok('check_system', { project: 'u', file: 'bench.sys.json' });
+  assert.ok(c.text.split('\n').includes('node bench: circuit src/bench.circ.json'));
+  assert.deepEqual(c.text.split('\n').slice(-2), [`WARNING: ${HOT}`, 'Process "Check System" of bench.sys.json completed successfully with 1 warning(s).']);
+  assert.deepEqual(c.data.warnings, [{ message: HOT, item: 'bench' }]);
+  // simulated: A echoed, then the button's message (pressed by the Uno's D2 through the circuit); both LEDs lit
+  const r = await ok('simulate', { project: 'u', top: 'bench.sys.json', time_ns: 60e6, type: { term: 'A' } });
+  assert.equal(r.data.terminals.term, 'AHello from Silinx!\r\n');
+  assert.deepEqual(r.data.circuits, { bench: { D1: { on: true, times: 1 }, D2: { on: true, times: 1 } } });
+  const lines = r.text.split('\n');
+  assert.deepEqual(lines.slice(3, 8), ['bench_A1_D2 (uno.D2 → bench.A1:D2): 3 change(s)', 'bench_A1_D2_back (bench.A1:D2 → uno.D2): 3 change(s)', 'bench_F1_JB1 (bench.F1:JB1 → fpga.btn): 3 change(s)',
+    'bench_F1_JB3 (fpga.led[0] → bench.F1:JB3): 2 change(s)', 'terminal term: "AHello from Silinx!\\r\\n"']);
+  assert.equal(lines[8], 'circuit bench: D1 on, lit 1 time(s); D2 on, lit 1 time(s)');
+  assert.deepEqual([r.data.warnings, r.data.errors], [[], []]);
+  // its circuit not there: the run refused, said
+  await ok('edit_system', { project: 'u', file: 'bench.sys.json', edits: [{ action: 'change_node', node: 'bench', fields: { circuit: 'src/none.circ.json' } }] });
+  const x = await call('simulate', { project: 'u', top: 'bench.sys.json', time_ns: 1e6 });
+  assert.equal(x.isError, true);
+  assert.match(x.text, /^simulate: bench\.sys\.json: bench: its circuit src\/none\.circ\.json cannot be read: /);
+});

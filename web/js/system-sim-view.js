@@ -90,8 +90,9 @@ export function mountSystemSim(host, opts) {
     }
     if (ready === run) stop();
   }
-  // (a run stopped: each SPI and I²C link's transfers and a register map's accesses, the MCP's lines, #5288)
-  const busLines = rep => rep.lines.filter(l => [...(rep.spi || []), ...(rep.i2c || []), ...(rep.regs || [])].some(x => l.startsWith(`${x.link} (`)));
+  // (a run stopped: each SPI and I²C link's transfers and a register map's accesses, the MCP's lines, #5288; a circuit
+  // node's lamps, #5215)
+  const busLines = rep => rep.lines.filter(l => l.startsWith('circuit ') || [...(rep.spi || []), ...(rep.i2c || []), ...(rep.regs || [])].some(x => l.startsWith(`${x.link} (`)));
   function stop() {
     timer = null; runBtn.textContent = '▶ Run';
     if (!report) return;

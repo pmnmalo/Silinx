@@ -3,13 +3,14 @@
 //
 //   import { mountSystemEditor } from './system-editor.js';
 //   const ed = mountSystemEditor(container, { model, onChange(model), onProblems(diags), onCheck(diags), onMessage(text, isError),
-//     check(model) -> diags, modules() -> [name], portsOf(module) -> [{ name, dir }], firmwares() -> [path], readOnly, banner,
+//     check(model) -> diags, modules() -> [name], portsOf(module) -> [{ name, dir }], firmwares() -> [path], circuits() -> [path], readOnly, banner,
 //     mountSim(host, { system() }) -> its simulation view (system-sim-view.js), wires(model) -> its wires (#5216) });
 //   ed.getModel(); ed.setModel(m); ed.undo(); ed.redo(); ed.canUndo(); ed.canRedo(); ed.fit(); ed.check(); ed.select({ kind, id });
 //   ed.deleteSelection(); ed.canDelete(); ed.showSim(); ed.sim (its simulation view, open); ed.setView('system' | 'wiring');
 //   ed.view; ed.destroy();
 //
-// Tools: select and move, a node placed (an FPGA, an Arduino Uno or Nano, a serial terminal: a click on the canvas), a
+// Tools: select and move, a node placed (an FPGA, an Arduino Uno or Nano, a serial terminal, a circuit, #5215: a click
+// on the canvas), a
 // link (a click on an interface's row, then on another's). Every edit is core/system-edit.js's, as the MCP server's
 // edit_system; one refused says why in the console. Wiring (#5216, `wires`) shows each link pin by pin instead
 // (system-wiring.js), read only: its tools that edit are hidden, a wire's click selects its link. Try it opens the bottom panel, the System's simulation view
@@ -35,12 +36,12 @@ import { drawWiring } from './system-wiring.js';
 const GRID = 20;
 const snap = v => Math.round(v / GRID) * GRID;
 // the tools that place a node: its kind and board
-const PLACE = { fpga: { kind: 'fpga' }, uno: { kind: 'mcu', board: 'arduino-uno' }, nano: { kind: 'mcu', board: 'arduino-nano' }, terminal: { kind: 'terminal' } };
+const PLACE = { fpga: { kind: 'fpga' }, uno: { kind: 'mcu', board: 'arduino-uno' }, nano: { kind: 'mcu', board: 'arduino-nano' }, terminal: { kind: 'terminal' }, circuit: { kind: 'circuit' } };
 
 export function mountSystemEditor(container, opts = {}) {
   let M = normalizeSystem(opts.model || newSystem('system'));
   let sel = null;                        // { kind: 'node' | 'iface' | 'link', id } (an interface's id: node.name)
-  let tool = 'select';                   // select | fpga | uno | nano | terminal | link
+  let tool = 'select';                   // select | fpga | uno | nano | terminal | circuit | link
   let linkFrom = null;                   // the first end of a link being drawn ('node.iface')
   let view = { tx: 40, ty: 40, k: 1 }, drag = null, fitted = false, destroyed = false, said = null;
   let shown = 'system';                  // system | wiring (#5216)
@@ -62,6 +63,7 @@ export function mountSystemEditor(container, opts = {}) {
     uno: btn('Arduino Uno', 'Click the canvas to add an Arduino Uno', () => setTool('uno'), 'sys-tool asm-wide'),
     nano: btn('Arduino Nano', 'Click the canvas to add an Arduino Nano', () => setTool('nano'), 'sys-tool asm-wide'),
     terminal: btn('Terminal', 'Click the canvas to add a serial terminal', () => setTool('terminal'), 'sys-tool asm-wide'),
+    circuit: btn('Circuit', 'Click the canvas to add a circuit node: a circuit of the project between the boards, its boards the nodes their labels name', () => setTool('circuit'), 'sys-tool asm-wide sys-add-circuit'),
     link: toolWide('arc', 'Link', 'Click an interface, then an interface of another node of its kind', () => setTool('link'), 'sys-tool'),
   };
   const delBtn = toolIcon('delete', 'del', 'Delete the selection (Del)', () => deleteSelection(), 'asm-danger');
@@ -140,7 +142,7 @@ export function mountSystemEditor(container, opts = {}) {
     render();
   }
   function placeNode(at) {
-    const r = addNode(M, { ...PLACE[tool], module: tool === 'fpga' ? (opts.modules?.() || [])[0] ?? null : null, x: snap(at.x - NODE_W / 2), y: snap(at.y - 20) });
+    const r = addNode(M, { ...PLACE[tool], module: tool === 'fpga' ? (opts.modules?.() || [])[0] ?? null : null, circuit: tool === 'circuit' ? (opts.circuits?.() || [])[0] ?? null : null, x: snap(at.x - NODE_W / 2), y: snap(at.y - 20) });
     if (apply(r)) { sel = { kind: 'node', id: r.id }; setTool('select'); }
   }
   // the System's problems: its check after every change, said when they changed; Check's in the console's lines too

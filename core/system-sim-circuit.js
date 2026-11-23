@@ -1,0 +1,85 @@
+// Silinx - the co-design system's adapter of a circuit (#5215; the scheduler: core/system-sim.js): a circuit node, what
+// lies between the boards, run by the circuit's own simulation (core/circuit-sim.js: event driven, in ns, each IC with its
+// delay). Its pins are its boards' pins the circuit wires to something ('A1:D2', core/system-circuit.js), each an input
+// and an output of the node: set (setPin), it drives the board's pin in the circuit (strong, or weak while `weak(pin)`
+// says so: an AVR's input with its pull-up); its value is the pin's net's level (1, 0, null: open or unknown). Its
+// switches are as saved and its clocks stopped (the System drives it); its LEDs' states and the times each lit are kept
+// (lamps()); a short is said, once a net.
+//
+//   const node = new CircuitNode({ model, pins: [{ name: 'A1:D2', part: 'A1', n: 5 }] });
+//
+// Isomorphic ES module, no DOM.
+import { createCircuitSim } from './circuit-sim.js';
+import { circuitNets, netText } from './circuit-net.js';
+
+const num = (level) => (level === '1' ? 1 : level === '0' ? 0 : null);
+const lvl = (v) => (v == null ? 'Z' : Number(v) ? '1' : '0');
+
+export class CircuitNode {
+  /** model: the circuit (normalized); pins: [{ name, part, n }], its pins of the System's nodes. */
+  constructor({ model, pins }) {
+    const nets = circuitNets(model);
+    this.refs = new Map(pins.map((p) => [p.name, `${p.part}.${p.n}`]));
+    this.inputs = [...this.refs.keys()];
+    this.outputs = [...this.refs.keys()];
+    const byNet = new Map();
+    for (const [name, ref] of this.refs) { const k = nets.pinNet.get(ref); byNet.set(k, [...(byNet.get(k) || []), name]); }
+    this.out = [];
+    this.sim = createCircuitSim(model, { nets, external: [...this.refs.values()],
+      onLevel: (net, level, time) => { for (const pin of byNet.get(net) || []) this.out.push({ pin, t: Math.round((time - (this.base ?? 0)) * 1000), value: num(level) }); } });
+    this.sim.run();
+    this.out = [];   // (settled at 0: its levels at the start, value()'s)
+    this.base = this.sim.time;
+    this.now = 0;
+    this.set = new Map();   // a pin's value as set, and its strength
+    this.weak = new Map();
+    this.log = [];
+    this.logN = 0;
+    this.shorted = new Set();
+    this.finished = null;
+    this.lit = new Map(Object.entries(this.sim.outputs()).map(([k, v]) => [k, { on: v === '1', times: v === '1' ? 1 : 0 }]));
+  }
+
+  /** A pin set weak while weak() says so (an AVR's input with its pull-up). */
+  weakWhile(name, weak) { this.weak.set(name, weak); }
+
+  setPin(name, value) {
+    const ref = this.refs.get(name);
+    if (!ref) throw new Error(`'${name}' is not a pin of the circuit`);
+    this.set.set(name, value);
+    this.sim.drive(ref, lvl(value), this.weak.get(name)?.() ? 'w' : 's');
+  }
+
+  value(name) {
+    const ref = this.refs.get(name);
+    if (!ref) throw new Error(`no pin '${name}'`);
+    return num(this.sim.pin(ref));
+  }
+
+  nextEventTime() { return Infinity; }
+
+  advanceTo(t) {
+    if (t < this.now) throw new Error(`the node is at ${this.now} ps, not back at ${t}`);
+    // (a pin's strength as its driver's now: an AVR's pin from an output to an input with its pull-up, the same 1)
+    for (const [name, weak] of this.weak) if (this.set.has(name)) this.sim.drive(this.refs.get(name), lvl(this.set.get(name)), weak() ? 'w' : 's');
+    const ns = this.base + t / 1000 - this.sim.time;
+    if (ns > 0) this.sim.advance(ns);
+    this.now = t;
+    for (const i of this.sim.shorts()) {
+      if (this.shorted.has(i)) continue;
+      this.shorted.add(i);
+      this.log.push({ kind: 'warning', text: `a short circuit at ${+(t / 1e6).toFixed(3)} µs: ${netText(this.sim.nets.nets[i])} driven to 0 and 1 at once`, time: t });
+    }
+    for (const [k, v] of Object.entries(this.sim.outputs())) {
+      const l = this.lit.get(k), on = v === '1';
+      if (on && !l.on) l.times++;
+      l.on = on;
+    }
+    return this.out.splice(0).sort((a, b) => a.t - b.t);
+  }
+
+  /** Its lamps (an LED, a display's segments): { port: { on, times } } (lit now, the times it lit, seen at the windows' ends). */
+  lamps() { return Object.fromEntries([...this.lit].map(([k, v]) => [k, { ...v }])); }
+
+  messages() { return this.log.slice(this.logN, (this.logN = this.log.length)); }
+}

@@ -9,6 +9,16 @@ import { codesignOn, CODESIGN_OFF } from '../core/build-channel.js';
 import { editSystem, describeSystem, EDIT_ACTIONS } from '../core/system-edit.js';
 import { analyzeSystem, systemCheckLines, wiringLines } from '../core/system-check.js';
 import { ucfPort } from '../core/board-constraints.js';
+import { normalizeCircuit } from '../core/circuit.js';
+
+// the circuit nodes' circuits ({ path: circuit }; one that cannot be read left out: its node's check says so, #5215)
+async function projectCircuits(name, sys, files) {
+  const out = {};
+  for (const p of new Set(sys.nodes.filter(n => n.kind === 'circuit' && n.circuit && files.includes(n.circuit)).map(n => n.circuit))) {
+    try { out[p] = normalizeCircuit(JSON.parse(await P.readFile(name, p))); } catch { /* (not a circuit: not checked) */ }
+  }
+  return out;
+}
 
 // the project's modules ({ name: ports, null when it does not elaborate }): every module of its sources, the FPGA nodes'
 // elaborated
@@ -30,7 +40,7 @@ async function checkSystemFile(name, file, text) {
   if (r.error) throw toolError(`${file}: ${r.error}`);
   await readProject(name);
   const files = await P.fileTree(name);
-  const { diags, wires } = analyzeSystem(r.system, { modules: await projectModules(name, r.system), files });
+  const { diags, wires } = analyzeSystem(r.system, { modules: await projectModules(name, r.system), files, circuits: await projectCircuits(name, r.system, files) });
   const json = d => ({ message: d.message, item: d.ref?.id ?? null });
   return { lines: systemCheckLines(file, diags), errors: diags.filter(d => d.severity === 'error').map(json), warnings: diags.filter(d => d.severity === 'warning').map(json), wires };
 }
@@ -49,13 +59,13 @@ const SYS_FILE = STR('The System document (.sys.json).');
 const EDIT = { type: 'object', properties: {
   action: { type: 'string', enum: EDIT_ACTIONS },
   node: { type: 'string' }, interface: { type: 'string' }, link: { type: 'string' },
-  fields: { type: 'object', description: 'kind id board module variant pins firmware x y; name, its kind\'s fields; a b (node.interface)' },
+  fields: { type: 'object', description: 'kind id board module variant pins firmware circuit x y; name, its kind\'s fields; a b (node.interface)' },
 }, required: ['action'], additionalProperties: false };
 
 export const SYSTEM_TOOLS = [
   {
     name: 'edit_system', title: 'Edit a System',
-    description: 'Edit a co-design project\'s System (.sys.json) as its editor does, in order (one refused: none): add_, change_, remove_ a node (fpga, mcu, terminal), interface (uart, gpio, spi, i2c), link; checked.',
+    description: 'Edit a co-design project\'s System (.sys.json) in order (one refused: none): add_, change_, remove_ a node (fpga, mcu, terminal, circuit), interface (uart, gpio, spi, i2c), link; checked.',
     inputSchema: { type: 'object', properties: { project: PROJECT, file: SYS_FILE, edits: { type: 'array', maxItems: 100, items: EDIT } }, required: ['project', 'file', 'edits'], additionalProperties: false },
     annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false },
     async run({ project: name, file, edits }) {
