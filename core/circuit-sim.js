@@ -7,7 +7,7 @@
 // two nets. An IC reads its inputs as the real one (a floating 74LS input reads high, a 4000's X) and drives nothing
 // while unpowered (its VCC pin's net not 1, its GND pin's not 0). The student's inputs (switches, buttons, a clock's
 // level) are set from outside (set()): the editor's clock ticks in real time. Isomorphic module.
-import { partDef, gateValue, readInput } from './circuit-parts.js';
+import { partDef, gateValue, readInput, supplyPins } from './circuit-parts.js';
 import { circuitNets, netText } from './circuit-net.js';
 import { savedInputs, partLamps } from './circuit-io.js';
 import { coreModel, MODEL_TPD } from './circuit-live-model.js';
@@ -34,7 +34,8 @@ export function createCircuitSim(m, { nets = circuitNets(m), onLevel = null, run
     const d = partDef(p.type);
     if (!d) continue;
     if (d.inputs) state.set(p.id, savedInputs(p));
-    if (d.kind === 'supply') { addDriver(netOfPin(p.id, 1), '1'); addDriver(netOfPin(p.id, 2), '0'); }
+    // (the supply's terminals, a board's 5V and GND, #5215)
+    for (const x of supplyPins(d)) addDriver(netOfPin(p.id, x.n), x.value);
     for (const s of d.sources || []) sources.set(`${p.id}:${s.input}`, addDriver(netOfPin(p.id, s.pin), state.get(p.id)[s.input] ? '1' : '0'));
     for (const u of d.pulls || []) addDriver(netOfPin(p.id, u.pin), u.value, 'w');
     // (a KiCad part modelled by a module of the project, #4284: its own copy of the module, run live; its outputs after

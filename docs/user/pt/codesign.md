@@ -47,6 +47,11 @@ ligados por UART e GPIO.
   3,3 V fica a laranja, o seu aviso na dica, tal como o lugar de um pino da FPGA na placa (`UART RX on a PmodUSBUART
   in JA…`). A vista é só de leitura: as ligações editam-se na vista do Sistema; um clique num fio seleciona a sua
   ligação. Fios outra vez volta atrás.
+- **As placas num circuito**: o painel das peças do editor de circuitos tem **Placas**, o Arduino Uno e o Nano, a
+  Basys2 e a Nexys2, com os seus pinos reais (D0…D13, A0…; os pinos Pmod de uma placa FPGA, JA1…, cada um com o seu
+  pino do encapsulamento na dica). Um Nano fica sobre o canal de uma placa de ensaio. Os 5V, 3V3 e GND de uma placa
+  alimentam a placa de ensaio; os outros pinos são do seu programa ou do seu projeto, conduzidos quando o circuito for um
+  nó do Sistema (sozinhos, no Try it, não conduzem nada).
 
 ## Mapas de registos
 

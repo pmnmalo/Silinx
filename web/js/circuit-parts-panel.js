@@ -17,8 +17,11 @@ import { getSymbolStandard } from './symbol-standard.js';
 import { fitQualifier, iecQualifier, ieeeGate } from '/core/symbol-standard.js';
 import { qualifierOf } from '/core/circuit-inside-blocks.js';
 import { attachSymbolTip, hideSymbolTip, TIP_W, TIP_H } from './symbol-tip.js';
+import { codesignOn } from '/core/build-channel.js';
 
 const GROUPS = [['Breadboards', ['breadboard-half', 'breadboard-full']], ['Power', ['supply', 'pull-up', 'pull-down']],
+  // (the boards, #5215: an Arduino, an FPGA board, with their real pins)
+  ['Boards', PART_ORDER.filter((t) => PARTS[t].kind === 'board')],
   ['Inputs', ['logic-switch', 'button', 'spdt', 'dip-4', 'dip-8', 'clock']], ['Outputs', ['led', 'seg7-cc', 'seg7-ca', 'led-bar-10', 'probe']],
   ['Gates (74LS)', PART_ORDER.filter((t) => PARTS[t].gates && PARTS[t].family === 'ttl')], ['Gates (4000)', PART_ORDER.filter((t) => PARTS[t].gates && PARTS[t].family === 'cmos')],
   // (an IC written once in VHDL whose function is a decoder's, a multiplexer's…: an MSI IC, #4397)
@@ -226,7 +229,8 @@ export function mountCircuitParts({ root, tool, setTool, importKicad = null, bro
     hideSymbolTip();
     const mine = projectParts().map((d) => d.type);
     for (const [title, types] of [...GROUPS, ...(mine.length ? [['KiCad parts (project)', mine]] : [])]) {
-      const its = types.filter((t) => !q || foldText(`${t} ${partDef(t).title} ${tr(partDef(t).title)} ${partDef(t).chip || ''} ${partDef(t).kicad?.value || ''} ${partDef(t).kicad?.description || ''} ${partDef(t).kicad ? functionTextOf(kicadFunction(partDef(t))) : ''}`).includes(q));
+      // (the boards, #5215: co-design's, not in a release yet, #5202)
+      const its = types.filter((t) => partDef(t).kind !== 'board' || codesignOn()).filter((t) => !q || foldText(`${t} ${partDef(t).title} ${tr(partDef(t).title)} ${partDef(t).chip || ''} ${partDef(t).kicad?.value || ''} ${partDef(t).kicad?.description || ''} ${partDef(t).kicad ? functionTextOf(kicadFunction(partDef(t))) : ''}`).includes(q));
       if (!its.length) continue;
       const open = !folded.has(title) || q;
       rows.push(h('div', { class: `circ-lib-title${open ? ' open' : ''}`, onclick: () => { if (folded.has(title)) folded.delete(title); else folded.add(title); renderParts(); } },

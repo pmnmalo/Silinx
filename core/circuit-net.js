@@ -24,7 +24,7 @@ export function circuitNets(m) {
     for (const h of partHoles(p)) { spot(h.x, h.y).holes.push({ part: p.id, name: h.name }); join(`p:${key(h.x, h.y)}`, `s:${p.id}:${h.strip}`); }
   }
   for (const p of m.parts) {
-    for (const q of partPins(p)) { spot(q.x, q.y).pins.push({ part: p.id, n: q.n, name: q.name, dir: q.dir, ...(q.tri ? { tri: true } : {}), ...(q.io ? { io: true } : {}) }); join(`p:${key(q.x, q.y)}`, `pin:${p.id}.${q.n}`); }
+    for (const q of partPins(p)) { spot(q.x, q.y).pins.push({ part: p.id, n: q.n, name: q.name, dir: q.dir, ...(q.tri ? { tri: true } : {}), ...(q.io ? { io: true } : {}), ...(q.supply ? { supply: true } : {}) }); join(`p:${key(q.x, q.y)}`, `pin:${p.id}.${q.n}`); }
   }
   for (const p of m.parts) for (const [x, y] of partDef(p.type)?.bridges || []) join(`pin:${p.id}.${x}`, `pin:${p.id}.${y}`);
   for (const w of m.wires) {
@@ -57,8 +57,10 @@ export function circuitNets(m) {
 export function netSupply(net) {
   return { vcc: net.pins.some((q) => q.dir === 'vcc' && isSupplyPin(q)), gnd: net.pins.some((q) => q.dir === 'gnd' && isSupplyPin(q)) };
 }
-// (a supply's terminal: its pins are named + and −; an IC's VCC and GND pins draw from the net, they drive nothing)
-const isSupplyPin = (q) => q.name === '+' || q.name === '-';
+// (a supply's terminal: its pins are named + and −, a board's 5V, 3V3 and GND are one, #5215; an IC's VCC and GND pins
+// draw from the net, they drive nothing)
+/** Whether a pin of a net is a supply's terminal (it drives the net), not an IC's power pin (it draws from it). */
+export const isSupplyPin = (q) => (q.dir === 'vcc' || q.dir === 'gnd') && (!!q.supply || q.name === '+' || q.name === '-');
 
 /** A net's name in a message: its pins ("U1 pin 3 (1Y), D1 A"), at most four. */
 export function netText(net) {

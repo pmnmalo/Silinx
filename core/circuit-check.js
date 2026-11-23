@@ -1,7 +1,7 @@
 // A circuit's check (#3897, #3899, docs/CIRCUITS.md): its errors and warnings, as the console says them (the editor
 // after every change and on Check, the MCP server's check_drawing), each pointing at its part or wire. Isomorphic module.
 import { partDef, partPins } from './circuit-parts.js';
-import { circuitNets, netSupply, netText } from './circuit-net.js';
+import { circuitNets, netSupply, netText, isSupplyPin } from './circuit-net.js';
 import { portName, partInputs, partLamps, busOf } from './circuit-io.js';
 import { isName } from './ident.js';
 import { reservedError } from './reserved.js';
@@ -10,7 +10,7 @@ import { checkModels } from './circuit-kicad-hdl.js';
 // a name of the HDL: an identifier (core/ident.js), not a reserved word of VHDL or Verilog (core/reserved.js), nor a
 // name the generated VHDL uses itself
 const badName = (n) => !isName(n) || !!reservedError(n) || /^(std_logic|ieee)$/i.test(n);
-const isSupply = (q) => (q.dir === 'vcc' || q.dir === 'gnd') && (q.name === '+' || q.name === '-');
+const isSupply = isSupplyPin;
 const pinText = (q) => `${q.part} ${q.name}`;
 const part = (id) => ({ kind: 'part', id });
 
@@ -147,7 +147,9 @@ function checkIc(p, d, nets, { driven, via, typeOf }, { err, warn }) {
 // way round, a display's common on the wrong rail)
 function checkOther(p, d, nets, { warn }) {
   const netOf = (n) => nets.nets[nets.pinNet.get(`${p.id}.${n}`)];
-  if (partPins(p).every((q) => { const net = netOf(q.n); return net.pins.length < 2 && !net.wires.length; })) { warn(`${p.id} (${d.title}) joins nothing`, part(p.id)); return; }
+  // (a board's pins joined inside it, its GNDs, #5215: its own pins only)
+  const alone = (net) => (d.kind === 'board' ? net.pins.every((q) => q.part === p.id) : net.pins.length < 2) && !net.wires.length;
+  if (partPins(p).every((q) => alone(netOf(q.n)))) { warn(`${p.id} (${d.title}) joins nothing`, part(p.id)); return; }
   const base = d.kicad ? d.behaves : p.type;   // (a KiCad part behaving as the library's, #4349)
   if (base === 'led') {
     const a = netOf(1), k = netOf(2), sa = netSupply(a), sk = netSupply(k);

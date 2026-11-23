@@ -7,12 +7,12 @@
 // three-state output's level while it is enabled. No 'Z', no 'X', no delays,
 // no power: a circuit with errors (a short, an unpowered IC) has no HDL. A lamp's port is its anode and not its cathode.
 // Isomorphic module.
-import { partDef } from './circuit-parts.js';
+import { partDef, supplyPins } from './circuit-parts.js';
 import { circuitNets } from './circuit-net.js';
 import { partInputs, partLamps, portRef } from './circuit-io.js';
 import { pinPort, icPorts } from './circuit-hdl-ics.js';
 
-const isSupply = (q) => q.name === '+' || q.name === '-';
+const isSupply = (q) => !!q.supply || q.name === '+' || q.name === '-';   // (a board's 5V and GND too, #5215)
 // an IC's three-state outputs and their enables [port, level] (all at their levels): a 74595's (one), #4397's (several)
 const threeStateOf = (d) => (d.threeState ? d.threeState : d.seq?.threeState ? { outs: d.seq.threeState.outs, enable: [[d.seq.threeState.enable, d.seq.threeState.active]] } : null);
 const OPS = { nand: ['and', true], and: ['and', false], or: ['or', false], nor: ['or', true], xor: ['xor', false], xnor: ['xor', true] };
@@ -30,7 +30,7 @@ export function digitalTop(m, V, entityOf) {
   for (const p of m.parts) {
     const d = partDef(p.type);
     if (!d) continue;
-    if (d.kind === 'supply') { sources.set(netOf(p.id, 1), lit('1')); sources.set(netOf(p.id, 2), lit('0')); }
+    for (const x of supplyPins(d)) sources.set(netOf(p.id, x.n), lit(x.value));   // (a board's 5V and GND too, #5215)
     for (const s of d.sources || []) sources.set(netOf(p.id, s.pin), portRef(partInputs(p)[s.input].port, V));
     for (const g of d.gates || []) (gatesOut.get(netOf(p.id, g.out)) ?? gatesOut.set(netOf(p.id, g.out), []).get(netOf(p.id, g.out))).push({ p, d, g });
     // (an MSI or sequential IC; a KiCad part modelled by a module of the project, #4283)
