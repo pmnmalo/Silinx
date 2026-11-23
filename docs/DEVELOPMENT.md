@@ -49,7 +49,8 @@ symbols moved and widened, Undo and Redo), scripted and random with a fixed seed
 diagram, the ASM chart, the Petri net, the truth table), a module's symbol made, edited and updated in the schematics that
 use it, a hierarchy gone down and back up (`symbols`, `hierarchy`), an example's pins given in I/O Pin Planning and
 implemented (`constraints`), the Board Emulator on the stopwatch, the vga and the uart against the design's simulation for
-the same inputs (`emulator`), the drawing checked after every step; in two parts a configuration of about 7 minutes each
+the same inputs (`emulator`), sessions on a phone's and a tablet's screen by touch and with the keyboard alone
+(`phone`, `tablet`, `keyboard`), the drawing checked after every step; in two parts a configuration of about 7 minutes each
 (#5295), balanced by the files' times (`node scripts/test-shard.mjs 1/2 --usability --dry-run --list` shows them; a
 Usability run's times go into `test/timings.json` with `node scripts/update-test-timings.mjs <its run id>`);
 a failure's report (its seed, its steps shrunk, what broke) is quoted in the issue the scheduled run opens, its
