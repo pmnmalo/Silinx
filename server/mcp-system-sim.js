@@ -119,7 +119,7 @@ function runControls(sim, boards, controls, end) {
 }
 
 // what the boards show, a line each
-const boardLines = shown => Object.entries(shown).map(([id, s]) => (s.inputs && s.lit ? `${id}'s circuit: lit ${s.lit.join(' ') || 'none'}${Object.entries(s.sensors || {}).map(([k, x]) => `; ${k} ${x.temp.toFixed(1)} °C`).join('')}.` : s.leds
+const boardLines = shown => Object.entries(shown).map(([id, s]) => (s.inputs && s.lit ? `${id}'s circuit: lit ${s.lit.join(' ') || 'none'}${Object.entries(s.sensors || {}).map(([k, x]) => `; ${k} ${x.temp.toFixed(1)} °C`).join('')}${Object.entries(s.servos || {}).map(([k, x]) => `; ${k} at ${Math.round(x.angle)}°`).join('')}.` : s.leds
   ? `${id}'s board: LEDs ${s.leds.map((v, k) => [v, k]).filter(([v]) => v > 0.5).map(([, k]) => `LD${k}`).join(' ') || 'off'}${s.digits?.some(Boolean) ? `; display ${s.digits.map(d => (d ? digitText(d) : ' ')).reverse().join('')}` : ''}.`
   : `${id}'s board: LED L ${s.led > 0.5 ? 'on' : 'off'}; pins high ${Object.entries(s.pins).filter(([, v]) => v === 1).map(([p]) => p).join(' ') || 'none'}.`));
 // a digit's segments as the hexadecimal digit they draw, or ? (other patterns)

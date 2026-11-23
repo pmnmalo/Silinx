@@ -14,6 +14,7 @@ import { coreModel, MODEL_TPD } from './circuit-live-model.js';
 import { createLcd } from './circuit-lcd.js';
 import { createSsd1306 } from './circuit-oled.js';
 import { createLm75 } from './circuit-lm75.js';
+import { createServo } from './circuit-servo.js';
 import { createI2cPeripheral } from './circuit-i2c.js';
 
 const SETTLE_NS = 1000;   // a circuit still changing after this long is said to oscillate
@@ -68,6 +69,11 @@ export function createCircuitSim(m, { nets = circuitNets(m), onLevel = null, run
         bus: createI2cPeripheral(d.address, { onStart: () => oled.start(), onByte: (b) => oled.write(b) }), was: false };
       ics.push(ic);
       for (const net of [ic.vcc, ic.gnd, ic.scl, ic.sda]) readers[net].add(ic);
+    }
+    // (a servo, #5347: its signal's pulses measured, its arm moving)
+    if (d.kind === 'servo') {
+      const at = (name) => netOfPin(p.id, d.pins.find((q) => q.name === name).n), ic = { part: p, def: d, servo: createServo(), vcc: at('VCC'), gnd: at('GND'), sig: at('SIG'), prev: null, was: false };
+      ics.push(ic); for (const net of [ic.vcc, ic.gnd, ic.sig]) readers[net].add(ic);
     }
     // (a temperature sensor, #5342: its I²C peripheral at 0x48 + A2..A0, read too; its OS open drain)
     if (d.kind === 'sensor') {
@@ -136,6 +142,13 @@ export function createCircuitSim(m, { nets = circuitNets(m), onLevel = null, run
       const on = powered(ic);
       if (!on) { if (ic.was) { ic.oled.reset(); ic.bus.reset(); } drive(ic.sdaDrv, 'Z'); }
       else drive(ic.sdaDrv, ic.bus.feed(levels[ic.scl], levels[ic.sda]) ? '0' : 'Z');
+      ic.was = on;
+      return;
+    }
+    if (ic.servo) {   // (its signal's edges while powered; unpowered: still)
+      const on = powered(ic), v = levels[ic.sig];
+      if (!on) { if (ic.was) ic.servo.stop(time); } else if (v !== ic.prev) ic.servo.edge(v, time);
+      ic.prev = on ? v : null;
       ic.was = on;
       return;
     }
@@ -287,6 +300,9 @@ export function createCircuitSim(m, { nets = circuitNets(m), onLevel = null, run
     /** each character LCD's display: { on, lines, cursor, blink } (#5330) */
     lcds: () => Object.fromEntries(ics.filter((x) => x.lcd).map((x) => [x.part.id, x.lcd.state()])),
     /** each graphic OLED's display: { on, lit, pages, rows } (#5336) */
+    /** each servo's state now: { angle, target, width, period } (#5347), and what it said (once each) */
+    servos: () => Object.fromEntries(ics.filter((x) => x.servo).map((x) => [x.part.id, x.servo.state(time)])),
+    servoWarnings: () => ics.filter((x) => x.servo).flatMap((x) => x.servo.warnings.map((w) => `${x.part.id}: ${w.text}`)),
     /** each temperature sensor's state: { temp, raw, conf, thyst, tos, os, pointer } (#5342) */
     sensors: () => Object.fromEntries(ics.filter((x) => x.lm75).map((x) => [x.part.id, x.lm75.state()])),
     /** a temperature sensor's temperature set now (°C): a conversion, its OS as it gives */

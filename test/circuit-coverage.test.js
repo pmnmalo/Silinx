@@ -19,7 +19,7 @@ const OTHER_TESTS = {
   led: 'circuit.test.js', 'seg7-cc': 'circuit-parts.test.js', 'seg7-ca': 'circuit-parts.test.js', 'led-bar-10': 'circuit-parts.test.js',
   probe: 'circuit-probe.test.js',
   // (the boards, #5215: their pins against the boards' descriptions)
-  'lcd-1602': 'circuit-lcd.test.js', 'oled-ssd1306': 'circuit-oled.test.js', lm75: 'circuit-lm75.test.js', 'arduino-uno': 'circuit-boards.test.js', 'arduino-nano': 'circuit-boards.test.js', 'fpga-basys2': 'circuit-boards.test.js', 'fpga-nexys2': 'circuit-boards.test.js',
+  'lcd-1602': 'circuit-lcd.test.js', 'oled-ssd1306': 'circuit-oled.test.js', lm75: 'circuit-lm75.test.js', 'servo-sg90': 'circuit-servo.test.js', 'arduino-uno': 'circuit-boards.test.js', 'arduino-nano': 'circuit-boards.test.js', 'fpga-basys2': 'circuit-boards.test.js', 'fpga-nexys2': 'circuit-boards.test.js',
 };
 // a part with a model and no reference test yet: its issue (none today; never a part left out silently)
 const GAPS = {};
