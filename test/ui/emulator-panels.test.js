@@ -52,7 +52,8 @@ uiTest('#2666 #2713 the Board Emulator: Watch and notes in a side panel at the r
   assert.equal(L.width, 280);
   // (no hint line: the buttons' tips say how to press them, #4764; what it says of the design, in the console, #2718)
   assert.equal(await page.eval((d) => document.querySelector(`${d} .emu-side .emu-hint`), DOC), null);
-  await waitEmuNote(page, /^the design is compiled .* as your eye does on the real board\.$/);
+  // (its design drives no display digit: no word of their persistence, #5292)
+  await waitEmuNote(page, /^the design is compiled .* the event-driven engine shows X values and the design's messages\.$/);
   // the menu: opened by its button, closed by Esc and by a click elsewhere; its fields work
   const more = `${DOC} .emu-bar .tb-more-btn`;
   await page.click(more);
