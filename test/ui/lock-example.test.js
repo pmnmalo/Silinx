@@ -21,12 +21,13 @@ uiTest('#5111 New Project from the lock example: every kind of source in the Des
   await page.waitDialog('New Project Wizard');
   await page.dialogButton('Next >');   // (its kind: With an FPGA)
   await page.waitFor((s) => document.querySelector(s)?.options.length > 1, [SEL], { what: 'Start from' });
-  const last = () => page.eval((s) => { const o = document.querySelector(s).options; return o[o.length - 1].textContent; }, SEL);
+  // (the last one shown: the co-design examples, after it, hidden for an FPGA project, #4702)
+  const last = () => page.eval((s) => [...document.querySelector(s).options].filter((o) => !o.hidden).pop().textContent, SEL);
   assert.equal(await last(), 'Example: lock');
   await setLanguage(page, 'pt');
-  await page.waitFor((s) => { const o = document.querySelector(s).options; return o[o.length - 1].textContent === 'Exemplo: lock'; }, [SEL], { what: 'Portuguese' });
+  await page.waitFor((s) => [...document.querySelector(s).options].filter((o) => !o.hidden).pop().textContent === 'Exemplo: lock', [SEL], { what: 'Portuguese' });
   await setLanguage(page, 'en');
-  await page.waitFor((s) => { const o = document.querySelector(s).options; return o[o.length - 1].textContent === 'Example: lock'; }, [SEL], { what: 'English again' });
+  await page.waitFor((s) => [...document.querySelector(s).options].filter((o) => !o.hidden).pop().textContent === 'Example: lock', [SEL], { what: 'English again' });
   await page.fill(SEL, 'lock', { index: 0 });
   await page.fill('.dlg-overlay .wiz-main input[type=text]', 'Lock');
   await page.dialogButton('Next >');
