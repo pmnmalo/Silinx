@@ -62,12 +62,20 @@
 .circuit-editor .circ-oled-body { fill: color-mix(in srgb, var(--asm-panel) 40%, #1f4f8a 60%); stroke: var(--asm-border); stroke-width: 1.2; }
 .circuit-editor .circ-oled-glass { fill: #05070a; stroke: #222; stroke-width: 1; }
 .circuit-editor .circ-oled-px { fill: #8fd8ff; }
-.circuit-editor .circ-board-body { stroke: var(--asm-border); stroke-width: 1.2; }
-.circuit-editor .circ-board-mcu { fill: color-mix(in srgb, var(--asm-panel) 55%, #00878f 45%); }
-.circuit-editor .circ-board-fpga { fill: color-mix(in srgb, var(--asm-panel) 60%, #7a2e2e 40%); }
-.circuit-editor .circ-board-name { font: bold 13px var(--asm-mono, monospace); fill: var(--asm-fg); }
-.circuit-editor .circ-board-pin { font: 7px var(--asm-mono, monospace); fill: var(--asm-fg); }
-.circuit-editor .circ-board-conn { font: bold 10px var(--asm-mono, monospace); fill: var(--asm-fg); }
+.circuit-editor .circ-board-body { fill: transparent; }
+.circuit-editor .circ-board-outline { fill: none; stroke: none; pointer-events: none; }
+.circuit-editor .circ-sel > .circ-board-outline { stroke: var(--asm-accent); stroke-width: 2.4; }
+/* a board's parts as the Board Emulator draws them (#5366: web/js/emulator.js's and the boards' CSS), its own colours */
+.circuit-editor .circ-bd-silk { font: bold 8px Arial, sans-serif; fill: #e8edf7; }
+.circuit-editor .circ-bd-led { fill: #1b3a23; stroke: #0a0a0a; }
+.circuit-editor .circ-bd-led.circ-bd-on { fill: #ff3b30; stroke: #200; }
+.circuit-editor .circ-bd-sw { fill: #111; stroke: #000; }
+.circuit-editor .circ-bd-sw-knob { fill: #4a4a4a; stroke: #000; }
+.circuit-editor .circ-bd-pow-knob { fill: #fff; }
+.circuit-editor .circ-bd-btn-dark { fill: #1a1a1a; stroke: #000; }
+.circuit-editor .circ-bd-cap-dark { fill: #3a3a3a; }
+.circuit-editor .circ-bd-btn-grey { fill: #c9ccd1; stroke: #7b8088; }
+.circuit-editor .circ-bd-cap-grey { fill: #2a2a2a; }
 .circuit-editor .circ-label, .circuit-editor .circ-supply-text { font: 10px var(--asm-mono, monospace); fill: var(--asm-fg); }
 .circuit-editor .circ-led { stroke: #555; stroke-width: 1; opacity: .45; }
 .circuit-editor .circ-led.lit { opacity: 1; filter: drop-shadow(0 0 4px currentColor); }

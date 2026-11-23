@@ -1,7 +1,6 @@
 // Silinx - Board Emulator: the drawing helpers of the boards (#405, #2478: out of emulator.js as they were): the PCB
 // in SVG, its connectors and chips, the frame the layouts place the parts on, and the note under the board.
 import { esc } from './dom.js';
-import { noMenu } from './emulator-board.js';
 
 const SVG = (tag, attrs = {}) => {
   const el = document.createElementNS('http://www.w3.org/2000/svg', tag);
@@ -17,8 +16,12 @@ export function scopeIds(body, n) {
   return ids.size ? body.replace(/(\sid="|url\(#|href="#)([^")]+)/g, (m, pre, id) => (ids.has(id) ? `${pre}${id}-${n}` : m)) : body;
 }
 let drawn = 0;
+/** No context menu over the emulated board: on a tablet a long press is one, and it released a push button held down
+ *  (#1985). (Here, not in emulator-board.js, so that this module imports no emulator: the circuit's boards, #5366.) */
+export const noMenu = (el) => el.addEventListener('contextmenu', (e) => e.preventDefault());
 
-function svgEl(w, hgt, body) {
+/** A board's drawing, an <svg> w x hgt of its own ids: the emulators' and the circuit editor's boards' (#5366). */
+export function svgEl(w, hgt, body) {
   const s = SVG('svg', { width: w, height: hgt, viewBox: `0 0 ${w} ${hgt}`, class: 'emu-pcb-art' });
   s.innerHTML = scopeIds(body, `b${++drawn}`);
   return s;
@@ -37,6 +40,21 @@ export function boardFrame({ h, W, H, art, board, title, clockNote }) {
   const wrap = h('div', { class: 'emu-board-wrap' }, pcb, boardNote(h, board, title, clockNote));
   noMenu(wrap);
   return { pcb, put, wrap };
+}
+
+/** A board's parts put on it at their places (emulator-basys2.js basys2Places): its LEDs, switches, buttons, digits and
+ *  power switch (the emulator's widgets), its silkscreen, the design's ports. */
+export function putPlaces(places, { h, put, silk, mkDigit, mkLed, mkSwitch, mkButton, mkPower, portLabel, bitFor }) {
+  const part = (w, name) => { w.dataset.part = name; return w; };
+  for (const q of places) {
+    if (q.kind === 'silk') put(h('span', { class: silk }, q.text), q.x, q.y);
+    else if (q.kind === 'port') put(h('span', { class: `emu-port${bitFor(q.res, q.k) ? '' : ' nc'}` }, portLabel(q.res, q.k)), q.x, q.y);
+    else if (q.kind === 'power') part(put(mkPower(), q.x, q.y), 'power').firstChild.classList.add(...q.cls);
+    else if (q.kind === 'led') part(put(mkLed(q.k, q.cls), q.x, q.y), `led${q.k}`);
+    else if (q.kind === 'sw') part(put(mkSwitch(q.k, q.cls), q.x, q.y), `sw${q.k}`);
+    else if (q.kind === 'digit') part(put(mkDigit(q.k), q.x, q.y), `an${q.k}`);
+    else if (q.kind === 'btn') part(put(mkButton(q.k, q.cls), q.x, q.y), `btn${q.k}`);
+  }
 }
 
 // text on the board (its silkscreen, a chip's marking), upright or turned a quarter left

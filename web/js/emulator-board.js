@@ -6,11 +6,10 @@ import { vgaPins } from '/core/vga.js';
 import { BOARD_LAYOUTS, makeDigit } from './emulator.js';
 import { pressEnd } from '/core/emulate-press.js';
 import { mountTouchControls } from './emulator-touch.js';
+import { noMenu } from './emulator-pcb.js';
 
 /** { digits, leds, powerSwitches, vgaWired } of mountEmulator (compiled(), knobEnd(), lcdView(), powered(), running(): its current values). */
-/** No context menu over the emulated board: on a tablet a long press is one, and it released a push button held down
- *  (#1985). */
-export const noMenu = (el) => el.addEventListener('contextmenu', (e) => e.preventDefault());
+export { noMenu };
 
 export function mountBoardParts(ctx) {
   const {

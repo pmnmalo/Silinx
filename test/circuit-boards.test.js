@@ -4,8 +4,8 @@
 // simulated with no warnings), its other pins driving nothing; the library, the part's details, its id.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { PARTS, PART_ORDER, partDef, partPins, partsList } from '../core/circuit-parts.js';
-import { BOARD_PARTS } from '../core/circuit-boards.js';
+import { PARTS, PART_ORDER, partDef, partPins, partsList, partCorners } from '../core/circuit-parts.js';
+import { BOARD_PARTS, BOARD_ART, PMOD_W } from '../core/circuit-boards.js';
 import { MCU_BOARDS } from '../core/system-doc.js';
 import { BOARDS } from '../core/boards.js';
 import { normalizeCircuit, newCircuit, newId } from '../core/circuit.js';
@@ -72,6 +72,25 @@ test('#5215 the FPGA boards\' Pmod pins are their package pins in the board\'s d
   // a 12-pin Pmod's names (the Nexys2's): 1–4 and 7–10, GND and 3V3 in each row
   assert.deepEqual(PARTS['fpga-nexys2'].pins.slice(0, 12).map((p) => p.name), ['JA1', 'JA2', 'JA3', 'JA4', 'GND', '3V3', 'JA7', 'JA8', 'JA9', 'JA10', 'GND', '3V3']);
   assert.deepEqual(PARTS['fpga-basys2'].pins.slice(0, 6).map((p) => p.name), ['JA1', 'JA2', 'JA3', 'JA4', 'GND', '3V3']);
+});
+
+test('#5366 the boards\' bodies are their drawings\' (the emulators\'): their size from their pin 1 at their pitch; the Pmods 0.9 inch apart, the Uno\'s A5 under its D0', () => {
+  for (const d of BOARD_PARTS) {
+    const a = BOARD_ART[d.board], [x, y] = a.pin1;
+    // (the drawing's corners on the grid, its pin 1 the part's place; every pin on it)
+    assert.deepEqual(d.size, { x0: Math.round(-x / a.pitch * 100) / 100, y0: Math.round(-y / a.pitch * 100) / 100, x1: Math.round((a.w - x) / a.pitch * 100) / 100, y1: Math.round((a.h - y) / a.pitch * 100) / 100 }, d.type);
+    for (const p of d.pins) assert.ok(p.dx > d.size.x0 && p.dx < d.size.x1 && p.dy > d.size.y0 && p.dy < d.size.y1, `${d.type} ${p.name}: on the board`);
+    assert.deepEqual(partCorners({ type: d.type, x: 10, y: 20 })[0], [10 + d.size.x0, 20 + d.size.y0]);
+  }
+  // (the Board Emulator's Pmods: JA1, JB1… 0.9 inch apart, a 12-pin one's two rows 0.1 inch apart)
+  assert.equal(PMOD_W, 9);
+  const first = (t) => PARTS[t].pins.filter((p) => /^J[A-D](1|7)$/.test(p.name)).map((p) => [p.name, p.dx, p.dy]);
+  assert.deepEqual(first('fpga-basys2'), [['JA1', 0, 0], ['JB1', 9, 0], ['JC1', 18, 0], ['JD1', 27, 0]]);
+  assert.deepEqual(first('fpga-nexys2'), [['JA1', 0, 0], ['JA7', 0, 1], ['JB1', 9, 0], ['JB7', 9, 1], ['JC1', 18, 0], ['JC7', 18, 1]]);
+  // (an Uno's real headers: D0 over A5, VIN 0.2 inch left of A0, IOREF 0.5 inch right of SCL; a Nano's D1 its pin 1)
+  const at = (t, n) => { const p = PARTS[t].pins.find((q) => q.name === n); return [p.dx, p.dy]; };
+  assert.deepEqual(['SCL', 'D8', 'D7', 'D0', 'IOREF', 'VIN', 'A0', 'A5'].map((n) => at('arduino-uno', n)), [[0, 0], [9, 0], [11, 0], [18, 0], [5, 19], [11, 19], [13, 19], [18, 19]]);
+  assert.deepEqual([BOARD_ART['arduino-uno'].w / BOARD_ART['arduino-uno'].pitch, BOARD_ART['arduino-uno'].h / BOARD_ART['arduino-uno'].pitch], [27, 21], 'an Uno: 2.7 x 2.1 inch');
 });
 
 test('#5215 the boards in the library: after the parts, before the ICs; their details, their ids; not exported to KiCad', () => {

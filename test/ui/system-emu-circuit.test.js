@@ -15,7 +15,7 @@ const ED = '.doc:not([hidden]) .system-editor';
 const EMU = '.doc:not([hidden]) .sys-emu';
 const BENCH = { format: 'silinx-circuit', version: 1, name: 'bench', lang: 'vhdl',
   parts: [{ id: 'F1', type: 'fpga-basys2', x: 0, y: 30, label: 'fpga' }, { id: 'S1', type: 'logic-switch', x: 8, y: 25 }, { id: 'D2', type: 'led', x: 12, y: 26, color: 'green' }],
-  wires: [{ id: 'w1', points: [[8, 25], [8, 30]], color: 'blue' }, { id: 'w5', points: [[10, 30], [12, 26]], color: 'blue' }, { id: 'w6', points: [[13, 26], [4, 30]], color: 'black' }] };
+  wires: [{ id: 'w1', points: [[8, 25], [9, 30]], color: 'blue' }, { id: 'w5', points: [[11, 30], [12, 26]], color: 'blue' }, { id: 'w6', points: [[13, 26], [4, 30]], color: 'black' }] };
 const SYS = JSON.stringify({ format: 'silinx-system', version: 1, name: 'emu', nodes: [
   { id: 'fpga', kind: 'fpga', module: 'uart', board: 'basys2', variant: '250', pins: { clk: 'B8', rx: 'J3', tx: 'A3', 'btn<0>': 'C6', 'led<0>': 'C5' }, interfaces: [{ name: 'uart', kind: 'uart', tx: 'tx', rx: 'rx', baud: 9600, frame: '8N1' }], x: 300, y: 0 },
   { id: 'term', kind: 'terminal', interfaces: [{ name: 'serial', kind: 'uart', baud: 9600, frame: '8N1' }], x: 0, y: 0 },

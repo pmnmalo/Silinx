@@ -1,5 +1,5 @@
 // UI: the boards as a circuit's parts (#5215): the Parts panel's Boards (the Arduino Uno and Nano, the Basys2 and Nexys2),
-// a Nano placed from it across the breadboard's channel, drawn with its pins' names; its 5V and GND wired to the rails:
+// a Nano placed from it across the breadboard's channel, drawn with its pins' names (as the System Emulator draws it, #5366); its 5V and GND wired to the rails:
 // Check says nothing of it; Try it: its 5V at 1, its GND at 0, its D2 open (its program is a System's); its Part info
 // (its pins' roles); Portuguese. Both interfaces.
 import { before, after } from 'node:test';
@@ -41,8 +41,9 @@ uiTest('#5215 Circuit editor: a Nano placed from the Parts panel\'s Boards power
   await page.key('Escape');
   assert.deepEqual((await model(page)).parts.find((p) => p.type === 'arduino-nano'), { id: 'A1', type: 'arduino-nano', x: 0, y: 8 });
   const texts = await page.eval((ed) => [...document.querySelectorAll(`${ed} [data-kind=part][data-id=A1] text`)].map((t) => t.textContent), ED);
-  assert.deepEqual(texts.slice(0, 4), ['Arduino Nano', 'A1', 'D1', 'D0']);
-  assert.ok(texts.includes('A7') && texts.includes('5V') && texts.includes('VIN'));
+  // (drawn as the System Emulator draws it, #5366: its pins' names on it, its id under it)
+  assert.deepEqual([texts.slice(0, 3), texts.at(-1)], [['ATmega328P', '16 MHz', 'NANO'], 'A1']);
+  assert.deepEqual(['D1', 'D0', 'A7', '5V', 'VIN'].filter((t) => !texts.includes(t)), []);
   // drawn under the wires: the breadboard, the Nano, then the wires
   assert.equal(await page.eval((ed) => { const g = [...document.querySelector(`${ed} .circ-canvas .circ-drawing`).children]; return g.findIndex((e) => e.dataset.id === 'A1') < g.findIndex((e) => e.dataset.kind === 'wire'); }, ED), true);
   // its 5V (pin 27, c4) to the top + rail, its GND (pin 4, g4) from h4 to the top − rail

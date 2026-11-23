@@ -77,7 +77,7 @@ test('#5347 the servo\'s checks: powered, its signal driven, joined to nothing; 
   assert.deepEqual(lines(normalizeCircuit({ name: 'c', parts: [{ id: 'M1', type: 'servo-sg90', x: 0, y: 0 }] })), ['warning: M1 (Servo (SG90, PWM)) joins nothing']);
   // (its signal an Arduino's pin: its program's, in a System)
   const uno = normalizeCircuit({ name: 'c', parts: [{ id: 'A1', type: 'arduino-uno', x: 0, y: 0 }, { id: 'M1', type: 'servo-sg90', x: 30, y: 30 }],
-    wires: [{ id: 'g', points: [[3, 0], [30, 30]] }, { id: 'v', points: [[5, 19], [31, 30]] }, { id: 's', points: [[8, 0], [32, 30]] }] });
+    wires: [{ id: 'g', points: [[3, 0], [30, 30]] }, { id: 'v', points: [[8, 19], [31, 30]] }, { id: 's', points: [[8, 0], [32, 30]] }] });
   assert.deepEqual(lines(uno), []);
   assert.deepEqual([PARTS['servo-sg90'].kind, SERVO_SG90.pins.map((p) => `${p.name} ${p.dir}`)], ['servo', ['GND gnd', 'VCC vcc', 'SIG in']]);
   assert.match(partInfo('servo-sg90').about, /^Its arm at the angle its signal's pulses ask for/);

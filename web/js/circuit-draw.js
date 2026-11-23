@@ -82,7 +82,8 @@ function turnWhole(g, p, named = false) {
   if (!rot) return g;
   const c = named ? middle(g) : null;
   g.setAttribute('transform', `rotate(${90 * rot} ${px(p.x)} ${px(p.y)})`);
-  for (const t of g.querySelectorAll('text')) {
+  // (a board's drawing turned as it is, its silkscreen too: circuit-draw-board.js)
+  for (const t of [...g.querySelectorAll('text')].filter((e) => !e.closest('.circ-board-art'))) {
     const x = Number(t.getAttribute('x')), y = Number(t.getAttribute('y'));
     t.setAttribute('transform', `rotate(${-90 * rot} ${x} ${y - 3.5})`);
     if (!c || !t.classList.contains('circ-label')) continue;
@@ -98,8 +99,9 @@ function middle(g) {
   const b = { x0: Infinity, x1: -Infinity, y0: Infinity, y1: -Infinity };
   const add = (x0, y0, x1, y1) => { b.x0 = Math.min(b.x0, x0); b.y0 = Math.min(b.y0, y0); b.x1 = Math.max(b.x1, x1); b.y1 = Math.max(b.y1, y1); };
   const n = (e, a) => Number(e.getAttribute(a));
-  for (const e of g.querySelectorAll('rect')) add(n(e, 'x'), n(e, 'y'), n(e, 'x') + n(e, 'width'), n(e, 'y') + n(e, 'height'));
-  for (const e of g.querySelectorAll('circle')) add(n(e, 'cx') - n(e, 'r'), n(e, 'cy') - n(e, 'r'), n(e, 'cx') + n(e, 'r'), n(e, 'cy') + n(e, 'r'));
+  const own = (sel) => [...g.querySelectorAll(sel)].filter((e) => !e.closest('.circ-board-art'));
+  for (const e of own('rect')) add(n(e, 'x'), n(e, 'y'), n(e, 'x') + n(e, 'width'), n(e, 'y') + n(e, 'height'));
+  for (const e of own('circle')) add(n(e, 'cx') - n(e, 'r'), n(e, 'cy') - n(e, 'r'), n(e, 'cx') + n(e, 'r'), n(e, 'cy') + n(e, 'r'));
   return [(b.x0 + b.x1) / 2, (b.y0 + b.y1) / 2];
 }
 

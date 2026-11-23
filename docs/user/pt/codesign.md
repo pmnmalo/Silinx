@@ -49,7 +49,8 @@ ligados por UART e GPIO.
   ligação. Fios outra vez volta atrás.
 - **As placas num circuito**: o painel das peças do editor de circuitos tem **Placas**, o Arduino Uno e o Nano, a
   Basys2 e a Nexys2, com os seus pinos reais (D0…D13, A0…; os pinos Pmod de uma placa FPGA, JA1…, cada um com o seu
-  pino do encapsulamento na dica). Um Nano fica sobre o canal de uma placa de ensaio. Os 5V, 3V3 e GND de uma placa
+  pino do encapsulamento na dica), cada uma desenhada como os emuladores a desenham, à escala do circuito, os seus pinos
+  onde estão os dos seus conectores e Pmods. Um Nano fica sobre o canal de uma placa de ensaio. Os 5V, 3V3 e GND de uma placa
   alimentam a placa de ensaio; os outros pinos são do seu programa ou do seu projeto, conduzidos quando o circuito for um
   nó do Sistema (sozinhos, no Try it, não conduzem nada).
 - **Um circuito entre as placas**: **Circuito**, na barra do editor de Sistema, acrescenta um nó circuito, um circuito do
