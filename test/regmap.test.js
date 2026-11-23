@@ -158,7 +158,7 @@ test('#5288 the FPGA side run with an Uno, its SPI and its TWI (the compiled eng
       const g = generateRegmap(m, { lang });
       const plan = systemPlan(sys, { ports: PORTS });
       const netlist = await netlistOf(designOf([{ path: g.file, lang, role: 'design', text: g.code }], 'pwm_regs'), { run: yosysNode });
-      const r = systemFromInputs(sys, { plan, netlists: { fpga: netlist }, firmware: { uno: { name: 'fw.hex', data: intelHex(avrAssemble(bus === 'spi' ? SPI_PROG : TWI_PROG)) } } });
+      const r = systemFromInputs(sys, { plan, netlists: { fpga: netlist }, firmware: { uno: { name: 'fw.hex', data: intelHex(avrAssemble(bus === 'spi' ? SPI_PROG : TWI_PROG)) } }, regmaps: { fpga: m } });
       assert.equal(r.error, undefined);
       r.sim.nodes.get('fpga').setPin('count', 0x123);
       r.sim.run(3e9);
@@ -168,8 +168,19 @@ test('#5288 the FPGA side run with an Uno, its SPI and its TWI (the compiled eng
       const ss = bus === 'spi' ? r.sim.links.get('bus_ss').sent : null;
       const a = regAccesses(m, bus === 'spi' ? { spi: rep.spi[0].transfers, ss } : { i2c: rep.i2c[0].transfers });
       assert.deepEqual([a.accesses.map((x) => accessText(m, x)), a.warnings], [['write duty = 0xa5', 'read duty → 0xa5', 'read count → 0x0023 (partial)'], []], `${bus} ${lang}`);
+      // (Simulate System says them, the link's FPGA end made from the map, #5288 step 2)
+      assert.ok(rep.lines.includes('bus (registers of pwm_regs): 3 access(es): write duty = 0xa5; read duty → 0xa5; read count → 0x0023 (partial)'), rep.lines.join('\n'));
+      assert.deepEqual(rep.regs.map((x) => [x.link, x.map, x.accesses.length]), [['bus', 'pwm_regs', 3]]);
     }
   }
+});
+
+test('#5288 the map a module is made from, among the project\'s maps: by its name, its case aside', async () => {
+  const { regmapFor } = await import('../core/regmap.js');
+  const texts = { 'src/a.regs.json': writeRegmap(MAP('spi')), 'src/b.vhd': 'entity pwm_regs is end;', 'src/bad.regs.json': '{' };
+  assert.equal(regmapFor(texts, 'PWM_REGS')?.name, 'pwm_regs');
+  assert.equal(regmapFor(texts, 'other'), null);
+  assert.equal(regmapFor({}, 'pwm_regs'), null);
 });
 
 test('#5288 the program side: the header for SPI and for I²C, its addresses, its functions by access', () => {

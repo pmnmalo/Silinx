@@ -53,3 +53,14 @@
 .sys-emu .sys-pin.low { background: var(--asm-muted); }
 .sys-emu .sys-pin.high { background: var(--sys-hot); border-color: var(--sys-hot); }
 .sys-emu .asm-side { width: 300px; }
+
+/* a register map's editor (web/js/regmap-editor.js, #5288): its registers in a table, a row selected */
+.regmap-editor .regs-body { flex: 1; min-height: 0; overflow: auto; padding: 8px; background: var(--asm-bg); }
+.regmap-editor .regs-table { border-collapse: collapse; font: 12px system-ui, -apple-system, "Segoe UI", sans-serif; color: var(--asm-fg); }
+.regmap-editor .regs-table th { text-align: left; font-weight: 600; padding: 3px 6px; border-bottom: 1px solid var(--asm-line, var(--asm-fg)); }
+.regmap-editor .regs-table td { padding: 2px 4px; }
+.regmap-editor .regs-row.sel { background: color-mix(in srgb, var(--asm-accent) 16%, transparent); }
+.regmap-editor .regs-table .asm-input { width: 7em; }
+.regmap-editor .regs-table .regs-name { width: 10em; }
+.regmap-editor .regs-table :is(.regs-addr, .regs-width) { width: 4.5em; }
+.regmap-editor .regs-address { width: 4.5em; }

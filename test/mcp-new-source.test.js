@@ -54,7 +54,7 @@ test('new_source: a module with its ports and its test bench, in VHDL and in Ver
 
 test('new_source: the drawings, empty, in VHDL and in Verilog; their Check Syntax', async () => {
   for (const [lang, ext] of [['vhdl', 'v'], ['verilog', 'g']]) {
-    for (const [type, label, fileExt] of [['schematic', 'Schematic', 'sch.json'], ['fsm', 'Finite State Machine (FSM)', 'fsm.json'], ['asm', 'Algorithmic State Machine (ASM)', 'asm.json'], ['petri', 'Petri Net', 'pn.json'], ['boolean', 'Boolean Algebra', 'bool.json'], ['circuit', 'Digital Electronic Circuit', 'circ.json']]) {
+    for (const [type, label, fileExt] of [['schematic', 'Schematic', 'sch.json'], ['fsm', 'Finite State Machine (FSM)', 'fsm.json'], ['asm', 'Algorithmic State Machine (ASM)', 'asm.json'], ['petri', 'Petri Net', 'pn.json'], ['boolean', 'Boolean Algebra', 'bool.json'], ['circuit', 'Digital Electronic Circuit', 'circ.json'], ['regmap', 'Register Map', 'regs.json']]) {
       const r = await ok('new_source', { project: 'p', type, name: `${type}_${ext}`, language: lang });
       // its HDL file, as the interface gives it (#3184): not an empty state diagram's or ASM chart's (no module yet)
       const hdl = ['fsm', 'asm'].includes(type) ? null : `src/${type}_${ext}.${lang === 'vhdl' ? 'vhd' : 'v'}`;
@@ -243,7 +243,7 @@ test('new_source: the wizard\'s refusals; an existing file not replaced', async 
   await fails({ type: 'test_bench', name: 'tb_x', module: 'nosuch' }, 'no module \'nosuch\' in the project\'s HDL files');
   await fails({ type: 'test_bench', name: 'tb_y' }, 'module: the module the test bench tests (the project has no top)');
   await fails({ type: 'package', name: 'pk', language: 'verilog' }, 'a package is VHDL\'s');
-  await fails({ type: 'netlist', name: 'n' }, 'type: one of module, test_bench, package, constraints, mem, c, cpp, schematic, fsm, asm, petri, boolean, circuit, lab');
+  await fails({ type: 'netlist', name: 'n' }, 'type: one of module, test_bench, package, constraints, mem, c, cpp, schematic, fsm, asm, petri, boolean, circuit, regmap, lab');
   // a drawing's HDL file taken
   await ok('write_file', { project: 'p', path: 'src/spare.vhd', text: '-- a file\n' });
   await fails({ type: 'asm', name: 'spare' }, 'src/spare.vhd already exists: the HDL generated from the new source would be written there. Choose another name.');

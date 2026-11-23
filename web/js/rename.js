@@ -44,7 +44,7 @@ export function renameSymbolIn(d, lang, path) {
 }
 
 // ---- rename a source (file and/or the module it defines), updating everything that refers to it
-const extOf = p => (/\.(sch|asm|tt|bool|fsm|pn|circ)\.json$/i.exec(p) || /\.[^./]+$/.exec(p) || [''])[0];
+const extOf = p => (/\.(sch|asm|tt|bool|fsm|pn|circ|regs)\.json$/i.exec(p) || /\.[^./]+$/.exec(p) || [''])[0];
 const dirOf = p => (p.includes('/') ? p.replace(/\/[^/]*$/, '/') : '');
 
 export async function renameDialog(file, mod = null) {
@@ -156,10 +156,10 @@ async function renameSource(from, to, oldMod, newMod) {
   try {
     if (to && to !== from) {
       moved.set(from, to);
-      for (const f of filesState.fileTree.filter(f => /\.(sch|asm|tt|bool|fsm|pn|circ)\.json$/i.test(f))) {
+      for (const f of filesState.fileTree.filter(f => /\.(sch|asm|tt|bool|fsm|pn|circ|regs)\.json$/i.test(f))) {
         let d;
         try { d = JSON.parse(await api.readFile(pj.name, f)); } catch { continue; }
-        if (d.generatedFile === from) { d.generatedFile = to; changed.set(f, JSON.stringify(d, null, /\.(asm|tt|bool|fsm)\.json$/i.test(f) ? 2 : 1)); }
+        if (d.generatedFile === from) { d.generatedFile = to; changed.set(f, JSON.stringify(d, null, /\.(asm|tt|bool|fsm|regs)\.json$/i.test(f) ? 2 : 1)); }
       }
     }
     const reopen = await closeTouched(new Set(changed.keys()), moved);

@@ -27,10 +27,11 @@ const TYPES = {
   petri: { label: 'Petri Net', ext: '.pn.json', dir: 'src' },
   boolean: { label: 'Boolean Algebra', ext: '.bool.json', dir: 'src' },
   circuit: { label: 'Digital Electronic Circuit', ext: '.circ.json', dir: 'src' },   // (New Source's name, #4061)
+  regmap: { label: 'Register Map', ext: '.regs.json', dir: 'src' },   // (a co-design's peripheral, #5288)
   lab: { label: 'Guided Lab', ext: '.lab.json', dir: 'labs' },
 };
 const ident = n => n.replace(/[^A-Za-z0-9_]/g, '_');
-const DRAWN = ['schematic', 'fsm', 'asm', 'petri', 'boolean', 'circuit'];
+const DRAWN = ['schematic', 'fsm', 'asm', 'petri', 'boolean', 'circuit', 'regmap'];
 
 // the source's text, as the wizard's Finish writes it: core/new-source-text.js, the interface's (#4751)
 async function sourceText(type, opts) {
@@ -55,7 +56,7 @@ function portsOf(list) {
 export const NEW_SOURCE_TOOLS = [
   {
     name: 'new_source', title: 'New Source',
-    description: 'Add a new source to a project, as the New Source wizard does: module (an HDL module with its ports), test_bench (of a module of the project), package (VHDL), constraints (in the device\'s format: UCF, PCF, LPF, CST, XDC), mem, c or cpp (a function for Silinx HLS), an empty drawing (schematic, fsm or an FSM Wizard template, asm, petri, boolean: a truth table, circuit: a breadboard or a template\'s assembly), or lab (labs/<name>.lab.json, a guided lab\'s steps to edit). In VHDL or Verilog (default: the Preferred Language), from the wizard\'s templates, added to the project; then edit it with write_file. An existing file is not replaced.',
+    description: 'Add a new source to a project, as the New Source wizard does: module (an HDL module with its ports), test_bench (of a module of the project), package (VHDL), constraints (in the device\'s format: UCF, PCF, LPF, CST, XDC), mem, c or cpp (a function for Silinx HLS), an empty drawing (schematic, fsm or an FSM Wizard template, asm, petri, boolean: a truth table, circuit: a breadboard or a template\'s assembly, regmap), or lab (labs/<name>.lab.json, a guided lab\'s steps to edit). In VHDL or Verilog (default: the Preferred Language), from the wizard\'s templates, added; edit it with write_file. An existing file is kept.',
     inputSchema: { type: 'object', properties: {
       project: PROJECT, type: { type: 'string', enum: Object.keys(TYPES), description: 'The source\'s type.' },
       name: STR('Its file name, without the extension (letters, digits, _ and -; a letter first).'),

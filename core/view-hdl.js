@@ -16,8 +16,10 @@ import { generateCircuit } from './circuit-hdl.js';
 import { normalizeCircuit } from './circuit.js';
 import { circuitErrors } from './circuit-check.js';
 import { definesUnit } from './hdl-defines.js';
+import { normalizeRegmap, checkRegmap } from './regmap.js';
+import { generateRegmap } from './regmap-hdl.js';
 
-export const VIEW_RE = /\.(sch|asm|fsm|tt|bool|pn|circ)\.json$/i;
+export const VIEW_RE = /\.(sch|asm|fsm|tt|bool|pn|circ|regs)\.json$/i;
 export const isView = path => VIEW_RE.test(String(path || ''));
 // a C source (Silinx HLS, #1531): its HDL made here from its top function (core/c-hdl.js), as a drawn source's
 // (C++ too, #1590: .cpp, .cc, .cxx)
@@ -92,6 +94,13 @@ function drawnHdl(path, m, modules) {
       // (its module the circuit's, written after its ICs' entities)
       const g = generateCircuit(n, lang, { source: path.split('/').pop() });
       return { path, lang, text: g.code, module: g.module, errors: [] };
+    }
+    if (kind === 'regs') {
+      // (a register map's slave, #5288)
+      const r = normalizeRegmap(m);
+      const errs = checkRegmap(r).filter(x => x.severity === 'error').map(x => `${path}: ${x.message}`);
+      if (errs.length) return { path, lang, text: '', module: r.name || null, errors: errs };
+      return { path, lang, text: generateRegmap(r, { lang }).code, module: r.name, errors: [] };
     }
     const t = normalizeTable(m);
     const errs = (validateTable(t) || []).filter(x => x.severity !== 'warning').map(x => `${path}: ${x.message}`);

@@ -39,6 +39,27 @@ UART and GPIO links. Its design is in [CODESIGN.md](../../CODESIGN.md); its road
   address no peripheral acknowledged. The **i2c-avr** example: an Arduino writes a count every 47 ms or so to the FPGA
   at the address 0x42, shown on its LEDs, then reads the FPGA's switches back, shown on the Arduino's D2..D7.
 
+## Register maps
+
+A **register map** (New Source ▸ **Register Map**, `<name>.regs.json`) declares once the registers an FPGA peripheral
+shows the Arduino, and Silinx generates both sides:
+
+- **the FPGA's module**, named as the map, in VHDL or Verilog (the project's language), its registers behind an SPI
+  slave (mode 0) or an I²C slave (at the map's address, SDA an inout port). Its HDL file is made from the map, as a
+  drawing's: in the Design pane, the map's row has its **Registers** badge first;
+- **the Arduino's header**: the editor's **Header** button writes `firmware/<name>.h`, the registers' addresses and a
+  `<name>_read_<register>()` and `<name>_write_<register>(v)` for each, through `SPI` or `Wire`.
+
+The editor is a table, a row for each register: its address (a register takes a byte address for each 8 bits, the least
+significant byte first), its name, its width (1 to 32 bits), its access (**rw**: written by the program and read back,
+an output of the module; **ro**: read only, an input of the module, its logic's; **wo**: written only) and its reset
+value; **Strobe** adds an output `<name>_wr`, a pulse of one clock cycle when the register is written. **+ Register**
+adds one after the last; the toolbar chooses the bus (SPI, or I²C and its address); **Check** says the problems
+(two registers at one address, a name the module uses itself…) in the console. On SPI, a transaction is a command byte
+(`R << 7 | address`) and then the data bytes; on I²C, the register's address and then the data, a read after a
+repeated START. In **Try it**, a link to an FPGA node made from a map says its accesses in the console's lines:
+`write duty = 0xa5`, `read count → 0x0123`.
+
 ## Try it
 
 **Try it** in the System editor's toolbar opens its simulation view under the canvas, the green Try it panel. **Run 100 ms** (or Run, then

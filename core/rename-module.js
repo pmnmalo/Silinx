@@ -15,7 +15,7 @@ import { syncDrawing } from './drawing-sync.js';
 import { isName } from './ident.js';
 import { isSymbolFile, renameSymbolFile } from './symbol-layout.js';
 
-const VIEW = /\.(sch|asm|tt|bool|fsm|pn|circ)\.json$/i;
+const VIEW = /\.(sch|asm|tt|bool|fsm|pn|circ|regs)\.json$/i;
 const extOf = p => (VIEW.exec(p) || /\.[^./]+$/.exec(p) || [''])[0];
 const dirOf = p => (p.includes('/') ? p.replace(/\/[^/]*$/, '/') : '');
 const baseOf = p => p.slice(dirOf(p).length, p.length - extOf(p).length);
@@ -78,7 +78,7 @@ export async function renameModule(P, name, oldName, newName, { to = null, hidde
       let ch = false;
       if (/\.sch\.json$/i.test(f)) ch = renameModuleInSchematic(d, oldName, newName, { linked });
       else if (linked && eq(d.name, oldName)) { d.name = newName; ch = true; }
-      if (ch) changed.set(f, JSON.stringify(d, null, /\.(asm|tt|bool|fsm)\.json$/i.test(f) ? 2 : 1));
+      if (ch) changed.set(f, JSON.stringify(d, null, /\.(asm|tt|bool|fsm|regs)\.json$/i.test(f) ? 2 : 1));
       // a synchronized view named after the module follows it
       if (linked && eq(baseOf(f), oldName)) moved.set(f, dirOf(f) + newName + extOf(f));
     }
@@ -89,7 +89,7 @@ export async function renameModule(P, name, oldName, newName, { to = null, hidde
   if (to && to !== from) {
     moved.set(from, to);
     for (const [f, d] of Object.entries(views)) {
-      if (d.generatedFile === from) { d.generatedFile = to; changed.set(f, JSON.stringify(d, null, /\.(asm|tt|bool|fsm)\.json$/i.test(f) ? 2 : 1)); }
+      if (d.generatedFile === from) { d.generatedFile = to; changed.set(f, JSON.stringify(d, null, /\.(asm|tt|bool|fsm|regs)\.json$/i.test(f) ? 2 : 1)); }
     }
   }
   // its symbol (#3829): the module's name in it, the file named after the module following it and its file

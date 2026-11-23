@@ -138,8 +138,11 @@ bytes, the address incremented after each, a read's bytes on MISO from the secon
 the module `<name>` in VHDL and in Verilog (`core/regmap-hdl.js`: its lines sampled with `clk`, I²C's SDA an `inout`
 port pulled low or released), the Arduino's header `<name>.h` (`core/regmap-c.js`: its addresses, its read and write
 functions through `SPI` or `Wire`), and the accesses a link's transfers make (`core/regmap-decode.js`: `write duty =
-0xa5`, `read count → 0x0123`). Next: the map in the project as a drawing (its HDL always generated from it, a table
-editor, the MCP's tools, Try it's lines), then an example.
+0xa5`, `read count → 0x0123`). The map is a drawing of the project (#5288, step 2): New Source ▸ Register Map; its HDL file always
+generated from it (`core/view-hdl.js`), its row in the Design pane (its **Registers** badge first); its editor a table
+(`web/js/regmap-editor.js`), its Check (the MCP's `check_drawing`), its Header button (the MCP's `related_view` header, written by `write_file`); the
+MCP edits it through `write_file`, as its editor saves it; Simulate System says a link's accesses when its FPGA end is
+a module made from a map. Next: an example.
 
 ## Simulating everything together
 

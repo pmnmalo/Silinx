@@ -8,16 +8,18 @@ import { systemPlan, buildSystem, wireFrames } from './system-build.js';
 import { compiledNodeModel } from './system-sim-compiled.js';
 import { loadAvr8js } from './system-sim-avr.js';
 import { linkTraffic, usText, decodeSpi, spiWarnings, decodeI2c, i2cWarnings, wiredAnd } from './system-decode.js';
+import { regAccesses, accessText } from './regmap-decode.js';
 
 /** A run's time as Simulate System says it: ms or s. */
 export const runTimeText = ps => (ps >= 1e12 ? `${+(ps / 1e12).toFixed(3)} s` : `${+(ps / 1e9).toFixed(3)} ms`);
 
 /**
  * What the run needs, read where the System is (the page, the MCP server): { plan, netlists: { id: { json, top } },
- * firmware: { id: { name, data } } }, or { error } (a node that cannot be simulated, a module that does not compile, a
- * firmware not read). ports: { module: [{ name, dir, width }] }.
+ * firmware: { id: { name, data } }, regmaps: { id: map } }, or { error } (a node that cannot be simulated, a module that
+ * does not compile, a firmware not read). ports: { module: [{ name, dir, width }] }; regmap(module): the register map
+ * the module is made from (core/regmap.js), or null (#5288: its link's accesses said).
  */
-export async function systemInputs(sys, { ports = {}, netlist, firmware }) {
+export async function systemInputs(sys, { ports = {}, netlist, firmware, regmap = null }) {
   const plan = systemPlan(sys, { ports });
   if (plan.errors.length) return { error: plan.errors.join('; ') };
   const netlists = {}, fw = {};
@@ -27,18 +29,20 @@ export async function systemInputs(sys, { ports = {}, netlist, firmware }) {
   for (const n of sys.nodes.filter(x => x.kind === 'mcu')) {
     try { fw[n.id] = { name: n.firmware, data: await firmware(n.firmware) }; } catch (e) { return { error: `${n.id}: its firmware ${n.firmware} cannot be read: ${e.message}` }; }
   }
-  return { plan, netlists, firmware: fw };
+  const regmaps = {};
+  for (const f of plan.fpga) { const m = regmap ? await regmap(f.module) : null; if (m) regmaps[f.id] = m; }
+  return { plan, netlists, firmware: fw, regmaps };
 }
 
 /** The run built from its inputs (systemInputs'), where it runs (a Web Worker, the MCP server): { plan, sim, terminals,
  *  wires }, or { error }. */
-export function systemFromInputs(sys, { plan, netlists, firmware }) {
+export function systemFromInputs(sys, { plan, netlists, firmware, regmaps = {} }) {
   const fpga = {};
   for (const f of plan.fpga) {
     const n = netlists[f.id];
     try { fpga[f.id] = compiledNodeModel(n.json, { top: n.top, clock: f.clock.port, pins: f.pins }); } catch (e) { return { error: `${f.id}: ${e.message}` }; }
   }
-  try { return { plan, ...buildSystem(sys, plan, { fpga, firmware }) }; } catch (e) { return { error: e.message }; }
+  try { return { plan, regmaps, ...buildSystem(sys, plan, { fpga, firmware }) }; } catch (e) { return { error: e.message }; }
 }
 
 /** The System ready to run here: systemInputs, then systemFromInputs. */
@@ -55,11 +59,13 @@ export const bytesText = bytes => bytes.map(({ byte: b }) => (b >= 0x20 && b < 0
  * What a run said: { now, traffic: [{ wire, link, from, to, baud, frame, bytes }], terminals: { id: text }, warnings,
  * errors, lines } (lines: the console's, a wire's bytes as its text).
  */
-export function systemReport({ sim, wires, terminals }) {
+export function systemReport({ sim, wires, terminals, regmaps = {} }) {
   const traffic = linkTraffic(sim, { frames: wireFrames(wires) }).map((t, i) => ({ wire: t.link, link: wires[i].link, from: wires[i].from, to: wires[i].to, baud: wires[i].baud ?? null, frame: wires[i].frame ?? null, kind: t.kind, bytes: t.bytes, decoded: t.warnings, changes: t.changes }));
   // (an SPI link's transfers, from its four wires, #5214)
   const spi = spiTraffic(sim, wires), i2c = i2cTraffic(sim, wires);
-  const warnings = [...sim.messages('warning'), ...traffic.flatMap(t => t.decoded), ...spi.flatMap(s => s.decoded), ...i2c.flatMap(s => s.decoded)];
+  // (a link to an FPGA node made from a register map: its accesses, #5288)
+  const regs = regTraffic(sim, wires, regmaps, spi, i2c);
+  const warnings = [...sim.messages('warning'), ...traffic.flatMap(t => t.decoded), ...spi.flatMap(s => s.decoded), ...i2c.flatMap(s => s.decoded), ...regs.flatMap(r => r.warnings)];
   const errors = sim.messages('error');
   const term = Object.fromEntries([...terminals].map(([id, n]) => [id, bytesText(n.received)]));
   const lines = [`Simulate System: ${runTimeText(sim.now)} simulated${sim.finished ? `, stopped by ${sim.finished.node} (${sim.finished.why})` : ''}.`];
@@ -69,10 +75,11 @@ export function systemReport({ sim, wires, terminals }) {
   }
   for (const s of spi) lines.push(`${s.link} (SPI ${s.from} → ${s.to}, ${s.hz} Hz mode ${s.mode}): ${s.transfers.length} transfer(s)${s.transfers.length ? `: MOSI ${s.transfers.slice(0, 16).map(x => hexByte(x.mosi)).join(' ')}; MISO ${s.transfers.slice(0, 16).map(x => hexByte(x.miso)).join(' ')}` : ''}`);
   for (const s of i2c) lines.push(`${s.link} (I²C ${s.from} → ${s.to}, ${s.hz} Hz): ${s.transfers.length} transfer(s)${s.transfers.length ? `: ${s.transfers.slice(0, 16).map(i2cText).join('; ')}` : ''}`);
+  for (const r of regs) lines.push(`${r.link} (registers of ${r.map}): ${r.accesses.length} access(es)${r.accesses.length ? `: ${r.accesses.slice(0, 16).map(a => a.text).join('; ')}` : ''}`);
   for (const [id, text] of Object.entries(term)) lines.push(`terminal ${id}: ${JSON.stringify(text)}`);
   for (const w of warnings) lines.push(`WARNING: ${w}`);
   for (const e of errors) lines.push(`ERROR: ${e}`);
-  return { now: sim.now, traffic, spi, i2c, terminals: term, warnings, errors, lines };
+  return { now: sim.now, traffic, spi, i2c, regs, terminals: term, warnings, errors, lines };
 }
 
 const hexByte = b => b.toString(16).toUpperCase().padStart(2, '0');
@@ -100,6 +107,20 @@ function i2cTraffic(sim, wires) {
     const r = decodeI2c({ scl: sent('scl'), sda: wiredAnd(sent('sda'), sent('sda_back')) });
     const w = ws.scl ?? ws.sda;
     out.push({ link, from: w.from.split('.')[0], to: w.to.split('.')[0], hz: w.hz, transfers: r.transfers, decoded: i2cWarnings(link, { hz: r.hz, declared: w.hz, transfers: r.transfers }) });
+  }
+  return out;
+}
+
+// each SPI or I²C link whose peripheral is an FPGA node made from a register map: its accesses ([{ link, map, accesses:
+// [{ t, op, reg, value, partial, text }], warnings }])
+function regTraffic(sim, wires, regmaps, spi, i2c) {
+  const out = [];
+  for (const s of [...spi.map(x => ({ ...x, kind: 'spi' })), ...i2c.map(x => ({ ...x, kind: 'i2c' }))]) {
+    const m = regmaps[s.to];
+    if (!m || m.bus !== s.kind) continue;
+    const ss = s.kind === 'spi' ? sim.links.get(wires.find(w => w.link === s.link && w.line === 'ss')?.name)?.sent ?? null : null;
+    const r = regAccesses(m, s.kind === 'spi' ? { spi: s.transfers, ss } : { i2c: s.transfers });
+    out.push({ link: s.link, map: m.name, accesses: r.accesses.map(a => ({ ...a, text: accessText(m, a) })), warnings: r.warnings.map(w => `${s.link}: ${w}`) });
   }
   return out;
 }

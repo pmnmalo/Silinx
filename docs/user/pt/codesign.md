@@ -42,6 +42,27 @@ ligados por UART e GPIO.
   Arduino escreve uma contagem a cada 47 ms, mais ou menos, na FPGA no endereço 0x42, mostrada nos seus LEDs, e lê de
   volta os interruptores da FPGA, mostrados nos D2..D7 do Arduino.
 
+## Mapas de registos
+
+Um **mapa de registos** (New Source ▸ **Register Map**, `<nome>.regs.json`) declara uma vez os registos que um
+periférico na FPGA mostra ao Arduino, e o Silinx gera os dois lados:
+
+- **o módulo da FPGA**, com o nome do mapa, em VHDL ou Verilog (a linguagem do projeto), com os registos atrás de um
+  escravo SPI (modo 0) ou I²C (no endereço do mapa, o SDA um porto inout). O seu ficheiro HDL é feito a partir do
+  mapa, como o de um desenho: no painel Design, a linha do mapa tem primeiro o selo **Registers**;
+- **o cabeçalho do Arduino**: o botão **Header** do editor escreve `firmware/<nome>.h`, com os endereços dos registos e
+  um `<nome>_read_<registo>()` e um `<nome>_write_<registo>(v)` para cada um, por `SPI` ou `Wire`.
+
+O editor é uma tabela, uma linha por registo: o endereço (um registo ocupa um endereço de byte por cada 8 bits, o byte
+menos significativo primeiro), o nome, a largura (1 a 32 bits), o acesso (**rw**: escrito pelo programa e lido de
+volta, uma saída do módulo; **ro**: só de leitura, uma entrada do módulo, da sua lógica; **wo**: só de escrita) e o
+valor de reset; **Strobe** acrescenta uma saída `<nome>_wr`, um impulso de um ciclo de relógio quando o registo é
+escrito. **+ Register** acrescenta um a seguir ao último; a barra escolhe o barramento (SPI, ou I²C e o seu endereço);
+**Check** diz os problemas (dois registos no mesmo endereço, um nome que o módulo usa ele próprio…) na consola. No SPI,
+uma transação é um byte de comando (`R << 7 | endereço`) e depois os bytes de dados; no I²C, o endereço do registo e
+depois os dados, uma leitura depois de um START repetido. Em **Experimentar**, uma ligação a um nó FPGA feito a partir
+de um mapa diz os seus acessos nas linhas da consola: `write duty = 0xa5`, `read count → 0x0123`.
+
 ## Experimentar
 
 **Experimentar**, na barra do editor de Sistema, abre a vista de simulação por baixo da tela, o painel verde de Experimentar. **Correr 100 ms** (ou Correr,
