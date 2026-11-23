@@ -24,6 +24,7 @@ import { THIRD_PARTY } from '../core/third-party.js';
 import { contentSecurityPolicy, inlineScriptHashes, withMetaCsp, relaySources, siteSource, WORKERS_SOURCES } from '../server/csp.js';
 import { withManifestLink, writePwa } from './pwa.mjs';
 import { relayList } from '../core/collab-link.js';
+import { inlineScripts, safeJs } from './inline-scripts.mjs';
 
 const ROOT = path.join(path.dirname(fileURLToPath(import.meta.url)), '..');
 const OUT = path.join(ROOT, 'dist', 'Silinx.html');
@@ -197,7 +198,6 @@ const sysWorkerJs = sysWorkerRes.outputFiles[0].text;
 
 // ---- inline everything into index.html
 let html = rd('web/index.html');
-const safeJs = js => js.replace(/<\/script/gi, '<\\/script');
 const safeCss = css => css.replace(/<\/style/gi, '<\\/style');
 html = html.replace(/<link rel="stylesheet" href="([^"]+)">/g, (m, href) => {
   const file = `web${href}`;
@@ -205,16 +205,18 @@ html = html.replace(/<link rel="stylesheet" href="([^"]+)">/g, (m, href) => {
 });
 // (the build's channel: its BUILD's, unless the environment asks for one, the tests' #5202: web/build-channel.js)
 const CHANNEL = channelFromEnv();
-html = html.replace(/<script src="([^"]+)"><\/script>/g, (m, src) => {
+// (the app's module, replaced by its bundle below)
+const APP_TAG = '<script type="module" src="/js/app.js"></script>';
+html = inlineScripts(html, src => {
   if (src === '/build-channel.js' && CHANNEL) return `<script>globalThis.SILINX_CHANNEL = ${JSON.stringify(CHANNEL)};</script>`;
   const file = src.startsWith('/vendor/elk/') ? `node_modules/elkjs/lib/${src.slice(12)}` : `web${src}`;
   return `<script>${safeJs(rd(file))}</script>`;
-});
+}, { keep: [APP_TAG] });
 // the editor's modules are in the bundle (esbuild resolves them in node_modules): no import map
 html = html.replace(/<!-- the editor \(CodeMirror 6[\s\S]*?<script type="importmap">[\s\S]*?<\/script>\n/, '');
 if (html.includes('importmap')) throw new Error('web/index.html: the import map was not removed');
 // replacer functions: the inserted code may contain `$'`, `$&`… which a replacement string would expand
-html = html.replace('<script type="module" src="/js/app.js"></script>',
+html = html.replace(APP_TAG,
   () => `<script>window.SILINX_STANDALONE = true;\nwindow.SILINX_ASSET_LAYOUT = ${safeJs(JSON.stringify(LAYOUT))};\nwindow.SILINX_FLOW_WORKER_SRC = ${safeJs(JSON.stringify(workerJs))};\nwindow.SILINX_EMU_WORKER_SRC = ${safeJs(JSON.stringify(emuWorkerJs))};\nwindow.SILINX_HDL_WORKER_SRC = ${safeJs(JSON.stringify(hdlWorkerJs))};\nwindow.SILINX_SYSTEM_WORKER_SRC = ${safeJs(JSON.stringify(sysWorkerJs))};</script>\n<script type="module">${safeJs(appJs)}</script>`);
 const TITLE = '<title>Silinx</title>';
 if (!html.includes(TITLE)) throw new Error(`web/index.html: no ${TITLE} to mark (standalone)`);
