@@ -92,6 +92,6 @@ test('#5212 the host: init emulate (its boards), set (BTN0), run (what each boar
     // (the LED L on from the program's third instruction: almost the whole window)
     assert.deepEqual([s.type, s.id, s.boards.uno.led > 0.999, s.boards.fpga.leds], ['state', 1, true, [0, 0, 0, 0, 0, 0, 0, 0]]);
     port1.postMessage({ type: 'set', node: 'term', pin: 'btn', value: 1 });
-    assert.deepEqual(await next(), { type: 'error', id: undefined, message: 'no board of an FPGA node \'term\'' });
+    assert.deepEqual(await next(), { type: 'error', id: undefined, message: 'no board of an FPGA node or a circuit \'term\'' });   // (a circuit's too, #5322)
   } finally { port1.close(); }
 });

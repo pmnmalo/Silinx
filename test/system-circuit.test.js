@@ -168,3 +168,45 @@ test('#5215 a circuit node edited: added with its circuit, changed, no interface
   const bad = await systemInputs(system(), { ports: PORTS, netlist: () => uartNetlist(), firmware: async () => '', circuit: async () => { throw new Error('no such file'); } });
   assert.deepEqual(bad, { error: 'bench: its circuit src/bench.circ.json cannot be read: no such file' });
 });
+
+// #5322: the bench of the System Emulator: the Basys2 (fpga) alone, its JB1 (the FPGA's btn) driven by a logic switch S1
+// (off), its JB3 (led<0>) lighting D2; a clock CK1 at 50 Hz lighting D3
+const EMU_BENCH = normalizeCircuit({ name: 'bench', parts: [{ id: 'F1', type: 'fpga-basys2', x: 0, y: 30, label: 'fpga' }, { id: 'S1', type: 'logic-switch', x: 8, y: 25 },
+  { id: 'D2', type: 'led', x: 12, y: 26 }, { id: 'CK1', type: 'clock', x: 20, y: 20, hz: 50 }, { id: 'D3', type: 'led', x: 22, y: 22 }],
+wires: [{ id: 'w1', points: [[8, 25], [8, 30]] }, { id: 'w5', points: [[10, 30], [12, 26]] }, { id: 'w6', points: [[13, 26], [4, 30]] },
+  { id: 'w7', points: [[20, 20], [22, 22]] }, { id: 'w8', points: [[23, 22], [4, 30]] }] });
+
+test('#5322 a circuit node emulated: its switch set at 5 ms (the FPGA\'s message), its LEDs\' states, its clock ticking; its inputs; a wrong one refused', async () => {
+  const { emulationBoards, withBoards, watchBoards, boardStates, setBoardInput } = await import('../core/system-emu.js');
+  const sys = system([FPGA, TERM, BENCH]);
+  const inputs = await systemInputs(sys, { ports: PORTS, netlist: () => uartNetlist(), firmware: async () => '', circuit: async () => JSON.stringify(EMU_BENCH) });
+  const boards = emulationBoards(sys, inputs);
+  const c = boards.find((b) => b.kind === 'circuit');
+  assert.deepEqual([c.id, c.inputs, c.outputs], ['bench', [{ pin: 'S1', part: 'S1', index: 0, kind: 'level' }], []]);
+  const r = systemFromInputs(sys, withBoards(inputs, boards));
+  watchBoards(r.sim, boards);
+  r.sim.run(5e9);
+  setBoardInput(r.sim, c, 'S1', 1);
+  r.sim.run(55e9);
+  const s = boardStates(r.sim, boards, 0, r.sim.now);
+  assert.equal(systemReport(r).terminals.term, 'Hello from Silinx!\r\n', 'S1 on: the button held');
+  assert.deepEqual(s.bench.inputs, { S1: true, CK1: r.sim.nodes.get('bench').sim.inputs().CK1 });
+  assert.deepEqual(s.bench.leds.D2, 'off', 'LD0: the last byte sent is CR LF\'s LF, its bit 0 a 0');
+  assert.ok(systemReport(r).circuits.bench.D3.times >= 2, 'the clock\'s LED lit at 50 Hz');
+  assert.ok(Array.isArray(s.bench.lit));
+  assert.throws(() => setBoardInput(r.sim, c, 'S9', 1), /'S9' is not a switch or a button of the circuit bench/);
+});
+
+test('#5322 a circuit\'s clock ticks at its frequency in the node; a DIP switch\'s levers its inputs', async () => {
+  const m = normalizeCircuit({ name: 'c', parts: [{ id: 'CK1', type: 'clock', x: 0, y: 0, hz: 10 }, { id: 'DIP1', type: 'dip-4', x: 10, y: 10 }, { id: 'D1', type: 'led', x: 0, y: 3 }],
+    wires: [{ id: 'a', points: [[0, 0], [0, 3]] }] });
+  const n = new CircuitNode({ model: m, pins: [] });
+  const states = [];
+  for (let k = 1; k <= 6; k++) { n.advanceTo(k * 25e9); states.push(n.sim.inputs().CK1); }
+  assert.deepEqual(states, [false, true, true, false, false, true], 'its edges at 50, 100, 150 ms');
+  n.setInput('DIP1', true, 2);
+  assert.deepEqual(n.sim.inputs().DIP1, [false, false, true, false]);
+  const { emulationBoards } = await import('../core/system-emu.js');
+  const b = emulationBoards(system([{ ...BENCH }]), { plan: { wires: [], circuits: [{ id: 'bench', model: m, pins: [] }] }, netlists: {} });
+  assert.deepEqual(b[0].inputs.map((x) => x.pin), ['DIP1:1', 'DIP1:2', 'DIP1:3', 'DIP1:4']);
+});

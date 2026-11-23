@@ -57,7 +57,9 @@ ligados por UART e GPIO.
   etiqueta `uno` é o nó uno): os pinos que o circuito liga são então ligações do Sistema, os de um Arduino nos dois
   sentidos, os de uma FPGA no sentido do porto desse pino. O Check diz uma placa que não nomeia nenhum nó, um pino que é
   também de uma ligação, e um pino de 5 V de um Arduino numa entrada de 3,3 V da FPGA; o Try it corre o circuito com as
-  placas e diz cada LED (aceso no fim, as vezes que acendeu).
+  placas e diz cada LED (aceso no fim, as vezes que acendeu). O **Emular** desenha o circuito ao lado das placas: os
+  LEDs acendem à medida que corre, e um clique muda um interruptor ou carrega num botão (premido enquanto o rato o
+  carrega), como na bancada.
 
 ## Mapas de registos
 

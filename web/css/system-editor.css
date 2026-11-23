@@ -49,6 +49,10 @@
 /* the System Emulator (#5212): the boards side by side, an Arduino's pins' levels */
 .sys-emu .sys-emu-main { overflow: auto; }
 .sys-emu .sys-emu-boards { display: flex; flex-wrap: wrap; gap: 18px; align-items: flex-start; padding: 12px; }
+/* a circuit node (#5322): the Circuit editor's drawing, on the editors' background */
+.sys-emu .sys-emu-circuit { background: var(--asm-bg); border: 1px solid var(--asm-border); border-radius: 6px; padding: 6px; }
+.sys-emu .sys-emu-circuit .sys-emu-cap { font: 12px var(--asm-mono, monospace); color: var(--asm-fg); margin-bottom: 4px; }
+.sys-emu .sys-emu-circ { display: block; max-width: 100%; height: auto; touch-action: none; }
 .sys-emu .sys-pin { width: 12px; height: 12px; border-radius: 50%; box-sizing: border-box; border: 2px solid var(--asm-muted); background: transparent; }
 .sys-emu .sys-pin.low { background: var(--asm-muted); }
 .sys-emu .sys-pin.high { background: var(--sys-hot); border-color: var(--sys-hot); }

@@ -52,6 +52,8 @@ UART and GPIO links. Its design is in [CODESIGN.md](../../CODESIGN.md); its road
   node uno): the pins the circuit wires are then the System's links, an Arduino's both ways, an FPGA's the way the port
   on that pin goes. Check says a board that names no node, a pin that is also a link's, and a 5 V Arduino pin on a
   3.3 V FPGA input; Try it runs the circuit with the boards, and says each LED (lit at the end, the times it lit).
+  **Emulate** draws the circuit beside the boards: its LEDs light as the run goes, and a click turns a switch or
+  presses a button (held while the mouse is down), as on the bench.
 
 ## Register maps
 

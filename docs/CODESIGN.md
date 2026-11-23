@@ -257,7 +257,10 @@ an FPGA board's pin is the port of the node's module on that package pin, its di
 not joined yet). The scheduler runs the circuit's own simulation as a node, a wire of 1 µs each way. The check says a
 board that names no node or a node of another board, an FPGA pin on no port, a pin both a link's and the circuit's, and
 a 5 V Arduino pin on one net with a 3.3 V FPGA input. A run says each circuit's lamps (lit at the end, the times each
-lit) and a short. The System Emulator does not draw a circuit node yet.
+lit) and a short. Its clocks tick at their frequency. The System Emulator draws it beside the boards as the Circuit
+editor draws it (#5322): its LEDs lit from the run, a click on a switch or a DIP switch's lever turning it, a button
+held down while pressed; the MCP's `simulate` takes its switches and buttons as controls (`S1`, a lever `DIP1:2`) and
+says which of its lamps are lit.
 
 A System drawn only as a circuit would lose the protocol level: the decoders, the speed and the links' checks.
 
