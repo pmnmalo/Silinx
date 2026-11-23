@@ -28,7 +28,8 @@ export function mountSymbolCasesMore(ctx) {
           if (ci) {
             extra.push({ name: t, type: `unsigned(${w} downto 0)` });
             const base = `resize(unsigned'(${ops('A').join(' & ')}), ${w + 1}) ${io.op} resize(unsigned'(${ops('B').join(' & ')}), ${w + 1})`;
-            body.push(cin ? `${t} <= ${base} ${io.op} 1 when ${cin} = '1' else ${base};` : `${t} <= ${base};`);
+            // (the carry / the borrow an operand of the one sum: not two sums and a choice, #4780)
+            body.push(cin ? `${t} <= ${base} ${io.op} unsigned'(0 => ${cin});` : `${t} <= ${base};`);
             outs.forEach((o, i) => o && body.push(`${o} <= ${t}(${i});`));
             if (co) body.push(`${co} <= ${t}(${w});`);
           } else {
@@ -54,7 +55,7 @@ export function mountSymbolCasesMore(ctx) {
             const t = fresh(`${s.name}_sum`);
             extra.push({ name: t, type: `unsigned(${w} downto 0)` });
             const base = `resize(${U(a)}, ${w + 1}) ${op} resize(${U(b)}, ${w + 1})`;
-            body.push(cin ? `${t} <= ${base} ${op} 1 when ${cin} = '1' else ${base};` : `${t} <= ${base};`);
+            body.push(cin ? `${t} <= ${base} ${op} unsigned'(0 => ${cin});` : `${t} <= ${base};`);   // (one sum, #4780)
             if (o) body.push(w === 1 ? `${o} <= ${t}(0);` : `${o} <= ${wrapV(`${t}(${w - 1} downto 0)`, clsOf(o))};`);
             if (co) body.push(`${co} <= ${t}(${w});`);
           }

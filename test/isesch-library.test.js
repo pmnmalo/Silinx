@@ -7,6 +7,7 @@ import assert from 'node:assert/strict';
 import { simulate } from '../core/compile.js';
 import { generateHdl, netlist } from '../core/schdoc.js';
 import { importIseSch, exportIseSch, parseIseSch } from '../core/isesch.js';
+import { libTemplate } from '../core/isesch-hdl.js';
 
 // ------------------------------------------------------------------ schematic + testbench builders
 // spec: { sym, ins: { port: width }, outs: { port: width }, pins: { pin: signal }, clock?: 'C' }
@@ -182,6 +183,16 @@ test('adders ADD4 / ADD8 and adder-subtractors ADSU4 / ADSU8: sum, carry out, tw
     const pins = w === 4 ? { ...bitPins('A', 'A', 4), ...bitPins('B', 'B', 4), ...bitPins('S', 'S', 4) } : { 'A(7:0)': 'A(7:0)', 'B(7:0)': 'B(7:0)', 'S(7:0)': 'S(7:0)' };
     const spec = { sym, ins, outs: { S: w, CO: 1, OFL: 1 }, pins: { ...pins, CI: 'CI', CO: 'CO', OFL: 'OFL', ...(adsu ? { ADD: 'ADD' } : {}) } };
     check(spec, w === 4 && !adsu ? exhaustive(ins) : randomVectors(ins, 150, w * 3 + (adsu ? 1 : 0)), model(w, adsu));
+  }
+});
+
+// #4780: in VHDL one sum with the carry in as an operand, not two sums and a choice (… + 1 when CI = '1' else …)
+test('#4780 ADD / ADSU in VHDL: one sum, the carry in an operand', () => {
+  for (const sym of ['add4', 'add8', 'adsu16']) {
+    const { code } = libTemplate(sym, () => true)('vhdl', (x) => x, (x) => `t_${x}`);
+    const sums = code.split('\n').filter((l) => /^t_s <= /.test(l));
+    assert.deepEqual(sums.map((l) => l.replace(/^t_s <= .* \+ /, '… + ')), ["… + unsigned'(0 => CI);"], sym);
+    assert.doesNotMatch(code, /when CI = '1' else/, sym);
   }
 });
 
