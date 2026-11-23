@@ -194,8 +194,8 @@ uiTest('usability: project: the console\'s lines of New Source, Remove from Proj
   const n = await consoleCount(page);
   await a.newSource({ type: 'Schematic', name: 'sheet', file: 'src/sheet.sch.json' });
   await a.remove('sheet');
-  // (each one done, its line written, the page settled, before the next)
-  await pageState(page);
+  // (Undo right after the question, New Source's end may still be running: it waits for the removal, #5263; each one's
+  // line written, the page settled, before the next)
   const step = async (which, line) => { await a.editMenu(which); await page.waitFor((l) => [...document.querySelectorAll('#console-log .ln')].some((x) => x.textContent === l), [line], { what: `${which}'s line` }); await pageState(page); };
   await step('Undo', 'Anular: Remover do Projeto.');
   await step('Redo', 'Refazer: Remover do Projeto.');
