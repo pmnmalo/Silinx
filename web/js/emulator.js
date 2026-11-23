@@ -358,6 +358,7 @@ export function mountEmulator(container, { design, board, assignments, title = '
   }
   function powerCycle() {
     sim.reset();
+    holds.flush();   // (the buttons let go held down released, paused too: its time may not have moved since, #5331)
     setupSim();
     refresh();
   }
@@ -397,7 +398,7 @@ export function mountEmulator(container, { design, board, assignments, title = '
   function step() { setRunning(false); after(runCycles(1)); }
   function setRunning(on) {
     running = on && powered && !sim.finished;
-    if (!running) holds.flush();   // (paused, powered off: the buttons let go held down released)
+    if (!powered) holds.flush();   // (powered off: the buttons let go held down released; paused, kept, #5331)
     runBtn.textContent = running ? '⏸ Pause' : '▶ Run';
     stepBtn.disabled = running || !powered;
     runBtn.disabled = !powered;

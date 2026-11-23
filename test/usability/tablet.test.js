@@ -192,6 +192,15 @@ uiTest('usability: tablet: the stopwatch on the Board Emulator by taps: Engine â
   assert.equal(await shown(), t2, 'the time kept while stopped');
   // BTN2: cleared
   assert.equal(await press(2, 800), ' 0.00', 'cleared');
+  // BTN0 tapped while paused (#5331): kept down until the design ran with it, the time running once it runs again
+  await tapButton(0);
+  await sleep(300);
+  assert.equal(await shown(), ' 0.00', 'nothing runs while paused');
+  await run();
+  await sleep(1500);
+  await pause();
+  const t3 = await shown();
+  assert.ok(hundredths(t3) > 0, `started by the tap made while paused: ${t3}`);
   await lines([]);
 }, { tablet: 'portrait', timeout: 180000 });
 
