@@ -40,6 +40,7 @@ import { SUMMARY_PT, SUMMARY_PT_PATTERNS } from './i18n-summary.js';
 import { MESSAGES_PT, MESSAGES_PT_PATTERNS } from './i18n-messages.js';
 import { SIM_PT, SIM_PT_PATTERNS } from './i18n-sim.js';
 import { PROJECT_PT, PROJECT_PT_PATTERNS } from './i18n-project.js';
+import { EXPR_PT_PATTERNS, ASM_EXPR_PT_PATTERNS } from './i18n-expr.js';
 import { PT } from './i18n-general.js';   // (moved, #4765)
 import { prefKey } from './prefs.js';
 
@@ -493,6 +494,7 @@ keep(SUMMARY_PT, SUMMARY_PT_PATTERNS);   // the Design Summary's values (#4518)
 keep(MESSAGES_PT, MESSAGES_PT_PATTERNS);   // toasts, dialogs, plain elements' texts (#3539), template literals' (#4748)
 keep(SIM_PT, SIM_PT_PATTERNS);   // the simulation's application lines: the Console's and SSim's (#5223)
 keep(PROJECT_PT, PROJECT_PT_PATTERNS);   // the project's lifecycle's application lines (#5254)
+keep({}, [...EXPR_PT_PATTERNS, ...ASM_EXPR_PT_PATTERNS]);   // the drawings' expression parser's errors, alone and in an ASM chart's checks (#5196)
 
 export const LOCALES = {
   en: { name: 'English', strings: {}, patterns: [] },

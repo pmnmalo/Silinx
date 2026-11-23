@@ -1,4 +1,5 @@
 // Portuguese strings of the FSM state diagram editor (merged into the dictionary of i18n.js).
+import { exprReason } from './i18n-expr.js';
 export const FSM_PT = {
   // New Source, menus, processes, hierarchy
   'FSM State Diagram Editor…': 'Editor de Diagramas de Estados FSM…',
@@ -142,7 +143,8 @@ export const FSM_PT_PATTERNS = [
   [/^the value '(.*)' of (\S+) must be a constant \(e\.g\. 0, 1, 4'b1010, 5\)$/, "o valor '$1' de $2 tem de ser uma constante (p.ex. 0, 1, 4'b1010, 5)"],
   [/^'(.*)' is not an output assignment \(write output=value, e\.g\. z=1\)$/, "'$1' não é uma atribuição de saída (escreva saída=valor, p.ex. z=1)"],
   [/^A transition starts or ends at a state that does not exist$/, 'Uma transição começa ou acaba num estado que não existe'],
-  [/^Transition (.+) → (.+): the condition '(.*)' is not valid \((.*)\)$/, "Transição $1 → $2: a condição '$3' não é válida ($4)"],
+  [/^Transition (.+) → (.+): the condition '(.*)' is not valid \((.*)\)$/, (m, a, b, c, r) => `Transição ${a} → ${b}: a condição '${c}' não é válida (${exprReason(r)})`],   // (#5196)
+  [/^the condition '(.*)' is not valid \((.*)\)$/, (m, c, r) => `a condição '${c}' não é válida (${exprReason(r)})`],
   [/^Transition (.+) → (.+): '(.*)' is an output; conditions can only test inputs$/, "Transição $1 → $2: '$3' é uma saída; as condições só podem testar entradas"],
   [/^Transition (.+) → (.+): '(.*)' in the condition '(.*)' is not an input$/, "Transição $1 → $2: '$3' na condição '$4' não é uma entrada"],
   [/^Transition (.+) → (.+) is never taken: its condition '(.*)' is never true$/, "Transição $1 → $2 nunca é tomada: a sua condição '$3' nunca é verdadeira"],

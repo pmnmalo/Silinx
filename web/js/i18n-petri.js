@@ -1,4 +1,5 @@
 // Portuguese strings of the Petri net editor (web/js/petri-editor.js; merged into the dictionary of i18n.js).
+import { exprReason } from './i18n-expr.js';
 export const PETRI_PT = {
   // New Source, menus, processes, hierarchy
   'Petri Net': 'Rede de Petri', 'Petri Net Editor…': 'Editor de Redes de Petri…', 'View/Edit Petri Net': 'Ver/Editar Rede de Petri',
@@ -94,7 +95,7 @@ export const PETRI_PT_PATTERNS = [
   [/^(the clock|the reset|input|output|place|transition) '(.*)' is not a valid (VHDL|VERILOG) name$/, (m, w, n, l) => `${WHAT[w][0].toUpperCase()}${WHAT[w].slice(1)} '${n}' não é um nome ${l} válido`],
   // (a name used twice: i18n-wizards.js's, the same message)
   [/^place (\S+): (\d+) initial tokens, more than its capacity (\d+)$/, 'lugar $1: $2 marcas iniciais, mais do que a sua capacidade $3'],
-  [/^transition (\S+): guard '(.*?)': ([\s\S]+)$/, "transição $1: guarda '$2': $3"],   // (the parser's error as it is, #5196)
+  [/^transition (\S+): guard '(.*?)': ([\s\S]+)$/, (m, n, g, r) => `transição ${n}: guarda '${g}': ${exprReason(r)}`],   // (the parser's error translated, #5196)
   [/^transition (\S+) is not connected$/, 'transição $1 não está ligada'], [/^place (\S+) is not connected$/, 'lugar $1 não está ligado'],
   [/^transition (\S+) takes no token: it fires on every clock edge while its guard is true$/, 'transição $1 não tira marcas: dispara em cada flanco do relógio enquanto a sua guarda for verdadeira'],
   [/^transition (\S+) never fires: it (takes|puts) (\d+) tokens (?:from|into) place (\S+), whose capacity is (\d+)$/,
