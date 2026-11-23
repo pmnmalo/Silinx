@@ -91,7 +91,7 @@ export function mountCircuitEditor(container, opts = {}) {
     if (opts.banner) toolbar.append(opts.banner);
   }
 
-  const { renderSide } = mountCircuitSide({ M: () => M, setM: (m) => { M = m; }, sel: () => sel, commit, status, selSection, circBody, readOnly });
+  const { renderSide } = mountCircuitSide({ M: () => M, setM: (m) => { M = m; }, sel: () => sel, commit, status, selSection, circBody, readOnly, trying: () => trying() });
 
   // ---------------------------------------------------------------- edits, history
   function commit() {
@@ -105,10 +105,12 @@ export function mountCircuitEditor(container, opts = {}) {
   }
   const problems = () => opts.onProblems?.(checkCircuit(M, undefined, opts.hdl?.() ?? {}));
   const restore = (i) => { hi = i; M = normalizeCircuit(JSON.parse(hist[hi])); if (sel && !itemOf(sel.id)) sel = null; opts.onChange?.(clone(M)); problems(); if (tryIt.sim()) startSim(); render(); };
-  const undo = () => { if (shared) shared.undo(); else if (hi > 0) restore(hi - 1); };
-  const redo = () => { if (shared) shared.redo(); else if (hi < hist.length - 1) restore(hi + 1); };
+  const undo = () => { if (trying()) return; if (shared) shared.undo(); else if (hi > 0) restore(hi - 1); };
+  const redo = () => { if (trying()) return; if (shared) shared.redo(); else if (hi < hist.length - 1) restore(hi + 1); };
   const itemOf = (id) => M.parts.find((p) => p.id === id) || M.wires.find((w) => w.id === id);
-  const applyEdit = (r, select) => { if (r.error) { status(r.error, true); return false; } M = r.model; if (select) sel = select; commit(); return true; };
+  // (while trying it, #5365: the circuit is not edited, as the schematic's Try it; its inputs are clicked)
+  const trying = () => !!tryIt.sim();
+  const applyEdit = (r, select) => { if (trying()) return false; if (r.error) { status(r.error, true); return false; } M = r.model; if (select) sel = select; commit(); return true; };
 
   function setTool(t) {
     tool = t; draft = null; ghost = null;
@@ -116,9 +118,9 @@ export function mountCircuitEditor(container, opts = {}) {
     svg.classList.toggle('circ-adding', t !== 'select');
     render();
   }
-  function deleteSelection() { if (!sel || readOnly) return; const id = sel.id; sel = null; applyEdit(deleteItem(M, id)); }
+  function deleteSelection() { if (!sel || readOnly || trying()) return; const id = sel.id; sel = null; applyEdit(deleteItem(M, id)); }
   // (any part, a breadboard with the parts on it, #4065; its wires' ends with it while Keep connections, #4059)
-  function rotateSelection() { if (sel?.kind === 'part' && !readOnly) applyEdit(rotatePart(M, sel.id, 1, { keep: keep() })); }
+  function rotateSelection() { if (sel?.kind === 'part' && !readOnly && !trying()) applyEdit(rotatePart(M, sel.id, 1, { keep: keep() })); }
   const clip = mountCircuitClip({ M: () => M, sel: () => sel, setSel: (s) => { sel = s; }, readOnly, applyEdit });
 
   // ---------------------------------------------------------------- the live simulation (web/js/circuit-try.js)
@@ -142,8 +144,8 @@ export function mountCircuitEditor(container, opts = {}) {
     applyView();
     world.replaceChildren(drawCircuit({ ...M, wireStyle: wireStyle() }, { sel, draft, ghost, inside: inside(), hops: hops(), handles: !readOnly && !sim, levels: sim ? (id, n) => sim.pin(id, n) : null, leds: sim?.leds(), lcds: sim?.lcds(), oleds: sim?.oleds(), sensors: sim?.sensors(), servos: sim?.servos(), inputs: sim?.inputs() }));
     sync();   // (the Wires' ✓: an undo, a model set)
-    for (const b of [delBtn]) b.disabled = !sel;
-    rotBtn.disabled = sel?.kind !== 'part';
+    for (const b of [delBtn]) b.disabled = !sel || !!sim;
+    rotBtn.disabled = sel?.kind !== 'part' || !!sim;
     simBtn.classList.toggle('active', !!sim);
     simBar.hidden = !sim;
     root.classList.toggle('circ-simulating', !!sim);
@@ -183,7 +185,7 @@ export function mountCircuitEditor(container, opts = {}) {
       else { setInput(t.id, true); drag = { kind: 'press', id: t.id }; }
       return;
     }
-    if (readOnly && tool !== 'select') setTool('select');
+    if ((readOnly || sim) && tool !== 'select') setTool('select');
     if (tool.startsWith('place:')) { const type = tool.slice(6); const r = addPart(M, { type, at: g }); setTool('select'); applyEdit(r, r.id ? { kind: 'part', id: r.id } : null); return; }
     if (tool === 'wire') {
       if (!draft) { draft = [g]; render(); return; }
@@ -196,7 +198,7 @@ export function mountCircuitEditor(container, opts = {}) {
       sel = { kind: t.kind, id: t.id };
       const p = M.parts.find((x) => x.id === t.id);
       // (the selected wire's end or bend dragged, #4930, #4931: circuit-wire-drag.js)
-      drag = (!readOnly && wireDragStart(e, sel, M)) || (p && !readOnly ? { kind: 'move', id: p.id, dx: g[0] - p.x, dy: g[1] - p.y, at: [p.x, p.y], base: M, moved: false } : null);
+      drag = (!readOnly && !sim && wireDragStart(e, sel, M)) || (p && !readOnly && !sim ? { kind: 'move', id: p.id, dx: g[0] - p.x, dy: g[1] - p.y, at: [p.x, p.y], base: M, moved: false } : null);
     } else {
       sel = null;
       drag = { kind: 'pan', x: e.clientX, y: e.clientY, tx: view.tx, ty: view.ty };
@@ -280,7 +282,7 @@ export function mountCircuitEditor(container, opts = {}) {
     // (its selection, as live sharing's view sends it, #4192: core/collab-select.js)
     sharedSelection: () => (sel ? { items: [`${sel.kind}:${sel.id}`] } : null),
     setModel(m) { M = normalizeCircuit(m); hist.length = 0; hist.push(JSON.stringify(M)); hi = 0; sel = null; if (tryIt.sim()) startSim(); render(); },
-    undo, redo, canUndo: () => (shared ? shared.canUndo() : hi > 0), canRedo: () => (shared ? shared.canRedo() : hi < hist.length - 1),
+    undo, redo, canUndo: () => !trying() && (shared ? shared.canUndo() : hi > 0), canRedo: () => !trying() && (shared ? shared.canRedo() : hi < hist.length - 1),
     setShared(s) { shared = s; hist.length = 0; hist.push(JSON.stringify(M)); hi = 0; },
     // the merged circuit in place: the view, the tool and the selection kept (its part's id renamed by the merge, #4203)
     applyModel(m, { renamed = null, mine = false } = {}) {
@@ -294,7 +296,7 @@ export function mountCircuitEditor(container, opts = {}) {
     busy: () => drag?.kind === 'move' || drag?.kind === 'wire' || !!draft || side.contains(document.activeElement),
     // (Cut, Copy and Paste, #4066: circuit-clip.js)
     copy: () => clip.copy(), cut: () => clip.copy(true), paste: () => clip.paste(),
-    canCopy: () => sel?.kind === 'part', canPaste: () => !readOnly && clip.has(), canDelete: () => !readOnly && !!sel, deleteSelection: () => deleteSelection(),
+    canCopy: () => !trying() && sel?.kind === 'part', canPaste: () => !readOnly && !trying() && clip.has(), canDelete: () => !readOnly && !trying() && !!sel, deleteSelection: () => deleteSelection(),
     // its HDL file linked (generatedFile, #245): nothing else changes, Undo / Redo keep the link
     setLink(file) { M.generatedFile = file; hist.forEach((x, i) => { hist[i] = JSON.stringify(normalizeCircuit({ ...JSON.parse(x), generatedFile: file })); }); },
     fit, print, simulating: () => !!tryIt.sim(), toggleSim, sim: tryIt.sim,
