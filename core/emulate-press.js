@@ -23,7 +23,7 @@ export function pressEnd({ from, speed, period }) {
  * The releases held back: release(key, { until, now, go }) lets the button go at once (`go()`) when the
  * board's time `now` is at `until`, else when tick(now) reaches it, or goes back before the release (a power
  * cycle: the board's time from 0 again); press(key) drops the one held back (a new press); flush() lets them all
- * go (paused, powered off).
+ * go (powered off, a restart; paused, they are kept until the design ran with them, #5331).
  *
  * The compiled engine runs in a worker, a run at a time (up to a quarter of a second's cycles when the page is slow,
  * #3727): an input set while one is in flight reaches the design once it is over, at a board time the page does not

@@ -35,10 +35,9 @@ export function mountBoardParts(ctx) {
     const el = h('div', { class: cls, title: `${tip(res, k)} — press and hold (Shift+click keeps it pressed)` });
     let latched = false;
     const set = (on) => { el.classList.toggle('on', on); setInputBit(b, on !== low(b)); };
-    // (let go: held down, lit, until the design saw a real press, #3109; at once while paused)
+    // (let go: held down, lit, until the design saw a real press, #3109; paused too, until it ran with it, #5331)
     const up = () => {
       if (latched) return;
-      if (!running()) { holds.press(el); set(false); return; }
       holds.release(el, { until: (from) => pressEnd({ from, speed: speed(), period }), now: sim.now, go: () => set(false) });
     };
     el.addEventListener('pointerdown', (e) => {

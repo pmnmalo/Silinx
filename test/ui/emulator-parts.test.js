@@ -131,7 +131,7 @@ begin
 end rtl;
 `;
 
-uiTest('#3109 a short click on a push button: held down until the design saw a real press, taken by its debouncer; at once while paused or by a power cycle', E, async (page) => {
+uiTest('#3109 a short click on a push button: held down until the design saw a real press, taken by its debouncer; paused, kept down (#5331); let go by a power cycle', E, async (page) => {
   await makeProject(env, { name: 'EmuClick', board: 'basys2', files: { 'src/deb.vhd': DEBOUNCED }, top: 'deb' });
   await page.openProject('EmuClick');
   assert.equal(await page.eval(() => window.SilinxApp.regenerateUcf()), true);
@@ -187,14 +187,18 @@ uiTest('#3109 a short click on a push button: held down until the design saw a r
   await page.mouse('mouseReleased', at.x, at.y);
   await page.click('.emu-bar button', { text: '⟲ Power cycle' });
   await page.waitFor(() => !document.querySelector('[data-part=btn0] .emu-btn').classList.contains('on'), [], { what: 'BTN0 let go by the power cycle' });
-  // paused: a click let go at once (nothing runs to see it), LED0 as it was
+  // paused: a click kept down until the design ran with it (#5331): a Step, one cycle, keeps it down, LED0 as it was
+  // (the whole of it, Run taking the press: test/ui/emu-paused-press.test.js)
   await page.click('.emu-bar button', { text: '⏸ Pause' });
   await page.mouse('mousePressed', at.x, at.y);
   assert.equal(await btn0(), true, 'pressed');
   await page.mouse('mouseReleased', at.x, at.y);
-  assert.equal(await btn0(), false, 'let go at once while paused');
+  assert.equal(await btn0(), true, 'let go while paused, kept down');
   await page.click('.emu-bar button', { text: '⏭ Step' });
   await settledNow(page);
-  assert.equal(await led0(), off, 'LED0 off since the power cycle, the paused click not seen');
+  assert.equal(await btn0(), true, 'kept down after a Step, one cycle');
+  assert.equal(await led0(), off, 'LED0 off since the power cycle, the press not taken yet');
+  await page.click('.emu-bar button', { text: '⟲ Power cycle' });
+  await page.waitFor(() => !document.querySelector('[data-part=btn0] .emu-btn').classList.contains('on'), [], { what: 'BTN0 let go by the power cycle, paused' });
   assert.deepEqual(page.console.filter((c) => c.type === 'warning' || c.type === 'warn' || c.type === 'error').map((c) => c.text), []);
 });

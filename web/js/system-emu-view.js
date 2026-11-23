@@ -171,12 +171,11 @@ export function mountSystemEmulator(host, opts) {
     if (!running) return;
     running = false; runBtn.textContent = '▶ Run';
     next?.(); next = null;
-    holds.flush();
     if (report) say(`Emulate System: paused at ${runTimeText(report.now)}.`);
     paint();
   }
   async function restart() {
-    pause(); ready?.close(); ready = null; report = null; shown = {}; boardsEl.replaceChildren(); terms.replaceChildren();
+    pause(); holds.flush(); ready?.close(); ready = null; report = null; shown = {}; boardsEl.replaceChildren(); terms.replaceChildren();
     await prepare();
   }
   prepare();
