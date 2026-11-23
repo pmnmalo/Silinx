@@ -17,6 +17,7 @@ import { vhdlEntity, vlogModule } from './hdl-emit.js';
 import { coreText, verilogCoreDigital } from './circuit-hdl-core.js';
 import { vhdlLcd, verilogLcd, lcdEntity, LCD_PORTS } from './circuit-hdl-lcd.js';
 import { vhdlOled, verilogOled, oledEntity } from './circuit-hdl-oled.js';
+import { vhdlLm75, verilogLm75, lm75Entity } from './circuit-hdl-lm75.js';
 
 // (a KiCad part modelled by a module of the project, #4283: that module)
 const entityOf = (m, d) => (d.kind === 'model' ? d.module : `${m.name}_${d.chip.toLowerCase()}`);
@@ -25,7 +26,9 @@ const partLabel = (d) => (!d.kicad ? d.chip : d.behaves ? `${d.kicad.value}, as 
 const isSupply = (q) => !!q.supply || q.name === '+' || q.name === '-';   // (a board's 5V and GND too, #5215)
 const WHILE = { level: 'on', momentary: 'pressed', clock: 'high' };
 // (a character LCD's entity, #5330; another part: none)
-const lcdOf = (m, p) => (partDef(p.type)?.kind === 'lcd' ? lcdEntity(m.name) : partDef(p.type)?.kind === 'oled' ? oledEntity(m.name) : null);
+const lcdOf = (m, p) => (partDef(p.type)?.kind === 'lcd' ? lcdEntity(m.name) : partDef(p.type)?.kind === 'oled' ? oledEntity(m.name) : partDef(p.type)?.kind === 'sensor' ? lm75Entity(m.name) : null);
+// (its generics: its id; a temperature sensor's saved temperature too, in half-degrees, #5342)
+const genericsOf = (p, V) => { const t = partDef(p.type)?.kind === 'sensor' ? Math.round((p.temp ?? 25) * 2) : null; return V ? `id => "${p.label || p.id}"${t == null ? '' : `, temp => ${t}`}` : `.ID("${p.label || p.id}")${t == null ? '' : `, .TEMP(${t})`}`; };
 
 /** The circuit's HDL: { filename, code, module }, or an Error with its diagnostics when it has errors. */
 export function generateCircuit(model, lang, { source } = {}) {
@@ -72,6 +75,7 @@ export function generateCircuit(model, lang, { source } = {}) {
   if (lcds.length) { const T = []; (V ? vhdlLcd : verilogLcd)(T, lcdEntity(m.name)); L.push(OFF, ...T.slice(0, -1), ON, ''); }
   // (a graphic OLED's, #5336: its I²C peripheral and its controller, simulation only)
   if (m.parts.some((p) => partDef(p.type)?.kind === 'oled')) { const T = []; (V ? vhdlOled : verilogOled)(T, oledEntity(m.name)); L.push(OFF, ...T.slice(0, -1), ON, ''); }
+  if (m.parts.some((p) => partDef(p.type)?.kind === 'sensor')) { const T = []; (V ? vhdlLm75 : verilogLm75)(T, lm75Entity(m.name)); L.push(OFF, ...T.slice(0, -1), ON, ''); }
 
   // the circuit's module: its ports (a bus's bits one vector, led[0]…), its two bodies
   const decls = portDecls(ports);
@@ -79,7 +83,9 @@ export function generateCircuit(model, lang, { source } = {}) {
   const lcdMap = (p) => LCD_PORTS.map((k) => [k, plan.pinNet(p.id, partDef(p.type).pins.find((q) => q.name.toLowerCase() === k).n)]);
   // (an OLED's SDA: its driven side, `sda`, and the net read, `sda_rd`)
   const oledMap = (p) => { const n = (k) => partDef(p.type).pins.find((q) => q.name === k).n; return [['gnd', plan.pinNet(p.id, n('GND'))], ['vcc', plan.pinNet(p.id, n('VCC'))], ['scl', plan.pinNet(p.id, n('SCL'))], ['sda_rd', plan.pinNet(p.id, n('SDA'))], ['sda', plan.pinNet(p.id, n('SDA'), 'oc')]]; };
-  const icMap = (p) => (partDef(p.type).kind === 'lcd' ? lcdMap(p) : partDef(p.type).kind === 'oled' ? oledMap(p) : (partDef(p.type).kind === 'model' ? partDef(p.type).pins.filter((q) => q.port) : icPorts(partDef(p.type))).map((q) => [pinPort(q), plan.pinNet(p.id, q.n, q.dir)]));
+  // (a temperature sensor, #5342: SDA's two sides as the OLED's, its OS driven, its address pins read)
+  const lm75Map = (p) => { const n = (k) => partDef(p.type).pins.find((q) => q.name === k).n; return [...oledMap(p), ...['A0', 'A1', 'A2'].map((k) => [k.toLowerCase(), plan.pinNet(p.id, n(k))]), ['os', plan.pinNet(p.id, n('OS'), 'oc')]]; };
+  const icMap = (p) => (partDef(p.type).kind === 'lcd' ? lcdMap(p) : partDef(p.type).kind === 'oled' ? oledMap(p) : partDef(p.type).kind === 'sensor' ? lm75Map(p) : (partDef(p.type).kind === 'model' ? partDef(p.type).pins.filter((q) => q.port) : icPorts(partDef(p.type))).map((q) => [pinPort(q), plan.pinNet(p.id, q.n, q.dir)]));
   const lamps = m.parts.flatMap((p) => partLamps(p).map((x) => [portRef(x.port, V), plan.pinNet(p.id, x.a), plan.pinNet(p.id, x.k)]));
   const dig = digitalTop(m, V, (d) => entityOf(m, d));
   if (V) {
@@ -91,7 +97,7 @@ export function generateCircuit(model, lang, { source } = {}) {
     if (plan.watched.length) L.push('  -- silinx: ignore unused-signal (watched by a logic probe)', `  signal ${plan.watched.join(', ')} : std_logic := 'X';`);
     L.push('begin');
     for (const [n, e, why] of plan.assigns) L.push(`  ${n} <= ${e};   -- ${why}`);
-    for (const p of m.parts) if (plan.inst.has(p.id)) L.push(`  ${plan.inst.get(p.id)} : entity work.${lcdOf(m, p) ?? entityOf(m, partDef(p.type))}${lcdOf(m, p) ? ` generic map (id => "${p.label || p.id}")` : ''} port map (${icMap(p).map(([a, b]) => `${a} => ${b}`).join(', ')});`);
+    for (const p of m.parts) if (plan.inst.has(p.id)) L.push(`  ${plan.inst.get(p.id)} : entity work.${lcdOf(m, p) ?? entityOf(m, partDef(p.type))}${lcdOf(m, p) ? ` generic map (${genericsOf(p, true)})` : ''} port map (${icMap(p).map(([a, b]) => `${a} => ${b}`).join(', ')});`);
     for (const [o, a, k] of lamps) L.push(`  ${o} <= '1' when to_x01(${a}) = '1' and to_x01(${k}) = '0' else '0';`);
     L.push('end architecture circuit;', ON);
   } else {
@@ -100,7 +106,7 @@ export function generateCircuit(model, lang, { source } = {}) {
     if (plan.signals.length) L.push(`  wire ${plan.signals.join(', ')};`);
     if (plan.watched.length) L.push('  // silinx: ignore unused-signal (watched by a logic probe)', `  wire ${plan.watched.join(', ')};`);
     for (const [n, e, why] of plan.assigns) L.push(`  assign ${n} = ${e};   // ${why}`);
-    for (const p of m.parts) if (plan.inst.has(p.id)) L.push(`  ${lcdOf(m, p) ?? entityOf(m, partDef(p.type))}${lcdOf(m, p) ? ` #(.ID("${p.label || p.id}"))` : ''} ${plan.inst.get(p.id)} (${icMap(p).map(([a, b]) => `.${a}(${b})`).join(', ')});`);
+    for (const p of m.parts) if (plan.inst.has(p.id)) L.push(`  ${lcdOf(m, p) ?? entityOf(m, partDef(p.type))}${lcdOf(m, p) ? ` #(${genericsOf(p, false)})` : ''} ${plan.inst.get(p.id)} (${icMap(p).map(([a, b]) => `.${a}(${b})`).join(', ')});`);
     for (const [o, a, k] of lamps) L.push(`  assign ${o} = (${a} === 1'b1) && (${k} === 1'b0);`);
     L.push('`else', ...dig.decl.map((x) => `  ${x}`), ...dig.body.map((x) => `  ${x}`), '`endif', 'endmodule');
   }
@@ -141,7 +147,8 @@ function netPlan(m, V, ports) {
   // (a character LCD too, #5330: its entity's instance, simulation only)
   if (m.parts.some((p) => partDef(p.type)?.kind === 'lcd')) used.add(lcdEntity(m.name).toLowerCase());
   if (m.parts.some((p) => partDef(p.type)?.kind === 'oled')) used.add(oledEntity(m.name).toLowerCase());
-  const inst = new Map(m.parts.filter((p) => ['ic', 'model', 'lcd', 'oled'].includes(partDef(p.type)?.kind)).map((p) => [p.id, fresh(`u_${p.id}`)]));
+  if (m.parts.some((p) => partDef(p.type)?.kind === 'sensor')) used.add(lm75Entity(m.name).toLowerCase());
+  const inst = new Map(m.parts.filter((p) => ['ic', 'model', 'lcd', 'oled', 'sensor'].includes(partDef(p.type)?.kind)).map((p) => [p.id, fresh(`u_${p.id}`)]));
   const Z = V ? "'Z'" : "1'bz", lit = (v) => (V ? `'${v}'` : `1'b${v.toLowerCase()}`);
   const netOf = (id, n) => nets.pinNet.get(`${id}.${n}`);
   // (an output drives the net's strong side, an input reads the net)

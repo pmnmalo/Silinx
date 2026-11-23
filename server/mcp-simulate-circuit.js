@@ -29,7 +29,10 @@ export async function simulateCircuitFile(m0, steps, base, hdl = {}) {
   // (the logic probes' levels, by label or id: 0, 1, Z open, X; said when the circuit has any, #3900)
   const probeName = new Map(m.parts.filter((p) => p.type === 'probe').map((p) => [p.id, p.label || p.id]));
   const probes = () => Object.fromEntries(Object.entries(sim.probes()).map(([id, v]) => [probeName.get(id), v]));
-  const probeText = () => (probeName.size ? `; probes ${Object.entries(probes()).map(([k, v]) => `${k}=${v}`).join(' ')}` : '') + lcdText() + oledText();
+  const probeText = () => (probeName.size ? `; probes ${Object.entries(probes()).map(([k, v]) => `${k}=${v}`).join(' ')}` : '') + lcdText() + oledText() + sensorText();
+  // (a temperature sensor's temperature and OS, #5342)
+  const sensorText = () => Object.entries(sim.sensors()).map(([id, s]) => `; ${id} ${s.temp.toFixed(1)} °C, OS ${s.os ? 'active' : 'inactive'}`).join('');
+  const sensorIds = new Map(m.parts.filter((p) => p.type === 'lm75').map((p) => [p.id.toLowerCase(), p.id]));
   // (a character LCD's lines, #5330: off, or its two lines as it shows them)
   const oledText = () => Object.entries(sim.oleds()).map(([id, s]) => `; ${id} ${s.on ? `on, ${s.lit} pixel(s) lit` : 'off'}`).join('');
   const lcdText = () => Object.entries(sim.lcds()).map(([id, s]) => `; ${id} ${s.on ? s.lines.map((l) => `|${l}|`).join('') : 'off'}`).join('');
@@ -37,6 +40,8 @@ export async function simulateCircuitFile(m0, steps, base, hdl = {}) {
   for (const [k, step] of steps.entries()) {
     if (!step || typeof step !== 'object' || Array.isArray(step)) throw toolError(`step ${k}: an object of inputs ({ name: 0 | 1 })`);
     for (const [n, v] of Object.entries(step)) {
+      // (a temperature sensor's temperature, by its id: °C, #5342)
+      if (sensorIds.has(n.toLowerCase())) { if (!Number.isFinite(Number(v))) throw toolError(`step ${k}: ${n} = ${JSON.stringify(v)}: a temperature (°C)`); sim.setTemp(sensorIds.get(n.toLowerCase()), Number(v)); continue; }
       const x = byName.get(n.toLowerCase());
       if (!x) throw toolError(`step ${k}: '${n}' is not an input of the circuit (its inputs: ${inputs.map((i) => i.name).join(', ') || 'none'})`);
       if (![0, 1, '0', '1'].includes(v)) throw toolError(`step ${k}: ${n} = ${JSON.stringify(v)}: 0 or 1`);

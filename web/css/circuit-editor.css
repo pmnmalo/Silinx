@@ -47,6 +47,9 @@
 .circuit-editor .circ-sw-knob.on { fill: var(--asm-accent); }
 .circuit-editor .circ-btn-cap { fill: #444; stroke: #222; }
 .circuit-editor .circ-btn-cap.down { fill: var(--asm-accent); }
+.circuit-editor .circ-temp-btn rect { fill: var(--asm-panel); stroke: var(--asm-border); cursor: pointer; }
+.circuit-editor .circ-temp-btn text, .circuit-editor .circ-temp { font: 11px var(--asm-mono, monospace); fill: var(--asm-fg); cursor: pointer; }
+.circuit-editor .circ-temp.os { fill: var(--circ-lv1); }
 .circuit-editor .circ-lcd-body { fill: color-mix(in srgb, var(--asm-panel) 40%, #2f6d3a 60%); stroke: var(--asm-border); stroke-width: 1.2; }
 .circuit-editor .circ-lcd-glass { fill: #26331f; stroke: #111; stroke-width: 1.5; }
 .circuit-editor .circ-lcd-glass.on { fill: #9fd36b; }

@@ -88,6 +88,8 @@ export function systemReport({ sim, wires, terminals, regmaps = {} }) {
   // (its character LCDs' lines, #5330)
   for (const [id, a] of [...sim.nodes].filter(([, x]) => x.lcds)) for (const [k, s] of Object.entries(a.lcds())) lines.push(`circuit ${id}: ${k} ${s.on ? s.lines.map((l) => `|${l}|`).join('') : 'off'}`);
   // (its graphic OLEDs', #5336)
+  // (its temperature sensors, #5342)
+  for (const [id, a] of [...sim.nodes].filter(([, x]) => x.sensors)) for (const [k, s] of Object.entries(a.sensors())) lines.push(`circuit ${id}: ${k} ${s.temp.toFixed(1)} °C, OS ${s.os ? 'active' : 'inactive'}`);
   for (const [id, a] of [...sim.nodes].filter(([, x]) => x.oleds)) for (const [k, s] of Object.entries(a.oleds())) lines.push(`circuit ${id}: ${k} ${s.on ? `on, ${s.lit} pixel(s) lit` : 'off'}`);
   for (const [id, ls] of Object.entries(circuits)) lines.push(`circuit ${id}: ${Object.entries(ls).map(([k, l]) => `${k} ${l.on ? 'on' : 'off'}${l.times ? `, lit ${l.times} time(s)` : ', never lit'}`).join('; ') || 'no lamps'}`);
   for (const w of warnings) lines.push(`WARNING: ${w}`);

@@ -13,6 +13,7 @@ import { savedInputs, partLamps } from './circuit-io.js';
 import { coreModel, MODEL_TPD } from './circuit-live-model.js';
 import { createLcd } from './circuit-lcd.js';
 import { createSsd1306 } from './circuit-oled.js';
+import { createLm75 } from './circuit-lm75.js';
 import { createI2cPeripheral } from './circuit-i2c.js';
 
 const SETTLE_NS = 1000;   // a circuit still changing after this long is said to oscillate
@@ -65,6 +66,17 @@ export function createCircuitSim(m, { nets = circuitNets(m), onLevel = null, run
       const oled = createSsd1306();
       const ic = { part: p, def: d, oled, vcc: at('VCC'), gnd: at('GND'), scl: at('SCL'), sda: at('SDA'), sdaDrv: addDriver(at('SDA'), 'Z'),
         bus: createI2cPeripheral(d.address, { onStart: () => oled.start(), onByte: (b) => oled.write(b) }), was: false };
+      ics.push(ic);
+      for (const net of [ic.vcc, ic.gnd, ic.scl, ic.sda]) readers[net].add(ic);
+    }
+    // (a temperature sensor, #5342: its I²C peripheral at 0x48 + A2..A0, read too; its OS open drain)
+    if (d.kind === 'sensor') {
+      const at = (name) => netOfPin(p.id, d.pins.find((q) => q.name === name).n);
+      const lm75 = createLm75({ temp: p.temp });
+      const addr = ['A0', 'A1', 'A2'].map(at);
+      const ic = { part: p, def: d, lm75, vcc: at('VCC'), gnd: at('GND'), scl: at('SCL'), sda: at('SDA'), sdaDrv: addDriver(at('SDA'), 'Z'), osDrv: addDriver(at('OS'), 'Z'),
+        bus: createI2cPeripheral(() => d.address | addr.reduce((v, net, k) => v | (levels[net] === '1' ? 1 << k : 0), 0),
+          { onStart: (read) => lm75.start(read), onByte: (b) => lm75.write(b), onRead: () => lm75.read() }), was: false };
       ics.push(ic);
       for (const net of [ic.vcc, ic.gnd, ic.scl, ic.sda]) readers[net].add(ic);
     }
@@ -124,6 +136,13 @@ export function createCircuitSim(m, { nets = circuitNets(m), onLevel = null, run
       const on = powered(ic);
       if (!on) { if (ic.was) { ic.oled.reset(); ic.bus.reset(); } drive(ic.sdaDrv, 'Z'); }
       else drive(ic.sdaDrv, ic.bus.feed(levels[ic.scl], levels[ic.sda]) ? '0' : 'Z');
+      ic.was = on;
+      return;
+    }
+    if (ic.lm75) {   // (its registers and its bus reset while unpowered; SDA's and OS's drivers)
+      const on = powered(ic);
+      if (!on) { if (ic.was) { ic.lm75.reset(); ic.bus.reset(); } drive(ic.sdaDrv, 'Z'); drive(ic.osDrv, 'Z'); }
+      else { drive(ic.sdaDrv, ic.bus.feed(levels[ic.scl], levels[ic.sda]) ? '0' : 'Z'); drive(ic.osDrv, ic.lm75.osLow() ? '0' : 'Z'); }
       ic.was = on;
       return;
     }
@@ -268,6 +287,16 @@ export function createCircuitSim(m, { nets = circuitNets(m), onLevel = null, run
     /** each character LCD's display: { on, lines, cursor, blink } (#5330) */
     lcds: () => Object.fromEntries(ics.filter((x) => x.lcd).map((x) => [x.part.id, x.lcd.state()])),
     /** each graphic OLED's display: { on, lit, pages, rows } (#5336) */
+    /** each temperature sensor's state: { temp, raw, conf, thyst, tos, os, pointer } (#5342) */
+    sensors: () => Object.fromEntries(ics.filter((x) => x.lm75).map((x) => [x.part.id, x.lm75.state()])),
+    /** a temperature sensor's temperature set now (°C): a conversion, its OS as it gives */
+    setTemp(id, t) {
+      const ic = ics.find((x) => x.lm75 && x.part.id === id);
+      if (!ic) throw new Error(`${id} is not a temperature sensor of the circuit`);
+      ic.lm75.setTemp(Number(t));
+      evaluate(ic);
+      update();
+    },
     oleds: () => Object.fromEntries(ics.filter((x) => x.oled).map((x) => [x.part.id, x.oled.state()])),
     powered: (id) => { const ic = ics.find((x) => x.part.id === id); return ic ? powered(ic) : null; },
     /** each part's lamps: an LED's state, a display's or a bar's list of them */

@@ -26,7 +26,7 @@ const read = (rel) => fs.readFileSync(path.join(tmp, 'ws', 'c', rel), 'utf8');
 test('circuit_parts: the library, one part with its pins, gates and delay, its details (#4126); an unknown part', async () => {
   const all = await ok('circuit_parts', {});
   assert.deepEqual(all.data.parts.map((p) => p.type), ['breadboard-half', 'breadboard-full', 'supply', 'logic-switch', 'button', 'spdt', 'dip-4', 'dip-8', 'clock', 'pull-up', 'pull-down',
-    'led', 'seg7-cc', 'seg7-ca', 'led-bar-10', 'probe', 'lcd-1602', 'oled-ssd1306', 'arduino-uno', 'arduino-nano', 'fpga-basys2', 'fpga-nexys2', '7400', '7401', '7402', '7403', '7404', '7405', '7406', '7408', '7410', '7411', '7414', '7420', '7427', '7430', '7432', '7486',
+    'led', 'seg7-cc', 'seg7-ca', 'led-bar-10', 'probe', 'lcd-1602', 'oled-ssd1306', 'lm75', 'arduino-uno', 'arduino-nano', 'fpga-basys2', 'fpga-nexys2', '7400', '7401', '7402', '7403', '7404', '7405', '7406', '7408', '7410', '7411', '7414', '7420', '7427', '7430', '7432', '7486',
     '7407', '7409', '7412', '7413', '7415', '7421', '7422', '7426', '7428', '7433', '7437', '7438', '7440', '74132', '74133', '74136', '74386', '7451', '7454', '7455',
     '74125', '74126', '74240', '74241', '74244', '74365', '74366', '74367', '74368', '74540', '74541', '74242', '74243', '74245',
     '4001', '4011', '4030', '4069', '4070', '4071', '4081', '4002', '4012', '4023', '4025', '4049', '4050', '4072', '4073', '4075', '4077', '7447', '7448', '74138', '74139', '74151', '74153', '74157', '7483', '74283', '7485',
@@ -293,4 +293,18 @@ test('a circuit as an FPGA top (#3901): the breadboard example synthesized and b
   const bad = await ok('edit_circuit', { ...at, operations: [{ op: 'set', id: 'D9', label: 'led[10]' }] });
   assert.deepEqual(bad.data.errors, [{ message: 'The bus led has no bit 8 (its bits: 0, 1, 2, 3, 4, 5, 6, 7, 10): its bits 0 to 10, each a part\'s', item: 'D1' }]);
   assert.equal(fs.readFileSync(path.join(tmp, 'ws', 'bb', 'src', 'breadboard.vhd'), 'utf8'), hdl);
+});
+
+test('#5342 simulate_drawing: a temperature sensor\'s temperature set in a step (by its id, °C), its OS; edit_circuit\'s temp; a wrong value refused', async () => {
+  // the LM75 powered, its OS pulled up: over TOS (80 °C) active, low
+  await ok('write_file', { project: 'c', path: 'src/temp.circ.json', text: JSON.stringify({ format: 'silinx-circuit', version: 1, name: 'temp', lang: 'vhdl',
+    parts: [{ id: 'P1', type: 'supply', x: -6, y: -10 }, { id: 'U1', type: 'lm75', x: 0, y: 0, temp: 25 }, { id: 'R1', type: 'pull-up', x: 6, y: -6 }],
+    wires: [{ id: 'wg', points: [[3, 0], [-6, -9]], color: 'black' }, { id: 'wv', points: [[0, -3], [-6, -10]], color: 'red' }, { id: 'wo', points: [[6, -6], [2, 0]], color: 'blue' }] }, null, 2) });
+  const sim = (cycles) => call('simulate_drawing', { project: 'c', file: 'src/temp.circ.json', cycles });
+  const r = await sim([{ U1: 85 }, { U1: 70 }]);
+  assert.equal(r.isError, false, r.text);
+  assert.deepEqual(r.text.split('\n').slice(1), ['start: t = 0 ns; LEDs none; U1 25.0 °C, OS inactive', 'step 0: inputs none; t = 0 ns; LEDs none; U1 85.0 °C, OS active', 'step 1: inputs none; t = 0 ns; LEDs none; U1 70.0 °C, OS inactive']);
+  assert.equal((await sim([{ U1: 'hot' }])).text, 'simulate_drawing: step 0: U1 = "hot": a temperature (°C)');
+  await ok('edit_circuit', { project: 'c', path: 'src/temp.circ.json', operations: [{ op: 'set', id: 'U1', temp: 30 }] });
+  assert.match((await sim([{}])).text, /start: t = 0 ns; LEDs none; U1 30\.0 °C, OS inactive/);
 });

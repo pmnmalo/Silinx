@@ -46,6 +46,12 @@ export class CircuitNode {
   /** One of its parts' inputs set now (a switch on, a button pressed; `index`: a DIP switch's lever), #5322. */
   setInput(part, value, index = 0) { this.sim.set(part, !!value, index); }
 
+  /** A temperature sensor's temperature set now (°C, #5342). */
+  setTemp(part, t) { this.sim.setTemp(part, t); }
+
+  /** Its temperature sensors' states (#5342). */
+  sensors() { return this.sim.sensors(); }
+
   /** A pin set weak while weak() says so (an AVR's input with its pull-up). */
   weakWhile(name, weak) { this.weak.set(name, weak); }
 

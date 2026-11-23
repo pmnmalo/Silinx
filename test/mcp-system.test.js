@@ -219,11 +219,29 @@ test('#5322 simulate with controls on a circuit node: its switch S1 set at 5 ms 
   await write('emuc.sys.json', m);
   const r = await ok('simulate', { project: 'u', top: 'emuc.sys.json', time_ns: 60e6, type: { term: 'A' }, controls: [{ node: 'bench', control: 'S1', on: true, at_ns: 5e6 }] });
   assert.equal(r.data.terminals.term, 'AHello from Silinx!\r\n');
-  assert.deepEqual(r.data.boards.bench, { leds: { D2: 'on' }, inputs: { S1: true }, lit: ['D2'] }, 'LD0: the last byte\'s bit 0');
+  assert.deepEqual(r.data.boards.bench, { leds: { D2: 'on' }, lcds: {}, oleds: {}, sensors: {}, inputs: { S1: true }, lit: ['D2'] }, 'LD0: the last byte\'s bit 0 (no LCD, OLED nor sensor: #5345)');
   assert.deepEqual(r.text.split('\n').slice(-3, -1), ['fpga\'s board: LEDs off.', 'bench\'s circuit: lit D2.'], r.text);
   assert.deepEqual([r.data.warnings, r.data.errors], [[], []]);
   const x = await call('simulate', { project: 'u', top: 'emuc.sys.json', time_ns: 2e6, controls: [{ node: 'bench', control: 'S9', on: true }] });
   assert.deepEqual([x.isError, x.text], [true, 'simulate: controls[0]: no switch or button \'S9\' in the circuit bench (S1)']);
   const y = await call('simulate', { project: 'u', top: 'emuc.sys.json', time_ns: 2e6, controls: [{ node: 'term', control: 'S1', on: true }] });
   assert.deepEqual([y.isError, y.text], [true, 'simulate: controls[0]: no FPGA node \'term\' with a board, nor a circuit, in the System']);
+});
+
+test('#5342 simulate with a control on a circuit\'s temperature sensor: its value (°C) at its time, its OS; a value that is no temperature refused', async () => {
+  const uno = (name) => ({ D2: [16, 0], GND: [3, 0], '5V': [5, 19] })[name];
+  // the LM75 powered by the Uno, its OS pulled up
+  await write('src/temp.circ.json', { format: 'silinx-circuit', version: 1, name: 'temp', lang: 'vhdl',
+    parts: [{ id: 'A1', type: 'arduino-uno', x: 0, y: 0, label: 'uno' }, { id: 'U1', type: 'lm75', x: 30, y: 25, temp: 25 }, { id: 'R1', type: 'pull-up', x: 36, y: 20 }],
+    wires: [{ id: 'v', points: [uno('5V'), [30, 22]], color: 'red' }, { id: 'g', points: [uno('GND'), [33, 25]], color: 'black' }, { id: 'o', points: [[36, 20], [32, 25]], color: 'blue' }] });
+  const m = { format: 'silinx-system', version: 1, name: 'temp', nodes: [{ id: 'uno', kind: 'mcu', board: 'arduino-uno', firmware: 'fw/d2.hex', interfaces: [] },
+    { id: 'bench', kind: 'circuit', circuit: 'src/temp.circ.json', interfaces: [] }], links: [] };
+  await write('temp.sys.json', m);
+  const r = await ok('simulate', { project: 'u', top: 'temp.sys.json', time_ns: 5e6, controls: [{ node: 'bench', control: 'U1', value: 90, at_ns: 1e6 }] });
+  const lines = r.text.split('\n');
+  assert.ok(lines.includes('circuit bench: U1 90.0 °C, OS active'), r.text);
+  assert.equal(lines.at(-2), 'bench\'s circuit: lit none; U1 90.0 °C.');
+  assert.deepEqual(r.data.boards.bench.sensors.U1.temp, 90);
+  const x = await call('simulate', { project: 'u', top: 'temp.sys.json', time_ns: 2e6, controls: [{ node: 'bench', control: 'U1', value: 'hot' }] });
+  assert.deepEqual([x.isError, x.text], [true, 'simulate: controls[0]: U1\'s value: a temperature (°C)']);
 });
