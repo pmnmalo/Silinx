@@ -7,10 +7,9 @@
 //
 //   const { code } = generateRegmap(map, { lang: 'vhdl' });
 
-import { regsByAddr } from './regmap.js';
+import { regsByAddr, hexByte } from './regmap.js';
 
 const bin = (v, w) => (v >>> 0).toString(2).padStart(w, '0').slice(-w);
-const hex2 = v => `0x${v.toString(16).padStart(2, '0')}`;
 
 // the header: what the module is, its bus's protocol, its registers
 function header(m, V) {
@@ -19,7 +18,7 @@ function header(m, V) {
     ? [`${c} Bus         : SPI, mode 0, MSB first, SS low for a transaction: a command byte (R << 7 | address),`,
       `${c}               then the data bytes, the address incremented after each; a read's bytes on MISO from`,
       `${c}               the second byte on`]
-    : [`${c} Bus         : I2C at the address ${hex2(m.address)}: a write [address+W, register, data...], a read [address+W,`,
+    : [`${c} Bus         : I2C at the address ${hexByte(m.address)}: a write [address+W, register, data...], a read [address+W,`,
       `${c}               register] then a repeated START and [address+R, data...]; the register incremented after`,
       `${c}               each byte; SDA pulled low or released, never driven high`];
   const nw = Math.max(4, ...regs.map(r => r.name.length));
@@ -27,7 +26,7 @@ function header(m, V) {
     `${c} Description : the registers of the register map ${m.name}.regs.json behind an ${m.bus === 'spi' ? 'SPI' : 'I2C'} slave`,
     `${c} Generator   : Silinx register map (edit the map, not this file).`, ...bus,
     `${c} Clock       : clk (rising edge), the bus's lines sampled with it`, c, `${c} Registers (address, name, width, access):`,
-    ...regs.map(r => `${c}   ${hex2(r.addr)}  ${r.name.padEnd(nw)}  ${String(r.width).padStart(2)} bit(s)  ${r.access}${r.access === 'ro' ? '' : `  reset ${r.reset}`}${r.strobe ? `, ${r.name}_wr a pulse when written` : ''}`),
+    ...regs.map(r => `${c}   ${hexByte(r.addr)}  ${r.name.padEnd(nw)}  ${String(r.width).padStart(2)} bit(s)  ${r.access}${r.access === 'ro' ? '' : `  reset ${r.reset}`}${r.strobe ? `, ${r.name}_wr a pulse when written` : ''}`),
     rule];
 }
 
@@ -71,7 +70,7 @@ function vhdl(m) {
     `architecture rtl of ${m.name} is`];
   if (spi) L.push('    signal sck_s, ss_s, mosi_s : STD_LOGIC_VECTOR (2 downto 0) := (others => \'1\');');
   else {
-    L.push(`    constant I2C_ADDRESS : STD_LOGIC_VECTOR (6 downto 0) := ${vAddr(m.address)};   -- ${hex2(m.address)}`,
+    L.push(`    constant I2C_ADDRESS : STD_LOGIC_VECTOR (6 downto 0) := ${vAddr(m.address)};   -- ${hexByte(m.address)}`,
       '    type state_t is (S_IDLE, S_ADDR, S_PTR, S_WDATA, S_ACK, S_RDATA, S_RACK);', '    signal state, wnext : state_t := S_IDLE;',
       '    signal scl_s, sda_s : STD_LOGIC_VECTOR (2 downto 0) := (others => \'1\');');
   }
@@ -154,7 +153,7 @@ function verilog(m) {
   const L = [...header(m, false), `module ${m.name} (`, ...ports.map((p, i) => `    ${p[0].padEnd(tw)} ${p[1]}${i === ports.length - 1 ? '' : ','}`), ');'];
   if (spi) L.push('    reg  [2:0] sck_s = 3\'b111, ss_s = 3\'b111, mosi_s = 3\'b111;');
   else {
-    L.push(`    localparam [6:0] I2C_ADDRESS = ${gAddr(m.address)};   // ${hex2(m.address)}`,
+    L.push(`    localparam [6:0] I2C_ADDRESS = ${gAddr(m.address)};   // ${hexByte(m.address)}`,
       '    localparam [2:0] S_IDLE = 3\'d0, S_ADDR = 3\'d1, S_PTR = 3\'d2, S_WDATA = 3\'d3, S_ACK = 3\'d4, S_RDATA = 3\'d5, S_RACK = 3\'d6;',
       '    reg  [2:0] state = S_IDLE, wnext = S_IDLE;', '    reg  [2:0] scl_s = 3\'b111, sda_s = 3\'b111;');
   }

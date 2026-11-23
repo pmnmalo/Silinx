@@ -12,11 +12,10 @@
 import { h } from './ui.js';
 import { statusLine } from './status-line.js';
 import { toolWide } from './editor-icons.js';
-import { normalizeRegmap, newRegmap, checkRegmap } from '/core/regmap.js';
+import { normalizeRegmap, newRegmap, checkRegmap, hexByte } from '/core/regmap.js';
 
 const ACCESS = [['rw', 'rw'], ['ro', 'ro'], ['wo', 'wo']];
 const bytesOf = r => Math.max(1, Math.ceil(Number(r.width) / 8));
-const hex2 = v => `0x${Number(v).toString(16).padStart(2, '0')}`;
 
 export function mountRegmapEditor(container, opts = {}) {
   let M = normalizeRegmap(opts.model || newRegmap('regs'));
@@ -63,7 +62,7 @@ export function mountRegmapEditor(container, opts = {}) {
     bus.value = M.bus;
     bus.disabled = readOnly;
     addrLabel.hidden = address.hidden = M.bus !== 'i2c';
-    address.value = M.bus === 'i2c' ? (Number.isInteger(M.address) ? hex2(M.address) : String(M.address ?? '')) : '';
+    address.value = M.bus === 'i2c' ? (Number.isInteger(M.address) ? hexByte(M.address) : String(M.address ?? '')) : '';
     address.disabled = readOnly;
     table.replaceChildren(h('tr', {}, ...['Address', 'Name', 'Width', 'Access', 'Reset value', 'Strobe'].map(c => h('th', {}, c))),
       ...M.registers.map(r => {
@@ -73,7 +72,7 @@ export function mountRegmapEditor(container, opts = {}) {
         const strobe = h('input', { type: 'checkbox', class: 'regs-strobe', checked: !!r.strobe, disabled: readOnly || r.access === 'ro', title: 'A pulse <name>_wr, one clock cycle, when its last byte is written' });
         strobe.addEventListener('change', () => setReg(r.name, { strobe: strobe.checked }));
         return h('tr', { class: `regs-row${r.name === sel ? ' sel' : ''}`, 'data-name': r.name, onclick: () => select(r.name, false) },
-          cell(r, 'addr', Number.isInteger(r.addr) ? hex2(r.addr) : r.addr, v => setReg(r.name, { addr: num(v) })),
+          cell(r, 'addr', Number.isInteger(r.addr) ? hexByte(r.addr) : r.addr, v => setReg(r.name, { addr: num(v) })),
           cell(r, 'name', r.name, v => setReg(r.name, { name: v.trim() })),
           cell(r, 'width', r.width, v => setReg(r.name, { width: num(v) })),
           h('td', {}, access),

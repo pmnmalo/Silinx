@@ -131,4 +131,6 @@ export function regmapFor(texts, modules) {
 export const hierModules = node => (node ? [node.module || node.name, ...(node.children || []).flatMap(hierModules)] : []);
 
 /** The map's registers in address order, each with its bytes ({ ...r, bytes }), for the generators. */
+/** A register's address or a bus's: 0x and two hex digits, lower case (the generated files' and the editor's). */
+export const hexByte = v => `0x${Number(v).toString(16).padStart(2, '0')}`;
 export const regsByAddr = m => m.registers.map(r => ({ ...r, bytes: regBytes(r) })).sort((a, b) => a.addr - b.addr);

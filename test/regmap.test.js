@@ -6,7 +6,7 @@
 // co-simulation's transfers as register accesses, a partial one, an address with no register.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { normalizeRegmap, readRegmap, writeRegmap, checkRegmap, newRegmap, isRegmapFile } from '../core/regmap.js';
+import { normalizeRegmap, readRegmap, writeRegmap, checkRegmap, newRegmap, isRegmapFile, hexByte } from '../core/regmap.js';
 import { generateRegmap } from '../core/regmap-hdl.js';
 import { regmapHeader } from '../core/regmap-c.js';
 import { regAccesses, accessText } from '../core/regmap-decode.js';
@@ -217,4 +217,8 @@ test('#5288 the decoder: SPI frames by SS, a write across two registers, an addr
   const i2c = [{ t: 1, addr: 0x42, read: false, ack: true, data: [{ byte: 1 }] }, { t: 2, addr: 0x42, read: true, ack: true, data: [{ byte: 0x34 }, { byte: 0x02 }] },
     { t: 3, addr: 0x43, read: false, ack: false, data: [] }];
   assert.deepEqual(regAccesses(MAP('i2c'), { i2c }).accesses.map((x) => accessText(m, x)), ['read count → 0x0234']);
+});
+
+test('#5312 hexByte: an address as the generated files and the editor write it, 0x and two lower-case digits (one copy, #1406)', () => {
+  assert.deepEqual([0, 9, 10, 0x48, 255, '7'].map(hexByte), ['0x00', '0x09', '0x0a', '0x48', '0xff', '0x07']);
 });
