@@ -118,13 +118,14 @@ export function readState(raw) {
 // Implement's (#1399)
 export const OWN_SIDE = ['sim'];
 // the tasks whose side panel is folded on a narrow screen at first, their document needing the room (Emulate's board), the
-// viewer's choice there kept apart (narrowSide)
+// viewer's choice there kept apart (narrowSide); none of their documents open, it is shown (its Emulate on Board, #5299)
 export const FOLDED_NARROW = ['emu'];
 /** A task's arrangement: what the viewer left, else its defaults; on a narrow screen too the side panel docked beside
- *  the document, not a drawer (#1463), FOLDED_NARROW's folded at first. */
-export function arrangement(task, kept = {}, narrow = false) {
+ *  the document, not a drawer (#1463), FOLDED_NARROW's folded at first (`empty`: none of the task's documents open, the
+ *  side panel shown, #5299). */
+export function arrangement(task, kept = {}, narrow = false, empty = false) {
   const a = { ...DEFAULTS[task], max: false, ...kept };
-  if (narrow && FOLDED_NARROW.includes(task)) a.side = kept.narrowSide ?? false;
+  if (narrow && FOLDED_NARROW.includes(task)) a.side = kept.narrowSide ?? empty;
   return a;
 }
 /** The kept state once a project is opened (#1557): every task's side panel and messages open, no document maximized,
@@ -177,7 +178,7 @@ function load() { try { state = readState(localStorage.getItem(TASKS_KEY)); } ca
 const current = () => state.task;
 // a design link's layout (#2886): over the kept arrangement, in this page only, until the viewer changes it
 let linkLayout = {};
-const arr = (t = current()) => ({ ...arrangement(t, state.tasks[t], isNarrow()), ...(linkLayout[t] || {}) });
+const arr = (t = current()) => ({ ...arrangement(t, state.tasks[t], isNarrow(), !docsState.docs.some(d => taskOf(d) === t)), ...(linkLayout[t] || {}) });
 // the field the side button sets: the narrow screen's own for a task folded there at first
 const sideKey = () => (isNarrow() && FOLDED_NARROW.includes(current()) ? 'narrowSide' : 'side');
 /** Changes the current task's arrangement (`patch`: side, console, max), kept. */
@@ -274,6 +275,11 @@ function tagDocs() {
   const was = docsShown;
   docsShown = { t: current(), n: mine };
   if (on() && !mine && was.t === current() && was.n > 0 && arr().max) { arrange({ max: false }); return; }
+  // (Emulate on a narrow screen: its side panel folded once its board opens, shown again once it is closed, #5299)
+  if (on() && isNarrow() && FOLDED_NARROW.includes(current()) && was.t === current() && !was.n !== !mine) {
+    if (!mine) { delete state.tasks[current()].narrowSide; keep(); }
+    apply(); return;
+  }
   placeSimSide(S, on() && current() === 'sim');   // (a source in front: the simulation's side panel beside it, #1343)
   // a task whose document is single by nature: no tab bar (none open: its page); the document's module and model,
   // and its close, in the task's bar (#854)

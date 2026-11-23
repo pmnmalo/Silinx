@@ -223,7 +223,8 @@ for (const [w, h] of [[1180, 820], [1400, 900]]) {
 
 // a project opened (#1557): the side panel and the messages shown, whatever was left folded or maximized; on a narrow screen
 // in the ISE style interface the drawer open, in the Silinx one (the Tasks layout) every task's side panel and messages open,
-// no document maximized (Emulate's side panel there back to its default, folded: the board its room, #1463)
+// no document maximized (Emulate's side panel there back to its default: folded once a board is open, the board its room,
+// #1463; with none open, shown, #5299)
 for (const [w, h] of [[1400, 900], [820, 1180]]) {
   uiTest(`${w}×${h}: a project opened shows the side panel and the messages, whatever was left folded (#1557)`, E, async (page) => {
     const pj = `Opened_${w}`;
@@ -262,9 +263,8 @@ for (const [w, h] of [[1400, 900], [820, 1180]]) {
       for (const t of TASKS) {
         await task(t);
         await page.waitFor((t) => document.documentElement.dataset.task === t, [t], { what: t });
-        const folded = narrow && t === 'emu';
-        assert.deepEqual(await arranged(), { task: t, side: folded ? 'folded' : 'open', console: 'open', max: 'off' }, t);
-        if (t !== 'sim') assert.equal(await shown(page, '#left'), !folded, t);   // (Simulate's side panel its own, SSim's, #800)
+        assert.deepEqual(await arranged(), { task: t, side: 'open', console: 'open', max: 'off' }, t);
+        if (t !== 'sim') assert.ok(await shown(page, '#left'), t);   // (Simulate's side panel its own, SSim's, #800)
         assert.ok(await shown(page, '#console-body'), t);
       }
       // kept
@@ -343,3 +343,42 @@ for (const [w, h] of [[1400, 900], [820, 1180]]) {
     assert.deepEqual(page.console.filter((c) => c.type === 'warning' || c.type === 'warn').map((c) => c.text), []);
   });
 }
+
+// #5299: on a tablet in portrait Emulate's page with no board open shows its side panel, Emulate on Board in it (the Silinx
+// interface: it was folded, the page with nothing to start the emulator); the board opened folds it (its room, #1463), the
+// board closed shows it again; the ISE style interface: the toolbar's Emulate on Board
+uiTest('narrow screen 820×1180: Emulate with no board shows Emulate on Board; the board folds the side panel, closed shows it (#5299)', E, async (page) => {
+  await makeProject(env, { name: 'Narrow_emu', template: 'blinky' });
+  await page.setViewport(820, 1180);
+  await page.openProject('Narrow_emu');
+  const from = await page.eval(() => document.querySelectorAll('#console-log .ln').length);
+  const start = '#task-emu-bar [data-act=emulate]';
+  const silinx = await page.eval(() => document.documentElement.dataset.ui === 'silinx');
+  if (silinx) {
+    await page.eval(() => [...document.querySelectorAll('.task-btn[data-task="emu"]')].find((b) => b.getClientRects().length).click());
+    await page.waitFor(() => document.documentElement.dataset.task === 'emu', [], { what: 'Emulate' });
+    assert.equal(await page.eval(() => document.documentElement.dataset.side), 'open');
+    assert.ok(await shown(page, start), 'Emulate on Board shown');
+    await page.click(start);
+  } else {
+    assert.ok(await shown(page, '#toolbar .tb-btn[data-cmd=board]'), 'the toolbar\'s Emulate on Board');
+    await page.click('#toolbar .tb-btn[data-cmd=board]');
+  }
+  await page.waitFor(() => window.SilinxApp.findDoc('emulator')?.view?.outputs, [], { what: 'the emulator', timeout: 60000 });
+  if (silinx) {
+    await page.waitFor(() => document.documentElement.dataset.side === 'folded', [], { what: 'the side panel folded for the board' });
+    await page.click('#doc-tabs > .tab.active .tclose');
+    await page.waitFor(() => !window.SilinxApp.findDoc('emulator'), [], { what: 'the emulator closed' });
+    await page.waitFor(() => document.documentElement.dataset.side === 'open', [], { what: 'the side panel shown again' });
+    assert.ok(await shown(page, start), 'Emulate on Board shown again');
+  }
+  const log = await page.eval((k) => [...document.querySelectorAll('#console-log .ln')].slice(k).map((l) => l.textContent).filter((t) => t.trim()), from);
+  // the console: the Check Syntax and the emulator's lines, nothing else
+  assert.deepEqual(log, ['Started : "Check Syntax".', ...['v:counter', 'vhd:knight', 'vhd:speed_ctrl', 'vhd:bcd_counter', 'v:sevenseg', 'vhd:top'].map((f) => {
+    const [x, n] = f.split(':');
+    return x === 'v' ? `Analyzing Verilog file "src/${n}.v" into library work` : `Parsing VHDL file "src/${n}.vhd" into library work`;
+  }), 'Elaborating top module <top>: 53 signals, 26 processes.', 'Process "Check Syntax" completed successfully',
+  "Board Emulator: 'top' (RTL, compiled) on Digilent Basys2 — 27 port bit(s) on board resources.",
+  "Board Emulator: the design is compiled (its netlist, by Yosys) and runs at up to the board's clock rate; registers without an initial value start at 0, as on the FPGA; the event-driven engine shows X values and the design's messages. Each display digit keeps the last pattern it showed between its refreshes, as your eye does on the real board."]);
+  await noWarnings(page);
+});
