@@ -37,14 +37,14 @@ test('#4702 uart-avr: its FPGA module the uart example\'s sources, its firmware 
   assert.deepEqual([pj.kind, pj.board, pj.constraints, pj.top], ['codesign', null, null, '']);
   const sys = readSystem(fs.readFileSync(path.join(EX, 'uart_avr.sys.json'), 'utf8'));
   assert.deepEqual(sys.system.links, [{ id: 'serial', kind: 'uart', a: 'uno.Serial', b: 'fpga.uart' }]);
-  assert.deepEqual(CODESIGN_EXAMPLES, ['uart-avr', 'spi-avr', 'i2c-avr']);
+  assert.deepEqual(CODESIGN_EXAMPLES, ['uart-avr', 'spi-avr', 'i2c-avr', 'regs-avr']);
 });
 
 test('#4702 the kinds\' rules: a co-design project empty or from a co-design example; a new one\'s silinx.json and System', () => {
   assert.equal(createRefusal('codesign', 'empty'), null);
   assert.equal(createRefusal('codesign', 'uart-avr'), null);
   assert.equal(createRefusal(null, 'uart'), null);
-  assert.equal(createRefusal('codesign', 'uart'), 'a co-design project starts empty or from a co-design example (uart-avr, spi-avr, i2c-avr)');
+  assert.equal(createRefusal('codesign', 'uart'), 'a co-design project starts empty or from a co-design example (uart-avr, spi-avr, i2c-avr, regs-avr)');
   assert.equal(createRefusal(null, 'uart-avr'), null);   // (the example's kind)
   assert.equal(createRefusal('design', 'uart-avr'), 'a design and simulation project starts empty: no example');
   assert.equal(createRefusal('fpga', 'uart-avr'), 'unknown project kind \'fpga\'');   // (an FPGA project's kind is none)
@@ -59,10 +59,10 @@ test('#4702 the kinds\' rules: a co-design project empty or from a co-design exa
 });
 
 test('#4702 uart-avr made with the MCP server: its System checked (the 5 V warning) and simulated (the Arduino\'s hello echoed)', async () => {
-  // (listed after the FPGA examples, as the co-design ones: uart-avr, spi-avr, i2c-avr)
+  // (listed after the FPGA examples, as the co-design ones: uart-avr, spi-avr, i2c-avr, regs-avr)
   const ex = await ok('list_examples', {});
-  assert.deepEqual(ex.text.split('\n').slice(-3), ['uart-avr: a co-design example (FPGA and microcontroller nodes in a System), 5 file(s)', 'spi-avr: a co-design example (FPGA and microcontroller nodes in a System), 1 file(s)', 'i2c-avr: a co-design example (FPGA and microcontroller nodes in a System), 1 file(s)']);
-  assert.deepEqual(ex.data.examples.at(-3), { name: 'uart-avr', kind: 'codesign', top: null, simTop: null, board: null, device: null, files: 5 });
+  assert.deepEqual(ex.text.split('\n').slice(-4), ['uart-avr: a co-design example (FPGA and microcontroller nodes in a System), 5 file(s)', 'spi-avr: a co-design example (FPGA and microcontroller nodes in a System), 1 file(s)', 'i2c-avr: a co-design example (FPGA and microcontroller nodes in a System), 1 file(s)', 'regs-avr: a co-design example (FPGA and microcontroller nodes in a System), 2 file(s)']);
+  assert.deepEqual(ex.data.examples.at(-4), { name: 'uart-avr', kind: 'codesign', top: null, simTop: null, board: null, device: null, files: 5 });
   await ok('new_project_from_example', { name: 'ua', example: 'uart-avr' });
   const warn = "serial: uno's D1, a 5 V output, drives fpga's rx (pin J3), a 3.3 V input of the FPGA (LVCMOS33): a level shifter or a divider on the real boards";
   const c = await ok('check_system', { project: 'ua', file: 'uart_avr.sys.json' });
@@ -136,4 +136,34 @@ test('#5214 i2c-avr: its firmware i2c.asm assembled; made with the MCP server, i
   const sys = readSystem(fs.readFileSync(path.join(tmp, 'ws', 'ia', 'i2c_avr.sys.json'), 'utf8')).system;
   assert.deepEqual([sys.links, sys.nodes[1].interfaces], [[{ id: 'i2c', kind: 'i2c', a: 'uno.Wire', b: 'fpga.bus' }], [{ name: 'bus', kind: 'i2c', scl: 'scl', sda: 'sda', hz: 100000 }]]);
   assert.deepEqual(ed.text.split('\n').slice(0, 4), ['remove_link i2c', 'remove_interface fpga.bus', 'add_interface fpga.bus', 'add_link i2c']);
+});
+
+test('#5288 regs-avr: its map\'s slave generated from it, its firmware regs.asm assembled; made with the MCP server, checked, simulated (the register accesses: clear, duty written, count read) and emulated (its LEDs the duty)', async () => {
+  const RA = path.join(ROOT, 'examples/regs-avr');
+  const { readRegmap } = await import('../core/regmap.js');
+  const { generateRegmap } = await import('../core/regmap-hdl.js');
+  const map = readRegmap(fs.readFileSync(path.join(RA, 'src/pwm_regs.regs.json'), 'utf8')).regmap;
+  assert.equal(fs.readFileSync(path.join(RA, 'src/pwm_regs.vhd'), 'utf8'), generateRegmap(map, { lang: 'vhdl' }).code, 'its slave as the map generates it');
+  assert.equal(fs.readFileSync(path.join(RA, 'firmware/regs.hex'), 'utf8'), intelHex(avrAssemble(fs.readFileSync(path.join(RA, 'firmware/regs.asm'), 'utf8').split('\n'))));
+  await ok('new_project_from_example', { name: 'ra', example: 'regs-avr' });
+  const W = (pin, port, loc) => `WARNING: spi: uno's ${pin}, a 5 V output, drives fpga's ${port} (pin ${loc}), a 3.3 V input of the FPGA (LVCMOS33): a level shifter or a divider on the real boards`;
+  const c = await ok('check_system', { project: 'ra', file: 'regs_avr.sys.json' });
+  assert.deepEqual(c.text.split('\n'), ['System regs_avr: 2 nodes, 1 link', 'node uno: Arduino Uno, firmware firmware/regs.hex', '  SPI: SPI 125000 Hz mode 0, SCK D13, MOSI D11, MISO D12, SS D10',
+    'node fpga: FPGA, module pwm_top on basys2-250', '  bus: SPI 125000 Hz mode 0, SCK sck (B2), MOSI mosi (A3), MISO miso (J3), SS ss (B5)', 'link spi: SPI uno.SPI ↔ fpga.bus',
+    W('D13', 'sck', 'B2'), W('D11', 'mosi', 'A3'), W('D10', 'ss', 'B5'), 'Process "Check System" of regs_avr.sys.json completed successfully with 3 warning(s).']);
+  assert.equal((await ok('check_drawing', { project: 'ra', file: 'src/pwm_regs.regs.json' })).text, 'Process "Check Register Map" of pwm_regs.regs.json completed successfully.');
+  assert.match((await ok('check_syntax', { project: 'ra', top: 'pwm_top' })).text, /^Process "Check Syntax" of <pwm_top> completed successfully \(\d+ signals, \d+ process(es)?\)\.$/);
+  // 100 ms: clear written, then twice duty written (0, then 1) and count read (the milliseconds since the clear)
+  const s = await ok('simulate', { project: 'ra', time_ns: 100e6 });
+  const acc = s.data.regs[0].accesses.map((a) => [a.op, a.reg, a.value]);
+  assert.deepEqual(acc.map(([op, reg]) => `${op} ${reg}`), ['write clear', 'write duty', 'read count', 'write duty', 'read count', 'write duty', 'read count']);
+  assert.deepEqual(acc.filter(([op]) => op === 'write').map(([, , v]) => v), [1, 0, 1, 2]);
+  const counts = acc.filter(([op]) => op === 'read').map(([, , v]) => v);
+  assert.ok(counts[0] <= 1 && counts[1] >= 45 && counts[1] <= 50 && counts[2] - counts[1] >= 45, `the milliseconds since the clear: ${counts}`);
+  assert.ok(s.text.includes(`spi (registers of pwm_regs): 7 access(es): write clear = 0x01; write duty = 0x00; read count → 0x${counts[0].toString(16).padStart(4, '0')}`), s.text);
+  assert.deepEqual([s.data.warnings, s.data.errors], [[], []]);
+  // emulated: LD7..LD1 the duty's bits (2 from 94 ms: LD1, in the last 10 ms), LD0 its PWM (2 of 256: dim)
+  const e = await ok('simulate', { project: 'ra', time_ns: 120e6, controls: [] });
+  assert.deepEqual(e.data.boards.fpga.leds.slice(1), [1, 0, 0, 0, 0, 0, 0]);
+  assert.ok(e.data.boards.fpga.leds[0] > 0 && e.data.boards.fpga.leds[0] < 0.05, `LD0: ${e.data.boards.fpga.leds[0]}`);
 });

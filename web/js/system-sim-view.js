@@ -90,7 +90,14 @@ export function mountSystemSim(host, opts) {
     }
     if (ready === run) stop();
   }
-  function stop() { timer = null; runBtn.textContent = '▶ Run'; if (report) say(`Simulate System: paused at ${runTimeText(report.now)}.`); }
+  // (a run stopped: each SPI and I²C link's transfers and a register map's accesses, the MCP's lines, #5288)
+  const busLines = rep => rep.lines.filter(l => [...(rep.spi || []), ...(rep.i2c || []), ...(rep.regs || [])].some(x => l.startsWith(`${x.link} (`)));
+  function stop() {
+    timer = null; runBtn.textContent = '▶ Run';
+    if (!report) return;
+    for (const l of busLines(report)) say(`Simulate System: ${l}`);
+    say(`Simulate System: paused at ${runTimeText(report.now)}.`);
+  }
   function pause() { if (timer) timer = null; }
   async function restart() { pause(); ready?.close(); ready = null; report = null; terms.replaceChildren(); wires.replaceChildren(); timeEl.textContent = ''; runBtn.textContent = '▶ Run'; await prepare(); }
 

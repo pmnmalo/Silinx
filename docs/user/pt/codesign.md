@@ -61,7 +61,11 @@ escrito. **+ Register** acrescenta um a seguir ao último; a barra escolhe o bar
 **Check** diz os problemas (dois registos no mesmo endereço, um nome que o módulo usa ele próprio…) na consola. No SPI,
 uma transação é um byte de comando (`R << 7 | endereço`) e depois os bytes de dados; no I²C, o endereço do registo e
 depois os dados, uma leitura depois de um START repetido. Em **Experimentar**, uma ligação a um nó FPGA feito a partir
-de um mapa diz os seus acessos nas linhas da consola: `write duty = 0xa5`, `read count → 0x0123`.
+de um mapa diz os seus acessos nas linhas da consola: `write duty = 0xa5`, `read count → 0x0123`, quando a corrida para (depois das transferências de cada ligação SPI e
+I²C). O exemplo **regs-avr** mostra-o: o seu módulo da FPGA, `pwm_top`, instancia o escravo do mapa
+`pwm_regs.regs.json` (`duty`, o PWM do LD0, os seus bits nos LD7..LD1; `count`, os milissegundos desde o `clear`;
+`clear`, um impulso); o Arduino escreve o `clear` uma vez e depois, a cada 47 ms mais ou menos, escreve o `duty` com
+uma contagem e lê o `count`, o seu byte baixo nos D2..D7.
 
 ## Experimentar
 
