@@ -68,6 +68,7 @@ test('#4702 uart-avr made with the MCP server: its System checked (the 5 V warni
   const c = await ok('check_system', { project: 'ua', file: 'uart_avr.sys.json' });
   assert.deepEqual(c.text.split('\n'), ['System uart_avr: 2 nodes, 1 link', 'node uno: Arduino Uno, firmware firmware/hello.hex', '  Serial: UART 9600 baud 8N1, TX D1, RX D0',
     'node fpga: FPGA, module uart on basys2-250', '  uart: UART 9600 baud 8N1, TX tx (A3), RX rx (J3)', 'link serial: UART uno.Serial ↔ fpga.uart',
+    'serial TX: uno D1 → fpga rx (pin J3), 5 V → 3.3 V', 'serial TX: fpga tx (pin A3) → uno D0',   // (its wiring, #5216)
     `WARNING: ${warn}`, 'Process "Check System" of uart_avr.sys.json completed successfully with 1 warning(s).']);
   const s = await ok('simulate', { project: 'ua', time_ns: 30e6 });
   const text = w => String.fromCharCode(...s.data.traffic.find(t => t.wire === w).bytes.map(b => b.byte));
@@ -94,6 +95,8 @@ test('#5214 spi-avr: its firmware spi.asm assembled; made with the MCP server, i
   assert.deepEqual(c.text.split('\n'), ['System spi_avr: 2 nodes, 1 link', 'node uno: Arduino Uno, firmware firmware/spi.hex', '  Serial: UART 9600 baud 8N1, TX D1, RX D0',
     '  SPI: SPI 125000 Hz mode 0, SCK D13, MOSI D11, MISO D12, SS D10', 'node fpga: FPGA, module spi_echo on basys2-250',
     '  bus: SPI 125000 Hz mode 0, SCK sck (B2), MOSI mosi (A3), MISO miso (J3), SS ss (B5)', 'link spi: SPI uno.SPI ↔ fpga.bus',
+    'spi SCK: uno D13 → fpga sck (pin B2), 5 V → 3.3 V', 'spi MOSI: uno D11 → fpga mosi (pin A3), 5 V → 3.3 V', 'spi MISO: fpga miso (pin J3) → uno D12',
+    'spi SS: uno D10 → fpga ss (pin B5), 5 V → 3.3 V',   // (its wiring, #5216)
     W('D13', 'sck', 'B2'), W('D11', 'mosi', 'A3'), W('D10', 'ss', 'B5'), 'Process "Check System" of spi_avr.sys.json completed successfully with 3 warning(s).']);
   // three transfers in 120 ms (one every 47 ms or so): 00 01 02 sent, 00 01 02 answered (the first 0x00, then each the one before plus one)
   const s = await ok('simulate', { project: 'sa', time_ns: 120e6 });
@@ -118,6 +121,7 @@ test('#5214 i2c-avr: its firmware i2c.asm assembled; made with the MCP server, i
   const c = await ok('check_system', { project: 'ia', file: 'i2c_avr.sys.json' });
   assert.deepEqual(c.text.split('\n'), ['System i2c_avr: 2 nodes, 1 link', 'node uno: Arduino Uno, firmware firmware/i2c.hex', '  Wire: I²C 100000 Hz, SCL A5, SDA A4',
     'node fpga: FPGA, module i2c_leds on basys2-250', '  bus: I²C 100000 Hz, SCL scl (B2), SDA sda (A3)', 'link i2c: I²C uno.Wire ↔ fpga.bus',
+    'i2c SCL: uno A5 → fpga scl (pin B2), 5 V → 3.3 V', 'i2c SDA: uno A4 → fpga sda (pin A3), 5 V → 3.3 V',   // (its wiring, #5216)
     W('A5', 'scl', 'B2'), W('A4', 'sda', 'A3'), 'Process "Check System" of i2c_avr.sys.json completed successfully with 2 warning(s).']);
   // two counts in 60 ms (one every 47 ms or so): 00 then 01 written, the switches (all off: 00) read after each
   const s = await ok('simulate', { project: 'ia', time_ns: 60e6 });

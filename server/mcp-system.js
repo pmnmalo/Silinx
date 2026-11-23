@@ -7,7 +7,7 @@ import { toolError, STR, PROJECT, projectText, readProject, elaborateView } from
 import { readSystem, writeSystem, isSystemFile } from '../core/system-doc.js';
 import { codesignOn, CODESIGN_OFF } from '../core/build-channel.js';
 import { editSystem, describeSystem, EDIT_ACTIONS } from '../core/system-edit.js';
-import { checkSystem, systemCheckLines } from '../core/system-check.js';
+import { analyzeSystem, systemCheckLines, wiringLines } from '../core/system-check.js';
 import { ucfPort } from '../core/board-constraints.js';
 
 // the project's modules ({ name: ports, null when it does not elaborate }): every module of its sources, the FPGA nodes'
@@ -24,15 +24,15 @@ async function projectModules(name, sys) {
   return out;
 }
 
-// a System's Check (its text, `file` its path in the project `name`): { lines, errors, warnings: { message, item } }
+// a System's Check (its text, `file` its path in the project `name`): { lines, errors, warnings: { message, item }, wires }
 async function checkSystemFile(name, file, text) {
   const r = readSystem(text);
   if (r.error) throw toolError(`${file}: ${r.error}`);
   await readProject(name);
   const files = await P.fileTree(name);
-  const diags = checkSystem(r.system, { modules: await projectModules(name, r.system), files });
+  const { diags, wires } = analyzeSystem(r.system, { modules: await projectModules(name, r.system), files });
   const json = d => ({ message: d.message, item: d.ref?.id ?? null });
-  return { lines: systemCheckLines(file, diags), errors: diags.filter(d => d.severity === 'error').map(json), warnings: diags.filter(d => d.severity === 'warning').map(json) };
+  return { lines: systemCheckLines(file, diags), errors: diags.filter(d => d.severity === 'error').map(json), warnings: diags.filter(d => d.severity === 'warning').map(json), wires };
 }
 
 // a System document of the project read: { text, system }, or the tool's error (not a System, unreadable)
@@ -77,13 +77,15 @@ export const SYSTEM_TOOLS = [
   },
   {
     name: 'check_system', title: 'Check a System',
-    description: 'Describe and check a co-design project\'s System (.sys.json) as Check System does: nodes, links, errors, warnings.',
+    description: 'Describe and check a co-design project\'s System (.sys.json) as Check System does: nodes, links, wires, errors, warnings.',
     inputSchema: { type: 'object', properties: { project: PROJECT, file: SYS_FILE }, required: ['project', 'file'], additionalProperties: false },
     annotations: { readOnlyHint: true },
     async run({ project: name, file }) {
       const { text, system } = await readSystemFile(name, file);
-      const { lines, errors, warnings } = await checkSystemFile(name, file, text);
-      return { text: [...describeSystem(system), ...lines].join('\n'), data: { project: name, file, system, ok: !errors.length, errors, warnings }, isError: false,
+      const { lines, errors, warnings, wires } = await checkSystemFile(name, file, text);
+      // (its wires: the editor's Wiring view, a line each, after the System described, #5216)
+      return { text: [...describeSystem(system), ...wiringLines(wires), ...lines].join('\n'),
+        data: { project: name, file, system, ok: !errors.length, errors, warnings, wires }, isError: false,
         untrusted: 'the System\'s names and its problems, which quote them' };
     },
   },

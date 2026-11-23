@@ -64,3 +64,17 @@
 .regmap-editor .regs-table .regs-name { width: 10em; }
 .regmap-editor .regs-table :is(.regs-addr, .regs-width) { width: 4.5em; }
 .regmap-editor .regs-address { width: 4.5em; }
+/* the Wiring view (#5216, system-wiring.js): a band per link, a row per wire, the hot ones a level warning's */
+.system-editor .sys-wiring { cursor: pointer; }
+.system-editor .sys-wiring-box.fpga { fill: color-mix(in srgb, var(--asm-panel) 92%, var(--asm-accent) 8%); }
+.system-editor .sys-wiring-box.mcu { fill: color-mix(in srgb, var(--asm-panel) 92%, var(--asm-ok) 8%); }
+.system-editor .sys-wiring.sel .sys-wiring-box { stroke: var(--asm-accent); stroke-width: 2.6; }
+.system-editor .sys-wiring-name { fill: var(--asm-fg); font: 600 12px system-ui, -apple-system, "Segoe UI", sans-serif; }
+.system-editor .sys-wire-pin { fill: var(--asm-fg); font: 11px var(--asm-mono); }
+.system-editor .sys-wire-volts, .system-editor .sys-wire-signal { fill: var(--asm-muted); font: 10px var(--asm-mono); pointer-events: none; }
+.system-editor .sys-wire-line { stroke: color-mix(in srgb, var(--asm-fg) 85%, transparent); stroke-width: 2; }
+.system-editor .sys-wire-head { fill: color-mix(in srgb, var(--asm-fg) 85%, transparent); }
+.system-editor .sys-wire-dot { fill: var(--asm-fg); }
+.system-editor .sys-wire-row.hot .sys-wire-line { stroke: var(--sys-hot); }
+.system-editor .sys-wire-row.hot .sys-wire-dot, .system-editor .sys-wire-head.hot { fill: var(--sys-hot); }
+.system-editor .sys-wire-row.hot .sys-wire-signal { fill: var(--sys-hot); }

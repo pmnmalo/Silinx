@@ -28,9 +28,9 @@ function ioVolts(std) {
 function fpgaPins(n) {
   const r = n.board ? resolveBoard(n.board, { variant: n.variant }) : null;
   if (!r) return null;
-  const pins = new Map();
-  for (const res of r.resources) for (const p of res.pins) pins.set(String(p).toUpperCase(), res.iostandard || '');
-  return { name: r.board.name, pins };
+  const pins = new Map(), labels = new Map();
+  for (const res of r.resources) for (const p of res.pins) { const P = String(p).toUpperCase(); pins.set(P, res.iostandard || ''); if (!labels.has(P)) labels.set(P, res.label || res.name); }
+  return { name: r.board.name, pins, labels };
 }
 
 // a module's port of a name (`led<0>`: a bus's bit), or undefined
@@ -47,13 +47,22 @@ function portOf(ports, name) {
  * project's modules' ports by their names ({ name: [{ name, dir, width }], or null: its ports not known }; null: not checked); `files`: the project's
  * files (a firmware's checked among them; null: not checked).
  */
-export function checkSystem(sys, { modules = null, files = null } = {}) {
-  const out = [];
+export const checkSystem = (sys, ctx = {}) => analyzeSystem(sys, ctx).diags;
+
+/**
+ * The System's check and its wires (#5216, the System editor's Wiring view): { diags, wires }, a wire { link, kind,
+ * signal (TX, SCK, MOSI…, a GPIO wire's index), from, to (its driver first: { node, pin (a port of the FPGA's module,
+ * a pin of a microcontroller's board), loc (an FPGA's package pin), dir, volts, std, place (what the FPGA board's
+ * pin is: its resource's label) }), warnings (its level's) } of each
+ * link whose ends resolve, in the links' order.
+ */
+export function analyzeSystem(sys, { modules = null, files = null } = {}) {
+  const out = [], wires = [];
   const say = { err: (message, ref) => out.push({ severity: 'error', message, ref }), warn: (message, ref) => out.push({ severity: 'warning', message, ref }) };
   const nodes = checkNodes(sys, { modules, files }, say);
-  const used = checkLinks(sys, nodes, say);
+  const used = checkLinks(sys, nodes, say, wires);
   for (const n of sys.nodes) if (n.id && nodes.has(lc(n.id)) && !used.has(lc(n.id))) say.warn(`${n.id} joins nothing: no link reaches it`, node(n.id));
-  return out;
+  return { diags: out, wires };
 }
 
 // the nodes, each with its interfaces' pins resolved: Map(id → { n, board, ifaces: Map(name → { f, tx, rx, pins }) })
@@ -139,7 +148,7 @@ function checkFpga(n, at, { modules }, { err, warn }) {
     const key = Object.keys(n.pins).find(k => lc(k) === lc(name)) ?? (one ? Object.keys(n.pins).find(k => lc(k) === lc(alt)) : undefined);
     if (key == null) { err(`${n.id}.${f.name}: ${name} has no pin of the board`, ref); return null; }
     const P = String(n.pins[key]).toUpperCase();
-    return { pin: name, dir, loc: n.pins[key], volts: board?.pins.has(P) ? ioVolts(board.pins.get(P)) : null, std: board?.pins.get(P) || null };
+    return { pin: name, dir, loc: n.pins[key], volts: board?.pins.has(P) ? ioVolts(board.pins.get(P)) : null, std: board?.pins.get(P) || null, place: board?.labels.get(P) || null };
   };
   for (const f of n.interfaces) {
     if (!checkInterface(n, f, at, { err, warn })) continue;
@@ -215,7 +224,7 @@ const KIND_NAME = { uart: 'UART', gpio: 'GPIO', spi: 'SPI', i2c: 'I²C' };
 const KIND_A = { uart: 'a', gpio: 'a', spi: 'an', i2c: 'an' };
 
 // the links: their ends, their settings, the wires they make; the nodes they reach
-function checkLinks(sys, nodes, { err, warn }) {
+function checkLinks(sys, nodes, { err, warn }, wiresOut) {
   const ids = new Set(), byIface = new Map(), byPin = new Map(), used = new Set();
   for (const l of sys.links) {
     const ref = link(l.id);
@@ -242,7 +251,12 @@ function checkLinks(sys, nodes, { err, warn }) {
     if (a.at === b.at) { err(`${l.id}: both ends on ${a.at.n.id}: a link joins two nodes`, ref); continue; }
     if (!a.r || !b.r) continue;   // (an interface in error: said)
     const wires = l.kind === 'uart' ? uartWires(l, a, b, { err }) : l.kind === 'spi' ? spiWires(l, a, b, { err }) : l.kind === 'i2c' ? i2cWires(l, a, b, { err }) : gpioWires(l, a, b, { err });
-    for (const [x, y] of wires) checkWire(l, x, y, byPin, { err, warn });
+    for (const [x, y, signal] of wires) {
+      const said = [], level = { err, warn: (m, r) => { said.push(m); warn(m, r); } };
+      checkWire(l, x, y, byPin, level);
+      const [d, r] = y.dir === 'out' && x.dir !== 'out' ? [y, x] : [x, y];
+      wiresOut.push({ link: l.id, kind: l.kind, signal, from: wireEnd(d), to: wireEnd(r), warnings: said });
+    }
   }
   return used;
 }
@@ -253,8 +267,8 @@ function uartWires(l, a, b, { err }) {
   if (a.r.f.baud !== b.r.f.baud) err(`${l.id}: ${a.name} at ${a.r.f.baud} baud, ${b.name} at ${b.r.f.baud}: a UART's ends at one baud`, ref);
   if (String(a.r.f.frame).toUpperCase() !== String(b.r.f.frame).toUpperCase()) err(`${l.id}: ${a.name}'s frame ${a.r.f.frame}, ${b.name}'s ${b.r.f.frame}: a UART's ends with one frame`, ref);
   const w = [];
-  if (a.r.tx && b.r.rx) w.push([{ end: a, ...a.r.tx }, { end: b, ...b.r.rx }]);
-  if (b.r.tx && a.r.rx) w.push([{ end: b, ...b.r.tx }, { end: a, ...a.r.rx }]);
+  if (a.r.tx && b.r.rx) w.push([{ end: a, ...a.r.tx }, { end: b, ...b.r.rx }, 'TX']);
+  if (b.r.tx && a.r.rx) w.push([{ end: b, ...b.r.tx }, { end: a, ...a.r.rx }, 'TX']);
   return w;
 }
 
@@ -267,7 +281,7 @@ function spiWires(l, a, b, { err }) {
   if (m.at.n.kind !== 'mcu' || p.at.n.kind !== 'fpga') { err(`${l.id}: an SPI link joins a microcontroller (the master) and an FPGA (the peripheral)`, ref); return []; }
   if (Number(m.r.f.hz) !== Number(p.r.f.hz)) err(`${l.id}: ${m.name}'s SCK at ${m.r.f.hz} Hz, ${p.name}'s at ${p.r.f.hz}: an SPI bus's ends at one rate`, ref);
   if (m.r.f.mode !== p.r.f.mode) err(`${l.id}: ${m.name} in mode ${m.r.f.mode}, ${p.name} in mode ${p.r.f.mode}: an SPI bus's ends in one mode`, ref);
-  return SPI_LINES.map(k => (k === 'miso' ? [p.r.spi[k] && { end: p, ...p.r.spi[k] }, m.r.spi[k] && { end: m, ...m.r.spi[k] }] : [m.r.spi[k] && { end: m, ...m.r.spi[k] }, p.r.spi[k] && { end: p, ...p.r.spi[k] }]))
+  return SPI_LINES.map(k => (k === 'miso' ? [p.r.spi[k] && { end: p, ...p.r.spi[k] }, m.r.spi[k] && { end: m, ...m.r.spi[k] }, 'MISO'] : [m.r.spi[k] && { end: m, ...m.r.spi[k] }, p.r.spi[k] && { end: p, ...p.r.spi[k] }, k.toUpperCase()]))
     .filter(([x, y]) => x && y);
 }
 
@@ -279,14 +293,17 @@ function i2cWires(l, a, b, { err }) {
   const [m, p] = a.at.n.kind === 'mcu' ? [a, b] : [b, a];
   if (m.at.n.kind !== 'mcu' || p.at.n.kind !== 'fpga') { err(`${l.id}: an I²C link joins a microcontroller (the master) and an FPGA (the peripheral)`, ref); return []; }
   if (Number(m.r.f.hz) !== Number(p.r.f.hz)) err(`${l.id}: ${m.name}'s SCL at ${m.r.f.hz} Hz, ${p.name}'s at ${p.r.f.hz}: an I²C bus's ends at one rate`, ref);
-  return I2C_LINES.map(k => [m.r.i2c[k] && { end: m, ...m.r.i2c[k] }, p.r.i2c[k] && { end: p, ...p.r.i2c[k] }]).filter(([x, y]) => x && y);
+  return I2C_LINES.map(k => [m.r.i2c[k] && { end: m, ...m.r.i2c[k] }, p.r.i2c[k] && { end: p, ...p.r.i2c[k] }, k.toUpperCase()]).filter(([x, y]) => x && y);
 }
 
 // a GPIO link's wires: its ends' pins in order, as many at each end
 function gpioWires(l, a, b, { err }) {
   if (a.r.pins.length !== b.r.pins.length) { err(`${l.id}: ${a.name} has ${a.r.pins.length} pin(s), ${b.name} ${b.r.pins.length}: a GPIO link's ends have as many pins`, link(l.id)); return []; }
-  return a.r.pins.map((p, i) => [p && { end: a, ...p }, b.r.pins[i] && { end: b, ...b.r.pins[i] }]).filter(([x, y]) => x && y);
+  return a.r.pins.map((p, i) => [p && { end: a, ...p }, b.r.pins[i] && { end: b, ...b.r.pins[i] }, String(i)]).filter(([x, y]) => x && y);
 }
+
+// a wire's end as the Wiring view shows it
+const wireEnd = p => ({ node: p.end.at.n.id, pin: p.pin, loc: p.loc ?? null, dir: p.dir, volts: p.volts ?? null, std: p.std ?? null, place: p.place ?? null });
 
 const pinName = p => `${p.end.at.n.id}'s ${p.pin}${p.loc ? ` (pin ${p.loc})` : ''}`;
 
@@ -313,4 +330,13 @@ export function systemCheckLines(file, diags) {
   return [...diags.map(d => `${d.severity === 'error' ? 'ERROR' : 'WARNING'}: ${d.message}`),
     errors.length ? `Process "Check System" of ${base} failed (${errors.length} error(s), ${warnings.length} warning(s)).`
       : `Process "Check System" of ${base} completed successfully${warnings.length ? ` with ${warnings.length} warning(s)` : ''}.`];
+}
+
+// a wire's end in a line: `uno D1`, `fpga rx (pin J3)`
+const endText = e => `${e.node} ${e.pin}${e.loc ? ` (pin ${e.loc})` : ''}`;
+/** The wires as the Wiring view shows them, a line each (#5216): `serial TX: uno D1 → fpga rx (pin J3), 5 V → 3.3 V`
+ *  (its levels when its level warning said them), or "No wires" when no link resolves. */
+export function wiringLines(wires) {
+  if (!wires.length) return ['No wires: no link joins two resolved interfaces.'];
+  return wires.map(w => `${w.link} ${w.signal}: ${endText(w.from)} → ${endText(w.to)}${w.warnings.length ? `, ${w.from.volts} V → ${w.to.volts} V` : ''}`);
 }

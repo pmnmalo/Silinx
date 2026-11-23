@@ -17,7 +17,7 @@ import { elaborate } from '/core/compile.js';
 import { ucfPort } from '/core/board-constraints.js';
 import { readSystem, writeSystem } from '/core/system-doc.js';
 import { codesignOn, CODESIGN_OFF } from '/core/build-channel.js';
-import { checkSystem } from '/core/system-check.js';
+import { checkSystem, analyzeSystem } from '/core/system-check.js';
 import { systemInputs } from '/core/system-run.js';
 import { regmapFor } from '/core/regmap.js';
 import { mountSystemSim } from './system-sim-view.js';
@@ -60,6 +60,8 @@ export async function prepareHere(sys, { emulate = false } = {}) {
 
 /** A System's problems, as Check System says them (the MCP server's check_system's). */
 const checkProjectSystem = sys => checkSystem(sys, { modules: projectModules(sys), files: filesState.fileTree || [] });
+/** Its wires, pin by pin (the Wiring view's, #5216: the MCP's check_system wiring). */
+const projectWires = sys => analyzeSystem(sys, { modules: projectModules(sys), files: filesState.fileTree || [] }).wires;
 // the editor's lists: the project's design modules (the roots of its hierarchy first: a new FPGA node's), a module's
 // ports, the project's firmware files
 const modules = () => [...new Set([...viewRoots(false), ...(designState.modules || []).filter(m => m.role !== 'sim').map(m => m.name)])];
@@ -97,6 +99,7 @@ export async function openSystem(path) {
         // (Simulate: the System's simulation view, #4701)
         mountSim: (host, o) => mountSystemSim(host, { ...o, prepare: prepareHere, onMessage: (text, level) => log(text, level), openWaves: openSystemWaves }),
         // (Emulate: the System Emulator, its own document, #5212)
+        wires: projectWires,   // (Wiring, #5216)
         onEmulate: async () => (await import('./system-emu-open.js')).openSystemEmulator(path, () => ed.getModel()),
       });
       d.systemEditor = ed;

@@ -4,13 +4,15 @@
 //   import { mountSystemEditor } from './system-editor.js';
 //   const ed = mountSystemEditor(container, { model, onChange(model), onProblems(diags), onCheck(diags), onMessage(text, isError),
 //     check(model) -> diags, modules() -> [name], portsOf(module) -> [{ name, dir }], firmwares() -> [path], readOnly, banner,
-//     mountSim(host, { system() }) -> its simulation view (system-sim-view.js) });
+//     mountSim(host, { system() }) -> its simulation view (system-sim-view.js), wires(model) -> its wires (#5216) });
 //   ed.getModel(); ed.setModel(m); ed.undo(); ed.redo(); ed.canUndo(); ed.canRedo(); ed.fit(); ed.check(); ed.select({ kind, id });
-//   ed.deleteSelection(); ed.canDelete(); ed.showSim(); ed.sim (its simulation view, open); ed.destroy();
+//   ed.deleteSelection(); ed.canDelete(); ed.showSim(); ed.sim (its simulation view, open); ed.setView('system' | 'wiring');
+//   ed.view; ed.destroy();
 //
 // Tools: select and move, a node placed (an FPGA, an Arduino Uno or Nano, a serial terminal: a click on the canvas), a
 // link (a click on an interface's row, then on another's). Every edit is core/system-edit.js's, as the MCP server's
-// edit_system; one refused says why in the console. Try it opens the bottom panel, the System's simulation view
+// edit_system; one refused says why in the console. Wiring (#5216, `wires`) shows each link pin by pin instead
+// (system-wiring.js), read only: its tools that edit are hidden, a wire's click selects its link. Try it opens the bottom panel, the System's simulation view
 // (#4701, `mountSim`; the green Try it panel, #5194), resized and docked as the other editors' panels (dock-panel.js). The side panel (system-side.js) edits the selection and the System;
 // its drawing is system-draw.js. No hint line: the counts in its status line; its problems (`onProblems`, after every
 // change: the System's check, core/system-check.js; `onCheck`, Check's) and its messages go to the console (#2718).
@@ -28,6 +30,7 @@ import { normalizeSystem, newSystem } from '/core/system-doc.js';
 import { addNode, changeNode, removeNode, removeLink, removeInterface, addLink } from '/core/system-edit.js';
 import { mountSystemDraw, NODE_W, nodeHeight } from './system-draw.js';
 import { mountSystemSide } from './system-side.js';
+import { drawWiring } from './system-wiring.js';
 
 const GRID = 20;
 const snap = v => Math.round(v / GRID) * GRID;
@@ -40,6 +43,7 @@ export function mountSystemEditor(container, opts = {}) {
   let tool = 'select';                   // select | fpga | uno | nano | terminal | link
   let linkFrom = null;                   // the first end of a link being drawn ('node.iface')
   let view = { tx: 40, ty: 40, k: 1 }, drag = null, fitted = false, destroyed = false, said = null;
+  let shown = 'system';                  // system | wiring (#5216)
   const readOnly = !!opts.readOnly;
   const hist = [JSON.stringify(M)];
   let hi = 0;
@@ -63,6 +67,7 @@ export function mountSystemEditor(container, opts = {}) {
   const delBtn = toolIcon('delete', 'del', 'Delete the selection (Del)', () => deleteSelection(), 'asm-danger');
   const checkBtn = toolWide('check', 'Check', 'Check the System for errors and warnings', () => opts.onCheck?.(check()), 'sys-check');
   const emuBtn = btn('Emulate', 'Emulate the System: its boards side by side, interactive, in real time', () => opts.onEmulate?.(), 'sys-emu-btn asm-wide');
+  const wiringBtn = btn('Wiring', 'Show each link pin by pin, from one board\'s pin to the other\'s, with its levels', () => setView(shown === 'wiring' ? 'system' : 'wiring'), 'sys-wiring-btn asm-wide');
   const simBtn = toolWide('sim', 'Try it', 'Try the System out: its nodes run together, its links decoded, its waves', () => toggleSim(), 'sys-sim-btn try-btn');
   const zoomLbl = h('span', { class: 'asm-zoom', title: 'Zoom level' }, '100%');
   const info = statusLine();
@@ -70,6 +75,7 @@ export function mountSystemEditor(container, opts = {}) {
     h('div', { class: 'asm-group' }, ...Object.values(tools)), sep(),
     h('div', { class: 'asm-group' }, delBtn), sep(),
     h('div', { class: 'asm-group' }, ...zoomTools(f => zoomBtn(f), () => fit()), zoomLbl), sep(),
+    h('div', { class: 'asm-group' }, wiringBtn), sep(),
     h('div', { class: 'asm-group' }, checkBtn), sep(),
     h('div', { class: 'asm-group' }, simBtn, emuBtn),
     h('div', { class: 'asm-spacer' }),
@@ -101,6 +107,7 @@ export function mountSystemEditor(container, opts = {}) {
     dock.apply?.();
   }
   if (!opts.onEmulate) emuBtn.hidden = true;
+  if (!opts.wires) wiringBtn.hidden = true;
   if (readOnly) { for (const b of [...Object.values(tools).slice(1), delBtn]) b.hidden = true; root.classList.add('asm-readonly'); if (opts.banner) toolbar.append(opts.banner); }
 
   // ---------------------------------------------------------------- edits, history
@@ -126,7 +133,7 @@ export function mountSystemEditor(container, opts = {}) {
   const redo = () => { if (hi < hist.length - 1) restore(hi + 1); };
   function setTool(t) { tool = t; linkFrom = null; drag = null; pressTool(tools, t, svg, 'sys-adding'); render(); }
   function deleteSelection() {
-    if (!sel || readOnly) return;
+    if (!sel || readOnly || shown === 'wiring') return;
     const i = sel.id.indexOf('.');
     const r = sel.kind === 'node' ? removeNode(M, sel.id) : sel.kind === 'link' ? removeLink(M, sel.id) : removeInterface(M, sel.id.slice(0, i), sel.id.slice(i + 1));
     if (apply(r)) sel = null;
@@ -146,8 +153,25 @@ export function mountSystemEditor(container, opts = {}) {
     destroyed: () => destroyed, renderSide: (...a) => renderSide(...a),
   });
   const { renderSide } = mountSystemSide({ opts, M: () => M, sel: () => sel, setSel: v => { sel = v; render(); }, apply, selSection, sysBody, btn });
+  // the view shown: the System's nodes and links, or its wiring (its edits' tools hidden: the links edited in the System view)
+  function setView(v) {
+    shown = v === 'wiring' && opts.wires ? 'wiring' : 'system';
+    wiringBtn.classList.toggle('active', shown === 'wiring');
+    if (!readOnly) for (const b of [...Object.values(tools).slice(1), delBtn]) b.hidden = shown === 'wiring';
+    if (shown === 'wiring' && sel?.kind !== 'link') sel = null;
+    setTool('select');
+    fit();
+  }
   function render() {
-    draw();
+    if (shown === 'wiring') {
+      if (destroyed) return;
+      applyView();
+      const c = drawWiring(world, { M, wires: opts.wires(M), sel });
+      renderSide();
+      delBtn.disabled = true;
+      const k = (n, one, many) => `${n} ${n === 1 ? one : many}`;
+      info.set([{ text: `${k(c.wires, 'wire', 'wires')} · ${k(c.links, 'link', 'links')}`, cls: 'asm-info' }]);
+    } else draw();
     if (readOnly) for (const x of side.querySelectorAll('input, select, button:not(.asm-fold)')) x.disabled = true;
     check();
   }
@@ -171,6 +195,7 @@ export function mountSystemEditor(container, opts = {}) {
       } else { linkFrom = null; drag = null; render(); }
       return;
     }
+    if (t && shown === 'wiring') { sel = t.kind === 'link' ? t : null; render(); return; }
     if (t) {
       const nid = t.kind === 'iface' ? t.id.slice(0, t.id.indexOf('.')) : t.kind === 'node' ? t.id : null;
       sel = t;
@@ -221,6 +246,13 @@ export function mountSystemEditor(container, opts = {}) {
     const r = svg.getBoundingClientRect();
     if (r.width >= 10 && r.height >= 10) fitted = true;
     if (!M.nodes.length || !r.width) { view = { tx: 40, ty: 40, k: 1 }; applyView(); return; }
+    if (shown === 'wiring') {
+      const b = world.getBBox?.();
+      if (!b?.width) { view = { tx: 40, ty: 40, k: 1 }; applyView(); return; }
+      const k = Math.max(0.3, Math.min(1.4, Math.min(r.width / (b.width + 80), r.height / (b.height + 60))));
+      view = { k, tx: (r.width - b.width * k) / 2 - b.x * k, ty: Math.max(20, (r.height - b.height * k) / 2) - b.y * k };
+      applyView(); return;
+    }
     const x0 = Math.min(...M.nodes.map(n => n.x)) - 60, x1 = Math.max(...M.nodes.map(n => n.x + NODE_W)) + 60;
     const y0 = Math.min(...M.nodes.map(n => n.y)) - 40, y1 = Math.max(...M.nodes.map(n => n.y + nodeHeight(n))) + 40;
     const k = Math.max(0.3, Math.min(1.4, Math.min(r.width / (x1 - x0), r.height / (y1 - y0))));
@@ -238,10 +270,11 @@ export function mountSystemEditor(container, opts = {}) {
     getModel: () => normalizeSystem(M),
     setModel(m) { M = normalizeSystem(m); hist.length = 0; hist.push(JSON.stringify(M)); hi = 0; sel = null; render(); },
     undo, redo, canUndo: () => hi > 0, canRedo: () => hi < hist.length - 1,
-    deleteSelection, canDelete: () => !readOnly && !!sel,
+    deleteSelection, canDelete: () => !readOnly && shown !== 'wiring' && !!sel,
     check, fit, refresh: () => render(),
     select(ref) { if (exists(ref)) { sel = { kind: ref.kind, id: ref.id }; render(); } },
     showSim: () => toggleSim(true), get sim() { return simView; },
+    setView, get view() { return shown; },
     destroy() { destroyed = true; simView?.destroy(); dock.destroy(); ro?.disconnect(); offLayout(); container.innerHTML = ''; },
   };
 }

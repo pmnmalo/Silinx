@@ -41,6 +41,12 @@ ligados por UART e GPIO.
   (NACK onde um não foi confirmado), e avisa de um endereço que nenhum periférico confirmou. O exemplo **i2c-avr**: um
   Arduino escreve uma contagem a cada 47 ms, mais ou menos, na FPGA no endereço 0x42, mostrada nos seus LEDs, e lê de
   volta os interruptores da FPGA, mostrados nos D2..D7 do Arduino.
+- **Fios**, na barra do editor de Sistema, mostra cada ligação pino a pino: as duas placas frente a frente, uma linha
+  por fio com o seu sinal (TX, SCK, SDA…), o pino em cada ponta (o porto de uma FPGA e o seu pino do encapsulamento,
+  `rx · J3`; o `D1` de um Arduino), os níveis e uma seta para a entrada. Um fio com uma saída de 5 V numa entrada de
+  3,3 V fica a laranja, o seu aviso na dica, tal como o lugar de um pino da FPGA na placa (`UART RX on a PmodUSBUART
+  in JA…`). A vista é só de leitura: as ligações editam-se na vista do Sistema; um clique num fio seleciona a sua
+  ligação. Fios outra vez volta atrás.
 
 ## Mapas de registos
 

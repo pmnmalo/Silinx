@@ -229,6 +229,15 @@ LEDs and resistors) is a second view of it, not a replacement:
 - **The System editor gets a wiring view**: each link pin by pin, from one board's connector to the other's (the
   pins are already the System's: an FPGA node's `J3`, an Arduino's `D0`; the 5 V warning comes from them).
 
+**The wiring view** (#5216, `web/js/system-wiring.js`): the System editor's Wiring button draws each link as a band,
+its two nodes facing each other, a row for each wire. A row shows the signal (TX, SCK, MOSI, SDA, a GPIO wire's index),
+the pin at each end (an FPGA's port and its package pin, the board's label of that pin as its tip), the levels, and an
+arrow towards the input. A wire the check warns of (a 5 V output on a 3.3 V input) is drawn in orange, its warning
+its tip. The view is read only: the tools that edit are hidden, and a click on a wire selects its link. Its wires are
+the check's (`analyzeSystem` of `core/system-check.js`), so the view and the warnings cannot disagree. The MCP
+server's `check_system` says them too, a line each after the System described (`wiringLines`), and gives them in its
+data (`wires`).
+
 A System drawn only as a circuit would lose the protocol level: the decoders, the speed and the links' checks.
 
 ## The System's actions
