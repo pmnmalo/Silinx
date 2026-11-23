@@ -94,6 +94,9 @@ export class CircuitNode {
   /** Its character LCDs' displays (#5330): { id: { on, lines, cursor, blink } }. */
   lcds() { return this.sim.lcds(); }
 
+  /** Its graphic OLEDs' displays (#5336): { id: { on, lit, pages, rows } }. */
+  oleds() { return this.sim.oleds(); }
+
   /** Its lamps (an LED, a display's segments): { port: { on, times } } (lit now, the times it lit, seen at the windows' ends). */
   lamps() { return Object.fromEntries([...this.lit].map(([k, v]) => [k, { ...v }])); }
 

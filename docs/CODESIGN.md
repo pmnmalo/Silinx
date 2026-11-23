@@ -410,7 +410,7 @@ The existing `program_board` and `capture` serve the FPGA nodes.
 2. **Emulation and more links:**
    - the System Emulator with several boards;
    - GPIO, SPI and I²C links and their checks;
-   - the peripheral nodes (#3902), as the circuit's parts in a circuit node: the character LCD 16×2 first (#5330);
+   - the peripheral nodes (#3902), as the circuit's parts in a circuit node: the character LCD 16×2 first (#5330), then the graphic OLED on I²C (#5336: an Arduino's TWI reaches it through a circuit node, its lines open drain, pulled up on the breadboard);
    - the register map generating both sides;
    - a circuit as a node, its Arduino simulated (#4396's AVR step); the boards as the circuit's parts;
    - the System editor's wiring view, each link pin by pin (#5200).

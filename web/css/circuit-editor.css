@@ -52,6 +52,9 @@
 .circuit-editor .circ-lcd-glass.on { fill: #9fd36b; }
 .circuit-editor .circ-lcd-char { font: bold 24px var(--asm-mono, monospace); fill: #10240a; }
 .circuit-editor .circ-lcd-cursor { fill: #10240a; }
+.circuit-editor .circ-oled-body { fill: color-mix(in srgb, var(--asm-panel) 40%, #1f4f8a 60%); stroke: var(--asm-border); stroke-width: 1.2; }
+.circuit-editor .circ-oled-glass { fill: #05070a; stroke: #222; stroke-width: 1; }
+.circuit-editor .circ-oled-px { fill: #8fd8ff; }
 .circuit-editor .circ-board-body { stroke: var(--asm-border); stroke-width: 1.2; }
 .circuit-editor .circ-board-mcu { fill: color-mix(in srgb, var(--asm-panel) 55%, #00878f 45%); }
 .circuit-editor .circ-board-fpga { fill: color-mix(in srgb, var(--asm-panel) 60%, #7a2e2e 40%); }

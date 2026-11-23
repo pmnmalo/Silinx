@@ -636,6 +636,9 @@ test('#5185 the Petri net\'s and the circuit\'s Check messages in Portuguese', a
     // (circuit-lcd.test.js, #5330)
     'LCD1 (Character LCD 16×2 (HD44780)) is not powered: its VDD (pin 2) is not on the supply\'s + and its VSS (pin 1) is not on the supply\'s −',
     'LCD1\'s RW (pin 5) is not on GND: its reads are not simulated (tie it low, as LiquidCrystal\'s wiring does)',
+    // (circuit-oled.test.js, #5336)
+    'OLED1 (Graphic OLED 128×64 (SSD1306, I²C)) is not powered: its VCC (pin 2) is not on the supply\'s + and its GND (pin 1) is not on the supply\'s −',
+    'OLED1\'s SCL (pin 3) has no pull-up: the I²C bus\'s lines are released high by a pull-up each',
   ])];
   // the Petri net's: a net with every problem of its validation, then nets whose token game deadlocks
   const P = (id, more = {}) => ({ id, name: id, ...more });
@@ -660,7 +663,7 @@ test('#5185 the Petri net\'s and the circuit\'s Check messages in Portuguese', a
     assert.deepEqual(English[k].filter((x) => !list.some((m) => m.includes(x))), [], `${k}: the parts no message has`);
     assert.deepEqual(list.map((m) => [m, t(m)]).filter(([m, pt]) => pt === m || English[k].some((x) => x.length > 5 && pt.includes(x))), [], `${k}: English left`);
   }
-  assert.deepEqual([CIRCUIT.length, PETRI.length], [69, 22]);
+  assert.deepEqual([CIRCUIT.length, PETRI.length], [71, 22]);
   // (the issue's, exactly; a guard's error and Try it's reason are the parser's and the simulator's own, as they come)
   const T = {
     'the net can reach a deadlock, no transition able to fire: after fail1, fail2, fail3': 'a rede pode chegar a um bloqueio, sem nenhuma transição capaz de disparar: depois de fail1, fail2, fail3',

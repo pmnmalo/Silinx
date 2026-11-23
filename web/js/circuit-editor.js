@@ -177,7 +177,7 @@ export function mountCircuitEditor(container, opts = {}) {
   function render() {
     if (destroyed) return;
     applyView();
-    world.replaceChildren(drawCircuit({ ...M, wireStyle: wireStyle() }, { sel, draft, ghost, inside: inside(), hops: hops(), handles: !readOnly && !sim, levels: sim ? (id, n) => sim.pin(id, n) : null, leds: sim?.leds(), lcds: sim?.lcds(), inputs: sim?.inputs() }));
+    world.replaceChildren(drawCircuit({ ...M, wireStyle: wireStyle() }, { sel, draft, ghost, inside: inside(), hops: hops(), handles: !readOnly && !sim, levels: sim ? (id, n) => sim.pin(id, n) : null, leds: sim?.leds(), lcds: sim?.lcds(), oleds: sim?.oleds(), inputs: sim?.inputs() }));
     sync();   // (the Wires' ✓: an undo, a model set)
     for (const b of [delBtn]) b.disabled = !sel;
     rotBtn.disabled = sel?.kind !== 'part';
