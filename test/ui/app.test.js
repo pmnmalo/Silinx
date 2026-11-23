@@ -49,6 +49,9 @@ const SIGNATURE = `window.__sig = () => JSON.stringify({
 
 async function settle(page) {
   for (let i = 0; i < 8; i++) {
+    // (a command not finished yet: its dialog shown, or the command done; a dialog it opened after a module's or the
+    // server's answer came after this looked and covered the next menu on a loaded runner, #5230)
+    await page.waitFor(() => !window.Silinx.actions || document.querySelector('.dlg-overlay, .cm-panel, .pal-overlay'), [], { timeout: 30000, what: 'the command done or its dialog shown' });
     const open = await page.eval(() => document.querySelectorAll('.dlg-overlay, .cm-panel, .pal-overlay').length);
     if (!open) break;
     await page.eval(() => { const i = document.querySelector('.cm-panel input'); if (i && !document.querySelector('.dlg-overlay')) i.focus(); });

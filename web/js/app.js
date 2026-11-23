@@ -117,6 +117,7 @@ export const S = {
   get diags() { return procState.diags; }, set diags(v) { procState.diags = v; },
   get busy() { return procState.busy; }, set busy(v) { procState.busy = v; },
   get diagsCleared() { return procState.diagsCleared; }, set diagsCleared(v) { procState.diagsCleared = v; },
+  get actions() { return procState.actions; }, set actions(v) { procState.actions = v; },
   // the implementation's run: web/js/state-run.js's slice (#4767), its fields here as getters and setters onto it
   get currentJob() { return runState.currentJob; }, set currentJob(v) { runState.currentJob = v; },
   get stopRequested() { return runState.stopRequested; }, set stopRequested(v) { runState.stopRequested = v; },
@@ -296,9 +297,12 @@ export const history = createHistory(api, {
 // the messages of ui.js's menus and of the editors (#3591): lines of the console
 setMessageSink((text, level) => (level === 'error' ? logError : level === 'warning' ? logWarning : logInfo)(text));
 // (the toolbar's buttons refreshed when a command ends: Undo / Redo follow the project's history at once, #1199)
+// (the commands not finished yet counted, a dialog they open on its way: the UI tests wait for it, #5230)
 setActionRunner((label, fn) => {
-  const r = NOT_RECORDED.test(String(label || '')) ? fn() : history.run(label, fn);
-  Promise.resolve(r).finally(() => refreshSteps()).catch(() => {});
+  procState.actions++;
+  let r;
+  try { r = NOT_RECORDED.test(String(label || '')) ? fn() : history.run(label, fn); } catch (e) { procState.actions--; throw e; }
+  Promise.resolve(r).finally(() => { procState.actions--; refreshSteps(); }).catch(() => {});
   return r;
 });
 
