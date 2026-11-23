@@ -73,6 +73,13 @@ test('arrangement: the task in front gets the space; what the viewer left wins',
   assert.deepEqual(T.arrangement('emu', { side: true }, true), { side: false, console: true, max: false });
   assert.deepEqual(T.arrangement('emu', { side: false, narrowSide: true }, true), { side: true, narrowSide: true, console: true, max: false });
   assert.deepEqual(T.arrangement('emu', { side: true, narrowSide: true }), { side: true, narrowSide: true, console: true, max: false });
+  // (#5299: no board open, `empty`, its side panel shown, Emulate on Board in it; the viewer's choice there still wins;
+  // on a wide screen, and for the other tasks, no change)
+  assert.equal(T.arrangement('emu', {}, true, true).side, true);
+  assert.equal(T.arrangement('emu', { side: true }, true, false).side, false);
+  assert.equal(T.arrangement('emu', { narrowSide: false }, true, true).side, false);
+  assert.equal(T.arrangement('emu', { side: false }, false, true).side, false);
+  assert.equal(T.arrangement('impl', { side: false }, true, true).side, false);
   assert.deepEqual(T.readState(JSON.stringify({ v: T.STATE_V, tasks: { emu: { narrowSide: true, side: false } } })).tasks.emu, { side: false, narrowSide: true });
   assert.deepEqual(T.FOLDED_NARROW, ['emu']);
   assert.deepEqual(T.OWN_SIDE, ['sim']);   // (Emulate's as Implement's: #1399)
@@ -89,6 +96,7 @@ test('openedState: a project opened shows every task\'s side panel and messages,
   for (const t of T.TASKS) assert.deepEqual(T.arrangement(t, opened.tasks[t]), { ...opened.tasks[t], side: true, console: true, max: false }, t);
   // (on a narrow screen Emulate's side panel back to its default, folded: the board its room, #1463; the others open)
   assert.equal(T.arrangement('emu', opened.tasks.emu, true).side, false);
+  assert.equal(T.arrangement('emu', opened.tasks.emu, true, true).side, true);   // (no board open yet: shown, #5299)
   for (const t of ['edit', 'sim', 'impl']) assert.equal(T.arrangement(t, opened.tasks[t], true).side, true, t);
   // (nothing kept before: the same; the kept state not changed in place)
   assert.deepEqual(T.openedState(T.readState(null)).tasks.edit, { side: true, console: true, max: false });
