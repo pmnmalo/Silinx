@@ -1,7 +1,7 @@
 // UI (#5215): a circuit as a node of the System, in the uart-avr example's project with a circuit of its own (the Uno,
 // labelled uno, an LED from its D8 to its GND). The System editor's Circuit tool places a circuit node, its circuit the
-// project's .circ.json (its box's second line, its Properties' Circuit); Check: the example's warning only (the Uno joins
-// something); Try it: the Uno shows each byte the FPGA echoes on D8..D13, the LED on D8 lit and dark, its line in the
+// project's .circ.json (its box's second line, its Properties' Circuit); saved: its check's lines; Check: the example's
+// warning only (the Uno joins something); Try it: the Uno shows each byte the FPGA echoes on D8..D13, the LED on D8 lit and dark, its line in the
 // console when the run stops. Portuguese; both interfaces; no other warnings.
 import { before, after } from 'node:test';
 import assert from 'node:assert/strict';
@@ -29,6 +29,9 @@ uiTest('#5215 a circuit node: placed with the project\'s circuit, its Properties
   await page.click({ x: canvas.x + canvas.w * 0.45, y: canvas.y + canvas.h * 0.8 });
   await page.waitFor((ed) => document.querySelector(`${ed} .sys-node[data-id="circuit"]`), [ED], { what: 'the circuit node' });
   assert.deepEqual((await page.eval(() => window.Silinx.active.systemEditor.getModel().nodes.at(-1))).circuit, 'src/bench.circ.json');
+  // saved now (else 800 ms after the edit, its check's lines then, docs/CODESIGN.md: any time later on a slow runner)
+  await page.eval(() => window.SilinxApp.saveAll());
+  await page.waitFor(() => !window.SilinxApp.findDoc('sys:uart_avr.sys.json').dirty && [...document.querySelectorAll('#console-log .ln')].some((l) => l.textContent.trim() === 'Process "Check System" completed successfully with 1 warning(s)'), [], { what: 'saved, checked' });
   assert.equal(await page.eval((ed) => [...document.querySelectorAll(`${ed} .sys-node[data-id="circuit"] text`)].map((t) => t.textContent).join(' | '), ED), 'circuit | bench.circ.json | no interface');
   // its Properties: its circuit
   await page.click(`${ED} .sys-node[data-id="circuit"] .sys-head`);
@@ -36,7 +39,7 @@ uiTest('#5215 a circuit node: placed with the project\'s circuit, its Properties
   assert.deepEqual(await page.eval((ed) => { const s = document.querySelector(`${ed} .sys-circuit`); return [s.value, [...s.options].map((o) => o.value)]; }, ED), ['src/bench.circ.json', ['', 'src/bench.circ.json']]);
   // Check: the example's warning only (the Uno reached by the circuit)
   await page.click(`${ED} .sys-check`);
-  await page.waitFor(() => [...document.querySelectorAll('#console-log .ln')].some((l) => l.textContent.trim() === 'Process "Check System" completed successfully with 1 warning(s)'), [], { what: 'Check' });
+  await page.waitFor(() => [...document.querySelectorAll('#console-log .ln')].filter((l) => l.textContent.trim() === 'Process "Check System" completed successfully with 1 warning(s)').length === 2, [], { what: 'Check' });
   const run = await page.eval(() => { const ls = [...document.querySelectorAll('#console-log .ln')].map((l) => l.textContent.trim()).filter(Boolean); const i = ls.lastIndexOf('Started : "Check System" of uart_avr.sys.json.'); return ls.slice(i, i + 3); });
   assert.deepEqual(run, ['Started : "Check System" of uart_avr.sys.json.', HOT, 'Process "Check System" completed successfully with 1 warning(s)']);
   // Try it, 100 ms: the LED on D8 (the bit 0 of each byte the FPGA echoes) lit and dark; its line when the run stops
@@ -50,7 +53,7 @@ uiTest('#5215 a circuit node: placed with the project\'s circuit, its Properties
   assert.deepEqual(s.traffic.filter((t) => t.link === 'circuit').map((t) => [t.wire, t.from, t.to]), [['circuit_A1_D8', 'uno.D8', 'circuit.A1:D8'], ['circuit_A1_D8_back', 'circuit.A1:D8', 'uno.D8']]);
   const lines = await consoleLines(page);
   assert.ok(lines.some((l) => /^Simulate System: circuit circuit: D1 (on|off), lit \d+ time\(s\)$/.test(l)), lines.join('\n'));
-  assert.deepEqual(lines.filter((l) => /^(WARNING|ERROR)/.test(l)), [HOT]);
+  assert.deepEqual(lines.filter((l) => /^(WARNING|ERROR)/.test(l)), [HOT, HOT], 'saved, then Check');
   // in Portuguese: the tool, its tip, the Properties
   await page.eval(async () => (await import('/js/i18n.js')).setLanguage('pt'));
   await page.waitFor((ed) => document.querySelector(`${ed} .sys-add-circuit`)?.textContent === 'Circuito', [ED], { what: 'Portuguese' });
