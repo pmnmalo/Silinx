@@ -301,6 +301,6 @@ export function mountCircuitEditor(container, opts = {}) {
     setLink(file) { M.generatedFile = file; hist.forEach((x, i) => { hist[i] = JSON.stringify(normalizeCircuit({ ...JSON.parse(x), generatedFile: file })); }); },
     fit, print, simulating: () => !!tryIt.sim(), toggleSim, sim: tryIt.sim,
     select(ref) { if (!ref?.id || !itemOf(ref.id)) return; sel = { kind: ref.kind || 'part', id: ref.id }; render(); },
-    destroy() { destroyed = true; stopTicks(); ro?.disconnect(); offLayout(); offSymbols(); container.innerHTML = ''; },
+    destroy() { destroyed = true; tryIt.stopTicks(); ro?.disconnect(); offLayout(); offSymbols(); container.innerHTML = ''; },
   };
 }
