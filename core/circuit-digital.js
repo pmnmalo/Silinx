@@ -9,7 +9,8 @@
 // Isomorphic module.
 import { partDef, supplyPins } from './circuit-parts.js';
 import { circuitNets } from './circuit-net.js';
-import { partInputs, partLamps, portRef } from './circuit-io.js';
+import { partInputs, partLamps, portRef, portDecls } from './circuit-io.js';
+import { circuitPorts } from './circuit.js';
 import { pinPort, icPorts } from './circuit-hdl-ics.js';
 
 const isSupply = (q) => !!q.supply || q.name === '+' || q.name === '-';   // (a board's 5V and GND too, #5215)
@@ -57,12 +58,16 @@ export function digitalTop(m, V, entityOf) {
 
   // the nets referenced, each a signal assigned its expression (a net read by nothing: none)
   const name = new Map(), queue = [];
+  // (a net's name none of the module's: its ports', its own, its ICs' entities'; a label n1 its port, the net n1_2, #5407)
+  const taken = new Set([m.name, ...portDecls(circuitPorts(m)).map((x) => x.name),
+    ...m.parts.map((p) => partDef(p.type)).filter((d) => d?.kind === 'ic' || d?.kind === 'model').map((d) => entityOf(d))].map((x) => String(x).toLowerCase()));
+  const netName = (k) => { let s = `n${k}`, j = 1; while (taken.has(s.toLowerCase())) s = `n${k}_${++j}`; taken.add(s.toLowerCase()); return s; };
   // (a net a switch or a clock drives: its port itself, no signal copying it, so that synthesis names the clock's net after
   // its port, as the constraints do)
   const ports = new Set(m.parts.flatMap((p) => (partDef(p.type)?.sources || []).map((x) => netOf(p.id, x.pin))));
   const ref = (i) => {
     if (ports.has(i)) return sources.get(i);
-    if (!name.has(i)) { name.set(i, `n${name.size + 1}`); queue.push(i); }
+    if (!name.has(i)) { name.set(i, netName(name.size + 1)); queue.push(i); }
     return name.get(i);
   };
   const gateExpr = ({ p, d, g }) => {

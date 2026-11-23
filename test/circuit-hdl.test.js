@@ -80,6 +80,10 @@ test('the half adder: its truth table in VHDL and in Verilog; the HDL\'s names a
   const n = normalizeCircuit({ ...m, parts: m.parts.map((p) => (p.id === 'S1' ? { ...p, label: 'n1' } : p)) });
   const g = generateCircuit(n, 'vhdl');
   assert.match(g.code, /signal n1_2, /);
+  // (the synthesis model's nets too, #5407: an architecture's signal with its entity's port's name is an error since
+  // XST's check of it, eecb97b6f; in Verilog a wire of a port's name)
+  assert.match(g.code, /architecture digital of half_adder is\n {2}signal n1_2, n2, n3 : std_logic;\n/);
+  assert.match(generateCircuit(n, 'verilog').code, /wire n1_2, n2, n3;\n {2}assign n1_2 = \(n1 \^ b\);/);
   assert.deepEqual(hdlRun(n, 'vhdl', [{ n1: 1, b: 1 }]), ['01']);
 });
 
