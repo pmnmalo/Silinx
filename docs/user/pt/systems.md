@@ -17,8 +17,9 @@ ligados por UART e GPIO.
   seus módulos torna-o de novo um projeto FPGA, na placa do nó FPGA que corre esse módulo (senão, na placa que tinha).
 - **O seu Sistema** é o topo, no painel Design como `<nome> [System]`, cada um dos seus nós um ramo por baixo (#5414):
   um nó FPGA com a placa e a hierarquia do módulo, um Arduino com a placa e o firmware, um nó circuito com o desenho, um
-  terminal. Selecionar um nó mostra os seus processos (Ver/Editar Sistema; num nó FPGA, Verificar Sintaxe e o esquemático
-  RTL); a linha do Sistema tem Ver/Editar, Verificar e Emular o Sistema. Abre no
+  terminal. Selecionar um nó mostra os seus processos (Ver/Editar Sistema; num nó FPGA, Verificar Sintaxe, o esquemático
+  RTL, e Sintetizar, Implementar e Gerar o Ficheiro de Programação na sua própria placa, em `build/nodes/<id>/`, #5446);
+  a linha do Sistema tem Ver/Editar, Verificar, Emular e Implementar o Sistema (todos os nós FPGA). Abre no
   **editor de Sistema**: as ferramentas põem um nó FPGA, um Arduino Uno ou Nano, um terminal série; **Ligação** junta
   duas interfaces do mesmo tipo (um clique numa, depois na outra); o painel de Propriedades indica o módulo, a placa e
   os pinos de um nó, a placa e o firmware de um microcontrolador (um Intel HEX, `.hex`, ou o `.elf` do avr-gcc; um
