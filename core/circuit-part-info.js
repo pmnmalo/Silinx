@@ -14,6 +14,7 @@ const ABOUT = {
   spdt: 'Joins its middle pin C to A or to B, as it is set. An input of the HDL.',
   'dip-4': 'A row of switches, each joining its pin to the one opposite while it is on. Inputs of the HDL.',
   'dip-8': 'A row of switches, each joining its pin to the one opposite while it is on. Inputs of the HDL.',
+  'rotary-encoder': 'A rotary encoder module (KY-040), 20 detents a turn: turning it joins CLK (A) and DT (B) to GND in quadrature, A first clockwise, B first anticlockwise, both open at each detent (its 10 kΩ pull-ups hold them high); pushing its knob joins SW to GND (no pull-up: the program\'s). A program counts the edges of A, reading B. Its turns and its switch are inputs of the HDL (ENC1_A, ENC1_B, ENC1_SW).',
   'keypad-4x4': 'A membrane keypad, 16 keys in 4 rows and 4 columns: a key joins its row (R1…R4) to its column (C1…C4) while pressed. A program scans it: its rows driven low one at a time, its columns pulled up and read. Each key an input of the HDL.',
   clock: 'Drives its output to 1 and 0 in turn, at its frequency. An input of the HDL.',
   'pull-up': 'A weak 1 (a resistor to +5 V): its net reads 1 unless something drives it to 0.',

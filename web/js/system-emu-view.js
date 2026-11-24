@@ -25,6 +25,7 @@ import { runTimeText } from '/core/system-run.js';
 import { nextFrame, watchSeen } from './when-hidden.js';
 import { sv } from './dom.js';
 import { drawCircuit } from './circuit-draw.js';
+import { encoderTurn } from '/core/circuit-encoder.js';
 
 const MAX_STEP = 50e9;     // the most one run goes ahead (ps): 50 ms
 const BEHIND = 200e9;      // behind real time by more (ps): the backlog dropped
@@ -83,6 +84,7 @@ export function mountSystemEmulator(host, opts) {
     const svg = sv('svg', { class: 'sys-emu-circ', 'data-no-i18n': 'true' });
     const el = h('div', { class: 'sys-emu-board circuit-editor sys-emu-circuit', 'data-node': b.id }, h('div', { class: 'sys-emu-cap', 'data-no-i18n': 'true' }, b.id), svg);
     let cur = null, said = null;
+    const detents = {};   // (each rotary encoder's turns, its knob's angle, #5451)
     const set = (pin, on) => ready?.set(b.id, pin, on ? 1 : 0);
     svg.addEventListener('pointerdown', e => {
       const i = e.target.closest?.('[data-input]'), g = e.target.closest?.('[data-kind="part"]');
@@ -92,16 +94,22 @@ export function mountSystemEmulator(host, opts) {
       if (i.dataset.input === 'temp-up' || i.dataset.input === 'temp-down') { const t = cur?.sensors?.[id]?.temp ?? 25; ready?.set(b.id, id, t + (i.dataset.input === 'temp-up' ? 1 : -1)); }
       else if (i.dataset.input === 'button') { set(id, true); window.addEventListener('pointerup', () => set(id, false), { once: true }); }
       // (a keypad's key, #5364: held while the mouse is down, its pin `KP1:<n>`)
-      else if (i.dataset.input === 'key') { const k = `${id}:${Number(i.dataset.lever) + 1}`; set(k, true); window.addEventListener('pointerup', () => set(k, false), { once: true }); }
+      else if (i.dataset.input === 'key' || i.dataset.input === 'push') { const k = `${id}:${Number(i.dataset.lever) + 1}`; set(k, true); window.addEventListener('pointerup', () => set(k, false), { once: true }); }
+      // (a rotary encoder's ↺ and ↻, #5451: its quadrature on A and B, `ENC1:1` and `ENC1:2`, a quarter every 5 ms)
+      else if (i.dataset.input === 'enc-cw' || i.dataset.input === 'enc-ccw') {
+        const dir = i.dataset.input === 'enc-cw' ? 1 : -1;
+        encoderTurn(dir).forEach(([a, q], k) => setTimeout(() => { set(`${id}:1`, a); set(`${id}:2`, q); }, k * 5));
+        detents[id] = (detents[id] ?? 0) + dir; said = null;
+      }
       else if (i.dataset.input === 'dip') { const k = Number(i.dataset.lever); set(`${id}:${k + 1}`, !(Array.isArray(now) && now[k])); }
       else set(id, !now);
       e.preventDefault();
     });
     return { el, paint(s) {
-      const key = JSON.stringify([s?.leds, s?.inputs, s?.lcds, s?.oleds, s?.sensors, s?.servos]);
+      const key = JSON.stringify([s?.leds, s?.inputs, s?.lcds, s?.oleds, s?.sensors, s?.servos, detents]);
       if (key === said) return;
       said = key; cur = s;
-      svg.replaceChildren(drawCircuit(b.model, { leds: s?.leds ?? null, lcds: s?.lcds ?? null, oleds: s?.oleds ?? null, sensors: s?.sensors ?? null, servos: s?.servos ?? null, inputs: s?.inputs ?? null }));
+      svg.replaceChildren(drawCircuit(b.model, { leds: s?.leds ?? null, lcds: s?.lcds ?? null, oleds: s?.oleds ?? null, sensors: s?.sensors ?? null, servos: s?.servos ?? null, inputs: s?.inputs ?? null, encoders: detents }));
       // (its size the drawing's, at most 720 pixels wide)
       const r = svg.firstChild.getBBox?.();
       if (r && r.width) { svg.setAttribute('viewBox', `${r.x - 10} ${r.y - 10} ${r.width + 20} ${r.height + 20}`); svg.style.width = `${Math.min(720, r.width + 20)}px`; }

@@ -25,7 +25,7 @@ const read = (rel) => fs.readFileSync(path.join(tmp, 'ws', 'c', rel), 'utf8');
 
 test('circuit_parts: the library, one part with its pins, gates and delay, its details (#4126); an unknown part', async () => {
   const all = await ok('circuit_parts', {});
-  assert.deepEqual(all.data.parts.map((p) => p.type), ['breadboard-half', 'breadboard-full', 'supply', 'logic-switch', 'button', 'spdt', 'dip-4', 'dip-8', 'keypad-4x4', 'clock', 'pull-up', 'pull-down',
+  assert.deepEqual(all.data.parts.map((p) => p.type), ['breadboard-half', 'breadboard-full', 'supply', 'logic-switch', 'button', 'spdt', 'dip-4', 'dip-8', 'keypad-4x4', 'rotary-encoder', 'clock', 'pull-up', 'pull-down',
     'led', 'seg7-cc', 'seg7-ca', 'led-bar-10', 'probe', 'lcd-1602', 'oled-ssd1306', 'lm75', 'servo-sg90', 'arduino-uno', 'arduino-nano', 'fpga-basys2', 'fpga-nexys2', '7400', '7401', '7402', '7403', '7404', '7405', '7406', '7408', '7410', '7411', '7414', '7420', '7427', '7430', '7432', '7486',
     '7407', '7409', '7412', '7413', '7415', '7421', '7422', '7426', '7428', '7433', '7437', '7438', '7440', '74132', '74133', '74136', '74386', '7451', '7454', '7455',
     '74125', '74126', '74240', '74241', '74244', '74365', '74366', '74367', '74368', '74540', '74541', '74242', '74243', '74245',
@@ -329,4 +329,20 @@ test('#5364 simulate_drawing: a keypad\'s keys by their ports (KP1_2, KP1_5); ci
   assert.deepEqual(r.text.split('\n').slice(1), ['start: t = 0 ns; LEDs D1=1', `step 0: inputs ${ins('KP1_2')}; t = 0 ns; LEDs D1=0`, `step 1: inputs ${ins('KP1_5')}; t = 0 ns; LEDs D1=1`]);
   const info = await ok('circuit_parts', { type: 'keypad-4x4' });
   assert.match(info.text, /^keypad-4x4: Keypad 4×4 \(matrix\); pins 1 R1 pass, 2 R2 pass, 3 R3 pass, 4 R4 pass, 5 C1 pass, 6 C2 pass, 7 C3 pass, 8 C4 pass\nA membrane keypad, 16 keys/);
+});
+
+test('#5451 simulate_drawing: an encoder turned by its id (+1, -2), its quadrature on two probes, its switch by its port; circuit_parts', async () => {
+  // (CLK and DT on the probes A and B; SW pulled up, on the probe S)
+  await ok('write_file', { project: 'c', path: 'src/enc.circ.json', text: JSON.stringify({ format: 'silinx-circuit', version: 1, name: 'enc', lang: 'vhdl',
+    parts: [{ id: 'P1', type: 'supply', x: -4, y: 0 }, { id: 'ENC1', type: 'rotary-encoder', x: 0, y: 10 }, { id: 'R1', type: 'pull-up', x: 2, y: 6 },
+      { id: 'PA', type: 'probe', x: 0, y: 4, label: 'A' }, { id: 'PB', type: 'probe', x: 1, y: 4, label: 'B' }, { id: 'PS', type: 'probe', x: 2, y: 4, label: 'S' }],
+    wires: [{ id: 'g', points: [[4, 10], [-4, 1]] }, { id: 'a', points: [[0, 10], [0, 4]] }, { id: 'b', points: [[1, 10], [1, 4]] }, { id: 's', points: [[2, 10], [2, 6]] }, { id: 't', points: [[2, 6], [2, 4]] }] }, null, 2) });
+  const r = await ok('simulate_drawing', { project: 'c', file: 'src/enc.circ.json', cycles: [{ ENC1: 1 }, { ENC1: -2, ENC1_SW: 1 }] });
+  const got = r.text.split('\n').slice(1);
+  assert.equal(got[0], 'start: t = 0 ns; LEDs none; probes A=1 B=1 S=1');
+  assert.equal(got[1], 'step 0: inputs ENC1_A=0 ENC1_B=0 ENC1_SW=0; t = 4000000 ns; LEDs none; probes A=1 B=1 S=1; ENC1 at detent 1');
+  assert.equal(got[2], 'step 1: inputs ENC1_A=0 ENC1_B=0 ENC1_SW=1; t = 12000000 ns; LEDs none; probes A=1 B=1 S=0; ENC1 at detent -1');
+  await fails('simulate_drawing', { project: 'c', file: 'src/enc.circ.json', cycles: [{ ENC1: 'x' }] }, 'step 0: ENC1 = "x": a turn, its detents (positive clockwise, negative anticlockwise)');
+  const info = await ok('circuit_parts', { type: 'rotary-encoder' });
+  assert.match(info.text, /^rotary-encoder: Rotary encoder \(KY-040\); pins 1 CLK weak, 2 DT weak, 3 SW pass, 4 \+ pass, 5 GND pass\nA rotary encoder module \(KY-040\)/);
 });

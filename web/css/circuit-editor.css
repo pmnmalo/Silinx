@@ -243,4 +243,16 @@ html[data-theme="dark"] .circuit-editor .circ-sim-badge { color: var(--m-success
 .circuit-editor .circ-key text { font: bold 26px Arial, sans-serif; fill: #1c1c1e; pointer-events: none; }
 .circuit-editor .circ-key-letter rect { fill: #d32f2f; } .circuit-editor .circ-key-letter text { fill: #fff; }
 .circuit-editor .circ-key-sym rect { fill: #2f6fd6; } .circuit-editor .circ-key-sym text { fill: #fff; }
+/* a rotary encoder, a KY-040 (#5451): its blue board, its metal body, its black knob and its white mark; its turns' buttons */
+.circuit-editor .circ-enc-board { fill: var(--circ-pcb-blue); stroke: var(--circ-plastic-edge); stroke-width: 1; }
+.circuit-editor .circ-enc-pin { font: 8px var(--asm-mono, monospace); fill: var(--circ-silk); pointer-events: none; }
+.circuit-editor .circ-enc-res { fill: var(--circ-plastic); stroke: var(--circ-metal-edge); stroke-width: 0.6; }
+.circuit-editor .circ-enc-body { fill: var(--circ-metal); stroke: var(--circ-metal-edge); stroke-width: 1.2; }
+.circuit-editor .circ-enc-knob { cursor: pointer; }
+.circuit-editor .circ-enc-knob circle { fill: var(--circ-plastic); stroke: var(--circ-plastic-edge); stroke-width: 1.5; }
+.circuit-editor .circ-enc-knob.down circle { stroke-width: 4; }
+.circuit-editor .circ-enc-mark { stroke: var(--circ-silk); stroke-width: 3; stroke-linecap: round; }
+.circuit-editor .circ-enc-turn { cursor: pointer; }
+.circuit-editor .circ-enc-turn circle { fill: var(--circ-metal); stroke: var(--circ-metal-edge); }
+.circuit-editor .circ-enc-turn text { font: bold 13px Arial, sans-serif; fill: var(--circ-plastic); pointer-events: none; }
 .circuit-editor .circ-key.down rect { stroke: var(--asm-accent); stroke-width: 4; filter: brightness(.8); }

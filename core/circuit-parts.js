@@ -18,6 +18,7 @@ import { LCD_1602 } from './circuit-lcd.js';
 import { LM75 } from './circuit-lm75.js';
 import { SERVO_SG90 } from './circuit-servo.js';
 import { KEYPAD_4X4 } from './circuit-keypad.js';
+import { ROTARY_ENCODER } from './circuit-encoder.js';
 import { OLED_SSD1306 } from './circuit-oled.js';
 import { systemsOn } from './build-channel.js';
 
@@ -79,6 +80,8 @@ const OTHERS = [
   dipSwitch(4), dipSwitch(8),
   // a 4×4 matrix keypad (#5364, core/circuit-keypad.js)
   KEYPAD_4X4,
+  // a rotary encoder, a KY-040 (#5451, core/circuit-encoder.js)
+  ROTARY_ENCODER,
   { type: 'clock', title: 'Clock source', kind: 'input', pins: [pin(1, 'out', 'out', 0, 0)], inputs: [{ k: null, kind: 'clock' }], sources: [{ pin: 1, input: 0 }] },
   { type: 'pull-up', title: 'Pull-up (a weak 1)', kind: 'pull', pins: [pin(1, 'out', 'weak', 0, 0)], pulls: [{ pin: 1, value: '1' }] },
   { type: 'pull-down', title: 'Pull-down (a weak 0)', kind: 'pull', pins: [pin(1, 'out', 'weak', 0, 0)], pulls: [{ pin: 1, value: '0' }] },

@@ -142,7 +142,7 @@ export function mountCircuitEditor(container, opts = {}) {
     if (destroyed) return;
     const sim = tryIt.sim();
     applyView();
-    world.replaceChildren(drawCircuit({ ...M, wireStyle: wireStyle() }, { sel, draft, ghost, inside: inside(), hops: hops(), handles: !readOnly && !sim, levels: sim ? (id, n) => sim.pin(id, n) : null, leds: sim?.leds(), lcds: sim?.lcds(), oleds: sim?.oleds(), sensors: sim?.sensors(), servos: sim?.servos(), inputs: sim?.inputs() }));
+    world.replaceChildren(drawCircuit({ ...M, wireStyle: wireStyle() }, { sel, draft, ghost, inside: inside(), hops: hops(), handles: !readOnly && !sim, levels: sim ? (id, n) => sim.pin(id, n) : null, leds: sim?.leds(), lcds: sim?.lcds(), oleds: sim?.oleds(), sensors: sim?.sensors(), servos: sim?.servos(), inputs: sim?.inputs(), encoders: tryIt.detents() }));
     sync();   // (the Wires' ✓: an undo, a model set)
     for (const b of [delBtn]) b.disabled = !sel || !!sim;
     rotBtn.disabled = sel?.kind !== 'part' || !!sim;
@@ -180,6 +180,8 @@ export function mountCircuitEditor(container, opts = {}) {
     if (sim && t?.input) {
       // (a temperature sensor's − and +, #5342: a degree less or more, now)
       if (t.input === 'temp-up' || t.input === 'temp-down') { sim.setTemp(t.id, sim.sensors()[t.id].temp + (t.input === 'temp-up' ? 1 : -1)); runSim(); }
+      // (a rotary encoder's ↺ and ↻, #5451: a detent each way)
+      else if (t.input === 'enc-cw' || t.input === 'enc-ccw') tryIt.turn(t.id, t.input === 'enc-cw' ? 1 : -1);
       else if (t.input === 'switch') setInput(t.id, !sim.inputs()[t.id]);
       else if (t.input === 'dip') setInput(t.id, !sim.inputs()[t.id][t.lever], t.lever);
       else { setInput(t.id, true, t.lever); drag = { kind: 'press', id: t.id, lever: t.lever }; }   // (a button, a keypad's key, #5364)

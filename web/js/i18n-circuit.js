@@ -108,6 +108,10 @@ export const CIRCUIT_PT = {
   'Joins its two pins while it is pressed (momentary, normally open): with a pull-up or a pull-down, it gives a 0 or a 1. An input of the HDL.':
     'Liga os seus dois pinos enquanto está premido (momentâneo, normalmente aberto): com um pull-up ou um pull-down, dá um 0 ou um 1. Uma entrada do HDL.',
   'Joins its middle pin C to A or to B, as it is set. An input of the HDL.': 'Liga o seu pino do meio C a A ou a B, conforme a posição. Uma entrada do HDL.',
+  // a rotary encoder (#5451, core/circuit-encoder.js)
+  'Rotary encoder (KY-040)': 'Codificador rotativo (KY-040)',
+  'A rotary encoder module (KY-040), 20 detents a turn: turning it joins CLK (A) and DT (B) to GND in quadrature, A first clockwise, B first anticlockwise, both open at each detent (its 10 kΩ pull-ups hold them high); pushing its knob joins SW to GND (no pull-up: the program\'s). A program counts the edges of A, reading B. Its turns and its switch are inputs of the HDL (ENC1_A, ENC1_B, ENC1_SW).':
+    'Um módulo codificador rotativo (KY-040), 20 posições por volta: rodá-lo liga CLK (A) e DT (B) ao GND em quadratura, primeiro A no sentido horário, primeiro B no anti-horário, ambos abertos em cada posição (os seus pull-ups de 10 kΩ mantêm-nos a 1); premir o botão liga SW ao GND (sem pull-up: o do programa). Um programa conta as transições de A, lendo B. As suas voltas e o seu botão são entradas do HDL (ENC1_A, ENC1_B, ENC1_SW).',
   'A membrane keypad, 16 keys in 4 rows and 4 columns: a key joins its row (R1…R4) to its column (C1…C4) while pressed. A program scans it: its rows driven low one at a time, its columns pulled up and read. Each key an input of the HDL.':
     'Um teclado de membrana, 16 teclas em 4 linhas e 4 colunas: uma tecla liga a sua linha (R1…R4) à sua coluna (C1…C4) enquanto premida. Um programa varre-o: as linhas postas a 0 uma de cada vez, as colunas com pull-up e lidas. Cada tecla é uma entrada do HDL.',
   'A row of switches, each joining its pin to the one opposite while it is on. Inputs of the HDL.':
@@ -327,13 +331,14 @@ export const CIRCUIT_PT_PATTERNS = [
   [/^Short circuit: (.+) drive one net \(a short whenever they differ\)$/, (m, q) => `Curto-circuito: ${pins(q)} comandam uma rede (um curto-circuito sempre que forem diferentes)`],
   [/^(.+): open collector with no pull-up: the net floats while (they are|it is) off \(a 74LS input reads it high, an LED stays off\)$/,
     (m, q, w) => `${pins(q)}: coletor aberto sem pull-up: a rede flutua enquanto ${w === 'they are' ? 'estiverem desligados' : 'estiver desligado'} (uma entrada 74LS lê-a a 1, um LED fica apagado)`],
-  [/^Short circuit while (\S+) is (pressed|on|off)(?: \(its key (\S+)\))?: it joins the supply's \+ and −$/, (m, p, w, k) => `Curto-circuito enquanto ${p} está ${HOW[w]}${k ? ` (a sua tecla ${k})` : ''}: liga o + e o − da fonte`],
-  [/^(\S+) joins two driven nets while (pressed|on|off)(?: \(its key (\S+)\))? \((.+); (.+)\): one of its sides must be driven by nothing else$/,
-    (m, p, w, k, a, b) => `${p} liga duas redes comandadas enquanto ${HOW[w]}${k ? ` (a sua tecla ${k})` : ''} (${pins(a)}; ${pins(b)}): um dos seus lados não pode ser comandado por mais nada`],
+  [/^Short circuit while (\S+) is (pressed|on|off|turned)(?: \(its key (\S+)\)| \((its switch)\)| \(its ([AB]) contact closed\))?: it joins the supply's \+ and −$/,
+    (m, p, w, k, s, c) => `Curto-circuito enquanto ${p} está ${HOW[w]}${k ? ` (a sua tecla ${k})` : s ? ' (o seu botão)' : c ? ` (o seu contacto ${c} fechado)` : ''}: liga o + e o − da fonte`],
+  [/^(\S+) joins two driven nets while (pressed|on|off|turned)(?: \(its key (\S+)\)| \((its switch)\)| \(its ([AB]) contact closed\))? \((.+); (.+)\): one of its sides must be driven by nothing else$/,
+    (m, p, w, k, s, c, a, b) => `${p} liga duas redes comandadas enquanto ${HOW[w]}${k ? ` (a sua tecla ${k})` : s ? ' (o seu botão)' : c ? ` (o seu contacto ${c} fechado)` : ''} (${pins(a)}; ${pins(b)}): um dos seus lados não pode ser comandado por mais nada`],
   [/^(\S+) \((.+)\) is powered the wrong way round: its (\S+) \(pin (\d+)\) on the supply's − and its (\S+) \(pin (\d+)\) on its \+$/, '$1 ($2) está alimentado ao contrário: o seu $3 (pino $4) no − da fonte e o seu $5 (pino $6) no +'],
   [/^(\S+) \((.+)\) is not powered: (.+)$/, (m, p, v, w) => `${p} (${v}) não está alimentado: ${w.replace(/its (\S+) \(pin (\d+)\) is not on the supply's ([+−])/g, 'o seu $1 (pino $2) não está no $3 da fonte').replace(/ and /g, ' e ')}`],
-  [/^(\S+) pin (\d+) \((.+)\) floats while (the button (\S+) is released|no key of (\S+) is pressed|(\S+) is (off|on)): (a 74LS input reads high|a CMOS input reads X)$/,
-    (m, p, n, q, w, b, kp, c, o, r) => `${p} pino ${n} (${q}) flutua enquanto ${b ? `o botão ${b} está solto` : kp ? `nenhuma tecla de ${kp} está premida` : `${c} está ${HOW[o]}`}: ${READS[r]}`],
+  [/^(\S+) pin (\d+) \((.+)\) floats while (the button (\S+) is released|no key of (\S+) is pressed|the switch of (\S+) is released|the ([AB]) contact of (\S+) is open|(\S+) is (off|on)): (a 74LS input reads high|a CMOS input reads X)$/,
+    (m, p, n, q, w, b, kp, es, ec, ep, c, o, r) => `${p} pino ${n} (${q}) flutua enquanto ${b ? `o botão ${b} está solto` : kp ? `nenhuma tecla de ${kp} está premida` : es ? `o botão de ${es} está solto` : ec ? `o contacto ${ec} de ${ep} está aberto` : `${c} está ${HOW[o]}`}: ${READS[r]}`],
   [/^(\S+) pin (\d+) \((.+)\) is floating: (a 74LS input reads high|a CMOS input reads X)$/, (m, p, n, q, r) => `${p} pino ${n} (${q}) está a flutuar: ${READS[r]}`],
   // (a graphic OLED's lines, #5336)
   [/^(\S+)'s (SCL|SDA) \(pin (\d)\) has no pull-up: the I²C bus's lines are released high by a pull-up each$/, (m, p, n, k) => `O ${n} (pino ${k}) de ${p} não tem pull-up: as linhas do bus I²C são soltas a 1 por um pull-up cada`],
@@ -358,5 +363,5 @@ export const CIRCUIT_PT_PATTERNS = [
 // (a list of pins, a net's: core/circuit-check.js pinText, core/circuit-net.js netText: "U1 1Y and U2 1Y", "U1 pin 14 (VCC)")
 const pins = (s) => s.replace(/ pin (\d+) \(/g, ' pino $1 (').replace(/ and /g, ' e ').replace(/the supply's ([+−])/g, 'o $1 da fonte');
 const IO = { input: 'uma entrada', output: 'uma saída' };
-const HOW = { pressed: 'premido', on: 'ligado', off: 'desligado' };
+const HOW = { pressed: 'premido', on: 'ligado', off: 'desligado', turned: 'rodado' };
 const READS = { 'a 74LS input reads high': 'uma entrada 74LS lê 1', 'a CMOS input reads X': 'uma entrada CMOS lê X' };

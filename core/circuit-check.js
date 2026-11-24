@@ -111,7 +111,8 @@ function drivenNets(nets, m, { err }) {
   const via = new Map();
   const typeOf = new Map(m.parts.map((p) => [p.id, p.type]));
   for (const c of nets.contacts) {
-    const how = typeOf.get(c.part) === 'button' ? 'pressed' : typeOf.get(c.part) === 'keypad-4x4' ? `pressed (its key ${keypadKey(c.input)})` : c.when ? 'on' : 'off';
+    const how = typeOf.get(c.part) === 'button' ? 'pressed' : typeOf.get(c.part) === 'keypad-4x4' ? `pressed (its key ${keypadKey(c.input)})`
+      : typeOf.get(c.part) === 'rotary-encoder' ? (c.input === 2 ? 'pressed (its switch)' : `turned (its ${'AB'[c.input]} contact closed)`) : c.when ? 'on' : 'off';   // (an encoder's, #5451)
     if (strong[c.a] && !driven[c.b]) via.set(c.b, c);
     if (strong[c.b] && !driven[c.a]) via.set(c.a, c);
     const sa = netSupply(nets.nets[c.a]), sb = netSupply(nets.nets[c.b]);
@@ -141,7 +142,8 @@ function checkIc(p, d, nets, { driven, via, typeOf }, { err, warn }) {
       const k = nets.pinNet.get(`${p.id}.${n}`);
       if (driven[k]) continue;
       const q = pins.find((x) => x.n === n), c = via.get(k);
-      const when = !c ? null : typeOf.get(c.part) === 'button' ? `the button ${c.part} is released` : typeOf.get(c.part) === 'keypad-4x4' ? `no key of ${c.part} is pressed` : `${c.part} is ${c.when ? 'off' : 'on'}`;
+      const when = !c ? null : typeOf.get(c.part) === 'button' ? `the button ${c.part} is released` : typeOf.get(c.part) === 'keypad-4x4' ? `no key of ${c.part} is pressed`
+        : typeOf.get(c.part) === 'rotary-encoder' ? (c.input === 2 ? `the switch of ${c.part} is released` : `the ${'AB'[c.input]} contact of ${c.part} is open`) : `${c.part} is ${c.when ? 'off' : 'on'}`;
       warn(when ? `${p.id} pin ${n} (${q.name}) floats while ${when}: ${reads}` : `${p.id} pin ${n} (${q.name}) is floating: ${reads}`, part(p.id));
     }
   }
