@@ -39,7 +39,7 @@ import { designState } from './state-design.js';
 import { docsState } from './state-docs.js';
 import { openFocused } from './doc-focus.js';
 
-import { systemProject, systemRow } from './design-system.js';
+import { systemProject, topRow } from './design-system.js';
 import { isSystemFile } from '/core/system-doc.js';
 import { systemsOn } from '/core/build-channel.js';
 const $ = id => document.getElementById(id);
@@ -62,10 +62,10 @@ export function renderHierarchy() {
   const dev = `${pj.device.part}${pj.device.speed}-${pj.device.package}`;
   const root = treeItem({ label: pj.name, ico: 'project', open: true, mark: gitMark(filesState.git ? filesState.git.files.map(f => f.path) : []), onSelect: () => select({ type: 'project' }), key: 'project', onContext: e => projectContextMenu(e) });
   tree.append(root.li);
-  // (a design and simulation project, #3780: no device; its drawings and test benches under Design)
-  // (a System project, #4700: its System's row in place of the device, its FPGA nodes' modules under it)
-  const sysRow = !sim && systemProject() ? systemRow(treeItem, select) : null;
-  const devItem = sysRow?.item || treeItem({ label: designOnly() ? 'Design' : !sim ? dev : 'Behavioral', ico: !sim ? 'chip' : 'sim', open: true, key: 'device', onSelect: () => select({ type: 'device' }), onContext: e => projectContextMenu(e) });
+  // (the top row from the project's nodes, #5443: a design and simulation project's Design, #3780, its drawings and test
+  // benches under it; an FPGA project's device; a System project's System row, its nodes' branches, #4700, #5414)
+  const top = topRow(treeItem, select, { sim, dev, menu: e => projectContextMenu(e) });
+  const sysRow = top.fill ? top : null, devItem = top.item;
   root.ul.append(devItem.li);
 
   const lib = designState.lib;

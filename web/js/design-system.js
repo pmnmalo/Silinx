@@ -23,10 +23,25 @@ const NODE_ICON = { fpga: 'chip', mcu: 'board', circuit: 'circuit', terminal: 's
 // a node's board, as the user knows it (its name, else its id)
 const boardName = n => (n.kind === 'mcu' ? mcuBoard(n.board)?.name : S.devices?.boards?.find(b => b.id === n.board)?.name) || n.board;
 
+/** Whether the open project's top is its System (#5443): a System project with no module as its top, its document read. */
+export const systemTop = () => systemProject() && !!shownNodes().system;
+
+/** The Design pane's top row of any project (#5443, #5416's phase 5: one path, from its nodes): a System's row with its
+ *  nodes' branches (systemRow), or the one implicit node of a project with one drawn as its device row as before: the
+ *  device (an FPGA project's), Design (a design project's), Behavioral (the Simulation view's). Returns { item, owned,
+ *  fill } (fill null: nothing more under it from the nodes). */
+export function topRow(treeItem, select, { sim, dev, menu }) {
+  const sys = !sim && systemProject() ? systemRow(treeItem, select) : null;
+  if (sys) return sys;
+  const [n] = shownNodes().nodes;
+  const label = n?.kind === 'design' ? 'Design' : !sim ? dev : 'Behavioral';
+  return { item: treeItem({ label, ico: !sim ? 'chip' : 'sim', open: true, key: 'device', onSelect: () => select({ type: 'device' }), onContext: menu }), owned: [], fill: null };
+}
+
 /** The System's row (`treeItem`, design.js's) and its nodes' branches: { item, owned, fill(addModule, fileRow) } (fill
  *  draws the branches once design.js's rows can be made: an FPGA node's module with addModule, a node's files with
  *  fileRow, or its module's row if the file is a module's, moduleOf), or null (no System). */
-export function systemRow(treeItem, select) {
+function systemRow(treeItem, select) {
   const { system: f, nodes, owned } = shownNodes();
   if (!f) return null;
   const sys = readSystem(designState.viewTexts?.[f] || '').system;
