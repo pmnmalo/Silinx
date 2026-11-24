@@ -1,0 +1,21 @@
+{
+  "name": "silinx-pic24",
+  "version": "0.1.0",
+  "description": "A PIC24F core emulator in JavaScript (the PIC24FJ1024GB610's): its 24-bit instructions, W0-W15, the addressing modes, the program space visibility, the interrupts and the traps, XC16's Intel HEX, with no dependency",
+  "type": "module",
+  "private": true,
+  "exports": {
+    ".": "./src/index.js"
+  },
+  "files": [
+    "src",
+    "LICENSE"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/pmnmalo/Silinx.git",
+    "directory": "packages/silinx-pic24"
+  },
+  "license": "MIT",
+  "author": "Pedro Maló"
+}
