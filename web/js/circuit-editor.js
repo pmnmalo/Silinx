@@ -37,6 +37,7 @@ import { mountCircuitParts } from './circuit-parts-panel.js';
 import { printDiagram, svgSnapshot } from './print.js';
 import { onLayoutToggled } from './layout-fit.js';
 import { onSymbolStandard } from './symbol-standard.js';
+import { onLanguageChange } from './i18n.js';
 
 export function mountCircuitEditor(container, opts = {}) {
   let M = normalizeCircuit(opts.model || newCircuit('circuit'));
@@ -142,7 +143,7 @@ export function mountCircuitEditor(container, opts = {}) {
     if (destroyed) return;
     const sim = tryIt.sim();
     applyView();
-    world.replaceChildren(drawCircuit({ ...M, wireStyle: wireStyle() }, { sel, draft, ghost, inside: inside(), hops: hops(), handles: !readOnly && !sim, levels: sim ? (id, n) => sim.pin(id, n) : null, leds: sim?.leds(), lcds: sim?.lcds(), oleds: sim?.oleds(), sensors: sim?.sensors(), servos: sim?.servos(), buzzers: sim?.buzzers(), steppers: sim?.steppers(), sonars: sim?.sonars(), pirs: sim?.pirs(), dhts: sim?.dhts(), inputs: sim?.inputs(), encoders: tryIt.detents() }));
+    world.replaceChildren(drawCircuit({ ...M, wireStyle: wireStyle() }, { sel, draft, ghost, inside: inside(), hops: hops(), handles: !readOnly && !sim, levels: sim ? (id, n) => sim.pin(id, n) : null, leds: sim?.leds(), lcds: sim?.lcds(), oleds: sim?.oleds(), sensors: sim?.sensors(), servos: sim?.servos(), buzzers: sim?.buzzers(), steppers: sim?.steppers(), sds: sim?.sds(), sonars: sim?.sonars(), pirs: sim?.pirs(), dhts: sim?.dhts(), inputs: sim?.inputs(), encoders: tryIt.detents() }));
     sync();   // (the Wires' ✓: an undo, a model set)
     for (const b of [delBtn]) b.disabled = !sel || !!sim;
     rotBtn.disabled = sel?.kind !== 'part' || !!sim;
@@ -282,6 +283,8 @@ export function mountCircuitEditor(container, opts = {}) {
   setTool('select');
   problems();
   requestAnimationFrame(initialFit);
+  // (its drawing's words in the interface's language again: an SD card's state, #5477)
+  const offLang = onLanguageChange(() => { if (!root.isConnected) offLang(); else render(); });
   return {
     getModel: () => clone(M), wireStyle, setWireStyle, ownWireStyle, tryState, setTryState,   // (a shared project's participant's own wires' style, #4239; its Try it shared live, #4244)
     // (its selection, as live sharing's view sends it, #4192: core/collab-select.js)

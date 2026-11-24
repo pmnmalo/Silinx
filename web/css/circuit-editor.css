@@ -302,3 +302,12 @@ html[data-theme="dark"] .circuit-editor .circ-sim-badge { color: var(--m-success
 .circuit-editor .circ-step-arm { stroke: var(--circ-servo); stroke-width: 5; stroke-linecap: round; fill: none; }
 .circuit-editor .circ-step-cable { stroke: var(--circ-servo-edge); stroke-width: 4; fill: none; stroke-linecap: round; }
 .circuit-editor .circ-step-angle { font: bold 11px var(--asm-mono, monospace); fill: var(--circ-plastic); pointer-events: none; }
+/* an SD card module (#5477, web/js/circuit-draw-sd.js): its blue board, its socket, the card in it (its edge lit once ready) */
+.circuit-editor .circ-sd-board { fill: var(--circ-pcb-blue); stroke: var(--circ-servo-edge); stroke-width: 1.2; }
+.circuit-editor .circ-sd-socket { fill: var(--circ-metal); stroke: var(--circ-metal-edge); stroke-width: 1.2; }
+.circuit-editor .circ-sd-card { fill: var(--circ-plastic); stroke: var(--circ-plastic-edge); stroke-width: 1; }
+.circuit-editor .circ-sd-card.ready { stroke: var(--circ-lcd-lit); stroke-width: 2; }
+.circuit-editor .circ-sd-card-text { font: bold 9px Arial, sans-serif; fill: var(--circ-silk); pointer-events: none; }
+.circuit-editor .circ-sd-chip { fill: var(--circ-plastic); }
+.circuit-editor .circ-sd-pin { font: bold 7px Arial, sans-serif; fill: var(--circ-silk); pointer-events: none; }
+.circuit-editor .circ-sd-state { font: bold 10px var(--asm-mono, monospace); fill: var(--circ-silk); pointer-events: none; }

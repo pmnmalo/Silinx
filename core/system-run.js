@@ -10,6 +10,7 @@ import { loadAvr8js } from './system-sim-avr.js';
 import { linkTraffic, usText, decodeSpi, spiWarnings, decodeI2c, i2cWarnings, wiredAnd } from './system-decode.js';
 import { regAccesses, accessText } from './regmap-decode.js';
 import { normalizeCircuit } from './circuit.js';
+import { sdText } from './circuit-sd.js';
 
 /** A run's time as Simulate System says it: ms or s. */
 export const runTimeText = ps => (ps >= 1e12 ? `${+(ps / 1e12).toFixed(3)} s` : `${+(ps / 1e9).toFixed(3)} ms`);
@@ -92,6 +93,8 @@ export function systemReport({ sim, wires, terminals, regmaps = {} }) {
   for (const [id, a] of [...sim.nodes].filter(([, x]) => x.buzzers)) for (const [k, s] of Object.entries(a.buzzers())) lines.push(`circuit ${id}: ${k} ${s.sounding ? `sounds at ${s.hz} Hz` : 'is silent'}`);
   // (its stepper motors, #5476: where their shafts are)
   for (const [id, a] of [...sim.nodes].filter(([, x]) => x.steppers)) for (const [k, s] of Object.entries(a.steppers())) lines.push(`circuit ${id}: ${k} at ${s.steps} half steps (${s.angle}°)`);
+  // (its SD cards, #5477: their state, each block written and its first bytes' text)
+  for (const [id, a] of [...sim.nodes].filter(([, x]) => x.sds)) for (const [k, s] of Object.entries(a.sds())) lines.push(`circuit ${id}: ${k} ${s.stage}${s.written.map((n) => `; block ${n}: ${sdText(a.sdBlock(k, n))}`).join('')}`);
   // (its ultrasonic sensors, #5456: the distance, the last echo)
   for (const [id, a] of [...sim.nodes].filter(([, x]) => x.sonars)) for (const [k, s] of Object.entries(a.sonars())) lines.push(`circuit ${id}: ${k} ${s.cm} cm, ${s.echo == null ? 'no echo yet' : `its last echo ${s.echo} µs`}`);
   // (its motion sensors, #5463: their OUT)

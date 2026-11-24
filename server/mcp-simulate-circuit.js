@@ -31,7 +31,7 @@ export async function simulateCircuitFile(m0, steps, base, hdl = {}) {
   // (the logic probes' levels, by label or id: 0, 1, Z open, X; said when the circuit has any, #3900)
   const probeName = new Map(m.parts.filter((p) => p.type === 'probe').map((p) => [p.id, p.label || p.id]));
   const probes = () => Object.fromEntries(Object.entries(sim.probes()).map(([id, v]) => [probeName.get(id), v]));
-  const probeText = () => (probeName.size ? `; probes ${Object.entries(probes()).map(([k, v]) => `${k}=${v}`).join(' ')}` : '') + lcdText() + oledText() + sensorText() + servoText() + encoderText() + buzzerText() + stepperText() + sonarText() + pirText() + dhtText();
+  const probeText = () => (probeName.size ? `; probes ${Object.entries(probes()).map(([k, v]) => `${k}=${v}`).join(' ')}` : '') + lcdText() + oledText() + sensorText() + servoText() + encoderText() + buzzerText() + stepperText() + sdText() + sonarText() + pirText() + dhtText();
   // (an ultrasonic sensor, #5456: its distance set by its id, cm; a step's after_us, the time let pass before its inputs
   // are set, its echo meanwhile)
   // (a part that senses more than one, #5470: each by <id>.<prop>, a DHT's DHT1.temp and DHT1.hum)
@@ -42,6 +42,9 @@ export async function simulateCircuitFile(m0, steps, base, hdl = {}) {
   const sonarText = () => Object.entries(sim.sonars()).map(([id, s]) => `; ${id} ${s.cm} cm${s.measuring ? ', measuring' : ''}${s.echo == null ? '' : `, its last echo ${s.echo} µs`}`).join('');
   // (a motion sensor, #5463: its OUT, blind after it)
   const pirText = () => Object.entries(sim.pirs()).map(([id, s]) => `; ${id} ${s.out ? 'OUT 1' : s.blind ? 'OUT 0, blind' : 'OUT 0'}`).join('');
+  // (an SD card, #5477: its state, each block written and its first bytes as text)
+  const { sdText: blockText } = await import('../core/circuit-sd.js');
+  const sdText = () => Object.entries(sim.sds()).map(([id, s]) => `; ${id} ${s.stage}${s.written.map((n) => `, block ${n} ${blockText(sim.sdBlock(id, n))}`).join('')}`).join('');
   // (a stepper motor, #5476: its steps from the start, its shaft's angle)
   const stepperText = () => Object.entries(sim.steppers()).map(([id, s]) => `; ${id} at ${s.steps} half steps (${s.angle}°)`).join('');
   // (a buzzer, #5454: its tone, or silent)

@@ -26,7 +26,7 @@ const read = (rel) => fs.readFileSync(path.join(tmp, 'ws', 'c', rel), 'utf8');
 test('circuit_parts: the library, one part with its pins, gates and delay, its details (#4126); an unknown part', async () => {
   const all = await ok('circuit_parts', {});
   assert.deepEqual(all.data.parts.map((p) => p.type), ['breadboard-half', 'breadboard-full', 'supply', 'logic-switch', 'button', 'spdt', 'dip-4', 'dip-8', 'keypad-4x4', 'rotary-encoder', 'clock', 'pull-up', 'pull-down',
-    'led', 'seg7-cc', 'seg7-ca', 'led-bar-10', 'probe', 'lcd-1602', 'oled-ssd1306', 'lm75', 'servo-sg90', 'buzzer', 'stepper-28byj48', 'hc-sr04', 'hc-sr501', 'dht11', 'dht22', 'arduino-uno', 'arduino-nano', 'fpga-basys2', 'fpga-nexys2', '7400', '7401', '7402', '7403', '7404', '7405', '7406', '7408', '7410', '7411', '7414', '7420', '7427', '7430', '7432', '7486',
+    'led', 'seg7-cc', 'seg7-ca', 'led-bar-10', 'probe', 'lcd-1602', 'oled-ssd1306', 'lm75', 'servo-sg90', 'buzzer', 'stepper-28byj48', 'hc-sr04', 'hc-sr501', 'dht11', 'dht22', 'sd-card', 'arduino-uno', 'arduino-nano', 'fpga-basys2', 'fpga-nexys2', '7400', '7401', '7402', '7403', '7404', '7405', '7406', '7408', '7410', '7411', '7414', '7420', '7427', '7430', '7432', '7486',
     '7407', '7409', '7412', '7413', '7415', '7421', '7422', '7426', '7428', '7433', '7437', '7438', '7440', '74132', '74133', '74136', '74386', '7451', '7454', '7455',
     '74125', '74126', '74240', '74241', '74244', '74365', '74366', '74367', '74368', '74540', '74541', '74242', '74243', '74245',
     '4001', '4011', '4030', '4069', '4070', '4071', '4081', '4002', '4012', '4023', '4025', '4049', '4050', '4072', '4073', '4075', '4077', '7447', '7448', '74138', '74139', '74151', '74153', '74157', '7483', '74283', '7485',
@@ -417,4 +417,26 @@ test('#5476 simulate_drawing: a stepper motor stepped by its switches, after_us 
     'step 4: inputs S1=1 S2=0 S3=0 S4=0; t = 6500000 ns; LEDs none; M1 at 0 half steps (0°)']);
   const info = await ok('circuit_parts', { type: 'stepper-28byj48' });
   assert.match(info.text, /^stepper-28byj48: Stepper motor \(28BYJ-48, ULN2003 board\); pins 1 IN1 in, 2 IN2 in, 3 IN3 in, 4 IN4 in, 5 GND gnd, 6 VCC vcc\nA geared stepper motor/);
+});
+
+test('#5477 simulate_drawing: an SD card powered up and sent CMD0 by switches, step by step: off, then idle (its R1 on its MISO\'s LED); circuit_parts', async () => {
+  await ok('write_file', { project: 'c', path: 'src/sd.circ.json', text: JSON.stringify({ format: 'silinx-circuit', version: 1, name: 'sd', lang: 'vhdl',
+    parts: [{ id: 'P1', type: 'supply', x: -10, y: -14 }, { id: 'SD1', type: 'sd-card', x: 0, y: 0 }, { id: 'MOSI', type: 'logic-switch', x: 3, y: 4, on: true }, { id: 'SCK', type: 'logic-switch', x: 4, y: 6 },
+      { id: 'CS', type: 'logic-switch', x: 5, y: 8, on: true }, { id: 'D1', type: 'led', x: -3, y: 3 }],
+    wires: [{ id: 'm', points: [[3, 4], [3, 0]] }, { id: 'k', points: [[4, 6], [4, 0]] }, { id: 'c', points: [[5, 8], [5, 0]] }, { id: 'o', points: [[2, 0], [2, 2], [-3, 2], [-3, 3]] },
+      { id: 'dk', points: [[-2, 3], [-10, -13]] }, { id: 'g', points: [[0, 0], [-11, 0], [-11, -13], [-10, -13]] }, { id: 'v', points: [[1, 0], [1, -1], [-12, -1], [-12, -14], [-10, -14]] }] }, null, 2) });
+  // (80 clocks with CS high, CS low, CMD0's 6 bytes and 2 bytes of FF, MSB first, MOSI set before each rise)
+  const steps = [];
+  for (let i = 0; i < 80; i++) steps.push({ SCK: 1 }, { SCK: 0 });
+  steps.push({ CS: 0 });
+  for (const b of [0x40, 0, 0, 0, 0, 0x95, 0xff, 0xff]) for (let k = 7; k >= 0; k--) steps.push({ MOSI: (b >> k) & 1, SCK: 1 }, { SCK: 0 });
+  const r = await ok('simulate_drawing', { project: 'c', file: 'src/sd.circ.json', cycles: steps });
+  const lines = r.text.split('\n');
+  assert.equal(lines[1], 'start: t = 0 ns; LEDs D1=0; SD1 off');
+  assert.match(lines.find((l) => /^step 160: /.test(l)), /; SD1 off$/, 'its 80 clocks: still off');
+  // (R1 0x01 on MISO through the last byte, read at each rise: its 7 zeros then its 1; idle)
+  assert.deepEqual(r.data.steps.slice(-16).filter((x, k) => k % 2 === 0).map((x) => x.leds.D1), [0, 0, 0, 0, 0, 0, 0, 1]);
+  assert.equal(r.data.steps.length, steps.length);
+  const info = await ok('circuit_parts', { type: 'sd-card' });
+  assert.match(info.text, /^sd-card: SD card module \(SPI, microSD\); pins 1 GND gnd, 2 VCC vcc, 3 MISO out, 4 MOSI in, 5 SCK in, 6 CS in\nA microSD card module/);
 });

@@ -1,6 +1,7 @@
 // Test helper (not a test file): a few AVR instructions assembled into a program (the flash's words), and that program
 // written as an Intel HEX and as an ELF, for the AVR node's tests (test/system-sim-avr.test.js, test/avr-firmware.test.js)
-// with no compiler. The instructions: ldi, sts, lds, out, in, sbrs, sbrc, rjmp, rcall, ret, inc; a label: 'name:'.
+// with no compiler. The instructions: ldi, sts, lds, out, in, sbrs, sbrc, rjmp, rcall, ret, inc, dec, brne, add, adc, eor
+// (#5477: a sum, a register cleared); a label: 'name:'.
 //
 //   const words = avrAssemble(['ldi r16, 0xff', 'out 0x04, r16', 'loop:', 'rjmp loop']);
 
@@ -37,6 +38,8 @@ export function avrAssemble(lines) {
       case 'rjmp': out.push(0xc000 | rel(a[0])); break;
       case 'rcall': out.push(0xd000 | rel(a[0])); break;
       case 'ret': out.push(0x9508); break;
+      // (two registers: Rd, Rr; #5477)
+      case 'add': case 'adc': case 'eor': { const d = reg(a[0]), r = reg(a[1]); out.push({ add: 0x0c00, adc: 0x1c00, eor: 0x2400 }[op] | ((r & 0x10) << 5) | (d << 4) | (r & 0x0f)); break; }
       default: throw new Error(`no instruction ${op}`);
     }
   }

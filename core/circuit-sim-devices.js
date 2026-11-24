@@ -11,6 +11,7 @@ import { createLm75 } from './circuit-lm75.js';
 import { createServo } from './circuit-servo.js';
 import { createBuzzer } from './circuit-buzzer.js';
 import { createStepper } from './circuit-stepper.js';
+import { createSdSpi } from './circuit-sd.js';
 import { createSonar } from './circuit-sonar.js';
 import { createPir } from './circuit-pir.js';
 import { createDht } from './circuit-dht.js';
@@ -40,6 +41,10 @@ export function setupDevice(p, d, { at, addDriver, level }) {
     return { ic, reads: [ic.vcc, ic.gnd, ic.sig] };
   }
   // (a buzzer, #5454: its +'s edges measured while its − is at 0, its tone)
+  if (d.kind === 'sd') {   // (an SD card, #5477: SCK's and CS's changes read, MOSI read at them, MISO driven)
+    const ic = { part: p, def: d, sd: createSdSpi(), vcc: at('VCC'), gnd: at('GND'), sck: at('SCK'), mosi: at('MOSI'), cs: at('CS'), miso: addDriver(at('MISO'), 'Z'), was: false };
+    return { ic, reads: [ic.vcc, ic.gnd, ic.sck, ic.cs] };
+  }
   if (d.kind === 'stepper') {   // (a stepper motor, #5476: its coils' inputs read while it is powered)
     const ic = { part: p, def: d, stepper: createStepper(), vcc: at('VCC'), gnd: at('GND'), ins: ['IN1', 'IN2', 'IN3', 'IN4'].map(at), was: false };
     return { ic, reads: [ic.vcc, ic.gnd, ...ic.ins] };
@@ -97,6 +102,13 @@ export function evaluateDevice(ic, { powered, level, now, drive, wake, input }) 
     if (!on) { if (ic.was) ic.servo.stop(now()); } else if (v !== ic.prev) ic.servo.edge(v, now());
     ic.prev = on ? v : null;
     ic.was = on;
+    return true;
+  }
+  if (ic.sd) {   // (unpowered: MISO released, the card off; else its SPI side at each edge)
+    if (!powered(ic)) { if (ic.was) ic.sd.off(); drive(ic.miso, 'Z'); ic.was = false; return true; }
+    ic.was = true;
+    const lv = (net) => (level(net) === '1' ? '1' : '0');
+    drive(ic.miso, ic.sd.edge(lv(ic.sck), lv(ic.mosi), level(ic.cs) === '0' ? '0' : '1'));
     return true;
   }
   if (ic.stepper) {   // (its coils as its inputs while powered, none while not)
@@ -160,9 +172,15 @@ export function deviceViews(ics, { now, evaluate, update }) {
     oleds: () => Object.fromEntries(ics.filter((x) => x.oled).map((x) => [x.part.id, x.oled.state()])),
     /** each servo's state now: { angle, target, width, period } (#5347), and what it said (once each) */
     servos: () => Object.fromEntries(ics.filter((x) => x.servo).map((x) => [x.part.id, x.servo.state(now())])),
-    servoWarnings: () => ics.filter((x) => x.servo || x.buzzer || x.sonar || x.dht || x.stepper).flatMap((x) => (x.servo || x.buzzer || x.sonar || x.dht || x.stepper).warnings.map((w) => `${x.part.id}: ${w.text}`)),
+    servoWarnings: () => ics.filter((x) => x.servo || x.buzzer || x.sonar || x.dht || x.stepper || x.sd?.card).flatMap((x) => (x.servo || x.buzzer || x.sonar || x.dht || x.stepper || x.sd.card).warnings.map((w) => `${x.part.id}: ${w.text}`)),
     /** each buzzer's state now: { sounding, hz, how } (#5454) */
     /** each stepper motor's state: { steps, angle, coils } (#5476) */
+    /** each SD card's state: { stage, written, last } (#5477) */
+    sds: () => Object.fromEntries(ics.filter((x) => x.sd).map((x) => [x.part.id, x.sd.card.state()])),
+    /** what an SD card did, as its HDL says it (#5477) */
+    sdLog: (id) => ics.find((x) => x.sd && x.part.id === id)?.sd.card.log() ?? null,
+    /** an SD card's block's bytes (#5477) */
+    sdBlock: (id, n) => ics.find((x) => x.sd && x.part.id === id)?.sd.card.block(n) ?? null,
     steppers: () => Object.fromEntries(ics.filter((x) => x.stepper).map((x) => [x.part.id, x.stepper.state()])),
     buzzers: () => Object.fromEntries(ics.filter((x) => x.buzzer).map((x) => [x.part.id, x.buzzer.state(now())])),
     /** each ultrasonic range sensor's state: { cm, measuring, echo (its last, µs) } (#5456) */

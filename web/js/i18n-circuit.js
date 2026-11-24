@@ -131,6 +131,10 @@ export const CIRCUIT_PT = {
   'Retriggering (H)': 'Redisparável (H)',
   'A motion sensor (PIR): someone moving in front of it (press and hold its dome while trying it: its input, an input of the HDL) sets OUT to 1 for its hold time (3 to 300 s, its Properties); retriggering (its jumper at H), OUT stays at 1 while they move and for its hold time after; single (L), it falls after its hold time. Then it is blind for 2.5 s. Its minute of warming up at power-on is not simulated.':
     'Um sensor de movimento (PIR): alguém a mexer-se à sua frente (prima e mantenha premida a sua cúpula ao experimentá-lo: a sua entrada, uma entrada do HDL) põe OUT a 1 durante o seu tempo ativo (3 a 300 s, nas suas Propriedades); redisparável (o seu jumper em H), OUT fica a 1 enquanto se mexem e durante o tempo ativo depois disso; simples (L), desce ao fim do tempo ativo. Depois fica cego durante 2,5 s. O seu minuto de aquecimento ao ligar não é simulado.',
+  // an SD card on SPI (#5477, core/circuit-sd.js)
+  'SD card module (SPI, microSD)': 'Módulo de cartão SD (SPI, microSD)',
+  'A microSD card module with a 32 MB SDHC card, on SPI (mode 0: MOSI read on SCK\'s rise; MISO released while CS is high): after 74 clocks or more with CS high, the SD protocol\'s commands: CMD0, CMD8, CMD55 + ACMD41 (idle, then ready), CMD58, CMD17 (a 512-byte block read) and CMD24 (a block written), by block number. Its blocks are empty at first; those written are kept while trying it, shown with its state. Not a port of the HDL.':
+    'Um módulo de cartão microSD com um cartão SDHC de 32 MB, em SPI (modo 0: MOSI lido na subida de SCK; MISO solto enquanto CS está a 1): depois de 74 relógios ou mais com CS a 1, os comandos do protocolo SD: CMD0, CMD8, CMD55 + ACMD41 (em espera, depois pronto), CMD58, CMD17 (um bloco de 512 bytes lido) e CMD24 (um bloco escrito), pelo número do bloco. Os seus blocos começam vazios; os escritos ficam guardados enquanto o experimenta, mostrados com o seu estado. Não é um porto do HDL.',
   // a stepper motor on its driver board (#5476, core/circuit-stepper.js)
   'Stepper motor (28BYJ-48, ULN2003 board)': 'Motor passo-a-passo (28BYJ-48, placa ULN2003)',
   'A geared stepper motor (28BYJ-48) on its ULN2003 board: IN1 to IN4 at 1 turn on its coils A to D (its LEDs), and the coils on pull its rotor: in the order A, AB, B, BC, C, CD, D, DA (half steps, or A, B, C, D: full steps) its shaft turns clockwise, the other way anticlockwise; 4096 half steps a turn of its shaft (its gearbox, 1:64), one every 1 ms at most. A jump it cannot follow (the opposite coil) is said. Not a port of the HDL.':
@@ -378,6 +382,12 @@ export const CIRCUIT_PT_PATTERNS = [
   [/^(\S+)'s ((?:IN\d, )*IN\d) (?:is|are) driven by nothing: its coils' cycle is not whole$/, (m, p, ins) => `${ins} de ${p} ${ins.includes(',') ? 'não são conduzidos' : 'não é conduzido'} por nada: o ciclo das suas bobinas não fica completo`],
   [/^(\S+): a jump of (\d) half steps: its rotor cannot follow it \(in order: A, AB, B, BC, C, CD, D, DA\)$/, (m, p, n) => `${p}: um salto de ${n} meios passos: o rotor não o consegue seguir (por ordem: A, AB, B, BC, C, CD, D, DA)`],
   [/^(\S+): steps ([\d.]+) ms apart: a 28BYJ-48 follows one every 1 ms at most, it stalls$/, (m, p, ms) => `${p}: passos a ${ms} ms uns dos outros: um 28BYJ-48 segue no máximo um a cada 1 ms, e fica parado`],
+  [/^(\S+)'s ((?:SCK|MOSI|CS)(?:, (?:MOSI|CS))*) (?:is|are) driven by nothing: no host talks to it$/, (m, p, ins) => `${ins} de ${p} ${ins.includes(',') ? 'não são conduzidos' : 'não é conduzido'} por nada: nenhum anfitrião fala com ele`],
+  [/^(\S+): only (\d+) clocks with CS high before its first command: an SD card needs 74 or more$/, (m, p, n) => `${p}: só ${n} relógios com CS a 1 antes do seu primeiro comando: um cartão SD precisa de 74 ou mais`],
+  [/^card (off|idle|ready)$/, (m, s) => `cartão ${{ off: 'desligado', idle: 'em espera', ready: 'pronto' }[s]}`],
+  [/^(\d+) written$/, (m, n) => `${n} escrito(s)`],
+  [/^read block (\d+)$/, (m, n) => `bloco ${n} lido`],
+  [/^wrote block (\d+)$/, (m, n) => `bloco ${n} escrito`],
   [/^(\S+): a tone of (\d+) Hz: a person hears 20 Hz to 20 kHz$/, (m, p, hz) => `${p}: um tom de ${hz} Hz: uma pessoa ouve de 20 Hz a 20 kHz`],
   [/^(\S+): a start of ([\d.]+) ms: a (DHT\d\d)'s is ([\d.]+) ms or more$/, (m, p, ms, d, min) => `${p}: um início de ${ms} ms: o de um ${d} é de ${min} ms ou mais`],
   [/^(\S+): read ([\d.]+) s after its last read or its power-on: a (DHT\d\d) answers once every (\d) s$/, (m, p, s, d, n) => `${p}: lido ${s} s depois da última leitura ou de ligado: um ${d} responde uma vez a cada ${n} s`],

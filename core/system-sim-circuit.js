@@ -54,6 +54,10 @@ export class CircuitNode {
 
   /** Its servos' states (#5347). */
   servos() { return this.sim.servos(); }
+  /** Its SD cards' states (#5477). */
+  sds() { return this.sim.sds(); }
+  /** An SD card's block's bytes (#5477). */
+  sdBlock(id, n) { return this.sim.sdBlock(id, n); }
   /** Its stepper motors' states (#5476). */
   steppers() { return this.sim.steppers(); }
   /** Its buzzers' states (#5454). */
