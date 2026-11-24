@@ -24,6 +24,8 @@ const ABOUT = {
   'seg7-ca': 'Seven segments a–g and a point DP, each an LED; common anode: a segment lights while its pin is at 0 and COM at 1. Outputs of the HDL.',
   'led-bar-10': 'Ten LEDs side by side, each lighting while its anode is at 1 and its cathode at 0. Outputs of the HDL.',
   probe: 'Shows the level of the net its tip touches: H (1), L (0), – (open) or X (unknown). Not a port of the HDL.',
+  // (a buzzer, #5454)
+  buzzer: 'An active buzzer: its + at 1 and its − at 0, it sounds at its own tone (about 2.3 kHz); a square wave on its + (an Arduino\'s tone(), a PWM, an FPGA\'s divider) and it sounds at that wave\'s frequency; at 0 it is silent. Not a port of the HDL.',
   // (a servo, #5347)
   'servo-sg90': "Its arm at the angle its signal's pulses ask for: 0.5 ms 0°, 2.5 ms 180°, every 20 ms (an Arduino's or an FPGA's PWM), moving at 60° in 0.1 s. Not a port of the HDL.",
   // (a temperature sensor, #5342)

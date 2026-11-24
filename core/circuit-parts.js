@@ -17,6 +17,7 @@ import { BOARD_PARTS } from './circuit-boards.js';
 import { LCD_1602 } from './circuit-lcd.js';
 import { LM75 } from './circuit-lm75.js';
 import { SERVO_SG90 } from './circuit-servo.js';
+import { BUZZER } from './circuit-buzzer.js';
 import { KEYPAD_4X4 } from './circuit-keypad.js';
 import { ROTARY_ENCODER } from './circuit-encoder.js';
 import { OLED_SSD1306 } from './circuit-oled.js';
@@ -98,6 +99,8 @@ const OTHERS = [
   LM75,
   // a servo on PWM (#5347, core/circuit-servo.js)
   SERVO_SG90,
+  // a buzzer (#5454, core/circuit-buzzer.js)
+  BUZZER,
 ];
 
 // ------------------------------------------------------------------ the library

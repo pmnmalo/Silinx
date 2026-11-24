@@ -26,7 +26,7 @@ const read = (rel) => fs.readFileSync(path.join(tmp, 'ws', 'c', rel), 'utf8');
 test('circuit_parts: the library, one part with its pins, gates and delay, its details (#4126); an unknown part', async () => {
   const all = await ok('circuit_parts', {});
   assert.deepEqual(all.data.parts.map((p) => p.type), ['breadboard-half', 'breadboard-full', 'supply', 'logic-switch', 'button', 'spdt', 'dip-4', 'dip-8', 'keypad-4x4', 'rotary-encoder', 'clock', 'pull-up', 'pull-down',
-    'led', 'seg7-cc', 'seg7-ca', 'led-bar-10', 'probe', 'lcd-1602', 'oled-ssd1306', 'lm75', 'servo-sg90', 'arduino-uno', 'arduino-nano', 'fpga-basys2', 'fpga-nexys2', '7400', '7401', '7402', '7403', '7404', '7405', '7406', '7408', '7410', '7411', '7414', '7420', '7427', '7430', '7432', '7486',
+    'led', 'seg7-cc', 'seg7-ca', 'led-bar-10', 'probe', 'lcd-1602', 'oled-ssd1306', 'lm75', 'servo-sg90', 'buzzer', 'arduino-uno', 'arduino-nano', 'fpga-basys2', 'fpga-nexys2', '7400', '7401', '7402', '7403', '7404', '7405', '7406', '7408', '7410', '7411', '7414', '7420', '7427', '7430', '7432', '7486',
     '7407', '7409', '7412', '7413', '7415', '7421', '7422', '7426', '7428', '7433', '7437', '7438', '7440', '74132', '74133', '74136', '74386', '7451', '7454', '7455',
     '74125', '74126', '74240', '74241', '74244', '74365', '74366', '74367', '74368', '74540', '74541', '74242', '74243', '74245',
     '4001', '4011', '4030', '4069', '4070', '4071', '4081', '4002', '4012', '4023', '4025', '4049', '4050', '4072', '4073', '4075', '4077', '7447', '7448', '74138', '74139', '74151', '74153', '74157', '7483', '74283', '7485',
@@ -345,4 +345,14 @@ test('#5451 simulate_drawing: an encoder turned by its id (+1, -2), its quadratu
   await fails('simulate_drawing', { project: 'c', file: 'src/enc.circ.json', cycles: [{ ENC1: 'x' }] }, 'step 0: ENC1 = "x": a turn, its detents (positive clockwise, negative anticlockwise)');
   const info = await ok('circuit_parts', { type: 'rotary-encoder' });
   assert.match(info.text, /^rotary-encoder: Rotary encoder \(KY-040\); pins 1 CLK weak, 2 DT weak, 3 SW pass, 4 \+ pass, 5 GND pass\nA rotary encoder module \(KY-040\)/);
+});
+
+test('#5454 simulate_drawing: a buzzer on a switch, its tone said (on: its own); circuit_parts its pins and what it is', async () => {
+  await ok('write_file', { project: 'c', path: 'src/buzz.circ.json', text: JSON.stringify({ format: 'silinx-circuit', version: 1, name: 'buzz', lang: 'vhdl',
+    parts: [{ id: 'P1', type: 'supply', x: -4, y: -10 }, { id: 'BZ1', type: 'buzzer', x: 0, y: 0 }, { id: 'S1', type: 'logic-switch', x: 0, y: 4 }],
+    wires: [{ id: 'ws', points: [[0, 4], [0, 0]] }, { id: 'wg', points: [[3, 0], [-4, -9]] }] }, null, 2) });
+  const r = await ok('simulate_drawing', { project: 'c', file: 'src/buzz.circ.json', cycles: [{ S1: 1 }, { S1: 0 }] });
+  assert.deepEqual(r.text.split('\n').slice(1), ['start: t = 0 ns; LEDs none; BZ1 silent', 'step 0: inputs S1=1; t = 0 ns; LEDs none; BZ1 2300 Hz', 'step 1: inputs S1=0; t = 0 ns; LEDs none; BZ1 silent']);
+  const info = await ok('circuit_parts', { type: 'buzzer' });
+  assert.match(info.text, /^buzzer: Buzzer \(active, 5 V\); pins 1 \+ in, 2 − gnd\nAn active buzzer/);
 });
