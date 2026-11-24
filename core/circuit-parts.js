@@ -20,6 +20,7 @@ import { SERVO_SG90 } from './circuit-servo.js';
 import { BUZZER } from './circuit-buzzer.js';
 import { HC_SR04 } from './circuit-sonar.js';
 import { HC_SR501 } from './circuit-pir.js';
+import { DHT11, DHT22 } from './circuit-dht.js';
 import { KEYPAD_4X4 } from './circuit-keypad.js';
 import { ROTARY_ENCODER } from './circuit-encoder.js';
 import { OLED_SSD1306 } from './circuit-oled.js';
@@ -107,6 +108,8 @@ const OTHERS = [
   HC_SR04,
   // a motion sensor, a PIR (#5463, core/circuit-pir.js)
   HC_SR501,
+  // the temperature and humidity sensors (#5470, core/circuit-dht.js)
+  DHT11, DHT22,
 ];
 
 // ------------------------------------------------------------------ the library
@@ -139,6 +142,8 @@ export function setProjectParts(defs = []) {
 export const projectParts = () => [...theParts().values()];
 
 /** A part's description by its type (the library's, or one of the project's own parts), or null. */
+/** A sensed value on its `sense`'s step (#5470: 0.1 kept a tenth, not 25.300000000000004). */
+export const onStep = (v, step) => +(Math.round(v / step) * step).toFixed(String(step).split('.')[1]?.length ?? 0);
 export const partDef = (type) => (Object.hasOwn(PARTS, String(type)) ? PARTS[type] : theParts().get(String(type)) ?? null);
 
 /** The pins a part drives as a supply's terminals: [{ n, value: '1' | '0' }] (the supply's + and −, a board's 5V, 3V3 and

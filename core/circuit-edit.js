@@ -1,7 +1,7 @@
 // A circuit's edits (#3897, docs/CIRCUITS.md), the editor's and the MCP server's edit_circuit's: one function each, the
 // same checks and messages. A place is a grid point [x, y], a breadboard's hole ('BB1.f10'), or a part's pin ('U1.3',
 // 'S1.out', 'D1.A'). Each edit returns { model } (a new one) or { error }. Isomorphic module.
-import { partDef, partPins, partHoles, LED_COLORS, WIRE_COLORS, CLOCK_HZ } from './circuit-parts.js';
+import { partDef, onStep, partPins, partHoles, LED_COLORS, WIRE_COLORS, CLOCK_HZ } from './circuit-parts.js';
 import { normalizeCircuit, newId } from './circuit.js';
 import { circuitNets } from './circuit-net.js';
 import { clone } from './util.js';
@@ -198,7 +198,7 @@ export const setPartProps = (m, id, props = {}) => edit(m, (c) => {
     else if (d?.sense?.some((s) => s.prop === k)) {   // (a sensed value, #5456: in its range, a step's multiple)
       const s = d.sense.find((x) => x.prop === k), n = Number(v);
       if (!Number.isFinite(n) || n < s.min || n > s.max) return `${k}: ${s.label.replace(/ \(.*\)$/, '').toLowerCase()} from ${s.min} to ${s.max} ${s.unit}`;
-      p[k] = Math.round(n / s.step) * s.step;
+      p[k] = onStep(n, s.step);
     } else if (k === 'hold') { const h = Number(v); if (!Number.isFinite(h) || h < PIR_HOLD.min || h > PIR_HOLD.max) return `hold: a time from ${PIR_HOLD.min} to ${PIR_HOLD.max} s`; p.hold = Math.round(h); }
     else if (k === 'retrigger') p.retrigger = !!v;
     else if (k === 'temp') { const t = Number(v); if (!Number.isFinite(t) || t < LM75_TEMP.min || t > LM75_TEMP.max) return `temp: a temperature from ${LM75_TEMP.min} to ${LM75_TEMP.max} °C`; p.temp = Math.round(t * 2) / 2; }

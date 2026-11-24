@@ -2,7 +2,7 @@
 // breadboards or beside them, wired on a 0.1 inch grid. Its model here (normalized, a new one, its ports); its parts:
 // core/circuit-parts.js; its nets: core/circuit-net.js; its checks: core/circuit-check.js; its simulation:
 // core/circuit-sim.js; its HDL: core/circuit-hdl.js. Isomorphic module (browser + Node).
-import { partDef, LED_COLORS, WIRE_COLORS, CLOCK_HZ, BB_COLS, BB_RAILS } from './circuit-parts.js';
+import { partDef, onStep, LED_COLORS, WIRE_COLORS, CLOCK_HZ, BB_COLS, BB_RAILS } from './circuit-parts.js';
 import { portName, partInputs, partLamps } from './circuit-io.js';
 import { isName } from './ident.js';
 import { LM75_TEMP } from './circuit-lm75.js';
@@ -33,7 +33,7 @@ export function normalizeCircuit(m = {}) {
     if (d?.kind === 'output') out.color = d.kicad ? d.color : LED_COLORS.includes(p.color) ? p.color : 'red';
     // (a temperature sensor's temperature, #5342: its saved one, in 0.5 °C)
     // (a part's sensed values, #5456: each its saved one in its range, a step's multiple, else its default)
-    for (const s of d?.sense || []) { const v = Number(p[s.prop]); out[s.prop] = Number.isFinite(v) ? Math.min(s.max, Math.max(s.min, Math.round(v / s.step) * s.step)) : s.default; }
+    for (const s of d?.sense || []) { const v = Number(p[s.prop]); out[s.prop] = Number.isFinite(v) ? Math.min(s.max, Math.max(s.min, onStep(v, s.step))) : s.default; }
     // (a motion sensor's hold time, s, in its range, and its jumper, #5463)
     if (d?.kind === 'pir') { const h = Number(p.hold); out.hold = Number.isFinite(h) ? Math.min(PIR_HOLD.max, Math.max(PIR_HOLD.min, Math.round(h))) : PIR_HOLD.default; out.retrigger = p.retrigger == null ? PIR_RETRIGGER : !!p.retrigger; }
     if (d?.kind === 'sensor') { const t = Number(p.temp); out.temp = Number.isFinite(t) ? Math.min(LM75_TEMP.max, Math.max(LM75_TEMP.min, Math.round(t * 2) / 2)) : LM75_TEMP.default; }

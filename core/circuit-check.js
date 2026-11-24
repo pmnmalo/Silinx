@@ -111,6 +111,8 @@ function checkNets(nets, { err, warn }) {
 function drivenNets(nets, m, { err }) {
   const strong = nets.nets.map((net) => net.pins.some((q) => q.dir === 'out' || q.dir === 'oc' || isSupply(q)));
   const driven = nets.nets.map((net, i) => strong[i] || net.pins.some((q) => q.dir === 'weak'));
+  // (driven both ways: an output, the supply; an open drain only pulls low, a contact may join it to GND, #5470)
+  const hard = nets.nets.map((net) => net.pins.some((q) => q.dir === 'out' || isSupply(q)));
   const via = new Map();
   const typeOf = new Map(m.parts.map((p) => [p.id, p.type]));
   for (const c of nets.contacts) {
@@ -120,7 +122,7 @@ function drivenNets(nets, m, { err }) {
     if (strong[c.b] && !driven[c.a]) via.set(c.a, c);
     const sa = netSupply(nets.nets[c.a]), sb = netSupply(nets.nets[c.b]);
     if ((sa.vcc && sb.gnd) || (sa.gnd && sb.vcc)) err(`Short circuit while ${c.part} is ${how}: it joins the supply's + and −`, part(c.part));
-    else if (c.a !== c.b && strong[c.a] && strong[c.b]) err(`${c.part} joins two driven nets while ${how} (${netText(nets.nets[c.a])}; ${netText(nets.nets[c.b])}): one of its sides must be driven by nothing else`, part(c.part));
+    else if (c.a !== c.b && strong[c.a] && strong[c.b] && hard[c.a] === hard[c.b]) err(`${c.part} joins two driven nets while ${how} (${netText(nets.nets[c.a])}; ${netText(nets.nets[c.b])}): one of its sides must be driven by nothing else`, part(c.part));
   }
   return { driven, via, typeOf };
 }
