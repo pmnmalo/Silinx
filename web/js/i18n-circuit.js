@@ -117,6 +117,12 @@ export const CIRCUIT_PT = {
   'Distance (cm)': 'Distância (cm)',
   'An ultrasonic range sensor: a pulse of 10 µs or more on Trig and, about 0.46 ms after it ends, Echo is at 1 for as long as the sound takes to reach the object and come back, 58 µs a centimetre (2 to 400 cm; 38 ms out of its range). The object\'s distance is set while trying it (its − and +), as saved in its properties. Not a port of the HDL.':
     'Um sensor de distância ultrassónico: um impulso de 10 µs ou mais no Trig e, cerca de 0,46 ms depois de acabar, o Echo fica a 1 durante o tempo que o som leva a chegar ao objeto e a voltar, 58 µs por centímetro (2 a 400 cm; 38 ms fora do seu alcance). A distância do objeto define-se ao experimentá-lo (o seu − e +), como guardada nas suas propriedades. Não é um porto do HDL.',
+  // a motion sensor, a PIR (#5463, core/circuit-pir.js)
+  'Motion sensor (PIR, HC-SR501)': 'Sensor de movimento (PIR, HC-SR501)',
+  'Hold time (s)': 'Tempo ativo (s)',
+  'Retriggering (H)': 'Redisparável (H)',
+  'A motion sensor (PIR): someone moving in front of it (press and hold its dome while trying it: its input, an input of the HDL) sets OUT to 1 for its hold time (3 to 300 s, its Properties); retriggering (its jumper at H), OUT stays at 1 while they move and for its hold time after; single (L), it falls after its hold time. Then it is blind for 2.5 s. Its minute of warming up at power-on is not simulated.':
+    'Um sensor de movimento (PIR): alguém a mexer-se à sua frente (prima e mantenha premida a sua cúpula ao experimentá-lo: a sua entrada, uma entrada do HDL) põe OUT a 1 durante o seu tempo ativo (3 a 300 s, nas suas Propriedades); redisparável (o seu jumper em H), OUT fica a 1 enquanto se mexem e durante o tempo ativo depois disso; simples (L), desce ao fim do tempo ativo. Depois fica cego durante 2,5 s. O seu minuto de aquecimento ao ligar não é simulado.',
   // a rotary encoder (#5451, core/circuit-encoder.js)
   'Rotary encoder (KY-040)': 'Codificador rotativo (KY-040)',
   'A rotary encoder module (KY-040), 20 detents a turn: turning it joins CLK (A) and DT (B) to GND in quadrature, A first clockwise, B first anticlockwise, both open at each detent (its 10 kΩ pull-ups hold them high); pushing its knob joins SW to GND (no pull-up: the program\'s). A program counts the edges of A, reading B. Its turns and its switch are inputs of the HDL (ENC1_A, ENC1_B, ENC1_SW).':

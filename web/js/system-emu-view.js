@@ -110,10 +110,10 @@ export function mountSystemEmulator(host, opts) {
       e.preventDefault();
     });
     return { el, paint(s) {
-      const key = JSON.stringify([s?.leds, s?.inputs, s?.lcds, s?.oleds, s?.sensors, s?.servos, s?.buzzers, s?.sonars, detents]);
+      const key = JSON.stringify([s?.leds, s?.inputs, s?.lcds, s?.oleds, s?.sensors, s?.servos, s?.buzzers, s?.sonars, s?.pirs, detents]);
       if (key === said) return;
       said = key; cur = s;
-      svg.replaceChildren(drawCircuit(b.model, { leds: s?.leds ?? null, lcds: s?.lcds ?? null, oleds: s?.oleds ?? null, sensors: s?.sensors ?? null, servos: s?.servos ?? null, buzzers: s?.buzzers ?? null, sonars: s?.sonars ?? null, inputs: s?.inputs ?? null, encoders: detents }));
+      svg.replaceChildren(drawCircuit(b.model, { leds: s?.leds ?? null, lcds: s?.lcds ?? null, oleds: s?.oleds ?? null, sensors: s?.sensors ?? null, servos: s?.servos ?? null, buzzers: s?.buzzers ?? null, sonars: s?.sonars ?? null, pirs: s?.pirs ?? null, inputs: s?.inputs ?? null, encoders: detents }));
       // (its size the drawing's, at most 720 pixels wide)
       const r = svg.firstChild.getBBox?.();
       if (r && r.width) { svg.setAttribute('viewBox', `${r.x - 10} ${r.y - 10} ${r.width + 20} ${r.height + 20}`); svg.style.width = `${Math.min(720, r.width + 20)}px`; }

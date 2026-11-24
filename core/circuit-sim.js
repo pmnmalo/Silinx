@@ -97,7 +97,7 @@ export function createCircuitSim(m, { nets = circuitNets(m), onLevel = null, run
 
   const powered = (ic) => levels[ic.vcc] === '1' && levels[ic.gnd] === '0';
   function evaluate(ic) {
-    if (evaluateDevice(ic, { powered, level: (net) => levels[net], now: () => time, drive, wake: (at) => wake(ic, at) })) return;
+    if (evaluateDevice(ic, { powered, level: (net) => levels[net], now: () => time, drive, wake: (at) => wake(ic, at), input: (k) => !!state.get(ic.part.id)?.[k] })) return;
     if (ic.live) {   // (a module: its inputs' levels in, its outputs' out)
       const o = ic.live.run(Object.fromEntries(ic.ins.map((x) => [x.port, levels[x.net]])));
       for (const x of ic.outs) drive(x.d, o[x.port] ?? 'X');
@@ -217,6 +217,8 @@ export function createCircuitSim(m, { nets = circuitNets(m), onLevel = null, run
     if (src) src.value = value ? '1' : '0';
     if (d.contacts) regroup();
     update();
+    // (a device whose input it is, #5463: a motion sensor's someone moving)
+    for (const ic of ics.filter((x) => x.pir && x.part.id === id)) evaluate(ic);
   }
 
   /** A pin driven from outside (one of `external`), now: its level ('0', '1', 'Z': nothing) and strength ('s' strong,

@@ -5,6 +5,7 @@
 import { h } from './ui.js';
 import { partDef, LED_COLORS, WIRE_COLORS, CLOCK_HZ } from '/core/circuit-parts.js';
 import { LM75_TEMP } from '/core/circuit-lm75.js';
+import { PIR_HOLD } from '/core/circuit-pir.js';
 import { setPartProps, setWireProps } from '/core/circuit-edit.js';
 import { portName } from '/core/circuit.js';
 import { partInfo } from '/core/circuit-part-info.js';
@@ -67,6 +68,14 @@ export function mountCircuitSide(ctx) {
         const v = h('input', { type: 'number', class: 'circ-sense-in', 'data-prop': x.prop, min: String(x.min), max: String(x.max), step: String(x.step), value: String(p[x.prop] ?? x.default) });
         v.addEventListener('change', () => apply(setPartProps(M(), p.id, { [x.prop]: Number(v.value) })));
         kids.push(field(x.label, v));
+      }
+      // (a motion sensor's hold time and jumper, #5463)
+      if (d?.kind === 'pir') {
+        const hold = h('input', { type: 'number', class: 'circ-hold-in', min: String(PIR_HOLD.min), max: String(PIR_HOLD.max), step: String(PIR_HOLD.step), value: String(p.hold ?? PIR_HOLD.default) });
+        hold.addEventListener('change', () => apply(setPartProps(M(), p.id, { hold: Number(hold.value) })));
+        const re = h('input', { type: 'checkbox', class: 'circ-retrigger-in', checked: p.retrigger !== false });
+        re.addEventListener('change', () => apply(setPartProps(M(), p.id, { retrigger: re.checked })));
+        kids.push(field('Hold time (s)', hold), field('Retriggering (H)', re));
       }
       if (d?.type === 'clock') {
         const hz = h('input', { type: 'number', class: 'circ-hz-in', min: String(CLOCK_HZ.min), max: String(CLOCK_HZ.max), step: '0.1', value: String(p.hz ?? CLOCK_HZ.default) });

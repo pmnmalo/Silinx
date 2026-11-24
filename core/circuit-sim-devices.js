@@ -11,6 +11,7 @@ import { createLm75 } from './circuit-lm75.js';
 import { createServo } from './circuit-servo.js';
 import { createBuzzer } from './circuit-buzzer.js';
 import { createSonar } from './circuit-sonar.js';
+import { createPir } from './circuit-pir.js';
 
 /**
  * A device of a part, or null (another part): { ic, reads } (its state, as createCircuitSim's ics; the nets it reads).
@@ -45,6 +46,11 @@ export function setupDevice(p, d, { at, addDriver, level }) {
     const ic = { part: p, def: d, sonar: createSonar({ cm: p.cm }), vcc: at('VCC'), gnd: at('GND'), trig: at('Trig'), echo: addDriver(at('Echo'), 'Z'), was: false };
     return { ic, reads: [ic.vcc, ic.gnd, ic.trig] };
   }
+  // (a motion sensor, #5463: its input someone moving, its OUT driven at its own times)
+  if (d.kind === 'pir') {
+    const ic = { part: p, def: d, pir: createPir({ hold: p.hold, retrigger: p.retrigger }), vcc: at('VCC'), gnd: at('GND'), out: addDriver(at('OUT'), 'Z'), was: false };
+    return { ic, reads: [ic.vcc, ic.gnd] };
+  }
   // (a temperature sensor, #5342: its I²C peripheral at 0x48 + A2..A0, read too; its OS open drain)
   if (d.kind === 'sensor') {
     const lm75 = createLm75({ temp: p.temp });
@@ -58,8 +64,8 @@ export function setupDevice(p, d, { at, addDriver, level }) {
 }
 
 /** A device evaluated (true), or not one (false). powered(ic), level(net), now() (ns), drive(driver, value), wake(at): the
- *  device evaluated again at its own time (#5456). */
-export function evaluateDevice(ic, { powered, level, now, drive, wake }) {
+ *  device evaluated again at its own time (#5456); input(k): its part's input k (#5463). */
+export function evaluateDevice(ic, { powered, level, now, drive, wake, input }) {
   if (ic.lcd) {   // (its controller reset while unpowered; a write as E falls)
     const on = powered(ic), e = level(ic.e);
     if (!on) ic.lcd.reset();
@@ -85,6 +91,14 @@ export function evaluateDevice(ic, { powered, level, now, drive, wake }) {
     const on = level(ic.ref) === '0';
     if (!on) { if (ic.was) ic.buzzer.stop(now()); } else ic.buzzer.edge(level(ic.sig) === '1' ? '1' : '0', now());
     ic.was = on;
+    return true;
+  }
+  if (ic.pir) {   // (its OUT open while unpowered; its input and its wake-ups stepping it)
+    if (!powered(ic)) { if (ic.was) ic.pir.reset(); drive(ic.out, 'Z'); ic.was = false; return true; }
+    ic.was = true;
+    const r = ic.pir.step(now(), input(0));
+    drive(ic.out, r.out);
+    if (r.next != null) wake(r.next);
     return true;
   }
   if (ic.sonar) {   // (its echo low while powered, its trigger's fall a measure, its wake-ups the echo's start and end)
@@ -122,6 +136,8 @@ export function deviceViews(ics, { now, evaluate, update }) {
     /** each buzzer's state now: { sounding, hz, how } (#5454) */
     buzzers: () => Object.fromEntries(ics.filter((x) => x.buzzer).map((x) => [x.part.id, x.buzzer.state(now())])),
     /** each ultrasonic range sensor's state: { cm, measuring, echo (its last, µs) } (#5456) */
+    /** each motion sensor's state: { moving, out, blind } (#5463) */
+    pirs: () => Object.fromEntries(ics.filter((x) => x.pir).map((x) => [x.part.id, x.pir.state()])),
     sonars: () => Object.fromEntries(ics.filter((x) => x.sonar).map((x) => [x.part.id, x.sonar.state()])),
     /** a part's sensed value now (#5456: its `sense`'s `prop`) */
     sensed(id, prop) {

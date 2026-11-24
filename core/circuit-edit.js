@@ -6,6 +6,7 @@ import { normalizeCircuit, newId } from './circuit.js';
 import { circuitNets } from './circuit-net.js';
 import { clone } from './util.js';
 import { LM75_TEMP } from './circuit-lm75.js';
+import { PIR_HOLD } from './circuit-pir.js';
 import { systemsOn, SYSTEMS_OFF } from './build-channel.js';
 import { WIRE_STYLES, isWireStyle, setWireStyle as setStyleOf } from './wire-style.js';
 
@@ -180,14 +181,15 @@ export function addWire(m, { from, to, via = [], color, id } = {}) {
 /**
  * A part's properties set: its label (its ports' name), an LED's or a display's colour, a switch's position as saved (`on`:
  * a DIP switch's list of its levers, or { lever: k, on }), a clock's frequency (`hz`, in real time), a temperature sensor's
- * temperature (`temp`, °C, #5342), a part's sensed values (its `sense`'s props: an ultrasonic sensor's `cm`, #5456).
+ * temperature (`temp`, °C, #5342), a part's sensed values (its `sense`'s props: an ultrasonic sensor's `cm`, #5456), a
+ * motion sensor's hold time (`hold`, s) and jumper (`retrigger`, #5463).
  */
 export const setPartProps = (m, id, props = {}) => edit(m, (c) => {
   const p = partIn(c, id);
   if (!p) return `no part ${id} in the circuit`;
   const d = partDef(p.type);
   const levels = (d?.inputs || []).filter((x) => x.kind === 'level').length;
-  const has = ['label', ...(d?.kind === 'output' && !d.kicad ? ['color'] : []), ...(levels ? ['on'] : []), ...(d?.type === 'clock' ? ['hz'] : []), ...(d?.kind === 'sensor' ? ['temp'] : []), ...(d?.sense || []).map((s) => s.prop)];
+  const has = ['label', ...(d?.kind === 'output' && !d.kicad ? ['color'] : []), ...(levels ? ['on'] : []), ...(d?.type === 'clock' ? ['hz'] : []), ...(d?.kind === 'sensor' ? ['temp'] : []), ...(d?.sense || []).map((s) => s.prop), ...(d?.kind === 'pir' ? ['hold', 'retrigger'] : [])];
   for (const [k, v] of Object.entries(props)) {
     const named = d?.inputs || d?.lamps || d?.kind === 'probe';   // (a probe's label: its row's name in the waveforms)
     if (!has.includes(k) || (k === 'label' && !named)) return `${p.id} (${p.type}) has no property '${k}' (${has.filter((x) => x !== 'label' || named).join(', ') || 'none'})`;
@@ -197,7 +199,9 @@ export const setPartProps = (m, id, props = {}) => edit(m, (c) => {
       const s = d.sense.find((x) => x.prop === k), n = Number(v);
       if (!Number.isFinite(n) || n < s.min || n > s.max) return `${k}: ${s.label.replace(/ \(.*\)$/, '').toLowerCase()} from ${s.min} to ${s.max} ${s.unit}`;
       p[k] = Math.round(n / s.step) * s.step;
-    } else if (k === 'temp') { const t = Number(v); if (!Number.isFinite(t) || t < LM75_TEMP.min || t > LM75_TEMP.max) return `temp: a temperature from ${LM75_TEMP.min} to ${LM75_TEMP.max} °C`; p.temp = Math.round(t * 2) / 2; }
+    } else if (k === 'hold') { const h = Number(v); if (!Number.isFinite(h) || h < PIR_HOLD.min || h > PIR_HOLD.max) return `hold: a time from ${PIR_HOLD.min} to ${PIR_HOLD.max} s`; p.hold = Math.round(h); }
+    else if (k === 'retrigger') p.retrigger = !!v;
+    else if (k === 'temp') { const t = Number(v); if (!Number.isFinite(t) || t < LM75_TEMP.min || t > LM75_TEMP.max) return `temp: a temperature from ${LM75_TEMP.min} to ${LM75_TEMP.max} °C`; p.temp = Math.round(t * 2) / 2; }
     else if (k === 'hz') { const hz = Number(v); if (!Number.isFinite(hz) || hz < CLOCK_HZ.min || hz > CLOCK_HZ.max) return `hz: a frequency from ${CLOCK_HZ.min} to ${CLOCK_HZ.max} Hz`; p.hz = hz; }
     else if (levels === 1) p.on = !!v;
     else if (Array.isArray(v)) { if (v.length !== levels) return `on: a list of ${levels} levers' positions`; p.on = v.map(Boolean); }

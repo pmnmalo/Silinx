@@ -34,9 +34,9 @@ export function mountCircuitTry({ M, opts, root, status, render, destroyed }) {
     }));
   }
   function stopTicks() { for (const t of ticks) t.stop(); ticks = []; clearTimeout(wakeTimer); wakeTimer = null; }
-  // (a device that keeps time, #5456: an ultrasonic sensor; the simulated time follows the real one, at most a second at
+  // (a device that keeps time, #5456: an ultrasonic sensor, a motion sensor (#5463); the simulated time follows the real one, at most a second at
   // a time, so that a trigger pressed by hand lasts what it lasted; its wake-ups reached in real time)
-  const timed = () => M().parts.some((p) => p.type === 'hc-sr04');
+  const timed = () => M().parts.some((p) => ['hc-sr04', 'hc-sr501'].includes(p.type));
   function catchUp() {
     const t = performance.now(), ns = Math.min(1e9, Math.round((t - seen) * 1e6));
     seen = t;

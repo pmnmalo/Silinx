@@ -274,3 +274,10 @@ html[data-theme="dark"] .circuit-editor .circ-sim-badge { color: var(--m-success
 .circuit-editor .circ-sonar-pin { font-size: 8px; }
 .circuit-editor .circ-sonar-wave { fill: none; stroke: var(--circ-servo); stroke-width: 2; stroke-linecap: round; }
 .circuit-editor .circ-sonar-cm { font: bold 10px var(--asm-mono, monospace); fill: var(--circ-silk); cursor: default; }
+/* a motion sensor, a PIR HC-SR501 (#5463, web/js/circuit-draw-pir.js): its green board, its white dome, lit while OUT is 1 */
+.circuit-editor .circ-pir-board { fill: var(--circ-pcb-green); stroke: var(--circ-plastic-edge); stroke-width: 1.2; }
+.circuit-editor .circ-pir-dome { fill: var(--circ-silk); stroke: var(--circ-metal-edge); stroke-width: 1.4; cursor: pointer; }
+.circuit-editor .circ-pir-dome.on { fill: var(--circ-lcd-lit); }
+.circuit-editor .circ-pir-facet { fill: none; stroke: var(--circ-metal-edge); stroke-width: 0.8; pointer-events: none; }
+.circuit-editor .circ-pir-pin { font: bold 8px Arial, sans-serif; fill: var(--circ-silk); pointer-events: none; }
+.circuit-editor .circ-pir-wave { fill: none; stroke: var(--circ-servo); stroke-width: 2; stroke-linecap: round; }

@@ -219,7 +219,7 @@ test('#5322 simulate with controls on a circuit node: its switch S1 set at 5 ms 
   await write('emuc.sys.json', m);
   const r = await ok('simulate', { project: 'u', top: 'emuc.sys.json', time_ns: 60e6, type: { term: 'A' }, controls: [{ node: 'bench', control: 'S1', on: true, at_ns: 5e6 }] });
   assert.equal(r.data.terminals.term, 'AHello from Silinx!\r\n');
-  assert.deepEqual(r.data.boards.bench, { leds: { D2: 'on' }, lcds: {}, oleds: {}, sensors: {}, servos: {}, buzzers: {}, sonars: {}, inputs: { S1: true }, lit: ['D2'] }, 'LD0: the last byte\'s bit 0 (no LCD, OLED, sensor, servo, buzzer nor ultrasonic sensor: #5345, #5371, #5454, #5456)');
+  assert.deepEqual(r.data.boards.bench, { leds: { D2: 'on' }, lcds: {}, oleds: {}, sensors: {}, servos: {}, buzzers: {}, sonars: {}, pirs: {}, inputs: { S1: true }, lit: ['D2'] }, 'LD0: the last byte\'s bit 0 (no LCD, OLED, sensor, servo, buzzer, ultrasonic nor motion sensor: #5345, #5371, #5454, #5456, #5463)');
   assert.deepEqual(r.text.split('\n').slice(-3, -1), ['fpga\'s board: LEDs off.', 'bench\'s circuit: lit D2.'], r.text);
   assert.deepEqual([r.data.warnings, r.data.errors], [[], []]);
   const x = await call('simulate', { project: 'u', top: 'emuc.sys.json', time_ns: 2e6, controls: [{ node: 'bench', control: 'S9', on: true }] });
@@ -264,4 +264,21 @@ test('#5456 simulate with a control on a circuit\'s ultrasonic sensor: its dista
   assert.deepEqual(r.data.boards.bench.sonars.US1, { cm: 120, measuring: false, echo: 6997.1 });
   const x = await call('simulate', { project: 'u', top: 'son.sys.json', time_ns: 2e6, controls: [{ node: 'bench', control: 'US1', value: 500 }] });
   assert.deepEqual([x.isError, x.text], [true, 'simulate: controls[0]: US1\'s value: distance (cm) from 2 to 400']);
+});
+
+test('#5463 simulate with a control on a circuit\'s motion sensor: someone moving at its time (on, then off), an Uno copying its OUT to D13; its line', async () => {
+  const uno = (name) => ({ D2: [16, 0], GND: [3, 0], '5V': [8, 19] })[name];
+  const { avrAssemble, intelHex } = await import('./avr-asm.mjs');
+  await write('fw/pir.hex', intelHex(avrAssemble(['ldi r16, 0x20', 'out 0x04, r16', 'loop:', 'in r16, 0x09', 'sbrs r16, 2', 'rjmp off', 'ldi r17, 0x20', 'out 0x05, r17', 'rjmp loop', 'off:', 'ldi r17, 0x00', 'out 0x05, r17', 'rjmp loop'])));
+  await write('src/pir.circ.json', { format: 'silinx-circuit', version: 1, name: 'pir', lang: 'vhdl',
+    parts: [{ id: 'A1', type: 'arduino-uno', x: 0, y: 0, label: 'uno' }, { id: 'PIR1', type: 'hc-sr501', x: 30, y: 30 }],
+    wires: [{ id: 'v', points: [uno('5V'), [30, 30]], color: 'red' }, { id: 'o', points: [uno('D2'), [31, 30]], color: 'blue' }, { id: 'g', points: [uno('GND'), [32, 30]], color: 'black' }] });
+  await write('pir.sys.json', { format: 'silinx-system', version: 1, name: 'pir', nodes: [{ id: 'uno', kind: 'mcu', board: 'arduino-uno', firmware: 'fw/pir.hex', interfaces: [] },
+    { id: 'bench', kind: 'circuit', circuit: 'src/pir.circ.json', interfaces: [] }], links: [] });
+  const r = await ok('simulate', { project: 'u', top: 'pir.sys.json', time_ns: 2e9, controls: [{ node: 'bench', control: 'PIR1', on: true, at_ns: 1e6 }, { node: 'bench', control: 'PIR1', on: false, at_ns: 5e8 }] });
+  const lines = r.text.split('\n');
+  assert.ok(lines.includes('circuit bench: PIR1 sees movement (OUT 1)'), r.text);
+  assert.equal(lines.at(-2), 'bench\'s circuit: lit none; PIR1 OUT 1.');
+  assert.deepEqual(r.data.boards.bench.pirs.PIR1, { moving: false, out: true, blind: false });
+  assert.equal(r.data.boards.uno.pins.D13, 1, 'the Uno lights its LED');
 });
