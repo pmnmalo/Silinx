@@ -255,4 +255,12 @@ html[data-theme="dark"] .circuit-editor .circ-sim-badge { color: var(--m-success
 .circuit-editor .circ-enc-turn { cursor: pointer; }
 .circuit-editor .circ-enc-turn circle { fill: var(--circ-metal); stroke: var(--circ-metal-edge); }
 .circuit-editor .circ-enc-turn text { font: bold 13px Arial, sans-serif; fill: var(--circ-plastic); pointer-events: none; }
+/* a buzzer (#5454): its black body seen from above, its ring and sound hole, its legs; sounding, its waves and its tone */
+.circuit-editor .circ-buzz-body { fill: var(--circ-plastic); stroke: var(--circ-plastic-edge); stroke-width: 1.4; }
+.circuit-editor .circ-buzz-ring { fill: none; stroke: var(--circ-plastic-edge); stroke-width: 1; }
+.circuit-editor .circ-buzz-hole { fill: var(--circ-metal-edge); }
+.circuit-editor .circ-buzz-plus { font: bold 11px Arial, sans-serif; fill: var(--circ-silk); pointer-events: none; }
+.circuit-editor .circ-buzz-leg { stroke: var(--circ-metal); stroke-width: 2.5; fill: none; }
+.circuit-editor .circ-buzz-wave { fill: none; stroke: var(--circ-servo); stroke-width: 2; stroke-linecap: round; }
+.circuit-editor .circ-buzz-hz { font: bold 11px var(--asm-mono, monospace); fill: var(--circ-servo); pointer-events: none; }
 .circuit-editor .circ-key.down rect { stroke: var(--asm-accent); stroke-width: 4; filter: brightness(.8); }

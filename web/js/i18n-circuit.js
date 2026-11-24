@@ -108,6 +108,10 @@ export const CIRCUIT_PT = {
   'Joins its two pins while it is pressed (momentary, normally open): with a pull-up or a pull-down, it gives a 0 or a 1. An input of the HDL.':
     'Liga os seus dois pinos enquanto está premido (momentâneo, normalmente aberto): com um pull-up ou um pull-down, dá um 0 ou um 1. Uma entrada do HDL.',
   'Joins its middle pin C to A or to B, as it is set. An input of the HDL.': 'Liga o seu pino do meio C a A ou a B, conforme a posição. Uma entrada do HDL.',
+  // a buzzer (#5454, core/circuit-buzzer.js)
+  'Buzzer (active, 5 V)': 'Besouro (ativo, 5 V)',
+  'An active buzzer: its + at 1 and its − at 0, it sounds at its own tone (about 2.3 kHz); a square wave on its + (an Arduino\'s tone(), a PWM, an FPGA\'s divider) and it sounds at that wave\'s frequency; at 0 it is silent. Not a port of the HDL.':
+    'Um besouro ativo: com o + a 1 e o − a 0, soa no seu próprio tom (cerca de 2,3 kHz); com uma onda quadrada no + (o tone() de um Arduino, um PWM, um divisor numa FPGA), soa na frequência dessa onda; a 0 fica em silêncio. Não é um porto do HDL.',
   // a rotary encoder (#5451, core/circuit-encoder.js)
   'Rotary encoder (KY-040)': 'Codificador rotativo (KY-040)',
   'A rotary encoder module (KY-040), 20 detents a turn: turning it joins CLK (A) and DT (B) to GND in quadrature, A first clockwise, B first anticlockwise, both open at each detent (its 10 kΩ pull-ups hold them high); pushing its knob joins SW to GND (no pull-up: the program\'s). A program counts the edges of A, reading B. Its turns and its switch are inputs of the HDL (ENC1_A, ENC1_B, ENC1_SW).':
@@ -344,6 +348,10 @@ export const CIRCUIT_PT_PATTERNS = [
   [/^(\S+)'s (SCL|SDA) \(pin (\d)\) has no pull-up: the I²C bus's lines are released high by a pull-up each$/, (m, p, n, k) => `O ${n} (pino ${k}) de ${p} não tem pull-up: as linhas do bus I²C são soltas a 1 por um pull-up cada`],
   // (a character LCD's RW, #5330)
   [/^(\S+)'s RW \(pin 5\) is not on GND: its reads are not simulated \(tie it low, as LiquidCrystal's wiring does\)$/, (m, p) => `O RW (pino 5) de ${p} não está no GND: as suas leituras não são simuladas (ligue-o a 0, como a ligação da LiquidCrystal)`],
+  // (a buzzer, #5454: its checks and a tone no one hears)
+  [/^(\S+) \((.+)\): its − \(pin (\d)\) is not on the supply's −: it never sounds$/, (m, p, v, k) => `${p} (${v}): o seu − (pino ${k}) não está no − da fonte: nunca soa`],
+  [/^(\S+)'s \+ \(pin (\d)\) is driven by nothing: it stays silent$/, (m, p, k) => `O + (pino ${k}) de ${p} não é conduzido por nada: fica em silêncio`],
+  [/^(\S+): a tone of (\d+) Hz: a person hears 20 Hz to 20 kHz$/, (m, p, hz) => `${p}: um tom de ${hz} Hz: uma pessoa ouve de 20 Hz a 20 kHz`],
   // (a servo's signal, #5347)
   [/^(\S+)'s signal \(pin (\d)\) is driven by nothing: its arm stays where it is$/, (m, p, k) => `O sinal (pino ${k}) de ${p} não é conduzido por nada: o seu braço fica onde está`],
   [/^(\S+) \((.+)\) joins nothing$/, (m, p, d) => `${p} (${CIRCUIT_PT[d] ?? title(d)}) não liga a nada`],

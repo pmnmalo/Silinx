@@ -1,6 +1,6 @@
 // The devices of a circuit's live simulation (#5357, moved from core/circuit-sim.js's createCircuitSim as they were):
 // the parts whose behaviour is a model of their own, not gates nor a module: a character LCD (#5330), a graphic OLED on
-// I²C (#5336), a servo (#5347), a temperature sensor on I²C (#5342). Each set up as its part is read (its nets, its
+// I²C (#5336), a servo (#5347), a temperature sensor on I²C (#5342), a buzzer (#5454). Each set up as its part is read (its nets, its
 // drivers), evaluated as a net it reads changes, and seen through the simulation's API (lcds, oleds, servos, sensors…).
 // Isomorphic module.
 import { createLcd } from './circuit-lcd.js';
@@ -8,6 +8,7 @@ import { createI2cPeripheral } from './circuit-i2c.js';
 import { createSsd1306 } from './circuit-oled.js';
 import { createLm75 } from './circuit-lm75.js';
 import { createServo } from './circuit-servo.js';
+import { createBuzzer } from './circuit-buzzer.js';
 
 /**
  * A device of a part, or null (another part): { ic, reads } (its state, as createCircuitSim's ics; the nets it reads).
@@ -31,6 +32,11 @@ export function setupDevice(p, d, { at, addDriver, level }) {
   if (d.kind === 'servo') {
     const ic = { part: p, def: d, servo: createServo(), vcc: at('VCC'), gnd: at('GND'), sig: at('SIG'), prev: null, was: false };
     return { ic, reads: [ic.vcc, ic.gnd, ic.sig] };
+  }
+  // (a buzzer, #5454: its +'s edges measured while its − is at 0, its tone)
+  if (d.kind === 'buzzer') {
+    const ic = { part: p, def: d, buzzer: createBuzzer(), sig: at('+'), ref: at('−'), was: false };
+    return { ic, reads: [ic.sig, ic.ref] };
   }
   // (a temperature sensor, #5342: its I²C peripheral at 0x48 + A2..A0, read too; its OS open drain)
   if (d.kind === 'sensor') {
@@ -67,6 +73,12 @@ export function evaluateDevice(ic, { powered, level, now, drive }) {
     ic.was = on;
     return true;
   }
+  if (ic.buzzer) {   // (its + read while its − is at 0; else silent)
+    const on = level(ic.ref) === '0';
+    if (!on) { if (ic.was) ic.buzzer.stop(now()); } else ic.buzzer.edge(level(ic.sig) === '1' ? '1' : '0', now());
+    ic.was = on;
+    return true;
+  }
   if (ic.lm75) {   // (its registers and its bus reset while unpowered; SDA's and OS's drivers)
     const on = powered(ic);
     if (!on) { if (ic.was) { ic.lm75.reset(); ic.bus.reset(); } drive(ic.sdaDrv, 'Z'); drive(ic.osDrv, 'Z'); }
@@ -86,7 +98,9 @@ export function deviceViews(ics, { now, evaluate, update }) {
     oleds: () => Object.fromEntries(ics.filter((x) => x.oled).map((x) => [x.part.id, x.oled.state()])),
     /** each servo's state now: { angle, target, width, period } (#5347), and what it said (once each) */
     servos: () => Object.fromEntries(ics.filter((x) => x.servo).map((x) => [x.part.id, x.servo.state(now())])),
-    servoWarnings: () => ics.filter((x) => x.servo).flatMap((x) => x.servo.warnings.map((w) => `${x.part.id}: ${w.text}`)),
+    servoWarnings: () => ics.filter((x) => x.servo || x.buzzer).flatMap((x) => (x.servo || x.buzzer).warnings.map((w) => `${x.part.id}: ${w.text}`)),
+    /** each buzzer's state now: { sounding, hz, how } (#5454) */
+    buzzers: () => Object.fromEntries(ics.filter((x) => x.buzzer).map((x) => [x.part.id, x.buzzer.state(now())])),
     /** each temperature sensor's state: { temp, raw, conf, thyst, tos, os, pointer } (#5342) */
     sensors: () => Object.fromEntries(ics.filter((x) => x.lm75).map((x) => [x.part.id, x.lm75.state()])),
     /** a temperature sensor's temperature set now (°C): a conversion, its OS as it gives */
