@@ -3,7 +3,7 @@ import fs from 'node:fs';
 import fsp from 'node:fs/promises';
 import path from 'node:path';
 import * as P from './projects.js';
-import { toolError, clip, redactor, projectPath, readProject, PROJECT } from './mcp-util.js';
+import { toolError, clip, redactor, projectPath, readProject, PROJECT, STR } from './mcp-util.js';
 import { designUtilization } from '../core/summary-utilization.js';
 import { severityOf } from '../core/log-severity.js';
 import { lineMessage, messageData } from '../core/message.js';
@@ -97,18 +97,20 @@ export function processMessageList({ errors, warnings, head, ok, process, paths 
 
 /** A process of the project's top run to its end (or stopped after timeoutS): its log redacted, its errors and
  *  warnings, whether it ended well, its toolchain. Errors: tool errors. */
-export async function runProcess(name, proc, { toolchain, timeoutS = 1800, signal, progress } = {}) {
+export async function runProcess(name, proc, { toolchain, node, timeoutS = 1800, signal, progress } = {}) {
   const pj = await readProject(name);
   const steps = PROCESSES[proc];
   if (!steps) throw toolError(`process: one of ${Object.keys(PROCESSES).join(', ')}`);
-  if (!pj.top) throw toolError(isSystemProject(pj) ? systemFlowRefusal(name) : `the project '${name}' has no top module`);   // (a System its top, #5443)
+  // (a System's FPGA node, or every one, on its own board, #5446: server/system-implement.js; else its top's)
+  if (node === undefined && !pj.top) throw toolError(isSystemProject(pj) ? systemFlowRefusal(name) : `the project '${name}' has no top module`);   // (a System its top, #5443)
+  if (node !== undefined && !['synthesize', 'implement', 'bitstream'].includes(proc)) throw toolError(`node: a System node runs synthesize, implement or bitstream (not ${proc})`);
   // (a model the flow does not make: refused, as simulate refuses it, #3707)
   const model = Object.keys(MODEL_PROCESS).find(m => MODEL_PROCESS[m] === proc);
   const silinx = silinxFlowOf(pj, toolchain);
-  if (model && !hasSimModels(pj.device, model, { silinx })) throw toolError(noSimModelMessage(pj.device, model, { silinx }));
+  if (node === undefined && model && !hasSimModels(pj.device, model, { silinx })) throw toolError(noSimModelMessage(pj.device, model, { silinx }));
   const { startImplementation } = await import('./impl-routes.js');
   let job;
-  try { job = await startImplementation(name, { steps, ...(toolchain ? { toolchain } : {}) }); } catch (e) { throw toolError(e.message); }
+  try { job = await startImplementation(name, { steps, ...(toolchain ? { toolchain } : {}), ...(node !== undefined ? { node } : {}) }); } catch (e) { throw toolError(e.message); }
   const end = Date.now() + timeoutS * 1000;
   // (its log's lines as its progress, when the client asks for it: the count, the last line redacted, #4734)
   const redactLine = progress ? await redactor() : null;
@@ -125,7 +127,7 @@ export async function runProcess(name, proc, { toolchain, timeoutS = 1800, signa
   const paths = (await P.readSources(name).catch(() => [])).map(s => s.path);
   const { errors, warnings, locations } = processMessages(lines, paths);
   const tc = ['silinx', 'vivado'].includes(job.meta?.toolchain) ? job.meta.toolchain : 'ise';
-  return { top: pj.top, lines, errors, warnings, locations, paths, ok: job.status === 'ok', silinx: tc === 'silinx', toolchain: tc };
+  return { top: node === undefined ? pj.top : node === '*' ? 'System' : `node ${node}`, lines, errors, warnings, locations, paths, ok: job.status === 'ok', silinx: tc === 'silinx', toolchain: tc };
 }
 
 // run_process's bounds (#3408): how long it waits (then the process is stopped), the lines of the log returned
@@ -138,14 +140,15 @@ export const PROCESS_TOOLS = [
     inputSchema: { type: 'object', properties: {
       project: PROJECT, process: { type: 'string', enum: Object.keys(PROCESSES), description: 'The process.' },
       toolchain: { type: 'string', enum: ['silinx', 'ise', 'vivado'], description: 'The toolchain (default: the project\'s synthesis tool, else Toolchain Settings).' },
+      node: STR('A System FPGA node\'s id (* all).'),
       log_lines: { type: 'integer', description: `The lines of the end of the log returned (default 40; from 1 to ${PROCESS_LIMITS.logLines}).` },
       timeout_s: { type: 'integer', description: `How long to wait, in seconds (default 1800; from 1 to ${PROCESS_LIMITS.timeoutS}): then the process is stopped.` },
     }, required: ['project', 'process'], additionalProperties: false },
     annotations: { readOnlyHint: false, destructiveHint: false, openWorldHint: false },
-    async run({ project: name, process: proc, toolchain, log_lines: logLines = 40, timeout_s: timeoutS = 1800 }, { signal, progress } = {}) {
+    async run({ project: name, process: proc, toolchain, node, log_lines: logLines = 40, timeout_s: timeoutS = 1800 }, { signal, progress } = {}) {
       if (!Number.isInteger(logLines) || logLines < 1 || logLines > PROCESS_LIMITS.logLines) throw toolError(`log_lines: from 1 to ${PROCESS_LIMITS.logLines}`);
       if (!Number.isInteger(timeoutS) || timeoutS < 1 || timeoutS > PROCESS_LIMITS.timeoutS) throw toolError(`timeout_s: from 1 to ${PROCESS_LIMITS.timeoutS} s`);
-      const { top, lines, errors, warnings, locations, paths, ok, toolchain: tc } = await runProcess(name, proc, { toolchain, timeoutS, signal, progress });
+      const { top, lines, errors, warnings, locations, paths, ok, toolchain: tc } = await runProcess(name, proc, { toolchain, node, timeoutS, signal, progress });
       // (a project shared live: its followers see the run, #4002)
       await (await import('./mcp-collab.js')).sharedRun(name, { steps: PROCESSES[proc], ok, warnings, lines }).catch(() => {});
       const pj = { top };

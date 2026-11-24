@@ -69,3 +69,13 @@ test('#5443 run_process in a System project whose top is its System: refused, it
   await ok('new_project_from_example', { name: 'rp1', example: 'uart-avr' });
   await fails('run_process', { project: 'rp1', process: 'synthesize' }, 'the project \'rp1\' has its System as its top: its FPGA nodes are not implemented yet, each on its own board (Check Syntax and the simulation work on their modules)');
 });
+
+test('#5446 run_process node: a System\'s FPGA node synthesized on its own board; another process, or no such node, refused', async () => {
+  await ok('new_project_from_example', { name: 'rp2', example: 'uart-avr' });
+  const r = await ok('run_process', { project: 'rp2', process: 'synthesize', node: 'fpga', toolchain: 'silinx' });
+  assert.match(r.text, /^Process "synthesize" of <node fpga> completed successfully/m);
+  assert.ok(r.text.includes('System node fpga: its module uart on basys2 (250), its constraints fpga.ucf from its pins, built in build/nodes/fpga/.'), r.text);
+  assert.ok(fs.existsSync(path.join(P.projectDir('rp2'), 'build/nodes/fpga/build/open/uart.json')), 'its netlist in its own folder');
+  await fails('run_process', { project: 'rp2', process: 'timing', node: 'fpga' }, 'node: a System node runs synthesize, implement or bitstream (not timing)');
+  await fails('run_process', { project: 'rp2', process: 'synthesize', node: 'uno' }, 'no FPGA node \'uno\' in the System of \'rp2\' (fpga)');
+});

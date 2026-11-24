@@ -50,6 +50,7 @@ export const IMPLEMENT_BODY = {
     toolchain: { type: 'string', enum: ['silinx', 'open', 'ise', 'vivado'] },   // ('open': the Silinx toolchain's older name)
     synthUpToDate: { type: 'boolean' },
     generateOnly: { type: 'boolean' },
+    node: { type: 'string' },   // (a System's FPGA node, its id, or '*' every one: server/system-implement.js, #5446)
   },
 };
 export const CAPTURE_BODY = {
