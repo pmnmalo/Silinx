@@ -1,10 +1,16 @@
 // The Processes pane of a System project's rows (#5414, #5416's phase 2): its System's row (View/Edit, Check, Emulate
 // System, as the row's menu) and each node's (its node in the System editor; an FPGA node's module checked and its RTL
-// schematic), and its FPGA nodes' modules' (#5443: the same, no flow on the project's default device). A node's Implement, Program and firmware build are docs/SYSTEMS.md's phases 3 and 5: they join this list.
+// schematic; its Synthesize, Implement Design and Generate Programming File on its own board, #5446), and its FPGA nodes'
+// modules' (#5443: the same, no flow on the project's default device); the System's Implement System. A node's Program
+// and firmware build: docs/SYSTEMS.md's phases 3 and 5, they join this list.
 import { findDoc } from './app.js';
 import { openSystem } from './system-open.js';
 import { systemTop } from './design-system.js';
 import { openView } from './drawings.js';
+
+// a node's (or the System's, '*') implementation on its own board, #5446: web/js/system-implement-ui.js
+const impl = (node, steps, label) => async () => (await import('./system-implement-ui.js')).runNodeImpl(node, steps, label);
+const FLOW = [['node-synth', 'Synthesize', ['synth']], ['node-impl', 'Implement Design', ['synth', 'translate', 'map', 'par']], ['node-bitgen', 'Generate Programming File', ['synth', 'translate', 'map', 'par', 'trce', 'bitgen']]];
 
 const editSystem = file => ({ id: 'sys-open', label: 'View/Edit System', ico: 'system', run: () => openSystem(file) });
 
@@ -22,6 +28,7 @@ export function systemProcesses(sel, view, { check, rtl }) {
     editSystem(sel.file),
     { id: 'sys-check', label: 'Check System', ico: 'process', run: async () => { await openSystem(sel.file); findDoc(`sys:${sel.file}`)?.checkSystem?.(); } },
     { id: 'sys-emulate', label: 'Emulate System', ico: 'board', run: async () => (await import('./system-emu-open.js')).openSystemEmulator(sel.file) },
+    { id: 'sys-impl', label: 'Implement System', ico: 'process', run: impl('*', FLOW[2][2], 'Implement System') },
   ];
   if (sel.type !== 'node') return null;
   return [
@@ -29,6 +36,7 @@ export function systemProcesses(sel, view, { check, rtl }) {
     ...(sel.kind === 'fpga' && sel.module ? [
       { id: 'check', label: 'Check Syntax', ico: 'process', run: () => check(sel.module) },
       { id: 'rtl', label: 'View RTL Schematic', ico: 'schematic', run: () => rtl(sel.module) },
+      ...FLOW.map(([id, label, steps]) => ({ id, label, ico: 'process', run: impl(sel.node, steps, label) })),
     ] : []),
   ];
 }
