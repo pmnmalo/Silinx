@@ -18,7 +18,7 @@ export const DESIGN_ONLY_LABEL = 'Digital Logic';
 export const SYSTEM_KIND = 'system';
 /** Its id before #5411 ("co-design", now the Zynq's hardware/software co-design, #5412): a project saved with it is a System
  *  project, read as one (withKind); never written again. */
-export const OLD_SYSTEM_KIND = 'codesign';
+const OLD_SYSTEM_KIND = 'codesign';
 /** A description (its silinx.json, as read) with its kind's id of now: the old System id read as SYSTEM_KIND (#5411). */
 export const withKind = pj => (pj?.kind === OLD_SYSTEM_KIND ? { ...pj, kind: SYSTEM_KIND } : pj);
 /** The System examples (New Project's Start from for a System project; the others are FPGA projects'). */
