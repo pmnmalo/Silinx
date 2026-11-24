@@ -35,6 +35,15 @@ cpu.run(1000);                       // 1000 instruction cycles
 cpu.writeHooks[0x02c4] = (value, old, addr, mask) => false;   // a peripheral's SFR
 ```
 
+As a node of a Silinx System, loaded from XC16's `.hex` (its configuration words give the oscillator, so Fcy):
+
+```js
+import { Pic24Node } from 'silinx-pic24';
+
+const node = new Pic24Node({ hex });                            // XC16's Intel HEX
+const { outputs } = node.run(1e9, [{ t: 5e8, pin: 'RD6', value: 0 }]);   // to 1 ms (ps), an input at 0.5 ms
+```
+
 Its shape is avr8js's: `cpu.cycles` counts the instruction cycles, `cpu.readHooks` and `cpu.writeHooks` are the
 SFRs' hooks, `cpu.addClockEvent(fn, cycles)` a peripheral's timing, `cpu.raise(irq)` its interrupt request.
 
