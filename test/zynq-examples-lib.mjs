@@ -16,10 +16,14 @@ const XC7Z020 = { part: 'xc7z020clg400-1', device: 'xc7z020', pkg: 'clg400', sli
 const XC7Z010 = { part: 'xc7z010clg400-1', device: 'xc7z010', pkg: 'clg400', slices: 4400, regs: 35200, iobs: 100, bitPart: '7z010clg400', idcode: 0x3722093, frames: [5144, 2952], mhz: 125, required: 3 };
 export const zynqParts = board => Object.fromEntries(zynqTargets(board).map(t => [targetName(t), t.variant === '10' ? XC7Z010 : XC7Z020]));
 // the warnings of the examples below the 125 MHz clock (#4877): nextpnr's own, then the timing's. The clocks' net names
-// are Yosys's: any.
+// are Yosys's: any. Since #4877 stopwatch and pong meet it with registers of their own (stopwatch's block RAM and its
+// multipliers in two cycles, pong's next period and the ball's ends kept in registers), but pong on the Arty Z7 (its
+// placement: 106-124 MHz) and micro80 (its light8080 core's paths, kept as they are: 108-115 MHz; nextpnr's placement,
+// #3803).
 export const FMAX = /^WARNING:Place - Max frequency for clock '.+': [\d.]+ MHz \(FAIL at 125\.00 MHz\)$/;
 export const SLOW = /^WARNING:Timing - the clock clk reaches [\d.]+ MHz, not the 125 MHz of its constraint \(nextpnr's estimate\)\.$/;
-export const SLOW_ONES = { pong: [FMAX, SLOW], stopwatch: [FMAX, SLOW], micro80: [FMAX, SLOW] };
+export const SLOW_ONES = { micro80: [FMAX, SLOW] };
+export const SLOW_ARTY = { pong: [FMAX, SLOW], micro80: [FMAX, SLOW] };
 
 // (one nextpnr run at a time, in this thread: the best of 1 seed)
 const nextpnr = () => { const n = nextpnrXc7Node(); delete n.runApart; return { xc7: n }; };

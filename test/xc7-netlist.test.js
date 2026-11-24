@@ -48,5 +48,5 @@ for (const name of EXAMPLES) {
 
 test('the examples\' 7-series netlists: the cells they are made of, each simulated above', () => {
   assert.deepEqual([...cellsSeen].sort(), ['BUFG', 'CARRY4', 'DSP48E1', 'FDCE', 'FDRE', 'FDSE', 'IBUF', 'INV', 'LUT1', 'LUT2', 'LUT3', 'LUT4', 'LUT5', 'LUT6',
-    'MUXF7', 'MUXF8', 'OBUF', 'RAM32M', 'RAMB18E1']);
+    'MUXF7', 'MUXF8', 'OBUF', 'RAM32M', 'RAMB18E1', 'SRL16E']);   // (SRL16E: stopwatch's, #4877)
 });

@@ -54,8 +54,10 @@ module pong #(
 
     reg [1:0]  state = SERVE;
     reg [2:0]  pos = 3'd0;                    // the ball: LED 0 (right) .. 7 (left)
+    reg        atL = 1'b0, atR = 1'b1;        // the ball at LED 7, at LED 0 (kept with pos)
     reg        dir = LEFT;                    // where the ball goes
     reg [W-1:0] period = TICK;                // cycles per step now
+    reg [W-1:0] last = TICK - 1;              // period - 1, kept with it (no subtraction before the timer's compare)
     reg [W-1:0] timer = 0;
     reg [3:0]  scoreL = 4'd0, scoreR = 4'd0;
     reg        server = RIGHT, pointTo = RIGHT;
@@ -67,8 +69,15 @@ module pong #(
     reg        beat = 1'b0;
 
     wire [W-1:0] start  = swOn[1] ? TICK / 2 : TICK;
-    wire [W-1:0] faster = period - (period >> 3);
-    wire        step   = !paused && (timer == period - 1);
+    // the next period, an eighth shorter, and whether it may still shrink (period's own, registered: the period changes
+    // at a hit or a serve, at least 7 steps before the next hit)
+    reg [W-1:0] faster = TICK - (TICK >> 3);
+    reg        speedUp = 1'b1;
+    always @(posedge clk) begin
+        faster  <= period - (period >> 3);
+        speedUp <= period - (period >> 3) > TICK / 4;
+    end
+    wire        step   = !paused && (timer == last);
 
     always @(posedge clk) begin
         if (beatCount == TICK - 1) begin beatCount <= 0; beat <= ~beat; end
@@ -77,7 +86,7 @@ module pong #(
 
     always @(posedge clk) begin
         if (swOn[0]) begin
-            state <= SERVE; server <= RIGHT; pos <= 3'd0;
+            state <= SERVE; server <= RIGHT; pos <= 3'd0; atL <= 1'b0; atR <= 1'b1;
             scoreL <= 4'd0; scoreR <= 4'd0; timer <= 0; paused <= 1'b0;
         end else begin
             if (!paused) timer <= step ? 1'b0 : timer + 1'b1;
@@ -85,32 +94,34 @@ module pong #(
             else if (press1 || press2) paused <= ~paused;
             case (state)
                 SERVE: begin
-                    pos <= (server == LEFT) ? 3'd7 : 3'd0;
+                    pos <= (server == LEFT) ? 3'd7 : 3'd0; atL <= server == LEFT; atR <= server == RIGHT;
                     if ((server == LEFT && pressL) || (server == RIGHT && pressR)) begin
                         state <= PLAY;
                         dir <= ~server;               // away from the server
-                        period <= start;
+                        period <= start; last <= start - 1'b1;
                         timer <= 0;
                         lockL <= 1'b0; lockR <= 1'b0;
                     end
                 end
                 PLAY: if (!paused) begin
-                    if (dir == LEFT && pressL && pos == 3'd7 && !lockL) begin
+                    if (dir == LEFT && pressL && atL && !lockL) begin
                         dir <= RIGHT; timer <= 0; lockL <= 1'b0; lockR <= 1'b0;
-                        if (faster > TICK / 4) period <= faster;
-                    end else if (dir == RIGHT && pressR && pos == 3'd0 && !lockR) begin
+                        if (speedUp) begin period <= faster; last <= faster - 1'b1; end
+                    end else if (dir == RIGHT && pressR && atR && !lockR) begin
                         dir <= LEFT; timer <= 0; lockL <= 1'b0; lockR <= 1'b0;
-                        if (faster > TICK / 4) period <= faster;
+                        if (speedUp) begin period <= faster; last <= faster - 1'b1; end
                     end else begin
                         if (dir == LEFT && pressL) lockL <= 1'b1;     // too early
                         if (dir == RIGHT && pressR) lockR <= 1'b1;
                         if (step) begin
-                            if (dir == LEFT && pos == 3'd7) begin
+                            if (dir == LEFT && atL) begin
                                 state <= POINT; pointTo <= RIGHT; scoreR <= scoreR + 4'd1; hold <= 4'd8;
-                            end else if (dir == RIGHT && pos == 3'd0) begin
+                            end else if (dir == RIGHT && atR) begin
                                 state <= POINT; pointTo <= LEFT; scoreL <= scoreL + 4'd1; hold <= 4'd8;
-                            end else
+                            end else begin
                                 pos <= (dir == LEFT) ? pos + 3'd1 : pos - 3'd1;
+                                atL <= dir == LEFT && pos == 3'd6; atR <= dir == RIGHT && pos == 3'd1;
+                            end
                         end
                     end
                 end
