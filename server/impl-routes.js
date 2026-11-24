@@ -171,6 +171,8 @@ export async function startScan(b = {}) {
 export async function startImplementation(name, body = {}) {
   const P = Projects;
   const bad = (msg, status = 400) => new P.HttpError(status, msg);
+  // (a System's FPGA node, or every one, on its own board: server/system-implement.js, #5446)
+  if (body.node !== undefined) return (await import('./system-implement.js')).startNodeImplementation(name, body);
   const project = await P.readProject(name);
   const projectDir = P.projectDir(name);
   let steps;

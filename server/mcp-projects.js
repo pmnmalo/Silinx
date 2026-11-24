@@ -64,7 +64,7 @@ async function hierarchyOf(name, pj, sim) {
 }
 
 // each profile in a few words, new_project's (its arguments' size limits, #4752, #5097)
-const PROFILE_SHORT = { logic: 'drawings simulated, no board, no HDL shown', fpga: 'the default', embedded: 'FPGA and MCU nodes in a System', system: 'and terminals' };
+const PROFILE_SHORT = { logic: 'drawings, no board, no HDL', fpga: 'the default', embedded: 'FPGA and MCU nodes', system: 'and terminals' };
 
 // a project's System (core/project-system.js, #5416's phase 3: implicit for an FPGA or a design project) and its nodes
 // (core/project-nodes.js, #5414): its System document's text read; each node as project_info says it
@@ -197,7 +197,7 @@ export const PROJECT_TOOLS = [
   },
   {
     name: 'project_info', title: 'A project\'s settings and files',
-    description: 'Where a project is stored (stored: its folder) and its last back-up (lastBackup: { at, how: export or github }, null when none was recorded); its nodes and System (system: implicit with one node), top module, test bench, device, board, constraints file, its files (path, language, role: design, sim or impl), the roots of its hierarchy in the Implementation and Simulation views as the Design pane lists them, and the files the implementation and the Board Emulator read beside the HDL (flowFiles: its constraints, then the memory images); when shared live by share_project: sharing, its mode and its followers (each p2p or relay).',
+    description: 'Where a project is stored (stored: its folder) and its last back-up (lastBackup: { at, how: export or github }, null when none was recorded); its nodes and System, top module, test bench, device, board, constraints file, its files (path, language, role: design, sim or impl), the roots of its hierarchy in the Implementation and Simulation views as the Design pane lists them, and the files the implementation and the Board Emulator read beside the HDL (flowFiles: its constraints, then the memory images); when shared live by share_project: sharing, its mode and its followers (each p2p or relay).',
     inputSchema: { type: 'object', properties: { project: PROJECT }, required: ['project'], additionalProperties: false },
     annotations: { readOnlyHint: true },
     async run({ project: name }) {
