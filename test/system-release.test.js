@@ -77,7 +77,7 @@ test('#5202 the MCP server in a release: new_project kind system, the System exa
   setBuildChannel('release');
   try {
     const refused = async (name, args) => { const r = await call(name, args); assert.deepEqual([r.isError, r.text], [true, `${name}: ${OFF}`], name); };
-    await refused('new_project', { name: 'c1', kind: 'system' });
+    await refused('new_project', { name: 'c1', profile: 'system' });
     await refused('new_project_from_example', { name: 'c2', example: 'uart-avr' });
     await refused('check_system', { project: 'ua', file: 'uart_avr.sys.json' });
     await refused('edit_system', { project: 'ua', file: 'uart_avr.sys.json', edits: [{ action: 'remove_link', link: 'serial' }] });

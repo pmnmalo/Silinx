@@ -84,7 +84,7 @@ test('#4700 a node\'s fields: by its kind, its pins merged and removed, a varian
 
 test('#4700 nodes added: every kind, an unknown kind or board refused', () => {
   const s = newSystem('x');
-  assert.deepEqual(addNode(s, { kind: 'pico' }), { error: "no node kind 'pico': fpga, mcu, terminal, circuit" });
+  assert.deepEqual(addNode(s, { kind: 'pico' }), { error: "no node kind 'pico': fpga, mcu, terminal, circuit, design" });
   assert.deepEqual(addNode(s, { kind: 'mcu', board: 'esp32' }), { error: "no microcontroller board 'esp32': arduino-uno, arduino-nano" });
   const f = ok(addNode(s, { kind: 'fpga' }));
   assert.deepEqual(f.system.nodes[0], { id: 'fpga', kind: 'fpga', module: null, board: 'basys2', pins: {}, interfaces: [], x: 0, y: 0 });

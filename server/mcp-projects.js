@@ -7,7 +7,8 @@ import * as P from './projects.js';
 import { readWithin } from './paths.js';
 import { orderExamples } from '../core/examples.js';
 import { nameUnnamed } from '../core/schname.js';
-import { SYSTEM_KIND, DESIGN_KIND, PROJECT_KINDS, isSystemProject, isDesignOnly, offeredExamples } from '../core/project-kind.js';
+import { SYSTEM_KIND, DESIGN_KIND, isSystemProject, isDesignOnly, newSystemKind, offeredExamples } from '../core/project-kind.js';
+import { PROFILES, profileOf } from '../core/project-profile.js';
 import { systemsOn, SYSTEMS_OFF } from '../core/build-channel.js';
 import { placeText } from '../core/project-place.js';
 import { withPlaces } from './project-places.js';
@@ -61,6 +62,9 @@ async function hierarchyOf(name, pj, sim) {
   const { hierarchyRoots } = await import('../core/hier-order.js');
   try { return hierarchyRoots(compile(await viewSourcesOf(name, pj, sim)), { sim, top: pj.top || '' }); } catch { return []; }
 }
+
+// each profile in a few words, new_project's (its arguments' size limits, #4752, #5097)
+const PROFILE_SHORT = { logic: 'drawings simulated, no board, no HDL shown', fpga: 'the default', embedded: 'FPGA and MCU nodes in a System', system: 'and terminals' };
 
 // a project's System (core/project-system.js, #5416's phase 3: implicit for an FPGA or a design project) and its nodes
 // (core/project-nodes.js, #5414): its System document's text read; each node as project_info says it
@@ -126,24 +130,25 @@ export const PROJECT_TOOLS = [
   },
   {
     name: 'new_project', title: 'New empty project',
-    description: 'Make a new empty project in the workspace for a board (list_devices; default: the Basys2-250\'s device, no board); then write_file its sources (a test bench in sim/) and set_top. kind: New Project\'s first page (fpga, design, system). kind design (Digital Logic): no board, device or constraints; drawings (new_source) simulated with test_bench_wizard and simulate; no implementation, emulation or programming (set_design_properties with a board makes it an FPGA project). top_source_type: its top document, module \'top\' (a drawing\'s HDL generated; top.c / .cpp: HLS\'s function; hdl: none; system: a System project).',
-    inputSchema: { type: 'object', properties: { name: STR('The new project\'s name: a letter, then up to 63 letters, digits, - and _.'), board: STR('The board (list_devices).'), variant: STR('The board\'s variant (default: the board\'s), e.g. 100 or 250 for the Basys2.'), kind: { type: 'string', enum: ['fpga', DESIGN_KIND, SYSTEM_KIND], description: `Its kind, New Project's first page: ${PROJECT_KINDS.map(k => `${k.id} (${k.name}: ${k.short})`).join(', ')}.` },
+    description: 'Make a new empty project in the workspace for a board (list_devices; default: the Basys2-250\'s device, no board); then write_file its sources (a test bench in sim/) and set_top. profile logic (Digital Logic): no board, device or constraints; drawings (new_source) simulated with test_bench_wizard and simulate; no implementation, emulation or programming (set_design_properties with a board makes it an FPGA project). top_source_type: its top document, module \'top\' (a drawing\'s HDL generated; top.c / .cpp: HLS\'s function; hdl: none; system: a System project).',
+    inputSchema: { type: 'object', properties: { name: STR('The new project\'s name: a letter, then up to 63 letters, digits, - and _.'), board: STR('The board (list_devices).'), variant: STR('The board\'s variant (default: the board\'s), e.g. 100 or 250 for the Basys2.'), profile: { type: 'string', enum: PROFILES.map(p => p.id), description: `Its profile, New Project's first page: ${PROFILES.map(p => `${p.id} (${p.label}: ${PROFILE_SHORT[p.id]})`).join(', ')}.` },
       top_source_type: { type: 'string', enum: TOP_TYPES.map(t => t.id), description: 'Its Top-Level Source Type, as New Project\'s (tt: Boolean algebra; a design project\'s: a drawing; system: a System project); saved, its top document made.' },
       language: { type: 'string', enum: ['vhdl', 'verilog'], description: 'Its Preferred Language, as New Project\'s (default vhdl): the top document\'s HDL module\'s.' } }, required: ['name'], additionalProperties: false },
     annotations: { readOnlyHint: false, destructiveHint: false },
-    async run({ name, board, variant, kind: given, top_source_type: type, language }) {
-      // (its kind, #4103; design_only, its deprecated name: server/mcp-aliases.js)
+    async run({ name, board, variant, profile, top_source_type: type, language }) {
+      // (its profile, #5440; kind and design_only, its deprecated names: server/mcp-aliases.js); as a new project's kind
+      const given = profile === 'logic' ? DESIGN_KIND : profile;
       // (a System project, #4702: no board, its System document, no top document)
       // (top_source_type system: a System project too, its System its top, #5402)
-      if (given === SYSTEM_KIND || (type === SYSTEM_TOP && given !== DESIGN_KIND)) {
+      if (newSystemKind(given) || (type === SYSTEM_TOP && given !== DESIGN_KIND)) {
         if (!systemsOn()) throw toolError(SYSTEMS_OFF);   // (#5202)
-        if (board || variant || (type !== undefined && type !== SYSTEM_TOP)) throw toolError('a System project (kind system) has no board nor top document: its System (edit_system) names each FPGA node\'s board');
-        try { await P.createProject({ name, kind: SYSTEM_KIND, madeBy: 'mcp' }); } catch (e) { throw toolError(e.message); }
+        if (board || variant || (type !== undefined && type !== SYSTEM_TOP)) throw toolError('a System project (profile system or embedded) has no board nor top document: its System (edit_system) names each FPGA node\'s board');
+        try { await P.createProject({ name, kind: newSystemKind(given) ? given : SYSTEM_KIND, madeBy: 'mcp' }); } catch (e) { throw toolError(e.message); }
         const sys = `${name}.sys.json`;
-        return { text: `Empty System project '${name}' made: its System ${sys} (no node yet). Write its modules with write_file, its firmware (.hex, .elf), then edit_system.${UNTRUSTED}`, data: { project: name, kind: SYSTEM_KIND, board: null, system: sys, trusted: false } };
+        return { text: `Empty System project '${name}' made: its System ${sys} (no node yet). Write its modules with write_file, its firmware (.hex, .elf), then edit_system.${UNTRUSTED}`, data: { project: name, kind: SYSTEM_KIND, profile: newSystemKind(given) ? given : 'system', board: null, system: sys, trusted: false } };
       }
       const designOnly = (given ?? 'fpga') === DESIGN_KIND;
-      if (designOnly && (board || variant)) throw toolError('a Digital Logic project (kind design) has no board: give kind design or a board, not both');
+      if (designOnly && (board || variant)) throw toolError('a Digital Logic project (profile logic) has no board: give profile logic or a board, not both');
       const refusal = type !== undefined && topTypeRefusal({ kind: designOnly ? DESIGN_KIND : null }, type);
       if (refusal) throw toolError(refusal);
       let device;

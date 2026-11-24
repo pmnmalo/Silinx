@@ -1,6 +1,6 @@
 // Any project's System (roadmap #5416's phase 3: every project a System), read only: the model of a System document
 // (core/system-doc.js: format, version, name, nodes, links) for every project. A System project's is its System document
-// as it reads; an FPGA project's or a design and simulation project's is implicit, derived here from its silinx.json and
+// as it reads (its top: one of the Embedded / SoC or System profile with no module as its top, #5440); any other's is implicit, derived here from its silinx.json and
 // nothing written (no .sys.json; silinx.json as it is): one node, no link. The FPGA node carries its project's board (its
 // variant the board's for the device), device, top module and constraints as silinx.json says them; a design project's node
 // (kind design: drawings simulated, no board) its top module. core/project-nodes.js reads its nodes from here.
@@ -30,7 +30,8 @@ function implicitNode(pj) {
  *  System document's at least). */
 export function projectSystem(pj, { files = [], texts = {} } = {}) {
   const p = pj || {};
-  if (!isSystemProject(p)) {
+  // (a System document the project's System when it is its top: a System project's with no module as its top, #5440)
+  if (!isSystemProject(p) || p.top) {
     return { model: { format: SYSTEM_FORMAT, version: SYSTEM_VERSION, name: String(p.name ?? 'system'), nodes: [implicitNode(p)], links: [] },
       implicit: true, system: null, error: null };
   }

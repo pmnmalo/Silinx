@@ -1,5 +1,6 @@
-// A project's kind (#3780): an FPGA project (every project before, `kind` absent), or a design and simulation project
-// (`kind: 'design'`) for the classes that never touch an FPGA: drawings and simulation only, no board, no constraints, no
+// A project's kind (#3780), read as its profile since #5440 (core/project-profile.js: Digital Logic ⊂ FPGA ⊂ Embedded / SoC
+// ⊂ System): an FPGA project (every project before, `kind` absent), or a design and simulation project (`kind: 'design'`,
+// the Digital Logic profile) for the classes that never touch an FPGA: drawings and simulation only, no board, no constraints, no
 // implementation, emulation or programming, and no HDL shown. The core stays HDL-based: every drawing still makes its HDL
 // file, checked and simulated as in any project; the project keeps an internal device (the default) for the core's
 // checks, never shown. One set of rules and messages for the interface, the local server, the browser edition and the
@@ -7,6 +8,7 @@
 
 import { systemsOn, SYSTEMS_OFF } from './build-channel.js';
 import { SYSTEM_ORDER } from './examples.js';
+import { profileOf, systemProfile, withProfile } from './project-profile.js';
 
 export const DESIGN_KIND = 'design';
 /** The design and simulation project's kind, as New Project, Design Properties and Open Project name it (#5133: for
@@ -14,20 +16,20 @@ export const DESIGN_KIND = 'design';
 export const DESIGN_ONLY_LABEL = 'Digital Logic';
 
 /** A System project's kind (roadmap #4695, #4702): FPGA and microcontroller nodes linked in its one System document
- *  (`<name>.sys.json`, core/system-doc.js), its top; no board of its own (each FPGA node names its own). */
+ *  (`<name>.sys.json`, core/system-doc.js), its top; no board of its own (each FPGA node names its own). Its profile
+ *  (System, or Embedded / SoC) is written as `profile` (#5440; the old ids of before, 'codesign', not read: #5411's
+ *  projects were the developers' tests only). */
 export const SYSTEM_KIND = 'system';
-/** Its id before #5411 ("co-design", now the Zynq's hardware/software co-design, #5412): a project saved with it is a System
- *  project, read as one (withKind); never written again. */
-const OLD_SYSTEM_KIND = 'codesign';
-/** A description (its silinx.json, as read) with its kind's id of now: the old System id read as SYSTEM_KIND (#5411). */
-export const withKind = pj => (pj?.kind === OLD_SYSTEM_KIND ? { ...pj, kind: SYSTEM_KIND } : pj);
 /** The System examples (New Project's Start from for a System project; the others are FPGA projects'). */
 export const SYSTEM_EXAMPLES = SYSTEM_ORDER;
 /** The examples offered in this build (New Project, the MCP's list_examples): the System ones only where Systems are
  *  on (#5202). */
 export const offeredExamples = names => names.filter(n => systemsOn() || !SYSTEM_EXAMPLES.includes(n));
-/** Whether a project (its silinx.json) is a System project. */
-export const isSystemProject = pj => withKind(pj)?.kind === SYSTEM_KIND;
+/** Whether a new project of the kind or profile `k` is a System project (its System document made): System, or
+ *  Embedded / SoC (#5440). */
+export const newSystemKind = k => k === SYSTEM_KIND || k === 'embedded';
+/** Whether a project (its silinx.json) is a System project: its profile Embedded / SoC or System (#5440). */
+export const isSystemProject = pj => systemProfile(profileOf(pj));
 /** New Project's first page (#5041): the three kinds, each with what it is for and what it shows (#5133: Digital Logic's
  *  says nothing of FPGA, HDL or a board); `short`, the MCP server's
  *  new_project's words for its kind (its arguments' size limits, #4752, #5097). */
@@ -42,10 +44,13 @@ export const PROJECT_KINDS = [
 
 /** Why a project of `kind` cannot start from `template`, or why `kind` is no kind (New Project, the server's and the
  *  browser edition's stores, the MCP's new_project: one rule, one message), or null. */
-export function createRefusal(kind, template = 'empty') {
+export function createRefusal(given, template = 'empty') {
   const empty = !template || template === 'empty';
-  if (kind != null && kind !== DESIGN_KIND && kind !== SYSTEM_KIND) return `unknown project kind '${kind}'`;
+  // (a profile's id too, #5440: logic a design project's, fpga none, embedded a System project's)
+  const kind = given === 'logic' ? DESIGN_KIND : given === 'fpga' ? null : newSystemKind(given) ? SYSTEM_KIND : given;
+  if (kind != null && kind !== DESIGN_KIND && kind !== SYSTEM_KIND) return `unknown project kind '${given}'`;
   if (kind === DESIGN_KIND && !empty) return 'a design and simulation project starts empty: no example';
+  if (given === 'fpga' && SYSTEM_EXAMPLES.includes(template)) return `an FPGA project starts from an FPGA example: ${template} is a System example`;
   // (Systems not in a release yet, #5202: core/build-channel.js)
   if ((kind === SYSTEM_KIND || SYSTEM_EXAMPLES.includes(template)) && !systemsOn()) return SYSTEMS_OFF;
   if (kind === SYSTEM_KIND && !empty && !SYSTEM_EXAMPLES.includes(template)) return `a System project starts empty or from a System example (${SYSTEM_EXAMPLES.join(', ')})`;
@@ -58,11 +63,12 @@ export function boardRefusal(json, { board, device } = {}) {
   return isSystemProject(json) && (board || device) ? `${json.name}: a System project has no board: its System names each FPGA node's` : null;
 }
 
-/** A new System project's silinx.json: no board, no constraints, no top module (its System is its top). */
-export const asSystemProject = json => ({ ...json, kind: SYSTEM_KIND, board: null, constraints: null, top: '', topSourceType: 'system' });   // (its top type System, core/system-top.js SYSTEM_TOP, #5402)
+/** A new System project's silinx.json: no board, no constraints, no top module (its System is its top); its profile
+ *  System, or Embedded / SoC if it had that one (#5440). */
+export const asSystemProject = json => ({ ...withProfile(json, isSystemProject(json) ? profileOf(json) : 'system'), board: null, constraints: null, top: '', topSourceType: 'system' });   // (its top type System, core/system-top.js SYSTEM_TOP, #5402)
 
-/** Whether a project (its silinx.json) is a design and simulation project. */
-export const isDesignOnly = pj => pj?.kind === DESIGN_KIND;
+/** Whether a project (its silinx.json) is a design and simulation project: its profile Digital Logic (#5440). */
+export const isDesignOnly = pj => profileOf(pj) === 'logic';
 
 // the files that belong to the HDL side of a project: HDL, C / C++ (Silinx HLS), constraints, memory images
 const HDL_SIDE = /\.(vhdl?|v|sv|vh|svh|c|cc|cpp|cxx|h|hh|hpp|ucf|pcf|xdc|lpf|cst|ccf|mem|hex|coe)$/i;
@@ -90,16 +96,14 @@ export const DESIGN_ONLY_MESSAGES = {
 export const addRefusal = (pj, path) => (isDesignOnly(pj) && hdlSideFile(path) ? DESIGN_ONLY_MESSAGES.hdl(path) : null);
 
 /** A new project's silinx.json made a design project: no board, no constraints (the device kept, internal). */
-export const asDesignProject = json => ({ ...json, kind: DESIGN_KIND, board: null, constraints: null });
+export const asDesignProject = json => ({ ...withProfile(json, 'logic'), board: null, constraints: null });
 
 /**
  * The project made an FPGA project for `board` and `device` (Design Properties' board, #3780): the kind dropped, the
  * board's device, its constraints file to be written (`constraints` the path, by the device's format: `ext`).
  */
 export function asFpgaProject(pj, { board, device, ext = '.ucf' }) {
-  const out = { ...pj, board: board ?? null, device: device || pj.device, constraints: pj.constraints || `constraints/top${ext}` };
-  delete out.kind;
-  return out;
+  return { ...withProfile(pj, 'fpga'), board: board ?? null, device: device || pj.device, constraints: pj.constraints || `constraints/top${ext}` };
 }
 
 /**

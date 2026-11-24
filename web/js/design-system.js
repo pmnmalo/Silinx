@@ -7,14 +7,14 @@
 import { S } from './app.js';
 import { designState } from './state-design.js';
 import { filesState } from './state-files.js';
-import { SYSTEM_KIND } from '/core/project-kind.js';
+import { isSystemProject } from '/core/project-kind.js';
 import { systemsOn } from '/core/build-channel.js';
 import { mcuBoard, readSystem } from '/core/system-doc.js';
 import { projectNodes } from '/core/project-nodes.js';
 import { openSystem, systemContextMenu } from './system-open.js';
 
 /** Whether the project open is a System project (and Systems are on in this build, #5202). */
-export const systemProject = () => S.project?.kind === SYSTEM_KIND && systemsOn();
+export const systemProject = () => isSystemProject(S.project) && systemsOn();
 
 /** The open project's nodes (core/project-nodes.js), its System document's text the view's. */
 const shownNodes = () => projectNodes(S.project, { files: filesState.fileTree || [], texts: designState.viewTexts || {} });

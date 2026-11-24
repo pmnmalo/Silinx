@@ -51,7 +51,7 @@ test('new_project top_source_type: each type\'s project as the wizard makes it, 
 });
 
 test('new_project top_source_type in a design and simulation project: a drawing\'s, VHDL its Preferred Language; the refusals', async () => {
-  const r = await ok('new_project', { name: 'D_fsm', kind: 'design', top_source_type: 'fsm', language: 'verilog' });
+  const r = await ok('new_project', { name: 'D_fsm', profile: 'logic', top_source_type: 'fsm', language: 'verilog' });
   const pj = await P.readProject('D_fsm');
   assert.deepEqual([pj.kind, pj.topSourceType, pj.preferredLanguage, pj.top], ['design', 'fsm', 'vhdl', 'top']);
   assert.equal(r.text, 'Digital Logic project \'D_fsm\' made (a design and simulation project). It starts with src/top.fsm.json (the top module \'top\'). Add its drawings with new_source.');
@@ -63,8 +63,8 @@ test('new_project top_source_type in a design and simulation project: a drawing\
   const plain = await ok('new_project', { name: 'Plain' });
   assert.deepEqual([(await P.readProject('Plain')).preferredLanguage, (await P.readProject('Plain')).topSourceType, 'topFile' in plain.data], [undefined, undefined, false]);
   // refused, nothing made
-  await fails('new_project', { name: 'D_c', kind: 'design', top_source_type: 'c' }, 'top_source_type c: a design and simulation project\'s top is a drawing (sch, fsm, asm, tt, petri, circuit)');
-  await fails('new_project', { name: 'D_hdl', kind: 'design', top_source_type: 'hdl' }, 'top_source_type hdl: a design and simulation project\'s top is a drawing (sch, fsm, asm, tt, petri, circuit)');
+  await fails('new_project', { name: 'D_c', profile: 'logic', top_source_type: 'c' }, 'top_source_type c: a design and simulation project\'s top is a drawing (sch, fsm, asm, tt, petri, circuit)');
+  await fails('new_project', { name: 'D_hdl', profile: 'logic', top_source_type: 'hdl' }, 'top_source_type hdl: a design and simulation project\'s top is a drawing (sch, fsm, asm, tt, petri, circuit)');
   await fails('new_project', { name: 'X_bad', top_source_type: 'vhdl' }, 'top_source_type: one of hdl, sch, fsm, asm, tt, petri, circuit, c, cpp, system');
   await fails('new_project', { name: 'X_lang', language: 'c' }, 'language: one of vhdl, verilog');
   for (const n of ['D_c', 'D_hdl', 'X_bad', 'X_lang']) assert.equal(fs.existsSync(P.projectDir(n)), false, n);

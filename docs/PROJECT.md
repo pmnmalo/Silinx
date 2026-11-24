@@ -28,9 +28,16 @@ A project is a directory under the workspace (default `~/Silinx-projects`, overr
   Zynq-7000's XC7Z010 / XC7Z020's default, #4680, the Spartan-7's, Kintex-7's and the other Zynq-7000 parts' only one, #3895); without it, the mode of Toolchain Settings.
 * `kind`: `"design"` for a design and simulation project (no FPGA: drawings and simulation, no board, no implementation;
   #3891, #4103); absent, an FPGA project.
-  `"system"` for a System project (#5041, roadmap #4695; not made yet): its top is its one System document,
-  `<name>.sys.json` (`core/system-doc.js`, checked by `core/system-check.js`, #4697), its nodes and links; it has no
-  `board`: each FPGA node is a module of the project on a board of its own (`board`, `variant`, its ports' `pins`).
+  Since #5440 it is read as the project's profile (below): `"design"` the Digital Logic profile, absent FPGA.
+* `profile` (#5440, roadmap #5416): the node kinds the project's System allows, each containing the one before:
+  `"logic"` (Digital Logic: design and circuit nodes), `"fpga"`, `"embedded"` (Embedded / SoC: and microcontrollers),
+  `"system"` (System: and terminals) (`core/project-profile.js`). Written only when it is changed and only for
+  Embedded / SoC and System: Digital Logic is kept as `kind: "design"`, FPGA as no field, so that an untouched project's
+  silinx.json keeps its bytes. A project of a System's profile whose top is no module has its one System document as
+  its top, `<name>.sys.json` (`core/system-doc.js`, checked by `core/system-check.js`, #4697), its nodes and links; it has
+  no `board`: each FPGA node is a module of the project on a board of its own (`board`, `variant`, its ports' `pins`).
+  Widening the profile converts nothing; narrowing it is refused while a node would not be allowed
+  (`core/profile-change.js`).
 * `topSourceType`: the Top-Level Source Type (#4105): `hdl` (absent too), `sch`, `fsm`, `asm`, `tt`, `petri`, `circuit`,
   `c` or `cpp` (`core/top-types.js`); a design and simulation project's is a drawing's.
 * `impl.optMode` and `impl.optLevel`: ISE's Optimization Goal and Effort, and the project's Optimization (#2470):

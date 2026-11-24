@@ -44,8 +44,8 @@ test('#5414 a System project: its System document\'s nodes, each with its files;
     ['f1', 'fpga', 'basys2', 'top', []], ['bb', 'circuit', null, null, ['src/bb.circ.json']], ['term', 'terminal', null, null, []], ['none', 'mcu', 'arduino-uno', null, []]]);
   assert.equal(r.nodes[2].variant, '250');
   assert.deepEqual(r.owned, ['fw/a.hex', 'src/bb.circ.json']);
-  // (the old kind id, #5411: a System project too)
-  assert.deepEqual(short(projectNodes({ name: 'lab', kind: 'codesign' }, { files: ['lab.sys.json'], texts: { 'lab.sys.json': writeSystem(sys) } })), short(r));
+  // (the old kind id of #5411 no System project's since #5440: an FPGA project's one node)
+  assert.deepEqual(short(projectNodes({ name: 'lab', kind: 'codesign' }, { files: ['lab.sys.json'], texts: { 'lab.sys.json': writeSystem(sys) } })), [['fpga', 'fpga', null, null, []]]);
 });
 
 test('#5414 a System project with no System document, or one that cannot be read: no node, its error', () => {

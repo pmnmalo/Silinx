@@ -80,6 +80,7 @@ function checkNodes(sys, ctx, { err, warn }) {
     if (n.kind === 'fpga') checkFpga(n, at, ctx, { err, warn });
     else if (n.kind === 'mcu') checkMcu(n, at, ctx, { err, warn });
     else if (n.kind === 'circuit') checkCircuitFields(n, ctx, { err, warn });
+    else if (n.kind === 'design') { if (n.interfaces.length) err(`${n.id}: a design node has no interfaces (its drawings are simulated, on no board)`, node(n.id)); }
     else for (const f of n.interfaces) {
       if (!checkInterface(n, f, at, { err, warn })) continue;
       if (f.kind !== 'uart') { err(`${n.id}: a serial terminal has UART interfaces only (${f.name} is ${f.kind})`, node(n.id)); continue; }

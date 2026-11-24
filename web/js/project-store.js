@@ -21,7 +21,8 @@ import { filePath, gateMessages, normalizePath, requireGated } from '../../core/
 import { markUntrusted } from '../../core/trust.js';
 import * as trustRecords from './trust-records.js';
 import { ANCESTOR_FILE, isProjectId, originOf } from '../../core/project-rev.js';
-import { SYSTEM_KIND, DESIGN_KIND, boardRefusal, createRefusal, isDesignOnly, isSystemProject } from '../../core/project-kind.js';
+import { SYSTEM_KIND, DESIGN_KIND, boardRefusal, createRefusal, isDesignOnly, isSystemProject, newSystemKind } from '../../core/project-kind.js';
+import { profileOf } from '../../core/project-profile.js';
 import { newSystemFile } from '../../core/system-doc.js';
 import { foldName, foldsToProjectFile, PROJECT_FILE, sameNameIn, spelledAs } from '../../core/fold-name.js';
 import { langOfPath } from '../../core/file-kinds.js';
@@ -109,7 +110,8 @@ export function normalizeProjectJson(saved, name) {
   if (plain(saved.sourceLanguage)) json.sourceLanguage = saved.sourceLanguage;
   if (typeof saved.synthTool === 'string') json.synthTool = saved.synthTool;
   if (isDesignOnly(saved)) Object.assign(json, { kind: DESIGN_KIND, board: null });   // (a design and simulation project, #3780)
-  if (isSystemProject(saved)) Object.assign(json, { kind: SYSTEM_KIND, board: null });   // (a System project, #4702; saved with the old id too, #5411)
+  // (a System project, #4702: its profile, #5440; one of before #5440, kind system)
+  if (isSystemProject(saved)) Object.assign(json, saved.kind === SYSTEM_KIND ? { kind: SYSTEM_KIND, board: null } : { profile: profileOf(saved), ...(saved.top ? {} : { board: null }) });
   if (saved.trusted === false) json.trusted = false;   // (a project from outside, #2830: never made trusted by its description)
   // (its id and the origin of a copy, #4205)
   if (isProjectId(saved.id)) json.id = saved.id;
@@ -629,7 +631,7 @@ export function projectOps(getStore, examples = {}) {
       }
       const json = newProjectJson(name, { device, board, kind });   // (core/project-defaults.js, as the server's, #4766)
       await recordOwn(name);
-      const sysFile = kind === SYSTEM_KIND ? newSystemFile(name) : null;
+      const sysFile = newSystemKind(kind) ? newSystemFile(name) : null;
       await S().create(name, json, sysFile ? { [sysFile.path]: sysFile.text } : {}, { dirs: kind ? ['src', 'sim'] : ['src', 'sim', 'constraints'] });
       return clone(json);
     },

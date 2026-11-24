@@ -49,9 +49,13 @@ test('#4752 readLines: lines split across chunks, CR LF, the last line with no L
 
 test('#4752 the deprecated arguments: the old name\'s value given to the new one, said; both given or a wrong value refused', () => {
   const np = { name: 'new_project' }, sdp = { name: 'set_design_properties' };
-  assert.deepEqual(withAliases(np, { name: 'a', design_only: true }), { args: { name: 'a', kind: 'design' }, warnings: ['WARNING: design_only is deprecated (#4103): give kind (true is kind design).'] });
-  assert.deepEqual(withAliases(sdp, { project: 'a', design_only: false }).args, { project: 'a', kind: 'fpga' });
-  assert.equal(withAliases(np, { name: 'a', kind: 'fpga', design_only: true }).error, 'new_project: give kind, not design_only too (design_only is kind\'s deprecated alias)');
+  assert.deepEqual(withAliases(np, { name: 'a', design_only: true }), { args: { name: 'a', profile: 'logic' }, warnings: ['WARNING: design_only is deprecated (#4103): give profile (true is profile logic).'] });
+  assert.deepEqual(withAliases(sdp, { project: 'a', design_only: false }).args, { project: 'a', profile: 'fpga' });
+  // (kind, the profile's name of before #5440: design is logic)
+  assert.deepEqual(withAliases(np, { name: 'a', kind: 'design' }), { args: { name: 'a', profile: 'logic' }, warnings: ['WARNING: kind is deprecated (#5440): give profile (design is profile logic, fpga and system the same).'] });
+  assert.deepEqual(withAliases(sdp, { project: 'a', kind: 'fpga' }).args, { project: 'a', profile: 'fpga' });
+  assert.equal(withAliases(np, { name: 'a', kind: 'robot' }).error, 'new_project: kind: one of fpga, design, system');
+  assert.equal(withAliases(np, { name: 'a', profile: 'fpga', design_only: true }).error, 'new_project: give profile, not design_only too (design_only is profile\'s deprecated alias)');
   assert.equal(withAliases(np, { name: 'a', design_only: 'yes' }).error, 'new_project: design_only: true or false');
   // (another tool's argument of that name: not an alias of its)
   assert.deepEqual(withAliases({ name: 'list_projects' }, { design_only: true }), { args: { design_only: true }, warnings: [] });

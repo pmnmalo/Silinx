@@ -40,12 +40,12 @@ async function designProject(name) {
 test('new_project design_only: no board, no device, no constraints; refused with a board', async () => {
   const r = await ok('new_project', { name: 'd0', design_only: true });
   // (design_only, kind's deprecated name: kind design, said, #4752)
-  assert.equal(r.text, 'WARNING: design_only is deprecated (#4103): give kind (true is kind design).\nEmpty Digital Logic project \'d0\' made (a design and simulation project). Add its drawings with new_source, then set_top.');
+  assert.equal(r.text, 'WARNING: design_only is deprecated (#4103): give profile (true is profile logic).\nEmpty Digital Logic project \'d0\' made (a design and simulation project). Add its drawings with new_source, then set_top.');
   assert.deepEqual(r.data, { project: 'd0', kind: 'design', board: null, device: null, trusted: false });
   const pj = await P.readProject('d0');
   assert.deepEqual([pj.kind, pj.board, pj.constraints], ['design', null, null]);
   assert.equal(fs.existsSync(path.join(P.projectDir('d0'), 'constraints')), false, 'no constraints folder');
-  await fails('new_project', { name: 'd00', design_only: true, board: 'basys2' }, 'a Digital Logic project (kind design) has no board: give kind design or a board, not both');
+  await fails('new_project', { name: 'd00', design_only: true, board: 'basys2' }, 'a Digital Logic project (profile logic) has no board: give profile logic or a board, not both');
   // (an FPGA project as before)
   const f = await ok('new_project', { name: 'f0' });
   assert.equal((await P.readProject('f0')).kind, undefined);
@@ -118,7 +118,7 @@ test('set_design_properties: a board makes a design project an FPGA project, des
   assert.match((await ok('project_info', { project: 'd4' })).text, /^d4: top traffic, test bench \(none\), basys2 \(xc3s250ecp132-4\), constraints constraints\/top\.ucf/);
   // (and back: its sources all drawings; the constraints left on the disk)
   const b = await ok('set_design_properties', { project: 'd4', design_only: true });
-  assert.equal(b.text, 'WARNING: design_only is deprecated (#4103): give kind (true is kind design, false kind fpga).\nd4: a design and simulation project now (no FPGA): no board, no constraints (constraints/top.ucf left on the disk, out of the project).');
+  assert.equal(b.text, 'WARNING: design_only is deprecated (#4103): give profile (true is profile logic, false profile fpga).\nd4: a design and simulation project now (no FPGA): no board, no constraints (constraints/top.ucf left on the disk, out of the project).');
   pj = await P.readProject('d4');
   assert.deepEqual([pj.kind, pj.board, pj.constraints], ['design', null, null]);
   await fails('set_design_properties', { project: 'd4', design_only: true }, 'the project \'d4\' is a design and simulation project already');
