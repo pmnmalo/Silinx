@@ -123,9 +123,14 @@ export function bramInit(json, top, instances) {
 }
 
 // shift-register LUTs: SRL16 (E: clock enable, C: cascade output Q15, _1: falling edge)
-const srl = (name, { ce, q15, falling }) => `module ${name} #(parameter [15:0] INIT = 16'h0000) (input A0, A1, A2, A3,${ce ? ' CE,' : ''} CLK, D, output Q${q15 ? ', output Q15' : ''});
+// (the 7-series' IS_CLK_INVERTED: its clock's other edge, #5468)
+const srl = (name, { ce, q15, falling }) => `module ${name} #(parameter [15:0] INIT = 16'h0000, parameter [0:0] IS_CLK_INVERTED = 1'b0) (input A0, A1, A2, A3,${ce ? ' CE,' : ''} CLK, D, output Q${q15 ? ', output Q15' : ''});
   reg [15:0] r = INIT;
-  always @(${falling ? 'negedge' : 'posedge'} CLK)${ce ? ' if (CE)' : ''} r <= {r[14:0], D};
+  generate if (IS_CLK_INVERTED) begin
+    always @(${falling ? 'posedge' : 'negedge'} CLK)${ce ? ' if (CE)' : ''} r <= {r[14:0], D};
+  end else begin
+    always @(${falling ? 'negedge' : 'posedge'} CLK)${ce ? ' if (CE)' : ''} r <= {r[14:0], D};
+  end endgenerate
   assign Q = r[{A3, A2, A1, A0}];${q15 ? '\n  assign Q15 = r[15];' : ''}
 endmodule`;
 

@@ -37,6 +37,13 @@ const AS = {
 const LUT = /^LUT([1-6])$/;
 const isOne = (v) => /^0*1$/.test(String(v).trim()) || v === 1;
 const flip = (b) => (b === '0' ? '1' : b === '1' ? '0' : b);
+// a LUT as a shift register (SRL16E, SRLC32E: X_LUT_AS_SRL); its address bit k its model's pin (A<k>, or A[k]), or null
+const isSrl = (c) => String(c.attributes?.X_LUT_AS_SRL ?? '').trim() === '1';
+function srlAddress(model, k) {
+  if (k < 0) return null;
+  if (model.ports.has(`A${k}`)) return `A${k}`;
+  return model.ports.has('A') && k < (model.ports.get('A') || 1) ? `A[${k}]` : null;
+}
 
 /** nextpnr-himbaechel-xilinx's routed design (its JSON) with its cells as Silinx's UNISIM models take them; returns the JSON's
  *  text. Throws on a cell it cannot make a model's (its type, and why). */
@@ -66,6 +73,9 @@ export function xc7RoutedCells(routedJson) {
       const conns = {}, dirs = {}, invGenerics = {}, open = new Set();
       for (const [pin, bits] of Object.entries(c.connections || {})) {
         let o = c.attributes?.[`X_ORIG_PORT_${pin}`];
+        // (a LUT as a shift register: its address on the LUT's A2.., A1 and A6 tied high, whatever X_ORIG_PORT_A<n> says, #5466)
+        const srl = isSrl(c) && /^A([1-6])$/.exec(pin);
+        if (srl) { o = srlAddress(model, Number(srl[1]) - 2); if (o === null) continue; }
         if (o === undefined) continue;
         if (as) { o = as.pins[o]; if (!o) continue; }
         const v = /^(\w+)\[(\d+)\]$/.exec(o), port = v ? v[1] : o, i = v ? Number(v[2]) : 0;

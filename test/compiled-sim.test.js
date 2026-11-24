@@ -122,6 +122,18 @@ test('Xilinx primitives in Verilog: block RAMs, MULT18X18SIO, SRL16_1 / SRL16E_1
   assert.deepEqual(sim.warnings, []);
   await same(fixture('prims.v'), 'prims_v', { p: 0.3, cycles: 1000 });
 });
+
+// the 7-series' SRL16E's IS_CLK_INVERTED (#5468): its clock's falling edge, as the event simulator's model
+test('#5468 the SRL16E\'s IS_CLK_INVERTED: compiled as the event simulator runs it, no warning', async () => {
+  const s = src('srl.v', `module srl(input clk, d, ce, input [3:0] a, output q, qn);
+  SRL16E #(.INIT(16'h1234)) r (.A0(a[0]), .A1(a[1]), .A2(a[2]), .A3(a[3]), .CE(ce), .CLK(clk), .D(d), .Q(q));
+  SRL16E #(.INIT(16'h1234), .IS_CLK_INVERTED(1'b1)) n (.A0(a[0]), .A1(a[1]), .A2(a[2]), .A3(a[3]), .CE(ce), .CLK(clk), .D(d), .Q(qn));
+endmodule
+`);
+  const sim = await compileDesign(designOf(s, 'srl'), { run: yosysNode });
+  assert.deepEqual(sim.warnings, []);
+  await same(s, 'srl', { p: 0.3, cycles: 1200 });
+});
 // the logic of a synthesized netlist (the Post-Synthesis Simulation Model, #561): every LUT (random INITs), flip-flop,
 // latch and carry-chain cell, in VHDL (UNISIM, as the model's netlist) and in Verilog, its inputs from a random word
 const LOGIC_FFS = ['FD', 'FDC', 'FDCE', 'FDE', 'FDP', 'FDPE', 'FDR', 'FDRE', 'FDS', 'FDSE', 'FDRS', 'FDRSE', 'FDCP', 'FDCPE'];

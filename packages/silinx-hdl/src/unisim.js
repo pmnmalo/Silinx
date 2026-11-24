@@ -236,12 +236,12 @@ const muxcy = (v) => simple(`MUXCY${v}`, `CI : in std_ulogic; DI : in std_ulogic
 // address from single-bit pins (bit 0 first) into variable `a`; `bad` when one of them is not 0/1
 const addrOf = (pins, ind = '    ') => `${ind}a := 0; bad := false;\n${pins.map((x, i) => `${ind}if ${x} = '1' then a := a + ${2 ** i}; elsif ${x} /= '0' then bad := true; end if;`).join('\n')}`;
 
-// shift-register LUTs: SRL16 (E: clock enable, C: cascade output Q15, _1: falling edge); SIMPRIM
-// X_SRL16E / X_SRLC16E
+// shift-register LUTs: SRL16 (E: clock enable, C: cascade output Q15, _1: falling edge; the 7-series' IS_CLK_INVERTED, its
+// clock's other edge, #5468); SIMPRIM X_SRL16E / X_SRLC16E
 const srl = (name, { ce = false, q15 = false, falling = false, simprim = false } = {}) => `
 library IEEE; use IEEE.STD_LOGIC_1164.ALL;
 entity ${name} is
-  generic (${simprim ? 'LOC : string := "UNPLACED"; ' : ''}INIT : bit_vector(15 downto 0) := X"0000");
+  generic (${simprim ? 'LOC : string := "UNPLACED"; ' : ''}INIT : bit_vector(15 downto 0) := X"0000"${simprim ? '' : "; IS_CLK_INVERTED : bit := '0'"});
   port (A0, A1, A2, A3${ce ? ', CE' : ''}, CLK, D : in std_ulogic; Q${q15 ? ', Q15' : ''} : out std_ulogic);
 end ${name};
 architecture silinx of ${name} is
@@ -254,7 +254,7 @@ begin
       started := true;
       for i in 0 to 15 loop if INIT(i) = '1' then r(i) <= '1'; else r(i) <= '0'; end if; end loop;
     end if;
-    if ${falling ? 'falling_edge' : 'rising_edge'}(CLK)${ce ? " and CE = '1'" : ''} then r <= r(14 downto 0) & D; end if;
+    if ${simprim ? `${falling ? 'falling_edge' : 'rising_edge'}(CLK)` : `((IS_CLK_INVERTED = '0' and ${falling ? 'falling_edge' : 'rising_edge'}(CLK)) or (IS_CLK_INVERTED = '1' and ${falling ? 'rising_edge' : 'falling_edge'}(CLK)))`}${ce ? " and CE = '1'" : ''} then r <= r(14 downto 0) & D; end if;
   end process;
   process (r, A0, A1, A2, A3)
     variable a : integer;
