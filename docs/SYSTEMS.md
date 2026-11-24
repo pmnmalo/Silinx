@@ -47,6 +47,128 @@ What the others teach us:
 - **Scenario tests** (Wokwi CI, cocotb's triggers): press, set, wait for an edge or a serial text, expect. They fit
   `grade` and the labs.
 
+## The general model
+
+The System is the general case of Silinx (roadmap #5479): every project is a System, and the other modes only
+narrow it. This section is the frame; the sections after it describe what is built of it.
+
+**A graph of typed nodes and typed links.** Every other project mode is a profile (#5440, `core/project-profile.js`):
+it only limits which node kinds its System may hold, Digital Logic ⊂ FPGA ⊂ Embedded / SoC ⊂ System. A profile
+converts nothing; widening it allows more kinds.
+
+**The node kinds:**
+
+| Node | Base language | Engine | Implementation |
+|---|---|---|---|
+| FPGA | VHDL or Verilog (its drawings generate it) | the compiled engine, the event-driven simulator | a bitstream |
+| CPU board: Arduino / AVR | C / C++ (an Arduino sketch) | avr8js | a `.hex` |
+| CPU board: ESP32 | MicroPython | MicroPython in WebAssembly, Silinx's `machine` | `.py` files |
+| CPU board: Pico (RP2040) | MicroPython | rp2040js with MicroPython's firmware | a `.uf2`, `.py` files |
+| Microcontroller: PIC24 (the Explorer 16/32, PIC24FJ1024GB610) | C with assembly (XC16) | Silinx's own PIC24 emulator | a `.hex` |
+| SoC: Zynq (FPGA + ARM joined by AXI, #5412) | VHDL / Verilog for the PL, C for the PS | the FPGA's engines, the PS's processor engine | a bitstream and an `.elf` |
+| Digital circuit | the breadboard's drawing | the circuit's Try it | the parts, wired by hand |
+| Analog circuit | the circuit's drawing | behavioural, later ngspice (#5387) | the parts, wired by hand |
+| Terminal, instrument, network | — | JS models (a serial terminal, an oscilloscope, an MQTT broker) | — |
+
+Each node has its own base language. Languages mix only where the toolchain joins them naturally: C with assembly,
+C with C++. A node is a **folder** of the one System project, never a sub-project, and the Design pane groups the
+project's files by node (#5488).
+
+**The link kinds:**
+
+| Link | What crosses it | Examples |
+|---|---|---|
+| Digital pin | events: a level at a time | GPIO, a PWM, an interrupt line |
+| Transaction bus | bytes and transactions; adapters turn them into pins where the other end is pins | UART, SPI, I²C, 1-Wire, CAN |
+| Memory-mapped bus | a CPU's read or write of the FPGA's registers | AXI-Lite, AXI-Stream |
+| Analog signal | a voltage, sampled at the analog/digital boundary | a potentiometer on an ADC, PWM through an RC filter |
+| Network | messages | Wi-Fi, MQTT, BLE |
+
+**The node contract** (#5485). The scheduler's `run(t1, inputEvents)` becomes the contract of every node, in the
+spirit of SystemC/TLM's loosely-timed models and FMI's co-simulation:
+
+- **typed ports**, each with its direction, its link kind and its electrical level (3.3 V or 5 V), so that the check
+  sees a 5 V output on a 3.3 V input whatever the nodes are;
+- **an advance to `t1`**, the inputs' events applied at their times, the outputs' events returned with theirs;
+- **the link's lookahead**, its latency, which bounds the window (as today);
+- **the state saved and restored**, so that a run is deterministic and can be repeated from any point: grading needs
+  it.
+
+**Alone or together.** A node alone is a System of one node: an FPGA project is one already (#5437). A node can be
+replaced by a stimulus, its test bench, through the same contract. Hardware in the loop (a real board in a simulated
+System) comes later and needs real time; for now the simulation is behavioural.
+
+**The neutral model for CPU code: a synchronous reactive model** (in the style of Lustre, Esterel and SCADE, #5486):
+
+- It is made of states, transitions, guards, actions, timers and ports, evaluated on each tick. On an FPGA a tick is a
+  clock cycle; on a CPU it is one turn of `loop()` or a timer interrupt.
+- The FSM, ASM, Petri net and truth table generate C and MicroPython through it: one generator per language, and a thin
+  HAL per target (the Arduino API, MicroPython's `machine` module, the PIC's registers or MCC's).
+- The schematic is not supported on a CPU: it is hardware.
+- Hand-written code is never translated between languages.
+
+**One model, two views** (as decided in #5200): the logical view is the System editor (blocks and buses; opening a node
+shows its files); the physical view is the circuit (boards, wires, the breadboard, sensors, analog parts). It is never
+two documents.
+
+**Implementation together** (#5489): a build and programming plan made from the System.
+
+- Each node has its toolchain and its programmer: JTAG for an FPGA; avrdude (STK500) or mpremote over Web Serial for the
+  Arduino, the ESP32 and the Pico; a PICkit for the PIC24.
+- The order: the FPGAs first, then the MCUs leave reset in sync.
+- Boards are told apart by their USB id (vendor, product, serial number), each matched to its node.
+- **Program All** and **Program Node**, one line a node in the console; the MCP's `program_node`.
+
+**Analog** is roadmap #5387: behavioural first (sensor curves, a potentiometer on an ADC, PWM through an RC filter),
+real circuits with ngspice (#5386) later.
+
+**OS-based nodes** (a Raspberry Pi, the Zynq's Linux) are a real board, or QEMU on the local server, only: no
+emulation of an operating system in the browser.
+
+### The PIC24
+
+The PIC24 comes first (#5479's phase 1): a course uses the Explorer 16/32 with the PIC24FJ1024GB610 next semester, and
+it needs the emulation.
+
+- **No open emulator exists** for the PIC24 or the dsPIC: gpsim and picsim are 8-bit only, PICSimLab has no 16-bit
+  core, and LabWired's PIC24 work is at an early stage. So Silinx writes its own in JS, as avr8js is for the AVR
+  (#5480).
+- **The core:** the PIC24F's 24-bit instructions, W0–W15, the addressing modes, the interrupts.
+- **The Explorer 16/32's peripherals** (#5481): GPIO (the LEDs, the buttons), the Timers, UART, SPI, I²C, the ADC (the
+  potentiometer, the temperature sensor), the character LCD through the PMP, PPS.
+- **XC16** is installed by the user, like ISE, and used by the local server (#5482). In the browser alone the student
+  gives a `.hex`.
+- **MPLAB X's simulator is the oracle** (#5483): the same `.hex` in both, compared trace by trace, as ISE is the open
+  toolchain's.
+- **Its node:** the board's drawing and the node kind (#5484).
+- **XC16 in the browser, an experiment** (#5491). XC16 is GCC 4.5.1 with Microchip's pic30 back end and binutils,
+  whose GPL source Microchip publishes ("MPLAB XC16 C-Compiler Source"); the native build from it already needs
+  patches. The experiment builds `cc1`, `as` and `ld` with Emscripten, chained by a driver of Silinx's own (as the
+  Yosys WASM is driven), measures the size, the compile time and what is missing, and checks fidelity: the same C
+  compiled by the official XC16 and by the WASM build gives the same `.hex` (ISE as the oracle, in spirit). For next
+  semester the official XC16 on the local server stays the plan; if the experiment succeeds, the compiler in the
+  browser becomes a later phase of its own.
+- **Where the emulator lives, a proposal** (not decided): a monorepo package of its own, `packages/silinx-pic24`, as
+  `silinx-fpga` is (its own changelog and npm releases, importing nothing from `core/` or `web/`), possibly under the
+  MIT licence.
+
+### The general model's risks
+
+- **Licences:** XC16 and MPLAB X are proprietary, installed by the user and never shipped; a clang in WebAssembly is
+  heavy. For XC16 built from its GPL source (#5491), two questions go to Microchip: whether the device headers
+  (`p24FJ1024GB610.h`), the linker scripts, `libpic30` and the peripheral libraries may be redistributed (if not, the
+  browser downloads Microchip's device pack, the DFP, itself on first use), and whether parts of the optimiser are
+  missing from the GPL source.
+- **Fidelity** is said per node: what its engine models and what it does not (the ESP32's no real interrupts, a
+  peripheral left out).
+- **Electrical consistency:** 3.3 V against 5 V is checked on every port, whatever the node kinds.
+- **One board database:** each board's pins, peripherals, voltages, clocks and connectors, in one place for the
+  editors, the check, the emulator and the circuit.
+- **Joint debugging:** one logic analyzer for the whole System; a CPU's breakpoint stops the whole System's time.
+- **An RTOS** is not covered by the tick model.
+- **Performance:** a Worker per node where one Worker is not enough.
+- **MCP parity** (#2674) for every new node kind: its tools ship with it.
+
 ## The System document
 
 A **System** (`<name>.sys.json`, `core/system-doc.js`, #4697) is the top of a **System project**, a project kind of
@@ -455,6 +577,22 @@ The existing `program_board` and `capture` serve the FPGA nodes.
    - the PS–PL as an AXI-Lite link, the Zynq's processor engines as the scheduler's adapters;
    - #4396's soft cores as FPGA nodes with the common instruction view.
 
+The general model's phases (roadmap #5479, which generalises this one, #4695):
+
+7. **The PIC24** (first: a course needs it next semester):
+   - #5480 the PIC24F core emulator in JS;
+   - #5481 the Explorer 16/32's peripherals;
+   - #5482 XC16 on the local server, a given `.hex` in the browser;
+   - #5483 MPLAB X's simulator as the oracle;
+   - #5484 the board's drawing and the PIC24 node kind;
+   - #5491 an experiment: XC16 built from its GPL source for WebAssembly.
+8. **The general model:**
+   - #5485 the node contract and the link kinds formalised;
+   - #5486 the synchronous reactive model, its C generator for the Arduino;
+   - #5487 its MicroPython generator;
+   - #5488 nodes as folders, the Design pane grouped by node;
+   - #5489 the build and programming plan (Program All, Program Node).
+
 ## In a release
 
 Systems are off in a release until it is stable (#5202): the site's root, the release's zip and its local server (a
@@ -490,3 +628,15 @@ changelog fragment.
 - A link's synchronisation is a property of the link. A fixed latency is exact at every quantum and is the default,
   because grading needs determinism. An adaptive quantum is faster, but its timing-sensitive exchanges depend on the
   quantum (#4710's benchmark).
+- The System is the general case (#5479, decided 2026-11-24): a graph of typed nodes and typed links, every other mode
+  a profile limiting its node kinds. A node is a folder of the one System project, not a sub-project, and the Design
+  pane groups by node.
+- Each node has its own base language; languages mix only where the toolchain joins them (C with assembly, C with C++).
+- FSM, ASM, Petri nets and truth tables generate C and MicroPython through a synchronous reactive model, with tick
+  semantics; there is no schematic on a CPU, and hand-written code is never translated.
+- The PIC24 (the Explorer 16/32, PIC24FJ1024GB610) comes first, emulated by Silinx's own JS emulator, MPLAB X's
+  simulator its oracle. Next semester's compiler is the official XC16 on the local server; XC16 in
+  WebAssembly is an experiment (#5491).
+- Analog is behavioural first, SPICE later (#5387).
+- Hardware in the loop in real time comes later; for now the simulation is behavioural.
+- OS-based nodes are real boards or QEMU only.
