@@ -2,7 +2,9 @@
 // an iPad or iPhone (any browser, Chrome too: Safari's engine) is told so, not to use Chrome or Edge; others are.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { noWebUsb, appleTouchDevice, NO_WEBUSB, NO_WEBUSB_APPLE, WINUSB_HINT, ftdiInUse, usbError } from '../core/webusb-support.js';
+import fs from 'node:fs';
+import { noWebUsb, appleTouchDevice, NO_WEBUSB, NO_WEBUSB_APPLE, WINUSB_HINT, WINUSB_GUIDE, needsWinUsb, ftdiInUse, usbError } from '../core/webusb-support.js';
+import { slug } from '../scripts/build-docs-site.mjs';
 
 // real browsers' navigators (the parts the rule reads)
 const UA = {
@@ -46,17 +48,36 @@ test('no navigator (Node), or one without a User-Agent: the general reason', () 
 });
 
 test('#4593 Windows: the board WebUSB cannot open, its driver Adept\'s or FTDI\'s: WinUSB with Zadig', () => {
-  assert.equal(WINUSB_HINT, 'on Windows, Digilent Adept\'s or FTDI\'s driver holds the board unless it has the WinUSB driver: give it WinUSB with Zadig (zadig.akeo.ie) to program it from the browser (Adept then no longer sees it until its driver is put back)');
+  assert.equal(WINUSB_HINT, 'on Windows, Digilent Adept\'s or FTDI\'s driver holds the board unless it has the WinUSB driver: give it WinUSB with Zadig (zadig.akeo.ie) to program it from the browser (Adept then no longer sees it until its driver is put back; the user\'s guide: Programming the board from the browser on Windows)');
   assert.equal(ftdiInUse('Access denied.'), `the board is in use (another program, or the operating system's FTDI driver: Access denied.); ${WINUSB_HINT}`);
 });
 
 test('#4593 the browser\'s refusals of the board: the chooser closed, no click, another error as it is', () => {
   const ex = (name, message) => Object.assign(new Error(message), { name });
-  assert.equal(usbError(ex('NotFoundError', 'No device selected.')), 'no board chosen: connect the board\'s USB cable, switch it on and choose it in the browser\'s list (on Windows, a board missing from the list: see Configure Target Device\'s help, the WinUSB driver)');
+  assert.equal(usbError(ex('NotFoundError', 'No device selected.')), 'no board chosen: connect the board\'s USB cable, switch it on and choose it in the browser\'s list (on Windows, a board missing from the list, in Chrome and in Edge, has Digilent Adept\'s or FTDI\'s driver: give it the WinUSB driver with Zadig, zadig.akeo.ie; the user\'s guide: Programming the board from the browser on Windows)');
   const gesture = 'Failed to execute \'requestDevice\' on \'USB\': Must be handling a user gesture to show a permission request.';
   assert.equal(usbError(ex('SecurityError', gesture)), `the browser did not show its list of USB devices (${gesture}): it shows it only right after a click; click the button again`);
   // (a SecurityError of another kind, as a permissions policy's: its message as it is)
   assert.equal(usbError(ex('SecurityError', 'Access to the feature "usb" is disallowed by permissions policy.')), 'Access to the feature "usb" is disallowed by permissions policy.');
   assert.equal(usbError(ex('NetworkError', 'Unable to open device.')), 'Unable to open device.');
   assert.equal(usbError('odd'), 'odd');
+});
+
+test('#5459 the WinUSB lines: which errors send the user to the guide, and the guide\'s section in each language', () => {
+  const ex = (name, message) => Object.assign(new Error(message), { name });
+  assert.equal(needsWinUsb(WINUSB_HINT), true);
+  assert.equal(needsWinUsb(ftdiInUse('Access denied.')), true);
+  assert.equal(needsWinUsb(usbError(ex('NotFoundError', 'No device selected.'))), true);
+  assert.equal(needsWinUsb(usbError(ex('NetworkError', 'Unable to open device.'))), false);
+  assert.equal(needsWinUsb(NO_WEBUSB), false);
+  assert.equal(needsWinUsb(undefined), false);
+  // each anchor is a heading of that language's guide, as the site's pages make it
+  assert.deepEqual(Object.keys(WINUSB_GUIDE), ['en', 'pt']);
+  for (const [lang, url] of Object.entries(WINUSB_GUIDE)) {
+    const m = url.match(/^https:\/\/pmnmalo\.github\.io\/Silinx\/docs\/(\w+)\/getting-started\.html#(.+)$/);
+    assert.ok(m && m[1] === lang, url);
+    const md = fs.readFileSync(new URL(`../docs/user/${lang}/getting-started.md`, import.meta.url), 'utf8');
+    const headings = md.split('\n').filter((l) => /^#{1,6} /.test(l)).map((l) => slug(l.replace(/^#+ /, '')));
+    assert.ok(headings.includes(m[2]), `${lang}: #${m[2]}`);
+  }
 });

@@ -79,8 +79,27 @@ const mockUsb = (page, { granted = false, choose = 'board' } = {}) => page.eval(
 }, granted, choose);
 const problems = (text) => text.split('\n').filter((l) => /WARNING|ERROR|failed/.test(l));
 const ADEPT = [{ vendorId: 0x1443 }];
-const OPENED = 'the board cannot be opened (Access denied.): another program may be using it (Digilent Adept, iMPACT, the Silinx application); on Windows, Digilent Adept\'s or FTDI\'s driver holds the board unless it has the WinUSB driver: give it WinUSB with Zadig (zadig.akeo.ie) to program it from the browser (Adept then no longer sees it until its driver is put back)';
-const NOT_CHOSEN = 'no board chosen: connect the board\'s USB cable, switch it on and choose it in the browser\'s list (on Windows, a board missing from the list: see Configure Target Device\'s help, the WinUSB driver)';
+const OPENED = 'the board cannot be opened (Access denied.): another program may be using it (Digilent Adept, iMPACT, the Silinx application); on Windows, Digilent Adept\'s or FTDI\'s driver holds the board unless it has the WinUSB driver: give it WinUSB with Zadig (zadig.akeo.ie) to program it from the browser (Adept then no longer sees it until its driver is put back; the user\'s guide: Programming the board from the browser on Windows)';
+const NOT_CHOSEN = 'no board chosen: connect the board\'s USB cable, switch it on and choose it in the browser\'s list (on Windows, a board missing from the list, in Chrome and in Edge, has Digilent Adept\'s or FTDI\'s driver: give it the WinUSB driver with Zadig, zadig.akeo.ie; the user\'s guide: Programming the board from the browser on Windows)';
+// View ▸ Language's item run, from the menus' definitions (the site's modules bundled: none imported; collab-paths.test.js's)
+const language = (page, name) => page.eval((n) => {
+  const find = (items) => {
+    for (const it of Array.isArray(items) ? items : []) {
+      if (!it || typeof it !== 'object') continue;
+      let sub = typeof it.submenu === 'function' ? it.submenu() : it.submenu || it.items;
+      if (typeof sub === 'function') sub = sub();
+      if (it.label === 'Language') return (sub || []).find((x) => x.label === n);
+      const r = find(sub);
+      if (r) return r;
+    }
+    return null;
+  };
+  const item = find(window.SilinxApp.S.menus);
+  if (!item) throw new Error('no View ▸ Language');
+  item.action();
+}, name);
+// (#5459: their button, read with the line)
+const HELP = ' Help: The Board on Windows';
 
 uiTest('#4593 browser edition: the WebUSB chooser asked for in the click itself (Program FPGA, Scan, the PROM); its failures in the console with what to do', E, async (page) => {
   await boot(page);
@@ -106,25 +125,42 @@ uiTest('#4593 browser edition: the WebUSB chooser asked for in the click itself 
   // no board granted yet: the chooser in the click (the old code asked after its awaits: Chrome's SecurityError, no chooser)
   // (the job's error said once, by the operation's "… failed:" line, #4597)
   await mockUsb(page);
-  assert.deepEqual(await programFpga(), [`ERROR: Programming FPGA (SRAM) failed: ${OPENED}`]);
+  assert.deepEqual(await programFpga(), [`ERROR: Programming FPGA (SRAM) failed: ${OPENED}${HELP}`]);
   assert.deepEqual(await calls(), [{ inClick: true, filters: ADEPT }]);
   // the chooser closed with no board
   await mockUsb(page, { choose: 'cancel' });
-  assert.deepEqual(await programFpga(), [`ERROR: Programming FPGA (SRAM) failed: ${NOT_CHOSEN}`]);
+  assert.deepEqual(await programFpga(), [`ERROR: Programming FPGA (SRAM) failed: ${NOT_CHOSEN}${HELP}`]);
   assert.deepEqual(await calls(), [{ inClick: true, filters: ADEPT }]);
+  // #5459 the two lines that send the user to WinUSB: a button that opens the user's guide's section, in its language
+  const helpButtons = () => page.eval(() => [...document.querySelectorAll('#console-log .ln.err')].filter((d) => /WinUSB/.test(d.textContent))
+    .map((d) => [...d.querySelectorAll('.ln-action')].map((b) => b.textContent)));
+  assert.deepEqual(await helpButtons(), [['Help: The Board on Windows'], ['Help: The Board on Windows']]);
+  const opened = async () => page.eval(() => {
+    const seen = [];
+    const old = window.open;
+    window.open = (url, target) => { seen.push([url, target]); return null; };
+    [...document.querySelectorAll('#console-log .ln-action')].filter((b) => b.label === 'Help: The Board on Windows').at(-1).click();
+    window.open = old;
+    return seen;
+  });
+  assert.deepEqual(await opened(), [['https://pmnmalo.github.io/Silinx/docs/en/getting-started.html#programming-the-board-from-the-browser-on-windows', '_blank']]);
+  await language(page, 'Português');
+  assert.deepEqual(await helpButtons(), [['Ajuda: A Placa no Windows'], ['Ajuda: A Placa no Windows']]);
+  assert.deepEqual(await opened(), [['https://pmnmalo.github.io/Silinx/docs/pt/getting-started.html#programar-a-placa-a-partir-do-browser-no-windows', '_blank']]);
+  await language(page, 'English');
   // a board granted before: no chooser, the job takes it
   await mockUsb(page, { granted: true });
   await page.eval(() => new Promise((r) => setTimeout(r, 100)));   // (the page's getDevices answered)
-  assert.deepEqual(await programFpga(), [`ERROR: Programming FPGA (SRAM) failed: ${OPENED}`]);
+  assert.deepEqual(await programFpga(), [`ERROR: Programming FPGA (SRAM) failed: ${OPENED}${HELP}`]);
   assert.deepEqual(await calls(), []);
   // Initialize Chain (Scan), and the PROM's Back up PROM: the chooser in their click too
   await mockUsb(page);
   assert.deepEqual(await program('Scan', () => page.click('.doc:not([hidden]) .btn', { text: 'Initialize Chain (Scan)' }), /Scanning JTAG chain failed/),
-    [`ERROR: Scanning JTAG chain failed: ${OPENED}`]);
+    [`ERROR: Scanning JTAG chain failed: ${OPENED}${HELP}`]);
   assert.deepEqual(await calls(), [{ inClick: true, filters: ADEPT }]);
   await page.click('.doc:not([hidden]) .impact-dev', { text: 'XCF02S' });   // (the chain's PROM selected: its operations)
   await mockUsb(page);
   assert.deepEqual(await program('Back up PROM', () => page.click('.doc:not([hidden]) .btn', { text: 'Back up PROM' }), /Backing up \w+ failed/),
-    [`ERROR: Backing up XCF02S failed: ${OPENED}`]);
+    [`ERROR: Backing up XCF02S failed: ${OPENED}${HELP}`]);
   assert.deepEqual(await calls(), [{ inClick: true, filters: ADEPT }]);
 }, { url: () => 'about:blank', timeout: 120000 });
