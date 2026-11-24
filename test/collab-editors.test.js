@@ -271,13 +271,18 @@ test('#5115 the editor link renewed while an editor\'s request to be listed is o
   const key = await keyOf(owner.key), old = owner.editKey;
   // (a follower's socket whose requests to be listed are held until `release()`, its other frames sent in their order)
   const held = [];
+  // (a send queued while the test closes its sockets fails on a closed one: said if it fails during the test, else
+  // dropped, never left an unhandled rejection after the test, #5426)
+  const sendErrs = [];
+  let closing = false;
   const holding = () => { let order = Promise.resolve(), on = true; const S = function S() {
     const { client, room } = socketPair(); h.follower(room);
     const send = client.send.bind(client);
+    const queue = (f) => { order = order.then(f).catch((e) => { if (!closing) sendErrs.push(e.message); }); };
     client.send = (data) => {
-      if (typeof data === 'string') { order = order.then(() => send(data)); return; }
+      if (typeof data === 'string') { queue(() => send(data)); return; }
       const bytes = new Uint8Array(data);
-      order = order.then(async () => { const kind = await unseal(key, owner.room, bytes).then(u => u.kind, () => null); if (on && kind === KIND.enrol) held.push(() => send(bytes)); else send(bytes); });   // (an edit, signed: not a frame unseal opens)
+      queue(async () => { const kind = await unseal(key, owner.room, bytes).then(u => u.kind, () => null); if (on && kind === KIND.enrol) held.push(() => send(bytes)); else send(bytes); });   // (an edit, signed: not a frame unseal opens)
     };
     return client;
   }; return { S, release: () => { on = false; for (const f of held.splice(0)) f(); } }; };
@@ -303,5 +308,6 @@ test('#5115 the editor link renewed while an editor\'s request to be listed is o
   await until(() => lateErrs.length, 'the copy told');
   assert.deepEqual(lateErrs, [NOT_INVITED]);
   assert.equal(copy.editor, false);
-  } finally { for (const p of open.reverse()) await p.close().catch(() => {}); }
+  assert.deepEqual(sendErrs, []);
+  } finally { closing = true; for (const p of open.reverse()) await p.close().catch(() => {}); }
 });
