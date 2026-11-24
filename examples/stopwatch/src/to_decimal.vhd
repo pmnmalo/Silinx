@@ -3,7 +3,8 @@
 -- x / 10, x / 100 and x / 1000 are multiplications by a reciprocal (x * 6554 / 2**16,
 -- x * 5243 / 2**19, x * 8389 / 2**23: exact for x up to 9999), on the FPGA's 18 x 18 multipliers.
 -- Each digit is then a quotient minus ten times the next one, of which only the last 4 bits count
--- (a digit is less than 16). Two clock cycles: the quotients, then the digits.
+-- (a digit is less than 16). Three clock cycles: the value registered (the multipliers' input
+-- register, so that a block RAM's output and a multiplier are not in one cycle), the quotients, then the digits.
 ----------------------------------------------------------------------------------
 library IEEE;
 use IEEE.STD_LOGIC_1164.ALL;
@@ -17,6 +18,7 @@ end to_decimal;
 
 architecture Behavioral of to_decimal is
     -- the last 4 bits of the quotients and of the value (registered)
+    signal x : UNSIGNED (13 downto 0) := (others => '0');   -- the value, registered
     signal q1, q2, q3, v : UNSIGNED (3 downto 0) := (others => '0');
     signal d0, d1, d2, d3 : UNSIGNED (3 downto 0) := (others => '0');
 
@@ -37,11 +39,13 @@ begin
     process (clk)
     begin
         if rising_edge(clk) then
+            -- the value
+            x <= value;
             -- the quotients' and the value's last 4 bits
-            q1 <= quotient(value, 6554, 16);
-            q2 <= quotient(value, 5243, 19);
-            q3 <= quotient(value, 8389, 23);
-            v  <= value(3 downto 0);
+            q1 <= quotient(x, 6554, 16);
+            q2 <= quotient(x, 5243, 19);
+            q3 <= quotient(x, 8389, 23);
+            v  <= x(3 downto 0);
             -- the digits
             d0 <= v - times10(q1);
             d1 <= q1 - times10(q2);

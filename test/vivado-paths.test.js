@@ -74,7 +74,7 @@ for (const name of ['blinky', 'traffic', 'pong', 'stopwatch']) {
 test('signalDrivers and upward: a function\'s callers (stopwatch\'s quotient), the name in the modules above an instance', () => {
   const ex = example('stopwatch');
   const where = signalDrivers(compile(ex.sources), ex.top);
-  assert.deepEqual(where('dec.quotient').map(x => `${x.file}:${x.line}`), ['src/to_decimal.vhd:37']);
+  assert.deepEqual(where('dec.quotient').map(x => `${x.file}:${x.line}`), ['src/to_decimal.vhd:39']);
   assert.deepEqual(where('dec.nothing'), []);
   // (vga's instance timing drives the top's sx through its port: the top's sx)
   const vga = example('vga'), w = signalDrivers(compile(vga.sources), vga.top);

@@ -276,8 +276,8 @@ const EXAMPLE_PACK = {
   breadboard: { slices: 2, X: 1, L: 1, M: 0, luts: 3, ffs: 8, warnings: 0 },   // (#3901: a digital circuit's, its 74LS chips)
   traffic: { slices: 34, X: 14, L: 20, M: 0, luts: 96, ffs: 58, warnings: 0 },
   blinky: { slices: 41, X: 22, L: 19, M: 0, luts: 93, ffs: 94, warnings: 0 },   // (#3710: 53, 29, 130 with 20-bit debouncers; #3922: 102, 132 with 21-bit, 55, 31, 103, 134 with 22-bit; #4377: 2-bit, in ticks)
-  pong: { slices: 111, X: 58, L: 53, M: 0, luts: 270, ffs: 207, warnings: 0 },
-  stopwatch: { slices: 85, X: 43, L: 42, M: 0, luts: 181, ffs: 201, warnings: 0 },
+  pong: { slices: 108, X: 54, L: 54, M: 0, luts: 258, ffs: 256, warnings: 0 },
+  stopwatch: { slices: 86, X: 43, L: 42, M: 1, luts: 183, ffs: 202, warnings: 0 },
   clock: { slices: 81, X: 35, L: 46, M: 0, luts: 152, ffs: 158, warnings: 0 },
   vga: { slices: 52, X: 22, L: 30, M: 0, luts: 129, ffs: 56, warnings: 0 },
   isqrt: { slices: 30, X: 17, L: 13, M: 0, luts: 74, ffs: 86, warnings: 0 },
@@ -288,9 +288,10 @@ const EXAMPLE_PACK = {
 // with LUT combining (combine: 'area'): the slices, never more than without, and the same warnings (isqrt: 29 when
 // the combining came before the storage elements, which then filled the slices it emptied again, #2636)
 // (blinky: 54 with 21-bit debouncers, #3922, 55 with 22-bit; 40 with 2-bit, in ticks, #4377)
-const EXAMPLE_AREA = { gates: 1, breadboard: 2, traffic: 31, blinky: 40, pong: 102, stopwatch: 80, clock: 76, vga: 49, isqrt: 28, uart: 49, micro80: 63, lock: 57 };
-// the SLICELs of night 1's netlists where an example changed since (blinky's 21-bit debouncers, #3710: 31 now)
-const NIGHT1_L = { blinky: 29 };
+const EXAMPLE_AREA = { gates: 1, breadboard: 2, traffic: 31, blinky: 40, pong: 102, stopwatch: 82, clock: 76, vga: 49, isqrt: 28, uart: 49, micro80: 63, lock: 57 };
+// the SLICELs and SLICEMs of night 1's netlists where an example changed since (blinky's 21-bit debouncers, #3710: 31
+// now; pong's and stopwatch's registers for the Zynq's 125 MHz, #4877)
+const NIGHT1 = { blinky: { L: 29 }, pong: { L: 53 }, stopwatch: { M: 0 } };
 // map's packing of the same netlists on ISE (packages/silinx-fpga/research/s6/measured/night1.json, night 1): its SLICELs are the packer's
 // (the carry chains and the wide multiplexers); its SLICEX are a placement's, more (packages/silinx-fpga/research/s6/README.md)
 test('the packer\'s SLICELs are those of ISE\'s map on the same netlists, every example on the Nexys3 and the Atlys (night 1)', () => {
@@ -299,8 +300,8 @@ test('the packer\'s SLICELs are those of ISE\'s map on the same netlists, every 
     for (const name of ISE_RECORDED) {
       const open = night1.boards[board].examples[name].open;
       assert.equal(open.routed, true, `${board} ${name}`);
-      assert.equal(open.sites.SLICEL || 0, NIGHT1_L[name] ?? EXAMPLE_PACK[name].L, `${board} ${name}`);
-      assert.equal(open.sites.SLICEM || 0, EXAMPLE_PACK[name].M, `${board} ${name}`);
+      assert.equal(open.sites.SLICEL || 0, NIGHT1[name]?.L ?? EXAMPLE_PACK[name].L, `${board} ${name}`);
+      assert.equal(open.sites.SLICEM || 0, NIGHT1[name]?.M ?? EXAMPLE_PACK[name].M, `${board} ${name}`);
       assert.ok(open.sites.SLICEX >= EXAMPLE_PACK[name].X, `${board} ${name}: map's SLICEX ${open.sites.SLICEX}, the packer's ${EXAMPLE_PACK[name].X}`);
     }
   }
