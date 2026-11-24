@@ -72,7 +72,7 @@ export function renderHierarchy() {
   const topName = !sim ? pj.top : null;   // the Simulation view has no top: Simulate runs the selected module
   const isTopName = n => !!topName && String(n).toLowerCase() === String(topName).toLowerCase();
   // (the top first, then in natural order: x_2 before x_10, #3819)
-  const roots = sysRow ? sysRow.modules : hierarchyOrder(viewRoots(sim), topName);
+  const roots = sysRow ? [] : hierarchyOrder(viewRoots(sim), topName);
   const addModule = (parentUl, modName, instName, depth, path) => {
     const info = moduleInfo(modName);
     // a device primitive (#4188): the device's, a leaf, not a module missing from the project
@@ -135,8 +135,10 @@ export function renderHierarchy() {
     for (const f of files) it.ul.append(f.li);
   };
   for (const r of roots) addModule(devItem.ul, r, null, 0, r);
+  // (a System project's nodes, each its branch: its module's rows, its files', #5414)
+  sysRow?.fill(addModule, fileRow, f => designState.modules.find(m => m.file === f)?.name);
   // (no top module in the view: the files under the device, #4591)
-  if (!sim && !one && !roots.some(isTopName)) for (const f of flowFileRows()) devItem.ul.append(f.li);
+  if (!sim && !one && !roots.some(isTopName)) for (const f of flowFileRows({ skip: sysRow?.owned })) devItem.ul.append(f.li);
 
   // packages, ASM charts and other files
   for (const p of lib.packages.values()) {
@@ -166,10 +168,7 @@ export function renderHierarchy() {
     const it = treeItem({ label: f.split('/').pop(), ico: 'petri', key: `pn:${f}`, badges: [clashBadge(f)].filter(Boolean), mark: gitMark([f]), onSelect: () => select({ type: 'pn', file: f }), onOpen: () => openPetri(f), onContext: e => petriContextMenu(e, f) });
     it.setLeaf(); devItem.ul.append(it.li);
   }
-  for (const f of (filesState.fileTree || []).filter(f => isCirc(f) && !designState.schOwners?.[f] && !designState.modules.some(m => m.file === f))) {   // (a circuit, #3897)
-    const it = treeItem({ label: f.split('/').pop(), ico: 'circuit', key: `circ:${f}`, badges: [clashBadge(f)].filter(Boolean), mark: gitMark([f]), onSelect: () => select({ type: 'circ', file: f }), onOpen: () => openCircuit(f), onContext: e => circuitContextMenu(e, f) });
-    it.setLeaf(); devItem.ul.append(it.li);
-  }
+  for (const f of (filesState.fileTree || []).filter(f => isCirc(f) && !designState.schOwners?.[f] && !designState.modules.some(m => m.file === f) && !sysRow?.owned.includes(f))) devItem.ul.append(fileRow(f).li);   // (a circuit, #3897)
   // a C source whose HDL cannot be made (#2995: a C error, a blackbox refused): its row, marked, its errors in the Console;
   // [No HDL] opens the first one's file
   for (const [f, c] of Object.entries(cState.cFailed || {})) {
@@ -214,6 +213,15 @@ export function renderHierarchy() {
 
 // a drawing without its HDL file because a file is in the way (#230): a warning badge, its tip says
 // why; a click resolves it (Generate HDL File…)
+// a file's row of its own: a circuit's drawing (#3897), or a System node's file (a firmware, #5414): a plain file's
+function fileRow(f) {
+  const it = isCirc(f)
+    ? treeItem({ label: f.split('/').pop(), ico: 'circuit', key: `circ:${f}`, badges: [clashBadge(f)].filter(Boolean), mark: gitMark([f]), onSelect: () => select({ type: 'circ', file: f }), onOpen: () => openCircuit(f), onContext: e => circuitContextMenu(e, f) })
+    : treeItem({ label: f.split('/').pop(), ico: 'file', key: `nf:${f}`, mark: gitMark([f]), onSelect: () => select({ type: 'file', file: f }), onContext: e => fileContextMenu(e, f) });
+  it.setLeaf();
+  return it;
+}
+
 function clashBadge(f) {
   const c = syncState.hdlClash?.[f];
   return c ? { text: designOnly() ? 'Not made' : 'No HDL', warn: true, title: clashTip(c), open: () => resolveHdlClash(f), context: e => viewContextMenu(e, f) } : null;

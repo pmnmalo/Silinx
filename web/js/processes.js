@@ -32,6 +32,7 @@ import { hierarchyDiags } from '/core/top-hierarchy.js';
 import { syncState } from './state-sync.js';
 import { cState } from './state-c.js';
 import { runState } from './state-run.js';
+import { systemProcesses } from './system-processes.js';
 import { panes } from './state-panes.js';
 import { filesState } from './state-files.js';
 import { docsState } from './state-docs.js';
@@ -73,6 +74,9 @@ function processDefs(sel, view) {
   return defs.some(p => p.id === 'summary') ? defs : [SUMMARY_PROC, ...defs.filter(p => p.id !== 'none')];
 }
 function selectionProcesses(sel, view) {
+  // (a System's row and its nodes', #5414)
+  const sys = systemProcesses(sel, { check: mod => checkSyntax(mod), rtl: mod => openSchematic(mod) });
+  if (sys) return sys;
   // a drawing without its HDL file (it has errors, #207): it gets it as soon as it has none (#220)
   if (sel.type === 'asm') return [{ id: 'asm-open', label: 'View/Edit State Diagram (ASM)', ico: 'asm', run: () => openAsm(sel.file) }];
   if (sel.type === 'pn') return [{ id: 'pn-open', label: 'View/Edit Petri Net', ico: 'petri', run: () => openPetri(sel.file) }];

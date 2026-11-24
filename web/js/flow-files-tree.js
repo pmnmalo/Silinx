@@ -12,9 +12,10 @@ import { flowFiles } from '/core/flow-files.js';
 import { filesState } from './state-files.js';
 
 /** The flow's files' rows ({ li }: treeItem's) of the Design pane's Implementation view. */
-export function flowFileRows() {
+export function flowFileRows({ skip = [] } = {}) {
   if (!S.project) return [];
-  return flowFiles(S.project, filesState.fileTree || []).map(({ path, kind }) => {
+  // (`skip`: the files a System's node shows under it, its firmware, #5414)
+  return flowFiles(S.project, filesState.fileTree || []).filter(({ path }) => !skip.includes(path)).map(({ path, kind }) => {
     const cons = kind === 'constraints';
     const it = treeItem({
       label: path.split('/').pop(), ico: cons ? 'ucf' : 'file', key: cons ? 'ucf' : `mem:${path}`, mark: gitMark([path]),

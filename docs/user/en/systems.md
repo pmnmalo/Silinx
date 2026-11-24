@@ -15,7 +15,10 @@ UART and GPIO links. Its design is in [SYSTEMS.md](../../SYSTEMS.md); its roadma
   Properties), or **Set as Top Module** on a System (`.sys.json`, in the Files view), makes the project a System
   project, that System its top; its board is kept. **Set as Top Module** on one of its modules makes it an FPGA project
   again, on the board of the FPGA node that runs that module (else the board it had).
-- **Its System** is its top, shown in the Design pane as `<name> [System]`, the FPGA nodes' modules under it. It opens
+- **Its System** is its top, shown in the Design pane as `<name> [System]`, each of its nodes a branch under it (#5414): an
+  FPGA node with its board and its module's hierarchy, an Arduino with its board and its firmware, a circuit node with
+  its drawing, a terminal. Selecting a node shows its processes (View/Edit System; an FPGA node's Check Syntax and RTL
+  schematic); the System's row has View/Edit, Check and Emulate System. It opens
   in the **System editor**: the tools place an FPGA node, an Arduino Uno or Nano, a serial terminal; **Link** joins two
   interfaces of one kind (a click on one, then on the other); the Properties panel sets a node's module, board and pins,
   a microcontroller's board and firmware (an Intel HEX, `.hex`, or avr-gcc's `.elf`; an `.elf` in the browser edition

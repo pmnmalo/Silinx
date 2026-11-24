@@ -1,28 +1,50 @@
 // The Design pane's row of a System project's System (#4700, docs/SYSTEMS.md): the project's one System document
-// (.sys.json), its top, shown as `<name> [System]` in place of the device, the FPGA nodes' modules under it (their rows
-// as any module's) and the project's other rows after them. Its text is read with the project's drawings
-// (project.js's viewTexts).
+// (.sys.json), its top, shown as `<name> [System]` in place of the device, and under it one branch per node (#5414,
+// #5416's phase 2: core/project-nodes.js projectNodes, the MCP's project_info's too): an FPGA node its module's hierarchy
+// (its rows as any module's), a microcontroller its firmware, a circuit its drawing, a terminal none; the project's other
+// rows after them. A project with one node (an FPGA or a design project) is drawn as before: its node implicit, no branch.
+// Its text is read with the project's drawings (project.js's viewTexts).
 import { S } from './app.js';
 import { designState } from './state-design.js';
 import { filesState } from './state-files.js';
 import { SYSTEM_KIND } from '/core/project-kind.js';
 import { systemsOn } from '/core/build-channel.js';
-import { isSystemFile, readSystem } from '/core/system-doc.js';
+import { mcuBoard, readSystem } from '/core/system-doc.js';
+import { projectNodes } from '/core/project-nodes.js';
 import { openSystem, systemContextMenu } from './system-open.js';
 
 /** Whether the project open is a System project (and Systems are on in this build, #5202). */
 export const systemProject = () => S.project?.kind === SYSTEM_KIND && systemsOn();
-/** The System project's System document (its path), or null. */
-const systemFile = () => (filesState.fileTree || []).find(isSystemFile) || null;
 
-/** The System's row (`treeItem`, design.js's) and its FPGA nodes' modules: { item, modules }, or null (no System). */
+/** The open project's nodes (core/project-nodes.js), its System document's text the view's. */
+const shownNodes = () => projectNodes(S.project, { files: filesState.fileTree || [], texts: designState.viewTexts || {} });
+
+const NODE_ICON = { fpga: 'chip', mcu: 'board', circuit: 'circuit', terminal: 'system' };
+// a node's board, as the user knows it (its name, else its id)
+const boardName = n => (n.kind === 'mcu' ? mcuBoard(n.board)?.name : S.devices?.boards?.find(b => b.id === n.board)?.name) || n.board;
+
+/** The System's row (`treeItem`, design.js's) and its nodes' branches: { item, owned, fill(addModule, fileRow) } (fill
+ *  draws the branches once design.js's rows can be made: an FPGA node's module with addModule, a node's files with
+ *  fileRow, or its module's row if the file is a module's, moduleOf), or null (no System). */
 export function systemRow(treeItem, select) {
-  const f = systemFile();
+  const { system: f, nodes, owned } = shownNodes();
   if (!f) return null;
   const sys = readSystem(designState.viewTexts?.[f] || '').system;
   const menu = e => systemContextMenu(e, f);
   const item = treeItem({ label: sys?.name || f.split('/').pop(), ico: 'system', open: true, key: `sys:${f}`, cls: 'top-mod',
     badges: [{ text: 'System', base: true, title: 'Open', open: () => openSystem(f), context: menu }],
-    onSelect: () => select({ type: 'file', file: f }), onOpen: () => openSystem(f), onContext: menu });
-  return { item, modules: sys ? [...new Set(sys.nodes.filter(n => n.kind === 'fpga' && n.module).map(n => String(n.module)))] : [] };
+    onSelect: () => select({ type: 'file', file: f, system: true }), onOpen: () => openSystem(f), onContext: menu });
+  const fill = (addModule, fileRow, moduleOf) => {
+    for (const n of nodes) {
+      const board = n.board ? boardName(n) : null;
+      const it = treeItem({ label: n.id, meta: board ? `(${board})` : '', ico: NODE_ICON[n.kind] || 'system', open: true, key: `node:${f}:${n.id}`,
+        onSelect: () => select({ type: 'node', file: f, node: n.id, kind: n.kind, module: n.module }), onOpen: () => openSystem(f), onContext: menu });
+      item.ul.append(it.li);
+      if (n.module) addModule(it.ul, n.module, null, 0, n.module);
+      // (a circuit that is a module, its HDL generated from it: its module's row, #4069)
+      for (const p of n.files) { const m = moduleOf(p); if (m) addModule(it.ul, m, null, 0, m); else it.ul.append(fileRow(p).li); }
+      if (!n.module && !n.files.length) it.setLeaf();
+    }
+  };
+  return { item, owned, fill };
 }

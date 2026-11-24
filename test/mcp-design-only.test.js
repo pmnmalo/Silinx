@@ -67,6 +67,7 @@ test('a design project: its drawings, Check Syntax, the Test Bench Wizard and th
   // (where it is stored and its last back-up, #4971)
   assert.equal(info.text, 'd1: a design and simulation project (no FPGA), top traffic, test bench tb_traffic\n  src/traffic.fsm.json\n  stored in the folder <workspace>/d1 on the disk; last back-up: none recorded');
   assert.deepEqual(info.data, { project: 'd1', kind: 'design', top: 'traffic', simTop: 'tb_traffic', device: null, board: null, constraints: null, files: ['src/traffic.fsm.json'], untrusted: info.data.untrusted,
+    nodes: [{ id: 'design', kind: 'design', implicit: true, board: null, device: null, module: 'traffic', files: [] }],   // (its one node, implicit, #5414)
     stored: { kind: 'folder', folder: '<workspace>/d1' }, lastBackup: null });
 });
 

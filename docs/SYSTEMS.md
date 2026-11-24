@@ -51,7 +51,9 @@ What the others teach us:
 
 A **System** (`<name>.sys.json`, `core/system-doc.js`, #4697) is the top of a **System project**, a project kind of
 Silinx (#5041): New Project asks the kind first; its System choice makes one, empty or from the example `uart-avr` (#4702). A
-System project has one System, shown in the Design pane as `[System]`.
+System project has one System, shown in the Design pane as `[System]`, its nodes as branches under it (#5414, roadmap
+#5416's phase 2: `core/project-nodes.js` gives any project's nodes, the MCP's `project_info` too; an FPGA or a design
+project has one node, implicit, and its pane is drawn as before).
 
 - **Its canvas** follows the schematic editor's style and the rules of [UI-GUIDELINES.md](UI-GUIDELINES.md). The System
   editor (`web/js/system-editor.js`, #4700) places the nodes (an FPGA node, an Arduino Uno or Nano, a serial terminal),
@@ -446,6 +448,7 @@ The existing `program_board` and `capture` serve the FPGA nodes.
    - avr-gcc / arduino-cli on the local server;
    - Espressif's QEMU as an optional engine.
 6. **Zynq and soft cores:**
+   - a Zynq board as a co-design node (roadmap #5412);
    - the PS–PL as an AXI-Lite link, the Zynq's processor engines as the scheduler's adapters;
    - #4396's soft cores as FPGA nodes with the common instruction view.
 
