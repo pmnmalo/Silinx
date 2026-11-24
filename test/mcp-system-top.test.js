@@ -79,3 +79,12 @@ test('#5446 run_process node: a System\'s FPGA node synthesized on its own board
   await fails('run_process', { project: 'rp2', process: 'timing', node: 'fpga' }, 'node: a System node runs synthesize, implement or bitstream (not timing)');
   await fails('run_process', { project: 'rp2', process: 'synthesize', node: 'uno' }, 'no FPGA node \'uno\' in the System of \'rp2\' (fpga)');
 });
+
+test('#5446 run_process node: a System whose node\'s id is no identifier refused (its file and the id said)', async () => {
+  await ok('new_project_from_example', { name: 'rp3', example: 'uart-avr' });
+  const f = path.join(P.projectDir('rp3'), 'uart_avr.sys.json'), sys = JSON.parse(fs.readFileSync(f, 'utf8'));
+  sys.nodes.find((n) => n.kind === 'fpga').id = '../x';
+  fs.writeFileSync(f, JSON.stringify(sys, null, 2));
+  await fails('run_process', { project: 'rp3', process: 'synthesize', node: '../x' }, 'uart_avr.sys.json: \'../x\' is not a node\'s id: a letter, then letters, digits and _');
+  assert.equal(fs.existsSync(path.join(P.projectDir('rp3'), 'build')), false, 'nothing built');
+});
