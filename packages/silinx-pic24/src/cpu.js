@@ -368,4 +368,3 @@ export class CPU {
   carry() { return this.mem[SRW] & C; }
 }
 
-export { hex };

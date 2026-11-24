@@ -92,4 +92,3 @@ export function nzc(cpu, res, B, c) {
 }
 
 export const sext8 = (v) => (v & 0x80 ? v | ~0xff : v & 0xff);
-export const sext16 = (v) => (v & 0x8000 ? v | ~0xffff : v & 0xffff);
