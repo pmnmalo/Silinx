@@ -60,10 +60,26 @@ test('every board drawn by the emulator is in the device database', () => {
   for (const id of Object.keys(LAYOUTS)) assert.ok(boards.some((b) => b.id === id), `board '${id}'`);
 });
 
+/** A layout drawn from its places (putPlaces of web/js/emulator-pcb.js: the Basys2's and the Nexys2's since #5366): the
+ *  resources its places wire widgets to, read from the places themselves; null for a layout of another form. */
+async function placesUsed(fn, board) {
+  const body = layoutBody(fn);
+  const places = /putPlaces\((\w+)\(board\)/.exec(body)?.[1];
+  if (!places) return null;
+  const file = [...REGISTRY.matchAll(/from '\.\/([\w-]+\.js)'/g)].map((m) => m[1]).find((f) => fs.readFileSync(path.join(JS, f), 'utf8').includes(`function ${places}(`));
+  const used = new Map();
+  const use = (name, idx = 0) => used.set(name, Math.max(used.get(name) ?? -1, idx));
+  for (const q of (await import(path.join(JS, file)))[places](board)) {
+    if (q.kind === 'digit') { use('an', q.k); use('seg', 6); } else if (['led', 'sw', 'btn'].includes(q.kind)) use(q.kind, q.k);
+    else if (q.kind === 'port') use(q.res, q.k);
+  }
+  return { used, optional: new Set() };
+}
+
 for (const [id, fn] of Object.entries(LAYOUTS)) {
-  test(`${id} layout (${fn}): the resources it wires widgets to exist on the board with enough pins`, () => {
+  test(`${id} layout (${fn}): the resources it wires widgets to exist on the board with enough pins`, async () => {
     const board = boards.find((b) => b.id === id);
-    const { used, optional } = resourcesUsed(layoutBody(fn));
+    const { used, optional } = await placesUsed(fn, board) ?? resourcesUsed(layoutBody(fn));
     // (at least three, or every one of the LEDs, switches, buttons and digits of a board with fewer: the Cmod S6's LEDs
     // and buttons, #3745)
     const kinds = ['led', 'sw', 'btn', 'an'].filter((n) => board.resources.some((r) => r.name === n)).length;
