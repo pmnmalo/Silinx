@@ -54,5 +54,10 @@ export function profileRefusal(name, to, nodes = []) {
   return `the project '${name}' cannot be ${p.label}: ${out.length > 1 ? 'its nodes' : 'its node'} ${named} ${out.length > 1 ? 'are' : 'is'} not allowed (${p.label} allows ${p.nodes.join(', ')})`;
 }
 
+/** What a profile change did, said (the interface's console and the MCP's result, #5440). */
+export const profileChangedText = (name, to) => `${name}: ${profileById(to).label} now: its System may have ${profileById(to).nodes.join(', ')} nodes (nothing converted, nothing deleted).`;
+/** What a profile change will do, said in Design Properties as it is chosen (#5440). */
+export const profileNote = to => `Its System may have ${profileById(to).nodes.join(', ')} nodes: nothing converted, nothing deleted.`;
+
 /** Whether going from the profile `from` to `to` narrows it. */
 export const narrows = (from, to) => RANK[to] < RANK[from];

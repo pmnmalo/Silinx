@@ -38,6 +38,9 @@ export const PROJECT_KINDS = [
     short: 'drawings and simulation, no board, no HDL shown' },
   { id: 'fpga', name: 'FPGA', about: 'A design that runs on a board: HDL sources and drawings, simulated, synthesized, implemented and programmed on the FPGA, or emulated.',
     short: 'the default' },
+  // (Embedded / SoC, #5440: a System project of that profile; a SoC's processor beside its logic, #5412, its node later)
+  { id: 'embedded', name: 'Embedded / SoC', about: 'FPGA boards and microcontrollers linked in one System, designed and simulated as one.',
+    short: 'FPGA and microcontroller nodes in a System' },
   { id: SYSTEM_KIND, name: 'System', about: 'A system of FPGA and microcontroller nodes linked together, designed and simulated as one.',
     short: 'FPGA and microcontroller nodes in a System' },
 ];

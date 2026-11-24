@@ -11,7 +11,7 @@ import * as P from './projects.js';
 import { topForBoardText } from '../core/board-generics.js';
 import { toolError, readProject, viewSourcesOf, STR, PROJECT, deviceName } from './mcp-util.js';
 import { DESIGN_KIND, DESIGN_ONLY_MESSAGES, isDesignOnly, isSystemProject } from '../core/project-kind.js';
-import { PROFILES, profileById, profileOf, systemProfile } from '../core/project-profile.js';
+import { PROFILES, profileById, profileChangedText, profileOf, systemProfile } from '../core/project-profile.js';
 import { changeProfile } from '../core/profile-change.js';
 import { isSystemFile } from '../core/system-doc.js';
 import { TOP_TYPES, topType, topTypeRefusal } from '../core/top-types.js';
@@ -30,7 +30,7 @@ async function changeProfileOf(name, pj, to) {
   const p = profileById(to);
   if (profileOf(pj) === to) throw toolError(`the project '${name}' is ${p.label} already`);
   await P.updateProject(name, cur => { const c = changeProfile(cur, to, ctx); if (c.error) throw toolError(c.error); return c.project; });
-  return { text: `${name}: ${p.label} now: its System may have ${p.nodes.join(', ')} nodes (nothing converted, nothing deleted).`,
+  return { text: profileChangedText(name, to),
     data: { project: name, profile: to, nodes: p.nodes } };
 }
 
