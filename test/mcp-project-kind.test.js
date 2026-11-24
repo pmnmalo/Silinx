@@ -69,7 +69,7 @@ test('#4702 #5440 new_project profile system or embedded: an empty System projec
   const e = await ok('new_project', { name: 'e1', profile: 'embedded' });
   assert.deepEqual([e.data.profile, (await P.readProject('e1')).profile, fs.existsSync(path.join(P.projectDir('e1'), 'e1.sys.json'))], ['embedded', 'embedded', true]);
   // (each kind's name and words, the dialog's cards')
-  assert.deepEqual(PROJECT_KINDS.map(k => [k.id, k.name]), [['design', 'Digital Logic'], ['fpga', 'FPGA'], ['system', 'System']]);
+  assert.deepEqual(PROJECT_KINDS.map(k => [k.id, k.name]), [['design', 'Digital Logic'], ['fpga', 'FPGA'], ['embedded', 'Embedded / SoC'], ['system', 'System']]);
   // (the dialog's names, in few words: the MCP's size limits, #4752, #5097)
   assert.equal(np.inputSchema.properties.profile.description, 'Its profile, New Project\'s first page: logic (Digital Logic: drawings simulated, no board, no HDL shown), fpga (FPGA: the default), embedded (Embedded / SoC: FPGA and MCU nodes in a System), system (System: and terminals).');
   assert.match(np.description, / profile logic \(Digital Logic\): /);

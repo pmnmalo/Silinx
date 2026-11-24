@@ -40,11 +40,13 @@ const openWizard = async (page, l) => {
 const EN_CARDS = [
   ['design', 'Digital Logic', 'Digital logic for the introductory courses: schematics, truth tables, state machines and circuits on a breadboard, drawn and simulated.', null, false, false],
   ['fpga', 'FPGA', 'A design that runs on a board: HDL sources and drawings, simulated, synthesized, implemented and programmed on the FPGA, or emulated.', null, true, false],
+  ['embedded', 'Embedded / SoC', 'FPGA boards and microcontrollers linked in one System, designed and simulated as one.', null, false, false],
   ['system', 'System', 'A system of FPGA and microcontroller nodes linked together, designed and simulated as one.', null, false, false],
 ];
 const PT_CARDS = [
   ['design', 'Lógica Digital', 'Lógica digital para as disciplinas introdutórias: esquemáticos, tabelas de verdade, máquinas de estados e circuitos numa breadboard, desenhados e simulados.', null, false, false],
   ['fpga', 'FPGA', 'Um projeto que corre numa placa: fontes HDL e desenhos, simulados, sintetizados, implementados e programados na FPGA, ou emulados.', null, true, false],
+  ['embedded', 'Embebido / SoC', 'Placas FPGA e microcontroladores ligados num Sistema, desenhados e simulados como um todo.', null, false, false],
   ['system', 'Sistema', 'Um sistema de nós de FPGA e de microcontrolador ligados entre si, desenhado e simulado como um todo.', null, false, false],
 ];
 

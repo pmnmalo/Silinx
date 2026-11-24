@@ -24,7 +24,9 @@ export const WIZARDS_PT = {
   'A system of FPGA and microcontroller nodes linked together, designed and simulated as one.':
     'Um sistema de nós de FPGA e de microcontrolador ligados entre si, desenhado e simulado como um todo.',
   // Design Properties' Project Kind, what a change of kind does (#5041, core/project-kind.js DESIGN_ONLY_MESSAGES)
-  'System (New Project only)': 'Sistema (só em Novo Projeto)',
+  // (the profiles, #5440: core/project-profile.js; Embedded / SoC's card)
+  'Embedded / SoC': 'Embebido / SoC',
+  'FPGA boards and microcontrollers linked in one System, designed and simulated as one.': 'Placas FPGA e microcontroladores ligados num Sistema, desenhados e simulados como um todo.',
   // (Systems not in a release yet, #5202: core/build-channel.js)
   "Systems are not in this release yet: it is in the development build (the site's dev/) until it is stable.": 'Os Sistemas ainda não estão nesta versão: está na versão de desenvolvimento (a dev/ do site) até estar estável.',
   'Its board and its constraints file leave the project (the file stays on the disk); its drawings stay, their HDL and the test benches hidden, none deleted.':
@@ -135,6 +137,8 @@ export const WIZARDS_PT = {
 // a parameter's label in a message (its field's, without the colon)
 const label = what => (WIZARDS_PT[`${what}:`] || `${what}:`).replace(/:$/, '');
 
+// the profiles' labels in Portuguese (#5440), in the messages that name them
+const PROFILE_PT = { 'Digital Logic': 'Lógica Digital', FPGA: 'FPGA', 'Embedded / SoC': 'Embebido / SoC', System: 'Sistema' };
 export const WIZARDS_PT_PATTERNS = [
   // (a System as the top, #5402: web/js/system-top-ui.js)
   [/^(\S+): a System project now, its System (\S+) its top \(its board kept: Set as Top Module on a module makes it an FPGA project again\)\.$/,
@@ -195,4 +199,13 @@ export const WIZARDS_PT_PATTERNS = [
   [/^(set_io|LOCATE COMP|IO_LOC) (\S+): (\S+) is not a pin of the (\S+) package \(1…(\d+)\)\.$/, '$1 $2: $3 não é um pino do encapsulamento $4 (1…$5).'],
   [/^(set_io|LOCATE COMP|IO_LOC) (\S+): (\S+) is not a pin of the (\S+) package \(its balls look like A1, B12, AA3\)\.$/, '$1 $2: $3 não é um pino do encapsulamento $4 (as suas esferas são como A1, B12, AA3).'],
   [/^IO_TYPE=(\S+) of (\S+): the pin (\S+) \((\S+)\) is in a bank at ([\d.]+) V on the (.+) \((\S+)\), not ([\d.]+) V\.$/, 'IO_TYPE=$1 de $2: o pino $3 ($4) está num banco a $5 V na $6 ($7), não a $8 V.'],
+  // (a profile change, #5440: core/project-profile.js profileNote, profileChangedText, and its refusals; the profile's
+  // label translated in them)
+  [/^Its System may have (.+) nodes: nothing converted, nothing deleted\.$/, 'O seu Sistema pode ter nós $1: nada é convertido nem apagado.'],
+  [/^(\S+): (Digital Logic|FPGA|Embedded \/ SoC|System) now: its System may have (.+) nodes \(nothing converted, nothing deleted\)\.$/,
+    (_, n, p, k) => `${n}: agora ${PROFILE_PT[p]}: o seu Sistema pode ter nós ${k} (nada convertido, nada apagado).`],
+  [/^the project '(.+)' cannot be (Digital Logic|FPGA|Embedded \/ SoC|System): its (nodes?) (.+) (?:are|is) not allowed \(.+ allows (.+)\)$/,
+    (_, n, p, one, list, allows) => `o projeto '${n}' não pode ser ${PROFILE_PT[p]}: ${one === 'node' ? `o seu nó ${list} não é permitido` : `os seus nós ${list} não são permitidos`} (${PROFILE_PT[p]} permite ${allows})`],
+  [/^the project '(.+)' cannot be (Digital Logic|FPGA|Embedded \/ SoC|System): its top is its System \(Set as Top Module on one of its modules first\)$/,
+    (_, n, p) => `o projeto '${n}' não pode ser ${PROFILE_PT[p]}: o seu topo é o seu Sistema (primeiro Definir como Módulo de Topo num dos seus módulos)`],
 ];

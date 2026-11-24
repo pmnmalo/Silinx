@@ -21,7 +21,7 @@ test('isDesignOnly: the kind design only; an FPGA project has none (every projec
 });
 
 test('#5133 the kinds\' names: Digital Logic, FPGA, System; Digital Logic\'s name and words say nothing of FPGA, HDL or a board', () => {
-  assert.deepEqual(PROJECT_KINDS.map(k => [k.id, k.name]), [['design', 'Digital Logic'], ['fpga', 'FPGA'], ['system', 'System']]);
+  assert.deepEqual(PROJECT_KINDS.map(k => [k.id, k.name]), [['design', 'Digital Logic'], ['fpga', 'FPGA'], ['embedded', 'Embedded / SoC'], ['system', 'System']]);
   const d = PROJECT_KINDS[0];
   assert.equal(d.about, 'Digital logic for the introductory courses: schematics, truth tables, state machines and circuits on a breadboard, drawn and simulated.');
   assert.doesNotMatch(`${d.name} ${d.about}`, /FPGA|HDL|\bboard\b/i);

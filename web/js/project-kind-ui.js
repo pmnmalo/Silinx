@@ -4,18 +4,28 @@
 // design (a board, or None Specified and a device) makes a design project an FPGA project, the reverse is refused while
 // the project has HDL or C sources of its own (the console says which). Design Properties says what a change of kind
 // does as it is chosen (#5041): the refusal and its sources, OK disabled; or what leaves the project, none deleted.
-import { SYSTEM_EXAMPLES, SYSTEM_KIND, DESIGN_KIND, DESIGN_ONLY_LABEL, DESIGN_ONLY_MESSAGES, ownSources, toDesignProject } from '/core/project-kind.js';
+import { SYSTEM_EXAMPLES, SYSTEM_KIND, DESIGN_KIND, DESIGN_ONLY_LABEL, DESIGN_ONLY_MESSAGES, isSystemProject, newSystemKind, ownSources, toDesignProject } from '/core/project-kind.js';
+import { profileChangedText, profileNote, profileOf, profileOn } from '/core/project-profile.js';
+import { changeProfile } from '/core/profile-change.js';
+import { filesState } from './state-files.js';
 import { isSystemFile } from '/core/system-doc.js';
 import { api } from './api.js';
 import { HDL_TOP_TYPES } from '/core/top-types.js';
 import { SYSTEM_TOP } from '/core/system-top.js';
 import { S, app } from './app.js';
 import { h } from './ui.js';
-import { logError } from './console.js';
+import { appLog, logError } from './console.js';
 import { designState } from './state-design.js';
 
-/** Design Properties' Project Kind choices: New Project's first page's (#5041); System, New Project's only (#4702). */
-export const KIND_OPTIONS = [[DESIGN_KIND, DESIGN_ONLY_LABEL], ['fpga', 'FPGA'], [SYSTEM_KIND, 'System (New Project only)']];
+/** Design Properties' Project Kind choices: New Project's first page's (#5041), the profiles (#5440: Embedded / SoC and
+ *  System a profile change, nothing converted; off in a release, #5202). */
+export const KIND_OPTIONS = [[DESIGN_KIND, DESIGN_ONLY_LABEL], ['fpga', 'FPGA'], ['embedded', 'Embedded / SoC'], [SYSTEM_KIND, 'System']];
+/** A Project Kind choice's profile (#5440: Digital Logic's kind design). */
+const kindProfile = v => (v === DESIGN_KIND ? 'logic' : v);
+/** The Project Kind choice of the project `pj`: its profile's. */
+const kindOf = pj => (profileOf(pj) === 'logic' ? DESIGN_KIND : profileOf(pj));
+// the project's profile changed to `to` (core/profile-change.js), its files and its System read: { project } or { error }
+const profileChange = (pj, to) => changeProfile(pj, kindProfile(to), { files: filesState.fileTree || [], texts: designState.viewTexts || {}, generated: Object.keys(designState.hdlToSch || {}) });
 
 /**
  * Design Properties' note under its Project Kind (`kindSel`, the project `pj`): what the kind chosen does to the project,
@@ -23,16 +33,20 @@ export const KIND_OPTIONS = [[DESIGN_KIND, DESIGN_ONLY_LABEL], ['fpga', 'FPGA'],
  * update() when the choice changes; refused() whether OK must stay disabled.
  */
 export function kindNote(kindSel, pj) {
-  for (const o of kindSel.options) if (o.value === SYSTEM_KIND) o.disabled = true;
+  // (the Systems' profiles where they are on, #5202: hidden in a release)
+  for (const o of kindSel.options) if (!profileOn(kindProfile(o.value))) o.hidden = o.disabled = true;
   const el = h('div', { class: 'hint kind-note', style: { gridColumn: '1 / -1', marginTop: '-4px' } });
-  const from = pj.kind === DESIGN_KIND ? DESIGN_KIND : 'fpga';
+  const from = kindOf(pj);
   let refused = false;
   const update = () => {
     const to = kindSel.value;
-    const own = to === DESIGN_KIND && from !== DESIGN_KIND ? ownSources(pj, Object.keys(designState.hdlToSch || {})) : [];
-    refused = own.length > 0;
-    el.textContent = to === from ? '' : refused ? DESIGN_ONLY_MESSAGES.toDesign(pj.name, own)
-      : to === DESIGN_KIND ? DESIGN_ONLY_MESSAGES.toDesignNote : DESIGN_ONLY_MESSAGES.toFpgaNote;
+    // (a System's profile, to or from: core/profile-change.js's refusal, the node named, #5440)
+    const sys = newSystemKind(to) || newSystemKind(from);
+    const r = sys && to !== from ? profileChange(pj, to) : null;
+    const own = !sys && to === DESIGN_KIND && from !== DESIGN_KIND ? ownSources(pj, Object.keys(designState.hdlToSch || {})) : [];
+    refused = own.length > 0 || !!r?.error;
+    el.textContent = to === from ? '' : r?.error ? r.error : refused ? DESIGN_ONLY_MESSAGES.toDesign(pj.name, own)
+      : newSystemKind(to) ? profileNote(to) : to === DESIGN_KIND ? DESIGN_ONLY_MESSAGES.toDesignNote : DESIGN_ONLY_MESSAGES.toFpgaNote;
     el.classList.toggle('kind-refused', refused);
     el.style.display = el.textContent ? '' : 'none';
   };
@@ -42,13 +56,14 @@ export function kindNote(kindSel, pj) {
 
 /**
  * Shows the fields of an FPGA project (`fpga`: the inputs of a form-grid, each after its label) only when `isDesign()`
- * says no, and a Top-Level Source Type (`topType`) without HDL nor C / C++ then (a Schematic instead). Returns the function that
+ * says no (nor `isSystem()`, a System's profile chosen), and a Top-Level Source Type (`topType`) without HDL nor C / C++
+ * then (a Schematic instead). Returns the function that
  * applies it (called again when the choice changes).
  */
-export function kindFields(isDesign, fpga, topType = null) {
+export function kindFields(isDesign, fpga, topType = null, isSystem = () => false) {
   const apply = () => {
-    const d = isDesign();
-    for (const el of fpga) for (const x of [el, el.previousElementSibling]) if (x) x.style.display = d ? 'none' : '';
+    const d = isDesign(), off = d || isSystem();   // (a System's profile, #5440: its nodes name their boards)
+    for (const el of fpga) for (const x of [el, el.previousElementSibling]) if (x) x.style.display = off ? 'none' : '';
     if (!topType) return;
     // (no HDL nor C / C++ top: a drawing's, #4105; nor a System, a System project's, #5402)
     for (const o of topType.options) if (HDL_TOP_TYPES.includes(o.value) || o.value === SYSTEM_TOP) o.hidden = o.disabled = d;
@@ -84,4 +99,33 @@ export function syncTemplates(tplSel, system) {
 export async function openNewSystem(name) {
   const f = ((await api.project(name)).fileTree || []).find(isSystemFile);
   if (f) await app.openFile(f);
+}
+
+/** Design Properties' profile change (#5440) to a System's profile, or from one: the project's profile changed as the
+ *  MCP's set_design_properties does (core/profile-change.js), its line in the console; or the refusal there. Returns
+ *  whether it was changed. */
+export async function applyProfile(to) {
+  const pj = S.project, r = profileChange(pj, to);
+  if (r.error) { logError(r.error); return false; }
+  for (const k of Object.keys(pj)) if (!(k in r.project)) delete pj[k];
+  Object.assign(pj, r.project);
+  await app.saveProjectJson();
+  await app.reloadProject();
+  appLog(profileChangedText(pj.name, kindProfile(to)), 'info');
+  return true;
+}
+
+/** Design Properties of a System project (#5440): its name and its profile only (its nodes name their boards). */
+export async function systemProperties(dialog, field) {
+  const pj = S.project;
+  const kindSel = h('select', {}, ...KIND_OPTIONS.map(([v, l]) => h('option', { value: v }, l)));
+  kindSel.value = kindOf(pj);
+  const note = kindNote(kindSel, pj);
+  const buttons = [{ label: 'OK', value: true, primary: true }, { label: 'Cancel', value: null }];
+  const sync = () => { note.update(); if (buttons[0].el) buttons[0].el.disabled = note.refused(); };
+  kindSel.addEventListener('change', sync);
+  const ok = await dialog({ title: 'Design Properties', width: 520, buttons, onOpen: sync,
+    body: h('div', { class: 'form-grid' }, ...field('Name:', h('span', { 'data-no-i18n': '' }, pj.name)), ...field('Project Kind:', kindSel), note.el,
+      h('div', { class: 'hint', style: { gridColumn: '1 / -1' } }, SYSTEM_NOTE)) });
+  if (ok && kindSel.value !== kindOf(pj)) await applyProfile(kindSel.value);
 }

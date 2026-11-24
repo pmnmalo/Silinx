@@ -51,10 +51,13 @@ uiTest('#4702 New Project ▸ System from uart-avr: its System open, its Design 
   const s = await page.eval(() => window.Silinx.active.systemEditor.sim.state());
   const text = w => String.fromCharCode(...s.traffic.find(t => t.wire === w).bytes.map(b => b.byte));
   assert.deepEqual([text('serial_uno'), text('serial_fpga'), s.warnings, s.errors], ['Hello from Arduino!\r\n', 'Hello from Arduino!\r\n', [], []]);
-  // Design Properties of a System project: what stands for its board, in the console
-  await page.eval(async () => (await import('/js/wizards.js')).projectProperties());
-  await page.waitFor((n) => [...document.querySelectorAll('#console-log .ln')].some(l => l.textContent.trim() === `Design Properties: ${n}`), [NOTE], { what: 'Design Properties\' note' });
-  assert.equal(await page.eval(() => !!document.querySelector('.dlg-overlay')), false);
+  // Design Properties of a System project: its name and its profile (#5440), what stands for its board said under them
+  await page.menu('Project', 'Design Properties…');
+  await page.waitDialog('Design Properties');
+  assert.deepEqual(await page.eval(() => [[...document.querySelectorAll('.dlg-overlay .form-grid > label')].map((l) => l.textContent),
+    [...document.querySelectorAll('.dlg-overlay .form-grid > .hint')].map((d) => d.textContent).filter(Boolean)]), [['Name:', 'Project Kind:'], [NOTE]]);
+  await page.dialogButton('Cancel');
+  await page.waitNoDialog();
   assert.deepEqual(page.console.filter((c) => c.type === 'warning' || c.type === 'warn' || c.type === 'error').map((c) => c.text), []);
 });
 
