@@ -115,3 +115,26 @@ endmodule
   // (INIT 2: word 0 is 0, word 1 is 1; on the edge a[0], 0, written at word a[1], 1)
   assert.deepEqual(await run(json, tb), [...want, 'init q=0', 'init q=1', 'written q=0']);
 });
+
+// a LUT as a shift register as nextpnr writes it (#5466, #5468): its address on the LUT's A2..A5 (A1 and A6 tied high), its
+// X_ORIG_PORT_A0..A3 the cell's pins' names, not the site's; its clock's edge IS_CLK_INVERTED (the 7-series' SRL16E's)
+const srl16 = (name, inverted, [a0, a1]) => site('SLICE_LUTX', 'SRL16E', { A1: [null, 'input', [90]], A2: [null, 'input', [a0]], A3: [null, 'input', [a1]],
+  A4: [null, 'input', [91]], A5: [null, 'input', [91]], A6: [null, 'input', [90]], DI2: ['D', 'input', [2]], CLK: ['CLK', 'input', [3]], WE: ['CE', 'input', [90]],
+  O6: ['Q', 'output', [name === 's' ? 6 : 7]] }, { INIT: '0000000000000000', IS_CLK_INVERTED: inverted }, { X_LUT_AS_SRL: '1 ', X_ORIG_PORT_A0: 'A0', X_ORIG_PORT_A1: 'A1', X_ORIG_PORT_A2: 'A2', X_ORIG_PORT_A3: 'A3' });
+
+test('#5466 xc7RoutedCells: a LUT as a shift register, its address the LUT\'s A2..A5 (A1 and A6 left out, X_ORIG_PORT_A<n> not read), its clock not inverted no generic', () => {
+  const m = cells(routed({ d: ['input', [2]], clk: ['input', [3]], a: ['input', [4, 5]], q: ['output', [6]] }, { s: srl16('s', '0', [4, 5]) }));
+  assert.deepEqual([m.cells.s.type, m.cells.s.connections, m.cells.s.parameters], ['SRL16E', { A0: [4], A1: [5], A2: ['0'], A3: ['0'], D: [2], CLK: [3], CE: ['1'], Q: [6] },
+    { INIT: '0000000000000000' }]);
+});
+
+test('#5466 #5468 a routed SRL16E simulates as the cell synthesis wrote: read at its address, on its clock\'s rising edge or, IS_CLK_INVERTED, its falling one, no warning', async () => {
+  const json = routed({ d: ['input', [2]], clk: ['input', [3]], q: ['output', [6]], qn: ['output', [7]] }, { s: srl16('s', '0', [91, 90]), sn: srl16('sn', '1', [91, 90]) });
+  const tb = `module tb; reg d = 0, clk = 0; wire q, qn; r u (.d(d), .clk(clk), .q(q), .qn(qn));
+  integer i; initial begin for (i = 0; i < 6; i = i + 1) begin d = (i == 0); #5 clk = 1; #1 $display("rise %0d %b %b", i, q, qn); #4 clk = 0; #1 $display("fall %0d %b %b", i, q, qn); end end
+endmodule
+`;
+  // (address 2: the third stage, d's 1 there two cycles later; the falling edge's half a cycle after the rising edge's)
+  assert.deepEqual(await run(json, tb), ['rise 0 0 0', 'fall 0 0 0', 'rise 1 0 0', 'fall 1 0 0', 'rise 2 1 0', 'fall 2 1 1', 'rise 3 0 1', 'fall 3 0 0',
+    'rise 4 0 0', 'fall 4 0 0', 'rise 5 0 0', 'fall 5 0 0']);
+});

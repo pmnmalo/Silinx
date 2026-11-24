@@ -119,7 +119,9 @@ function primitive(name, params, ports, proj, lib) {
     const clk = P.get('CLK'), d = P.get('D'), ce = P.get('CE');
     const adr = ['A0', 'A1', 'A2', 'A3'].map((k) => P.get(k));
     if (!clk || !d || adr.some((x) => !x)) return null;
-    const edge = m[2] ? falling : rising;
+    // (the 7-series' IS_CLK_INVERTED: its clock's other edge, #5468)
+    const inv = !m[1] && param('IS_CLK_INVERTED') ? Number(V.toBig(param('IS_CLK_INVERTED'))) & 1 : 0;
+    const edge = !!m[2] !== !!inv ? falling : rising;
     const r = initBits(param('INIT'), 16), r0 = r.slice();
     const q = outs('Q'), q15 = outs('Q15');
     const read = (sim) => { const a = addrOf(adr); set(sim, q, a < 0 ? 2 : r[a]); set(sim, q15, r[15]); };
