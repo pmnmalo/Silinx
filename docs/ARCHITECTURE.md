@@ -21,16 +21,20 @@ WebAssembly tools into the single file; `scripts/pwa.mjs` adds the site's servic
 
 ```text
  The interface    web/js/   two interfaces (Silinx, ISE style); the Design pane, the editors, the processes,
-                            SSim, the Board Emulator, the pin planner, iMPACT, the FPGA view; Portuguese
+                            SSim, the Board Emulator, the System editor and Emulator, the pin planner, iMPACT, the
+                            FPGA view; Portuguese
                      │ api.js (the server) │ api-local.js (the browser)
- The hosts        server/   projects on disk, jobs, ISE's flow, the Silinx flow in a process, programmers, MCP
-                  browser   projects in its storage, Web Workers (Yosys, the flow, the emulator)
+ The hosts        server/   projects on disk, jobs, ISE's flow, the Silinx flow in a process, a System's nodes
+                            implemented, programmers, MCP
+                  browser   projects in its storage, Web Workers (Yosys, the flow, the emulator, the System)
                      │
  The core         core/     isomorphic (no DOM, no Node APIs): the drawings, Silinx HLS, the emulator's engines, the
-                            simulation models, programming over WebUSB
+                            simulation models, the System (its model, profiles, scheduler, nodes' adapters, links'
+                            decoders), programming over WebUSB
                      │
  The front end    packages/silinx-hdl    VHDL and Verilog: parsers, elaboration, simulator, flat Verilog
  The toolchain    packages/silinx-fpga   synthesis to bitstream (TOOLCHAIN.md)
+ (proposed)       packages/silinx-pic24  the PIC24 emulator (#5480; a proposal, not decided)
                      │
  Outside tools    Yosys and nextpnr (WebAssembly, npm) │ Xilinx ISE 14.7, AMD Vivado (the user's) │ programmers (openFPGALoader…)
 ```
@@ -44,11 +48,43 @@ Node, in a page and in a Web Worker, and tested in Node.
 
 A project is a folder with `silinx.json`: its sources, its top, its device and board, its constraints, its properties
 ([PROJECT.md](PROJECT.md); `server/projects.js` on disk, `web/js/project-store.js` in the browser; `web/js/project.js`
-opens and closes it). Its kind is an FPGA project or a design and simulation project, with no board, no flow and no
+opens and closes it). Its profile says which node kinds its System may hold (the next part); its kind, as kept, is an FPGA project or a design and simulation project, with no board, no flow and no
 HDL shown (`core/project-kind.js`, `web/js/design-only.js`; New Project's first page, `web/js/project-kind-step.js`, #5041, and Design Properties' Project Kind, #3780,
 #3891, #4103), and its Top-Level Source Type what a new project's top is made of (`core/top-types.js`, #4105). The Design pane shows one row per module: a drawing is the module's base and its HDL file is always
 generated from it (CLAUDE.md). ISE's project files are read and written too (`server/xise.js`, ISE's schematics:
 `core/isesch.js`).
+
+### The System: the general case
+
+Every project is a System (roadmap #5416, done; the general model: roadmap #5479,
+[SYSTEMS.md](SYSTEMS.md#the-general-model)): a graph of typed nodes (an FPGA, a CPU board, a microcontroller, a SoC, a
+digital or an analog circuit, a terminal, an instrument, a network) joined by typed links (a digital pin, a transaction
+bus, a memory-mapped bus, an analog signal, a network). The project kinds are its special cases, its **profiles**
+(`core/project-profile.js`, #5440): Digital Logic ⊂ FPGA ⊂ Embedded / SoC ⊂ System, each only limiting the node kinds its
+System may hold. A System project's System is its document (`<name>.sys.json`, `core/system-doc.js`); an FPGA or a
+design project's is implicit, one node derived from its `silinx.json` (`core/project-system.js`, `core/project-nodes.js`).
+
+Where each part sits, what exists today and what is planned (its phase and issue):
+
+| Part | `core/` | `server/` | `web/js/` | Status |
+|---|---|---|---|---|
+| The model: the document, its edits and check, the profiles | `system-doc.js`, `system-edit.js`, `system-check*.js`, `project-profile.js`, `project-system.js`, `project-nodes.js` | `mcp-system.js` (`edit_system`, `check_system`) | `system-editor.js`, `system-draw.js`, `system-side.js`, `system-wiring.js` | exists |
+| The scheduler: ps time, windows bounded by the links' lookahead | `system-sim.js`, `system-build.js`, `system-run.js`, `system-host.js`, `system-sim-remote.js` | `mcp-system-sim.js` (`simulate`) | `system-worker.js`, `system-sim-view.js`, `system-waves-view.js` | exists |
+| **The node contract** (`run(t1, inputEvents)`) | today each engine's adapter: `system-sim-compiled.js`, `system-sim-event.js`, `system-sim-avr*.js`, `system-sim-circuit.js`, `system-sim-terminal.js` | — | — | exists as the scheduler's interface; formalised (typed ports and levels, lookahead, save / restore): phase 2, #5485 |
+| **The link kinds** | pins and transaction buses: the adapters above, the decoders `system-decode.js`, `uart.js`; the register map `regmap*.js` (a memory-mapped bus's both sides) | — | `regmap-editor.js` | GPIO, UART, SPI, I²C exist; the kinds formalised: #5485; AXI on the Zynq: #5412; analog: #5387; networks: #4695's phase 4 |
+| The engines | FPGA: `compiled-sim.js`, `simulator.js`; AVR: avr8js (npm) and `avr-firmware.js`; circuit: `circuit-sim.js` | — | the System Emulator: `system-emu-view.js`, `emulator-arduino.js` (core: `system-emu.js`) | exist; RP2040 and ESP32: #4695's phase 4; **the PIC24's emulator**: phase 1, #5480, #5481, its node #5484 |
+| **The synchronous reactive model and its generators** (FSM, ASM, Petri net, truth table → C, MicroPython; a HAL per target) | a model and one generator per language, beside `view-hdl.js` | — | the drawings' generated code shown as their HDL is | planned: phase 2, C for the Arduino #5486, MicroPython #5487 |
+| Nodes as folders, the Design pane grouped by node | `project-nodes.js` | `projects.js` | `app.js`'s Design pane | the nodes' branches exist (#5414); folders: phase 2, #5488 |
+| **Per-node toolchains** | — | FPGA: the three flows, a node at a time (`system-implement.js`, `system-node.js` in core); XC16: `toolchain.js`'s way, found and run | `system-implement-ui.js`, `system-processes.js` | FPGA nodes exist (#5446); avr-gcc / arduino-cli: #4695's phase 5; XC16: phase 1, #5482; XC16 in WebAssembly: an experiment, #5491 |
+| **Per-node programmers** and the plan (Program All, Program Node) | the plan; WebUSB JTAG (`usb-program.js`); Web Serial's STK500 / raw REPL | `programmer.js`; a PICkit through MPLAB IPE | `impact.js`; the System's rows | FPGA exists; the plan, Web Serial, the PICkit: phase 2, #5489 (with #4695's phase 3) |
+
+- **The PIC24 emulator** sits in `core/` as the other engines' adapters do, behind the node contract. **Proposed, not
+  decided**: a monorepo package of its own, `packages/silinx-pic24`, as `silinx-fpga` is (its own changelog and npm
+  releases, importing nothing from `core/` or `web/`), possibly under the MIT licence.
+- **XC16** is the user's (proprietary, as ISE is): the local server runs it; in the browser alone the student gives a
+  `.hex`. Built from its GPL source for WebAssembly (`cc1`, `as`, `ld` with Emscripten and a driver of Silinx's own,
+  as Yosys is) it would run in the browser too: an experiment first (#5491), a phase of its own if it succeeds.
+- **The MCP server** gets a tool for every new node kind and action (#2674), in `server/mcp-system*.js`.
 
 ### The drawings
 
@@ -152,5 +188,7 @@ and the board's Platform Flash: in the browser over WebUSB, with Silinx's own JT
   Silinx toolchain (`TARGETS`, the iCEBreaker's `ICE40_TARGETS`, the ULX3S's `ECP5_TARGETS`, the Tang Nano 9K's
   `GOWIN_TARGETS`, the 7-series' `XC7_TARGETS`), and by Vivado on its boards (`VIVADO_TARGETS`); the Spartan-3E's also build with ISE with no warnings.
 - **The oracles**: ISE 14.7 for the toolchain (bitstream, DRC) and XST's Spartan-3E behaviour for the language; the C
-  itself for Silinx HLS, Vitis HLS for its ports and interfaces.
+  itself for Silinx HLS, Vitis HLS for its ports and interfaces; planned, MPLAB X's simulator for the PIC24 emulator
+  (the same `.hex`, traces compared, #5483) and the official XC16 for an XC16 built for WebAssembly (the same `.hex`,
+  #5491).
 - CI runs at a release and nightly on `main` when it changed (#3423); a pull request runs the tests of the modules it changes (CLAUDE.md).

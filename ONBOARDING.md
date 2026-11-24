@@ -131,7 +131,12 @@ core/          lint, quick fixes, rename;
                (circuit.js and circuit-*.js: simulation, check, HDL); wire-style.js (the wires' styles);
                collab-*.js (a project shared live), grade*.js (grading), gist-link.js (short links),
                project-folder.js (a project imported from its folder), project-kind.js (a design and simulation
-               project);
+               project), project-profile.js (the profiles: the node kinds a project's System allows);
+               the System (docs/SYSTEMS.md): system-doc.js, system-edit.js, system-check*.js, project-system.js and
+               project-nodes.js (any project's System and nodes), system-sim.js (the scheduler) and system-sim-*.js
+               (the nodes' adapters: compiled, event, AVR, circuit, terminal), system-decode.js (the links'
+               decoders), system-emu.js (the System Emulator's core), system-node.js (an FPGA node as a project),
+               avr-firmware.js, regmap*.js (a register map's both sides);
                hdl-to-sch.js (Convert to Schematic); synth-front.js (the toolchain's input); c-*.js (Silinx
                HLS); adept.js + xcf.js (WebUSB JTAG, FPGA and Platform Flash)
 packages/silinx-hdl/   the HDL front end: VHDL and Verilog parsers, elaborator, simulator, flat Verilog (core/'s
@@ -143,9 +148,12 @@ web/js/        the Project Navigator: app.js (the shell, Design pane, processes,
                circuit-toolbar.js, circuit-options.js), notation.js, wire-crossings.js, collab-*.js (sharing),
                link-field.js, share-how.js, short-links.js, grade-results-view.js,
                isim.js (simulator UI), impact.js, pinplanner.js, i18n*.js (Portuguese), ui.js (menus,
-               dialogs, long press), narrow.js (tablet portrait)
+               dialogs, long press), narrow.js (tablet portrait); the System: system-editor.js (system-draw.js,
+               system-side.js, system-wiring.js), system-sim-view.js, system-emu-view.js, emulator-arduino.js,
+               system-worker.js, system-implement-ui.js, regmap-editor.js
 server/        the local server: projects, the ISE flow, AMD Vivado's (vivado.js), the Silinx flow, programmers, the MCP
-               server (mcp*.js), the sharing relay (collab-relay.js), Open in VS Code (open-editor.js)
+               server (mcp*.js; a System's: mcp-system*.js), a System's FPGA nodes implemented (system-implement.js),
+               the sharing relay (collab-relay.js), Open in VS Code (open-editor.js)
 test/ui/       UI tests on headless Chrome over CDP (harness.js); Firefox / WebKit via Playwright
 examples/      gates, breadboard, traffic, blinky, pong, stopwatch, clock, vga, isqrt, uart, micro80, lock: the test designs
 research/      synthesis quality, handwriting models; the toolchain's research is in packages/silinx-fpga/research
