@@ -85,7 +85,8 @@ uiTest('Circuit editor: the half adder opened, a part placed and undone, a wire 
   await page.waitFor((ed) => [...document.querySelectorAll(`${ed} .circ-tool`)].some((b) => b.textContent.trim() === 'Fio'), [ED], { what: 'the toolbar in Portuguese' });
   assert.deepEqual(await status(page), ['2 CI(s) · 2 entrada(s) · 2 mostrador(es) · 16 fio(s)']);
   assert.deepEqual(await page.eval((ed) => [...document.querySelectorAll(`${ed} .circ-parts-side .asm-cap, ${ed} .circ-lib-title > span:first-child`)].map((e) => e.textContent), ED),
-    ['Peças', 'Placas de ensaio', 'Alimentação', 'Entradas', 'Saídas', 'Portas (74LS)', 'Portas (4000)', 'MSI (74LS, 4000)', 'Sequenciais (74LS, 4000)', 'Catálogo KiCad']);
+    // (Placas: the boards, #5215, listed in the development build where Systems are on; none in a release: system-release.test.js)
+    ['Peças', 'Placas de ensaio', 'Alimentação', 'Placas', 'Entradas', 'Saídas', 'Portas (74LS)', 'Portas (4000)', 'MSI (74LS, 4000)', 'Sequenciais (74LS, 4000)', 'Catálogo KiCad']);
   assert.equal(await page.eval((ed) => document.querySelector(`${ed} .circ-search`).placeholder, ED), 'Procurar peças…');
   assert.equal(await page.eval((ed) => document.querySelector(`${ed} .circ-sim-btn`).textContent.trim(), ED), 'Experimentar');
   assert.equal(await page.eval((ed) => document.querySelector(`${ed} .circ-sim-btn`).title, ED), 'Experimentar: clique num interruptor para o mudar, carregue num botão para o manter premido; os LEDs e o nível de cada pino mostram o circuito a funcionar');
