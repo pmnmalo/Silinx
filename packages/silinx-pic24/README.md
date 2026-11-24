@@ -39,6 +39,13 @@ Its shape is avr8js's: `cpu.cycles` counts the instruction cycles, `cpu.readHook
 SFRs' hooks, `cpu.addClockEvent(fn, cycles)` a peripheral's timing, `cpu.raise(irq)` its interrupt request.
 
 It imports nothing of Silinx and no npm package (`test/silinx-pic24-package.test.js`). Its tests are Silinx's,
-`test/pic24-*.test.js`, with a test-side assembler (`test/pic24-asm.mjs`). Not published yet.
+`test/pic24-*.test.js`, with a test-side assembler (`test/pic24-asm.mjs`).
+
+It is published on npm (`npm install silinx-pic24`), with npm's provenance, from its own tags
+([#5509](https://github.com/pmnmalo/Silinx/issues/5509)). A release: `node scripts/changelog-release.mjs X --package
+silinx-pic24` (its [changes/](changes/) assembled into [CHANGELOG.md](CHANGELOG.md)), `npm version X -w silinx-pic24
+--no-git-tag-version`, `node scripts/sync-version.mjs --package silinx-pic24`, a commit on `main`, then the tag
+`silinx-pic24-vX`: it starts Silinx's CI, and `.github/workflows/silinx-pic24-release.yml` publishes the package once
+that run has passed.
 
 Licence: MIT ([LICENSE](LICENSE)).

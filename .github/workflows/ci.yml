@@ -1,17 +1,18 @@
 name: CI
 # The tests, all of them, at a release (#607): when a version tag v* is pushed (the Release workflow
 # waits for this run of the tagged commit, scripts/wait-for-ci.mjs), or the toolchain package's silinx-fpga-v*
-# (its npm publishing waits for it the same way, silinx-fpga-release.yml, #1681), and by hand (Actions ▸ CI ▸ Run
-# workflow, on main or a branch). And every night on main, after the Nightly, when main changed since this
-# workflow's last successful run on main (#3423, scheduled-changes.yml): the breaks a pull request's related tests
-# miss (a UI test that depends on a change indirectly, two pull requests that break together, a test that fails on
-# macOS or Windows only) found the next morning, not at the release; a failed job is an issue, as the Nightly's
-# (failure-report.yml). A scheduled run publishes nothing, and the Release does not take it for a tag's
-# (wait-for-ci.mjs: a push's or a run by hand only). Not on pull requests nor on pushes to main: a change is merged
-# after the tests related to it (CLAUDE.md); the other scheduled workflows (nightly, ISE, Quality) keep watching too.
+# (its npm publishing waits for it the same way, silinx-fpga-release.yml, #1681), or the PIC24 emulator's
+# silinx-pic24-v* (silinx-pic24-release.yml, #5509), and by hand (Actions ▸ CI ▸ Run workflow, on main or a branch).
+# And every night on main, after the Nightly, when main changed since this workflow's last successful run on main
+# (#3423, scheduled-changes.yml): the breaks a pull request's related tests miss (a UI test that depends on a change
+# indirectly, two pull requests that break together, a test that fails on macOS or Windows only) found the next morning,
+# not at the release; a failed job is an issue, as the Nightly's (failure-report.yml). A scheduled run publishes
+# nothing, and the Release does not take it for a tag's (wait-for-ci.mjs: a push's or a run by hand only). Not on pull
+# requests nor on pushes to main: a change is merged after the tests related to it (CLAUDE.md); the other scheduled
+# workflows (nightly, ISE, Quality) keep watching too.
 on:
   push:
-    tags: ['v*', 'silinx-fpga-v*']
+    tags: ['v*', 'silinx-fpga-v*', 'silinx-pic24-v*']
   schedule:
     - cron: '17 23 * * *'     # 23:17 UTC, two hours after the Nightly (21:17), when main changed (#3423)
   workflow_dispatch:

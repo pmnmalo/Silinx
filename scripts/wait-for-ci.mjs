@@ -3,8 +3,9 @@
 // waits for the CI run of the tagged commit and fails when that run failed, or when the commit has no CI
 // run. CI runs at a release only (#607): the push of the tag v* starts it (a run of the tag), alongside the
 // Release workflow, so it is usually still running and the script waits for it (and the toolchain package's tag
-// silinx-fpga-v*, alongside its npm publishing, #1681); a run of main started by
-// hand (Actions ▸ CI ▸ Run workflow) on that commit counts too. A pull request's or a branch's does not.
+// silinx-fpga-v*, alongside its npm publishing, #1681, and the PIC24 emulator's silinx-pic24-v*, #5509); a run of
+// main started by hand (Actions ▸ CI ▸ Run workflow) on that commit counts too. A pull request's or a branch's
+// does not.
 // A run's state is its latest attempt's (the API's run is its last attempt): a run whose failed jobs are run again
 // is waited for again, and a failed run is given --rerun minutes to be run again before the release fails (#4236).
 // The wait has no limit of its own but --timeout: the tags' runs go one at a time (ci.yml's concurrency), so the

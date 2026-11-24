@@ -26,7 +26,7 @@ const on = yml => yml.slice(yml.indexOf('\non:\n') + 1, yml.search(/\n(?:permiss
 
 test('CI: at a release (a tag v*, or the toolchain package\'s silinx-fpga-v*, #1681), nightly (#3423) and by hand; every job, gated only by the nightly\'s change check; ci-ok needs them all', () => {
   const ci = read('.github/workflows/ci.yml');
-  assert.equal(on(ci).replace(/^#.*\n/gm, '').replace(/ +#.*$/gm, ''), "on:\n  push:\n    tags: ['v*', 'silinx-fpga-v*']\n  schedule:\n    - cron: '17 23 * * *'\n  workflow_dispatch:\n");
+  assert.equal(on(ci).replace(/^#.*\n/gm, '').replace(/ +#.*$/gm, ''), "on:\n  push:\n    tags: ['v*', 'silinx-fpga-v*', 'silinx-pic24-v*']\n  schedule:\n    - cron: '17 23 * * *'\n  workflow_dispatch:\n");
   assert.doesNotMatch(ci, /pull_request|branches:|paths(-ignore)?:/, 'not on pull requests nor on pushes to main');
   assert.ok(!fs.existsSync(path.join(ROOT, 'scripts/ci-changes.mjs')), 'no change detection: everything runs');
   // the tags' runs one at a time (#3124: two tags' runs together queued their jobs up to 50 minutes); a run by hand on its ref
