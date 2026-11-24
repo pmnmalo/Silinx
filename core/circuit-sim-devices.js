@@ -10,6 +10,7 @@ import { createSsd1306 } from './circuit-oled.js';
 import { createLm75 } from './circuit-lm75.js';
 import { createServo } from './circuit-servo.js';
 import { createBuzzer } from './circuit-buzzer.js';
+import { createStepper } from './circuit-stepper.js';
 import { createSonar } from './circuit-sonar.js';
 import { createPir } from './circuit-pir.js';
 import { createDht } from './circuit-dht.js';
@@ -39,6 +40,10 @@ export function setupDevice(p, d, { at, addDriver, level }) {
     return { ic, reads: [ic.vcc, ic.gnd, ic.sig] };
   }
   // (a buzzer, #5454: its +'s edges measured while its − is at 0, its tone)
+  if (d.kind === 'stepper') {   // (a stepper motor, #5476: its coils' inputs read while it is powered)
+    const ic = { part: p, def: d, stepper: createStepper(), vcc: at('VCC'), gnd: at('GND'), ins: ['IN1', 'IN2', 'IN3', 'IN4'].map(at), was: false };
+    return { ic, reads: [ic.vcc, ic.gnd, ...ic.ins] };
+  }
   if (d.kind === 'buzzer') {
     const ic = { part: p, def: d, buzzer: createBuzzer(), sig: at('+'), ref: at('−'), was: false };
     return { ic, reads: [ic.sig, ic.ref] };
@@ -92,6 +97,11 @@ export function evaluateDevice(ic, { powered, level, now, drive, wake, input }) 
     if (!on) { if (ic.was) ic.servo.stop(now()); } else if (v !== ic.prev) ic.servo.edge(v, now());
     ic.prev = on ? v : null;
     ic.was = on;
+    return true;
+  }
+  if (ic.stepper) {   // (its coils as its inputs while powered, none while not)
+    const on = powered(ic);
+    ic.stepper.coils(on ? ic.ins.reduce((b, net, k) => b | (level(net) === '1' ? 1 << k : 0), 0) : 0, now());
     return true;
   }
   if (ic.buzzer) {   // (its + read while its − is at 0; else silent)
@@ -150,8 +160,10 @@ export function deviceViews(ics, { now, evaluate, update }) {
     oleds: () => Object.fromEntries(ics.filter((x) => x.oled).map((x) => [x.part.id, x.oled.state()])),
     /** each servo's state now: { angle, target, width, period } (#5347), and what it said (once each) */
     servos: () => Object.fromEntries(ics.filter((x) => x.servo).map((x) => [x.part.id, x.servo.state(now())])),
-    servoWarnings: () => ics.filter((x) => x.servo || x.buzzer || x.sonar || x.dht).flatMap((x) => (x.servo || x.buzzer || x.sonar || x.dht).warnings.map((w) => `${x.part.id}: ${w.text}`)),
+    servoWarnings: () => ics.filter((x) => x.servo || x.buzzer || x.sonar || x.dht || x.stepper).flatMap((x) => (x.servo || x.buzzer || x.sonar || x.dht || x.stepper).warnings.map((w) => `${x.part.id}: ${w.text}`)),
     /** each buzzer's state now: { sounding, hz, how } (#5454) */
+    /** each stepper motor's state: { steps, angle, coils } (#5476) */
+    steppers: () => Object.fromEntries(ics.filter((x) => x.stepper).map((x) => [x.part.id, x.stepper.state()])),
     buzzers: () => Object.fromEntries(ics.filter((x) => x.buzzer).map((x) => [x.part.id, x.buzzer.state(now())])),
     /** each ultrasonic range sensor's state: { cm, measuring, echo (its last, µs) } (#5456) */
     /** each motion sensor's state: { moving, out, blind } (#5463) */

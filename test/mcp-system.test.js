@@ -219,7 +219,7 @@ test('#5322 simulate with controls on a circuit node: its switch S1 set at 5 ms 
   await write('emuc.sys.json', m);
   const r = await ok('simulate', { project: 'u', top: 'emuc.sys.json', time_ns: 60e6, type: { term: 'A' }, controls: [{ node: 'bench', control: 'S1', on: true, at_ns: 5e6 }] });
   assert.equal(r.data.terminals.term, 'AHello from Silinx!\r\n');
-  assert.deepEqual(r.data.boards.bench, { leds: { D2: 'on' }, lcds: {}, oleds: {}, sensors: {}, servos: {}, buzzers: {}, sonars: {}, pirs: {}, dhts: {}, inputs: { S1: true }, lit: ['D2'] }, 'LD0: the last byte\'s bit 0 (no LCD, OLED, sensor, servo, buzzer, ultrasonic, motion nor DHT sensor: #5345, #5371, #5454, #5456, #5463, #5470)');
+  assert.deepEqual(r.data.boards.bench, { leds: { D2: 'on' }, lcds: {}, oleds: {}, sensors: {}, servos: {}, buzzers: {}, steppers: {}, sonars: {}, pirs: {}, dhts: {}, inputs: { S1: true }, lit: ['D2'] }, 'LD0: the last byte\'s bit 0 (no LCD, OLED, sensor, servo, buzzer, stepper, ultrasonic, motion nor DHT sensor: #5345, #5371, #5454, #5456, #5463, #5470, #5476)');
   assert.deepEqual(r.text.split('\n').slice(-3, -1), ['fpga\'s board: LEDs off.', 'bench\'s circuit: lit D2.'], r.text);
   assert.deepEqual([r.data.warnings, r.data.errors], [[], []]);
   const x = await call('simulate', { project: 'u', top: 'emuc.sys.json', time_ns: 2e6, controls: [{ node: 'bench', control: 'S9', on: true }] });

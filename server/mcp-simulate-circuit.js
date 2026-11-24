@@ -25,11 +25,13 @@ export async function simulateCircuitFile(m0, steps, base, hdl = {}) {
   const notLive = checked.filter((d) => d.severity === 'warning' && /cannot run in Try it/.test(d.message)).map((d) => d.message);
   const lines = [`${base} from time 0, ${steps.length} step(s):`, ...notLive.map((w) => `WARNING: ${w}`)], rows = [], warnings = [...notLive];
   const first = sim.run();
-  const note = (r) => { const w = runMessages(sim, r); warnings.push(...w); return w; };
+  // (a device's own warnings too, once each, as Try it's console says them: a servo's pulses, a stepper's stalls, #5476)
+  let said = 0;
+  const note = (r) => { const dev = sim.servoWarnings(), w = [...runMessages(sim, r), ...dev.slice(said).map((x) => `WARNING: ${x}`)]; said = dev.length; warnings.push(...w); return w; };
   // (the logic probes' levels, by label or id: 0, 1, Z open, X; said when the circuit has any, #3900)
   const probeName = new Map(m.parts.filter((p) => p.type === 'probe').map((p) => [p.id, p.label || p.id]));
   const probes = () => Object.fromEntries(Object.entries(sim.probes()).map(([id, v]) => [probeName.get(id), v]));
-  const probeText = () => (probeName.size ? `; probes ${Object.entries(probes()).map(([k, v]) => `${k}=${v}`).join(' ')}` : '') + lcdText() + oledText() + sensorText() + servoText() + encoderText() + buzzerText() + sonarText() + pirText() + dhtText();
+  const probeText = () => (probeName.size ? `; probes ${Object.entries(probes()).map(([k, v]) => `${k}=${v}`).join(' ')}` : '') + lcdText() + oledText() + sensorText() + servoText() + encoderText() + buzzerText() + stepperText() + sonarText() + pirText() + dhtText();
   // (an ultrasonic sensor, #5456: its distance set by its id, cm; a step's after_us, the time let pass before its inputs
   // are set, its echo meanwhile)
   // (a part that senses more than one, #5470: each by <id>.<prop>, a DHT's DHT1.temp and DHT1.hum)
@@ -40,6 +42,8 @@ export async function simulateCircuitFile(m0, steps, base, hdl = {}) {
   const sonarText = () => Object.entries(sim.sonars()).map(([id, s]) => `; ${id} ${s.cm} cm${s.measuring ? ', measuring' : ''}${s.echo == null ? '' : `, its last echo ${s.echo} µs`}`).join('');
   // (a motion sensor, #5463: its OUT, blind after it)
   const pirText = () => Object.entries(sim.pirs()).map(([id, s]) => `; ${id} ${s.out ? 'OUT 1' : s.blind ? 'OUT 0, blind' : 'OUT 0'}`).join('');
+  // (a stepper motor, #5476: its steps from the start, its shaft's angle)
+  const stepperText = () => Object.entries(sim.steppers()).map(([id, s]) => `; ${id} at ${s.steps} half steps (${s.angle}°)`).join('');
   // (a buzzer, #5454: its tone, or silent)
   const buzzerText = () => Object.entries(sim.buzzers()).map(([id, s]) => `; ${id} ${s.sounding ? `${s.hz} Hz` : 'silent'}`).join('');
   // (a servo's arm, #5347)
