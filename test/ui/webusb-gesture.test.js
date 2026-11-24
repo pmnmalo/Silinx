@@ -79,8 +79,8 @@ const mockUsb = (page, { granted = false, choose = 'board' } = {}) => page.eval(
 }, granted, choose);
 const problems = (text) => text.split('\n').filter((l) => /WARNING|ERROR|failed/.test(l));
 const ADEPT = [{ vendorId: 0x1443 }];
-const OPENED = 'the board cannot be opened (Access denied.): another program may be using it (Digilent Adept, iMPACT, the Silinx application); on Windows, Digilent Adept\'s or FTDI\'s driver holds the board unless it has the WinUSB driver: give it WinUSB with Zadig (zadig.akeo.ie) to program it from the browser (Adept then no longer sees it until its driver is put back; the user\'s guide: Programming the board from the browser on Windows)';
-const NOT_CHOSEN = 'no board chosen: connect the board\'s USB cable, switch it on and choose it in the browser\'s list (on Windows, a board missing from the list, in Chrome and in Edge, has Digilent Adept\'s or FTDI\'s driver: give it the WinUSB driver with Zadig, zadig.akeo.ie; the user\'s guide: Programming the board from the browser on Windows)';
+const OPENED = 'the board cannot be opened (Access denied.): another program may be using it (Digilent Adept, iMPACT, the Silinx application); on Windows, Digilent Adept\'s or FTDI\'s driver holds the board unless it has the WinUSB driver: give it WinUSB with Zadig (zadig.akeo.ie) to program it from the browser (Adept then no longer sees it until its driver is put back; a board Zadig does not list: uninstall it first in Device Manager; the user\'s guide: Programming the board from the browser on Windows)';
+const NOT_CHOSEN = 'no board chosen: connect the board\'s USB cable, switch it on and choose it in the browser\'s list (on Windows, a board missing from the list, in Chrome and in Edge, has Digilent Adept\'s or FTDI\'s driver: give it the WinUSB driver with Zadig, zadig.akeo.ie; a board Zadig does not list: uninstall it first in Device Manager; the user\'s guide: Programming the board from the browser on Windows)';
 // View ▸ Language's item run, from the menus' definitions (the site's modules bundled: none imported; collab-paths.test.js's)
 const language = (page, name) => page.eval((n) => {
   const find = (items) => {
