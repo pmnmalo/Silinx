@@ -40,6 +40,7 @@ export function checkCircuit(m, nets = circuitNets(m), { modules = null, runner 
     else if (d?.kind === 'buzzer') checkBuzzer(p, d, nets, driven, say);
     else if (d?.kind === 'sonar') checkSonar(p, d, nets, driven, say);
     else if (d?.kind === 'pir') checkPir(p, d, nets, say);
+    else if (d?.kind === 'dht') checkDht(p, d, nets, say);
     else if (d?.kind === 'oled' || d?.kind === 'sensor') checkOled(p, d, nets, say, (id) => m.parts.find((x) => x.id === id)?.type);
     else if (d && d.kind !== 'breadboard') checkOther(p, d, nets, say);
   }
@@ -205,6 +206,14 @@ function checkServo(p, d, nets, { driven }, say) {
   const vcc = netSupply(netOf('VCC')), gnd = netSupply(netOf('GND'));
   if (!vcc.vcc || !gnd.gnd) say.warn(`${p.id} (${d.title}) is not powered: ${[!vcc.vcc && `its VCC (pin ${pinOf('VCC').n}) is not on the supply's +`, !gnd.gnd && `its GND (pin ${pinOf('GND').n}) is not on the supply's −`].filter(Boolean).join(' and ')}`, part(p.id));
   if (!driven[at('SIG')] && !netOf('SIG').pins.some((q) => q.dir === 'board')) say.warn(`${p.id}'s signal (pin ${pinOf('SIG').n}) is driven by nothing: its arm stays where it is`, part(p.id));
+}
+
+// a temperature and humidity sensor (#5470): joined to something; powered (its DATA's pull-up: an open drain's check)
+function checkDht(p, d, nets, say) {
+  const net = (n) => nets.nets[nets.pinNet.get(`${p.id}.${n}`)];
+  if ([1, 2, 4].every((n) => net(n).pins.length < 2 && !net(n).wires.length)) { say.warn(`${p.id} (${d.title}) joins nothing`, part(p.id)); return; }
+  const vcc = netSupply(net(1)).vcc, gnd = netSupply(net(4)).gnd;
+  if (!vcc || !gnd) say.warn(`${p.id} (${d.title}) is not powered: ${[!vcc && 'its VCC (pin 1) is not on the supply\'s +', !gnd && 'its GND (pin 4) is not on the supply\'s −'].filter(Boolean).join(' and ')}`, part(p.id));
 }
 
 // a motion sensor (#5463): joined to something; powered (its VCC on the supply's +, its GND on its −)

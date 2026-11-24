@@ -144,6 +144,10 @@ export const projectParts = () => [...theParts().values()];
 /** A part's description by its type (the library's, or one of the project's own parts), or null. */
 /** A sensed value on its `sense`'s step (#5470: 0.1 kept a tenth, not 25.300000000000004). */
 export const onStep = (v, step) => +(Math.round(v / step) * step).toFixed(String(step).split('.')[1]?.length ?? 0);
+/** A sensed value a nudge more (dir 1) or less (-1), in its range: Try it's and the System Emulator's − and +. */
+export const nudged = (x, v, dir) => Math.min(x.max, Math.max(x.min, onStep(v + dir * x.nudge, x.step)));
+/** A sensed value's control (a System's, the MCP's): the part's id, or <id>.<prop> for a part that senses more than one. */
+export const sensePin = (p, x) => (partDef(p.type).sense.length > 1 ? `${p.id}.${x.prop}` : p.id);
 export const partDef = (type) => (Object.hasOwn(PARTS, String(type)) ? PARTS[type] : theParts().get(String(type)) ?? null);
 
 /** The pins a part drives as a supply's terminals: [{ n, value: '1' | '0' }] (the supply's + and −, a board's 5V, 3V3 and

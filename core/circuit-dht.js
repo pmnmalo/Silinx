@@ -22,7 +22,7 @@ export const DHT22 = {
 };
 
 /** Each model's timings (ns): its least start, its interval between reads. */
-export const DHT_TIMES = { 11: { start: 18_000_000, every: 1e9 }, 22: { start: 1_000_000, every: 2e9 } };
+const DHT_TIMES = { 11: { start: 18_000_000, every: 1e9 }, 22: { start: 1_000_000, every: 2e9 } };
 /** The answer's timings (ns): after the release, its response's low and high, a bit's low, a 0's and a 1's high, the end. */
 export const DHT_WIRE = { wait: 30_000, response: 80_000, low: 50_000, zero: 26_000, one: 70_000, end: 50_000 };
 

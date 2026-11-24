@@ -26,8 +26,7 @@ import { nextFrame, watchSeen } from './when-hidden.js';
 import { sv } from './dom.js';
 import { drawCircuit } from './circuit-draw.js';
 import { encoderTurn } from '/core/circuit-encoder.js';
-import { SONAR_NUDGE } from './circuit-draw-sonar.js';
-import { HC_SR04 } from '/core/circuit-sonar.js';
+import { partDef, nudged, sensePin } from '/core/circuit-parts.js';
 
 const MAX_STEP = 50e9;     // the most one run goes ahead (ps): 50 ms
 const BEHIND = 200e9;      // behind real time by more (ps): the backlog dropped
@@ -94,8 +93,12 @@ export function mountSystemEmulator(host, opts) {
       const id = g.dataset.id, now = cur?.inputs?.[id];
       // (a temperature sensor's − and +, #5342: a degree less or more)
       if (i.dataset.input === 'temp-up' || i.dataset.input === 'temp-down') { const t = cur?.sensors?.[id]?.temp ?? 25; ready?.set(b.id, id, t + (i.dataset.input === 'temp-up' ? 1 : -1)); }
-      // (an ultrasonic sensor's − and +, #5456: its object 5 cm nearer or farther, in its range)
-      else if (i.dataset.input === 'sense-up' || i.dataset.input === 'sense-down') { const cm = cur?.sonars?.[id]?.cm ?? 100; ready?.set(b.id, id, Math.min(HC_SR04.sense[0].max, Math.max(HC_SR04.sense[0].min, cm + (i.dataset.input === 'sense-up' ? SONAR_NUDGE : -SONAR_NUDGE)))); }
+      // (what a part senses, its − and +: an ultrasonic sensor's distance, #5456, a DHT's temperature and humidity, #5470)
+      else if (i.dataset.input === 'sense-up' || i.dataset.input === 'sense-down') {
+        const p = b.model.parts.find((q) => q.id === id), x = partDef(p.type).sense[Number(i.dataset.lever) || 0];
+        const v = cur?.sonars?.[id]?.[x.prop] ?? cur?.dhts?.[id]?.[x.prop] ?? p[x.prop] ?? x.default;
+        ready?.set(b.id, sensePin(p, x), nudged(x, v, i.dataset.input === 'sense-up' ? 1 : -1));
+      }
       else if (i.dataset.input === 'button') { set(id, true); window.addEventListener('pointerup', () => set(id, false), { once: true }); }
       // (a keypad's key, #5364: held while the mouse is down, its pin `KP1:<n>`)
       else if (i.dataset.input === 'key' || i.dataset.input === 'push') { const k = `${id}:${Number(i.dataset.lever) + 1}`; set(k, true); window.addEventListener('pointerup', () => set(k, false), { once: true }); }
@@ -110,10 +113,10 @@ export function mountSystemEmulator(host, opts) {
       e.preventDefault();
     });
     return { el, paint(s) {
-      const key = JSON.stringify([s?.leds, s?.inputs, s?.lcds, s?.oleds, s?.sensors, s?.servos, s?.buzzers, s?.sonars, s?.pirs, detents]);
+      const key = JSON.stringify([s?.leds, s?.inputs, s?.lcds, s?.oleds, s?.sensors, s?.servos, s?.buzzers, s?.sonars, s?.pirs, s?.dhts, detents]);
       if (key === said) return;
       said = key; cur = s;
-      svg.replaceChildren(drawCircuit(b.model, { leds: s?.leds ?? null, lcds: s?.lcds ?? null, oleds: s?.oleds ?? null, sensors: s?.sensors ?? null, servos: s?.servos ?? null, buzzers: s?.buzzers ?? null, sonars: s?.sonars ?? null, pirs: s?.pirs ?? null, inputs: s?.inputs ?? null, encoders: detents }));
+      svg.replaceChildren(drawCircuit(b.model, { leds: s?.leds ?? null, lcds: s?.lcds ?? null, oleds: s?.oleds ?? null, sensors: s?.sensors ?? null, servos: s?.servos ?? null, buzzers: s?.buzzers ?? null, sonars: s?.sonars ?? null, pirs: s?.pirs ?? null, dhts: s?.dhts ?? null, inputs: s?.inputs ?? null, encoders: detents }));
       // (its size the drawing's, at most 720 pixels wide)
       const r = svg.firstChild.getBBox?.();
       if (r && r.width) { svg.setAttribute('viewBox', `${r.x - 10} ${r.y - 10} ${r.width + 20} ${r.height + 20}`); svg.style.width = `${Math.min(720, r.width + 20)}px`; }

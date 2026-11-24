@@ -13,6 +13,7 @@ import { createBuzzer } from './circuit-buzzer.js';
 import { createSonar } from './circuit-sonar.js';
 import { createPir } from './circuit-pir.js';
 import { createDht } from './circuit-dht.js';
+import { onStep } from './circuit-parts.js';
 
 /**
  * A device of a part, or null (another part): { ic, reads } (its state, as createCircuitSim's ics; the nets it reads).
@@ -170,7 +171,7 @@ export function deviceViews(ics, { now, evaluate, update }) {
       if (!ic) throw new Error(`${id} senses no ${prop} in the circuit`);
       const s = ic.def.sense.find((x) => x.prop === prop), n = Number(v);
       if (!Number.isFinite(n) || n < s.min || n > s.max) throw new Error(`${id}'s ${prop}: from ${s.min} to ${s.max} ${s.unit}`);
-      (ic.sonar ?? ic.dht)[prop] = n;
+      (ic.sonar ?? ic.dht)[prop] = onStep(n, s.step);
       update();
     },
     /** each temperature sensor's state: { temp, raw, conf, thyst, tos, os, pointer } (#5342) */
