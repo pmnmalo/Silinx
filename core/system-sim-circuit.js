@@ -56,6 +56,8 @@ export class CircuitNode {
   servos() { return this.sim.servos(); }
   /** Its buzzers' states (#5454). */
   buzzers() { return this.sim.buzzers(); }
+  /** Its motion sensors' states (#5463). */
+  pirs() { return this.sim.pirs(); }
   /** Its ultrasonic sensors' states (#5456). */
   sonars() { return this.sim.sonars(); }
   /** A part's sensed value set now (#5456: an ultrasonic sensor's distance, cm). */

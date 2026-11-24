@@ -42,7 +42,7 @@ async function apply(E, m, op) {
       return r.error ? r : { model: r.model, line: `${op.id} reshaped: ${JSON.stringify(r.model.wires.find((w) => w.id.toLowerCase() === String(op.id).toLowerCase()).points)}` };
     }
     case 'set': {
-      const props = Object.fromEntries(['label', 'color', 'on', 'hz', 'temp'].filter((k) => k in op).map((k) => [k, op[k]]));
+      const props = Object.fromEntries(['label', 'color', 'on', 'hz', 'temp', 'cm', 'hold', 'retrigger'].filter((k) => k in op).map((k) => [k, op[k]]));
       const r = E.setProps(m, op.id, props);   // (a part's, or a wire's colour, #4121)
       return r.error ? r : { model: r.model, line: `${op.id}: ${Object.entries(props).map(([k, v]) => `${k} ${JSON.stringify(v)}`).join(', ')}` };
     }
@@ -100,7 +100,7 @@ export const CIRCUIT_TOOLS = [
   },
   {
     name: 'edit_circuit', title: 'Edit a digital circuit',
-    description: 'Edit a circuit (.circ.json) as its editor does, by operations applied in order (one refused: nothing written): add { type, at, rot, label, id } (pin 1 at the place; a breadboard: hole a1); move { id, at, keep }; rotate { id, by, keep } (wire ends follow unless keep is false); copy { id, by }; delete { id } (a part\'s wires stay); wires { style: direct | orthogonal | curved }; wire { from, to, via, color, id }; reconnect { id, end, at } (a wire\'s end moved); reshape { id, via } (its bends); set { id, label, color, on, hz, temp } (a label names its ports: <label>_<k>, name[k]). The circuit is written, its HDL made again, its check\'s errors and warnings returned. The parts: circuit_parts.',
+    description: 'Edit a circuit (.circ.json) as its editor does, operations in order (one refused: nothing written): add { type, at, rot, label, id } (pin 1 at the place; a breadboard: hole a1); move { id, at, keep }; rotate { id, by, keep } (wire ends follow unless keep is false); copy { id, by }; delete { id } (a part\'s wires stay); wires { style: direct | orthogonal | curved }; wire { from, to, via, color, id }; reconnect { id, end, at } (a wire\'s end moved); reshape { id, via } (its bends); set { id, label, color, on, hz, temp, cm, hold, retrigger } (a label names its ports: <label>_<k>, name[k]). Written, its HDL made again, its check\'s errors and warnings returned. The parts: circuit_parts.',
     inputSchema: { type: 'object', properties: {
       project: PROJECT, path: STR('The circuit: a .circ.json file of the project.'),
       operations: { type: 'array', maxItems: 200, items: { type: 'object', properties: { op: { type: 'string', enum: OPS }, at: POINT, from: POINT, to: POINT } }, description: 'rot, rotate\'s by: quarter turns clockwise; copy\'s by: [dx, dy]; set: a switch\'s on (a DIP\'s a list or { lever, on }), a clock\'s hz, a colour (red, black, blue, green, yellow, orange, white, purple; a wire\'s default red to VCC, black to GND, or blue).' },

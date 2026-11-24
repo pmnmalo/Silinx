@@ -29,12 +29,14 @@ export async function simulateCircuitFile(m0, steps, base, hdl = {}) {
   // (the logic probes' levels, by label or id: 0, 1, Z open, X; said when the circuit has any, #3900)
   const probeName = new Map(m.parts.filter((p) => p.type === 'probe').map((p) => [p.id, p.label || p.id]));
   const probes = () => Object.fromEntries(Object.entries(sim.probes()).map(([id, v]) => [probeName.get(id), v]));
-  const probeText = () => (probeName.size ? `; probes ${Object.entries(probes()).map(([k, v]) => `${k}=${v}`).join(' ')}` : '') + lcdText() + oledText() + sensorText() + servoText() + encoderText() + buzzerText() + sonarText();
+  const probeText = () => (probeName.size ? `; probes ${Object.entries(probes()).map(([k, v]) => `${k}=${v}`).join(' ')}` : '') + lcdText() + oledText() + sensorText() + servoText() + encoderText() + buzzerText() + sonarText() + pirText();
   // (an ultrasonic sensor, #5456: its distance set by its id, cm; a step's after_us, the time let pass before its inputs
   // are set, its echo meanwhile)
   const { partDef } = await import('../core/circuit-parts.js');
   const sensing = new Map(m.parts.filter((p) => partDef(p.type)?.sense).map((p) => [p.id.toLowerCase(), p]));
   const sonarText = () => Object.entries(sim.sonars()).map(([id, s]) => `; ${id} ${s.cm} cm${s.measuring ? ', measuring' : ''}${s.echo == null ? '' : `, its last echo ${s.echo} µs`}`).join('');
+  // (a motion sensor, #5463: its OUT, blind after it)
+  const pirText = () => Object.entries(sim.pirs()).map(([id, s]) => `; ${id} ${s.out ? 'OUT 1' : s.blind ? 'OUT 0, blind' : 'OUT 0'}`).join('');
   // (a buzzer, #5454: its tone, or silent)
   const buzzerText = () => Object.entries(sim.buzzers()).map(([id, s]) => `; ${id} ${s.sounding ? `${s.hz} Hz` : 'silent'}`).join('');
   // (a servo's arm, #5347)

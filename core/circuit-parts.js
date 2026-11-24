@@ -19,6 +19,7 @@ import { LM75 } from './circuit-lm75.js';
 import { SERVO_SG90 } from './circuit-servo.js';
 import { BUZZER } from './circuit-buzzer.js';
 import { HC_SR04 } from './circuit-sonar.js';
+import { HC_SR501 } from './circuit-pir.js';
 import { KEYPAD_4X4 } from './circuit-keypad.js';
 import { ROTARY_ENCODER } from './circuit-encoder.js';
 import { OLED_SSD1306 } from './circuit-oled.js';
@@ -104,6 +105,8 @@ const OTHERS = [
   BUZZER,
   // an ultrasonic range sensor (#5456, core/circuit-sonar.js)
   HC_SR04,
+  // a motion sensor, a PIR (#5463, core/circuit-pir.js)
+  HC_SR501,
 ];
 
 // ------------------------------------------------------------------ the library
