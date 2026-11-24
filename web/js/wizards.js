@@ -14,7 +14,7 @@ import { reservedNameDiags } from './processes.js';
 import { countEvent, siteCounts } from './analytics.js';
 import { confirmDeviceChange } from './device-change.js';
 import { boardTop } from './board-top.js';
-import { SYSTEM_NOTE, KIND_OPTIONS, applyProfile, kindFields, kindNote, makeDesignProject, openNewSystem, syncTemplates, systemProperties } from './project-kind-ui.js';
+import { SYSTEM_NOTE, KIND_OPTIONS, applyProfile, kindFields, kindNote, kindOf, makeDesignProject, openNewSystem, syncTemplates } from './project-kind-ui.js';
 import { kindStep } from './project-kind-step.js';
 import { HDL_TOP_TYPES, TOP_TYPES, offeredTopTypes, projectTopType } from '/core/top-types.js';
 import { SYSTEM_TOP } from '/core/system-top.js';
@@ -483,11 +483,11 @@ export async function projectProperties() {
   const db = S.devices || (S.devices = await api.devices().catch(() => null));
   if (!db) return commandError("Design Properties", "The device database could not be loaded (is the Silinx server running?).");
   const pj0 = S.project;
-  // (a System project, #4702: no board nor device of its own, its System's nodes have them)
-  if (isSystemProject(pj0)) return systemProperties(dialog, field);   // (its profile only, #5440)
   let pj = pj0;
-  // (the project's kind, New Project's choice: a design and simulation project, both ways, #3780, #4103)
-  const kindSel = select(KIND_OPTIONS, isDesignOnly(pj) ? DESIGN_KIND : 'fpga');
+  // (the project's kind, New Project's choice: its profile, #3780, #4103, #5440; one dialog for every profile, #5443: a
+  // System as the top, #4702, its name and its profile only, its nodes having their boards)
+  const kind0 = kindOf(pj), sysTop = isSystemProject(pj) && !pj.top;
+  const kindSel = select(KIND_OPTIONS, kind0);
   const boardSel = select(boardOptions(db), pj.board || '');
   const dp = devicePicker(db, pj.device);
   dp.disable(!!pj.board);
@@ -499,7 +499,7 @@ export async function projectProperties() {
   // (a design project's from before: an HDL type shown, and kept, as a Schematic)
   const top0 = isDesignOnly(pj) && HDL_TOP_TYPES.includes(projectTopType(pj).id) ? 'sch' : projectTopType(pj).id;
   const topSel = select(offeredTopTypes().map(t => [t.id, t.label]), top0);
-  const fpgaFields = kindFields(() => kindSel.value === DESIGN_KIND, [boardSel, dp.famSel, dp.partSel, dp.pkgSel, dp.spdSel, synth, lang], topSel, () => newSystemKind(kindSel.value));
+  const fpgaFields = kindFields(() => kindSel.value === DESIGN_KIND, [boardSel, dp.famSel, dp.partSel, dp.pkgSel, dp.spdSel, synth, lang, ...(sysTop ? [topSel] : [])], topSel, () => sysTop || newSystemKind(kindSel.value));
   // (what the kind chosen does, or why it cannot: OK disabled then, #5041)
   const note = kindNote(kindSel, pj);
   const buttons = [{ label: 'OK', value: true, primary: true }, { label: 'Cancel', value: null }];
@@ -514,7 +514,7 @@ export async function projectProperties() {
     title: 'Design Properties', width: 520, buttons,
     body: h('div', { class: 'form-grid' },
       ...field('Name:', h('span', { 'data-no-i18n': '' }, pj.name)),
-      ...field('Project Kind:', kindSel), note.el,
+      ...field('Project Kind:', kindSel), note.el, sysTop ? h('div', { class: 'hint', style: { gridColumn: '1 / -1' } }, SYSTEM_NOTE) : null,
       ...field('Evaluation Development Board:', boardSel),
       ...field('Family:', dp.famSel),
       ...field('Device:', dp.partSel), ...field('Package:', dp.pkgSel), ...field('Speed:', dp.spdSel),
@@ -534,8 +534,12 @@ export async function projectProperties() {
   const topLine = () => topChanged && appLog(`Top-Level Source Type: ${TOP_TYPES.find(t => t.id === topSel.value).label}.`, 'info');
   // (System: the project made a System project, its System its top, #5402)
   if (topSel.value === SYSTEM_TOP && kindSel.value !== DESIGN_KIND) return (await import('./system-top-ui.js')).makeSystemTop(null, 'Design Properties');
-  // (a System's profile, #5440: the profile changed, nothing converted; the other fields not applied)
-  if (newSystemKind(kindSel.value)) return await applyProfile(kindSel.value) && topLine();
+  // (a System's profile, or a System its top, #5440: the profile changed, nothing converted; the other fields not applied)
+  if (sysTop || newSystemKind(kindSel.value)) {
+    if (kindSel.value !== kind0) return await applyProfile(kindSel.value) && topLine();
+    if (topChanged) { await app.saveProjectJson(); topLine(); }
+    return;
+  }
   if (kindSel.value === DESIGN_KIND) {
     if (!isDesignOnly(pj)) return await makeDesignProject(pj) && topLine();
     if (topChanged) { await app.saveProjectJson(); topLine(); }

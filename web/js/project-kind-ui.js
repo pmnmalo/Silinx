@@ -23,7 +23,7 @@ export const KIND_OPTIONS = [[DESIGN_KIND, DESIGN_ONLY_LABEL], ['fpga', 'FPGA'],
 /** A Project Kind choice's profile (#5440: Digital Logic's kind design). */
 const kindProfile = v => (v === DESIGN_KIND ? 'logic' : v);
 /** The Project Kind choice of the project `pj`: its profile's. */
-const kindOf = pj => (profileOf(pj) === 'logic' ? DESIGN_KIND : profileOf(pj));
+export const kindOf = pj => (profileOf(pj) === 'logic' ? DESIGN_KIND : profileOf(pj));
 // the project's profile changed to `to` (core/profile-change.js), its files and its System read: { project } or { error }
 const profileChange = (pj, to) => changeProfile(pj, kindProfile(to), { files: filesState.fileTree || [], texts: designState.viewTexts || {}, generated: Object.keys(designState.hdlToSch || {}) });
 
@@ -113,19 +113,4 @@ export async function applyProfile(to) {
   await app.reloadProject();
   appLog(profileChangedText(pj.name, kindProfile(to)), 'info');
   return true;
-}
-
-/** Design Properties of a System project (#5440): its name and its profile only (its nodes name their boards). */
-export async function systemProperties(dialog, field) {
-  const pj = S.project;
-  const kindSel = h('select', {}, ...KIND_OPTIONS.map(([v, l]) => h('option', { value: v }, l)));
-  kindSel.value = kindOf(pj);
-  const note = kindNote(kindSel, pj);
-  const buttons = [{ label: 'OK', value: true, primary: true }, { label: 'Cancel', value: null }];
-  const sync = () => { note.update(); if (buttons[0].el) buttons[0].el.disabled = note.refused(); };
-  kindSel.addEventListener('change', sync);
-  const ok = await dialog({ title: 'Design Properties', width: 520, buttons, onOpen: sync,
-    body: h('div', { class: 'form-grid' }, ...field('Name:', h('span', { 'data-no-i18n': '' }, pj.name)), ...field('Project Kind:', kindSel), note.el,
-      h('div', { class: 'hint', style: { gridColumn: '1 / -1' } }, SYSTEM_NOTE)) });
-  if (ok && kindSel.value !== kindOf(pj)) await applyProfile(kindSel.value);
 }

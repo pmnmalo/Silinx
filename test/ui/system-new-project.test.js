@@ -51,10 +51,11 @@ uiTest('#4702 New Project ▸ System from uart-avr: its System open, its Design 
   const s = await page.eval(() => window.Silinx.active.systemEditor.sim.state());
   const text = w => String.fromCharCode(...s.traffic.find(t => t.wire === w).bytes.map(b => b.byte));
   assert.deepEqual([text('serial_uno'), text('serial_fpga'), s.warnings, s.errors], ['Hello from Arduino!\r\n', 'Hello from Arduino!\r\n', [], []]);
-  // Design Properties of a System project: its name and its profile (#5440), what stands for its board said under them
+  // Design Properties of a System project: its name and its profile (#5440), what stands for its board said under them;
+  // the one dialog of every profile, its other fields hidden (#5443)
   await page.menu('Project', 'Design Properties…');
   await page.waitDialog('Design Properties');
-  assert.deepEqual(await page.eval(() => [[...document.querySelectorAll('.dlg-overlay .form-grid > label')].map((l) => l.textContent),
+  assert.deepEqual(await page.eval(() => [[...document.querySelectorAll('.dlg-overlay .form-grid > label')].filter((l) => l.style.display !== 'none').map((l) => l.textContent),
     [...document.querySelectorAll('.dlg-overlay .form-grid > .hint')].map((d) => d.textContent).filter(Boolean)]), [['Name:', 'Project Kind:'], [NOTE]]);
   await page.dialogButton('Cancel');
   await page.waitNoDialog();
