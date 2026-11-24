@@ -10,7 +10,8 @@
 //            ends; an I²C peripheral's SDA not an inout port (#5214)
 //   warning  a baud that is no standard rate; a GPIO wire nothing drives; a 5 V output on a 3.3 V FPGA's input; a node
 //            that joins nothing (a circuit node's: core/system-check-circuit.js, #5215)
-import { NODE_KINDS, LINK_KINDS, INTERFACE_KINDS, FRAME_RE, mcuBoard, linkEnd } from './system-doc.js';
+import { NODE_KINDS, LINK_KINDS, INTERFACE_KINDS, FRAME_RE, mcuBoard, linkEnd, nodeIdError } from './system-doc.js';
+import { isName } from './ident.js';
 import { resolveBoard } from './devices.js';
 import { BAUDS } from './uart.js';
 import { checkCircuitFields, checkCircuitNodes } from './system-check-circuit.js';
@@ -73,6 +74,7 @@ function checkNodes(sys, ctx, { err, warn }) {
   const nodes = new Map();
   for (const n of sys.nodes) {
     if (!n.id) { err(`A node (${n.kind || 'no kind'}) has no id`, node(n.id)); continue; }
+    if (!isName(n.id)) { err(nodeIdError(n.id), node(n.id)); continue; }   // (#5446)
     if (nodes.has(lc(n.id))) { err(`Two nodes are named ${n.id}`, node(n.id)); continue; }
     if (!NODE_KINDS.includes(n.kind)) { err(`${n.id}: no node kind '${n.kind}' (the kinds: ${NODE_KINDS.join(', ')})`, node(n.id)); continue; }
     const at = { n, ifaces: new Map(), volts: null };

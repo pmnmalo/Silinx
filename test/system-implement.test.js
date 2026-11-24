@@ -8,7 +8,8 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { scratchEnv, waitJob, ROOT } from './server-helpers.js';
 import { nodeConstraints, nodeProject, nodeRefusal, nodeBoard } from '../core/system-node.js';
-import { readSystem } from '../core/system-doc.js';
+import { readSystem, writeSystem } from '../core/system-doc.js';
+import { checkSystem } from '../core/system-check.js';
 import { compile, elaborate } from '../core/compile.js';
 import { ucfPort } from '../core/board-constraints.js';
 import { setBuildChannel } from '../core/build-channel.js';
@@ -81,4 +82,35 @@ test('#5446 the uart-avr example\'s FPGA node implemented on its Basys2: the uar
   const sj = await waitJob(jobs, s.id, { timeoutMs: 600000 });
   assert.equal(sj.status, 'ok', sj.lines.join('\n'));
   assert.deepEqual(sj.result, { nodes: ['fpga'] });
+});
+
+const BAD_IDS = ['../x', 'a/b', '..', '/tmp/x', '../../..'];
+const idError = (id) => `'${id}' is not a node's id: a letter, then letters, digits and _`;
+
+test('#5446 a node\'s id is an identifier: refused by the reading, the check and the implementation, with their messages', () => {
+  for (const id of BAD_IDS) {
+    const text = JSON.stringify({ format: 'silinx-system', version: 1, name: 's', nodes: [{ ...NODE, id }], links: [] });
+    assert.deepEqual(readSystem(text), { error: idError(id) }, id);
+    assert.deepEqual(checkSystem({ name: 's', nodes: [{ ...NODE, id }], links: [] }).filter((d) => d.severity === 'error').map((d) => d.message), [idError(id)], id);
+    assert.equal(nodeRefusal({ ...NODE, id }), idError(id), id);
+  }
+  assert.equal(nodeRefusal({ ...NODE, id: undefined }), idError(''));
+});
+
+test('#5446 a System whose node\'s id would leave build/nodes: Implement refuses before touching the disk; nothing outside removed or written', async () => {
+  for (const [k, id] of BAD_IDS.entries()) {
+    const name = `bad${k}`;
+    await P.createProject({ name, template: 'uart-avr' });
+    const dir = P.projectDir(name), sysFile = path.join(dir, 'uart_avr.sys.json');
+    const sys = JSON.parse(fs.readFileSync(sysFile, 'utf8'));
+    sys.nodes.find((n) => n.kind === 'fpga').id = id;
+    fs.writeFileSync(sysFile, JSON.stringify(sys, null, 2));
+    // (sentinels: in the project, in build/, beside the workspace)
+    fs.mkdirSync(path.join(dir, 'build'), { recursive: true });
+    const sentinels = [path.join(dir, 'keep.txt'), path.join(dir, 'build', 'keep.txt'), path.join(path.dirname(dir), `keep-${k}.txt`)];
+    for (const f of sentinels) fs.writeFileSync(f, 'keep');
+    for (const node of ['*', id]) await assert.rejects(startNodeImplementation(name, { node }), { status: 400, message: `uart_avr.sys.json: ${idError(id)}` }, `${id} ${node}`);
+    for (const f of sentinels) assert.equal(fs.readFileSync(f, 'utf8'), 'keep', f);
+    assert.deepEqual(fs.readdirSync(path.join(dir, 'build')), ['keep.txt'], `${id}: nothing written in build/`);
+  }
 });

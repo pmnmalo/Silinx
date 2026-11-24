@@ -18,7 +18,12 @@ import { ucfPort } from '../core/board-constraints.js';
 const running = new Map();   // project -> job id
 
 /** The folder a node is built in (its own build/ inside). */
-const nodeDir = (name, id) => path.join(P.projectDir(name), 'build', 'nodes', id);
+// (a second guard, #5446: its id an identifier already, nodeRefusal; the folder inside build/nodes/, never build/nodes/ itself)
+function nodeDir(name, id) {
+  const root = path.join(P.projectDir(name), 'build', 'nodes'), dir = P.safeJoin(root, String(id));
+  if (path.resolve(dir) === path.resolve(root)) throw new P.HttpError(400, 'path escapes project');
+  return dir;
+}
 
 // the project's System (its document read) and its FPGA nodes; the error when its top is no System
 async function systemOf(name) {
@@ -27,6 +32,7 @@ async function systemOf(name) {
   const system = files.find(isSystemFile);
   const texts = system ? { [system]: await P.readFile(name, system).catch(() => '') } : {};
   const r = projectSystem(pj, { files, texts });
+  if (r.error) throw new P.HttpError(400, `${r.system}: ${r.error}`);
   if (!r.model || r.implicit) throw new P.HttpError(400, `the project '${name}' has no System as its top: implement it as an FPGA project`);
   return { pj, nodes: r.model.nodes.filter(n => n.kind === 'fpga') };
 }
@@ -53,7 +59,7 @@ async function implementOne(job, name, pj, node, steps) {
   await fs.mkdir(dir, { recursive: true });
   // (the project's files but its build/ and its .git: one entry at a time, the node's folder being inside build/)
   for (const e of await fs.readdir(src)) if (e !== 'build' && e !== '.git') await fs.cp(path.join(src, e), path.join(dir, e), { recursive: true });
-  await fs.writeFile(path.join(dir, c.path), c.text);
+  await fs.writeFile(P.safeJoin(dir, c.path), c.text);
   const project = nodeProject(pj, node, c.path);
   job.log(`System node ${node.id}: its module ${node.module} on ${node.board}${node.variant ? ` (${node.variant})` : ''}, its constraints ${c.path} from its pins, built in build/nodes/${node.id}/.`);
   return runOpenImplementation(job, { project, projectDir: dir, steps: openSteps(steps, { family: openFamilyOf(deviceFamily(project.device)) }) });

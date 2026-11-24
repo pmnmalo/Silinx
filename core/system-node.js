@@ -7,6 +7,8 @@
 import { boardConstraintsText, bitName, constraintsExtOf, periodNs } from '../packages/silinx-fpga/src/parts.js';
 import { resolveBoard } from './devices.js';
 import { withProfile } from './project-profile.js';
+import { isName } from './ident.js';
+import { nodeIdError } from './system-doc.js';
 
 const same = (a, b) => String(a ?? '').toUpperCase() === String(b ?? '').toUpperCase();
 
@@ -18,6 +20,7 @@ export function nodeBoard(node) {
 
 /** Why the FPGA node `node` cannot be implemented, or null: not an FPGA node, no module, no board, no pin. */
 export function nodeRefusal(node) {
+  if (!isName(String(node?.id ?? ''))) return nodeIdError(node?.id ?? '');   // (its id names its build folder, #5446)
   if (node?.kind !== 'fpga') return `${node?.id ?? '?'}: only an FPGA node is implemented on a board`;
   if (!node.module) return `${node.id}: an FPGA node with no module`;
   if (!node.board) return `${node.id}: an FPGA node with no board`;

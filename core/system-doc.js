@@ -23,6 +23,8 @@
 // its boards (an Arduino, an FPGA board, core/circuit-boards.js) are the System's nodes their labels name, its wires to
 // their pins the links (core/system-circuit.js); it has no interfaces.
 
+import { isName } from './ident.js';
+
 export const SYSTEM_FORMAT = 'silinx-system';
 export const SYSTEM_VERSION = 1;
 // (a design node: a design and simulation project's drawings, no board: the Digital Logic profile's, #5440)
@@ -96,14 +98,22 @@ export function normalizeSystem(m) {
     nodes: Array.isArray(m?.nodes) ? m.nodes.map(normalNode) : [], links: Array.isArray(m?.links) ? m.links.map(normalLink) : [] };
 }
 
-/** A System document's text read: { system } or { error } (not JSON, not a System, a newer version). */
+/** Why `id` is no node's id (#5446: a letter, then letters, digits and _), the System editor's and the MCP's words. */
+export const nodeIdError = id => `'${id}' is not a node's id: a letter, then letters, digits and _`;
+
+/** A System document's text read: { system } or { error } (not JSON, not a System, a newer version, a node's id that is
+ *  no identifier). */
 export function readSystem(text) {
   let m;
   try { m = JSON.parse(text); } catch (e) { return { error: `not a System document: ${e.message}` }; }
   if (!m || typeof m !== 'object' || Array.isArray(m) || m.format !== SYSTEM_FORMAT) return { error: `not a System document (its format is not '${SYSTEM_FORMAT}')` };
   if (!Number.isInteger(m.version) || m.version < 1) return { error: 'not a System document (no version)' };
   if (m.version > SYSTEM_VERSION) return { error: `a System document of version ${m.version}: this Silinx reads version ${SYSTEM_VERSION}` };
-  return { system: normalizeSystem(m) };
+  const system = normalizeSystem(m);
+  // (a node's id an identifier, #5446: it names its build folder, build/nodes/<id>/; the editor and the MCP make no other)
+  const bad = system.nodes.find(n => !isName(n.id));
+  if (bad) return { error: nodeIdError(bad.id) };
+  return { system };
 }
 
 /** A System's text, as saved: its normalized model, two spaces, a last newline. */

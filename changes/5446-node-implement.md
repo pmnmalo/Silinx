@@ -9,3 +9,8 @@ In detail:
   the MCP's run_process takes node (synthesize, implement, bitstream). Tests: system-implement (the uart-avr example's
   node's constraints the uart example's UCF line for line, the refusals, its bitstream the uart example's, the project
   untouched, Implement System, a second run refused), mcp-system-top (run_process node) (Part of #5446)
+- A System node's id is an identifier (a letter, then letters, digits and _), as the System editor and the MCP's
+  edit tools make it: a System document with another (`../x`, `a/b`, an absolute path) is not read, the System's
+  check says it, and a node's implementation refuses it before touching the disk; its build folder is checked to
+  stay inside build/nodes/ too (#5446). Tests: system-implement (every such id refused, sentinels outside
+  build/nodes/ untouched), mcp-system-top (run_process refused) (Part of #5446)
