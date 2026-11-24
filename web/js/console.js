@@ -26,7 +26,7 @@ export function onLogLine(fn) { lineWatchers.add(fn); return () => lineWatchers.
 /** The Trust Project button's action of an untrusted project (#2830): its line said when it opens, every refusal of a
  *  process for it (#4583). */
 // an error that sends the user to the WinUSB driver (#5459): its button opens the user's guide's section, in its language
-export const winUsbAction = () => ({ label: 'Help: The Board on Windows', run: () => { globalThis.open(WINUSB_GUIDE[getLanguage()] || WINUSB_GUIDE.en, '_blank', 'noopener'); return false; } });   // (false: it stays enabled, to open again)
+const winUsbAction = () => ({ label: 'Help: The Board on Windows', run: () => { globalThis.open(WINUSB_GUIDE[getLanguage()] || WINUSB_GUIDE.en, '_blank', 'noopener'); return false; } });   // (false: it stays enabled, to open again)
 export const trustAction = name => ({ label: 'Trust Project', trust: name, run: () => import('./project.js').then(m => m.trustProject(name)) });
 
 // action: { label, run, trust? (a Trust Project's project) }, or a list of them, a button at the end of the (last) line: what the line asks
