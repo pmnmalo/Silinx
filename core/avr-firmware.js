@@ -1,4 +1,4 @@
-// Silinx - a microcontroller node's firmware (#4698, docs/CODESIGN.md): an AVR's program memory read from a given file,
+// Silinx - a microcontroller node's firmware (#4698, docs/SYSTEMS.md): an AVR's program memory read from a given file,
 // an Intel HEX (`.hex`, the Arduino IDE's Export Compiled Binary) or an ELF (`.elf`, avr-gcc's), no compiler. Its errors
 // (not a program, a broken record, too big for the flash) as the console says them. Isomorphic ES module, no DOM.
 

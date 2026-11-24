@@ -2,7 +2,7 @@
 // project then (Design Properties, the MCP server's set_design_properties: saved as ISE's property is, nothing made).
 // A design and simulation project's (#3780): the drawings' only, no HDL nor C / C++. Isomorphic module (browser + Node).
 import { isDesignOnly } from './project-kind.js';
-import { codesignOn } from './build-channel.js';
+import { systemsOn } from './build-channel.js';
 import { SYSTEM_TOP, systemTopRefusal } from './system-top.js';
 
 /** The types: id, label (the interface's), the top document New Project makes (none: HDL, its module written by hand). */
@@ -16,11 +16,11 @@ export const TOP_TYPES = [
   { id: 'circuit', label: 'Digital Electronic Circuit', file: 'src/top.circ.json' },
   { id: 'c', label: 'C Function (HLS)', file: 'src/top.c' },
   { id: 'cpp', label: 'C++ Function (HLS)', file: 'src/top.cpp' },
-  // (a co-design System, #5402: the project made a co-design project, its System its top; core/system-top.js)
-  { id: SYSTEM_TOP, label: 'System (co-design)' },
+  // (a System, #5402: the project made a System project, its System its top; core/system-top.js)
+  { id: SYSTEM_TOP, label: 'System' },
 ];
-/** The types offered in this build: the System's only where co-design is on (#5202). */
-export const offeredTopTypes = () => TOP_TYPES.filter(t => t.id !== SYSTEM_TOP || codesignOn());
+/** The types offered in this build: the System's only where Systems are on (#5202). */
+export const offeredTopTypes = () => TOP_TYPES.filter(t => t.id !== SYSTEM_TOP || systemsOn());
 /** The types of the HDL side, none of a design and simulation project's. */
 export const HDL_TOP_TYPES = ['hdl', 'c', 'cpp'];
 /** A type by its id, or null. */

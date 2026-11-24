@@ -1,4 +1,4 @@
-// Silinx - the co-design system's adapter of the event-driven simulator (#4696; the scheduler: core/system-sim.js;
+// Silinx - a System's adapter of the event-driven simulator (#4696; the scheduler: core/system-sim.js;
 // the simulator: packages/silinx-hdl/src/simulator.js): an FPGA node (or a test bench's module) simulated with its
 // X values, delays and waveforms. Its clocks are its own (each rising at its periods: k × period, as the compiled
 // engine's edges, core/system-sim-compiled.js); its registers with no initial value start at 0, as on the FPGA (the

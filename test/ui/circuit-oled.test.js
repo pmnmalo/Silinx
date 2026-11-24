@@ -1,4 +1,4 @@
-// UI (#5336): the graphic OLED 128×64 (SSD1306, I²C). A co-design System: an Arduino Uno and a circuit node (the Uno,
+// UI (#5336): the graphic OLED 128×64 (SSD1306, I²C). A System: an Arduino Uno and a circuit node (the Uno,
 // labelled uno, the OLED on its A5 and A4, a pull-up on each line), the Uno's firmware writing to the OLED over its TWI;
 // Emulate: the circuit drawn, the OLED's pixels lit as the Uno writes them, no warnings. The circuit in the Circuit
 // editor: the OLED's row in the Parts panel's Outputs, drawn dark (not simulated), its Part info; Check with no warnings;
@@ -35,7 +35,7 @@ uiTest('#5336 a graphic OLED: an Arduino writing to it over I²C in Emulate, its
   await makeProject(env, { name: 'CoOled', template: 'uart', files: { 'oled.sys.json': SYS, 'src/bench.circ.json': JSON.stringify(CIRC, null, 2), 'fw/oled.hex': intelHex(avrAssemble(PROG)) } });
   const pj = await env.server.api('GET', '/api/projects/CoOled');
   delete pj.fileTree;
-  await env.server.api('PUT', '/api/projects/CoOled', { ...pj, kind: 'codesign', board: null, constraints: null, top: null });
+  await env.server.api('PUT', '/api/projects/CoOled', { ...pj, kind: 'system', board: null, constraints: null, top: null });
   await page.setViewport(1440, 900);
   await page.openProject('CoOled');
   await page.eval(() => window.SilinxApp.openFile('oled.sys.json'));

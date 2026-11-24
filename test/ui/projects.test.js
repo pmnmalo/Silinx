@@ -153,7 +153,7 @@ uiTest('Start page: no Open Example entries (#776); New Project… lists the sev
   assert.deepEqual(entries.filter((e) => /^Open Example/.test(e)), []);
   await newFromExample(page, 'pong');
   // the wizard's list of templates: the empty project, then the examples in their order, nothing else (#5108); the
-  // co-design examples last, hidden for an FPGA project (a co-design project's, #4702, #5214)
+  // System examples last, hidden for an FPGA project (a System project's, #4702, #5214)
   assert.deepEqual(await page.eval(() => [...document.querySelector('.dlg-overlay .wiz-main select').options].map((o) => [o.value, o.textContent, o.hidden])),
     [['empty', 'Empty project', false], ...['gates', 'breadboard', 'traffic', 'blinky', 'pong', 'stopwatch', 'clock', 'vga', 'isqrt', 'uart', 'micro80', 'lock'].map((t) => [t, `Example: ${t}`, false]), ['uart-avr', 'Example: uart-avr', true], ['spi-avr', 'Example: spi-avr', true], ['i2c-avr', 'Example: i2c-avr', true], ['regs-avr', 'Example: regs-avr', true]]);
   await page.fill('.dlg-overlay .wiz-main input[type=text]', 'PongN2');
@@ -1079,7 +1079,7 @@ uiTest('New Project wizard: Top-Level Source Type Schematic / FSM / ASM / Truth 
   await page.waitFor(() => document.querySelector('.dlg-overlay .wiz-main h3')?.textContent === 'Project Settings');
   assert.deepEqual(await page.eval(() => { const s = document.querySelectorAll('.dlg-overlay .wiz-main select')[6]; return [s.value, s.disabled]; }), ['hdl', true]);
   assert.deepEqual(await page.eval(() => [...document.querySelectorAll('.dlg-overlay .wiz-main select')[6].options].map((o) => o.textContent)),
-    ['HDL', 'Schematic', 'Finite State Machine (FSM)', 'Algorithmic State Machine (ASM)', 'Boolean Algebra', 'Petri Net', 'Digital Electronic Circuit', 'C Function (HLS)', 'C++ Function (HLS)']);
+    ['HDL', 'Schematic', 'Finite State Machine (FSM)', 'Algorithmic State Machine (ASM)', 'Boolean Algebra', 'Petri Net', 'Digital Electronic Circuit', 'C Function (HLS)', 'C++ Function (HLS)', 'System']);   // (System: a System project's top, #5402)
   await page.dialogButton('Cancel');
   await page.waitNoDialog();
 });

@@ -1,4 +1,4 @@
-// The co-design system's waves (core/system-waves.js, #4699): a scope per node with its linked pins (an output as it
+// a System's waves (core/system-waves.js, #4699): a scope per node with its linked pins (an output as it
 // drove its link, an input as its link reached it), a scope `links` with each link's named signal; unknown levels as x;
 // the system's VCD read back (core/vcd.js) with the scheduler's changes; an AVR and the uart example's FPGA.
 import { test } from 'node:test';

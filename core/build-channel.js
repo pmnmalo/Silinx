@@ -5,8 +5,8 @@
 // in a release yet is switched here, one constant each. Isomorphic module (browser + Node).
 import { BUILD } from './version.js';
 
-/** Co-design (roadmap #4695) in a release: false until it is stable; true turns it on in every build. */
-export const CODESIGN_IN_RELEASE = false;
+/** Systems (roadmap #4695) in a release: false until it is stable; true turns it on in every build. */
+export const SYSTEMS_IN_RELEASE = false;
 
 let channel = globalThis.SILINX_CHANNEL === 'dev' || globalThis.SILINX_CHANNEL === 'release' ? globalThis.SILINX_CHANNEL : (BUILD ? 'dev' : 'release');
 /** The build's channel: 'dev' or 'release'. */
@@ -23,7 +23,7 @@ export function channelFromEnv(env = globalThis.process?.env ?? {}) {
   if (env.SILINX_CHANNEL === 'dev' || env.SILINX_CHANNEL === 'release') return env.SILINX_CHANNEL;
   return env.NODE_TEST_CONTEXT ? 'dev' : null;
 }
-/** Whether co-design is on in this build. */
-export const codesignOn = () => CODESIGN_IN_RELEASE || channel === 'dev';
-/** Why co-design is refused in this build (the interface's, the stores' and the MCP server's message). */
-export const CODESIGN_OFF = 'Co-design is not in this release yet: it is in the development build (the site\'s dev/) until it is stable.';
+/** Whether Systems are on in this build. */
+export const systemsOn = () => SYSTEMS_IN_RELEASE || channel === 'dev';
+/** Why a System is refused in this build (the interface's, the stores' and the MCP server's message). */
+export const SYSTEMS_OFF = 'Systems are not in this release yet: it is in the development build (the site\'s dev/) until it is stable.';

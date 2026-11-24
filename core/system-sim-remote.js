@@ -1,4 +1,4 @@
-// Silinx - the co-design system's scheduler at the other end of a message port (#4696): the whole system in one Web
+// Silinx - a System's scheduler at the other end of a message port (#4696): the whole system in one Web
 // Worker (or on the page's thread, a MessageChannel), its nodes and links built there from what a message carries
 // (structured clone: the compiled models are their code as text; no SharedArrayBuffer, so no cross-origin
 // isolation, which GitHub Pages cannot set).

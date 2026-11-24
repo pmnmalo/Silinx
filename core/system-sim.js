@@ -1,4 +1,4 @@
-// Silinx - the co-design system's co-simulation scheduler (#4696, docs/CODESIGN.md): the nodes of a System (FPGA
+// Silinx - a System's co-simulation scheduler (#4696, docs/SYSTEMS.md): the nodes of a System (FPGA
 // modules, microcontrollers, circuits, peripheral models), each engine behind an adapter, simulated together on one
 // global time in ps, their links exchanged pin by pin.
 //

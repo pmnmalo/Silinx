@@ -8,7 +8,7 @@ Silinx is an FPGA design environment for teaching digital systems. These pages s
 2. [Getting started](getting-started.md): open it in the browser or install it, step by step.
 3. [Designing](designing.md): VHDL and Verilog, schematics, state machines, ASM charts, Boolean algebra, C.
 4. [Circuits on a breadboard](circuits.md): 74xx and 4000 chips wired as on the bench, simulated live.
-5. [Co-design](codesign.md): an FPGA and an Arduino linked by UART, drawn and simulated together.
+5. [Systems](systems.md): an FPGA and an Arduino linked by UART, drawn and simulated together.
 6. [Simulating](simulating.md): test benches, the waveforms, Try it.
 7. [The Board Emulator](emulator.md): the design running on a picture of the board.
 8. [Boards and toolchains](boards.md): building for a real board and programming it.

@@ -67,7 +67,7 @@ uiTest('#5342 Emulate System: a circuit node\'s LM75, its + clicked, its tempera
   await makeProject(env, { name: 'CoTemp', template: 'uart', files: { 'emu.sys.json': SYS, 'src/temp.circ.json': JSON.stringify(CIRC, null, 2) } });
   const pj = await env.server.api('GET', '/api/projects/CoTemp');
   delete pj.fileTree;
-  await env.server.api('PUT', '/api/projects/CoTemp', { ...pj, kind: 'codesign', board: null, constraints: null, top: null });
+  await env.server.api('PUT', '/api/projects/CoTemp', { ...pj, kind: 'system', board: null, constraints: null, top: null });
   await page.openProject('CoTemp');
   await page.eval(() => window.SilinxApp.openFile('emu.sys.json'));
   await page.waitFor(() => document.querySelector('.doc:not([hidden]) .system-editor .sys-emu-btn'), [], { what: 'the System editor' });

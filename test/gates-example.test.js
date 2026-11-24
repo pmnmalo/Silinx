@@ -10,7 +10,7 @@ import path from 'node:path';
 import { netlist, generateHdl, normalizeDoc } from '../core/schdoc.js';
 import { EXAMPLES, TARGETS, targetName, example, exampleUcf, runTestbench } from './examples-lib.mjs';
 import { EXAMPLE_ORDER, orderExamples } from '../core/examples.js';
-import { CODESIGN_EXAMPLES } from '../core/project-kind.js';
+import { SYSTEM_EXAMPLES } from '../core/project-kind.js';
 
 const ex = example('gates');
 const doc = JSON.parse(fs.readFileSync(path.join(ex.dir, 'src/gates.sch.json'), 'utf8'));
@@ -23,8 +23,8 @@ test('gates: the first example everywhere the examples are listed', () => {
   assert.deepEqual(orderExamples(['stopwatch', 'clock', 'zeta', 'blinky', 'traffic', 'alpha', 'pong', 'gates']), ['gates', 'traffic', 'blinky', 'pong', 'stopwatch', 'clock', 'alpha', 'zeta']);
   // (the example folders, as the server's templates: a folder with a silinx.json; not a Finder's .DS_Store)
   const dirs = fs.readdirSync(path.dirname(ex.dir), { withFileTypes: true }).filter((e) => e.isDirectory() && fs.existsSync(path.join(path.dirname(ex.dir), e.name, 'silinx.json'))).map((e) => e.name);
-  // (the co-design examples after them, by name: a co-design project's, #4702)
-  assert.deepEqual(orderExamples(dirs), [...EXAMPLE_ORDER, ...CODESIGN_EXAMPLES]);
+  // (the System examples after them, by name: a System project's, #4702)
+  assert.deepEqual(orderExamples(dirs), [...EXAMPLE_ORDER, ...SYSTEM_EXAMPLES]);
 });
 
 test('gates: the project, the schematic linked to its HDL (top gates, test bench tb_gates)', () => {

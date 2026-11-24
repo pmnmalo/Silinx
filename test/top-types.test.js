@@ -22,7 +22,7 @@ const fails = async (name, args, message) => { const r = await call(name, args);
 const DRAWN = 'top_source_type c: a design and simulation project\'s top is a drawing (sch, fsm, asm, tt, petri, circuit)';
 
 test('the types, a project\'s, the refusals', () => {
-  // (system: a co-design project's System, #5402, test/system-top.test.js)
+  // (system: a System project's System, #5402, test/system-top.test.js)
   assert.deepEqual(TOP_TYPES.map(t => t.id), ['hdl', 'sch', 'fsm', 'asm', 'tt', 'petri', 'circuit', 'c', 'cpp', 'system']);
   assert.deepEqual(TOP_TYPES.filter(t => !t.file).map(t => t.id), ['hdl', 'system']);
   assert.deepEqual(HDL_TOP_TYPES, ['hdl', 'c', 'cpp']);

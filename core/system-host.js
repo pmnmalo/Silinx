@@ -1,4 +1,4 @@
-// Silinx - a co-design System's run at the other end of a message port (#4701): in a Web Worker, where the compiled
+// Silinx - a System's run at the other end of a message port (#4701): in a Web Worker, where the compiled
 // engine may make its code (the page's Content-Security-Policy runs no eval), as the Board Emulator's engine runs
 // (core/emulate-remote.js). The page reads what the run needs (core/system-run.js systemInputs: the plan, the FPGA nodes'
 // netlists, the firmware) and drives the run by messages; the host builds it (systemFromInputs) and answers each with

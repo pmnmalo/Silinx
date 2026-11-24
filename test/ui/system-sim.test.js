@@ -1,4 +1,4 @@
-// UI (#4701): the System's simulation view. A co-design project (the uart example's modules, an AVR's echo program as a
+// UI (#4701): the System's simulation view. A System project (the uart example's modules, an AVR's echo program as a
 // .hex): its System, an Arduino Uno linked by UART to the FPGA node, opened in the System editor; Simulate, Run 100 ms:
 // the FPGA node's module compiled (Yosys), the AVR's "Hi" and the FPGA's echo of each byte (and the AVR's answers plus
 // one) in the link inspector; the waves in the waveform viewer, a scope a node; the console's lines, no warnings. A
@@ -21,11 +21,11 @@ const UNO = { id: 'uno', kind: 'mcu', board: 'arduino-uno', firmware: 'fw/echo.h
 const TERM = { id: 'term', kind: 'terminal', interfaces: [{ name: 'serial', kind: 'uart', baud: 9600, frame: '8N1' }], x: 0, y: 200 };
 const doc = (nodes, links) => JSON.stringify({ format: 'silinx-system', version: 1, name: 'uart_avr', nodes, links }, null, 2);
 
-async function codesign(name, system) {
+async function systemProject(name, system) {
   await makeProject(env, { name, template: 'uart', files: { 'uart_avr.sys.json': system, 'fw/echo.hex': intelHex(echoProgram()) } });
   const pj = await env.server.api('GET', `/api/projects/${name}`);
   delete pj.fileTree;
-  await env.server.api('PUT', `/api/projects/${name}`, { ...pj, kind: 'codesign', board: null, constraints: null, top: null });
+  await env.server.api('PUT', `/api/projects/${name}`, { ...pj, kind: 'system', board: null, constraints: null, top: null });
 }
 async function openSystem(page, name) {
   await page.openProject(name);
@@ -38,7 +38,7 @@ const state = (page) => page.eval(() => window.Silinx.active.systemEditor.sim?.s
 const consoleLines = (page) => page.eval(() => [...document.querySelectorAll('#console-log .ln')].map((l) => l.textContent.trim()).filter(Boolean));
 
 uiTest('#4701 Simulate System: an AVR and the FPGA by UART, their bytes in the link inspector, the waves; Portuguese', E, async (page) => {
-  await codesign('CoSim', doc([UNO, FPGA], [{ id: 'serial', kind: 'uart', a: 'uno.Serial', b: 'fpga.uart' }]));
+  await systemProject('CoSim', doc([UNO, FPGA], [{ id: 'serial', kind: 'uart', a: 'uno.Serial', b: 'fpga.uart' }]));
   await openSystem(page, 'CoSim');
   // (its toolbar's Try it, the green Try it panel of the other drawing editors, #5194)
   assert.equal(await page.eval((ed) => document.querySelector(`${ed} .sys-sim-btn`).textContent.trim(), ED), 'Try it');
@@ -80,7 +80,7 @@ uiTest('#4701 Simulate System: an AVR and the FPGA by UART, their bytes in the l
 });
 
 uiTest('#4701 Simulate System: a terminal typing to the FPGA, its echo read back; Restart from 0', E, async (page) => {
-  await codesign('CoTerm', doc([FPGA, TERM], [{ id: 'console', kind: 'uart', a: 'term.serial', b: 'fpga.uart' }]));
+  await systemProject('CoTerm', doc([FPGA, TERM], [{ id: 'console', kind: 'uart', a: 'term.serial', b: 'fpga.uart' }]));
   await openSystem(page, 'CoTerm');
   await page.click(`${ED} .sys-sim-btn`);
   await page.click(`${ED} .sys-run-for`);
@@ -97,7 +97,7 @@ uiTest('#4701 Simulate System: a terminal typing to the FPGA, its echo read back
 });
 
 uiTest('#5198 Try it with an .elf firmware: its bytes read by the page, the AVR\'s and the FPGA\'s bytes those of the .hex', E, async (page) => {
-  await codesign('CoElf', doc([{ ...UNO, firmware: 'fw/echo.elf' }, FPGA], [{ id: 'serial', kind: 'uart', a: 'uno.Serial', b: 'fpga.uart' }]));
+  await systemProject('CoElf', doc([{ ...UNO, firmware: 'fw/echo.elf' }, FPGA], [{ id: 'serial', kind: 'uart', a: 'uno.Serial', b: 'fpga.uart' }]));
   await fsp.writeFile(path.join(env.server.workspace, 'CoElf', 'fw', 'echo.elf'), avrElf(echoProgram()));
   await openSystem(page, 'CoElf');
   await page.click(`${ED} .sys-sim-btn`);

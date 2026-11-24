@@ -1,4 +1,4 @@
-// The System Emulator (#5212, docs/CODESIGN.md, Emulation): a co-design System's boards side by side, interactive, run
+// The System Emulator (#5212, docs/SYSTEMS.md, Emulation): a System's boards side by side, interactive, run
 // together in real time by the co-simulation scheduler in its Web Worker (web/js/system-remote.js, `emulate`: core/
 // system-emu.js). An FPGA node's board is the Board Emulator's drawing and parts (web/js/emulator-board.js
 // mountBoardParts: its switches and buttons set the node's pins, its LEDs and digits painted from what the worker says

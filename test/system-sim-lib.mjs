@@ -1,4 +1,4 @@
-// Test helper (not a test file): co-design systems of the `uart` example's modules (examples/uart/src) for the
+// Test helper (not a test file): Systems of the `uart` example's modules (examples/uart/src) for the
 // co-simulation scheduler (core/system-sim.js), its tests (test/system-sim.test.js) and its benchmark
 // (scripts/bench-system-sim.mjs). The `uart` design echoes each byte it receives on rx back on tx, and sends
 // "Hello from Silinx!" CR LF when its button is pressed.

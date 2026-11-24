@@ -27,7 +27,7 @@ const TYPES = {
   petri: { label: 'Petri Net', ext: '.pn.json', dir: 'src' },
   boolean: { label: 'Boolean Algebra', ext: '.bool.json', dir: 'src' },
   circuit: { label: 'Digital Electronic Circuit', ext: '.circ.json', dir: 'src' },   // (New Source's name, #4061)
-  regmap: { label: 'Register Map', ext: '.regs.json', dir: 'src' },   // (a co-design's peripheral, #5288)
+  regmap: { label: 'Register Map', ext: '.regs.json', dir: 'src' },   // (a System's peripheral, #5288)
   lab: { label: 'Guided Lab', ext: '.lab.json', dir: 'labs' },
 };
 const ident = n => n.replace(/[^A-Za-z0-9_]/g, '_');

@@ -1,7 +1,7 @@
 // The MCP server's System as a project's top (#5402, core/system-top.js), as the interface's (web/js/system-top-ui.js):
 // set_top with a System document, set_design_properties' and new_project's top_source_type system make the project a
-// co-design project, its System its top; set_top with a module of a co-design project makes it an FPGA project again,
-// that module its top, on its FPGA node's board. Off in a release, as co-design is.
+// System project, its System its top; set_top with a module of a System project makes it an FPGA project again,
+// that module its top, on its FPGA node's board. Off in a release, as Systems are.
 import fsp from 'node:fs/promises';
 import path from 'node:path';
 import * as P from './projects.js';
@@ -19,7 +19,7 @@ async function projectSystem(name) {
   return null;
 }
 
-/** The project `name` made a co-design project, the System `file` its top (none: its System, else a new one). */
+/** The project `name` made a System project, the System `file` its top (none: its System, else a new one). */
 export async function makeSystemTop(name, file = null) {
   const pj = await readProject(name);
   const why = systemTopRefusal(pj);
@@ -31,11 +31,11 @@ export async function makeSystemTop(name, file = null) {
   const r = toSystemTop(pj, file || await projectSystem(name));
   if (r.write) await fsp.writeFile(await projectPath(name, r.write.path, 'write'), r.write.text);
   await P.updateProject(name, () => r.pj);
-  return { text: `${name}: a co-design project now, its System ${r.file} its top (its board kept: set_top with a module makes it an FPGA project again).`,
+  return { text: `${name}: a System project now, its System ${r.file} its top (its board kept: set_top with a module makes it an FPGA project again).`,
     data: { project: name, kind: r.pj.kind, top: r.file, system: r.file, made: !!r.write } };
 }
 
-/** The co-design project `name` made an FPGA project again, the module `mod` its top, on its FPGA node's board. */
+/** The System project `name` made an FPGA project again, the module `mod` its top, on its FPGA node's board. */
 export async function makeModuleTop(name, mod) {
   const pj = await readProject(name);
   const sys = await projectSystem(name);

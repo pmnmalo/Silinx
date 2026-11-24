@@ -19,7 +19,7 @@ import { LM75 } from './circuit-lm75.js';
 import { SERVO_SG90 } from './circuit-servo.js';
 import { KEYPAD_4X4 } from './circuit-keypad.js';
 import { OLED_SSD1306 } from './circuit-oled.js';
-import { codesignOn } from './build-channel.js';
+import { systemsOn } from './build-channel.js';
 
 // ------------------------------------------------------------------ the breadboards
 export const BB_COLS = 30;
@@ -201,8 +201,8 @@ export function kicadPartFunction(d) {
 }
 
 export function partsList() {
-  // (the boards, #5215: co-design's, not in a release yet, #5202)
-  return [...PART_ORDER.map((t) => PARTS[t]).filter((d) => d.kind !== 'board' || codesignOn()), ...projectParts()].map((d) => ({
+  // (the boards, #5215: the Systems', not in a release yet, #5202)
+  return [...PART_ORDER.map((t) => PARTS[t]).filter((d) => d.kind !== 'board' || systemsOn()), ...projectParts()].map((d) => ({
     type: d.type, title: d.title, kind: d.kind, ...(d.chip ? { chip: d.chip, family: d.family, tpd: d.tpd, ...(d.oc ? { openCollector: true } : {}) } : {}),
     pins: d.pins.map((p) => ({ n: p.n, name: p.name, dir: p.dir, dx: p.dx, dy: p.dy, ...(p.loc ? { loc: p.loc } : {}), ...(p.volts ? { volts: p.volts } : {}) })),
     ...(d.kind === 'board' ? { board: d.board } : {}),

@@ -4,7 +4,7 @@
 // design (a board, or None Specified and a device) makes a design project an FPGA project, the reverse is refused while
 // the project has HDL or C sources of its own (the console says which). Design Properties says what a change of kind
 // does as it is chosen (#5041): the refusal and its sources, OK disabled; or what leaves the project, none deleted.
-import { CODESIGN_EXAMPLES, CODESIGN_KIND, DESIGN_KIND, DESIGN_ONLY_LABEL, DESIGN_ONLY_MESSAGES, ownSources, toDesignProject } from '/core/project-kind.js';
+import { SYSTEM_EXAMPLES, SYSTEM_KIND, DESIGN_KIND, DESIGN_ONLY_LABEL, DESIGN_ONLY_MESSAGES, ownSources, toDesignProject } from '/core/project-kind.js';
 import { isSystemFile } from '/core/system-doc.js';
 import { api } from './api.js';
 import { HDL_TOP_TYPES } from '/core/top-types.js';
@@ -14,8 +14,8 @@ import { h } from './ui.js';
 import { logError } from './console.js';
 import { designState } from './state-design.js';
 
-/** Design Properties' Project Kind choices: New Project's first page's (#5041); co-design, New Project's only (#4702). */
-export const KIND_OPTIONS = [[DESIGN_KIND, DESIGN_ONLY_LABEL], ['fpga', 'FPGA'], [CODESIGN_KIND, 'Co-design (New Project only)']];
+/** Design Properties' Project Kind choices: New Project's first page's (#5041); System, New Project's only (#4702). */
+export const KIND_OPTIONS = [[DESIGN_KIND, DESIGN_ONLY_LABEL], ['fpga', 'FPGA'], [SYSTEM_KIND, 'System (New Project only)']];
 
 /**
  * Design Properties' note under its Project Kind (`kindSel`, the project `pj`): what the kind chosen does to the project,
@@ -23,7 +23,7 @@ export const KIND_OPTIONS = [[DESIGN_KIND, DESIGN_ONLY_LABEL], ['fpga', 'FPGA'],
  * update() when the choice changes; refused() whether OK must stay disabled.
  */
 export function kindNote(kindSel, pj) {
-  for (const o of kindSel.options) if (o.value === CODESIGN_KIND) o.disabled = true;
+  for (const o of kindSel.options) if (o.value === SYSTEM_KIND) o.disabled = true;
   const el = h('div', { class: 'hint kind-note', style: { gridColumn: '1 / -1', marginTop: '-4px' } });
   const from = pj.kind === DESIGN_KIND ? DESIGN_KIND : 'fpga';
   let refused = false;
@@ -50,7 +50,7 @@ export function kindFields(isDesign, fpga, topType = null) {
     const d = isDesign();
     for (const el of fpga) for (const x of [el, el.previousElementSibling]) if (x) x.style.display = d ? 'none' : '';
     if (!topType) return;
-    // (no HDL nor C / C++ top: a drawing's, #4105; nor a System, a co-design project's, #5402)
+    // (no HDL nor C / C++ top: a drawing's, #4105; nor a System, a System project's, #5402)
     for (const o of topType.options) if (HDL_TOP_TYPES.includes(o.value) || o.value === SYSTEM_TOP) o.hidden = o.disabled = d;
     if (d && HDL_TOP_TYPES.includes(topType.value)) { topType.value = 'sch'; topType.dispatchEvent(new Event('change')); }
   };
@@ -70,17 +70,17 @@ export async function makeDesignProject(pj) {
   return true;
 }
 
-/** New Project's settings page of a co-design project (#4702): what stands for the device and the flow. */
-export const CODESIGN_NOTE = 'A co-design project has no board of its own: each FPGA node of its System names its board and pins, each microcontroller its firmware.';
+/** New Project's settings page of a System project (#4702): what stands for the device and the flow. */
+export const SYSTEM_NOTE = 'A System project has no board of its own: each FPGA node of its System names its board and pins, each microcontroller its firmware.';
 
-/** New Project's Start from for the kind chosen (#4702): a co-design project's the co-design examples, the others' the
+/** New Project's Start from for the kind chosen (#4702): a System project's the System examples, the others' the
  *  other examples (an option hidden and disabled; the one chosen, hidden, back to Empty). */
-export function syncTemplates(tplSel, codesign) {
-  for (const o of tplSel.options) { const cx = CODESIGN_EXAMPLES.includes(o.value); o.hidden = o.disabled = o.value !== 'empty' && (codesign ? !cx : cx); }
+export function syncTemplates(tplSel, system) {
+  for (const o of tplSel.options) { const cx = SYSTEM_EXAMPLES.includes(o.value); o.hidden = o.disabled = o.value !== 'empty' && (system ? !cx : cx); }
   if (tplSel.selectedOptions[0]?.disabled) tplSel.value = 'empty';
 }
 
-/** A new co-design project's System opened in its editor (#4702): its top. */
+/** A new System project's System opened in its editor (#4702): its top. */
 export async function openNewSystem(name) {
   const f = ((await api.project(name)).fileTree || []).find(isSystemFile);
   if (f) await app.openFile(f);

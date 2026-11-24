@@ -23,7 +23,7 @@ const fails = async (name, args, message) => { const r = await call(name, args);
 const read = (pj, rel) => fs.readFileSync(`${P.projectDir(pj)}/${rel}`, 'utf8');
 
 test('new_project top_source_type: each type\'s project as the wizard makes it, its HDL in the language, its check clean', async () => {
-  // (system: a co-design project, no board, test/mcp-system-top.test.js, #5402)
+  // (system: a System project, no board, test/mcp-system-top.test.js, #5402)
   for (const t of TOP_TYPES.filter((x) => x.id !== 'system')) {
     for (const lang of ['vhdl', 'verilog']) {
       const name = `T_${t.id}_${lang}`;

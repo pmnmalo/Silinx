@@ -1,4 +1,4 @@
-// A co-design project's System document (core/system-doc.js, #4697): its format read and written back, normalized; the
+// A System project's System document (core/system-doc.js, #4697): its format read and written back, normalized; the
 // documents that are not a System; the microcontrollers' boards; a link's ends.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';

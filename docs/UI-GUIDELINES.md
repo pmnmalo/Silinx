@@ -58,7 +58,7 @@ answer here.
 - **Try it** (#3924, #4067, #5194): a drawing is tried out by its toolbar's **Try it** (not Simulate: Simulate is the
   project's test bench, the Design pane's), in every drawing editor. A schematic or a circuit tried out shows a green Try
   it bar above its canvas, with its Reset and Stop (Esc too); the state diagram, the ASM chart, the Petri net and the
-  System (co-design) open a bottom panel instead, its bar the green Try it bar (`.asm-codepanel.try-it`,
+  System open a bottom panel instead, its bar the green Try it bar (`.asm-codepanel.try-it`,
   `--try-it-bar`) titled "Try it". In every drawing editor the panel that runs it takes the Try it's lighter green while it
   runs (`.try-it-body`, `--try-it-body`; `test/ui/try-it-body.test.js`). The console's messages and the MCP tool keep the
   process's name (the System's: Simulate System, `simulate`).

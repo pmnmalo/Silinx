@@ -1,4 +1,4 @@
-// Silinx - the co-design system's adapter of Silinx's compiled engine (#4696; the scheduler: core/system-sim.js): an
+// Silinx - a System's adapter of Silinx's compiled engine (#4696; the scheduler: core/system-sim.js): an
 // FPGA node, its design compiled (core/compiled-sim.js) with its own main clock, its output pins' changes recorded
 // with their cycles (compileNetlist's watch.pins), the cycle k's rising edge at k periods (as the Board Emulator's
 // time, core/emulate-compiled.js). An input set at t is seen by the first edge after t.

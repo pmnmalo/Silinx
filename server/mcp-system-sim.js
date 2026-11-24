@@ -1,11 +1,11 @@
-// Simulate System on the MCP server (#4701, #2674, docs/CODESIGN.md): `simulate` of a co-design project, or of a System
+// Simulate System on the MCP server (#4701, #2674, docs/SYSTEMS.md): `simulate` of a System project, or of a System
 // document (server/mcp-hdl.js), runs the System as Simulate System does (core/system-run.js): each FPGA node's module elaborated and compiled (Yosys, the compiled engine), each
 // microcontroller's firmware read, the terminals' text typed at the start, run for a time; each wire's decoded bytes, the
 // terminals' text, the warnings, and the System's waves written as a VCD (build/<name>.vcd).
 import * as P from './projects.js';
 import { toolError, projectText, elaborateView } from './mcp-util.js';
 import { readSystem, isSystemFile } from '../core/system-doc.js';
-import { codesignOn, CODESIGN_OFF } from '../core/build-channel.js';
+import { systemsOn, SYSTEMS_OFF } from '../core/build-channel.js';
 import { prepareSystem, systemReport, runTimeText, systemInputs, systemFromInputs } from '../core/system-run.js';
 import { emulationBoards, withBoards, watchBoards, boardStates, setBoardInput, pinOf } from '../core/system-emu.js';
 import { loadAvr8js } from '../core/system-sim-avr.js';
@@ -39,7 +39,7 @@ async function mapTexts(name) {
 }
 
 export async function simulateSystem(name, file, { ms = 100, type = {}, controls = null } = {}) {
-  if (!codesignOn()) throw toolError(CODESIGN_OFF);   // (co-design not in a release yet, #5202)
+  if (!systemsOn()) throw toolError(SYSTEMS_OFF);   // (Systems not in a release yet, #5202)
   if (!isSystemFile(file)) throw toolError(`'${file}' is not a System document (.sys.json)`);
   if (!(ms > 0) || ms > 10000) throw toolError('time_ns: a System runs from 0 to 1e10 ns (10 s)');
   const r = readSystem(await projectText(name, file, `no System '${file}' in the project '${name}'`));

@@ -1,5 +1,5 @@
 // Silinx - Copyright 2026 Pedro Maló - AGPL-3.0-only
-// A register map (`<name>.regs.json`, #5288, docs/CODESIGN.md): the registers a co-design's FPGA peripheral shows its
+// A register map (`<name>.regs.json`, #5288, docs/SYSTEMS.md): the registers a System's FPGA peripheral shows its
 // microcontroller over SPI or I²C, declared once, both sides generated from it (core/regmap-hdl.js the FPGA's slave in
 // VHDL and Verilog, core/regmap-c.js the program's header). Its format read and written here, and its check.
 // Isomorphic module (browser + Node).

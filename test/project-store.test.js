@@ -94,8 +94,8 @@ test('folder: a project from each example is the server\'s, file for file', asyn
 // generics CLK_HZ, BTN_LOW and SW_LOW the board's, as the server writes them; its other files the example's
 test('folder: a project from each example for the Mimas V2: its top\'s generics the board\'s, as the server writes them', async () => {
   const { root, ops } = folder();
-  // (a co-design example has no board: refused with one, test/codesign-example.test.js, #4702)
-  for (const t of Object.keys(EXAMPLES).filter(t => EXAMPLES[t].json.kind !== 'codesign')) {
+  // (a System example has no board: refused with one, test/system-example.test.js, #4702)
+  for (const t of Object.keys(EXAMPLES).filter(t => EXAMPLES[t].json.kind !== 'system')) {
     const name = `Mimas_${t}`;
     await ops.create({ name, template: t, board: 'mimas-v2', device: { family: 'spartan6', part: 'xc6slx9', package: 'csg324', speed: '-2' } });
     await P.createProject({ name, template: t, board: 'mimas-v2', device: { family: 'spartan6', part: 'xc6slx9', package: 'csg324', speed: '-2' } });

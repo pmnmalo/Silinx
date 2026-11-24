@@ -1,4 +1,4 @@
-// Silinx - the co-design system's adapter of an AVR (#4698; the scheduler: core/system-sim.js): an Arduino Uno or Nano's
+// Silinx - a System's adapter of an AVR (#4698; the scheduler: core/system-sim.js): an Arduino Uno or Nano's
 // ATmega328P at 16 MHz run by avr8js (MIT, Wokwi's), its firmware a given .hex or .elf (core/avr-firmware.js). Its pins
 // are the board's (D0..D13, A0..A5: ports D, B and C), each an input and an output of the node; its timers 0, 1 and 2
 // (the Arduino core's millis, delay, PWM) run. Its USART is pins: a byte the program writes becomes D1's waveform (its

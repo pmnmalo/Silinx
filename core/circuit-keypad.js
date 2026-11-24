@@ -1,4 +1,4 @@
-// A 4×4 matrix keypad (#5364, part of #3902 and co-design's phase 2; docs/CIRCUITS.md): a membrane keypad's 16 keys
+// A 4×4 matrix keypad (#5364, part of #3902 and the Systems' phase 2; docs/CIRCUITS.md): a membrane keypad's 16 keys
 // (1 2 3 A / 4 5 6 B / 7 8 9 C / * 0 # D) and its ribbon's 8 pins, rows R1..R4 then columns C1..C4, on the 0.1 inch grid
 // under it. Each key is a momentary contact joining its row to its column while pressed, as a push button's
 // (core/circuit-sim.js: two keys at once, and the ghosting of a real keypad, three keys joining a fourth's row and

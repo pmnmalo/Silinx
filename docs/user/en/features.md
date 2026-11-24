@@ -13,7 +13,7 @@ for Xilinx FPGAs supported by ISE 14.7.
   *Simulation* roles, implementation and simulation tops, UCF constraints, and ISE project
   import/export (`.zip` with the `.xise` and all files; a Silinx project from its `.zip` or its folder, the one with
   its `silinx.json`, #3965). Its *Project Kind* (New Project's first page, #5041; Design Properties, #4103) is **FPGA** (an FPGA design) or
-  **Digital Logic** (a design and simulation project, #5133; co-design, the third, not available yet): no board, no constraints, no HDL shown, its Implementation view called Design
+  **Digital Logic** (a design and simulation project, #5133; System, the third, not available yet): no board, no constraints, no HDL shown, its Implementation view called Design
   (#3891); Design Properties also changes the *Top-Level Source Type*, Petri Net, Digital Electronic Circuit, C and C++ among them (#4105).
 - **HDL editor**: syntax highlighting, context-aware auto-complete (signals, ports, constants,
   project modules, `numeric_std` functions, `$system` tasks), *Language Templates*, live errors,

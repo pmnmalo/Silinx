@@ -1,4 +1,4 @@
-// UI (#5212): the System Emulator. A co-design project (the uart example's module on its Basys2, its UCF's pins; a
+// UI (#5212): the System Emulator. A System project (the uart example's module on its Basys2, its UCF's pins; a
 // serial terminal; an Arduino Uno lighting its LED L): its System editor's Emulate opens the System's boards side by
 // side in a document of their own (the Basys2 as the Board Emulator draws it, the Uno Silinx's own); Run: the
 // terminal's line reaches the FPGA (its LEDs the last byte), BTN0 clicked on the drawn board sends the FPGA's message to
@@ -31,7 +31,7 @@ uiTest('#5212 Emulate: the System\'s boards side by side, the terminal\'s line o
   await makeProject(env, { name: 'CoEmu', template: 'uart', files: { 'emu.sys.json': SYS, 'fw/l.hex': intelHex(avrAssemble(BLINK)) } });
   const pj = await env.server.api('GET', '/api/projects/CoEmu');
   delete pj.fileTree;
-  await env.server.api('PUT', '/api/projects/CoEmu', { ...pj, kind: 'codesign', board: null, constraints: null, top: null });
+  await env.server.api('PUT', '/api/projects/CoEmu', { ...pj, kind: 'system', board: null, constraints: null, top: null });
   await page.openProject('CoEmu');
   await page.eval(() => window.SilinxApp.openFile('emu.sys.json'));
   await page.waitFor((ed) => document.querySelector(ed), [ED], { what: 'the System editor' });
@@ -82,7 +82,7 @@ uiTest('#5276 Emulate: held behind another document tab and while the page is hi
   await makeProject(env, { name: 'CoEmuHid', template: 'uart', files: { 'emu.sys.json': SYS, 'fw/l.hex': intelHex(avrAssemble(BLINK)) } });
   const pj = await env.server.api('GET', '/api/projects/CoEmuHid');
   delete pj.fileTree;
-  await env.server.api('PUT', '/api/projects/CoEmuHid', { ...pj, kind: 'codesign', board: null, constraints: null, top: null });
+  await env.server.api('PUT', '/api/projects/CoEmuHid', { ...pj, kind: 'system', board: null, constraints: null, top: null });
   await page.openProject('CoEmuHid');
   await page.eval(() => window.SilinxApp.openFile('emu.sys.json'));
   await page.waitFor((ed) => document.querySelector(ed), [ED], { what: 'the System editor' });

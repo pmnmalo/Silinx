@@ -21,7 +21,7 @@ uiTest('#5111 New Project from the lock example: every kind of source in the Des
   await page.waitDialog('New Project Wizard');
   await page.dialogButton('Next >');   // (its kind: With an FPGA)
   await page.waitFor((s) => document.querySelector(s)?.options.length > 1, [SEL], { what: 'Start from' });
-  // (the last one shown: the co-design examples, after it, hidden for an FPGA project, #4702)
+  // (the last one shown: the System examples, after it, hidden for an FPGA project, #4702)
   const last = () => page.eval((s) => [...document.querySelector(s).options].filter((o) => !o.hidden).pop().textContent, SEL);
   assert.equal(await last(), 'Example: lock');
   await setLanguage(page, 'pt');

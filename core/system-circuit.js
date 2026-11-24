@@ -1,4 +1,4 @@
-// Silinx - a circuit as a System's node (#5215, co-design's phase 2, docs/CODESIGN.md): what lies between the boards (a
+// Silinx - a circuit as a System's node (#5215, the Systems' phase 2, docs/SYSTEMS.md): what lies between the boards (a
 // level shifter, LEDs, buttons), a circuit of the project whose boards (core/circuit-boards.js: an Arduino, an FPGA board)
 // are the System's nodes their labels name (a board labelled `uno` is the node uno; no label: its id). Each pin of a
 // board the circuit wires to something is a pin of that node: an Arduino's its board's pin (D2; SDA and SCL its A4 and A5),

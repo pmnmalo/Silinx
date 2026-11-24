@@ -1,4 +1,4 @@
-// The co-design system's AVR node (core/system-sim-avr.js, #4698): an Arduino Uno's ATmega328P run by avr8js from a
+// a System's AVR node (core/system-sim-avr.js, #4698): an Arduino Uno's ATmega328P run by avr8js from a
 // given .hex / .elf. The reference program (test/avr-asm.mjs echoProgram) against avr8js run alone (its USART's bytes
 // and their times, its port B's writes); D0's frames received, D2 copied on D7, a pin's levels; a framing error and a
 // wrong baud; a firmware in error; an AVR and the `uart` example's FPGA exchanging bytes in one system, the same at
@@ -148,7 +148,7 @@ test('an AVR and the uart example\'s FPGA by UART: each byte echoed and answered
     const sys = new SystemSim();
     sys.addNode('uno', hexNode());
     sys.addNode('fpga', await uartNode('compiled', { hz: 50e6, baud: 9600 }));
-    // (a fixed latency, the default of docs/CODESIGN.md: exact at every quantum)
+    // (a fixed latency, the default of docs/SYSTEMS.md: exact at every quantum)
     sys.link({ name: 'tx', from: 'uno.D1', to: 'fpga.rx', kind: 'uart', baud: 9600, latency: 1e6 });
     sys.link({ name: 'rx', from: 'fpga.tx', to: 'uno.D0', kind: 'uart', baud: 9600, latency: 1e6 });
     const end = 8e9;

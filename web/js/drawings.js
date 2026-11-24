@@ -531,7 +531,7 @@ export const isTt = p => /\.(tt|bool)\.json$/i.test(p || '');
 export const isFsm = p => /\.fsm\.json$/i.test(p || '');
 export const isPn = p => /\.pn\.json$/i.test(p || '');
 export const isCirc = p => /\.circ\.json$/i.test(p || '');
-const isRegs = p => /\.regs\.json$/i.test(p || '');   // (a co-design's register map, #5288)
+const isRegs = p => /\.regs\.json$/i.test(p || '');   // (a System's register map, #5288)
 export const viewNoun = p => (isAsm(p) ? 'state machine' : isTt(p) ? 'Boolean algebra' : isFsm(p) ? 'state diagram' : isPn(p) ? 'Petri net' : isCirc(p) ? 'circuit' : isRegs(p) ? 'register map' : 'schematic');
 export const viewTitle = p => (isAsm(p) ? 'State Machine' : isTt(p) ? 'Boolean Algebra' : isFsm(p) ? 'State Diagram' : isPn(p) ? 'Petri Net' : isCirc(p) ? 'Circuit' : isRegs(p) ? 'Register Map' : 'Schematic');
 export const viewIcon = p => (isAsm(p) ? 'asm' : isTt(p) ? 'algebra' : isFsm(p) ? 'fsm' : isPn(p) ? 'petri' : isCirc(p) ? 'circuit' : isRegs(p) ? 'regmap' : 'schematic');

@@ -1,4 +1,4 @@
-// A System document's edits (#4700, docs/CODESIGN.md): a node, an interface or a link added, changed or removed, as the
+// A System document's edits (#4700, docs/SYSTEMS.md): a node, an interface or a link added, changed or removed, as the
 // System editor does them and the MCP server's edit_system (one set of rules and messages, #2674); a System described,
 // as check_system says it before its check. Each edit takes the System and returns a new one ({ system, id }) or { error }: the System given
 // is never changed. Isomorphic module (browser + Node).

@@ -1,4 +1,4 @@
-// Co-design's SPI links (#5214): an Arduino Uno, the master (its SPI on D13, D11, D12, its program's SS on D10), and an
+// A System's SPI links (#5214): an Arduino Uno, the master (its SPI on D13, D11, D12, its program's SS on D10), and an
 // FPGA peripheral (examples/spi-avr/src/spi_echo.vhd, the spi-avr example's: each byte shown on its LEDs, answered with the last one plus one).
 // The System document's SPI interface and its check (the master and the peripheral, one rate and one mode, its 5 V
 // warnings); the plan's four wires (SS pulled up while floating), each at a sixteenth of SCK's period; the run: the

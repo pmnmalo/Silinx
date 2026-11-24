@@ -1,4 +1,4 @@
-// The System editor's drawing (#4700, web/js/system-editor.js): a co-design project's System drawn on its SVG, the
+// The System editor's drawing (#4700, web/js/system-editor.js): a System project's System drawn on its SVG, the
 // nodes as boxes (their id, what they are: an FPGA node's module and board, a microcontroller's board and firmware, a
 // serial terminal), each interface a row with its pin dot on the side of the node it is linked to, the links between
 // the dots (a UART's line, GPIO's dashed), the link being drawn; the view's transform and the status line's counts.
