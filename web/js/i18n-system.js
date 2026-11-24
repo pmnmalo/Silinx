@@ -10,7 +10,8 @@ export const SYSTEM_PT = {
   'Click an interface, then an interface of another node of its kind': 'Clique numa interface e depois numa interface do mesmo tipo de outro nó',
   'Check the System for errors and warnings': 'Verificar erros e avisos do Sistema',
   // side panel
-  'System': 'Sistema', 'Check System': 'Verificar Sistema', 'Id': 'Identificador', 'Module': 'Módulo', 'Board': 'Placa', 'Variant': 'Variante', "(the board's)": '(a da placa)',
+  'System': 'Sistema', 'Check System': 'Verificar Sistema', 'View/Edit System': 'Ver/Editar Sistema',   // (the Processes pane, #5414)
+  'Id': 'Identificador', 'Module': 'Módulo', 'Board': 'Placa', 'Variant': 'Variante', "(the board's)": '(a da placa)',
   'Firmware': 'Programa (firmware)', 'a .hex or an .elf of the project': 'um .hex ou um .elf do projeto', '(none)': '(nenhum)',
   'Pins of the board': 'Pinos da placa', '+ UART': '+ UART', '+ GPIO': '+ GPIO',
   'Add a UART interface: its TX and RX ports': 'Acrescentar uma interface UART: os portos TX e RX',

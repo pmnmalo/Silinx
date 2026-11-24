@@ -19,6 +19,7 @@ import { topRefusal } from '../core/project-entries.js';
 import { makeSystemTop, makeModuleTop } from './mcp-system-top.js';
 import { SYSTEM_TOP } from '../core/system-top.js';
 import { isSystemFile } from '../core/system-doc.js';
+import { projectNodes } from '../core/project-nodes.js';
 import { toolError, clip, projectPath, readProject, viewSourcesOf, STR, PROJECT, deviceName, boardDevice, redactor } from './mcp-util.js';
 import { backupOfDir } from './backup-store.js';
 import { lastBackup, BACKUP_HOW } from '../core/backup.js';
@@ -59,6 +60,15 @@ async function hierarchyOf(name, pj, sim) {
   const { hierarchyRoots } = await import('../core/hier-order.js');
   try { return hierarchyRoots(compile(await viewSourcesOf(name, pj, sim)), { sim, top: pj.top || '' }); } catch { return []; }
 }
+
+// a project's nodes (core/project-nodes.js, #5414): its System document's text read; each as project_info says it
+async function nodesOf(name, pj) {
+  const files = (await P.fileTree(name)).filter(f => !/^build\//.test(f));
+  const system = isSystemProject(pj) ? files.find(isSystemFile) : null;
+  const texts = system ? { [system]: await P.readFile(name, system).catch(() => '') } : {};
+  return projectNodes(pj, { files, texts }).nodes;
+}
+const nodeText = n => `${n.id} (${[n.kind, n.board].filter(Boolean).join(', ')}${n.module ? `: module ${n.module}` : ''}${n.files.length ? `: ${n.files.join(', ')}` : ''})`;
 
 export const PROJECT_TOOLS = [
   {
@@ -180,7 +190,7 @@ export const PROJECT_TOOLS = [
   },
   {
     name: 'project_info', title: 'A project\'s settings and files',
-    description: 'Where a project is stored (stored: its folder) and its last back-up (lastBackup: { at, how: export or github }, null when none was recorded); its top module, test bench, device, board, constraints file, its files (path, language, role: design, sim or impl), the roots of its hierarchy in the Implementation and Simulation views as the Design pane lists them, and the files the implementation and the Board Emulator read beside the HDL (flowFiles: its constraints, then the memory images); when shared live by share_project: sharing, its mode and its followers (each p2p or relay).',
+    description: 'Where a project is stored (stored: its folder) and its last back-up (lastBackup: { at, how: export or github }, null when none was recorded); its nodes (a System\'s; else its one node), top module, test bench, device, board, constraints file, its files (path, language, role: design, sim or impl), the roots of its hierarchy in the Implementation and Simulation views as the Design pane lists them, and the files the implementation and the Board Emulator read beside the HDL (flowFiles: its constraints, then the memory images); when shared live by share_project: sharing, its mode and its followers (each p2p or relay).',
     inputSchema: { type: 'object', properties: { project: PROJECT }, required: ['project'], additionalProperties: false },
     annotations: { readOnlyHint: true },
     async run({ project: name }) {
@@ -189,17 +199,20 @@ export const PROJECT_TOOLS = [
       // (shared live by share_project, #4643: its mode, its followers and their paths)
       // (where it is kept and its last back-up, #4971: the application's own, as its Start page's)
       const shared = async r => (await import('./mcp-collab.js')).withSharing(name, withBackup(name, r));
-      if (isDesignOnly(pj)) return shared(designProjectInfo(name, pj, await P.fileTree(name)));
+      // (its nodes, #5414, #5416: one, implicit, for an FPGA or a design project; a System's, each with its files)
+      const nodes = await nodesOf(name, pj);
+      if (isDesignOnly(pj)) { const r = designProjectInfo(name, pj, await P.fileTree(name)); r.data.nodes = nodes; return shared(r); }
       const files = (pj.files || []).map(f => ({ path: f.path, lang: f.lang, role: f.role || 'design' }));
       const all = (await P.fileTree(name)).filter(f => !/^build\//.test(f));
       const hierarchy = { implementation: await hierarchyOf(name, pj, false), simulation: await hierarchyOf(name, pj, true) };
       // (the files the implementation and the emulator read, as the Implementation view lists them under the top, #4591)
       const flow = flowFiles(pj, all);
-      const data = { project: name, top: pj.top || null, simTop: pj.simTop || null, device: pj.device || null, board: pj.board || null, constraints: pj.constraints || null, synthTool: pj.synthTool || null, files, otherFiles: all.filter(f => !files.some(x => x.path === f) && f !== 'silinx.json'), hierarchy, flowFiles: flow };
+      const data = { nodes, project: name, top: pj.top || null, simTop: pj.simTop || null, device: pj.device || null, board: pj.board || null, constraints: pj.constraints || null, synthTool: pj.synthTool || null, files, otherFiles: all.filter(f => !files.some(x => x.path === f) && f !== 'silinx.json'), hierarchy, flowFiles: flow };
       return shared({ text: [`${name}: top ${data.top || '(none)'}, test bench ${data.simTop || '(none)'}, ${data.board || 'no board'} (${data.device ? `${data.device.part}${data.device.package}${data.device.speed}` : 'no device'}), constraints ${data.constraints || '(none)'}`,
         ...files.map(f => `  ${f.path} (${f.lang}, ${f.role})`), ...(data.otherFiles.length ? [`  other files: ${data.otherFiles.join(', ')}`] : []),
         ...Object.entries(hierarchy).filter(([, r]) => r.length).map(([v, r]) => `  ${v} hierarchy: ${r.join(', ')}`),
-        ...(flow.length ? [`  implementation and emulation files: ${flow.map(f => `${f.path} (${f.kind})`).join(', ')}`] : [])].join('\n'), data,
+        ...(flow.length ? [`  implementation and emulation files: ${flow.map(f => `${f.path} (${f.kind})`).join(', ')}`] : []),
+        ...(isSystemProject(pj) ? [`  nodes: ${nodes.map(nodeText).join('; ') || '(none)'}`] : [])].join('\n'), data,
       // (its silinx.json's fields and its files' names: the project's own text, #3528)
       untrusted: 'the project\'s settings and files\' names' });
     },
