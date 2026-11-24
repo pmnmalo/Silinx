@@ -6,13 +6,15 @@ import { adoptOps, recordCircuit, replayCircuit, replayPlan, tryOps } from '/cor
 import { checkCircuit } from '/core/circuit-check.js';
 import { createCircuitSim, runMessages } from '/core/circuit-sim.js';
 import { intervalWhileSeen } from './when-hidden.js';
+import { encoderTurn, ENCODER_STEP_NS } from '/core/circuit-encoder.js';
 
 /**
  * Its Try it: ctx { M() (the circuit), opts (the editor's: hdl), root, status(msg, err), render(), destroyed() }; returns
- * { sim() (the simulation, or null), startSim, stopSim, stopTicks, setInput, runSim, tryState, setTryState, toggleSim }.
+ * { sim() (the simulation, or null), startSim, stopSim, stopTicks, setInput, runSim, tryState, setTryState, toggleSim, turn(id,
+ * dir) (an encoder's detent, #5451), detents() (its turns) }.
  */
 export function mountCircuitTry({ M, opts, root, status, render, destroyed }) {
-  let sim = null, steps = null, saidServo = 0;
+  let sim = null, steps = null, saidServo = 0, detents = {};
   let ticks = [];                       // the clocks' timers while trying it (each ticking at its frequency, in real time)
   function startSim() {
     const errs = checkCircuit(M(), undefined, opts.hdl?.() ?? {}).filter((d) => d.severity === 'error');
@@ -31,6 +33,13 @@ export function mountCircuitTry({ M, opts, root, status, render, destroyed }) {
     }));
   }
   function stopTicks() { for (const t of ticks) t.stop(); ticks = []; }
+  // a rotary encoder turned a detent (`dir` 1 clockwise, -1 anticlockwise, #5451): its quadrature a quarter at a time, the
+  // simulated time moving on between them, its knob's detents counted
+  function turn(id, dir) {
+    for (const [a, b] of encoderTurn(dir)) { sim.set(id, a, 0); sim.set(id, b, 1); sim.advance(ENCODER_STEP_NS); }
+    detents[id] = (detents[id] ?? 0) + dir;
+    runSim();
+  }
   // one of a part's inputs set while trying it, then run
   function setInput(id, v, index = 0) { sim.set(id, v, index); runSim(); }
   function runSim() {
@@ -42,7 +51,7 @@ export function mountCircuitTry({ M, opts, root, status, render, destroyed }) {
     saidServo = ws.length;
     render();
   }
-  function stopSim() { stopTicks(); sim = null; steps = null; render(); }
+  function stopSim() { stopTicks(); sim = null; steps = null; detents = {}; render(); }
   // (shared live, #4244, web/js/collab-try.js: the owner's Try it as its steps, replayed by its follower, its own clocks
   // stopped: the owner's ticks are among them)
   function tryState() {
@@ -65,5 +74,5 @@ export function mountCircuitTry({ M, opts, root, status, render, destroyed }) {
   function toggleSim() { if (sim) stopSim(); else startSim(); }
 
 
-  return { sim: () => sim, startSim, stopSim, stopTicks, setInput, runSim, tryState, setTryState, toggleSim };
+  return { sim: () => sim, startSim, stopSim, stopTicks, setInput, runSim, tryState, setTryState, toggleSim, turn, detents: () => (sim ? detents : null) };
 }
