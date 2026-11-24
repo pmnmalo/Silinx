@@ -15,7 +15,8 @@ const E = () => env;
 
 const FSM = fs.readFileSync(path.join(ROOT, 'examples/traffic/src/traffic.fsm.json'), 'utf8');
 const TOP = 'Top-Level Source Type:';
-const ALL = ['hdl', 'sch', 'fsm', 'asm', 'tt', 'petri', 'circuit', 'c', 'cpp'];
+// (a System, an FPGA project's top making it a co-design one, #5402)
+const ALL = ['hdl', 'sch', 'fsm', 'asm', 'tt', 'petri', 'circuit', 'c', 'cpp', 'system'];
 // a form's labels shown, and the Top-Level Source Type's value and options shown (value, text)
 const form = (page, top = TOP) => page.eval((t) => {
   const labels = [...[...document.querySelectorAll('.dlg-overlay')].pop().querySelectorAll('.form-grid > label')];
@@ -35,7 +36,7 @@ uiTest('#4105 Design Properties: the Top-Level Source Type a choice, saved, noth
   let f = await form(page);
   assert.ok(!f.shown.some(l => /^Top Module/.test(l)), f.shown.join(' | '));
   assert.deepEqual([f.value, f.types.map(t => t[0])], ['hdl', ALL]);
-  assert.deepEqual(f.types.slice(5).map(t => t[1]), ['Petri Net', 'Digital Electronic Circuit', 'C Function (HLS)', 'C++ Function (HLS)']);
+  assert.deepEqual(f.types.slice(5).map(t => t[1]), ['Petri Net', 'Digital Electronic Circuit', 'C Function (HLS)', 'C++ Function (HLS)', 'System (co-design)']);
   await chooseTop(page, 'petri');
   await page.dialogButton('OK');
   await page.waitNoDialog();
@@ -93,7 +94,7 @@ uiTest('#4105 New Project: a Petri Net, a Circuit, a C function as the top; Port
     page.eval(async () => (await import('/js/wizards.js')).projectProperties()).catch(() => {});
     await page.waitFor(() => !!document.querySelector('.dlg-overlay .form-grid'), [], { what: 'Design Properties' });
     const f = await form(page, 'Tipo de Fonte de Topo:');
-    assert.deepEqual(f.types.slice(5).map(t => t[1]), ['Rede de Petri', 'Circuito Eletrónico Digital', 'Função C (HLS)', 'Função C++ (HLS)']);
+    assert.deepEqual(f.types.slice(5).map(t => t[1]), ['Rede de Petri', 'Circuito Eletrónico Digital', 'Função C (HLS)', 'Função C++ (HLS)', 'Sistema (co-design)']);
     await page.eval(() => [...document.querySelectorAll('.dlg-overlay .dlg-buttons .btn')].pop().click());
     await page.waitNoDialog();
   } finally {

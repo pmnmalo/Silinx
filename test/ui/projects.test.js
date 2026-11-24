@@ -1079,7 +1079,7 @@ uiTest('New Project wizard: Top-Level Source Type Schematic / FSM / ASM / Truth 
   await page.waitFor(() => document.querySelector('.dlg-overlay .wiz-main h3')?.textContent === 'Project Settings');
   assert.deepEqual(await page.eval(() => { const s = document.querySelectorAll('.dlg-overlay .wiz-main select')[6]; return [s.value, s.disabled]; }), ['hdl', true]);
   assert.deepEqual(await page.eval(() => [...document.querySelectorAll('.dlg-overlay .wiz-main select')[6].options].map((o) => o.textContent)),
-    ['HDL', 'Schematic', 'Finite State Machine (FSM)', 'Algorithmic State Machine (ASM)', 'Boolean Algebra', 'Petri Net', 'Digital Electronic Circuit', 'C Function (HLS)', 'C++ Function (HLS)']);
+    ['HDL', 'Schematic', 'Finite State Machine (FSM)', 'Algorithmic State Machine (ASM)', 'Boolean Algebra', 'Petri Net', 'Digital Electronic Circuit', 'C Function (HLS)', 'C++ Function (HLS)', 'System (co-design)']);   // (#5402)
   await page.dialogButton('Cancel');
   await page.waitNoDialog();
 });
