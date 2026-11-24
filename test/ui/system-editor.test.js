@@ -1,4 +1,4 @@
-// UI (#4700): the System editor of a co-design project. The Design pane's row `<name> [System]` in place of the device, the
+// UI (#4700): the System editor of a System project. The Design pane's row `<name> [System]` in place of the device, the
 // FPGA nodes' modules under it; the System opened, built with the editor's tools (an FPGA node on the uart module, an
 // Arduino Uno, a serial terminal placed; a UART added to the FPGA node, its TX and RX ports and their pins set in the
 // properties; the Uno's Serial linked to it, undone and redone by Edit ▸ Undo / Redo), saved by the autosave as the format has it, closed and reopened as it was;
@@ -37,7 +37,7 @@ uiTest('#4700 the System editor: its Design row, a system built, saved and reope
   await makeProject(env, { name: 'CoSys', template: 'uart', files: { [FILE]: JSON.stringify(newSystem('uart_avr'), null, 2) } });
   const pj = await env.server.api('GET', '/api/projects/CoSys');
   delete pj.fileTree;
-  await env.server.api('PUT', '/api/projects/CoSys', { ...pj, kind: 'codesign', board: null, constraints: null, top: null });
+  await env.server.api('PUT', '/api/projects/CoSys', { ...pj, kind: 'system', board: null, constraints: null, top: null });
   await page.openProject('CoSys');
   await page.leftTab('design');
   // the Design pane: the System's row, nothing under it yet

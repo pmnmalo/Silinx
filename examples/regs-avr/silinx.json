@@ -1,7 +1,7 @@
 {
   "name": "regs-avr",
   "version": 1,
-  "kind": "codesign",
+  "kind": "system",
   "device": {
     "family": "spartan3e",
     "part": "xc3s250e",

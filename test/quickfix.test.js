@@ -450,7 +450,7 @@ test('the examples: every end, endcase, endmodule… and every ";" at the end of
   const dir = new URL('../examples/', import.meta.url);
   let n = 0;
   const none = [];
-  // (the co-design examples': uart-avr's the uart example's, tested there, #4702; spi-avr's by test/system-spi.test.js, i2c-avr's by test/system-i2c.test.js, #5214; regs-avr's by test/codesign-example.test.js, #5288)
+  // (the System examples': uart-avr's the uart example's, tested there, #4702; spi-avr's by test/system-spi.test.js, i2c-avr's by test/system-i2c.test.js, #5214; regs-avr's by test/system-example.test.js, #5288)
   for (const ex of readdirSync(dir).filter(e => !['uart-avr', 'spi-avr', 'i2c-avr', 'regs-avr'].includes(e))) {
     for (const sub of ['src', 'sim']) {
       let names = [];

@@ -1,4 +1,4 @@
-// The boards as a circuit's parts (#5215, co-design's phase 2, docs/CODESIGN.md): the Arduino Uno and Nano and the FPGA
+// The boards as a circuit's parts (#5215, the Systems' phase 2, docs/SYSTEMS.md): the Arduino Uno and Nano and the FPGA
 // boards with their real pins, drawn where their headers are on the 0.1 inch grid, so that a circuit can show what lies
 // between the boards of a System (a level shifter, LEDs, buttons). Their pins are the System's: a microcontroller's its
 // board's (core/system-doc.js MCU_BOARDS: D0…D13, A0…), an FPGA board's its Pmod connectors' (core/boards.js: JA1…,

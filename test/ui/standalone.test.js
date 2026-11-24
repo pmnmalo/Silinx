@@ -28,12 +28,12 @@ import crypto from 'node:crypto';
 import { createZip, readZip } from '../../core/zip.js';
 import { TRACKER_SOURCES, WORKERS_SOURCES } from '../../server/csp.js';
 import { EXAMPLE_ORDER } from '../../core/examples.js';
-import { CODESIGN_EXAMPLES } from '../../core/project-kind.js';
+import { SYSTEM_EXAMPLES } from '../../core/project-kind.js';
 import { systemPlan } from '../../core/system-build.js';
 import { normalizeSystem } from '../../core/system-doc.js';
 import { intelHex, echoProgram } from '../avr-asm.mjs';
 // (an AVR and a terminal linked by UART, as the System's worker takes them, #4701)
-const CODESIGN = (() => {
+const SYSTEM_RUN = (() => {
   const system = normalizeSystem({ format: 'silinx-system', version: 1, name: 'hi', links: [{ id: 'serial', kind: 'uart', a: 'uno.Serial', b: 'term.serial' }], nodes: [
     { id: 'uno', kind: 'mcu', board: 'arduino-uno', firmware: 'fw/echo.hex', interfaces: [{ name: 'Serial', kind: 'uart', baud: 9600, frame: '8N1' }] },
     { id: 'term', kind: 'terminal', interfaces: [{ name: 'serial', kind: 'uart', baud: 9600, frame: '8N1' }] }] });
@@ -136,9 +136,9 @@ uiTest('standalone edition (dist build): loads from file://, creates a project f
   await page.dialogButton('Next >');   // (its kind: With an FPGA, #5041)
   // where the project goes: this browser's storage, not the full application's workspace folder (#125)
   assert.match(await page.eval(() => document.querySelector('.dlg-overlay .wiz-main .hint:last-child').textContent), /^Projects are kept in this browser's storage \(/);
-  // the templates: the examples, embedded too, and nothing else (not the test designs, #5108); the co-design one last
+  // the templates: the examples, embedded too, and nothing else (not the test designs, #5108); the System one last
   // (#4702)
-  assert.deepEqual(await page.eval(() => [...document.querySelector('.dlg-overlay .wiz-main select').options].map((o) => o.value)), ['empty', ...EXAMPLE_ORDER, ...CODESIGN_EXAMPLES]);
+  assert.deepEqual(await page.eval(() => [...document.querySelector('.dlg-overlay .wiz-main select').options].map((o) => o.value)), ['empty', ...EXAMPLE_ORDER, ...SYSTEM_EXAMPLES]);
   await page.fill('.dlg-overlay .wiz-main input[type=text]', 'Solo');
   await page.fill('.dlg-overlay .wiz-main select', 'blinky', { index: 0 });
   await page.dialogButton('Next >');
@@ -218,7 +218,7 @@ uiTest('standalone edition (dist build): loads from file://, creates a project f
     w.onerror = (e) => resolve(`failed: ${e.message}`);
     w.postMessage({ id: 1, job: { path: 'a.v', sources: [{ path: 'a.v', lang: 'verilog', role: 'design', text: 'module a(output y); assign y = z; endmodule\n' }] } });
   })), ["'z' is not declared"], 'the embedded worker, from file://');
-  // a co-design System's run in its embedded Web Worker (#4701): an AVR (avr8js, bundled) sending "Hi" to a terminal
+  // a System's run in its embedded Web Worker (#4701): an AVR (avr8js, bundled) sending "Hi" to a terminal
   assert.equal(await page.eval((system, inputs) => new Promise((resolve) => {
     const w = new Worker(URL.createObjectURL(new Blob([window.SILINX_SYSTEM_WORKER_SRC], { type: 'text/javascript' })));
     w.onerror = (e) => resolve(`failed: ${e.message}`);
@@ -227,7 +227,7 @@ uiTest('standalone edition (dist build): loads from file://, creates a project f
       else { w.terminate(); resolve(data.type === 'state' ? data.report.terminals.term : `${data.type}: ${data.error || data.message}`); }
     };
     w.postMessage({ type: 'init', system, inputs });
-  }), CODESIGN.system, CODESIGN.inputs), 'Hi', 'the embedded System worker, from file://');
+  }), SYSTEM_RUN.system, SYSTEM_RUN.inputs), 'Hi', 'the embedded System worker, from file://');
   const kept = await page.eval(() => window.Silinx.active.editor.getValue());
   await page.eval((t) => window.Silinx.active.editor.setValue(t.replace('\nbegin\n', "\nbegin\n  nope_x <= '0';\n")), kept);
   await page.waitFor(() => document.querySelectorAll('.doc:not([hidden]) .cm-lint-marker-error').length === 1, [], { what: 'live check (embedded worker)' });

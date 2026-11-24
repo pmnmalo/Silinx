@@ -1,7 +1,7 @@
 // UI (#5402): a System as the project's top. Design Properties' Top-Level Source Type "System" makes an FPGA project a
-// co-design project, its new System its top (the Design pane's System row; its board kept); Set as Top Module on one of
+// System project, its new System its top (the Design pane's System row; its board kept); Set as Top Module on one of
 // its modules makes it an FPGA project again, on that board; the Files view's Set as Top Module on its System makes it a
-// co-design project again, that System its top. The console's lines; in Portuguese; no warnings. Both interfaces.
+// System project again, that System its top. The console's lines; in Portuguese; no warnings. Both interfaces.
 import { before, after } from 'node:test';
 import assert from 'node:assert/strict';
 import { setupUi, uiTest, makeProject } from './harness.js';
@@ -23,14 +23,14 @@ uiTest('#5402 a System as the project\'s top: Design Properties\' System, Set as
   await page.menu('Project', 'Design Properties…');
   await page.waitDialog('Design Properties');
   const types = await page.eval((f) => [...eval(`(${f})`)('Top-Level Source Type:').options].map((o) => `${o.value}:${o.textContent}`), field.toString());
-  assert.equal(types.at(-1), 'system:System (co-design)');
+  assert.equal(types.at(-1), 'system:System');
   await page.eval((f) => { const s = eval(`(${f})`)('Top-Level Source Type:'); s.value = 'system'; s.dispatchEvent(new Event('change')); }, field.toString());
   await page.dialogButton('OK');
   await page.waitNoDialog();
-  await page.waitFor(() => window.Silinx.project?.kind === 'codesign', [], { what: 'a co-design project' });
-  await page.waitConsole(/^SysTop: a co-design project now, its System SysTop\.sys\.json its top \(its board kept: Set as Top Module on a module makes it an FPGA project again\)\.$/m);
-  assert.deepEqual(await project(page), ['codesign', null, '', 'system']);
-  // (the Design pane: its System's row, as a co-design project's)
+  await page.waitFor(() => window.Silinx.project?.kind === 'system', [], { what: 'a System project' });
+  await page.waitConsole(/^SysTop: a System project now, its System SysTop\.sys\.json its top \(its board kept: Set as Top Module on a module makes it an FPGA project again\)\.$/m);
+  assert.deepEqual(await project(page), ['system', null, '', 'system']);
+  // (the Design pane: its System's row, as a System project's)
   await page.waitFor(() => [...document.querySelectorAll('#left .tree .badge, #left .tree [class*=badge]')].some((b) => b.textContent === 'System'), [], { what: 'the System row' });
   // Set as Top Module on its module (the Files view's blink.vhd row has none: the Design pane's module): an FPGA project again
   await page.eval(() => window.SilinxApp.setTop('blink', false));
@@ -43,15 +43,16 @@ uiTest('#5402 a System as the project\'s top: Design Properties\' System, Set as
   await page.rightClick('#files-page tr', { index: i });
   await page.waitForSelector('body > .menu-popup');
   await page.click('body > .menu-popup .mi', { text: 'Set as Top Module' });
-  await page.waitFor(() => window.Silinx.project?.kind === 'codesign', [], { what: 'a co-design project again' });
-  assert.deepEqual(await project(page), ['codesign', null, '', 'system']);
+  await page.waitFor(() => window.Silinx.project?.kind === 'system', [], { what: 'a System project again' });
+  assert.deepEqual(await project(page), ['system', null, '', 'system']);
   // in Portuguese: the type's label, the console's line
   await page.eval(async () => { (await import('/js/i18n.js')).setLanguage('pt'); });
   await page.eval(() => window.SilinxApp.setTop('blink', false));
   await page.waitConsole(/^SysTop: agora um projeto FPGA, o seu módulo de topo 'blink' na basys2 \(xc3s250e-4-cp132\)\.$/m);
   await page.menu('Projeto', 'Propriedades do Projeto…');
   await page.waitDialog('Propriedades do Projeto');
-  assert.equal(await page.eval(() => [...document.querySelectorAll('.dlg-overlay select option')].find((o) => o.value === 'system')?.textContent), 'Sistema (co-design)');
+  // (the Top-Level Source Type's option, not the Project Kind's: both ids system since #5411)
+  assert.equal(await page.eval(() => [...document.querySelectorAll('.dlg-overlay select')].find((s) => [...s.options].some((o) => o.value === 'hdl'))?.querySelector('option[value=system]')?.textContent), 'Sistema');
   await page.dialogButton('Cancelar');
   await page.waitNoDialog();
   await page.eval(async () => { (await import('/js/i18n.js')).setLanguage('en'); });

@@ -106,8 +106,8 @@ export const SETTINGS_TOOLS = [
       const device = [board, variant, part, pkg, speed, synthTool, language, args.update_constraints].some(x => x !== undefined);
       const willBeDesign = kind === DESIGN_KIND || (isDesignOnly(pj) && kind !== 'fpga' && !(board && board !== 'none') && !part);
       if (tst !== undefined) { const why = topTypeRefusal(willBeDesign ? { kind: DESIGN_KIND } : {}, tst); if (why) throw toolError(why); }
-      // (System: the project made a co-design project, its System its top, #5402)
-      if (tst === SYSTEM_TOP) { if (kind !== undefined || device) throw toolError('top_source_type system: give it alone (a co-design project has no board of its own)'); return makeSystemTop(name); }
+      // (System: the project made a System project, its System its top, #5402)
+      if (tst === SYSTEM_TOP) { if (kind !== undefined || device) throw toolError('top_source_type system: give it alone (a System project has no board of its own)'); return makeSystemTop(name); }
       const topLine = tst === undefined ? [] : [`Top-Level Source Type: ${topType(tst).label}.`];
       const withTop = async r => { if (tst === undefined) return r; await P.updateProject(name, p => ({ ...p, topSourceType: tst })); return { text: [r?.text, ...topLine].filter(Boolean).join('\n'), data: { ...(r?.data || { project: name }), topSourceType: tst } }; };
       if (kind === DESIGN_KIND) return withTop(await makeDesignProject(name, pj, args));

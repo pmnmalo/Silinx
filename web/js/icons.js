@@ -32,7 +32,7 @@ export const icons = {
   ucf: S('<rect x="2" y="1.5" width="12" height="13" fill="#fff" stroke="#556"/><text x="8" y="11" font-size="6" text-anchor="middle" fill="#606" font-family="Arial" font-weight="bold">UCF</text>'),
   asm: S('<rect x="4" y="1" width="8" height="4" fill="#fff8d0" stroke="#806000"/><path d="M8 5v2" stroke="#806000"/><path d="M8 7l4 2.5-4 2.5-4-2.5z" fill="#e0f0ff" stroke="#004080"/><path d="M8 12v3" stroke="#806000"/>'),
   petri: S('<circle cx="3.5" cy="8" r="2.6" fill="#e8f0ff" stroke="#004080"/><circle cx="3.5" cy="8" r=".9" fill="#004080"/><rect x="7.4" y="3" width="1.6" height="10" fill="#004080"/><circle cx="12.5" cy="8" r="2.6" fill="#e8f0ff" stroke="#004080"/><path d="M6.2 8h1.1M9.1 8h.9" stroke="#806000"/>'),
-  // a co-design project's System (#4700): two nodes linked
+  // a System project's System (#4700): two nodes linked
   system: S('<rect x="1" y="3" width="5.5" height="10" rx="1" fill="none" stroke="currentColor"/><rect x="9.5" y="3" width="5.5" height="10" rx="1" fill="none" stroke="currentColor"/><path d="M6.5 6.5h3M6.5 9.5h3" stroke="currentColor"/>'),
   // a register map (#5288): a table of registers, their addresses
   regmap: S('<rect x="1.5" y="1.5" width="13" height="13" fill="none" stroke="currentColor"/><path d="M1.5 5.5h13M1.5 9h13M1.5 12.3h13M6 1.5v13" stroke="currentColor" stroke-width=".8"/><path d="M2.6 3.4h2.4M2.6 7.2h2.4M2.6 10.7h2.4M7.3 3.4h5.6M7.3 7.2h4M7.3 10.7h5" stroke="currentColor" stroke-width="1.1"/>'),

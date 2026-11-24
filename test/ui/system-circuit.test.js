@@ -29,7 +29,7 @@ uiTest('#5215 a circuit node: placed with the project\'s circuit, its Properties
   await page.click({ x: canvas.x + canvas.w * 0.45, y: canvas.y + canvas.h * 0.8 });
   await page.waitFor((ed) => document.querySelector(`${ed} .sys-node[data-id="circuit"]`), [ED], { what: 'the circuit node' });
   assert.deepEqual((await page.eval(() => window.Silinx.active.systemEditor.getModel().nodes.at(-1))).circuit, 'src/bench.circ.json');
-  // saved now (else 800 ms after the edit, its check's lines then, docs/CODESIGN.md: any time later on a slow runner)
+  // saved now (else 800 ms after the edit, its check's lines then, docs/SYSTEMS.md: any time later on a slow runner)
   await page.eval(() => window.SilinxApp.saveAll());
   await page.waitFor(() => !window.SilinxApp.findDoc('sys:uart_avr.sys.json').dirty && [...document.querySelectorAll('#console-log .ln')].some((l) => l.textContent.trim() === 'Process "Check System" completed successfully with 1 warning(s)'), [], { what: 'saved, checked' });
   assert.equal(await page.eval((ed) => [...document.querySelectorAll(`${ed} .sys-node[data-id="circuit"] text`)].map((t) => t.textContent).join(' | '), ED), 'circuit | bench.circ.json | no interface');

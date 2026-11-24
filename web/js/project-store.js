@@ -21,7 +21,7 @@ import { filePath, gateMessages, normalizePath, requireGated } from '../../core/
 import { markUntrusted } from '../../core/trust.js';
 import * as trustRecords from './trust-records.js';
 import { ANCESTOR_FILE, isProjectId, originOf } from '../../core/project-rev.js';
-import { CODESIGN_KIND, DESIGN_KIND, boardRefusal, createRefusal, isDesignOnly } from '../../core/project-kind.js';
+import { SYSTEM_KIND, DESIGN_KIND, boardRefusal, createRefusal, isDesignOnly, isSystemProject } from '../../core/project-kind.js';
 import { newSystemFile } from '../../core/system-doc.js';
 import { foldName, foldsToProjectFile, PROJECT_FILE, sameNameIn, spelledAs } from '../../core/fold-name.js';
 import { langOfPath } from '../../core/file-kinds.js';
@@ -109,7 +109,7 @@ export function normalizeProjectJson(saved, name) {
   if (plain(saved.sourceLanguage)) json.sourceLanguage = saved.sourceLanguage;
   if (typeof saved.synthTool === 'string') json.synthTool = saved.synthTool;
   if (isDesignOnly(saved)) Object.assign(json, { kind: DESIGN_KIND, board: null });   // (a design and simulation project, #3780)
-  if (saved.kind === CODESIGN_KIND) Object.assign(json, { kind: CODESIGN_KIND, board: null });   // (a co-design project, #4702)
+  if (isSystemProject(saved)) Object.assign(json, { kind: SYSTEM_KIND, board: null });   // (a System project, #4702; saved with the old id too, #5411)
   if (saved.trusted === false) json.trusted = false;   // (a project from outside, #2830: never made trusted by its description)
   // (its id and the origin of a copy, #4205)
   if (isProjectId(saved.id)) json.id = saved.id;
@@ -595,7 +595,7 @@ export function projectOps(getStore, examples = {}) {
     create: async ({ name, template = 'empty', device, board, kind = null }) => {
       if (projectNameError(name)) fail(projectNameError(name));
       // (a design and simulation project, #3780: empty, no board, no constraints; the server's rule and messages)
-      // (a co-design project, #4702: empty with its System document, or a co-design example; core/project-kind.js)
+      // (a System project, #4702: empty with its System document, or a System example; core/project-kind.js)
       const refused = createRefusal(kind, template);
       if (refused) fail(refused);
       // (one in another case too: the same folder on a case-insensitive file system, #3538)
@@ -604,7 +604,7 @@ export function projectOps(getStore, examples = {}) {
       if (template && template !== 'empty') {
         const ex = examples[template] || fail(`unknown template '${template}'`);
         const json = { ...clone(ex.json), name }, fromBoard = json.board;
-        const noBoard = boardRefusal(json, { board, device });   // (a co-design example, #4702)
+        const noBoard = boardRefusal(json, { board, device });   // (a System example, #4702)
         if (noBoard) fail(noBoard);
         if (device) json.device = device;
         if (board !== undefined) json.board = board;
@@ -629,7 +629,7 @@ export function projectOps(getStore, examples = {}) {
       }
       const json = newProjectJson(name, { device, board, kind });   // (core/project-defaults.js, as the server's, #4766)
       await recordOwn(name);
-      const sysFile = kind === CODESIGN_KIND ? newSystemFile(name) : null;
+      const sysFile = kind === SYSTEM_KIND ? newSystemFile(name) : null;
       await S().create(name, json, sysFile ? { [sysFile.path]: sysFile.text } : {}, { dirs: kind ? ['src', 'sim'] : ['src', 'sim', 'constraints'] });
       return clone(json);
     },

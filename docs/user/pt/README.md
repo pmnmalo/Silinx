@@ -8,7 +8,7 @@ um assunto de cada vez.
 1. [O que é o Silinx](what-is-silinx.md): para quem é, as duas interfaces, onde corre.
 2. [Começar](getting-started.md): abri-lo no browser ou instalá-lo, passo a passo.
 3. [Projetar](designing.md): VHDL e Verilog, esquemáticos, máquinas de estados, fluxogramas ASM, álgebra de Boole, C.
-4. [Co-design](codesign.md): uma FPGA e um Arduino ligados por UART, desenhados e simulados juntos.
+4. [Sistemas](systems.md): uma FPGA e um Arduino ligados por UART, desenhados e simulados juntos.
 5. [Simular](simulating.md): bancadas de teste, as formas de onda, o Experimentar.
 6. [O Emulador da Placa](emulator.md): o projeto a correr numa imagem da placa.
 7. [Placas e ferramentas](boards.md): implementar para uma placa real e programá-la.

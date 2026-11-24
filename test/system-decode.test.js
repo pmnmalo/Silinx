@@ -1,4 +1,4 @@
-// The co-design system's link decoders (core/system-decode.js, #4699): a UART line's bytes from known frames (8N1, 7E2,
+// a System's link decoders (core/system-decode.js, #4699): a UART line's bytes from known frames (8N1, 7E2,
 // 8O1), each at its start bit's time; a framing error, a parity error and a wrong baud, with their exact warnings; a
 // glitch, a break, a line unknown; the frames' text; a scheduler's links decoded (an AVR and the uart example's FPGA).
 import { test } from 'node:test';

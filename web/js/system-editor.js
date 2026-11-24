@@ -1,4 +1,4 @@
-// Silinx - the System editor (#4700, docs/CODESIGN.md): a co-design project's System document (<name>.sys.json), its
+// Silinx - the System editor (#4700, docs/SYSTEMS.md): a System project's System document (<name>.sys.json), its
 // nodes and the links between their interfaces, on a canvas in the schematic editor's style (SVG, no framework).
 //
 //   import { mountSystemEditor } from './system-editor.js';

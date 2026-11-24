@@ -1,5 +1,5 @@
 // Silinx - Copyright 2026 Pedro Maló - AGPL-3.0-only
-// The register map editor (#5288, docs/CODESIGN.md): a co-design's register map (<name>.regs.json, core/regmap.js), its
+// The register map editor (#5288, docs/SYSTEMS.md): a System's register map (<name>.regs.json, core/regmap.js), its
 // registers in a table, a row each (its address, name, width, access, reset, strobe), its bus in the toolbar (SPI, or
 // I²C at its address). Its HDL file is made from it (core/view-hdl.js, as a drawing's); its Header button writes the
 // Arduino's header (core/regmap-c.js). No hint line: its counts in its status line; its problems (`onProblems`, after

@@ -1,4 +1,4 @@
-// A co-design project's System document (.sys.json, #4700, docs/CODESIGN.md) opened in the System editor
+// A System project's System document (.sys.json, #4700, docs/SYSTEMS.md) opened in the System editor
 // (web/js/system-editor.js): its check (core/system-check.js) with the project's modules (the FPGA nodes' modules
 // elaborated: their ports' directions and widths) and files (the firmware), its problems in the console's Errors and
 // Warnings as it is edited and its Check's lines in the Console, as the MCP server's check_system says them; saved, its
@@ -17,7 +17,7 @@ import { elaborate } from '/core/compile.js';
 import { ucfPort } from '/core/board-constraints.js';
 import { normalizeCircuit } from '/core/circuit.js';
 import { readSystem, writeSystem } from '/core/system-doc.js';
-import { codesignOn, CODESIGN_OFF } from '/core/build-channel.js';
+import { systemsOn, SYSTEMS_OFF } from '/core/build-channel.js';
 import { checkSystem, analyzeSystem } from '/core/system-check.js';
 import { systemInputs } from '/core/system-run.js';
 import { regmapFor, hierModules } from '/core/regmap.js';
@@ -80,8 +80,8 @@ const firmwares = () => (filesState.fileTree || []).filter(f => /\.(hex|elf)$/i.
 const circuits = () => (filesState.fileTree || []).filter(f => /\.circ\.json$/i.test(f));   // (a circuit node's, #5215)
 
 export async function openSystem(path) {
-  // (co-design not in a release yet, #5202: said in the console, no editor)
-  if (!codesignOn()) { logError(`cannot open ${path}: ${CODESIGN_OFF}`); return; }
+  // (Systems not in a release yet, #5202: said in the console, no editor)
+  if (!systemsOn()) { logError(`cannot open ${path}: ${SYSTEMS_OFF}`); return; }
   const id = `sys:${path}`;
   if (findDoc(id)) return activateDoc(findDoc(id));
   const pj = S.project.name;
@@ -124,7 +124,7 @@ export async function openSystem(path) {
           // (its Design row: its name, its FPGA nodes' modules)
           designState.viewTexts = { ...designState.viewTexts, [path]: text };
           renderHierarchy();
-          problems.log(ed.check());   // (checked when saved, docs/CODESIGN.md)
+          problems.log(ed.check());   // (checked when saved, docs/SYSTEMS.md)
         },
         destroy: () => { problems.clear(); ed.destroy?.(); },
       };

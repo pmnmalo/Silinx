@@ -1,4 +1,4 @@
-// The System's simulation view (#4701, docs/CODESIGN.md): the System editor's bottom panel, Simulate System. Its System
+// The System's simulation view (#4701, docs/SYSTEMS.md): the System editor's bottom panel, Simulate System. Its System
 // made ready (core/system-run.js: the FPGA nodes' modules compiled by Yosys, the firmware read: `prepare`, the page's),
 // then run in its Web Worker (web/js/system-remote.js) in slices (Run, Pause, Run 100 ms, Restart), its time in the
 // panel's bar; a

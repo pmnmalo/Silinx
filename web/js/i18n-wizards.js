@@ -16,7 +16,7 @@ export const WIZARDS_PT = {
   'Design and simulation only (no FPGA)': 'Só desenho e simulação (sem FPGA)', 'Digital Logic': 'Lógica Digital', 'Check Design of the selected module': 'Verificar Projeto do módulo selecionado',
   // New Project's first page, the project's kind (#5041, web/js/project-kind-step.js, core/project-kind.js)
   'Project Kind': 'Tipo de Projeto', 'Choose the kind of project to create.': 'Escolha o tipo de projeto a criar.',
-  'FPGA': 'FPGA', 'Co-design': 'Co-design',   // (Digital Logic: above, #5133)
+  'FPGA': 'FPGA', 'System': 'Sistema',   // (Digital Logic: above, #5133)
   'Digital logic for the introductory courses: schematics, truth tables, state machines and circuits on a breadboard, drawn and simulated.':
     'Lógica digital para as disciplinas introdutórias: esquemáticos, tabelas de verdade, máquinas de estados e circuitos numa breadboard, desenhados e simulados.',
   'A design that runs on a board: HDL sources and drawings, simulated, synthesized, implemented and programmed on the FPGA, or emulated.':
@@ -24,19 +24,18 @@ export const WIZARDS_PT = {
   'A system of FPGA and microcontroller nodes linked together, designed and simulated as one.':
     'Um sistema de nós de FPGA e de microcontrolador ligados entre si, desenhado e simulado como um todo.',
   // Design Properties' Project Kind, what a change of kind does (#5041, core/project-kind.js DESIGN_ONLY_MESSAGES)
-  'Co-design (New Project only)': 'Co-design (só em Novo Projeto)',
-  // (co-design not in a release yet, #5202: core/build-channel.js)
-  "Co-design is not in this release yet: it is in the development build (the site's dev/) until it is stable.": 'O co-design ainda não está nesta versão: está na versão de desenvolvimento (a dev/ do site) até estar estável.',
+  'System (New Project only)': 'Sistema (só em Novo Projeto)',
+  // (Systems not in a release yet, #5202: core/build-channel.js)
+  "Systems are not in this release yet: it is in the development build (the site's dev/) until it is stable.": 'Os Sistemas ainda não estão nesta versão: está na versão de desenvolvimento (a dev/ do site) até estar estável.',
   'Its board and its constraints file leave the project (the file stays on the disk); its drawings stay, their HDL and the test benches hidden, none deleted.':
     'A placa e o ficheiro de restrições saem do projeto (o ficheiro fica no disco); os desenhos ficam, o seu HDL e as bancadas de teste escondidos, nada apagado.',
   'Its HDL and the FPGA flow are shown, nothing lost: choose its board or its device.':
     'O HDL e o fluxo da FPGA passam a ver-se, nada se perde: escolha a placa ou o dispositivo.',
-  'A co-design project has no board of its own: each FPGA node of its System names its board and pins, each microcontroller its firmware.':
-    'Um projeto de co-design não tem placa própria: cada nó FPGA do seu Sistema indica a sua placa e os pinos, cada microcontrolador o seu firmware.',
+  'A System project has no board of its own: each FPGA node of its System names its board and pins, each microcontroller its firmware.':
+    'Um projeto de Sistema não tem placa própria: cada nó FPGA do seu Sistema indica a sua placa e os pinos, cada microcontrolador o seu firmware.',
   // a System as the top (#5402, core/system-top.js)
-  'System (co-design)': 'Sistema (co-design)',
-  'The project is a co-design project: its System is its top, each FPGA node on a board of its own (the board above is not used).':
-    'O projeto é um projeto de co-design: o seu Sistema é o topo, cada nó FPGA numa placa própria (a placa acima não é usada).',
+  'The project is a System project: its System is its top, each FPGA node on a board of its own (the board above is not used).':
+    'O projeto é um projeto de Sistema: o seu Sistema é o topo, cada nó FPGA numa placa própria (a placa acima não é usada).',
   'Replace Project': 'Substituir Projeto',   // (New Project's and the imports', #3538)
   // Rename Project… (#4641)
   'Rename Project…': 'Mudar o Nome do Projeto…', 'Rename Project': 'Mudar o Nome do Projeto',
@@ -138,8 +137,8 @@ const label = what => (WIZARDS_PT[`${what}:`] || `${what}:`).replace(/:$/, '');
 
 export const WIZARDS_PT_PATTERNS = [
   // (a System as the top, #5402: web/js/system-top-ui.js)
-  [/^(\S+): a co-design project now, its System (\S+) its top \(its board kept: Set as Top Module on a module makes it an FPGA project again\)\.$/,
-    '$1: agora um projeto de co-design, o seu Sistema $2 é o topo (a placa fica guardada: Definir como Módulo de Topo num módulo torna-o de novo um projeto FPGA).'],
+  [/^(\S+): a System project now, its System (\S+) its top \(its board kept: Set as Top Module on a module makes it an FPGA project again\)\.$/,
+    '$1: agora um projeto de Sistema, o seu Sistema $2 é o topo (a placa fica guardada: Definir como Módulo de Topo num módulo torna-o de novo um projeto FPGA).'],
   [/^(\S+): an FPGA project now, its top module '(\S+)' on (.+) \((\S+)\)\.$/, "$1: agora um projeto FPGA, o seu módulo de topo '$2' na $3 ($4)."],
   // (the browser edition's first run, #4962)
   [/^This browser's storage has (\d+) project\(s\): (.*)\. Copy them into the folder '(.*)'\? Move… copies them, then deletes them from this browser's storage once you confirm\.$/,

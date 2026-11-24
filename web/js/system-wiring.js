@@ -1,5 +1,5 @@
 // Silinx - Copyright 2026 Pedro Maló - AGPL-3.0-only
-// The System editor's Wiring view (#5216, web/js/system-editor.js, docs/CODESIGN.md): each link drawn pin by pin, a band
+// The System editor's Wiring view (#5216, web/js/system-editor.js, docs/SYSTEMS.md): each link drawn pin by pin, a band
 // each, its two nodes facing each other (link.a's on the left), a row per wire (core/system-check.js analyzeSystem's
 // wires: its signal, the pin at each end, an FPGA's package pin and what its board says the pin is, the levels), its
 // arrow towards the input; a wire whose levels the check warned of (a 5 V output on a 3.3 V input) drawn hot, its

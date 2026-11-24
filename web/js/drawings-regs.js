@@ -1,5 +1,5 @@
 // Silinx - Copyright 2026 Pedro Maló - AGPL-3.0-only
-// A co-design's register maps (#5288, docs/CODESIGN.md): a map (.regs.json, core/regmap.js) opened in its editor
+// A System's register maps (#5288, docs/SYSTEMS.md): a map (.regs.json, core/regmap.js) opened in its editor
 // (web/js/regmap-editor.js) and kept in sync with its HDL module, the FPGA's slave (the map its base, as a drawing's:
 // core/view-hdl.js); its problems in the console's Errors and Warnings as it is edited, its Check's lines as the MCP
 // server's check_drawing says them; its Header button the Arduino's header (core/regmap-c.js), the MCP's

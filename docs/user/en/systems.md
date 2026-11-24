@@ -1,18 +1,18 @@
-# Co-design: an FPGA and a microcontroller together
+# Systems: an FPGA and a microcontroller together
 
-[User's guide](README.md) · English · [Português](../pt/codesign.md)
+[User's guide](README.md) · English · [Português](../pt/systems.md)
 
-A **co-design project** is a system of FPGA and microcontroller nodes linked together, designed and simulated as one:
+A **System project** is a system of FPGA and microcontroller nodes linked together, designed and simulated as one:
 an FPGA module of the project on its board, an Arduino Uno or Nano running its firmware, a serial terminal, joined by
-UART and GPIO links. Its design is in [CODESIGN.md](../../CODESIGN.md); its roadmap is #4695.
+UART and GPIO links. Its design is in [SYSTEMS.md](../../SYSTEMS.md); its roadmap is #4695.
 
-## A co-design project
+## A System project
 
-- **New Project ▸ Co-design.** It has no board of its own: each FPGA node of its System names its board and pins, each
+- **New Project ▸ System.** It has no board of its own: each FPGA node of its System names its board and pins, each
   microcontroller its firmware. Start from **Empty** (its System, `<name>.sys.json`, with no node yet) or from the
   example **uart-avr** (an Arduino and the `uart` example's FPGA linked by UART).
-- **A System as the top of an FPGA project**: the Top-Level Source Type **System (co-design)** (New Project, Design
-  Properties), or **Set as Top Module** on a System (`.sys.json`, in the Files view), makes the project a co-design
+- **A System as the top of an FPGA project**: the Top-Level Source Type **System** (New Project, Design
+  Properties), or **Set as Top Module** on a System (`.sys.json`, in the Files view), makes the project a System
   project, that System its top; its board is kept. **Set as Top Module** on one of its modules makes it an FPGA project
   again, on the board of the FPGA node that runs that module (else the board it had).
 - **Its System** is its top, shown in the Design pane as `<name> [System]`, the FPGA nodes' modules under it. It opens
@@ -96,7 +96,7 @@ clock, the Arduino's firmware run by avr8js at 16 MHz, everything in a Web Worke
 - **Waves**: the whole System's waves in the waveform viewer, a scope a node and one for the links.
 
 The nodes' warnings (an AVR's byte lost, a framing error) are in the console. The AI assistant does the same with the
-MCP server's `edit_system`, `check_system` and `simulate` (a co-design project's System; its waves written to
+MCP server's `edit_system`, `check_system` and `simulate` (a System project's System; its waves written to
 `build/<name>.vcd`).
 
 ## Emulate
@@ -114,7 +114,7 @@ The status line shows the time and how fast the boards run against real time.
 
 ## Try it: the uart-avr example
 
-1. New Project ▸ **Co-design**, Start from **Example: uart-avr**, Finish. Its System opens: `uno` (an Arduino Uno with
+1. New Project ▸ **System**, Start from **Example: uart-avr**, Finish. Its System opens: `uno` (an Arduino Uno with
    `firmware/hello.hex`) linked by `serial` to `fpga` (the `uart` module on a Basys2).
 2. **Try it**, then **Run 100 ms**. In the link inspector, `serial_uno` (the Arduino's TX to the FPGA's RX) shows
    `Hello from Arduino!` and `serial_fpga` (the FPGA's TX back) the same text: the FPGA echoes each byte.

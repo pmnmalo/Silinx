@@ -150,7 +150,7 @@ const plugin = {
   name: 'silinx-standalone',
   setup(b) {
     b.onResolve({ filter: /^\/(core|packages)\// }, a => ({ path: path.join(ROOT, a.path) }));
-    // (an npm package's file by the path the server serves it at: the co-design System's worker's avr8js, #4701)
+    // (an npm package's file by the path the server serves it at: the System's worker's avr8js, #4701)
     b.onResolve({ filter: /^\/vendor\/npm\// }, a => ({ path: path.join(ROOT, 'node_modules', a.path.slice('/vendor/npm/'.length)) }));
     b.onResolve({ filter: /^\.\/api\.js$/ }, a => (a.importer.includes(`${path.sep}web${path.sep}js${path.sep}`) ? { path: path.join(ROOT, 'web/js/api-local.js') } : undefined));
     b.onResolve({ filter: /^silinx-examples$/ }, a => ({ path: a.path, namespace: 'virtual' }));
@@ -189,7 +189,7 @@ const hdlWorkerRes = await esbuild.build({
   bundle: true, format: 'esm', minify: true, write: false, target: 'es2022', plugins: [plugin], logLevel: 'warning', platform: 'browser', define,
 });
 const hdlWorkerJs = hdlWorkerRes.outputFiles[0].text;
-// a co-design System's run (web/js/system-worker.js, #4701), embedded the same way
+// a System's run (web/js/system-worker.js, #4701), embedded the same way
 const sysWorkerRes = await esbuild.build({
   entryPoints: [path.join(ROOT, 'web/js/system-worker.js')],
   bundle: true, format: 'esm', minify: true, write: false, target: 'es2022', plugins: [plugin], logLevel: 'warning', platform: 'browser', define,

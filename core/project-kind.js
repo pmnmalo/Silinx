@@ -5,24 +5,29 @@
 // checks, never shown. One set of rules and messages for the interface, the local server, the browser edition and the
 // MCP server. Isomorphic module (browser + Node).
 
-import { codesignOn, CODESIGN_OFF } from './build-channel.js';
-import { CODESIGN_ORDER } from './examples.js';
+import { systemsOn, SYSTEMS_OFF } from './build-channel.js';
+import { SYSTEM_ORDER } from './examples.js';
 
 export const DESIGN_KIND = 'design';
 /** The design and simulation project's kind, as New Project, Design Properties and Open Project name it (#5133: for
  *  the introductory courses, whose students need not know what an FPGA is: no FPGA or HDL in its name). */
 export const DESIGN_ONLY_LABEL = 'Digital Logic';
 
-/** A co-design project's kind (roadmap #4695, #4702): FPGA and microcontroller nodes linked in its one System document
+/** A System project's kind (roadmap #4695, #4702): FPGA and microcontroller nodes linked in its one System document
  *  (`<name>.sys.json`, core/system-doc.js), its top; no board of its own (each FPGA node names its own). */
-export const CODESIGN_KIND = 'codesign';
-/** The co-design examples (New Project's Start from for a co-design project; the others are FPGA projects'). */
-export const CODESIGN_EXAMPLES = CODESIGN_ORDER;
-/** The examples offered in this build (New Project, the MCP's list_examples): the co-design ones only where co-design is
+export const SYSTEM_KIND = 'system';
+/** Its id before #5411 ("co-design", now the Zynq's hardware/software co-design, #5412): a project saved with it is a System
+ *  project, read as one (withKind); never written again. */
+export const OLD_SYSTEM_KIND = 'codesign';
+/** A description (its silinx.json, as read) with its kind's id of now: the old System id read as SYSTEM_KIND (#5411). */
+export const withKind = pj => (pj?.kind === OLD_SYSTEM_KIND ? { ...pj, kind: SYSTEM_KIND } : pj);
+/** The System examples (New Project's Start from for a System project; the others are FPGA projects'). */
+export const SYSTEM_EXAMPLES = SYSTEM_ORDER;
+/** The examples offered in this build (New Project, the MCP's list_examples): the System ones only where Systems are
  *  on (#5202). */
-export const offeredExamples = names => names.filter(n => codesignOn() || !CODESIGN_EXAMPLES.includes(n));
-/** Whether a project (its silinx.json) is a co-design project. */
-export const isCodesign = pj => pj?.kind === CODESIGN_KIND;
+export const offeredExamples = names => names.filter(n => systemsOn() || !SYSTEM_EXAMPLES.includes(n));
+/** Whether a project (its silinx.json) is a System project. */
+export const isSystemProject = pj => withKind(pj)?.kind === SYSTEM_KIND;
 /** New Project's first page (#5041): the three kinds, each with what it is for and what it shows (#5133: Digital Logic's
  *  says nothing of FPGA, HDL or a board); `short`, the MCP server's
  *  new_project's words for its kind (its arguments' size limits, #4752, #5097). */
@@ -31,7 +36,7 @@ export const PROJECT_KINDS = [
     short: 'drawings and simulation, no board, no HDL shown' },
   { id: 'fpga', name: 'FPGA', about: 'A design that runs on a board: HDL sources and drawings, simulated, synthesized, implemented and programmed on the FPGA, or emulated.',
     short: 'the default' },
-  { id: CODESIGN_KIND, name: 'Co-design', about: 'A system of FPGA and microcontroller nodes linked together, designed and simulated as one.',
+  { id: SYSTEM_KIND, name: 'System', about: 'A system of FPGA and microcontroller nodes linked together, designed and simulated as one.',
     short: 'FPGA and microcontroller nodes in a System' },
 ];
 
@@ -39,22 +44,22 @@ export const PROJECT_KINDS = [
  *  browser edition's stores, the MCP's new_project: one rule, one message), or null. */
 export function createRefusal(kind, template = 'empty') {
   const empty = !template || template === 'empty';
-  if (kind != null && kind !== DESIGN_KIND && kind !== CODESIGN_KIND) return `unknown project kind '${kind}'`;
+  if (kind != null && kind !== DESIGN_KIND && kind !== SYSTEM_KIND) return `unknown project kind '${kind}'`;
   if (kind === DESIGN_KIND && !empty) return 'a design and simulation project starts empty: no example';
-  // (co-design not in a release yet, #5202: core/build-channel.js)
-  if ((kind === CODESIGN_KIND || CODESIGN_EXAMPLES.includes(template)) && !codesignOn()) return CODESIGN_OFF;
-  if (kind === CODESIGN_KIND && !empty && !CODESIGN_EXAMPLES.includes(template)) return `a co-design project starts empty or from a co-design example (${CODESIGN_EXAMPLES.join(', ')})`;
+  // (Systems not in a release yet, #5202: core/build-channel.js)
+  if ((kind === SYSTEM_KIND || SYSTEM_EXAMPLES.includes(template)) && !systemsOn()) return SYSTEMS_OFF;
+  if (kind === SYSTEM_KIND && !empty && !SYSTEM_EXAMPLES.includes(template)) return `a System project starts empty or from a System example (${SYSTEM_EXAMPLES.join(', ')})`;
   return null;
 }
 
-/** Why an example of `json` (its silinx.json) cannot be made with a board or a device, or null: a co-design example has
+/** Why an example of `json` (its silinx.json) cannot be made with a board or a device, or null: a System example has
  *  none (its System names each FPGA node's). */
 export function boardRefusal(json, { board, device } = {}) {
-  return isCodesign(json) && (board || device) ? `${json.name}: a co-design project has no board: its System names each FPGA node's` : null;
+  return isSystemProject(json) && (board || device) ? `${json.name}: a System project has no board: its System names each FPGA node's` : null;
 }
 
-/** A new co-design project's silinx.json: no board, no constraints, no top module (its System is its top). */
-export const asCodesignProject = json => ({ ...json, kind: CODESIGN_KIND, board: null, constraints: null, top: '', topSourceType: 'system' });   // (its top type System, core/system-top.js SYSTEM_TOP, #5402)
+/** A new System project's silinx.json: no board, no constraints, no top module (its System is its top). */
+export const asSystemProject = json => ({ ...json, kind: SYSTEM_KIND, board: null, constraints: null, top: '', topSourceType: 'system' });   // (its top type System, core/system-top.js SYSTEM_TOP, #5402)
 
 /** Whether a project (its silinx.json) is a design and simulation project. */
 export const isDesignOnly = pj => pj?.kind === DESIGN_KIND;

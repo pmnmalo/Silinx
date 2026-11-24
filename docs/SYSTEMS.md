@@ -1,8 +1,21 @@
-# Co-design: FPGA and microcontroller nodes, simulated, emulated and on the real boards together
+# Systems: FPGA and microcontroller nodes, simulated, emulated and on the real boards together
 
 The design of roadmap #4695. Modules on FPGAs and on microcontrollers (an Arduino's AVR, a Raspberry Pi Pico's
 RP2040, an ESP32), wired to each other in one drawing, then simulated, emulated and tried on the real boards
 together. Nothing of it is built yet; each phase becomes issues of its own when it starts.
+
+**What a System holds** (#5411): nodes of every kind, linked as the design wants (GPIO, UART, SPI, I²C, buses, a
+network), any node to any node:
+
+- **FPGA devices**: a board with its FPGA, the project's modules (HDL or drawings) on its pins;
+- **co-design devices**: a SoC with a processor beside the logic (a Zynq-7000 board): its inside a hardware/software
+  co-design, the CPU's software and the FPGA's hardware designed together (roadmap #5412);
+- **CPU-based devices**: a microcontroller or a processor board with no logic of its own (an Arduino, an ESP32, a Pico)
+  and its firmware;
+- **circuits** assembled by hand in the lab: a breadboard's parts, wired.
+
+A System project was called a co-design project before #5411; the name is now the Zynq's (#5412). A project saved
+with the old kind id (`codesign`) is read as a System project.
 
 ## Why
 
@@ -36,21 +49,21 @@ What the others teach us:
 
 ## The System document
 
-A **System** (`<name>.sys.json`, `core/system-doc.js`, #4697) is the top of a **co-design project**, a project kind of
-Silinx (#5041): New Project asks the kind first; its co-design choice makes one, empty or from the example `uart-avr` (#4702). A
-co-design project has one System, shown in the Design pane as `[System]`.
+A **System** (`<name>.sys.json`, `core/system-doc.js`, #4697) is the top of a **System project**, a project kind of
+Silinx (#5041): New Project asks the kind first; its System choice makes one, empty or from the example `uart-avr` (#4702). A
+System project has one System, shown in the Design pane as `[System]`.
 
 - **Its canvas** follows the schematic editor's style and the rules of [UI-GUIDELINES.md](UI-GUIDELINES.md). The System
   editor (`web/js/system-editor.js`, #4700) places the nodes (an FPGA node, an Arduino Uno or Nano, a serial terminal),
   links their interfaces (a click on one, then on another of its kind), and edits a node's, an interface's and a link's
   properties in its side panel; each edit is one of `core/system-edit.js`, the MCP's `edit_system`'s.
 - **It holds nodes and links.**
-- **A co-design project has no `board` of its own.** Each FPGA node is a module of the co-design project itself (HDL
+- **A System project has no `board` of its own.** Each FPGA node is a module of the System project itself (HDL
   or a drawing), names its own board and pins, and is built with the flow of that board's family.
 
 | Node | Holds | Board |
 |---|---|---|
-| FPGA | a module of the co-design project (HDL or a drawing) as the node's top | a Silinx board and its pins |
+| FPGA | a module of the System project (HDL or a drawing) as the node's top | a Silinx board and its pins |
 | Microcontroller | its firmware: an `.hex` / `.elf` / `.uf2` given, later a C / Arduino sketch compiled on the server, or MicroPython (`.py`) | Arduino Uno / Nano (ATmega328P), Raspberry Pi Pico (RP2040), ESP32 DevKit, ESP32-C3 |
 | Circuit | a `.circ.json` (breadboards, 74xx, an Arduino on a breadboard) | — |
 | Peripheral | a model: a serial terminal, a potentiometer (ADC), an I²C sensor, an OLED, a servo, an MQTT broker, a VGA monitor | — |
@@ -368,7 +381,7 @@ Every action is a tool (#2674), through the same functions as the interface:
 |---|---|
 | `edit_system` | adds, changes or removes a node, an interface or a link (#4700) |
 | `check_system` | describes the system and runs the check (#4700) |
-| `simulate` (a System) | the existing tool: `top` a System document (a co-design project's by default) runs it for a time and returns each wire's bytes, the terminals' text and the warnings; the VCD in `build/<name>.vcd` (#4701) |
+| `simulate` (a System) | the existing tool: `top` a System document (a System project's by default) runs it for a time and returns each wire's bytes, the terminals' text and the warnings; the VCD in `build/<name>.vcd` (#4701) |
 | `node_firmware` | sets a node's firmware |
 
 Later:
@@ -438,23 +451,23 @@ The existing `program_board` and `capture` serve the FPGA nodes.
 
 ## In a release
 
-Co-design is off in a release until it is stable (#5202): the site's root, the release's zip and its local server (a
-release's checkout, its tag's commit) hide New Project's Co-design (its card disabled, the reason said), the `uart-avr`
+Systems are off in a release until it is stable (#5202): the site's root, the release's zip and its local server (a
+release's checkout, its tag's commit) hide New Project's System (its card disabled, the reason said), the `uart-avr`
 example, the Design pane's System row and the System editor (a `.sys.json` opened says so in the console), and the MCP
-server refuses `new_project` kind codesign, `edit_system`, `check_system` and `simulate` of a System with the same
+server refuses `new_project` kind system, `edit_system`, `check_system` and `simulate` of a System with the same
 message. The development build (the site's `dev/`) and a checkout's local server (`npm start` at any other commit) have
 it, and so do the tests (`node --test`: core/build-channel.js `channelFromEnv`; `SILINX_CHANNEL=release` tests a
 release, `SILINX_CHANNEL=dev` runs a release's server with it).
 
-**Turning it on** in a release is one change: `CODESIGN_IN_RELEASE = true` in `core/build-channel.js`, with its
+**Turning it on** in a release is one change: `SYSTEMS_IN_RELEASE = true` in `core/build-channel.js`, with its
 changelog fragment.
 
 ## Decided
 
-- The System is a co-design project's top, its one System document (#5041); its FPGA nodes are modules of that project.
+- The System is a System project's top, its one System document (#5041); its FPGA nodes are modules of that project.
   A System made the top of an FPGA project (Top-Level Source Type System, Set as Top Module on it, the MCP's `set_top`,
-  `set_design_properties`, `new_project`) makes it a co-design project, its board kept in `fpga`; a module made the top
-  of a co-design project makes it an FPGA project again, on its FPGA node's board (`core/system-top.js`, #5402).
+  `set_design_properties`, `new_project`) makes it a System project, its board kept in `fpga`; a module made the top
+  of a System project makes it an FPGA project again, on its FPGA node's board (`core/system-top.js`, #5402).
 - The AVR comes first; the ESP32 comes in MicroPython.
 - The firmware is a given `.hex` or `.elf` first; a compiler on the server comes later.
 - The System is the model, the circuit a second view of it: the boards are the circuit's parts, a circuit can be a
@@ -462,7 +475,7 @@ changelog fragment.
 - The System has the project's actions for every node at once and for each node alone (#5200).
 - Links are pins on the FPGA's side, the microcontrollers' peripherals converted by the links' adapters; one
   window, bounded by the links' lookahead (measured, see Speed).
-- The boards' drawings are Silinx's own; co-design is a project kind, chosen in New Project (#5041).
+- The boards' drawings are Silinx's own; a System is a project kind, chosen in New Project (#5041).
 - One scheduler serves the circuit's Arduino, the System's nodes and the Zynq's processors.
 - The ESP32 runs MicroPython in WebAssembly, with a virtual time per line through `sys.settrace`. It needs JSPI, so
   it is not simulated in Safari. The Pico runs MicroPython's real firmware on rp2040js and comes first in phase 4.

@@ -1,4 +1,4 @@
-// Silinx - Simulate System (#4701, docs/CODESIGN.md): a co-design project's System made ready to run, then its run said,
+// Silinx - Simulate System (#4701, docs/SYSTEMS.md): a System project's System made ready to run, then its run said,
 // one set of steps and messages for the System's simulation view (web/js/system-sim-view.js) and the MCP server's
 // simulate of a System (server/mcp-system-sim.js). Ready: the plan (core/system-build.js), each FPGA node's module compiled for the compiled engine
 // (`netlist(module)`: its word-level netlist, by Yosys, the caller's), each microcontroller's firmware read

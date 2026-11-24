@@ -1,4 +1,4 @@
-// Silinx - the System Emulator's core (#5212, docs/CODESIGN.md, Emulation): a co-design System's boards emulated
+// Silinx - the System Emulator's core (#5212, docs/SYSTEMS.md, Emulation): a System's boards emulated
 // together by the co-simulation scheduler (core/system-sim.js). An FPGA node's board is the Board Emulator's
 // (core/emulate.js boardWiring: its module's ports on its board's pins, the node's `pins`): its switches and buttons
 // the module's inputs that no link drives, its LEDs and displays the outputs, watched (compiled with the link's pins,

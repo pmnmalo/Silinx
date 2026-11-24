@@ -1,19 +1,19 @@
-# Co-design: uma FPGA e um microcontrolador juntos
+# Sistemas: uma FPGA e um microcontrolador juntos
 
-[Guia do utilizador](README.md) · [English](../en/codesign.md) · Português
+[Guia do utilizador](README.md) · [English](../en/systems.md) · Português
 
-Um **projeto de co-design** é um sistema de nós de FPGA e de microcontrolador ligados entre si, desenhado e simulado
+Um **projeto de Sistema** é um sistema de nós de FPGA e de microcontrolador ligados entre si, desenhado e simulado
 como um todo: um módulo FPGA do projeto na sua placa, um Arduino Uno ou Nano com o seu firmware, um terminal série,
 ligados por UART e GPIO.
 
-## Um projeto de co-design
+## Um projeto de Sistema
 
-- **Novo Projeto ▸ Co-design.** Não tem placa própria: cada nó FPGA do seu Sistema indica a sua placa e os pinos, cada
+- **Novo Projeto ▸ Sistema.** Não tem placa própria: cada nó FPGA do seu Sistema indica a sua placa e os pinos, cada
   microcontrolador o seu firmware. Comece **Vazio** (o seu Sistema, `<nome>.sys.json`, ainda sem nós) ou pelo exemplo
   **uart-avr** (um Arduino e a FPGA do exemplo `uart` ligados por UART).
-- **Um Sistema como topo de um projeto FPGA**: o Tipo de Fonte de Topo **Sistema (co-design)** (Novo Projeto,
+- **Um Sistema como topo de um projeto FPGA**: o Tipo de Fonte de Topo **Sistema** (Novo Projeto,
   Propriedades do Projeto), ou **Definir como Módulo de Topo** num Sistema (`.sys.json`, na vista Ficheiros), torna o
-  projeto um projeto de co-design, esse Sistema o seu topo; a placa fica guardada. **Definir como Módulo de Topo** num dos
+  projeto um projeto de Sistema, esse Sistema o seu topo; a placa fica guardada. **Definir como Módulo de Topo** num dos
   seus módulos torna-o de novo um projeto FPGA, na placa do nó FPGA que corre esse módulo (senão, na placa que tinha).
 - **O seu Sistema** é o topo, no painel Design como `<nome> [System]`, com os módulos dos nós FPGA por baixo. Abre no
   **editor de Sistema**: as ferramentas põem um nó FPGA, um Arduino Uno ou Nano, um terminal série; **Ligação** junta
@@ -103,7 +103,7 @@ da sua placa, o firmware do Arduino corrido pelo avr8js a 16 MHz, tudo num Web W
 - **Ondas**: as formas de onda de todo o Sistema no visualizador, um âmbito por nó e um para as ligações.
 
 Os avisos dos nós (um byte perdido no AVR, um erro de trama) aparecem na consola. O assistente de IA faz o mesmo com as
-ferramentas `edit_system`, `check_system` e `simulate` do servidor MCP (o Sistema de um projeto de co-design; as
+ferramentas `edit_system`, `check_system` e `simulate` do servidor MCP (o Sistema de um projeto de Sistema; as
 ondas em `build/<nome>.vcd`).
 
 ## Emular
@@ -121,7 +121,7 @@ A linha de estado mostra o tempo e a rapidez com que as placas correm face ao te
 
 ## Experimente: o exemplo uart-avr
 
-1. Novo Projeto ▸ **Co-design**, Começar por **Exemplo: uart-avr**, Concluir. O Sistema abre: `uno` (um Arduino Uno com
+1. Novo Projeto ▸ **Sistema**, Começar por **Exemplo: uart-avr**, Concluir. O Sistema abre: `uno` (um Arduino Uno com
    `firmware/hello.hex`) ligado por `serial` a `fpga` (o módulo `uart` numa Basys2).
 2. **Experimentar**, depois **Correr 100 ms**. No inspetor de ligações, `serial_uno` (o TX do Arduino para o RX da FPGA)
    mostra `Hello from Arduino!` e `serial_fpga` (o TX da FPGA de volta) o mesmo texto: a FPGA devolve cada byte.

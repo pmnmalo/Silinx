@@ -34,7 +34,6 @@ const SAME = [
   /^@?(Default\.wcfg)$/,
   /^@?Interface$/,                                 // the same word in Portuguese
   /^@?Buffers( \(\d+\))?$/,                         // the same word in Portuguese (the palette's category, #1987)
-  /^@?Co-design$/,                                 // the same word in Portuguese (New Project's third kind, #5041)
 ];
 export const isSame = (s) => SAME.some((re) => re.test(s));
 

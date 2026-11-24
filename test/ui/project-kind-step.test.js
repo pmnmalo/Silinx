@@ -1,6 +1,6 @@
 // UI: New Project asks the project's kind first (#5041, web/js/project-kind-step.js, core/project-kind.js): Digital Logic
-// (the design and simulation project, #3780, #3891; no FPGA or HDL in its card, #5133), FPGA (the default) or Co-design (#4702:
-// test/ui/codesign-new-project.test.js); with no FPGA, no example to start from. A project with no
+// (the design and simulation project, #3780, #3891; no FPGA or HDL in its card, #5133), FPGA (the default) or System (#4702:
+// test/ui/system-new-project.test.js); with no FPGA, no example to start from. A project with no
 // FPGA made there shows nothing of HDL or FPGA: no VHDL / Verilog badges, no synthesis, implementation or bitstream
 // process, task, menu item or toolbar button, no board, device or constraints. In English and in Portuguese, no
 // warnings. Both interfaces.
@@ -40,12 +40,12 @@ const openWizard = async (page, l) => {
 const EN_CARDS = [
   ['design', 'Digital Logic', 'Digital logic for the introductory courses: schematics, truth tables, state machines and circuits on a breadboard, drawn and simulated.', null, false, false],
   ['fpga', 'FPGA', 'A design that runs on a board: HDL sources and drawings, simulated, synthesized, implemented and programmed on the FPGA, or emulated.', null, true, false],
-  ['codesign', 'Co-design', 'A system of FPGA and microcontroller nodes linked together, designed and simulated as one.', null, false, false],
+  ['system', 'System', 'A system of FPGA and microcontroller nodes linked together, designed and simulated as one.', null, false, false],
 ];
 const PT_CARDS = [
   ['design', 'Lógica Digital', 'Lógica digital para as disciplinas introdutórias: esquemáticos, tabelas de verdade, máquinas de estados e circuitos numa breadboard, desenhados e simulados.', null, false, false],
   ['fpga', 'FPGA', 'Um projeto que corre numa placa: fontes HDL e desenhos, simulados, sintetizados, implementados e programados na FPGA, ou emulados.', null, true, false],
-  ['codesign', 'Co-design', 'Um sistema de nós de FPGA e de microcontrolador ligados entre si, desenhado e simulado como um todo.', null, false, false],
+  ['system', 'Sistema', 'Um sistema de nós de FPGA e de microcontrolador ligados entre si, desenhado e simulado como um todo.', null, false, false],
 ];
 
 // what of HDL or FPGA the interface shows of the open project (none in a project with no FPGA): the Design pane's badges,
@@ -94,14 +94,14 @@ async function showProcesses(page) {
   await page.waitFor(() => document.querySelectorAll('#procs .row .lbl').length > 0, [], { what: 'the processes' });
 }
 
-uiTest('#5041 #5133 #4702 New Project: the kind first, three cards (Digital Logic, FPGA, Co-design); Digital Logic: no example; Back keeps it', E, async (page) => {
+uiTest('#5041 #5133 #4702 New Project: the kind first, three cards (Digital Logic, FPGA, System); Digital Logic: no example; Back keeps it', E, async (page) => {
   await openWizard(page, L.en);
   assert.deepEqual(await kindPage(page), { title: 'Project Kind', hint: 'Choose the kind of project to create.', cards: EN_CARDS,
     steps: ['Project Kind', 'Create New Project', 'Project Settings', 'Project Summary'] });
   assert.doesNotMatch(await designCardText(page), /FPGA|HDL/);
-  // (Co-design: chosen by its card, #4702; the FPGA chosen back)
-  await page.click('.dlg-overlay .kind-card[data-kind=codesign]');
-  assert.equal(await page.eval(() => document.querySelector('.dlg-overlay .kind-card input:checked').value), 'codesign');
+  // (System: chosen by its card, #4702; the FPGA chosen back)
+  await page.click('.dlg-overlay .kind-card[data-kind=system]');
+  assert.equal(await page.eval(() => document.querySelector('.dlg-overlay .kind-card input:checked').value), 'system');
   await page.click('.dlg-overlay .kind-card[data-kind=fpga]');
   assert.equal(await page.eval(() => document.querySelector('.dlg-overlay .kind-card input:checked').value), 'fpga');
   // FPGA (the default): Start from as before

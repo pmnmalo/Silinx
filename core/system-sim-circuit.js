@@ -1,4 +1,4 @@
-// Silinx - the co-design system's adapter of a circuit (#5215; the scheduler: core/system-sim.js): a circuit node, what
+// Silinx - a System's adapter of a circuit (#5215; the scheduler: core/system-sim.js): a circuit node, what
 // lies between the boards, run by the circuit's own simulation (core/circuit-sim.js: event driven, in ns, each IC with its
 // delay). Its pins are its boards' pins the circuit wires to something ('A1:D2', core/system-circuit.js), each an input
 // and an output of the node: set (setPin), it drives the board's pin in the circuit (strong, or weak while `weak(pin)`

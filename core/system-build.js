@@ -1,4 +1,4 @@
-// Silinx - a co-design project's System simulated (#4701, docs/CODESIGN.md): the System document (core/system-doc.js)
+// Silinx - a System project's System simulated (#4701, docs/SYSTEMS.md): the System document (core/system-doc.js)
 // made the co-simulation scheduler's system (core/system-sim.js): each node its engine's adapter (an FPGA node Silinx's
 // compiled engine, core/system-sim-compiled.js, at its board's clock; a microcontroller avr8js, core/system-sim-avr.js;
 // a serial terminal core/system-sim-terminal.js), each link its wires: a UART link two (a's TX to b's RX, b's TX to a's

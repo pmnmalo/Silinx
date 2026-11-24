@@ -1,4 +1,4 @@
-// Co-design's I²C links (#5214): an Arduino Uno, the master (its TWI, Wire's SCL A5 and SDA A4), and an FPGA peripheral
+// A System's I²C links (#5214): an Arduino Uno, the master (its TWI, Wire's SCL A5 and SDA A4), and an FPGA peripheral
 // (examples/i2c-avr/src/i2c_leds.vhd, the i2c-avr example's: at the address 0x42, each byte written shown on its LEDs,
 // a read answered with its switches), its SDA an inout port (the compiled engine's pads, #4709). The System document's
 // I²C interface and its check (the master and the peripheral, one rate, SDA an inout port, its 5 V warnings); the plan's

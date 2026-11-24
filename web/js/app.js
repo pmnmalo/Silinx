@@ -531,7 +531,7 @@ export async function openFile(path, line, col, { task } = {}) {
   if (path.endsWith('.pn.json')) return openPetri(path);
   if (path.endsWith('.circ.json')) return (await import('./drawings.js')).openCircuit(path);   // (a digital circuit, #3897)
   if (path.endsWith('.sys.json')) return (await import('./system-open.js')).openSystem(path);
-  if (path.endsWith('.regs.json')) return (await import('./drawings-regs.js')).openRegs(path);   // (a co-design's register map, #5288)   // (a co-design project's System, #4700)
+  if (path.endsWith('.regs.json')) return (await import('./drawings-regs.js')).openRegs(path);   // (a System's register map, #5288)   // (a System project's System, #4700)
   if (/\.sym\.json$/i.test(path)) return (await import('./symbol-doc.js')).openSymbol(path);   // (a module's symbol, #3755)
   if (path.endsWith('.exercise.json')) return (await import('./exercise-view.js')).openExercise(path);   // (#3192)
   if (/(^|\/)([^/]+\.)?grades\.json$/i.test(path)) return (await import('./grade-results-view.js')).openResultsFile(path);   // (a class's results, #3864)

@@ -1,4 +1,4 @@
-// Silinx - the co-design system's link decoders (#4699, docs/CODESIGN.md): a link's traffic decoded from the pins the
+// Silinx - a System's link decoders (#4699, docs/SYSTEMS.md): a link's traffic decoded from the pins the
 // co-simulation scheduler exchanges (core/system-sim.js: a link's changes, [t, value, t, value…] in ps). A UART's bytes
 // at a baud and a frame (data bits 5 to 8, parity N / E / O, stop bits 1 or 2, a System document's `8N1`), each with its
 // time; a framing error (a stop bit at 0) and a parity error are the decoder's warnings, as the console says them. An

@@ -1,11 +1,11 @@
-// The MCP server's tools of a co-design project's System document (#4697, #2674, docs/CODESIGN.md): check_system, the
+// The MCP server's tools of a System project's System document (#4697, #2674, docs/SYSTEMS.md): check_system, the
 // System's Check (core/system-check.js), with the project's modules (their ports, the FPGA nodes' modules elaborated) and
 // its files (the firmware), each message as the console says it, after the System described (core/system-edit.js); edit_system, its
 // nodes, interfaces and links edited as the System editor does (core/system-edit.js, #4700), then checked.
 import * as P from './projects.js';
 import { toolError, STR, PROJECT, projectText, readProject, elaborateView } from './mcp-util.js';
 import { readSystem, writeSystem, isSystemFile } from '../core/system-doc.js';
-import { codesignOn, CODESIGN_OFF } from '../core/build-channel.js';
+import { systemsOn, SYSTEMS_OFF } from '../core/build-channel.js';
 import { editSystem, describeSystem, EDIT_ACTIONS } from '../core/system-edit.js';
 import { analyzeSystem, systemCheckLines, wiringLines } from '../core/system-check.js';
 import { ucfPort } from '../core/board-constraints.js';
@@ -47,7 +47,7 @@ async function checkSystemFile(name, file, text) {
 
 // a System document of the project read: { text, system }, or the tool's error (not a System, unreadable)
 async function readSystemFile(name, file) {
-  if (!codesignOn()) throw toolError(CODESIGN_OFF);   // (co-design not in a release yet, #5202)
+  if (!systemsOn()) throw toolError(SYSTEMS_OFF);   // (Systems not in a release yet, #5202)
   if (!isSystemFile(file)) throw toolError(`'${file}' is not a System document (.sys.json)`);
   const text = await projectText(name, file, `no System '${file}' in the project '${name}'`);
   const r = readSystem(text);
@@ -65,7 +65,7 @@ const EDIT = { type: 'object', properties: {
 export const SYSTEM_TOOLS = [
   {
     name: 'edit_system', title: 'Edit a System',
-    description: 'Edit a co-design project\'s System (.sys.json) in order (one refused: none): add_, change_, remove_ a node (fpga, mcu, terminal, circuit), interface (uart, gpio, spi, i2c), link; checked.',
+    description: 'Edit a System project\'s System (.sys.json) in order (one refused: none): add_, change_, remove_ a node (fpga, mcu, terminal, circuit), interface (uart, gpio, spi, i2c), link; checked.',
     inputSchema: { type: 'object', properties: { project: PROJECT, file: SYS_FILE, edits: { type: 'array', maxItems: 100, items: EDIT } }, required: ['project', 'file', 'edits'], additionalProperties: false },
     annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false },
     async run({ project: name, file, edits }) {
@@ -87,7 +87,7 @@ export const SYSTEM_TOOLS = [
   },
   {
     name: 'check_system', title: 'Check a System',
-    description: 'Describe and check a co-design project\'s System (.sys.json) as Check System does: nodes, links, wires, errors, warnings.',
+    description: 'Describe and check a System project\'s System (.sys.json) as Check System does: nodes, links, wires, errors, warnings.',
     inputSchema: { type: 'object', properties: { project: PROJECT, file: SYS_FILE }, required: ['project', 'file'], additionalProperties: false },
     annotations: { readOnlyHint: true },
     async run({ project: name, file }) {

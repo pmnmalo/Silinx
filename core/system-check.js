@@ -1,4 +1,4 @@
-// A System document's check (#4697, docs/CODESIGN.md): its errors and warnings, as the console says them (the System
+// A System document's check (#4697, docs/SYSTEMS.md): its errors and warnings, as the console says them (the System
 // editor on save, Check System, the MCP server's check_system), each pointing at its node or link. Isomorphic module.
 //   error    a node's or a link's id missing or twice; a kind, a board, a module, a firmware unknown; an interface's
 //            fields (its baud, its frame, its pins, its direction); an FPGA node's port that is no port of its module,

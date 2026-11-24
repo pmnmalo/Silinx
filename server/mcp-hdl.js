@@ -7,7 +7,7 @@ import path from 'node:path';
 import * as P from './projects.js';
 import { toolError, clip, elaborateView, diagLine, diagJson, diagMessage, STR, PROJECT } from './mcp-util.js';
 import { makeMessage, messageData } from '../core/message.js';
-import { isDesignOnly } from '../core/project-kind.js';
+import { isDesignOnly, isSystemProject } from '../core/project-kind.js';
 import { designSize } from '../core/hdl-check.js';
 import { designDiags } from './mcp-design-only.js';
 import { parseTime, parseValue } from '../core/ssim-values.js';
@@ -17,14 +17,14 @@ import { simModelsOf, toolOf } from '../core/tool-descriptors.js';
 
 const SIM_MODELS = { postsynth: 'Post-Synthesis', posttrans: 'Post-Translate', postmap: 'Post-Map', postpar: 'Post-Place & Route' };
 // the process that makes each model (run_process), and the stage it comes after
-// the System document `simulate` runs (#4701): `top` a .sys.json, or a co-design project's with no top given
+// the System document `simulate` runs (#4701): `top` a .sys.json, or a System project's with no top given
 async function systemOf(name, top) {
   const { isSystemFile } = await import('../core/system-doc.js');
   if (top) return isSystemFile(top) ? top : null;
   const pj = await P.readProject(name).catch(() => null);
-  if (pj?.kind !== 'codesign') return null;
+  if (!isSystemProject(pj)) return null;
   const f = (await P.fileTree(name)).find(isSystemFile);
-  if (!f) throw toolError(`the co-design project '${name}' has no System document (.sys.json)`);
+  if (!f) throw toolError(`the System project '${name}' has no System document (.sys.json)`);
   return f;
 }
 
@@ -200,7 +200,7 @@ export const HDL_TOOLS = [
     name: 'simulate', title: 'Simulate Behavioral Model',
     description: 'Run the simulation of the project\'s test bench (or another top) for a time, behavioural or against a simulation model of the flow (post-synthesis, post-translate, post-map, post-place & route with its timing): its messages (report / $display, assertions), where it stopped, and the values of signals (the test bench\'s by default; hierarchical names as tb/uut/count) with their changes.',
     inputSchema: { type: 'object', properties: {
-      project: PROJECT, top: STR('The simulation top (default: the project\'s test bench); a co-design project\'s System (.sys.json, its default): each link\'s bytes, build/<name>.vcd.'),
+      project: PROJECT, top: STR('The simulation top (default: the project\'s test bench); a System project\'s System (.sys.json, its default): each link\'s bytes, build/<name>.vcd.'),
       type: { type: 'object', description: 'A System\'s terminals: { terminal: text }.' },
       controls: { type: 'array', items: { type: 'object' }, description: 'Emulate System: [{ node, control: btn0, S1, an LM75 U1 (value °C), on, at_ns }]: the boards shown' },
       time_ns: { type: 'number', description: 'How long to simulate, in ns (default 1000; at most 1e9).' },
@@ -220,7 +220,7 @@ export const HDL_TOOLS = [
     }, required: ['project'], additionalProperties: false },
     annotations: { readOnlyHint: true },
     async run({ project: name, top, time_ns: timeGiven, type, controls, signals, max_changes: maxChanges = 20, timeout_s: timeoutS = SIM_LIMITS.timeoutS, model = 'behavioral', generate = false, vcd, forces }, { signal } = {}) {
-      // (a co-design project's System, #4701: Simulate System, 100 ms by default)
+      // (a System project's System, #4701: Simulate System, 100 ms by default)
       const sysFile = await systemOf(name, top);
       if (sysFile) return (await import('./mcp-system-sim.js')).simulateSystem(name, sysFile, { ms: timeGiven != null ? timeGiven / 1e6 : 100, type, controls });
       const timeNs = timeGiven ?? 1000;

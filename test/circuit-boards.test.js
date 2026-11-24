@@ -17,10 +17,10 @@ import { partInfo } from '../core/circuit-part-info.js';
 import { EXPORTED_PARTS } from '../core/kicad-export.js';
 import { compile, elaborate, simulate } from '../core/compile.js';
 import { addPart } from '../core/circuit-edit.js';
-import { setBuildChannel, CODESIGN_OFF } from '../core/build-channel.js';
+import { setBuildChannel, SYSTEMS_OFF } from '../core/build-channel.js';
 import { designChecks } from '../core/lint.js';
 
-// (the development build's channel: the boards are co-design's, #5202; a release's set where it is tested)
+// (the development build's channel: the boards are the Systems', #5202; a release's set where it is tested)
 setBuildChannel('dev');
 
 const pinOf = (type, name) => PARTS[type].pins.find((p) => p.name === name);
@@ -166,12 +166,12 @@ test('#5215 a board alone, joined to nothing: said; a board\'s 3V3 and the suppl
   assert.equal(partDef('fpga-basys2').pins.filter((p) => p.supply && p.dir === 'vcc').length, 4);
 });
 
-test('#5215 #5202 the boards are co-design\'s: in a release not listed nor added; in the development build added (A1)', () => {
+test('#5215 #5202 the boards are the Systems\': in a release not listed nor added; in the development build added (A1)', () => {
   const m = newCircuit('c');
   setBuildChannel('release');
   try {
     assert.equal(partsList().some((x) => x.kind === 'board'), false);
-    assert.deepEqual(addPart(m, { type: 'arduino-uno', at: [0, 30] }), { error: `arduino-uno: ${CODESIGN_OFF}` });
+    assert.deepEqual(addPart(m, { type: 'arduino-uno', at: [0, 30] }), { error: `arduino-uno: ${SYSTEMS_OFF}` });
   } finally { setBuildChannel('dev'); }
   assert.equal(partsList().filter((x) => x.kind === 'board').length, 4);
   const r = addPart(m, { type: 'arduino-uno', at: [0, 30] });

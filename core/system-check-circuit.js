@@ -1,4 +1,4 @@
-// Silinx - a System's circuit nodes checked (#5215, core/system-check.js's, docs/CODESIGN.md): a circuit node's own fields
+// Silinx - a System's circuit nodes checked (#5215, core/system-check.js's, docs/SYSTEMS.md): a circuit node's own fields
 // (its circuit, a .circ.json of the project; no interfaces), and, its circuit read, its boards (each a node of the
 // System of that board, by its label) and their pins (an FPGA's on a port of its module, not an inout one; a 5 V
 // Arduino's pin and a 3.3 V FPGA's input on one net; a node's pin both a link's and the circuit's). Isomorphic module.

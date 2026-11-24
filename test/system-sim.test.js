@@ -1,4 +1,4 @@
-// The co-design system's co-simulation scheduler (#4696, core/system-sim.js) and its adapters of the compiled engine
+// a System's co-simulation scheduler (#4696, core/system-sim.js) and its adapters of the compiled engine
 // (core/system-sim-compiled.js) and of the event-driven simulator (core/system-sim-event.js), on the `uart`
 // example's modules (test/system-sim-lib.mjs): the bytes of a UART link the same at every quantum, a link with a
 // latency exact, the runs deterministic, a node's events at their own times, each adapter against its engine run

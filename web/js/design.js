@@ -39,9 +39,9 @@ import { designState } from './state-design.js';
 import { docsState } from './state-docs.js';
 import { openFocused } from './doc-focus.js';
 
-import { codesign, systemRow } from './design-system.js';
+import { systemProject, systemRow } from './design-system.js';
 import { isSystemFile } from '/core/system-doc.js';
-import { codesignOn } from '/core/build-channel.js';
+import { systemsOn } from '/core/build-channel.js';
 const $ = id => document.getElementById(id);
 // the Tasks interface (#799): one tree, no views: the design (as the Implementation view shows it); the test
 // benches Simulate's (its Simulation, #1161); no constraints (#1250: the Files page, Implement's and Emulate's Files
@@ -63,8 +63,8 @@ export function renderHierarchy() {
   const root = treeItem({ label: pj.name, ico: 'project', open: true, mark: gitMark(filesState.git ? filesState.git.files.map(f => f.path) : []), onSelect: () => select({ type: 'project' }), key: 'project', onContext: e => projectContextMenu(e) });
   tree.append(root.li);
   // (a design and simulation project, #3780: no device; its drawings and test benches under Design)
-  // (a co-design project, #4700: its System's row in place of the device, its FPGA nodes' modules under it)
-  const sysRow = !sim && codesign() ? systemRow(treeItem, select) : null;
+  // (a System project, #4700: its System's row in place of the device, its FPGA nodes' modules under it)
+  const sysRow = !sim && systemProject() ? systemRow(treeItem, select) : null;
   const devItem = sysRow?.item || treeItem({ label: designOnly() ? 'Design' : !sim ? dev : 'Behavioral', ico: !sim ? 'chip' : 'sim', open: true, key: 'device', onSelect: () => select({ type: 'device' }), onContext: e => projectContextMenu(e) });
   root.ul.append(devItem.li);
 
@@ -415,7 +415,7 @@ export function fileContextMenu(e, file) {
   if (!filesState.fileTree.includes(file)) {   // a file of the folder that is not in the project
     popupMenu([
       { label: 'Add to Project', action: () => addToProject(file).then(added => added !== false && log(`${file} added to the project.`, 'ok')) },
-      isSystemFile(file) && !codesign() && codesignOn() ? { label: 'Set as Top Module', action: async () => (await import('./system-top-ui.js')).makeSystemTop(file) } : null,
+      isSystemFile(file) && !systemProject() && systemsOn() ? { label: 'Set as Top Module', action: async () => (await import('./system-top-ui.js')).makeSystemTop(file) } : null,
       { label: 'Open', action: () => openFile(file) },
       textFile(file) ? editorItem(file) : null,
       '-',
@@ -427,8 +427,8 @@ export function fileContextMenu(e, file) {
     { label: 'Open', action: () => openFile(file) },
     textFile(file) ? editorItem(file) : null,   // (#4017)
     { label: 'Rename…', action: () => renameDialog(file) },
-    // (a System of an FPGA project: the project made a co-design project, it its top, #5402)
-    isSystemFile(file) && !codesign() && codesignOn() ? { label: 'Set as Top Module', action: async () => (await import('./system-top-ui.js')).makeSystemTop(file) } : null,
+    // (a System of an FPGA project: the project made a System project, it its top, #5402)
+    isSystemFile(file) && !systemProject() && systemsOn() ? { label: 'Set as Top Module', action: async () => (await import('./system-top-ui.js')).makeSystemTop(file) } : null,
     /\.(vhdl?|v|sv|c)$/i.test(file) && !designOnly() ? { label: 'Check Syntax', action: () => checkFileSyntax(file) } : null,   // (.c: Silinx HLS, #1524)
     /\.(ucf|pcf|lpf|cst|ccf|xdc)$/i.test(file) ? { label: 'Check Syntax', action: () => checkUcfFile(file) } : null,
     { label: 'Remove from Project', action: () => removeFile(file) },
@@ -503,8 +503,8 @@ export async function setTop(mod, sim = designState.view === 'sim') {
   const has = () => { const m = moduleInfo(mod); return (!!m && inView(m.role || 'design', sim)) || Object.values(cState.cFailed || {}).some(c => same(c.module)); };
   const refusal = topRefusal(mod, sim, has);
   if (refusal) { log(`ERROR: Set as Top Module: ${refusal}.`, 'err'); return; }
-  // (a module of a co-design project: an FPGA project again, on its node's board, #5402)
-  if (!sim && codesign()) return (await import('./system-top-ui.js')).makeModuleTop(mod);
+  // (a module of a System project: an FPGA project again, on its node's board, #5402)
+  if (!sim && systemProject()) return (await import('./system-top-ui.js')).makeModuleTop(mod);
   if (sim) S.project.simTop = mod; else S.project.top = mod;
   await saveProjectJson();
   markStale();

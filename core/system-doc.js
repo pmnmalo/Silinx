@@ -1,4 +1,4 @@
-// A co-design project's System document (`<name>.sys.json`, roadmap #4695, #4697, docs/CODESIGN.md): the project's one
+// A System project's System document (`<name>.sys.json`, roadmap #4695, #4697, docs/SYSTEMS.md): the project's one
 // System, its top, a canvas of nodes and the typed links between their interfaces. Its format read and written here; its
 // check is core/system-check.js. Isomorphic module (browser + Node).
 //
@@ -18,8 +18,8 @@
 // FPGA node's two its module's ports, the peripheral, its SDA an inout port, driven low or released; a microcontroller's
 // its board's Wire, the master; hz its SCL's rate). A UART link joins a's TX to b's RX and b's TX to a's RX; a
 // GPIO link its ends' pins in order; an SPI link the master's SCK, MOSI and SS to the peripheral's, its MISO back; an I²C link the master's SCL
-// to the peripheral's, and their SDA, each end pulling it low or releasing it (pulled up). An FPGA node is a module of the co-design project itself (HDL or a drawing), on a board of its own: a
-// co-design project has no `board`. A circuit node (#5215) is what lies between the boards, a circuit of the project:
+// to the peripheral's, and their SDA, each end pulling it low or releasing it (pulled up). An FPGA node is a module of the System project itself (HDL or a drawing), on a board of its own: a
+// System project has no `board`. A circuit node (#5215) is what lies between the boards, a circuit of the project:
 // its boards (an Arduino, an FPGA board, core/circuit-boards.js) are the System's nodes their labels name, its wires to
 // their pins the links (core/system-circuit.js); it has no interfaces.
 
@@ -113,6 +113,6 @@ export function linkEnd(end) {
   return i > 0 && i < s.length - 1 ? { node: s.slice(0, i), iface: s.slice(i + 1) } : null;
 }
 
-/** A new co-design project's System document (#4702): its path, `<project>.sys.json` at the project's root, and its text
+/** A new System project's System document (#4702): its path, `<project>.sys.json` at the project's root, and its text
  *  (no node yet), as New Project writes it in both stores and the MCP's new_project. */
 export const newSystemFile = name => ({ path: `${name}.sys.json`, text: writeSystem(newSystem(name)) });

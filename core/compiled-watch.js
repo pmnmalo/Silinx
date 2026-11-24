@@ -52,7 +52,7 @@ export function mountWatch(ctx) {
   const edgeCode = edges.map((w, i) => `{ const e = ${sig([w.bit], 'n')}; if (e${i} === 1 && e === 0) EV.push(cy, ${sig(w.capture, 'n')}); e${i} = e; }`).join('\n');
 
   // the serial port's TX (#2536): each change, its cycle from the start (UB: the cycles of the runs before) and its level
-  // and the pins' changes (#4696: a co-design system's links, core/system-sim-compiled.js): each change of each pin, its
+  // and the pins' changes (#4696: a System's links, core/system-sim-compiled.js): each change of each pin, its
   // cycle, its index in watch.pins and its level, sampled with the TX's and at the end of a run (pinsCode: the last
   // edge's changes in this run's)
   const pinsCode = (watch?.pins || []).map((b, i) => `{ const t = ${sig([b], 'n')}; if (t !== q${i}) { PT.push(UB + cy, ${i}, t); q${i} = t; } }`).join('\n');

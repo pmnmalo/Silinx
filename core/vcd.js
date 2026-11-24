@@ -1,6 +1,6 @@
 // Silinx - a VCD file read back (#4699): its timescale, its signals by their scopes' path ('system.links.uart_avr_tx')
 // and their changes. A bit's value: 0, 1, or null (x, z); a vector's: its binary digits as written ('b1010'). For the
-// co-design system's VCD (core/system-waves.js) and the simulator's (toVCD). Isomorphic ES module.
+// System's VCD (core/system-waves.js) and the simulator's (toVCD). Isomorphic ES module.
 
 /** A VCD's text read: { timescale, signals: Map(path → { width, type, changes: [t, value, t, value…] }) } or throws. */
 export function readVcd(text) {

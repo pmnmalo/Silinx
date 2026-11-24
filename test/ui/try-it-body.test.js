@@ -1,5 +1,5 @@
 // UI (#3924): the Try it's body a lighter green than its bar, in every drawing editor that has one: the panel of the state
-// diagram (FSM), the ASM chart, the Petri net and the System (co-design, #5194), and the schematic's and the circuit's side panels while they are tried out (the
+// diagram (FSM), the ASM chart, the Petri net and the System (a System, #5194), and the schematic's and the circuit's side panels while they are tried out (the
 // circuit's Try it bar, #4067, as the schematic's: its toolbar's Try it pressed, its bar's Stop); in both interfaces
 // and both themes (dark: a darker, muted green), its text readable (WCAG AA, 4.5:1); the FSM's Tables, the Petri net's
 // Analysis and the schematic's and the circuit's Properties, outside Try it, not green. No message in the console.
@@ -32,7 +32,7 @@ const EDITORS = [
   { kind: 'petri', file: 'src/n.pn.json', model: newPetri('n'), panel: '.pn-panel', bar: '.asm-codebar', body: '.pn-panel-body', api: 'petriEditor', other: 'analysis' },
   { kind: 'sch', file: 'src/s.sch.json', model: schematic(), panel: '.sch-editor', bar: '.se-simbar', body: '.se-props' },
   { kind: 'circ', file: 'src/b.circ.json', model: newCircuit('b'), panel: '.circuit-editor', bar: '.circ-simbar', body: '.asm-side' },
-  // (a co-design System's Try it, its bottom panel, #5194)
+  // (a System's Try it, its bottom panel, #5194)
   { kind: 'system', file: newSystemFile('x').path, text: newSystemFile('x').text, panel: '.sys-sim-panel', bar: '.asm-codebar', body: '.sys-sim-host' },
 ];
 

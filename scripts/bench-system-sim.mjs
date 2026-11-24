@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// Silinx - the co-design scheduler's benchmark (#4696): two FPGA nodes of the `uart` example's modules (core/system-sim.js,
+// Silinx - the Systems' scheduler's benchmark (#4696): two FPGA nodes of the `uart` example's modules (core/system-sim.js,
 // test/system-sim-lib.mjs) linked by a UART both ways, a at 50 MHz and b at 40 MHz (or 50), simulated together in
 // Node; the simulated time per second of the computer's time against the quantum, with the links idle, then busy (a's
 // message echoed back and forth: both links always active), adaptive and with a fixed latency (exact), and the nodes

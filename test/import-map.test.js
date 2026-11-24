@@ -52,7 +52,7 @@ test('the import map of web/index.html: every target installed; the editor\'s wh
   const meet = meetSrc.flatMap(src => [...bareImports(src), ...dynamic(src)]);
   assert.deepEqual([...new Set(meet)].sort(), ['@trystero-p2p/torrent']);
   todo.push(...meet);
-  // (the co-design System's AVR, #4701: avr8js, its ES modules importing each other with no extension, resolved by the
+  // (the System's AVR, #4701: avr8js, its ES modules importing each other with no extension, resolved by the
   // server as a bundler does)
   const avr = dynamic(fs.readFileSync(path.join(ROOT, 'core/system-sim-avr.js'), 'utf8'));
   assert.deepEqual(avr, ['avr8js']);

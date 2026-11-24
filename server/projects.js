@@ -20,7 +20,7 @@ import { foldName, sameNameIn, spelledAs } from '../core/fold-name.js';
 import { fsFailure } from './fs-error.js';
 import { mapLimit, filesOf } from './concurrent.js';
 import { PROJECT_NAME_RE, projectNameError, sameProject } from '../core/project-name.js';
-import { CODESIGN_KIND, boardRefusal, createRefusal } from '../core/project-kind.js';
+import { SYSTEM_KIND, boardRefusal, createRefusal, withKind } from '../core/project-kind.js';
 import { newSystemFile } from '../core/system-doc.js';
 import { newProjectJson, projectJsonText } from '../core/project-defaults.js';
 import { renameProblem, renamedFile } from '../core/project-rename.js';
@@ -130,7 +130,7 @@ export async function listProjects() {
     let pj;
     try { pj = parseDescription(text); if (!pj || typeof pj !== 'object' || Array.isArray(pj)) throw new SyntaxError('not an object'); }
     catch (e) { return { name: ent.name, damaged: damagedText(e), modified: await lastChange(dir) }; }
-    return { name: ent.name, device: pj.device, top: pj.top, board: pj.board, ...(pj.kind ? { kind: pj.kind } : {}), modified: await lastChange(dir) };
+    return { name: ent.name, device: pj.device, top: pj.top, board: pj.board, ...(pj.kind ? { kind: withKind(pj).kind } : {}), modified: await lastChange(dir) };
   });
   return out.filter(Boolean).sort((a, b) => a.name.localeCompare(b.name));
 }
@@ -200,6 +200,7 @@ export async function readProject(name) {
   catch { throw new HttpError(404, `project '${name}' not found`); }
   try { pj = parseDescription(text); if (!pj || typeof pj !== 'object' || Array.isArray(pj)) throw new SyntaxError('not an object'); }
   catch (e) { throw new HttpError(422, damagedMessage(name, e)); }
+  pj = withKind(pj);   // (a System project saved with the old id, #5411)
   etags.set(pj, descriptionEtag(text));
   const ct = await cloneTrust(dir);
   if (ct) Object.assign(pj, { trusted: false }, ct.madeBy ? { madeBy: ct.madeBy } : {});
@@ -380,7 +381,7 @@ async function copyDir(src, dst, { skipRoot = null } = {}) {
 // madeBy 'mcp': a project the MCP server makes, untrusted too, its messages saying so (#2981)
 // kind 'design': a design and simulation project (#3780, core/project-kind.js): an empty one, no board, no constraints
 export async function createProject({ name, template = 'empty', device, board, kind = null, fromOutside = false, madeBy = null }) {
-  // (a design project starts empty, a co-design one empty or from a co-design example: core/project-kind.js, #4702)
+  // (a design project starts empty, a System one empty or from a System example: core/project-kind.js, #4702)
   const refused = createRefusal(kind, template);
   if (refused) throw new HttpError(400, refused);
   const dir = projectDir(name);
@@ -395,7 +396,7 @@ export async function createProject({ name, template = 'empty', device, board, k
     // (its files without its silinx.json, written once below, already marked when the project is untrusted: never on
     // disk as a trusted project's in between, #3413)
     const pj = { ...parseDescription(await fs.readFile(path.join(src, PROJECT_FILE), 'utf8')), name };
-    const noBoard = boardRefusal(pj, { board, device });   // (a co-design example, #4702)
+    const noBoard = boardRefusal(pj, { board, device });   // (a System example, #4702)
     if (noBoard) throw new HttpError(400, noBoard);
     pj.files ||= [];
     await copyDir(src, dir, { skipRoot: PROJECT_FILE });
@@ -424,8 +425,8 @@ export async function createProject({ name, template = 'empty', device, board, k
   // (core/project-defaults.js, as the browser edition's, #4766; Optimization Fast, #4828)
   const json = { ...newProjectJson(name, { device, board, kind }), ...(fromOutside ? { trusted: false } : {}), ...(madeBy === 'mcp' ? { trusted: false, madeBy } : {}) };
   await recordMade(dir, { fromOutside, madeBy });
-  // (a co-design project: its System document, its top, #4702; inside its folder as every project path, #5344)
-  if (kind === CODESIGN_KIND) { const f = newSystemFile(name); await fs.writeFile(safeJoin(dir, f.path), f.text); }
+  // (a System project: its System document, its top, #4702; inside its folder as every project path, #5344)
+  if (kind === SYSTEM_KIND) { const f = newSystemFile(name); await fs.writeFile(safeJoin(dir, f.path), f.text); }
   return writeProject(name, json);
 }
 

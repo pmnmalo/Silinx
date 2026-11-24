@@ -1,4 +1,4 @@
-// Silinx - the co-design system's adapter of a serial terminal (#4701; the scheduler: core/system-sim.js): a System's
+// Silinx - a System's adapter of a serial terminal (#4701; the scheduler: core/system-sim.js): a System's
 // terminal node, a UART at its baud and frame. What reaches its RX pin is decoded into bytes (core/system-decode.js, at
 // the terminal's own settings: a wrong baud gives garbage, as on a real terminal), each with its time; the bytes typed
 // (`send`) become its TX pin's waveform (start, data, parity and stop bits at its baud), one after the other.

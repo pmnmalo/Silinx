@@ -1,4 +1,4 @@
-// Silinx - the co-design system's waves (#4699, docs/CODESIGN.md): one set of waves for the whole system, from what the
+// Silinx - a System's waves (#4699, docs/SYSTEMS.md): one set of waves for the whole system, from what the
 // co-simulation scheduler recorded (core/system-sim.js: each link's changes at its source, `sent`, and at its other
 // ends, `trace`): a scope per node with its linked pins (an output as it drove the link, an input as the link reached
 // it, later by the link's lag), and a scope `links` with each link's named signal (`uart_avr_tx`: its source's

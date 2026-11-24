@@ -188,7 +188,7 @@ export async function createApp({ host = '127.0.0.1', token = null, codes = crea
   app.use('/packages/silinx-hdl/src', asset(path.join(ROOT, 'packages/silinx-hdl/src')));
   app.use('/vendor/elk', asset(path.join(ROOT, 'node_modules/elkjs/lib')));
   // the editor's ES modules (CodeMirror 6): the packages the import map of web/index.html names, only
-  // (avr8js's ES modules import each other with no extension, './cpu/cpu', '..': resolved as a bundler does, the co-design
+  // (avr8js's ES modules import each other with no extension, './cpu/cpu', '..': resolved as a bundler does, the Systems
   // System's AVR, #4701)
   app.use('/vendor/npm/avr8js/dist/esm', (req, res, next) => {
     const p = decodedPath(req);
@@ -290,7 +290,7 @@ export async function createApp({ host = '127.0.0.1', token = null, codes = crea
   }));
   api.get('/projects/:p/sources', wrap(req => P.readSources(req.params.p)));
   // the examples, in the order the interface lists them (gates first: core/examples.js)
-  // (the co-design example only where co-design is on, #5202)
+  // (the System example only where Systems are on, #5202)
   api.get('/templates', wrap(() => offeredExamples(orderExamples(fs.readdirSync(P.EXAMPLES_DIR, { withFileTypes: true })
     .filter(d => d.isDirectory() && fs.existsSync(path.join(P.EXAMPLES_DIR, d.name, 'silinx.json')))
     .map(d => d.name)))));

@@ -1,4 +1,4 @@
-// UI (#5322): a circuit node in the System Emulator. A co-design project (the uart example's module on its Basys2, its
+// UI (#5322): a circuit node in the System Emulator. A System project (the uart example's module on its Basys2, its
 // btn on JB1 and its led<0> on JB3; a serial terminal; a circuit, the Basys2's JB1 driven by a logic switch S1, its JB3
 // lighting the LED D2): Emulate draws the circuit beside the board as the Circuit editor draws it; Run: S1 clicked in
 // it presses the FPGA's button (its message in the terminal), the LED D2 lit as LD0; the console's lines, no warnings.
@@ -27,7 +27,7 @@ uiTest('#5322 Emulate: a circuit node drawn beside the board, its switch clicked
   await makeProject(env, { name: 'CoEmuCirc', template: 'uart', files: { 'emu.sys.json': SYS, 'src/bench.circ.json': JSON.stringify(BENCH, null, 2) } });
   const pj = await env.server.api('GET', '/api/projects/CoEmuCirc');
   delete pj.fileTree;
-  await env.server.api('PUT', '/api/projects/CoEmuCirc', { ...pj, kind: 'codesign', board: null, constraints: null, top: null });
+  await env.server.api('PUT', '/api/projects/CoEmuCirc', { ...pj, kind: 'system', board: null, constraints: null, top: null });
   await page.openProject('CoEmuCirc');
   await page.eval(() => window.SilinxApp.openFile('emu.sys.json'));
   await page.waitFor((ed) => document.querySelector(ed), [ED], { what: 'the System editor' });

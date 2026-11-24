@@ -1,4 +1,4 @@
-// A co-design System's run in a Web Worker (#4701, core/system-host.js): started from its file on the local server
+// A System's run in a Web Worker (#4701, core/system-host.js): started from its file on the local server
 // (web/js/system-worker.js, a module worker), from its embedded text in the browser edition (a Blob, a classic worker:
 // a file:// page cannot start a module one, #512), as the Board Emulator's engine (web/js/emulator.js). The page drives it
 // by messages, each answered: { nodes, wires, terminals, boards, run(until) -> { report, finished, boards }, send(node,
