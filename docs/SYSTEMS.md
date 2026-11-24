@@ -54,6 +54,9 @@ Silinx (#5041): New Project asks the kind first; its System choice makes one, em
 System project has one System, shown in the Design pane as `[System]`, its nodes as branches under it (#5414, roadmap
 #5416's phase 2: `core/project-nodes.js` gives any project's nodes, the MCP's `project_info` too; an FPGA or a design
 project has one node, implicit, and its pane is drawn as before).
+Any project has a System (#5437, #5416's phase 3, `core/project-system.js`, read only): a System project's is its System
+document; an FPGA or a design project's is implicit, derived from its `silinx.json` with nothing written, one node (its
+board, device, top module and constraints) and no link. The MCP's `project_info` gives it (`system`).
 
 - **Its canvas** follows the schematic editor's style and the rules of [UI-GUIDELINES.md](UI-GUIDELINES.md). The System
   editor (`web/js/system-editor.js`, #4700) places the nodes (an FPGA node, an Arduino Uno or Nano, a serial terminal),
