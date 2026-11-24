@@ -16,7 +16,7 @@ export const PT = {
   // menus
   'File': 'Ficheiro', 'Edit': 'Editar', 'View': 'Ver', 'Project': 'Projeto', 'Process': 'Processo', 'Tools': 'Ferramentas',
   'Window': 'Janela', 'Help': 'Ajuda', 'Language': 'Idioma',
-  'New Project…': 'Novo Projeto…', 'Open Project…': 'Abrir Projeto…', 'Close Project': 'Fechar Projeto', 'Trust Project': 'Confiar no Projeto', 'Check Design': 'Verificar Projeto', 'Show the waveform': 'Mostrar a forma de onda', 'Open the HDL here, in Simulation': 'Abrir o HDL aqui, na Simulação',
+  'New Project…': 'Novo Projeto…', 'Open Project…': 'Abrir Projeto…', 'Close Project': 'Fechar Projeto', 'Trust Project': 'Confiar no Projeto', 'Help: The Board on Windows': 'Ajuda: A Placa no Windows', 'Check Design': 'Verificar Projeto', 'Show the waveform': 'Mostrar a forma de onda', 'Open the HDL here, in Simulation': 'Abrir o HDL aqui, na Simulação',
   'Import Project…': 'Importar Projeto…', 'Export Project (.zip)…': 'Exportar Projeto (.zip)…',
   // the browser edition: where the projects are kept (in the browser storage, or in a folder on the disk)
   'Open Workspace Folder…': 'Abrir Pasta de Trabalho…', 'Open Workspace Folder': 'Abrir Pasta de Trabalho',

@@ -81,8 +81,19 @@ That's all. Things to know:
 
 Chrome and Edge reach a USB board only through Windows' **WinUSB** driver. Digilent Adept (installed with
 Adept, Xilinx ISE or Vivado, as on most lab computers) gives the Basys2 / Nexys2 its own driver, and FTDI's
-driver takes the FTDI boards (Basys 3, Nexys A7, iCEBreaker, ULX3S, Tang Nano 9K): the browser then lists
-the board but cannot open it. The console says so: *the board cannot be opened (Access denied.)…*.
+driver takes the FTDI boards (Basys 3, Nexys A7, iCEBreaker, ULX3S, Tang Nano 9K). Then either:
+
+- the board is **missing from the browser's list** of USB devices, in Chrome and in Edge alike, and the
+  console says *no board chosen* once the list is closed; or
+- the browser lists the board but cannot open it: the console says *the board cannot be opened (Access
+  denied.)…*.
+
+Both lines have a **Help: The Board on Windows** button that opens this section. To see which driver has
+the board: Windows' Device Manager, with the board connected and switched on. Under *Digilent* or *Jungo*
+(*Digilent USB Device*), or *USB Serial Converter* for an FTDI board, it has Adept's or FTDI's driver; under
+*Universal Serial Bus devices*, with WinUSB as its driver, the browser can use it. A board shown nowhere, or
+as an *Unknown USB Device*: check the cable (one that carries data, not only power), the power switch,
+another USB port.
 
 1. Close Digilent Adept, iMPACT, Vivado's Hardware Manager and the Silinx application: one program at a
    time can use the board.
@@ -95,6 +106,12 @@ the board but cannot open it. The console says so: *the board cannot be opened (
 
 Adept, iMPACT and Vivado no longer see the board while it has WinUSB: to use them again, put Digilent's
 (or FTDI's) driver back in Windows' Device Manager (the board ▸ *Update driver* ▸ *Let me pick*).
+
+**In a lab** (for teachers and the computers' administrators): Zadig needs an administrator's rights, so
+students usually cannot run it themselves, and the driver it installs stays for every user of the computer
+(once per computer and board model). Choose one setup per room: WinUSB, for Silinx in the browser; or
+Digilent's driver, for Adept, iMPACT and the Silinx application run locally. A board that moves between
+rooms of both kinds is given its driver again in each.
 
 The browser shows its list only right after a click: if the console says *the browser did not show its
 list of USB devices*, click the button again. If it says *no board chosen*, the list was closed with no

@@ -3,11 +3,12 @@
 import { icon } from './icons.js';
 import { h } from './ui.js';
 import { quickFixes } from '/core/quickfix.js';
-import { t, onLanguageChange } from './i18n.js';
+import { t, onLanguageChange, getLanguage } from './i18n.js';
 import { hintRow, sevWord } from './diaghelp.js';
 import { S, app } from './app.js';
 import { shownDiag } from './design-only.js';
 import { isTrusted, refusedProject } from '/core/trust.js';
+import { needsWinUsb, WINUSB_GUIDE } from '/core/webusb-support.js';
 import { severityOf } from '/core/log-severity.js';
 import { lineMessage, entryOf } from '/core/message.js';
 import { lineSource, isShown, shownSourcesNow, showCommandLines } from './messages.js';
@@ -24,6 +25,8 @@ export function onLogLine(fn) { lineWatchers.add(fn); return () => lineWatchers.
 
 /** The Trust Project button's action of an untrusted project (#2830): its line said when it opens, every refusal of a
  *  process for it (#4583). */
+// an error that sends the user to the WinUSB driver (#5459): its button opens the user's guide's section, in its language
+export const winUsbAction = () => ({ label: 'Help: The Board on Windows', run: () => { globalThis.open(WINUSB_GUIDE[getLanguage()] || WINUSB_GUIDE.en, '_blank', 'noopener'); return false; } });   // (false: it stays enabled, to open again)
 export const trustAction = name => ({ label: 'Trust Project', trust: name, run: () => import('./project.js').then(m => m.trustProject(name)) });
 
 // action: { label, run, trust? (a Trust Project's project) }, or a list of them, a button at the end of the (last) line: what the line asks
@@ -53,8 +56,9 @@ export function log(text, cls = '', { diag = true, action = null, src = null, go
   const refused = !action && cls === 'err' && refusedProject(text);
   // (a refusal's line right after another of the same project's shares its button, and its action: its entry's too)
   const shared = refused && el.lastElementChild?.querySelector('.ln-trust')?.dataset.trust === refused;
-  const msgAction = refused ? trustAction(refused) : [action].flat().find(Boolean) ?? null;
-  if (refused && !shared) action = msgAction;
+  const winUsb = !action && !refused && cls === 'err' && needsWinUsb(text);
+  const msgAction = refused ? trustAction(refused) : winUsb ? winUsbAction() : [action].flat().find(Boolean) ?? null;
+  if ((refused && !shared) || winUsb) action = msgAction;
   const lines = String(text).split('\n'), divs = [];
   const paths = (designState.sources || []).map(s => s.path);
   const drawn = draw || (src === 'app' ? appText : null);

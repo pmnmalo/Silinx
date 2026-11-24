@@ -85,8 +85,19 @@ https://pmnmalo.github.io/Silinx/dev/, com os projetos à parte) e passe ao pass
 O Chrome e o Edge só chegam a uma placa USB através do controlador **WinUSB** do Windows. O Digilent
 Adept (instalado com o Adept, o Xilinx ISE ou o Vivado, como na maioria dos computadores dos
 laboratórios) dá à Basys2 / Nexys2 o seu próprio controlador, e o controlador da FTDI fica com as placas
-FTDI (Basys 3, Nexys A7, iCEBreaker, ULX3S, Tang Nano 9K): o browser mostra então a placa na lista, mas
-não a consegue abrir. A consola diz isso: *the board cannot be opened (Access denied.)…*.
+FTDI (Basys 3, Nexys A7, iCEBreaker, ULX3S, Tang Nano 9K). Então:
+
+- a placa **não aparece na lista** de dispositivos USB do browser, no Chrome e no Edge, e a consola diz
+  *no board chosen* quando a lista é fechada; ou
+- o browser mostra a placa na lista, mas não a consegue abrir: a consola diz *the board cannot be opened
+  (Access denied.)…*.
+
+As duas linhas têm um botão **Ajuda: A Placa no Windows** que abre esta secção. Para ver que controlador
+tem a placa: o Gestor de Dispositivos do Windows, com a placa ligada ao computador e ligada. Em *Digilent*
+ou *Jungo* (*Digilent USB Device*), ou *USB Serial Converter* numa placa FTDI, tem o controlador do Adept
+ou da FTDI; em *Dispositivos Universal Serial Bus*, com o WinUSB como controlador, o browser pode usá-la.
+Uma placa que não aparece em lado nenhum, ou aparece como *Dispositivo USB Desconhecido*: verifique o cabo
+(um que leve dados, não só alimentação), o interruptor da placa, outra porta USB.
 
 1. Feche o Digilent Adept, o iMPACT, o Hardware Manager do Vivado e a aplicação Silinx: só um programa
    de cada vez pode usar a placa.
@@ -100,6 +111,13 @@ não a consegue abrir. A consola diz isso: *the board cannot be opened (Access d
 O Adept, o iMPACT e o Vivado deixam de ver a placa enquanto ela tiver o WinUSB: para os voltar a usar,
 reponha o controlador da Digilent (ou da FTDI) no Gestor de Dispositivos do Windows (a placa ▸
 *Atualizar controlador* ▸ *Escolher*).
+
+**Num laboratório** (para os docentes e os administradores dos computadores): o Zadig precisa de direitos
+de administrador, por isso os alunos normalmente não o podem executar, e o controlador que instala fica
+para todos os utilizadores do computador (uma vez por computador e modelo de placa). Escolha uma
+configuração por sala: o WinUSB, para o Silinx no browser; ou o controlador da Digilent, para o Adept, o
+iMPACT e a aplicação Silinx executada localmente. Uma placa que passe entre salas dos dois tipos recebe de
+novo o seu controlador em cada uma.
 
 O browser só mostra a sua lista logo a seguir a um clique: se a consola disser *the browser did not show
 its list of USB devices*, clique de novo no botão. Se disser *no board chosen*, a lista foi fechada sem
