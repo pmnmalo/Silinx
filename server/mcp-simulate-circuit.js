@@ -29,7 +29,12 @@ export async function simulateCircuitFile(m0, steps, base, hdl = {}) {
   // (the logic probes' levels, by label or id: 0, 1, Z open, X; said when the circuit has any, #3900)
   const probeName = new Map(m.parts.filter((p) => p.type === 'probe').map((p) => [p.id, p.label || p.id]));
   const probes = () => Object.fromEntries(Object.entries(sim.probes()).map(([id, v]) => [probeName.get(id), v]));
-  const probeText = () => (probeName.size ? `; probes ${Object.entries(probes()).map(([k, v]) => `${k}=${v}`).join(' ')}` : '') + lcdText() + oledText() + sensorText() + servoText() + encoderText() + buzzerText();
+  const probeText = () => (probeName.size ? `; probes ${Object.entries(probes()).map(([k, v]) => `${k}=${v}`).join(' ')}` : '') + lcdText() + oledText() + sensorText() + servoText() + encoderText() + buzzerText() + sonarText();
+  // (an ultrasonic sensor, #5456: its distance set by its id, cm; a step's after_us, the time let pass before its inputs
+  // are set, its echo meanwhile)
+  const { partDef } = await import('../core/circuit-parts.js');
+  const sensing = new Map(m.parts.filter((p) => partDef(p.type)?.sense).map((p) => [p.id.toLowerCase(), p]));
+  const sonarText = () => Object.entries(sim.sonars()).map(([id, s]) => `; ${id} ${s.cm} cm${s.measuring ? ', measuring' : ''}${s.echo == null ? '' : `, its last echo ${s.echo} µs`}`).join('');
   // (a buzzer, #5454: its tone, or silent)
   const buzzerText = () => Object.entries(sim.buzzers()).map(([id, s]) => `; ${id} ${s.sounding ? `${s.hz} Hz` : 'silent'}`).join('');
   // (a servo's arm, #5347)
@@ -47,7 +52,19 @@ export async function simulateCircuitFile(m0, steps, base, hdl = {}) {
   lines.push(`start: t = ${first.time} ns; LEDs ${Object.entries(leds()).map(([k, v]) => `${k}=${v}`).join(' ') || 'none'}${probeText()}`, ...note(first));
   for (const [k, step] of steps.entries()) {
     if (!step || typeof step !== 'object' || Array.isArray(step)) throw toolError(`step ${k}: an object of inputs ({ name: 0 | 1 })`);
+    if ('after_us' in step) {
+      const us = Number(step.after_us);
+      if (!Number.isFinite(us) || us < 0 || us > 1e6) throw toolError(`step ${k}: after_us = ${JSON.stringify(step.after_us)}: the time let pass before its inputs, 0 to 1000000 µs`);
+      note(sim.advance(us * 1000));
+    }
     for (const [n, v] of Object.entries(step)) {
+      if (n === 'after_us') continue;
+      if (sensing.has(n.toLowerCase())) {
+        const p = sensing.get(n.toLowerCase()), x = partDef(p.type).sense[0], val = Number(v);
+        if (!Number.isFinite(val) || val < x.min || val > x.max) throw toolError(`step ${k}: ${n} = ${JSON.stringify(v)}: ${x.label.toLowerCase()} from ${x.min} to ${x.max}`);
+        sim.setSensed(p.id, x.prop, val);
+        continue;
+      }
       // (a temperature sensor's temperature, by its id: °C, #5342)
       if (sensorIds.has(n.toLowerCase())) { if (!Number.isFinite(Number(v))) throw toolError(`step ${k}: ${n} = ${JSON.stringify(v)}: a temperature (°C)`); sim.setTemp(sensorIds.get(n.toLowerCase()), Number(v)); continue; }
       if (encoders.has(n.toLowerCase())) {

@@ -18,6 +18,7 @@ import { LCD_1602 } from './circuit-lcd.js';
 import { LM75 } from './circuit-lm75.js';
 import { SERVO_SG90 } from './circuit-servo.js';
 import { BUZZER } from './circuit-buzzer.js';
+import { HC_SR04 } from './circuit-sonar.js';
 import { KEYPAD_4X4 } from './circuit-keypad.js';
 import { ROTARY_ENCODER } from './circuit-encoder.js';
 import { OLED_SSD1306 } from './circuit-oled.js';
@@ -101,6 +102,8 @@ const OTHERS = [
   SERVO_SG90,
   // a buzzer (#5454, core/circuit-buzzer.js)
   BUZZER,
+  // an ultrasonic range sensor (#5456, core/circuit-sonar.js)
+  HC_SR04,
 ];
 
 // ------------------------------------------------------------------ the library

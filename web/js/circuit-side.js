@@ -62,6 +62,12 @@ export function mountCircuitSide(ctx) {
         t.addEventListener('change', () => apply(setPartProps(M(), p.id, { temp: Number(t.value) })));
         kids.push(field('Temperature (°C)', t));
       }
+      // (what a part senses, saved: an ultrasonic sensor's distance, #5456, its `sense`)
+      for (const x of d?.sense ?? []) {
+        const v = h('input', { type: 'number', class: 'circ-sense-in', 'data-prop': x.prop, min: String(x.min), max: String(x.max), step: String(x.step), value: String(p[x.prop] ?? x.default) });
+        v.addEventListener('change', () => apply(setPartProps(M(), p.id, { [x.prop]: Number(v.value) })));
+        kids.push(field(x.label, v));
+      }
       if (d?.type === 'clock') {
         const hz = h('input', { type: 'number', class: 'circ-hz-in', min: String(CLOCK_HZ.min), max: String(CLOCK_HZ.max), step: '0.1', value: String(p.hz ?? CLOCK_HZ.default) });
         hz.addEventListener('change', () => apply(setPartProps(M(), p.id, { hz: Number(hz.value) })));

@@ -97,7 +97,7 @@ export function createCircuitSim(m, { nets = circuitNets(m), onLevel = null, run
 
   const powered = (ic) => levels[ic.vcc] === '1' && levels[ic.gnd] === '0';
   function evaluate(ic) {
-    if (evaluateDevice(ic, { powered, level: (net) => levels[net], now: () => time, drive })) return;
+    if (evaluateDevice(ic, { powered, level: (net) => levels[net], now: () => time, drive, wake: (at) => wake(ic, at) })) return;
     if (ic.live) {   // (a module: its inputs' levels in, its outputs' out)
       const o = ic.live.run(Object.fromEntries(ic.ins.map((x) => [x.port, levels[x.net]])));
       for (const x of ic.outs) drive(x.d, o[x.port] ?? 'X');
@@ -157,6 +157,13 @@ export function createCircuitSim(m, { nets = circuitNets(m), onLevel = null, run
     while (i > 0 && queue[i - 1].t > ev.t) i--;
     queue.splice(i, 0, ev);
   }
+  // a device evaluated again at `at` (ns), its own time (#5456: an echo's start and its end), as an event of the queue
+  function wake(ic, at) {
+    const ev = { t: Math.max(at, time), wake: ic };
+    let i = queue.length;
+    while (i > 0 && queue[i - 1].t > ev.t) i--;
+    queue.splice(i, 0, ev);
+  }
   // the levels after a change of drivers: every node again, and the ICs that read a net that changed evaluated
   function update() {
     const touched = new Set();
@@ -183,15 +190,19 @@ export function createCircuitSim(m, { nets = circuitNets(m), onLevel = null, run
     changes = new Array(N).fill(0);
     while (queue.length && queue[0].t <= end) {
       time = queue[0].t;
+      const woke = new Set();
       while (queue.length && queue[0].t === time) {
         const ev = queue.shift();
+        if (ev.wake) { woke.add(ev.wake); continue; }
         if (ev.gen !== ev.d.gen) continue;
         ev.d.value = ev.v;
         ev.d.pending = null;
       }
       update();
+      for (const ic of woke) evaluate(ic);
     }
-    const quiet = !queue.length;
+    // (quiet: nothing left but a device's own wake-ups, #5456, which a later run or advance reaches)
+    const quiet = queue.every((e) => e.wake);
     if (!quiet) time = end;
     const late = end - maxNs / 10;
     return { quiet, time, start, oscillating: quiet ? [] : levels.map((_, i) => i).filter((i) => lastChange[i] >= late) };
@@ -229,6 +240,8 @@ export function createCircuitSim(m, { nets = circuitNets(m), onLevel = null, run
     nets, run, set, drive: driveOutside,
     /** the simulated time moved on by `ns` (a clock's half period between its ticks), the circuit run meanwhile */
     advance(ns) { const r = run({ maxNs: ns }); if (r.quiet) time = r.start + ns; return { ...r, time }; },
+    /** the time (ns) a device waits for, its next own wake-up (#5456), or null */
+    nextWake: () => queue.find((e) => e.wake)?.t ?? null,
     /** each logic probe's tip level: 0, 1, Z (open), X */
     probes: () => Object.fromEntries(m.parts.filter((p) => p.type === 'probe').map((p) => [p.id, levels[netOfPin(p.id, 1)]])),
     get time() { return time; },

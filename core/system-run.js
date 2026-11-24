@@ -90,6 +90,8 @@ export function systemReport({ sim, wires, terminals, regmaps = {} }) {
   // (its graphic OLEDs', #5336)
   // (its buzzers, #5454: sounding, and at what)
   for (const [id, a] of [...sim.nodes].filter(([, x]) => x.buzzers)) for (const [k, s] of Object.entries(a.buzzers())) lines.push(`circuit ${id}: ${k} ${s.sounding ? `sounds at ${s.hz} Hz` : 'is silent'}`);
+  // (its ultrasonic sensors, #5456: the distance, the last echo)
+  for (const [id, a] of [...sim.nodes].filter(([, x]) => x.sonars)) for (const [k, s] of Object.entries(a.sonars())) lines.push(`circuit ${id}: ${k} ${s.cm} cm, ${s.echo == null ? 'no echo yet' : `its last echo ${s.echo} µs`}`);
   // (its servos, #5347: where their arms are)
   for (const [id, a] of [...sim.nodes].filter(([, x]) => x.servos)) for (const [k, s] of Object.entries(a.servos())) lines.push(`circuit ${id}: ${k} at ${Math.round(s.angle)}°${s.width == null ? '' : `, its last pulse ${+s.width.toFixed(2)} ms`}`);
   // (its temperature sensors, #5342)

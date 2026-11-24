@@ -112,6 +112,11 @@ export const CIRCUIT_PT = {
   'Buzzer (active, 5 V)': 'Besouro (ativo, 5 V)',
   'An active buzzer: its + at 1 and its − at 0, it sounds at its own tone (about 2.3 kHz); a square wave on its + (an Arduino\'s tone(), a PWM, an FPGA\'s divider) and it sounds at that wave\'s frequency; at 0 it is silent. Not a port of the HDL.':
     'Um besouro ativo: com o + a 1 e o − a 0, soa no seu próprio tom (cerca de 2,3 kHz); com uma onda quadrada no + (o tone() de um Arduino, um PWM, um divisor numa FPGA), soa na frequência dessa onda; a 0 fica em silêncio. Não é um porto do HDL.',
+  // an ultrasonic range sensor (#5456, core/circuit-sonar.js)
+  'Ultrasonic range sensor (HC-SR04)': 'Sensor de distância ultrassónico (HC-SR04)',
+  'Distance (cm)': 'Distância (cm)',
+  'An ultrasonic range sensor: a pulse of 10 µs or more on Trig and, about 0.46 ms after it ends, Echo is at 1 for as long as the sound takes to reach the object and come back, 58 µs a centimetre (2 to 400 cm; 38 ms out of its range). The object\'s distance is set while trying it (its − and +), as saved in its properties. Not a port of the HDL.':
+    'Um sensor de distância ultrassónico: um impulso de 10 µs ou mais no Trig e, cerca de 0,46 ms depois de acabar, o Echo fica a 1 durante o tempo que o som leva a chegar ao objeto e a voltar, 58 µs por centímetro (2 a 400 cm; 38 ms fora do seu alcance). A distância do objeto define-se ao experimentá-lo (o seu − e +), como guardada nas suas propriedades. Não é um porto do HDL.',
   // a rotary encoder (#5451, core/circuit-encoder.js)
   'Rotary encoder (KY-040)': 'Codificador rotativo (KY-040)',
   'A rotary encoder module (KY-040), 20 detents a turn: turning it joins CLK (A) and DT (B) to GND in quadrature, A first clockwise, B first anticlockwise, both open at each detent (its 10 kΩ pull-ups hold them high); pushing its knob joins SW to GND (no pull-up: the program\'s). A program counts the edges of A, reading B. Its turns and its switch are inputs of the HDL (ENC1_A, ENC1_B, ENC1_SW).':
@@ -352,6 +357,8 @@ export const CIRCUIT_PT_PATTERNS = [
   [/^(\S+) \((.+)\): its − \(pin (\d)\) is not on the supply's −: it never sounds$/, (m, p, v, k) => `${p} (${v}): o seu − (pino ${k}) não está no − da fonte: nunca soa`],
   [/^(\S+)'s \+ \(pin (\d)\) is driven by nothing: it stays silent$/, (m, p, k) => `O + (pino ${k}) de ${p} não é conduzido por nada: fica em silêncio`],
   [/^(\S+): a tone of (\d+) Hz: a person hears 20 Hz to 20 kHz$/, (m, p, hz) => `${p}: um tom de ${hz} Hz: uma pessoa ouve de 20 Hz a 20 kHz`],
+  [/^(\S+)'s Trig \(pin (\d)\) is driven by nothing: it never measures$/, (m, p, k) => `O Trig (pino ${k}) de ${p} não é conduzido por nada: nunca mede`],
+  [/^(\S+): a trigger of ([\d.]+) µs: an HC-SR04's is 10 µs or more$/, (m, p, us) => `${p}: um disparo de ${us} µs: o de um HC-SR04 é de 10 µs ou mais`],
   // (a servo's signal, #5347)
   [/^(\S+)'s signal \(pin (\d)\) is driven by nothing: its arm stays where it is$/, (m, p, k) => `O sinal (pino ${k}) de ${p} não é conduzido por nada: o seu braço fica onde está`],
   [/^(\S+) \((.+)\) joins nothing$/, (m, p, d) => `${p} (${CIRCUIT_PT[d] ?? title(d)}) não liga a nada`],

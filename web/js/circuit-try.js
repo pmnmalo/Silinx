@@ -16,23 +16,38 @@ import { encoderTurn, ENCODER_STEP_NS } from '/core/circuit-encoder.js';
 export function mountCircuitTry({ M, opts, root, status, render, destroyed }) {
   let sim = null, steps = null, saidServo = 0, detents = {};
   let ticks = [];                       // the clocks' timers while trying it (each ticking at its frequency, in real time)
+  let wakeTimer = null, seen = 0;       // (a device's own wake-up, its timer; the real time last caught up with, #5456)
   function startSim() {
     const errs = checkCircuit(M(), undefined, opts.hdl?.() ?? {}).filter((d) => d.severity === 'error');
     if (errs.length) { status(`The circuit cannot be simulated: ${errs.map((d) => d.message).join('; ')}`, true); stopSim(); return; }
     stopTicks();
     sim = createCircuitSim(M(), { runner: opts.hdl?.()?.runner });
-    saidServo = 0;
+    saidServo = 0; seen = performance.now();
     recordCircuit(sim, steps = tryOps(null));   // (its steps, as live sharing sends them, #4244)
     runSim();
     // (a clock source flips its level every half period, in real time; the simulated time moves on by as much; held
     // while the circuit is not seen, its time standing still, and on again with no burst of ticks, #5276)
     ticks = M().parts.filter((p) => p.type === 'clock').map((p) => intervalWhileSeen(root, 500 / (p.hz || 1), () => {
       if (!sim || destroyed()) return;
-      sim.advance(5e8 / (p.hz || 1));
+      if (timed()) catchUp(); else sim.advance(5e8 / (p.hz || 1));   // (its real time, with a sensor that keeps time)
       setInput(p.id, !sim.inputs()[p.id]);
     }));
   }
-  function stopTicks() { for (const t of ticks) t.stop(); ticks = []; }
+  function stopTicks() { for (const t of ticks) t.stop(); ticks = []; clearTimeout(wakeTimer); wakeTimer = null; }
+  // (a device that keeps time, #5456: an ultrasonic sensor; the simulated time follows the real one, at most a second at
+  // a time, so that a trigger pressed by hand lasts what it lasted; its wake-ups reached in real time)
+  const timed = () => M().parts.some((p) => p.type === 'hc-sr04');
+  function catchUp() {
+    const t = performance.now(), ns = Math.min(1e9, Math.round((t - seen) * 1e6));
+    seen = t;
+    if (ns > 0 && timed()) sim.advance(ns);
+  }
+  function pumpWakes() {
+    clearTimeout(wakeTimer); wakeTimer = null;
+    const at = sim?.nextWake();
+    if (at == null) return;
+    wakeTimer = setTimeout(() => { wakeTimer = null; if (!sim || destroyed()) return; seen = performance.now(); sim.advance(Math.max(0, at - sim.time)); runSim(); }, Math.max(1, (at - sim.time) / 1e6));
+  }
   // a rotary encoder turned a detent (`dir` 1 clockwise, -1 anticlockwise, #5451): its quadrature a quarter at a time, the
   // simulated time moving on between them, its knob's detents counted
   function turn(id, dir) {
@@ -41,7 +56,7 @@ export function mountCircuitTry({ M, opts, root, status, render, destroyed }) {
     runSim();
   }
   // one of a part's inputs set while trying it, then run
-  function setInput(id, v, index = 0) { sim.set(id, v, index); runSim(); }
+  function setInput(id, v, index = 0) { catchUp(); sim.set(id, v, index); runSim(); }
   function runSim() {
     const r = sim.run();
     for (const line of runMessages(sim, r)) status(line.replace(/^(ERROR|WARNING): /, ''), true);
@@ -49,6 +64,7 @@ export function mountCircuitTry({ M, opts, root, status, render, destroyed }) {
     const ws = sim.servoWarnings();
     for (const w of ws.slice(saidServo)) status(w, true);
     saidServo = ws.length;
+    pumpWakes();
     render();
   }
   function stopSim() { stopTicks(); sim = null; steps = null; detents = {}; render(); }

@@ -11,6 +11,7 @@ import { emulationBoards, withBoards, watchBoards, boardStates, setBoardInput, p
 import { loadAvr8js } from '../core/system-sim-avr.js';
 import { systemVcd } from '../core/system-waves.js';
 import { ucfPort } from '../core/board-constraints.js';
+import { partDef } from '../core/circuit-parts.js';
 import { isRegmapFile, regmapFor, hierModules } from '../core/regmap.js';
 
 // the System's FPGA nodes' modules elaborated: their ports ({ module: [{ name, dir, width }] }) and designs
@@ -100,6 +101,13 @@ function runControls(sim, boards, controls, end) {
         if (!Number.isFinite(Number(c.value))) throw toolError(`controls[${i}]: ${c.control}'s value: a temperature (°C)`);
         return { t, b: cb, pin: String(c.control), on: Number(c.value) };
       }
+      // (what a part senses: its value in its unit and range, an ultrasonic sensor's distance, #5456)
+      const sense = cb.inputs.find(x => x.pin === String(c.control)).kind === 'sense' && partDef(cb.model.parts.find(p => p.id === String(c.control)).type).sense[0];
+      if (sense) {
+        const v = Number(c.value);
+        if (!Number.isFinite(v) || v < sense.min || v > sense.max) throw toolError(`controls[${i}]: ${c.control}'s value: ${sense.label.toLowerCase()} from ${sense.min} to ${sense.max}`);
+        return { t, b: cb, pin: String(c.control), on: v };
+      }
       return { t, b: cb, pin: String(c.control), on: !!c.on };
     }
     const b = boards.find(x => x.id === c?.node && x.kind === 'fpga');
@@ -119,7 +127,7 @@ function runControls(sim, boards, controls, end) {
 }
 
 // what the boards show, a line each
-const boardLines = shown => Object.entries(shown).map(([id, s]) => (s.inputs && s.lit ? `${id}'s circuit: lit ${s.lit.join(' ') || 'none'}${Object.entries(s.sensors || {}).map(([k, x]) => `; ${k} ${x.temp.toFixed(1)} °C`).join('')}${Object.entries(s.servos || {}).map(([k, x]) => `; ${k} at ${Math.round(x.angle)}°`).join('')}${Object.entries(s.buzzers || {}).map(([k, x]) => `; ${k} ${x.sounding ? `${x.hz} Hz` : 'silent'}`).join('')}.` : s.leds
+const boardLines = shown => Object.entries(shown).map(([id, s]) => (s.inputs && s.lit ? `${id}'s circuit: lit ${s.lit.join(' ') || 'none'}${Object.entries(s.sensors || {}).map(([k, x]) => `; ${k} ${x.temp.toFixed(1)} °C`).join('')}${Object.entries(s.servos || {}).map(([k, x]) => `; ${k} at ${Math.round(x.angle)}°`).join('')}${Object.entries(s.buzzers || {}).map(([k, x]) => `; ${k} ${x.sounding ? `${x.hz} Hz` : 'silent'}`).join('')}${Object.entries(s.sonars || {}).map(([k, x]) => `; ${k} ${x.cm} cm`).join('')}.` : s.leds
   ? `${id}'s board: LEDs ${s.leds.map((v, k) => [v, k]).filter(([v]) => v > 0.5).map(([, k]) => `LD${k}`).join(' ') || 'off'}${s.digits?.some(Boolean) ? `; display ${s.digits.map(d => (d ? digitText(d) : ' ')).reverse().join('')}` : ''}.`
   : `${id}'s board: LED L ${s.led > 0.5 ? 'on' : 'off'}; pins high ${Object.entries(s.pins).filter(([, v]) => v === 1).map(([p]) => p).join(' ') || 'none'}.`));
 // a digit's segments as the hexadecimal digit they draw, or ? (other patterns)

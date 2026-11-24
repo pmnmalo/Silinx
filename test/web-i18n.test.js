@@ -635,6 +635,8 @@ test('#5185 the Petri net\'s and the circuit\'s Check messages in Portuguese', a
     'U1 1Y, U1 2Y: open collector with no pull-up: the net floats while they are off (a 74LS input reads it high, an LED stays off)',
     // (circuit-keypad.test.js, #5364)
     'U1 pin 1 (1A) floats while no key of KP1 is pressed: a 74LS input reads high', 'Short circuit while KP1 is pressed (its key 1): it joins the supply\'s + and −',
+    // (circuit-sonar.test.js, #5456)
+    'US1 (Ultrasonic range sensor (HC-SR04)) is not powered: its VCC (pin 1) is not on the supply\'s + and its GND (pin 4) is not on the supply\'s −', 'US1\'s Trig (pin 2) is driven by nothing: it never measures',
     // (circuit-buzzer.test.js, #5454)
     'BZ1 (Buzzer (active, 5 V)): its − (pin 2) is not on the supply\'s −: it never sounds', 'BZ1\'s + (pin 1) is driven by nothing: it stays silent',
     // (circuit-encoder.test.js, #5451)
@@ -673,7 +675,7 @@ test('#5185 the Petri net\'s and the circuit\'s Check messages in Portuguese', a
     assert.deepEqual(English[k].filter((x) => !list.some((m) => m.includes(x))), [], `${k}: the parts no message has`);
     assert.deepEqual(list.map((m) => [m, t(m)]).filter(([m, pt]) => pt === m || English[k].some((x) => x.length > 5 && pt.includes(x))), [], `${k}: English left`);
   }
-  assert.deepEqual([CIRCUIT.length, PETRI.length], [81, 22]);
+  assert.deepEqual([CIRCUIT.length, PETRI.length], [83, 22]);
   // (the issue's, exactly; a guard's error and Try it's reason are the parser's and the simulator's own, as they come)
   const T = {
     'the net can reach a deadlock, no transition able to fire: after fail1, fail2, fail3': 'a rede pode chegar a um bloqueio, sem nenhuma transição capaz de disparar: depois de fail1, fail2, fail3',
