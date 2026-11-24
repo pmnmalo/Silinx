@@ -74,8 +74,9 @@ function processDefs(sel, view) {
   return defs.some(p => p.id === 'summary') ? defs : [SUMMARY_PROC, ...defs.filter(p => p.id !== 'none')];
 }
 function selectionProcesses(sel, view) {
-  // (a System's row and its nodes', #5414)
-  const sys = systemProcesses(sel, { check: mod => checkSyntax(mod), rtl: mod => openSchematic(mod) });
+  // (a System's row and its nodes', #5414; a module of a System whose System is its top: its node's, no flow on the
+  // project's device, #5443)
+  const sys = systemProcesses(sel, view, { check: mod => checkSyntax(mod), rtl: mod => openSchematic(mod) });
   if (sys) return sys;
   // a drawing without its HDL file (it has errors, #207): it gets it as soon as it has none (#220)
   if (sel.type === 'asm') return [{ id: 'asm-open', label: 'View/Edit State Diagram (ASM)', ico: 'asm', run: () => openAsm(sel.file) }];

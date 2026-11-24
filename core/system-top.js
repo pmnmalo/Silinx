@@ -14,6 +14,10 @@ import { constraintsExtOf } from '../packages/silinx-fpga/src/parts.js';
 /** The Top-Level Source Type of a System. */
 export const SYSTEM_TOP = 'system';
 
+/** Why a process of the FPGA flow is refused in the project `name` whose top is its System (#5443): its FPGA nodes are
+ *  implemented each on its own board, not yet (docs/SYSTEMS.md's phase 3). The interface offers none; the MCP says it. */
+export const systemFlowRefusal = name => `the project '${name}' has its System as its top: its FPGA nodes are not implemented yet, each on its own board (Check Syntax and the simulation work on their modules)`;
+
 /** Why the project `pj` cannot have a System as its top, or null. */
 export function systemTopRefusal(pj) {
   if (!systemsOn()) return SYSTEMS_OFF;

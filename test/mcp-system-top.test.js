@@ -64,3 +64,8 @@ test('#5402 new_project top_source_type system: a System project; refused in a d
     await fails('new_project', { name: 's6', top_source_type: 'system' }, SYSTEMS_OFF);
   } finally { setBuildChannel('dev'); }
 });
+
+test('#5443 run_process in a System project whose top is its System: refused, its FPGA nodes not implemented yet', async () => {
+  await ok('new_project_from_example', { name: 'rp1', example: 'uart-avr' });
+  await fails('run_process', { project: 'rp1', process: 'synthesize' }, 'the project \'rp1\' has its System as its top: its FPGA nodes are not implemented yet, each on its own board (Check Syntax and the simulation work on their modules)');
+});

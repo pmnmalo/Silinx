@@ -10,6 +10,8 @@ import { lineMessage, messageData } from '../core/message.js';
 import { messageLocation, projectPath as sourcePath } from '../core/message-location.js';
 import { MODEL_PROCESS, hasSimModels, noSimModelMessage, silinxFlowOf } from './mcp-hdl.js';
 import { ISE, processSteps } from '../core/tool-descriptors.js';
+import { isSystemProject } from '../core/project-kind.js';
+import { systemFlowRefusal } from '../core/system-top.js';
 
 // run_process's processes: those of the interface's tree (core/tool-descriptors.js, the Xilinx flow's names, #4751), each
 // the steps its process runs (processSteps): the flow up to its stage, then its own step (the simulation models: Generate
@@ -99,7 +101,7 @@ export async function runProcess(name, proc, { toolchain, timeoutS = 1800, signa
   const pj = await readProject(name);
   const steps = PROCESSES[proc];
   if (!steps) throw toolError(`process: one of ${Object.keys(PROCESSES).join(', ')}`);
-  if (!pj.top) throw toolError(`the project '${name}' has no top module`);
+  if (!pj.top) throw toolError(isSystemProject(pj) ? systemFlowRefusal(name) : `the project '${name}' has no top module`);   // (a System its top, #5443)
   // (a model the flow does not make: refused, as simulate refuses it, #3707)
   const model = Object.keys(MODEL_PROCESS).find(m => MODEL_PROCESS[m] === proc);
   const silinx = silinxFlowOf(pj, toolchain);

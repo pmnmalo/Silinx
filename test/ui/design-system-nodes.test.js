@@ -57,6 +57,12 @@ uiTest('#5414 a System project\'s nodes as the Design pane\'s branches, each wit
   assert.deepEqual(await procs(page), ['View/Edit System', 'Check Syntax', 'View RTL Schematic']);
   await page.treeRow('#procs', 'Check Syntax', { exact: true, dbl: true });
   await page.waitConsole(/^Process "Check Syntax" completed successfully$/m);
+  // (its module's row: its node's processes, no flow on the project's default device, #5443)
+  await page.treeRow('#hier', 'uart', { exact: true });
+  await page.waitFor(() => ![...document.querySelectorAll('#procs .row .lbl')].some((l) => l.textContent.trim() === 'View/Edit System'), [], { what: 'the module\'s processes' });
+  assert.deepEqual(await procs(page), ['Check Syntax', 'View RTL Schematic']);
+  await page.treeRow('#hier', 'fpga', { exact: true });
+  await page.waitFor(() => [...document.querySelectorAll('#procs .row .lbl')].some((l) => l.textContent.trim() === 'View/Edit System'), [], { what: 'the node\'s processes again' });
   // in Portuguese
   await page.eval(async () => { (await import('/js/i18n.js')).setLanguage('pt'); });
   await page.waitFor(() => [...document.querySelectorAll('#procs .row .lbl')].some((l) => l.textContent.trim() === 'Ver/Editar Sistema'), [], { what: 'the processes in Portuguese' });
