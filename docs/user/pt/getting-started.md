@@ -105,6 +105,23 @@ Uma placa que não aparece em lado nenhum, ou aparece como *Dispositivo USB Desc
 3. **Options ▸ List All Devices**, escolha a placa (*Digilent USB Device*, *Basys2*, *Nexys2*, ou
    *Dual RS232-HS (Interface 0)* numa placa FTDI), escolha **WinUSB** como controlador e clique em
    **Replace Driver** (ou **Install Driver**).
+
+   **A placa não aparece na lista do Zadig?** O Windows pode ainda mantê-la com o controlador da Digilent
+   (ou da FTDI). Remova primeiro o dispositivo e depois execute de novo o Zadig:
+   - abra o **Gestor de Dispositivos** (botão direito no botão Iniciar ▸ *Gestor de Dispositivos*), com a
+     placa ligada ao computador e ligada;
+   - encontre a placa (em *Digilent* ou *Jungo*: *Digilent USB Device*; numa placa FTDI: *USB Serial
+     Converter* em *Controladores Universal Serial Bus*); o menu *Ver* do Gestor, *Mostrar dispositivos ocultos*, também a
+     mostra se estiver a cinzento;
+   - botão direito sobre ela ▸ **Desinstalar dispositivo**, marque **Tentar remover o controlador deste
+     dispositivo** (*Eliminar o software do controlador deste dispositivo* em versões antigas do Windows) e
+     clique em **Desinstalar**;
+   - desligue o cabo da placa, volte a ligá-lo, e feche e abra de novo o Zadig: em **Options ▸ List All
+     Devices** ela aparece agora (sem controlador, ou como *Unknown Device*); dê-lhe o **WinUSB** como
+     acima.
+
+   Também são precisos direitos de administrador. Remover assim o controlador da Digilent remove-o também
+   para o Adept: para voltar a usar o Adept, reinstale o Adept (ou o seu *Digilent Adept Runtime*).
 4. Desligue o cabo da placa e volte a ligá-lo, e depois clique em **Program FPGA**: o browser mostra a
    sua lista de dispositivos USB; escolha a placa (só na primeira vez).
 

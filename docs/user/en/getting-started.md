@@ -101,6 +101,21 @@ another USB port.
 3. **Options ▸ List All Devices**, choose the board (*Digilent USB Device*, *Basys2*, *Nexys2*, or
    *Dual RS232-HS (Interface 0)* for an FTDI board), choose **WinUSB** as the driver and click
    **Replace Driver** (or **Install Driver**).
+
+   **The board is not in Zadig's list?** Windows may still keep it with Digilent's (or FTDI's) driver. Remove
+   the device first, then run Zadig again:
+   - open the **Device Manager** (right-click the Start button ▸ *Device Manager*), with the board connected
+     and switched on;
+   - find the board (under *Digilent* or *Jungo*: *Digilent USB Device*; an FTDI board: *USB Serial
+     Converter* under *Universal Serial Bus controllers*); Device Manager's *View* menu, *Show hidden devices*, shows it too if
+     it is greyed out;
+   - right-click it ▸ **Uninstall device**, tick **Attempt to remove the driver for this device** (*Delete
+     the driver software for this device* in older Windows) and click **Uninstall**;
+   - unplug the board, plug it in again, and close and reopen Zadig: in **Options ▸ List All Devices** it
+     now appears (with no driver, or with *Unknown Device*); give it **WinUSB** as above.
+
+   An administrator's rights are needed for this too. Removing Digilent's driver this way also removes it for
+   Adept: to use Adept again, reinstall Adept (or its *Digilent Adept Runtime*).
 4. Unplug the board and plug it in again, then click **Program FPGA**: the browser shows its list of
    USB devices; choose the board (only the first time).
 

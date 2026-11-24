@@ -48,13 +48,13 @@ test('no navigator (Node), or one without a User-Agent: the general reason', () 
 });
 
 test('#4593 Windows: the board WebUSB cannot open, its driver Adept\'s or FTDI\'s: WinUSB with Zadig', () => {
-  assert.equal(WINUSB_HINT, 'on Windows, Digilent Adept\'s or FTDI\'s driver holds the board unless it has the WinUSB driver: give it WinUSB with Zadig (zadig.akeo.ie) to program it from the browser (Adept then no longer sees it until its driver is put back; the user\'s guide: Programming the board from the browser on Windows)');
+  assert.equal(WINUSB_HINT, 'on Windows, Digilent Adept\'s or FTDI\'s driver holds the board unless it has the WinUSB driver: give it WinUSB with Zadig (zadig.akeo.ie) to program it from the browser (Adept then no longer sees it until its driver is put back; a board Zadig does not list: uninstall it first in Device Manager; the user\'s guide: Programming the board from the browser on Windows)');
   assert.equal(ftdiInUse('Access denied.'), `the board is in use (another program, or the operating system's FTDI driver: Access denied.); ${WINUSB_HINT}`);
 });
 
 test('#4593 the browser\'s refusals of the board: the chooser closed, no click, another error as it is', () => {
   const ex = (name, message) => Object.assign(new Error(message), { name });
-  assert.equal(usbError(ex('NotFoundError', 'No device selected.')), 'no board chosen: connect the board\'s USB cable, switch it on and choose it in the browser\'s list (on Windows, a board missing from the list, in Chrome and in Edge, has Digilent Adept\'s or FTDI\'s driver: give it the WinUSB driver with Zadig, zadig.akeo.ie; the user\'s guide: Programming the board from the browser on Windows)');
+  assert.equal(usbError(ex('NotFoundError', 'No device selected.')), 'no board chosen: connect the board\'s USB cable, switch it on and choose it in the browser\'s list (on Windows, a board missing from the list, in Chrome and in Edge, has Digilent Adept\'s or FTDI\'s driver: give it the WinUSB driver with Zadig, zadig.akeo.ie; a board Zadig does not list: uninstall it first in Device Manager; the user\'s guide: Programming the board from the browser on Windows)');
   const gesture = 'Failed to execute \'requestDevice\' on \'USB\': Must be handling a user gesture to show a permission request.';
   assert.equal(usbError(ex('SecurityError', gesture)), `the browser did not show its list of USB devices (${gesture}): it shows it only right after a click; click the button again`);
   // (a SecurityError of another kind, as a permissions policy's: its message as it is)
