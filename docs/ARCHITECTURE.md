@@ -34,7 +34,7 @@ WebAssembly tools into the single file; `scripts/pwa.mjs` adds the site's servic
                      │
  The front end    packages/silinx-hdl    VHDL and Verilog: parsers, elaboration, simulator, flat Verilog
  The toolchain    packages/silinx-fpga   synthesis to bitstream (TOOLCHAIN.md)
- (planned)        packages/silinx-pic24  the PIC24 emulator (#5480; decided, its licence open)
+ (possible)       packages/silinx-pic24  a PIC24 emulator of Silinx's own (MIT; if #5480 chooses it)
                      │
  Outside tools    Yosys and nextpnr (WebAssembly, npm) │ Xilinx ISE 14.7, AMD Vivado (the user's) │ programmers (openFPGALoader…)
 ```
@@ -78,10 +78,11 @@ Where each part sits, what exists today and what is planned (its phase and issue
 | **Per-node toolchains** | — | FPGA: the three flows, a node at a time (`system-implement.js`, `system-node.js` in core); XC16: `toolchain.js`'s way, found and run | `system-implement-ui.js`, `system-processes.js` | FPGA nodes exist (#5446); avr-gcc / arduino-cli: #4695's phase 5; XC16: phase 1, #5482; XC16 in WebAssembly: an experiment, #5491 |
 | **Per-node programmers** and the plan (Program All, Program Node) | the plan; WebUSB JTAG (`usb-program.js`); Web Serial's STK500 / raw REPL | `programmer.js`; a PICkit through MPLAB IPE | `impact.js`; the System's rows | FPGA exists; the plan, Web Serial, the PICkit: phase 2, #5489 (with #4695's phase 3) |
 
-- **The PIC24 emulator** is a monorepo package of its own, `packages/silinx-pic24`, as `silinx-fpga` is (its own
-  changelog and npm releases, importing nothing from `core/` or `web/`; decided, Pedro, 2026-11-24); its adapter sits in
-  `core/` as the other engines' adapters do, behind the node contract. Its licence, MIT or AGPL-3.0-only, is still
-  open.
+- **The PIC24 emulator**: LabWired's dsPIC33 model (MIT, Rust, through WebAssembly) or one of Silinx's own in JS, being
+  evaluated (#5480). Its adapter sits in `core/` as the other engines' adapters do, behind the node contract. If
+  Silinx writes its own, it is a monorepo package of its own, `packages/silinx-pic24`, as `silinx-fpga` is (its own
+  changelog and npm releases, importing nothing from `core/` or `web/`), under the MIT licence (decided, Pedro,
+  2026-11-24).
 - **XC16** is the user's (proprietary, as ISE is): the local server runs it; in the browser alone the student gives a
   `.hex`. Built from its GPL source for WebAssembly (`cc1`, `as`, `ld` with Emscripten and a driver of Silinx's own,
   as Yosys is) it would run in the browser too: an experiment first (#5491), a phase of its own if it succeeds.

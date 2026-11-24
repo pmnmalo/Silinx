@@ -66,7 +66,7 @@ converts nothing; widening it allows more kinds.
 | CPU board: Arduino / AVR | C / C++ (an Arduino sketch) | avr8js | a `.hex` |
 | CPU board: ESP32 | MicroPython | MicroPython in WebAssembly, Silinx's `machine` | `.py` files |
 | CPU board: Pico (RP2040) | MicroPython | rp2040js with MicroPython's firmware | a `.uf2`, `.py` files |
-| Microcontroller: PIC24 (the Explorer 16/32, PIC24FJ1024GB610) | C with assembly (XC16) | Silinx's own PIC24 emulator | a `.hex` |
+| Microcontroller: PIC24 (the Explorer 16/32, PIC24FJ1024GB610) | C with assembly (XC16) | a PIC24 emulator (LabWired's or Silinx's own: being evaluated, #5480) | a `.hex` |
 | SoC: Zynq (FPGA + ARM joined by AXI, #5412) | VHDL / Verilog for the PL, C for the PS | the FPGA's engines, the PS's processor engine | a bitstream and an `.elf` |
 | Digital circuit | the breadboard's drawing | the circuit's Try it | the parts, wired by hand |
 | Analog circuit | the circuit's drawing | behavioural, later ngspice (#5387) | the parts, wired by hand |
@@ -132,9 +132,11 @@ emulation of an operating system in the browser.
 The PIC24 comes first (#5479's phase 1): a course uses the Explorer 16/32 with the PIC24FJ1024GB610 next semester, and
 it needs the emulation.
 
-- **No open emulator exists** for the PIC24 or the dsPIC: gpsim and picsim are 8-bit only, PICSimLab has no 16-bit
-  core, and LabWired's PIC24 work is at an early stage. So Silinx writes its own in JS, as avr8js is for the AVR
-  (#5480).
+- **Which emulator, an open question** (#5480): gpsim and picsim are 8-bit only and PICSimLab has no 16-bit core, but
+  [LabWired](https://github.com/w1ne/labwired-core) (MIT, Rust) has had a dsPIC33FJ32MC204 model since 2026-11-18 (boot,
+  UART, timers and interrupts, GPIO / PPS, input capture / output compare, ADC, SPI, I²C; real XC16 firmware boots).
+  Silinx either builds on it (through WebAssembly) or writes its own in JS, as avr8js is for the AVR: #5480 evaluates
+  which.
 - **The core:** the PIC24F's 24-bit instructions, W0–W15, the addressing modes, the interrupts.
 - **The Explorer 16/32's peripherals** (#5481): GPIO (the LEDs, the buttons), the Timers, UART, SPI, I²C, the ADC (the
   potentiometer, the temperature sensor), the character LCD through the PMP, PPS.
@@ -150,9 +152,9 @@ it needs the emulation.
   compiled by the official XC16 and by the WASM build gives the same `.hex` (ISE as the oracle, in spirit). For next
   semester the official XC16 on the local server stays the plan; if the experiment succeeds, the compiler in the
   browser becomes a later phase of its own.
-- **Where the emulator lives** (decided, Pedro, 2026-11-24): a monorepo package of its own, `packages/silinx-pic24`, as
-  `silinx-fpga` is (its own changelog and npm releases, importing nothing from `core/` or `web/`). Its licence, MIT or
-  AGPL-3.0-only, is still open.
+- **Where an emulator of Silinx's own lives** (decided, Pedro, 2026-11-24, if Silinx writes its own): a monorepo package
+  of its own, `packages/silinx-pic24`, as `silinx-fpga` is (its own changelog and npm releases, importing nothing from
+  `core/` or `web/`), under the MIT licence (the rest of Silinx stays AGPL-3.0-only).
 
 ### The general model's risks
 
@@ -636,11 +638,11 @@ changelog fragment.
 - Each node has its own base language; languages mix only where the toolchain joins them (C with assembly, C with C++).
 - FSM, ASM, Petri nets and truth tables generate C and MicroPython through a synchronous reactive model, with tick
   semantics; there is no schematic on a CPU, and hand-written code is never translated.
-- The PIC24 (the Explorer 16/32, PIC24FJ1024GB610) comes first, emulated by Silinx's own JS emulator, MPLAB X's
-  simulator its oracle. Next semester's compiler is the official XC16 on the local server; XC16 in
+- The PIC24 (the Explorer 16/32, PIC24FJ1024GB610) comes first, emulated (LabWired's model or Silinx's own JS emulator: being
+  evaluated, #5480), MPLAB X's simulator its oracle. Next semester's compiler is the official XC16 on the local server; XC16 in
   WebAssembly is an experiment (#5491).
-- The PIC24 emulator is a monorepo package of its own, `packages/silinx-pic24`, as `silinx-fpga` is (Pedro,
-  2026-11-24); its licence, MIT or AGPL-3.0-only, is still open.
+- If Silinx writes its own PIC24 emulator, it is a monorepo package of its own, `packages/silinx-pic24`, as
+  `silinx-fpga` is, under the MIT licence (Pedro, 2026-11-24).
 - Analog is behavioural first, SPICE later (#5387).
 - Hardware in the loop in real time comes later; for now the simulation is behavioural.
 - OS-based nodes are real boards or QEMU only.
