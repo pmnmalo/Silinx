@@ -2,7 +2,9 @@
 
 The design of roadmap #4695. Modules on FPGAs and on microcontrollers (an Arduino's AVR, a Raspberry Pi Pico's
 RP2040, an ESP32), wired to each other in one drawing, then simulated, emulated and tried on the real boards
-together. Nothing of it is built yet; each phase becomes issues of its own when it starts.
+together. Its phases 1 and 2 are built (the scheduler, the System document, the AVR node, the links, the System
+Emulator); the RP2040 and ESP32 nodes are phase 4, not started (#5494, #5495). Each phase becomes issues of its own
+when it starts.
 
 **What a System holds** (#5411): nodes of every kind, linked as the design wants (GPIO, UART, SPI, I²C, buses, a
 network), any node to any node:
@@ -148,9 +150,9 @@ it needs the emulation.
   compiled by the official XC16 and by the WASM build gives the same `.hex` (ISE as the oracle, in spirit). For next
   semester the official XC16 on the local server stays the plan; if the experiment succeeds, the compiler in the
   browser becomes a later phase of its own.
-- **Where the emulator lives, a proposal** (not decided): a monorepo package of its own, `packages/silinx-pic24`, as
-  `silinx-fpga` is (its own changelog and npm releases, importing nothing from `core/` or `web/`), possibly under the
-  MIT licence.
+- **Where the emulator lives** (decided, Pedro, 2026-11-24): a monorepo package of its own, `packages/silinx-pic24`, as
+  `silinx-fpga` is (its own changelog and npm releases, importing nothing from `core/` or `web/`). Its licence, MIT or
+  AGPL-3.0-only, is still open.
 
 ### The general model's risks
 
@@ -637,6 +639,8 @@ changelog fragment.
 - The PIC24 (the Explorer 16/32, PIC24FJ1024GB610) comes first, emulated by Silinx's own JS emulator, MPLAB X's
   simulator its oracle. Next semester's compiler is the official XC16 on the local server; XC16 in
   WebAssembly is an experiment (#5491).
+- The PIC24 emulator is a monorepo package of its own, `packages/silinx-pic24`, as `silinx-fpga` is (Pedro,
+  2026-11-24); its licence, MIT or AGPL-3.0-only, is still open.
 - Analog is behavioural first, SPICE later (#5387).
 - Hardware in the loop in real time comes later; for now the simulation is behavioural.
 - OS-based nodes are real boards or QEMU only.
