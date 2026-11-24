@@ -6,8 +6,9 @@
 // `cm`: its `sense`, which the Properties panel, Try it's − and +, the System Emulator and the MCP read). Isomorphic
 // module.
 
-/** What it senses, set while running (#5456): the property, its words, its unit, its range and step, its default. */
-const SENSE = [{ prop: 'cm', label: 'Distance (cm)', unit: 'cm', min: 2, max: 400, step: 1, default: 100 }];
+/** What it senses, set while running (#5456): the property, its words, its unit, its range and step, its default, a
+ *  click's change. */
+const SENSE = [{ prop: 'cm', label: 'Distance (cm)', unit: 'cm', min: 2, max: 400, step: 1, default: 100, nudge: 5 }];
 
 export const HC_SR04 = {
   type: 'hc-sr04', title: 'Ultrasonic range sensor (HC-SR04)', kind: 'sonar', prefix: 'US', sense: SENSE,

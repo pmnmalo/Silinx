@@ -117,6 +117,14 @@ export const CIRCUIT_PT = {
   'Distance (cm)': 'Distância (cm)',
   'An ultrasonic range sensor: a pulse of 10 µs or more on Trig and, about 0.46 ms after it ends, Echo is at 1 for as long as the sound takes to reach the object and come back, 58 µs a centimetre (2 to 400 cm; 38 ms out of its range). The object\'s distance is set while trying it (its − and +), as saved in its properties. Not a port of the HDL.':
     'Um sensor de distância ultrassónico: um impulso de 10 µs ou mais no Trig e, cerca de 0,46 ms depois de acabar, o Echo fica a 1 durante o tempo que o som leva a chegar ao objeto e a voltar, 58 µs por centímetro (2 a 400 cm; 38 ms fora do seu alcance). A distância do objeto define-se ao experimentá-lo (o seu − e +), como guardada nas suas propriedades. Não é um porto do HDL.',
+  // the temperature and humidity sensors (#5470, core/circuit-dht.js)
+  'Temperature and humidity sensor (DHT11)': 'Sensor de temperatura e humidade (DHT11)',
+  'Temperature and humidity sensor (DHT22)': 'Sensor de temperatura e humidade (DHT22)',
+  'Humidity (%)': 'Humidade (%)',
+  'A temperature and humidity sensor on one wire, its DATA open drain (a pull-up on it, 10 kΩ): the host holds DATA low 18 ms or more and releases it; it answers 80 µs low, 80 µs high, then 40 bits (50 µs low, then 26 µs high a 0, 70 µs a 1): the humidity (%), the temperature (°C), whole, and their checksum. Once a second at most. Its temperature (0 to 50 °C) and humidity (20 to 90 %) are set while trying it (its − and +), as saved in its properties. Not a port of the HDL.':
+    'Um sensor de temperatura e humidade num só fio, o seu DATA em dreno aberto (com uma resistência de pull-up, 10 kΩ): o anfitrião mantém DATA a 0 durante 18 ms ou mais e solta-o; ele responde 80 µs a 0, 80 µs a 1, e depois 40 bits (50 µs a 0, e então 26 µs a 1 para um 0, 70 µs para um 1): a humidade (%), a temperatura (°C), inteiras, e a sua soma de verificação. No máximo uma vez por segundo. A sua temperatura (0 a 50 °C) e humidade (20 a 90 %) definem-se ao experimentá-lo (o seu − e +), como guardadas nas suas propriedades. Não é um porto do HDL.',
+  'A temperature and humidity sensor on one wire (AM2302), its DATA open drain (a pull-up on it, 10 kΩ): the host holds DATA low 1 ms or more and releases it; it answers 80 µs low, 80 µs high, then 40 bits (50 µs low, then 26 µs high a 0, 70 µs a 1): the humidity and the temperature in tenths (16 bits each, a negative temperature its top bit) and their checksum. Once every 2 seconds at most. Its temperature (−40 to 80 °C) and humidity (0 to 100 %) are set while trying it (its − and +), as saved in its properties. Not a port of the HDL.':
+    'Um sensor de temperatura e humidade num só fio (AM2302), o seu DATA em dreno aberto (com uma resistência de pull-up, 10 kΩ): o anfitrião mantém DATA a 0 durante 1 ms ou mais e solta-o; ele responde 80 µs a 0, 80 µs a 1, e depois 40 bits (50 µs a 0, e então 26 µs a 1 para um 0, 70 µs para um 1): a humidade e a temperatura em décimas (16 bits cada, uma temperatura negativa com o bit mais alto a 1) e a sua soma de verificação. No máximo uma vez a cada 2 segundos. A sua temperatura (−40 a 80 °C) e humidade (0 a 100 %) definem-se ao experimentá-lo (o seu − e +), como guardadas nas suas propriedades. Não é um porto do HDL.',
   // a motion sensor, a PIR (#5463, core/circuit-pir.js)
   'Motion sensor (PIR, HC-SR501)': 'Sensor de movimento (PIR, HC-SR501)',
   'Hold time (s)': 'Tempo ativo (s)',
@@ -363,6 +371,8 @@ export const CIRCUIT_PT_PATTERNS = [
   [/^(\S+) \((.+)\): its − \(pin (\d)\) is not on the supply's −: it never sounds$/, (m, p, v, k) => `${p} (${v}): o seu − (pino ${k}) não está no − da fonte: nunca soa`],
   [/^(\S+)'s \+ \(pin (\d)\) is driven by nothing: it stays silent$/, (m, p, k) => `O + (pino ${k}) de ${p} não é conduzido por nada: fica em silêncio`],
   [/^(\S+): a tone of (\d+) Hz: a person hears 20 Hz to 20 kHz$/, (m, p, hz) => `${p}: um tom de ${hz} Hz: uma pessoa ouve de 20 Hz a 20 kHz`],
+  [/^(\S+): a start of ([\d.]+) ms: a (DHT\d\d)'s is ([\d.]+) ms or more$/, (m, p, ms, d, min) => `${p}: um início de ${ms} ms: o de um ${d} é de ${min} ms ou mais`],
+  [/^(\S+): read ([\d.]+) s after its last read or its power-on: a (DHT\d\d) answers once every (\d) s$/, (m, p, s, d, n) => `${p}: lido ${s} s depois da última leitura ou de ligado: um ${d} responde uma vez a cada ${n} s`],
   [/^(\S+)'s Trig \(pin (\d)\) is driven by nothing: it never measures$/, (m, p, k) => `O Trig (pino ${k}) de ${p} não é conduzido por nada: nunca mede`],
   [/^(\S+): a trigger of ([\d.]+) µs: an HC-SR04's is 10 µs or more$/, (m, p, us) => `${p}: um disparo de ${us} µs: o de um HC-SR04 é de 10 µs ou mais`],
   // (a servo's signal, #5347)

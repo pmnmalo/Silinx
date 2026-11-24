@@ -17,7 +17,7 @@ import { boardWiring, boardOutputs } from './emulate.js';
 import { resolveBoard } from './devices.js';
 import { mcuBoard } from './system-doc.js';
 import { partInputs } from './circuit-io.js';
-import { partDef } from './circuit-parts.js';
+import { partDef, sensePin } from './circuit-parts.js';
 
 // a netlist's top's ports: [{ name, dir, width }]
 function portsOf(netlist) {
@@ -47,7 +47,7 @@ export function emulationBoards(sys, inputs) {
       // (a temperature sensor's temperature, #5342: its id, a value in °C)
       for (const p of c.model.parts.filter(x => x.type === 'lm75')) ins.push({ pin: p.id, part: p.id, index: 0, kind: 'temp' });
       // (what a part senses, #5456: an ultrasonic sensor's distance, its id, a value in its unit)
-      for (const p of c.model.parts) for (const x of partDef(p.type)?.sense ?? []) ins.push({ pin: p.id, part: p.id, index: 0, kind: 'sense', prop: x.prop });
+      for (const p of c.model.parts) for (const x of partDef(p.type)?.sense ?? []) ins.push({ pin: sensePin(p, x), part: p.id, index: 0, kind: 'sense', prop: x.prop });
       out.push({ id: n.id, kind: 'circuit', model: c.model, inputs: ins, outputs: [] });
       continue;
     }
@@ -112,7 +112,7 @@ export function boardStates(sim, boards, t0, t1, prev = {}) {
     if (b.kind === 'circuit') {
       // (its lamps and its inputs now, #5322)
       const node = sim.nodes.get(b.id);
-      out[b.id] = { leds: node.sim.leds(), lcds: node.sim.lcds(), oleds: node.sim.oleds(), sensors: node.sim.sensors(), servos: node.sim.servos(), buzzers: node.sim.buzzers(), sonars: node.sim.sonars(), pirs: node.sim.pirs(), inputs: node.sim.inputs(), lit: Object.entries(node.sim.outputs()).filter(([, v]) => v === '1').map(([k]) => k) };
+      out[b.id] = { leds: node.sim.leds(), lcds: node.sim.lcds(), oleds: node.sim.oleds(), sensors: node.sim.sensors(), servos: node.sim.servos(), buzzers: node.sim.buzzers(), sonars: node.sim.sonars(), pirs: node.sim.pirs(), dhts: node.sim.dhts(), inputs: node.sim.inputs(), lit: Object.entries(node.sim.outputs()).filter(([, v]) => v === '1').map(([k]) => k) };
       continue;
     }
     if (b.kind === 'fpga') {

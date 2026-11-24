@@ -281,3 +281,12 @@ html[data-theme="dark"] .circuit-editor .circ-sim-badge { color: var(--m-success
 .circuit-editor .circ-pir-facet { fill: none; stroke: var(--circ-metal-edge); stroke-width: 0.8; pointer-events: none; }
 .circuit-editor .circ-pir-pin { font: bold 8px Arial, sans-serif; fill: var(--circ-silk); pointer-events: none; }
 .circuit-editor .circ-pir-wave { fill: none; stroke: var(--circ-servo); stroke-width: 2; stroke-linecap: round; }
+/* a temperature and humidity sensor, a DHT11 or a DHT22 (#5470, web/js/circuit-draw-dht.js): its blue or white case, its grille */
+.circuit-editor .circ-dht-leg { stroke: var(--circ-metal); stroke-width: 2.5; fill: none; }
+.circuit-editor .circ-dht-case.d11 { fill: var(--circ-servo); stroke: var(--circ-servo-edge); stroke-width: 1.4; }
+.circuit-editor .circ-dht-case.d22 { fill: var(--circ-silk); stroke: var(--circ-metal-edge); stroke-width: 1.4; }
+.circuit-editor .circ-dht-slot { fill: var(--circ-slot); }
+.circuit-editor .circ-dht-name { font: bold 10px Arial, sans-serif; pointer-events: none; }
+.circuit-editor .circ-dht-val { font: bold 9px var(--asm-mono, monospace); cursor: default; }
+.circuit-editor :is(.circ-dht-name, .circ-dht-val).d11 { fill: var(--circ-silk); }
+.circuit-editor :is(.circ-dht-name, .circ-dht-val).d22 { fill: var(--circ-plastic); }
