@@ -54,6 +54,8 @@ export class CircuitNode {
 
   /** Its servos' states (#5347). */
   servos() { return this.sim.servos(); }
+  /** Its stepper motors' states (#5476). */
+  steppers() { return this.sim.steppers(); }
   /** Its buzzers' states (#5454). */
   buzzers() { return this.sim.buzzers(); }
   /** Its temperature and humidity sensors' states (#5470). */

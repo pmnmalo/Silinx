@@ -142,7 +142,7 @@ export function mountCircuitEditor(container, opts = {}) {
     if (destroyed) return;
     const sim = tryIt.sim();
     applyView();
-    world.replaceChildren(drawCircuit({ ...M, wireStyle: wireStyle() }, { sel, draft, ghost, inside: inside(), hops: hops(), handles: !readOnly && !sim, levels: sim ? (id, n) => sim.pin(id, n) : null, leds: sim?.leds(), lcds: sim?.lcds(), oleds: sim?.oleds(), sensors: sim?.sensors(), servos: sim?.servos(), buzzers: sim?.buzzers(), sonars: sim?.sonars(), pirs: sim?.pirs(), dhts: sim?.dhts(), inputs: sim?.inputs(), encoders: tryIt.detents() }));
+    world.replaceChildren(drawCircuit({ ...M, wireStyle: wireStyle() }, { sel, draft, ghost, inside: inside(), hops: hops(), handles: !readOnly && !sim, levels: sim ? (id, n) => sim.pin(id, n) : null, leds: sim?.leds(), lcds: sim?.lcds(), oleds: sim?.oleds(), sensors: sim?.sensors(), servos: sim?.servos(), buzzers: sim?.buzzers(), steppers: sim?.steppers(), sonars: sim?.sonars(), pirs: sim?.pirs(), dhts: sim?.dhts(), inputs: sim?.inputs(), encoders: tryIt.detents() }));
     sync();   // (the Wires' ✓: an undo, a model set)
     for (const b of [delBtn]) b.disabled = !sel || !!sim;
     rotBtn.disabled = sel?.kind !== 'part' || !!sim;

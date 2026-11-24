@@ -290,3 +290,15 @@ html[data-theme="dark"] .circuit-editor .circ-sim-badge { color: var(--m-success
 .circuit-editor .circ-dht-val { font: bold 9px var(--asm-mono, monospace); cursor: default; }
 .circuit-editor :is(.circ-dht-name, .circ-dht-val).d11 { fill: var(--circ-silk); }
 .circuit-editor :is(.circ-dht-name, .circ-dht-val).d22 { fill: var(--circ-plastic); }
+/* a stepper motor on its ULN2003 board (#5476, web/js/circuit-draw-stepper.js): its board, its LEDs lit with their coil, the motor and its arm */
+.circuit-editor .circ-step-board { fill: var(--circ-pcb-green); stroke: var(--circ-plastic-edge); stroke-width: 1.2; }
+.circuit-editor .circ-step-chip { fill: var(--circ-plastic); stroke: var(--circ-plastic-edge); stroke-width: 1; }
+.circuit-editor .circ-step-chip-text, .circuit-editor .circ-step-pin { font: bold 8px Arial, sans-serif; fill: var(--circ-silk); pointer-events: none; }
+.circuit-editor .circ-step-led { fill: var(--circ-slot); stroke: var(--circ-plastic-edge); stroke-width: 1; }
+.circuit-editor .circ-step-led.on { fill: var(--circ-lv1); }
+.circuit-editor .circ-step-ears, .circuit-editor .circ-step-boss { fill: var(--circ-metal-edge); stroke: var(--circ-plastic-edge); stroke-width: 1; }
+.circuit-editor .circ-step-can { fill: var(--circ-metal); stroke: var(--circ-metal-edge); stroke-width: 1.4; }
+.circuit-editor .circ-step-shaft { fill: var(--circ-plastic); }
+.circuit-editor .circ-step-arm { stroke: var(--circ-servo); stroke-width: 5; stroke-linecap: round; fill: none; }
+.circuit-editor .circ-step-cable { stroke: var(--circ-servo-edge); stroke-width: 4; fill: none; stroke-linecap: round; }
+.circuit-editor .circ-step-angle { font: bold 11px var(--asm-mono, monospace); fill: var(--circ-plastic); pointer-events: none; }

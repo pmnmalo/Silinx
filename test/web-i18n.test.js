@@ -635,6 +635,9 @@ test('#5185 the Petri net\'s and the circuit\'s Check messages in Portuguese', a
     'U1 1Y, U1 2Y: open collector with no pull-up: the net floats while they are off (a 74LS input reads it high, an LED stays off)',
     // (circuit-keypad.test.js, #5364)
     'U1 pin 1 (1A) floats while no key of KP1 is pressed: a 74LS input reads high', 'Short circuit while KP1 is pressed (its key 1): it joins the supply\'s + and −',
+    // (circuit-stepper.test.js, #5476)
+    'M1 (Stepper motor (28BYJ-48, ULN2003 board)) is not powered: its VCC (pin 6) is not on the supply\'s +', 'M1\'s IN2, IN3, IN4 are driven by nothing: its coils\' cycle is not whole',
+    'M1\'s IN1, IN2, IN3, IN4 are driven by nothing: it never turns',
     // (circuit-dht.test.js, #5470)
     'DHT1 (Temperature and humidity sensor (DHT22)) is not powered: its VCC (pin 1) is not on the supply\'s + and its GND (pin 4) is not on the supply\'s −',
     // (circuit-pir.test.js, #5463)
@@ -679,7 +682,7 @@ test('#5185 the Petri net\'s and the circuit\'s Check messages in Portuguese', a
     assert.deepEqual(English[k].filter((x) => !list.some((m) => m.includes(x))), [], `${k}: the parts no message has`);
     assert.deepEqual(list.map((m) => [m, t(m)]).filter(([m, pt]) => pt === m || English[k].some((x) => x.length > 5 && pt.includes(x))), [], `${k}: English left`);
   }
-  assert.deepEqual([CIRCUIT.length, PETRI.length], [85, 22]);
+  assert.deepEqual([CIRCUIT.length, PETRI.length], [88, 22]);
   // (the issue's, exactly; a guard's error and Try it's reason are the parser's and the simulator's own, as they come)
   const T = {
     'the net can reach a deadlock, no transition able to fire: after fail1, fail2, fail3': 'a rede pode chegar a um bloqueio, sem nenhuma transição capaz de disparar: depois de fail1, fail2, fail3',

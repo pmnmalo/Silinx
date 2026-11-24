@@ -18,6 +18,7 @@ import { LCD_1602 } from './circuit-lcd.js';
 import { LM75 } from './circuit-lm75.js';
 import { SERVO_SG90 } from './circuit-servo.js';
 import { BUZZER } from './circuit-buzzer.js';
+import { STEPPER_28BYJ48 } from './circuit-stepper.js';
 import { HC_SR04 } from './circuit-sonar.js';
 import { HC_SR501 } from './circuit-pir.js';
 import { DHT11, DHT22 } from './circuit-dht.js';
@@ -104,6 +105,8 @@ const OTHERS = [
   SERVO_SG90,
   // a buzzer (#5454, core/circuit-buzzer.js)
   BUZZER,
+  // a stepper motor on its driver board (#5476, core/circuit-stepper.js)
+  STEPPER_28BYJ48,
   // an ultrasonic range sensor (#5456, core/circuit-sonar.js)
   HC_SR04,
   // a motion sensor, a PIR (#5463, core/circuit-pir.js)

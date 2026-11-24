@@ -34,10 +34,10 @@ export function mountCircuitTry({ M, opts, root, status, render, destroyed }) {
     }));
   }
   function stopTicks() { for (const t of ticks) t.stop(); ticks = []; clearTimeout(wakeTimer); wakeTimer = null; }
-  // (a device that keeps time, #5456: an ultrasonic sensor, a motion sensor (#5463), a DHT (#5470); the simulated time
-  // follows the real one, at most a second at a time, so that a trigger pressed by hand lasts what it lasted; its
-  // wake-ups reached in real time)
-  const timed = () => M().parts.some((p) => ['hc-sr04', 'hc-sr501', 'dht11', 'dht22'].includes(p.type));
+  // (a device that keeps time, #5456: an ultrasonic sensor, a motion sensor (#5463), a DHT (#5470), a stepper motor
+  // (#5476); the simulated time follows the real one, at most a second at a time, so that a trigger pressed by hand lasts
+  // what it lasted; its wake-ups reached in real time)
+  const timed = () => M().parts.some((p) => ['hc-sr04', 'hc-sr501', 'dht11', 'dht22', 'stepper-28byj48'].includes(p.type));
   function catchUp() {
     const t = performance.now(), ns = Math.min(1e9, Math.round((t - seen) * 1e6));
     seen = t;
