@@ -19,6 +19,7 @@ import { LM75 } from './circuit-lm75.js';
 import { SERVO_SG90 } from './circuit-servo.js';
 import { BUZZER } from './circuit-buzzer.js';
 import { STEPPER_28BYJ48 } from './circuit-stepper.js';
+import { SD_CARD } from './circuit-sd.js';
 import { HC_SR04 } from './circuit-sonar.js';
 import { HC_SR501 } from './circuit-pir.js';
 import { DHT11, DHT22 } from './circuit-dht.js';
@@ -113,6 +114,8 @@ const OTHERS = [
   HC_SR501,
   // the temperature and humidity sensors (#5470, core/circuit-dht.js)
   DHT11, DHT22,
+  // an SD card on SPI (#5477, core/circuit-sd.js)
+  SD_CARD,
 ];
 
 // ------------------------------------------------------------------ the library

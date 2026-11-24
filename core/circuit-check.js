@@ -41,6 +41,7 @@ export function checkCircuit(m, nets = circuitNets(m), { modules = null, runner 
     else if (d?.kind === 'sonar') checkSonar(p, d, nets, driven, say);
     else if (d?.kind === 'pir') checkPir(p, d, nets, say);
     else if (d?.kind === 'stepper') checkStepper(p, d, nets, driven, say);
+    else if (d?.kind === 'sd') checkSd(p, d, nets, driven, say);
     else if (d?.kind === 'dht') checkDht(p, d, nets, say);
     else if (d?.kind === 'oled' || d?.kind === 'sensor') checkOled(p, d, nets, say, (id) => m.parts.find((x) => x.id === id)?.type);
     else if (d && d.kind !== 'breadboard') checkOther(p, d, nets, say);
@@ -215,6 +216,16 @@ function checkDht(p, d, nets, say) {
   if ([1, 2, 4].every((n) => net(n).pins.length < 2 && !net(n).wires.length)) { say.warn(`${p.id} (${d.title}) joins nothing`, part(p.id)); return; }
   const vcc = netSupply(net(1)).vcc, gnd = netSupply(net(4)).gnd;
   if (!vcc || !gnd) say.warn(`${p.id} (${d.title}) is not powered: ${[!vcc && 'its VCC (pin 1) is not on the supply\'s +', !gnd && 'its GND (pin 4) is not on the supply\'s −'].filter(Boolean).join(' and ')}`, part(p.id));
+}
+
+// an SD card (#5477): joined to something; powered; its SCK, MOSI and CS driven (a board's pins are, in a System)
+function checkSd(p, d, nets, { driven }, say) {
+  const pin = (k) => d.pins.find((q) => q.name === k).n, net = (k) => nets.nets[nets.pinNet.get(`${p.id}.${pin(k)}`)];
+  if (d.pins.every((q) => { const x = net(q.name); return x.pins.length < 2 && !x.wires.length; })) { say.warn(`${p.id} (${d.title}) joins nothing`, part(p.id)); return; }
+  const vcc = netSupply(net('VCC')).vcc, gnd = netSupply(net('GND')).gnd;
+  if (!vcc || !gnd) say.warn(`${p.id} (${d.title}) is not powered: ${[!vcc && `its VCC (pin ${pin('VCC')}) is not on the supply's +`, !gnd && `its GND (pin ${pin('GND')}) is not on the supply's −`].filter(Boolean).join(' and ')}`, part(p.id));
+  const idle = ['SCK', 'MOSI', 'CS'].filter((k) => !driven[nets.pinNet.get(`${p.id}.${pin(k)}`)] && !net(k).pins.some((q) => q.dir === 'board'));
+  if (idle.length) say.warn(`${p.id}'s ${idle.join(', ')} ${idle.length > 1 ? 'are' : 'is'} driven by nothing: no host talks to it`, part(p.id));
 }
 
 // a stepper motor (#5476): joined to something; powered; its inputs driven (a board's pins are, in a System)

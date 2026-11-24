@@ -28,6 +28,8 @@ const ABOUT = {
   buzzer: 'An active buzzer: its + at 1 and its − at 0, it sounds at its own tone (about 2.3 kHz); a square wave on its + (an Arduino\'s tone(), a PWM, an FPGA\'s divider) and it sounds at that wave\'s frequency; at 0 it is silent. Not a port of the HDL.',
   // (a stepper motor on its driver board, #5476)
   'stepper-28byj48': 'A geared stepper motor (28BYJ-48) on its ULN2003 board: IN1 to IN4 at 1 turn on its coils A to D (its LEDs), and the coils on pull its rotor: in the order A, AB, B, BC, C, CD, D, DA (half steps, or A, B, C, D: full steps) its shaft turns clockwise, the other way anticlockwise; 4096 half steps a turn of its shaft (its gearbox, 1:64), one every 1 ms at most. A jump it cannot follow (the opposite coil) is said. Not a port of the HDL.',
+  // (an SD card on SPI, #5477)
+  'sd-card': 'A microSD card module with a 32 MB SDHC card, on SPI (mode 0: MOSI read on SCK\'s rise; MISO released while CS is high): after 74 clocks or more with CS high, the SD protocol\'s commands: CMD0, CMD8, CMD55 + ACMD41 (idle, then ready), CMD58, CMD17 (a 512-byte block read) and CMD24 (a block written), by block number. Its blocks are empty at first; those written are kept while trying it, shown with its state. Not a port of the HDL.',
   // (an ultrasonic range sensor, #5456)
   'hc-sr04': 'An ultrasonic range sensor: a pulse of 10 µs or more on Trig and, about 0.46 ms after it ends, Echo is at 1 for as long as the sound takes to reach the object and come back, 58 µs a centimetre (2 to 400 cm; 38 ms out of its range). The object\'s distance is set while trying it (its − and +), as saved in its properties. Not a port of the HDL.',
   // (a motion sensor, #5463)
