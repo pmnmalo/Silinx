@@ -20,7 +20,7 @@ test('#5344 a System project: its System document in its own folder', async () =
   const dir = P.projectDir('cd1');
   assert.ok(fs.existsSync(path.join(dir, 'cd1.sys.json')));
   const pj = await P.readProject('cd1');
-  assert.equal(pj.kind, 'system');
+  assert.deepEqual([pj.kind, pj.profile], [undefined, 'system']);   // (its profile, #5440)
 });
 
 test('#5344 a System project whose name carries a path: refused, nothing written', async () => {
@@ -32,17 +32,17 @@ test('#5344 a System project whose name carries a path: refused, nothing written
   assert.deepEqual(listing(), before);
 });
 
-test('#5411 a System project saved with the old kind id (codesign): read as a System project, written with the new id', async () => {
-  await P.createProject({ name: 'old1', kind: 'system' });
+test('#5440 a System project\'s profile written and read; the old kind id codesign no longer a System project (Pedro: no compatibility)', async () => {
+  await P.createProject({ name: 'old1', kind: 'embedded' });
   const file = path.join(P.projectDir('old1'), 'silinx.json');
-  fs.writeFileSync(file, JSON.stringify({ ...JSON.parse(fs.readFileSync(file, 'utf8')), kind: 'codesign' }, null, 2));
-  assert.equal((await P.readProject('old1')).kind, 'system');
-  assert.equal((await P.listProjects()).find(p => p.name === 'old1').kind, 'system');
+  assert.deepEqual([JSON.parse(fs.readFileSync(file, 'utf8')).profile, (await P.readProject('old1')).profile], ['embedded', 'embedded']);
+  assert.equal((await P.listProjects()).find(p => p.name === 'old1').profile, 'embedded');
   await P.updateProject('old1', pj => ({ ...pj, simTop: '' }));
-  assert.equal(JSON.parse(fs.readFileSync(file, 'utf8')).kind, 'system');
+  assert.equal(JSON.parse(fs.readFileSync(file, 'utf8')).profile, 'embedded');
   // (the browser edition's reading, and the predicate every reader uses)
   const { normalizeProjectJson } = await import('../web/js/project-store.js');
-  const { isSystemProject, withKind } = await import('../core/project-kind.js');
-  assert.deepEqual([normalizeProjectJson({ name: 'old1', kind: 'codesign' }, 'old1').json.kind, isSystemProject({ kind: 'codesign' }), isSystemProject({ kind: 'system' }),
-    isSystemProject({ kind: 'design' }), withKind({ kind: 'fpga' }).kind], ['system', true, true, false, 'fpga']);
+  const { isSystemProject } = await import('../core/project-kind.js');
+  assert.deepEqual([normalizeProjectJson({ name: 'old1', profile: 'system' }, 'old1').json.profile, normalizeProjectJson({ name: 'old1', kind: 'codesign' }, 'old1').json.profile,
+    isSystemProject({ kind: 'codesign' }), isSystemProject({ kind: 'system' }), isSystemProject({ profile: 'embedded' }), isSystemProject({ kind: 'design' })],
+  ['system', undefined, false, true, true, false]);
 });

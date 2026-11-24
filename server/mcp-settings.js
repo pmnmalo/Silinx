@@ -10,11 +10,29 @@ import path from 'node:path';
 import * as P from './projects.js';
 import { topForBoardText } from '../core/board-generics.js';
 import { toolError, readProject, viewSourcesOf, STR, PROJECT, deviceName } from './mcp-util.js';
-import { DESIGN_KIND, DESIGN_ONLY_MESSAGES, isDesignOnly } from '../core/project-kind.js';
+import { DESIGN_KIND, DESIGN_ONLY_MESSAGES, isDesignOnly, isSystemProject } from '../core/project-kind.js';
+import { PROFILES, profileById, profileOf, systemProfile } from '../core/project-profile.js';
+import { changeProfile } from '../core/profile-change.js';
+import { isSystemFile } from '../core/system-doc.js';
 import { TOP_TYPES, topType, topTypeRefusal } from '../core/top-types.js';
 import { SYSTEM_TOP } from '../core/system-top.js';
 import { makeSystemTop } from './mcp-system-top.js';
 import { makeDesignProject } from './mcp-design-only.js';
+
+// the project `name` (`pj`) given the profile `to` (#5440): its System's nodes read, the change refused with the
+// interface's message, or written; nothing else changes
+async function changeProfileOf(name, pj, to) {
+  const files = (await P.fileTree(name)).filter(f => !/^build\//.test(f));
+  const system = files.find(isSystemFile);
+  const ctx = { files, texts: system ? { [system]: await P.readFile(name, system).catch(() => '') } : {} };
+  const r = changeProfile(pj, to, ctx);
+  if (r.error) throw toolError(r.error);
+  const p = profileById(to);
+  if (profileOf(pj) === to) throw toolError(`the project '${name}' is ${p.label} already`);
+  await P.updateProject(name, cur => { const c = changeProfile(cur, to, ctx); if (c.error) throw toolError(c.error); return c.project; });
+  return { text: `${name}: ${p.label} now: its System may have ${p.nodes.join(', ')} nodes (nothing converted, nothing deleted).`,
+    data: { project: name, profile: to, nodes: p.nodes } };
+}
 
 // the project's kind dropped when a design and simulation project is given a board or a device (#3780)
 const withoutKind = (pj, drop) => { if (drop) delete pj.kind; return pj; };
@@ -91,7 +109,7 @@ export const SETTINGS_TOOLS = [
       preferred_language: { type: 'string', enum: ['vhdl', 'verilog'], description: 'The drawings\' HDL made again in it (those with no language of their own).' },
       update_constraints: { type: 'boolean', description: 'With a new board: write its pins into the constraints file (default false).' },
       top_source_type: { type: 'string', enum: TOP_TYPES.map(t => t.id), description: 'The Top-Level Source Type: a setting of the project, saved, nothing made (tt: Boolean algebra; a design and simulation project\'s is a drawing).' },
-      kind: { type: 'string', enum: ['fpga', 'design'], description: 'The project\'s kind, as Design Properties\' Project Kind: design (Digital Logic: no board, no constraints, its HDL hidden; refused with HDL or C sources of its own) or fpga (FPGA: a design project made an FPGA one, with a board or a device).' },
+      profile: { type: 'string', enum: PROFILES.map(p => p.id), description: 'Its profile (Design Properties\' Project Kind): logic (Digital Logic: no board, HDL hidden; refused with HDL or C of its own), fpga (with a board or a device), embedded, system (a narrower one refused while a node is not allowed).' },
     }, required: ['project'], additionalProperties: false },
     annotations: { readOnlyHint: false, destructiveHint: true, idempotentHint: true },
     async run(args) {
@@ -99,8 +117,14 @@ export const SETTINGS_TOOLS = [
       let pj = await readProject(name);
       // (the project's kind, #3780, #4103: kind (design_only, its deprecated name: server/mcp-aliases.js); a design and
       // simulation project made one; or made an FPGA project by kind fpga, a board or a device)
-      const kind = args.kind;
-      if (kind !== undefined && !['fpga', DESIGN_KIND].includes(kind)) throw toolError('kind: fpga or design');
+      // (its profile, #5440: kind and design_only its deprecated names; a System's profile, or a System project's, one
+      // profile change: core/profile-change.js)
+      const profile = args.profile;
+      if (profile !== undefined && (systemProfile(profile) || isSystemProject(pj))) {
+        if (Object.keys(args).some(k => !['project', 'profile'].includes(k))) throw toolError(`profile ${profile}: give it alone (a System's nodes name their boards)`);
+        return changeProfileOf(name, pj, profile);
+      }
+      const kind = profile === 'logic' ? DESIGN_KIND : profile;
       // (the Top-Level Source Type, #4105: checked against the kind the project will have; saved with the rest, or alone)
       const tst = args.top_source_type;
       const device = [board, variant, part, pkg, speed, synthTool, language, args.update_constraints].some(x => x !== undefined);

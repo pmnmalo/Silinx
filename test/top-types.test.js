@@ -42,16 +42,16 @@ test('set_design_properties top_source_type: saved alone, nothing made; with the
   const w = await ok('set_design_properties', { project: 't1', top_source_type: 'cpp', preferred_language: 'verilog' });
   assert.equal(w.text.split('\n').pop(), 'Top-Level Source Type: C++ Function (HLS).');
   assert.deepEqual([(await P.readProject('t1')).topSourceType, (await P.readProject('t1')).preferredLanguage], ['cpp', 'verilog']);
-  await ok('new_project', { name: 't2', kind: 'design' });
+  await ok('new_project', { name: 't2', profile: 'logic' });
   await ok('set_design_properties', { project: 't2', top_source_type: 'circuit' });
   assert.equal((await P.readProject('t2')).topSourceType, 'circuit');
   await fails('set_design_properties', { project: 't2', top_source_type: 'c' }, DRAWN);
   // (made a design project with it; made an FPGA project, an HDL type then allowed)
   await ok('new_project', { name: 't3' });
-  const d = await ok('set_design_properties', { project: 't3', kind: 'design', top_source_type: 'fsm' });
+  const d = await ok('set_design_properties', { project: 't3', profile: 'logic', top_source_type: 'fsm' });
   assert.deepEqual([d.text.split('\n').pop(), (await P.readProject('t3')).kind, (await P.readProject('t3')).topSourceType], ['Top-Level Source Type: Finite State Machine (FSM).', 'design', 'fsm']);
-  await fails('set_design_properties', { project: 't3', kind: 'design', top_source_type: 'hdl' }, 'top_source_type hdl: a design and simulation project\'s top is a drawing (sch, fsm, asm, tt, petri, circuit)');
-  await ok('set_design_properties', { project: 't3', kind: 'fpga', top_source_type: 'hdl' });
+  await fails('set_design_properties', { project: 't3', profile: 'logic', top_source_type: 'hdl' }, 'top_source_type hdl: a design and simulation project\'s top is a drawing (sch, fsm, asm, tt, petri, circuit)');
+  await ok('set_design_properties', { project: 't3', profile: 'fpga', top_source_type: 'hdl' });
   assert.deepEqual([(await P.readProject('t3')).kind, (await P.readProject('t3')).topSourceType], [undefined, 'hdl']);
   await fails('set_design_properties', { project: 't1', top_source_type: 'vhdl' }, 'top_source_type: one of hdl, sch, fsm, asm, tt, petri, circuit, c, cpp, system');
 });

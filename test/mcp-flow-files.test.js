@@ -48,7 +48,7 @@ test('#4591 project_info: none for a project with no constraints file yet, the l
 });
 
 test('#4591 project_info: a design and simulation project has no flow files', async () => {
-  await ok('new_project', { name: 'dsgn', kind: 'design' });
+  await ok('new_project', { name: 'dsgn', profile: 'logic' });
   const info = await ok('project_info', { project: 'dsgn' });
   assert.equal(info.data.flowFiles, undefined);
   assert.deepEqual(flowLines(info.text), []);

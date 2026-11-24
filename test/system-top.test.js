@@ -29,12 +29,12 @@ test('#5402 Top-Level Source Type System: offered where Systems are on; refused 
 test('#5402 an FPGA project made a System project, its System its top: a new one, or the one given; its board kept', () => {
   setBuildChannel('dev');
   const r = toSystemTop(fpga());
-  assert.deepEqual([r.pj.kind, r.pj.board, r.pj.constraints, r.pj.top, r.pj.topSourceType, r.file, r.write.path], ['system', null, null, '', 'system', 'p.sys.json', 'p.sys.json']);
+  assert.deepEqual([r.pj.profile, r.pj.board, r.pj.constraints, r.pj.top, r.pj.topSourceType, r.file, r.write.path], ['system', null, null, '', 'system', 'p.sys.json', 'p.sys.json']);
   assert.deepEqual(readSystem(r.write.text).system.nodes, []);
   assert.deepEqual(r.pj.fpga, { board: 'nexys2', device: resolveBoard('nexys2').device, constraints: 'constraints/top.ucf' });
   // (the one given: nothing written)
   const g = toSystemTop(fpga(), 'src/lab.sys.json');
-  assert.deepEqual([g.write, g.file, g.pj.kind], [null, 'src/lab.sys.json', 'system']);
+  assert.deepEqual([g.write, g.file, g.pj.profile], [null, 'src/lab.sys.json', 'system']);   // (its profile, #5440)
   // (a System project already: what it kept, kept)
   assert.deepEqual(toSystemTop(r.pj, 'p.sys.json').pj.fpga, r.pj.fpga);
 });

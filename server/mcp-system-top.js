@@ -7,6 +7,7 @@ import path from 'node:path';
 import * as P from './projects.js';
 import { toolError, projectPath, readProject, deviceName } from './mcp-util.js';
 import { isSystemFile, readSystem } from '../core/system-doc.js';
+import { profileOf } from '../core/project-profile.js';
 import { systemTopRefusal, toSystemTop, toModuleTop } from '../core/system-top.js';
 
 // the project's System document: the one at its root or in src/, else none
@@ -32,7 +33,7 @@ export async function makeSystemTop(name, file = null) {
   if (r.write) await fsp.writeFile(await projectPath(name, r.write.path, 'write'), r.write.text);
   await P.updateProject(name, () => r.pj);
   return { text: `${name}: a System project now, its System ${r.file} its top (its board kept: set_top with a module makes it an FPGA project again).`,
-    data: { project: name, kind: r.pj.kind, top: r.file, system: r.file, made: !!r.write } };
+    data: { project: name, kind: 'system', profile: profileOf(r.pj), top: r.file, system: r.file, made: !!r.write } };
 }
 
 /** The System project `name` made an FPGA project again, the module `mod` its top, on its FPGA node's board. */
@@ -43,5 +44,5 @@ export async function makeModuleTop(name, mod) {
   const next = toModuleTop(pj, mod, system);
   await P.updateProject(name, () => next);
   return { text: `${name}: an FPGA project now, its top module '${mod}' on ${next.board || 'no board'} (${deviceName(next.device)}).`,
-    data: { project: name, kind: 'fpga', top: mod, board: next.board || null, device: next.device } };
+    data: { project: name, kind: 'fpga', profile: 'fpga', top: mod, board: next.board || null, device: next.device } };
 }

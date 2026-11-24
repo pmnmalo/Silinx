@@ -19,7 +19,7 @@ import { kindStep } from './project-kind-step.js';
 import { HDL_TOP_TYPES, TOP_TYPES, offeredTopTypes, projectTopType } from '/core/top-types.js';
 import { SYSTEM_TOP } from '/core/system-top.js';
 import { topSourceFiles } from '/core/top-source.js';
-import { SYSTEM_KIND, DESIGN_KIND, DESIGN_ONLY_LABEL, asFpgaProject, isDesignOnly } from '/core/project-kind.js';
+import { SYSTEM_KIND, DESIGN_KIND, DESIGN_ONLY_LABEL, asFpgaProject, isDesignOnly, isSystemProject } from '/core/project-kind.js';
 import { placeLines, placeText } from '/core/project-place.js';
 import { designOnly, refusedHere } from './design-only.js';
 import { byLastUsed } from './project-store.js';
@@ -484,7 +484,7 @@ export async function projectProperties() {
   if (!db) return commandError("Design Properties", "The device database could not be loaded (is the Silinx server running?).");
   const pj0 = S.project;
   // (a System project, #4702: no board nor device of its own, its System's nodes have them)
-  if (pj0?.kind === SYSTEM_KIND) return appLog(`Design Properties: ${SYSTEM_NOTE}`, 'info');
+  if (isSystemProject(pj0)) return appLog(`Design Properties: ${SYSTEM_NOTE}`, 'info');
   let pj = pj0;
   // (the project's kind, New Project's choice: a design and simulation project, both ways, #3780, #4103)
   const kindSel = select(KIND_OPTIONS, isDesignOnly(pj) ? DESIGN_KIND : 'fpga');

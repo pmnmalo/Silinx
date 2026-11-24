@@ -20,7 +20,7 @@ import { foldName, sameNameIn, spelledAs } from '../core/fold-name.js';
 import { fsFailure } from './fs-error.js';
 import { mapLimit, filesOf } from './concurrent.js';
 import { PROJECT_NAME_RE, projectNameError, sameProject } from '../core/project-name.js';
-import { SYSTEM_KIND, boardRefusal, createRefusal, withKind } from '../core/project-kind.js';
+import { boardRefusal, createRefusal, newSystemKind } from '../core/project-kind.js';
 import { newSystemFile } from '../core/system-doc.js';
 import { newProjectJson, projectJsonText } from '../core/project-defaults.js';
 import { renameProblem, renamedFile } from '../core/project-rename.js';
@@ -130,7 +130,7 @@ export async function listProjects() {
     let pj;
     try { pj = parseDescription(text); if (!pj || typeof pj !== 'object' || Array.isArray(pj)) throw new SyntaxError('not an object'); }
     catch (e) { return { name: ent.name, damaged: damagedText(e), modified: await lastChange(dir) }; }
-    return { name: ent.name, device: pj.device, top: pj.top, board: pj.board, ...(pj.kind ? { kind: withKind(pj).kind } : {}), modified: await lastChange(dir) };
+    return { name: ent.name, device: pj.device, top: pj.top, board: pj.board, ...(pj.kind ? { kind: pj.kind } : {}), ...(pj.profile ? { profile: pj.profile } : {}), modified: await lastChange(dir) };
   });
   return out.filter(Boolean).sort((a, b) => a.name.localeCompare(b.name));
 }
@@ -200,7 +200,6 @@ export async function readProject(name) {
   catch { throw new HttpError(404, `project '${name}' not found`); }
   try { pj = parseDescription(text); if (!pj || typeof pj !== 'object' || Array.isArray(pj)) throw new SyntaxError('not an object'); }
   catch (e) { throw new HttpError(422, damagedMessage(name, e)); }
-  pj = withKind(pj);   // (a System project saved with the old id, #5411)
   etags.set(pj, descriptionEtag(text));
   const ct = await cloneTrust(dir);
   if (ct) Object.assign(pj, { trusted: false }, ct.madeBy ? { madeBy: ct.madeBy } : {});
@@ -421,12 +420,12 @@ export async function createProject({ name, template = 'empty', device, board, k
   }
   await fs.mkdir(path.join(dir, 'src'), { recursive: true });
   await fs.mkdir(path.join(dir, 'sim'), { recursive: true });
-  if (!kind) await fs.mkdir(path.join(dir, 'constraints'), { recursive: true });
+  if (!kind || kind === 'fpga') await fs.mkdir(path.join(dir, 'constraints'), { recursive: true });
   // (core/project-defaults.js, as the browser edition's, #4766; Optimization Fast, #4828)
   const json = { ...newProjectJson(name, { device, board, kind }), ...(fromOutside ? { trusted: false } : {}), ...(madeBy === 'mcp' ? { trusted: false, madeBy } : {}) };
   await recordMade(dir, { fromOutside, madeBy });
   // (a System project: its System document, its top, #4702; inside its folder as every project path, #5344)
-  if (kind === SYSTEM_KIND) { const f = newSystemFile(name); await fs.writeFile(safeJoin(dir, f.path), f.text); }
+  if (newSystemKind(kind)) { const f = newSystemFile(name); await fs.writeFile(safeJoin(dir, f.path), f.text); }
   return writeProject(name, json);
 }
 

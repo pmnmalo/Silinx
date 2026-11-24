@@ -95,15 +95,17 @@ test('#5416 phase 3: an ISE project imported (.xise): its System implicit, its d
   assert.deepEqual(snapshot([path.join(ROOT, 'test/fixtures/ise-xise')]), before);
 });
 
-test('#5416 phase 3: a design and simulation project; the old kind id; a System project with no or a damaged document', () => {
+test('#5416 phase 3: a design and simulation project; the old kind id, a profile, a module as the top; a System project with no or a damaged document', () => {
   const d = projectSystem({ name: 'dl', kind: 'design', top: 'adder', board: 'basys2' });
   assert.deepEqual(d.model.nodes, [{ id: 'design', kind: 'design', module: 'adder', board: null, device: null, constraints: null, pins: {}, interfaces: [], x: 0, y: 0, implicit: true }]);
-  // (a design node is no node kind of a System document yet: the profiles of #5416's phase 4)
-  assert.deepEqual(checkSystem(d.model).map(said), ["error: design: no node kind 'design' (the kinds: fpga, mcu, terminal, circuit)"]);
-  // the old kind id (#5411): the same System as the new one's
+  // (a design node a node kind of a System document since #5440, the Digital Logic profile's: alone, it joins nothing)
+  assert.deepEqual(checkSystem(d.model).map(said), ['warning: design joins nothing: no link reaches it']);
+  // the old kind id of #5411: no System project's since #5440 (an FPGA project's implicit System); the profile's
   const { pj, files, texts } = project('examples/uart-avr/silinx.json');
-  assert.deepEqual(projectSystem({ ...pj, kind: 'codesign' }, { files, texts }), projectSystem({ ...pj, kind: 'system' }, { files, texts }));
-  assert.equal(projectSystem({ ...pj, kind: 'codesign' }, { files, texts }).implicit, false);
+  assert.equal(projectSystem({ ...pj, kind: 'codesign' }, { files, texts }).implicit, true);
+  assert.deepEqual(projectSystem({ ...pj, kind: undefined, profile: 'embedded' }, { files, texts }), projectSystem({ ...pj, kind: 'system' }, { files, texts }));
+  // (a System project with a module as its top: its System implicit, the System document no longer its top, #5440)
+  assert.equal(projectSystem({ ...pj, top: 'uart' }, { files, texts }).implicit, true);
   assert.deepEqual(projectSystem({ name: 's', kind: 'system' }, { files: ['src/a.vhd'] }), { model: null, implicit: false, system: null, error: null });
   assert.match(projectSystem({ name: 's', kind: 'system' }, { files: ['s.sys.json'], texts: { 's.sys.json': '{' } }).error, /^not a System document/);
   // (a board's variant for the device, against the boards' own lists: the Basys2-250 and -100, the Nexys2-1200; none for the Nexys3)

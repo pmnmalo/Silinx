@@ -33,7 +33,7 @@ test('#5402 set_design_properties top_source_type system: an FPGA project made a
   const r = await ok('set_design_properties', { project: 's1', top_source_type: 'system' });
   assert.equal(r.text, 's1: a System project now, its System s1.sys.json its top (its board kept: set_top with a module makes it an FPGA project again).');
   const pj = await P.readProject('s1');
-  assert.deepEqual([pj.kind, pj.board, pj.topSourceType, pj.fpga.board], ['system', null, 'system', 'nexys2']);
+  assert.deepEqual([pj.kind, pj.profile, pj.board, pj.topSourceType, pj.fpga.board], [undefined, 'system', null, 'system', 'nexys2']);   // (its profile, #5440)
   assert.ok(fs.existsSync(path.join(P.projectDir('s1'), 's1.sys.json')));
   await fails('set_design_properties', { project: 's1', top_source_type: 'system', board: 'basys2' }, 'top_source_type system: give it alone (a System project has no board of its own)');
 });
@@ -48,7 +48,7 @@ test('#5402 set_top: a module of a System project its top (an FPGA project on it
   const b = await ok('set_top', { project: 's2', top: 'uart_avr.sys.json' });
   assert.deepEqual([b.data.kind, b.data.system, b.data.made], ['system', 'uart_avr.sys.json', false]);
   pj = await P.readProject('s2');
-  assert.deepEqual([pj.kind, pj.board, pj.fpga.board], ['system', null, 'basys2']);
+  assert.deepEqual([pj.kind, pj.profile, pj.board, pj.fpga.board], [undefined, 'system', null, 'basys2']);
   await fails('set_top', { project: 's2', top: 'none.sys.json' }, 'none.sys.json: no such file in the project \'s2\'');
 });
 
@@ -56,7 +56,7 @@ test('#5402 new_project top_source_type system: a System project; refused in a d
   const r = await ok('new_project', { name: 's3', top_source_type: 'system' });
   assert.deepEqual([r.data.kind, r.data.system], ['system', 's3.sys.json']);
   assert.equal((await P.readProject('s3')).topSourceType, 'system');
-  await fails('new_project', { name: 's4', kind: 'design', top_source_type: 'system' }, 'top_source_type system: a design and simulation project\'s top is a drawing: a System is a System project\'s top (New Project ▸ System)');
+  await fails('new_project', { name: 's4', profile: 'logic', top_source_type: 'system' }, 'top_source_type system: a design and simulation project\'s top is a drawing: a System is a System project\'s top (New Project ▸ System)');
   await ok('new_project', { name: 's5', board: 'basys2' });
   setBuildChannel('release');
   try {

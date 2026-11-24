@@ -25,7 +25,8 @@
 
 export const SYSTEM_FORMAT = 'silinx-system';
 export const SYSTEM_VERSION = 1;
-export const NODE_KINDS = ['fpga', 'mcu', 'terminal', 'circuit'];
+// (a design node: a design and simulation project's drawings, no board: the Digital Logic profile's, #5440)
+export const NODE_KINDS = ['fpga', 'mcu', 'terminal', 'circuit', 'design'];
 export const LINK_KINDS = ['uart', 'gpio', 'spi', 'i2c'];
 export const INTERFACE_KINDS = ['uart', 'gpio', 'spi', 'i2c'];
 /** An SPI bus's default SCK rate (Hz): the Arduino's SPI_CLOCK_DIV128, 125 kHz. */
@@ -81,6 +82,7 @@ function normalNode(n) {
   } else if (out.kind === 'mcu') {
     out.board = n.board ?? null; out.firmware = n.firmware ?? null;
   } else if (out.kind === 'circuit') out.circuit = n.circuit ?? null;
+  else if (out.kind === 'design') out.module = n.module ?? null;
   out.interfaces = Array.isArray(n?.interfaces) ? n.interfaces.map(normalInterface) : [];
   out.x = Number.isFinite(n?.x) ? n.x : 0; out.y = Number.isFinite(n?.y) ? n.y : 0;
   return out;

@@ -4,12 +4,16 @@
 // the new name. One table for every tool, checked before the arguments are (server/mcp-args.js).
 import { schemaErrors } from './mcp-args.js';
 
-const kindOf = v => (v ? 'design' : 'fpga');
+// (design_only, #4103, and kind, #5440: the profile's names of before)
+const designOnly = v => (v ? 'logic' : 'fpga');
+const fromKind = v => (v === 'design' ? 'logic' : v);
 /** The deprecated arguments: { tool, from (the old name), to (the new), schema (the old value's), value(old) (the new
  *  value), since (the issue), how (the old value's meaning) }. */
 export const ALIASES = [
-  { tool: 'new_project', from: 'design_only', to: 'kind', schema: { type: 'boolean' }, value: kindOf, since: '#4103', how: 'true is kind design' },
-  { tool: 'set_design_properties', from: 'design_only', to: 'kind', schema: { type: 'boolean' }, value: kindOf, since: '#4103', how: 'true is kind design, false kind fpga' },
+  { tool: 'new_project', from: 'design_only', to: 'profile', schema: { type: 'boolean' }, value: designOnly, since: '#4103', how: 'true is profile logic' },
+  { tool: 'set_design_properties', from: 'design_only', to: 'profile', schema: { type: 'boolean' }, value: designOnly, since: '#4103', how: 'true is profile logic, false profile fpga' },
+  { tool: 'new_project', from: 'kind', to: 'profile', schema: { type: 'string', enum: ['fpga', 'design', 'system'] }, value: fromKind, since: '#5440', how: 'design is profile logic, fpga and system the same' },
+  { tool: 'set_design_properties', from: 'kind', to: 'profile', schema: { type: 'string', enum: ['fpga', 'design'] }, value: fromKind, since: '#5440', how: 'design is profile logic, fpga the same' },
 ];
 
 /** A call's arguments with its tool's deprecated ones renamed: { args, warnings } (each alias used, said), or { error }

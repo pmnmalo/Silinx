@@ -56,7 +56,7 @@ test('#3780 a design and simulation project: the server\'s (silinx.json text, sr
   assert.equal(server['silinx.json'], projectJsonText('Drawn', pj));
   assert.deepEqual([pj.kind, pj.board, pj.constraints], ['design', null, null]);
   // (the same refusals, the same messages)
-  for (const [args, message] of [[{ name: 'D2', kind: 'fpga' }, 'unknown project kind \'fpga\''], [{ name: 'D3', kind: 'design', template: 'blinky' }, 'a design and simulation project starts empty: no example']]) {
+  for (const [args, message] of [[{ name: 'D2', kind: 'other' }, 'unknown project kind \'other\''], [{ name: 'D3', kind: 'design', template: 'blinky' }, 'a design and simulation project starts empty: no example']]) {
     await assert.rejects(ops.create(args), { message });
     await assert.rejects(P.createProject(args), { message });
   }
