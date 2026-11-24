@@ -26,7 +26,7 @@ const read = (rel) => fs.readFileSync(path.join(tmp, 'ws', 'c', rel), 'utf8');
 test('circuit_parts: the library, one part with its pins, gates and delay, its details (#4126); an unknown part', async () => {
   const all = await ok('circuit_parts', {});
   assert.deepEqual(all.data.parts.map((p) => p.type), ['breadboard-half', 'breadboard-full', 'supply', 'logic-switch', 'button', 'spdt', 'dip-4', 'dip-8', 'keypad-4x4', 'rotary-encoder', 'clock', 'pull-up', 'pull-down',
-    'led', 'seg7-cc', 'seg7-ca', 'led-bar-10', 'probe', 'lcd-1602', 'oled-ssd1306', 'lm75', 'servo-sg90', 'buzzer', 'hc-sr04', 'hc-sr501', 'arduino-uno', 'arduino-nano', 'fpga-basys2', 'fpga-nexys2', '7400', '7401', '7402', '7403', '7404', '7405', '7406', '7408', '7410', '7411', '7414', '7420', '7427', '7430', '7432', '7486',
+    'led', 'seg7-cc', 'seg7-ca', 'led-bar-10', 'probe', 'lcd-1602', 'oled-ssd1306', 'lm75', 'servo-sg90', 'buzzer', 'hc-sr04', 'hc-sr501', 'dht11', 'dht22', 'arduino-uno', 'arduino-nano', 'fpga-basys2', 'fpga-nexys2', '7400', '7401', '7402', '7403', '7404', '7405', '7406', '7408', '7410', '7411', '7414', '7420', '7427', '7430', '7432', '7486',
     '7407', '7409', '7412', '7413', '7415', '7421', '7422', '7426', '7428', '7433', '7437', '7438', '7440', '74132', '74133', '74136', '74386', '7451', '7454', '7455',
     '74125', '74126', '74240', '74241', '74244', '74365', '74366', '74367', '74368', '74540', '74541', '74242', '74243', '74245',
     '4001', '4011', '4030', '4069', '4070', '4071', '4081', '4002', '4012', '4023', '4025', '4049', '4050', '4072', '4073', '4075', '4077', '7447', '7448', '74138', '74139', '74151', '74153', '74157', '7483', '74283', '7485',
@@ -388,4 +388,20 @@ test('#5463 simulate_drawing: a PIR, someone moving by its id, after_us letting 
   await fails('edit_circuit', { project: 'c', path: 'src/pir.circ.json', operations: [{ op: 'set', id: 'PIR1', hold: 1 }] }, 'operation 0 (set): hold: a time from 3 to 300 s (nothing written)');
   const info = await ok('circuit_parts', { type: 'hc-sr501' });
   assert.match(info.text, /^hc-sr501: Motion sensor \(PIR, HC-SR501\); pins 1 VCC vcc, 2 OUT out, 3 GND gnd\nA motion sensor \(PIR\)/);
+});
+
+test('#5470 simulate_drawing: a DHT11 read by a button\'s start after its power-on second, its temperature by DHT1.temp; edit_circuit its humidity; circuit_parts', async () => {
+  await ok('write_file', { project: 'c', path: 'src/dht.circ.json', text: JSON.stringify({ format: 'silinx-circuit', version: 1, name: 'dht', lang: 'vhdl',
+    parts: [{ id: 'P1', type: 'supply', x: -10, y: -14 }, { id: 'DHT1', type: 'dht11', x: 0, y: 0 }, { id: 'R1', type: 'pull-up', x: 1, y: 3 }, { id: 'B1', type: 'button', x: 1, y: 5 }, { id: 'D1', type: 'led', x: 6, y: 3 }],
+    wires: [{ id: 'd', points: [[1, 0], [1, 3]] }, { id: 'b', points: [[1, 3], [1, 5]] }, { id: 'a', points: [[1, 3], [6, 3]] }, { id: 'k', points: [[7, 3], [-10, -13]] }, { id: 'bg', points: [[4, 5], [-10, -13]] },
+      { id: 'v', points: [[0, 0], [-12, 0], [-12, -14], [-10, -14]] }, { id: 'g', points: [[3, 0], [-10, -13]] }] }, null, 2) });
+  const r = await ok('simulate_drawing', { project: 'c', file: 'src/dht.circ.json', cycles: [{ 'DHT1.temp': 31 }, { after_us: 1e6, B1: 1 }, { after_us: 20000, B1: 0 }, { after_us: 10000 }] });
+  assert.deepEqual(r.text.split('\n').slice(1), ['start: t = 0 ns; LEDs D1=1; DHT1 25 °C, 50 %, 0 read(s) answered',
+    'step 0: inputs B1=0; t = 0 ns; LEDs D1=1; DHT1 31 °C, 50 %, 0 read(s) answered', 'step 1: inputs B1=1; t = 1000000000 ns; LEDs D1=0; DHT1 31 °C, 50 %, 0 read(s) answered',
+    'step 2: inputs B1=0; t = 1020000000 ns; LEDs D1=1; DHT1 31 °C, 50 %, 1 read(s) answered', 'step 3: inputs B1=0; t = 1030000000 ns; LEDs D1=1; DHT1 31 °C, 50 %, 1 read(s) answered']);
+  await fails('simulate_drawing', { project: 'c', file: 'src/dht.circ.json', cycles: [{ 'DHT1.hum': 95 }] }, 'step 0: DHT1.hum = 95: humidity (%) from 20 to 90');
+  await ok('edit_circuit', { project: 'c', path: 'src/dht.circ.json', operations: [{ op: 'set', id: 'DHT1', temp: 30, hum: 65 }] });
+  assert.deepEqual((({ temp, hum }) => ({ temp, hum }))(JSON.parse(read('src/dht.circ.json')).parts.find((p) => p.id === 'DHT1')), { temp: 30, hum: 65 });
+  const info = await ok('circuit_parts', { type: 'dht22' });
+  assert.match(info.text, /^dht22: Temperature and humidity sensor \(DHT22\); pins 1 VCC vcc, 2 DATA oc, 3 NC nc, 4 GND gnd\nA temperature and humidity sensor on one wire \(AM2302\)/);
 });

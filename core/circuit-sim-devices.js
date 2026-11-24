@@ -12,6 +12,8 @@ import { createServo } from './circuit-servo.js';
 import { createBuzzer } from './circuit-buzzer.js';
 import { createSonar } from './circuit-sonar.js';
 import { createPir } from './circuit-pir.js';
+import { createDht } from './circuit-dht.js';
+import { onStep } from './circuit-parts.js';
 
 /**
  * A device of a part, or null (another part): { ic, reads } (its state, as createCircuitSim's ics; the nets it reads).
@@ -45,6 +47,11 @@ export function setupDevice(p, d, { at, addDriver, level }) {
   if (d.kind === 'sonar') {
     const ic = { part: p, def: d, sonar: createSonar({ cm: p.cm }), vcc: at('VCC'), gnd: at('GND'), trig: at('Trig'), echo: addDriver(at('Echo'), 'Z'), was: false };
     return { ic, reads: [ic.vcc, ic.gnd, ic.trig] };
+  }
+  // (a temperature and humidity sensor, #5470: DATA read while it does not answer, driven low at its own times)
+  if (d.kind === 'dht') {
+    const ic = { part: p, def: d, dht: createDht({ model: d.variant, temp: p.temp, hum: p.hum }), vcc: at('VCC'), gnd: at('GND'), data: at('DATA'), drv: addDriver(at('DATA'), 'Z'), was: false };
+    return { ic, reads: [ic.vcc, ic.gnd, ic.data] };
   }
   // (a motion sensor, #5463: its input someone moving, its OUT driven at its own times)
   if (d.kind === 'pir') {
@@ -93,6 +100,17 @@ export function evaluateDevice(ic, { powered, level, now, drive, wake, input }) 
     ic.was = on;
     return true;
   }
+  if (ic.dht) {   // (its DATA released while unpowered; its answer's steps at its wake-ups)
+    const t = now();
+    if (!powered(ic)) { if (ic.was) ic.dht.reset(); drive(ic.drv, 'Z'); ic.was = false; return true; }
+    if (!ic.was) { ic.dht.powerOn(t); ic.was = true; }
+    const w = ic.dht.wake(t);
+    if (w.drive) drive(ic.drv, w.drive);
+    if (w.next != null) wake(w.next);
+    const at = ic.dht.line(level(ic.data), t);
+    if (at != null) wake(at);
+    return true;
+  }
   if (ic.pir) {   // (its OUT open while unpowered; its input and its wake-ups stepping it)
     if (!powered(ic)) { if (ic.was) ic.pir.reset(); drive(ic.out, 'Z'); ic.was = false; return true; }
     ic.was = true;
@@ -132,18 +150,20 @@ export function deviceViews(ics, { now, evaluate, update }) {
     oleds: () => Object.fromEntries(ics.filter((x) => x.oled).map((x) => [x.part.id, x.oled.state()])),
     /** each servo's state now: { angle, target, width, period } (#5347), and what it said (once each) */
     servos: () => Object.fromEntries(ics.filter((x) => x.servo).map((x) => [x.part.id, x.servo.state(now())])),
-    servoWarnings: () => ics.filter((x) => x.servo || x.buzzer || x.sonar).flatMap((x) => (x.servo || x.buzzer || x.sonar).warnings.map((w) => `${x.part.id}: ${w.text}`)),
+    servoWarnings: () => ics.filter((x) => x.servo || x.buzzer || x.sonar || x.dht).flatMap((x) => (x.servo || x.buzzer || x.sonar || x.dht).warnings.map((w) => `${x.part.id}: ${w.text}`)),
     /** each buzzer's state now: { sounding, hz, how } (#5454) */
     buzzers: () => Object.fromEntries(ics.filter((x) => x.buzzer).map((x) => [x.part.id, x.buzzer.state(now())])),
     /** each ultrasonic range sensor's state: { cm, measuring, echo (its last, µs) } (#5456) */
     /** each motion sensor's state: { moving, out, blind } (#5463) */
     pirs: () => Object.fromEntries(ics.filter((x) => x.pir).map((x) => [x.part.id, x.pir.state()])),
+    /** each temperature and humidity sensor's state: { temp, hum, reads } (#5470) */
+    dhts: () => Object.fromEntries(ics.filter((x) => x.dht).map((x) => [x.part.id, x.dht.state()])),
     sonars: () => Object.fromEntries(ics.filter((x) => x.sonar).map((x) => [x.part.id, x.sonar.state()])),
     /** a part's sensed value now (#5456: its `sense`'s `prop`) */
     sensed(id, prop) {
       const ic = ics.find((x) => x.part.id === id && x.def.sense?.some((s) => s.prop === prop));
       if (!ic) throw new Error(`${id} senses no ${prop} in the circuit`);
-      return ic.sonar.cm;
+      return (ic.sonar ?? ic.dht)[prop];
     },
     /** a part's sensed value set now (#5456: a part's `sense`, its `prop`): an ultrasonic sensor's distance */
     setSensed(id, prop, v) {
@@ -151,7 +171,7 @@ export function deviceViews(ics, { now, evaluate, update }) {
       if (!ic) throw new Error(`${id} senses no ${prop} in the circuit`);
       const s = ic.def.sense.find((x) => x.prop === prop), n = Number(v);
       if (!Number.isFinite(n) || n < s.min || n > s.max) throw new Error(`${id}'s ${prop}: from ${s.min} to ${s.max} ${s.unit}`);
-      if (ic.sonar) ic.sonar.cm = n;
+      (ic.sonar ?? ic.dht)[prop] = onStep(n, s.step);
       update();
     },
     /** each temperature sensor's state: { temp, raw, conf, thyst, tos, os, pointer } (#5342) */

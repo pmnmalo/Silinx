@@ -56,6 +56,8 @@ export class CircuitNode {
   servos() { return this.sim.servos(); }
   /** Its buzzers' states (#5454). */
   buzzers() { return this.sim.buzzers(); }
+  /** Its temperature and humidity sensors' states (#5470). */
+  dhts() { return this.sim.dhts(); }
   /** Its motion sensors' states (#5463). */
   pirs() { return this.sim.pirs(); }
   /** Its ultrasonic sensors' states (#5456). */

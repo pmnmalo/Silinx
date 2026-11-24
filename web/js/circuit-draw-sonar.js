@@ -6,8 +6,6 @@
 import { sv } from './dom.js';
 
 const P = 20;
-/** The distance's change of a click on its − or + (cm). */
-export const SONAR_NUDGE = 5;
 
 /** The body of an ultrasonic sensor, appended to g (its pins are circuit-draw.js's); `s` its state while trying it
  *  (sim.sonars()'s: { cm, measuring, echo }) or none. */
@@ -27,7 +25,7 @@ export function drawSonar(g, p, s) {
   if (s?.measuring) for (const k of [1, 2, 3]) g.append(sv('path', { d: `M${cx - 6 * P},${top - k * 0.5 * P}Q${cx},${top - k * 0.5 * P - 1.6 * P} ${cx + 6 * P},${top - k * 0.5 * P}`, class: 'circ-sonar-wave' }));
   // (the object's distance, its − and +)
   const cm = s?.cm ?? p.cm ?? 100, y = cy + 1.1 * P;
-  const btn = (dx, label, input) => sv('g', { class: 'circ-temp-btn circ-sonar-btn', 'data-input': input },
+  const btn = (dx, label, input) => sv('g', { class: 'circ-temp-btn circ-sonar-btn', 'data-input': input, 'data-lever': 0 },
     sv('rect', { x: cx + dx - P * 0.4, y: y - P * 0.55, width: P * 0.8, height: P * 0.8, rx: 2 }), sv('text', { x: cx + dx, y: y + 1, 'text-anchor': 'middle', 'data-no-i18n': 'true' }, label));
   g.append(btn(-P * 1.45, '−', 'sense-down'), sv('text', { x: cx, y: y + 1, 'text-anchor': 'middle', class: 'circ-sonar-cm', 'data-no-i18n': 'true' }, `${cm} cm`), btn(P * 1.45, '+', 'sense-up'));
 }

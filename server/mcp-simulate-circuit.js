@@ -29,11 +29,14 @@ export async function simulateCircuitFile(m0, steps, base, hdl = {}) {
   // (the logic probes' levels, by label or id: 0, 1, Z open, X; said when the circuit has any, #3900)
   const probeName = new Map(m.parts.filter((p) => p.type === 'probe').map((p) => [p.id, p.label || p.id]));
   const probes = () => Object.fromEntries(Object.entries(sim.probes()).map(([id, v]) => [probeName.get(id), v]));
-  const probeText = () => (probeName.size ? `; probes ${Object.entries(probes()).map(([k, v]) => `${k}=${v}`).join(' ')}` : '') + lcdText() + oledText() + sensorText() + servoText() + encoderText() + buzzerText() + sonarText() + pirText();
+  const probeText = () => (probeName.size ? `; probes ${Object.entries(probes()).map(([k, v]) => `${k}=${v}`).join(' ')}` : '') + lcdText() + oledText() + sensorText() + servoText() + encoderText() + buzzerText() + sonarText() + pirText() + dhtText();
   // (an ultrasonic sensor, #5456: its distance set by its id, cm; a step's after_us, the time let pass before its inputs
   // are set, its echo meanwhile)
-  const { partDef } = await import('../core/circuit-parts.js');
-  const sensing = new Map(m.parts.filter((p) => partDef(p.type)?.sense).map((p) => [p.id.toLowerCase(), p]));
+  // (a part that senses more than one, #5470: each by <id>.<prop>, a DHT's DHT1.temp and DHT1.hum)
+  const { partDef, sensePin } = await import('../core/circuit-parts.js');
+  const sensing = new Map(m.parts.flatMap((p) => (partDef(p.type)?.sense ?? []).map((x) => [sensePin(p, x).toLowerCase(), { p, x }])));
+  // (a temperature and humidity sensor, #5470: what it senses, its reads answered)
+  const dhtText = () => Object.entries(sim.dhts()).map(([id, s]) => `; ${id} ${s.temp} °C, ${s.hum} %, ${s.reads} read(s) answered`).join('');
   const sonarText = () => Object.entries(sim.sonars()).map(([id, s]) => `; ${id} ${s.cm} cm${s.measuring ? ', measuring' : ''}${s.echo == null ? '' : `, its last echo ${s.echo} µs`}`).join('');
   // (a motion sensor, #5463: its OUT, blind after it)
   const pirText = () => Object.entries(sim.pirs()).map(([id, s]) => `; ${id} ${s.out ? 'OUT 1' : s.blind ? 'OUT 0, blind' : 'OUT 0'}`).join('');
@@ -62,7 +65,7 @@ export async function simulateCircuitFile(m0, steps, base, hdl = {}) {
     for (const [n, v] of Object.entries(step)) {
       if (n === 'after_us') continue;
       if (sensing.has(n.toLowerCase())) {
-        const p = sensing.get(n.toLowerCase()), x = partDef(p.type).sense[0], val = Number(v);
+        const { p, x } = sensing.get(n.toLowerCase()), val = Number(v);
         if (!Number.isFinite(val) || val < x.min || val > x.max) throw toolError(`step ${k}: ${n} = ${JSON.stringify(v)}: ${x.label.toLowerCase()} from ${x.min} to ${x.max}`);
         sim.setSensed(p.id, x.prop, val);
         continue;
