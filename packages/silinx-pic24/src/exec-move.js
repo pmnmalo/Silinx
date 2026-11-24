@@ -1,9 +1,9 @@
 // silinx-pic24 - the moves (#5480, DS70000157 section 5): MOV in its forms (#lit16; #lit8; f; Wns to f; Ws to Wd;
-// [Ws + Slit10]; WREG to f is exec-alu.js's), MOV.D, PUSH and POP f, LNK and ULNK, EXCH, SWAP, SE,
+// [Ws + Slit10]; WREG to f is exec-alu.js's), MOV.D, PUSH and POP f, PUSH.S and POP.S, LNK and ULNK, EXCH, SWAP, SE,
 // ZE, DAW.B, the table reads and writes (TBLRDL, TBLRDH, TBLWTL, TBLWTH).
 
 import { src, srcEA, dst, dstEA, nz, nzc, sext8 } from './operands.js';
-import { C, DC, SFR } from './device.js';
+import { C, DC, N, OV, Z, SFR } from './device.js';
 
 const SRW = SFR.SR >> 1;
 const bOf = (op) => (op >> 14) & 1, qOf = (op) => (op >> 11) & 7, dOf = (op) => (op >> 7) & 15;
@@ -163,6 +163,19 @@ function table(cpu, op) {
   cpu.latches.set(addr, word);
 }
 function tableWord(cpu, addr) { return cpu.latches.get(addr) ?? cpu.progWord(addr); }
+
+// PUSH.S (0xFEA000) and POP.S (0xFE8000): W0-W3 and SR's DC, N, OV, Z and C to their shadows and back
+const SHADOWED = DC | N | OV | Z | C;
+export function pushPopShadow(cpu, op) {
+  if (op === 0xfea000) { cpu.shadow = { w: [cpu.mem[0], cpu.mem[1], cpu.mem[2], cpu.mem[3]], sr: cpu.mem[SRW] & SHADOWED }; return true; }
+  if (op === 0xfe8000) {
+    const sh = cpu.shadow ?? { w: [0, 0, 0, 0], sr: 0 };
+    for (let i = 0; i < 4; i++) cpu.setW(i, sh.w[i]);
+    cpu.flags(SHADOWED, sh.sr);
+    return true;
+  }
+  return false;
+}
 
 /** The handlers by the instruction word's top byte. */
 export function moveOps(ops) {
