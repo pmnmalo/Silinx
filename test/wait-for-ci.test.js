@@ -140,7 +140,7 @@ test('release: CI on the tagged commit instead of npm test, the commit on main; 
   assert.match(yml, /uses: actions\/checkout@.+\n\s+with:\n\s+fetch-depth: 0\n/);
   assert.match(yml, /- name: The commit is on main\n\s+run: git merge-base --is-ancestor "\$GITHUB_SHA" origin\/main\n/);
   // CI starts on the tag, with the release (ci.yml)
-  assert.match(fs.readFileSync(path.join(ROOT, '.github/workflows/ci.yml'), 'utf8'), /^on:\n {2}push:\n {4}tags: \['v\*', 'silinx-fpga-v\*'\]\n {2}schedule:\n {4}- cron: .*\n {2}workflow_dispatch:\n/m);
+  assert.match(fs.readFileSync(path.join(ROOT, '.github/workflows/ci.yml'), 'utf8'), /^on:\n {2}push:\n {4}tags: \['v\*', 'silinx-fpga-v\*', 'silinx-pic24-v\*'\]\n {2}schedule:\n {4}- cron: .*\n {2}workflow_dispatch:\n/m);
   // the job's limit above the wait's, with time to package and check
   const wait = +/--timeout (\d+)/.exec(yml)[1], job = +/\n {4}timeout-minutes: (\d+)\n/.exec(yml)[1];
   assert.ok(job >= wait + 15, `${job} >= ${wait} + 15`);

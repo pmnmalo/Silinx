@@ -165,6 +165,9 @@ the code and the lessons learnt.
   The toolchain's package, `silinx-fpga`, has releases of its own (#1681): `node scripts/changelog-release.mjs X
   --package silinx-fpga`, `npm version X -w silinx-fpga --no-git-tag-version`, `node scripts/sync-version.mjs --package
   silinx-fpga`, a commit, then the tag `silinx-fpga-vX`: it starts CI, and `silinx-fpga-release.yml` publishes it on
-  npm once that run has passed.
+  npm once that run has passed. The PIC24 emulator's package, `silinx-pic24`, the same way (#5509): `node
+  scripts/changelog-release.mjs X --package silinx-pic24`, `npm version X -w silinx-pic24 --no-git-tag-version`, `node
+  scripts/sync-version.mjs --package silinx-pic24`, a commit, then the tag `silinx-pic24-vX`: it starts CI, and
+  `silinx-pic24-release.yml` publishes it on npm once that run has passed.
 
   The Pages site serves the latest release at the root and `main` under `dev/`.

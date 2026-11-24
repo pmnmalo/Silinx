@@ -1,6 +1,7 @@
 // The PIC24 emulator's package, silinx-pic24 (#5480, the roadmap #5479's phase 1): an npm workspace of this
-// repository, packages/silinx-pic24/, private until it is published, MIT (the rest of Silinx is AGPL-3.0-only). It
-// imports nothing of the IDE (core/, web/, server/) and no npm package: its modules import one another only.
+// repository, packages/silinx-pic24/, published on npm from its own tags (#5509), MIT (the rest of Silinx is
+// AGPL-3.0-only). It imports nothing of the IDE (core/, web/, server/) and no npm package: its modules import one
+// another only.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
@@ -14,10 +15,11 @@ const pkg = JSON.parse(read(path.join(DIR, 'package.json')));
 const root = JSON.parse(read(path.join(ROOT, 'package.json')));
 const lock = JSON.parse(read(path.join(ROOT, 'package-lock.json')));
 
-test('#5480 silinx-pic24: a private workspace package, MIT, its own version, no dependency, its entry', () => {
+test('#5480 silinx-pic24: a workspace package, published (#5509), MIT, its own version, no dependency, its entry', () => {
   assert.deepEqual(root.workspaces, ['packages/*']);
   assert.equal(pkg.name, 'silinx-pic24');
-  assert.equal(pkg.private, true, 'private until it is published');
+  assert.equal(pkg.private, undefined, 'published on npm (#5509)');
+  assert.deepEqual(pkg.files, ['src', 'LICENSE', 'README.md']);
   assert.equal(pkg.license, 'MIT');
   assert.equal(pkg.type, 'module');
   assert.equal(pkg.author, 'Pedro Maló');

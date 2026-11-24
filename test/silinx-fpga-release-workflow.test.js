@@ -30,7 +30,7 @@ test('#1681 silinx-fpga release: on its own tag only, with the permissions of th
   assert.match(read('.github/workflows/release.yml'), /\n {4}tags: \['v\*'\]\n/);
   assert.ok(!/^v/.test('silinx-fpga-v0.1.0'));
   // CI runs on its tag too, and the wait accepts that run (test/wait-for-ci.test.js)
-  assert.match(read('.github/workflows/ci.yml'), /\n {4}tags: \['v\*', 'silinx-fpga-v\*'\]\n/);
+  assert.match(read('.github/workflows/ci.yml'), /\n {4}tags: \['v\*', 'silinx-fpga-v\*', 'silinx-pic24-v\*'\]\n/);
 });
 
 test('#1681 silinx-fpga release: the commit on main, its version and changelog, CI passed, packed; then published from the tarball', () => {
