@@ -59,7 +59,7 @@ const covered = EXAMPLES.filter((e) => {
 
 test('#5480 the manual\'s worked examples: the registers and memory after each, as DS70000157 shows them (its errata as checked)', () => {
   assert.equal(EXAMPLES.length, 228);
-  assert.equal(covered.length, 121);   // (the ALU's and the moves': the bit, shift, multiply, divide and flow instructions next)
+  assert.equal(covered.length, 228);
   const bad = [];
   for (const e of covered) {
     const b = runExample(e);

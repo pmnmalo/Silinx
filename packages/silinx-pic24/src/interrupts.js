@@ -1,6 +1,6 @@
 // silinx-pic24 - the interrupt controller (#5480, DS30010074 section 8): the traps and the 118 interrupt requests,
-// their priorities against the CPU's IPL, the vector table, the exception's entry (its stack frame; RETFIE's
-// return is the program flow's, #5480's next part). A peripheral (#5481) requests an interrupt by setting its flag: cpu.raise(n), or its IFSx bit written.
+// their priorities against the CPU's IPL, the vector table, the exception's entry (its stack frame) and RETFIE's
+// return (exec-flow.js's). A peripheral (#5481) requests an interrupt by setting its flag: cpu.raise(n), or its IFSx bit written.
 
 import { SFR, TRAPS, IRQS, irqVector, GIE, DISI_BIT, NSTDIS, RA, IPL3 } from './device.js';
 
@@ -86,5 +86,14 @@ export function enterException(cpu, e) {
   }
   cpu.pc = cpu.progWord(e.vector) & 0x7ffffe;
   cpu.cycles += ENTRY_CYCLES;
+  cpu.intDirty = true;
+}
+
+/** RETFIE's return (DS70000157 RETFIE): the frame popped, SRL, IPL3 and the PC restored. */
+export function returnFromException(cpu) {
+  const hi = cpu.pop(), lo = cpu.pop();
+  cpu.mem[SRW] = (cpu.mem[SRW] & 0xff00) | (hi >> 8);
+  cpu.mem[CORW] = (cpu.mem[CORW] & ~IPL3) | (hi & 0x80 ? IPL3 : 0);
+  cpu.npc = ((hi & 0x7f) << 16) | (lo & 0xfffe);
   cpu.intDirty = true;
 }
