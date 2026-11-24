@@ -193,7 +193,8 @@ test('the owner\'s proof replayed by a peer in the middle, on its own connection
   const on = {};
   const meeting = { join: async () => ({ self: 'fol', onPeer: f => { on.peer = f; }, onLeave: () => {}, onData: f => { on.data = f; }, send: () => { throw new Error('sent to the impostor'); }, binding: async () => ({ local: 'sha-256 FF:00', remote: 'sha-256 MM:00' }), drop: () => {}, leave: async () => { on.left = true; } }) };
   const found = meetOwner({ meeting, room, key: 'k'.repeat(43), host: hk.pub, ms: 200 });
-  await sleep(10);
+  // (once the follower has joined the meeting point and listens: not a fixed time, which a slow runner overran, #5430)
+  for (let t = 0; !on.data && t < 100; t++) await sleep(5);
   on.data('mid', proof);
   await assert.rejects(found, /the owner was not found at the meeting point/);
   assert.equal(on.left, true, 'the meeting left');
