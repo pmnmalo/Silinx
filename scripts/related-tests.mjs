@@ -201,9 +201,9 @@ export function relatedTests(files, changed, { hubs = HUBS } = {}) {
       if ((isUnit(t) || (isUi(t) && !hub(f))) && t !== f && names.some(r => r.test(text))) (isUnit(t) ? unit : ui).add(t);
   }
   // the size of every source (#405): a source changed may have grown past the limit
-  if (files['test/code-size.test.js'] != null && changed.some(f => /^(core|packages\/silinx-(?:fpga|hdl)\/src|web\/js|server|scripts)\/.+\.m?js$/.test(f))) unit.add('test/code-size.test.js');
+  if (files['test/code-size.test.js'] != null && changed.some(f => /^(core|packages\/silinx-(?:fpga|hdl|pic24)\/src|web\/js|server|scripts)\/.+\.m?js$/.test(f))) unit.add('test/code-size.test.js');
   // the imports of every source (#1678, #407): a source changed may import across the package's API or the research
-  if (changed.some(f => /^(core|server|web|scripts|bin|packages\/silinx-(?:fpga|hdl)\/src)\/.+\.m?js$/.test(f)))
+  if (changed.some(f => /^(core|server|web|scripts|bin|packages\/silinx-(?:fpga|hdl|pic24)\/src)\/.+\.m?js$/.test(f)))
     for (const t of ['test/toolchain-boundary.test.js', 'test/hdl-boundary.test.js', 'test/layering.test.js']) if (files[t] != null) unit.add(t);
   for (const f of ch) {
     if (!/\.m?js$/.test(f) || inTests(f)) continue;

@@ -53,6 +53,17 @@ test('silinx-hdl\'s fragments: well formed, README.md apart; its CHANGELOG.md', 
   assert.ok(parseChangelog(md).every(s => /^0\./.test(s.version) && s.body));
 });
 
+// silinx-pic24's own changelog (#5480), as silinx-fpga's: its fragments in packages/silinx-pic24/changes
+test('silinx-pic24\'s fragments: well formed, README.md apart; its CHANGELOG.md', () => {
+  const dir = path.join(ROOT, 'packages/silinx-pic24/changes');
+  assert.ok(fs.existsSync(path.join(dir, 'README.md')));
+  assert.deepEqual(checkFragments(readFragments(dir)), []);
+  assert.deepEqual(fs.readdirSync(dir).filter(f => !f.endsWith('.md')), []);
+  const md = fs.readFileSync(path.join(ROOT, 'packages/silinx-pic24/CHANGELOG.md'), 'utf8');
+  assert.match(md, /^# Changelog\n\nWhat changed in each version of silinx-pic24/);
+  assert.ok(parseChangelog(md).every(s => /^0\./.test(s.version) && s.body));
+});
+
 test('parseFragment: the lists, In short optional, continuation lines kept', () => {
   assert.deepEqual(parseFragment(A.text), { short: ['- **Generate and Simulate:** short a\n  more a'], detail: ['- **Model (#490):** detail a\n  more'] });
   assert.deepEqual(parseFragment(B.text), { short: [], detail: ['- **Muxes (#511):** detail b', '- **Muxes, the test (#511):** detail b2'] });
