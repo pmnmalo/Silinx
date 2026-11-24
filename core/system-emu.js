@@ -17,6 +17,7 @@ import { boardWiring, boardOutputs } from './emulate.js';
 import { resolveBoard } from './devices.js';
 import { mcuBoard } from './system-doc.js';
 import { partInputs } from './circuit-io.js';
+import { partDef } from './circuit-parts.js';
 
 // a netlist's top's ports: [{ name, dir, width }]
 function portsOf(netlist) {
@@ -45,6 +46,8 @@ export function emulationBoards(sys, inputs) {
       const ins = c.model.parts.flatMap(p => partInputs(p).filter(x => x.kind !== 'clock').map((x, i, all) => ({ pin: all.length > 1 ? `${p.id}:${x.index + 1}` : p.id, part: p.id, index: x.index, kind: x.kind })));
       // (a temperature sensor's temperature, #5342: its id, a value in °C)
       for (const p of c.model.parts.filter(x => x.type === 'lm75')) ins.push({ pin: p.id, part: p.id, index: 0, kind: 'temp' });
+      // (what a part senses, #5456: an ultrasonic sensor's distance, its id, a value in its unit)
+      for (const p of c.model.parts) for (const x of partDef(p.type)?.sense ?? []) ins.push({ pin: p.id, part: p.id, index: 0, kind: 'sense', prop: x.prop });
       out.push({ id: n.id, kind: 'circuit', model: c.model, inputs: ins, outputs: [] });
       continue;
     }
@@ -109,7 +112,7 @@ export function boardStates(sim, boards, t0, t1, prev = {}) {
     if (b.kind === 'circuit') {
       // (its lamps and its inputs now, #5322)
       const node = sim.nodes.get(b.id);
-      out[b.id] = { leds: node.sim.leds(), lcds: node.sim.lcds(), oleds: node.sim.oleds(), sensors: node.sim.sensors(), servos: node.sim.servos(), buzzers: node.sim.buzzers(), inputs: node.sim.inputs(), lit: Object.entries(node.sim.outputs()).filter(([, v]) => v === '1').map(([k]) => k) };
+      out[b.id] = { leds: node.sim.leds(), lcds: node.sim.lcds(), oleds: node.sim.oleds(), sensors: node.sim.sensors(), servos: node.sim.servos(), buzzers: node.sim.buzzers(), sonars: node.sim.sonars(), inputs: node.sim.inputs(), lit: Object.entries(node.sim.outputs()).filter(([, v]) => v === '1').map(([k]) => k) };
       continue;
     }
     if (b.kind === 'fpga') {
@@ -132,6 +135,7 @@ export function setBoardInput(sim, board, pin, value) {
     const c = board.inputs.find(x => x.pin === pin);
     if (!c) throw new Error(`'${pin}' is not a switch or a button of the circuit ${board.id}`);
     if (c.kind === 'temp') sim.nodes.get(board.id).setTemp(c.part, Number(value));   // (°C, #5342)
+    else if (c.kind === 'sense') sim.nodes.get(board.id).setSensed(c.part, c.prop, Number(value));   // (#5456)
     else sim.nodes.get(board.id).setInput(c.part, value, c.index);
     return;
   }

@@ -219,7 +219,7 @@ test('#5322 simulate with controls on a circuit node: its switch S1 set at 5 ms 
   await write('emuc.sys.json', m);
   const r = await ok('simulate', { project: 'u', top: 'emuc.sys.json', time_ns: 60e6, type: { term: 'A' }, controls: [{ node: 'bench', control: 'S1', on: true, at_ns: 5e6 }] });
   assert.equal(r.data.terminals.term, 'AHello from Silinx!\r\n');
-  assert.deepEqual(r.data.boards.bench, { leds: { D2: 'on' }, lcds: {}, oleds: {}, sensors: {}, servos: {}, inputs: { S1: true }, lit: ['D2'] }, 'LD0: the last byte\'s bit 0 (no LCD, OLED, sensor nor servo: #5345, #5371)');
+  assert.deepEqual(r.data.boards.bench, { leds: { D2: 'on' }, lcds: {}, oleds: {}, sensors: {}, servos: {}, buzzers: {}, sonars: {}, inputs: { S1: true }, lit: ['D2'] }, 'LD0: the last byte\'s bit 0 (no LCD, OLED, sensor, servo, buzzer nor ultrasonic sensor: #5345, #5371, #5454, #5456)');
   assert.deepEqual(r.text.split('\n').slice(-3, -1), ['fpga\'s board: LEDs off.', 'bench\'s circuit: lit D2.'], r.text);
   assert.deepEqual([r.data.warnings, r.data.errors], [[], []]);
   const x = await call('simulate', { project: 'u', top: 'emuc.sys.json', time_ns: 2e6, controls: [{ node: 'bench', control: 'S9', on: true }] });
@@ -244,4 +244,24 @@ test('#5342 simulate with a control on a circuit\'s temperature sensor: its valu
   assert.deepEqual(r.data.boards.bench.sensors.U1.temp, 90);
   const x = await call('simulate', { project: 'u', top: 'temp.sys.json', time_ns: 2e6, controls: [{ node: 'bench', control: 'U1', value: 'hot' }] });
   assert.deepEqual([x.isError, x.text], [true, 'simulate: controls[0]: U1\'s value: a temperature (°C)']);
+});
+
+test('#5456 simulate with a control on a circuit\'s ultrasonic sensor: its distance (cm) at its time, an Uno measuring it; a distance out of its range refused', async () => {
+  const uno = (name) => ({ D8: [9, 0], D7: [11, 0], GND: [3, 0], '5V': [8, 19] })[name];
+  const { avrAssemble, intelHex } = await import('./avr-asm.mjs');
+  // the Uno's D8 its Trig (1 for about 13 µs after 1 ms), D7 its Echo, waited for and timed by Timer1 at clk/8
+  await write('fw/sonar.hex', intelHex(avrAssemble(['ldi r16, 0x01', 'out 0x04, r16', 'ldi r16, 0x02', 'sts 0x81, r16', 'ldi r18, 0', 'wait:', 'ldi r17, 255', 'w1:', 'dec r17', 'brne w1', 'inc r18', 'sbrs r18, 5', 'rjmp wait',
+    'ldi r16, 0x01', 'out 0x05, r16', 'ldi r17, 70', 'trig:', 'dec r17', 'brne trig', 'ldi r16, 0x00', 'out 0x05, r16', 'end:', 'rjmp end'])));
+  await write('src/son.circ.json', { format: 'silinx-circuit', version: 1, name: 'son', lang: 'vhdl',
+    parts: [{ id: 'A1', type: 'arduino-uno', x: 0, y: 0, label: 'uno' }, { id: 'US1', type: 'hc-sr04', x: 30, y: 30, cm: 50 }],
+    wires: [{ id: 'v', points: [uno('5V'), [30, 30]], color: 'red' }, { id: 't', points: [uno('D8'), [31, 30]], color: 'blue' }, { id: 'e', points: [uno('D7'), [32, 30]], color: 'blue' }, { id: 'g', points: [uno('GND'), [33, 30]], color: 'black' }] });
+  await write('son.sys.json', { format: 'silinx-system', version: 1, name: 'son', nodes: [{ id: 'uno', kind: 'mcu', board: 'arduino-uno', firmware: 'fw/sonar.hex', interfaces: [] },
+    { id: 'bench', kind: 'circuit', circuit: 'src/son.circ.json', interfaces: [] }], links: [] });
+  const r = await ok('simulate', { project: 'u', top: 'son.sys.json', time_ns: 12e6, controls: [{ node: 'bench', control: 'US1', value: 120, at_ns: 0 }] });
+  const lines = r.text.split('\n');
+  assert.ok(lines.includes('circuit bench: US1 120 cm, its last echo 6997.1 µs'), r.text);
+  assert.equal(lines.at(-2), 'bench\'s circuit: lit none; US1 120 cm.');
+  assert.deepEqual(r.data.boards.bench.sonars.US1, { cm: 120, measuring: false, echo: 6997.1 });
+  const x = await call('simulate', { project: 'u', top: 'son.sys.json', time_ns: 2e6, controls: [{ node: 'bench', control: 'US1', value: 500 }] });
+  assert.deepEqual([x.isError, x.text], [true, 'simulate: controls[0]: US1\'s value: distance (cm) from 2 to 400']);
 });

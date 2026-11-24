@@ -1,6 +1,7 @@
 // The devices of a circuit's live simulation (#5357, moved from core/circuit-sim.js's createCircuitSim as they were):
 // the parts whose behaviour is a model of their own, not gates nor a module: a character LCD (#5330), a graphic OLED on
-// I²C (#5336), a servo (#5347), a temperature sensor on I²C (#5342), a buzzer (#5454). Each set up as its part is read (its nets, its
+// I²C (#5336), a servo (#5347), a temperature sensor on I²C (#5342), a buzzer (#5454), an ultrasonic range sensor (#5456:
+// its echo timed by its own wake-ups). Each set up as its part is read (its nets, its
 // drivers), evaluated as a net it reads changes, and seen through the simulation's API (lcds, oleds, servos, sensors…).
 // Isomorphic module.
 import { createLcd } from './circuit-lcd.js';
@@ -9,6 +10,7 @@ import { createSsd1306 } from './circuit-oled.js';
 import { createLm75 } from './circuit-lm75.js';
 import { createServo } from './circuit-servo.js';
 import { createBuzzer } from './circuit-buzzer.js';
+import { createSonar } from './circuit-sonar.js';
 
 /**
  * A device of a part, or null (another part): { ic, reads } (its state, as createCircuitSim's ics; the nets it reads).
@@ -38,6 +40,11 @@ export function setupDevice(p, d, { at, addDriver, level }) {
     const ic = { part: p, def: d, buzzer: createBuzzer(), sig: at('+'), ref: at('−'), was: false };
     return { ic, reads: [ic.sig, ic.ref] };
   }
+  // (an ultrasonic range sensor, #5456: its trigger read, its echo driven at its own times)
+  if (d.kind === 'sonar') {
+    const ic = { part: p, def: d, sonar: createSonar({ cm: p.cm }), vcc: at('VCC'), gnd: at('GND'), trig: at('Trig'), echo: addDriver(at('Echo'), 'Z'), was: false };
+    return { ic, reads: [ic.vcc, ic.gnd, ic.trig] };
+  }
   // (a temperature sensor, #5342: its I²C peripheral at 0x48 + A2..A0, read too; its OS open drain)
   if (d.kind === 'sensor') {
     const lm75 = createLm75({ temp: p.temp });
@@ -50,8 +57,9 @@ export function setupDevice(p, d, { at, addDriver, level }) {
   return null;
 }
 
-/** A device evaluated (true), or not one (false). powered(ic), level(net), now() (ns), drive(driver, value). */
-export function evaluateDevice(ic, { powered, level, now, drive }) {
+/** A device evaluated (true), or not one (false). powered(ic), level(net), now() (ns), drive(driver, value), wake(at): the
+ *  device evaluated again at its own time (#5456). */
+export function evaluateDevice(ic, { powered, level, now, drive, wake }) {
   if (ic.lcd) {   // (its controller reset while unpowered; a write as E falls)
     const on = powered(ic), e = level(ic.e);
     if (!on) ic.lcd.reset();
@@ -79,6 +87,18 @@ export function evaluateDevice(ic, { powered, level, now, drive }) {
     ic.was = on;
     return true;
   }
+  if (ic.sonar) {   // (its echo low while powered, its trigger's fall a measure, its wake-ups the echo's start and end)
+    const on = powered(ic), t = now();
+    if (!on) { if (ic.was) ic.sonar.reset(); drive(ic.echo, 'Z'); ic.was = false; return true; }
+    if (!ic.was) drive(ic.echo, '0');
+    ic.was = true;
+    const w = ic.sonar.wake(t);
+    if (w.echo) drive(ic.echo, w.echo);
+    if (w.echo && w.next != null) wake(w.next);
+    const at = ic.sonar.trig(level(ic.trig) === '1' ? '1' : '0', t);
+    if (at != null) wake(at);
+    return true;
+  }
   if (ic.lm75) {   // (its registers and its bus reset while unpowered; SDA's and OS's drivers)
     const on = powered(ic);
     if (!on) { if (ic.was) { ic.lm75.reset(); ic.bus.reset(); } drive(ic.sdaDrv, 'Z'); drive(ic.osDrv, 'Z'); }
@@ -98,9 +118,26 @@ export function deviceViews(ics, { now, evaluate, update }) {
     oleds: () => Object.fromEntries(ics.filter((x) => x.oled).map((x) => [x.part.id, x.oled.state()])),
     /** each servo's state now: { angle, target, width, period } (#5347), and what it said (once each) */
     servos: () => Object.fromEntries(ics.filter((x) => x.servo).map((x) => [x.part.id, x.servo.state(now())])),
-    servoWarnings: () => ics.filter((x) => x.servo || x.buzzer).flatMap((x) => (x.servo || x.buzzer).warnings.map((w) => `${x.part.id}: ${w.text}`)),
+    servoWarnings: () => ics.filter((x) => x.servo || x.buzzer || x.sonar).flatMap((x) => (x.servo || x.buzzer || x.sonar).warnings.map((w) => `${x.part.id}: ${w.text}`)),
     /** each buzzer's state now: { sounding, hz, how } (#5454) */
     buzzers: () => Object.fromEntries(ics.filter((x) => x.buzzer).map((x) => [x.part.id, x.buzzer.state(now())])),
+    /** each ultrasonic range sensor's state: { cm, measuring, echo (its last, µs) } (#5456) */
+    sonars: () => Object.fromEntries(ics.filter((x) => x.sonar).map((x) => [x.part.id, x.sonar.state()])),
+    /** a part's sensed value now (#5456: its `sense`'s `prop`) */
+    sensed(id, prop) {
+      const ic = ics.find((x) => x.part.id === id && x.def.sense?.some((s) => s.prop === prop));
+      if (!ic) throw new Error(`${id} senses no ${prop} in the circuit`);
+      return ic.sonar.cm;
+    },
+    /** a part's sensed value set now (#5456: a part's `sense`, its `prop`): an ultrasonic sensor's distance */
+    setSensed(id, prop, v) {
+      const ic = ics.find((x) => x.part.id === id && x.def.sense?.some((s) => s.prop === prop));
+      if (!ic) throw new Error(`${id} senses no ${prop} in the circuit`);
+      const s = ic.def.sense.find((x) => x.prop === prop), n = Number(v);
+      if (!Number.isFinite(n) || n < s.min || n > s.max) throw new Error(`${id}'s ${prop}: from ${s.min} to ${s.max} ${s.unit}`);
+      if (ic.sonar) ic.sonar.cm = n;
+      update();
+    },
     /** each temperature sensor's state: { temp, raw, conf, thyst, tos, os, pointer } (#5342) */
     sensors: () => Object.fromEntries(ics.filter((x) => x.lm75).map((x) => [x.part.id, x.lm75.state()])),
     /** a temperature sensor's temperature set now (°C): a conversion, its OS as it gives */

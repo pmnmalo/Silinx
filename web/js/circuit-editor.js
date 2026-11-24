@@ -20,7 +20,7 @@ import { viewGestures } from './view-gestures.js';
 import { sv } from './dom.js';
 import { mountSideFold } from './side-fold.js';
 import { normalizeCircuit, newCircuit, circuitCounts } from '/core/circuit.js';
-import { partPins, partHoles, partCorners } from '/core/circuit-parts.js';
+import { partDef, partPins, partHoles, partCorners } from '/core/circuit-parts.js';
 import { addPart, movePart, rotatePart, deleteItem } from '/core/circuit-edit.js';
 import { mountCircuitOptions } from './circuit-options.js';
 import { mountCircuitClip } from './circuit-clip.js';
@@ -30,6 +30,7 @@ import { wireDragStart, wireDragTo, bendRemoved } from './circuit-wire-drag.js';
 import { checkCircuit } from '/core/circuit-check.js';
 import { clone } from '/core/util.js';
 import { drawCircuit, draftSvg, P } from './circuit-draw.js';
+import { SONAR_NUDGE } from './circuit-draw-sonar.js';
 import { addStyledWire } from '/core/circuit-route.js';
 import { mountCircuitToolbar } from './circuit-toolbar.js';
 import { mountCircuitSide } from './circuit-side.js';
@@ -142,7 +143,7 @@ export function mountCircuitEditor(container, opts = {}) {
     if (destroyed) return;
     const sim = tryIt.sim();
     applyView();
-    world.replaceChildren(drawCircuit({ ...M, wireStyle: wireStyle() }, { sel, draft, ghost, inside: inside(), hops: hops(), handles: !readOnly && !sim, levels: sim ? (id, n) => sim.pin(id, n) : null, leds: sim?.leds(), lcds: sim?.lcds(), oleds: sim?.oleds(), sensors: sim?.sensors(), servos: sim?.servos(), buzzers: sim?.buzzers(), inputs: sim?.inputs(), encoders: tryIt.detents() }));
+    world.replaceChildren(drawCircuit({ ...M, wireStyle: wireStyle() }, { sel, draft, ghost, inside: inside(), hops: hops(), handles: !readOnly && !sim, levels: sim ? (id, n) => sim.pin(id, n) : null, leds: sim?.leds(), lcds: sim?.lcds(), oleds: sim?.oleds(), sensors: sim?.sensors(), servos: sim?.servos(), buzzers: sim?.buzzers(), sonars: sim?.sonars(), inputs: sim?.inputs(), encoders: tryIt.detents() }));
     sync();   // (the Wires' ✓: an undo, a model set)
     for (const b of [delBtn]) b.disabled = !sel || !!sim;
     rotBtn.disabled = sel?.kind !== 'part' || !!sim;
@@ -180,6 +181,8 @@ export function mountCircuitEditor(container, opts = {}) {
     if (sim && t?.input) {
       // (a temperature sensor's − and +, #5342: a degree less or more, now)
       if (t.input === 'temp-up' || t.input === 'temp-down') { sim.setTemp(t.id, sim.sensors()[t.id].temp + (t.input === 'temp-up' ? 1 : -1)); runSim(); }
+      // (what a part senses, its − and +, #5456: an ultrasonic sensor's object 5 cm nearer or farther, now)
+      else if (t.input === 'sense-up' || t.input === 'sense-down') { const x = partDef(M.parts.find((q) => q.id === t.id).type).sense[0]; sim.setSensed(t.id, x.prop, Math.min(x.max, Math.max(x.min, sim.sensed(t.id, x.prop) + (t.input === 'sense-up' ? SONAR_NUDGE : -SONAR_NUDGE)))); runSim(); }
       // (a rotary encoder's ↺ and ↻, #5451: a detent each way)
       else if (t.input === 'enc-cw' || t.input === 'enc-ccw') tryIt.turn(t.id, t.input === 'enc-cw' ? 1 : -1);
       else if (t.input === 'switch') setInput(t.id, !sim.inputs()[t.id]);

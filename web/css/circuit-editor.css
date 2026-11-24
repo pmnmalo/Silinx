@@ -264,3 +264,13 @@ html[data-theme="dark"] .circuit-editor .circ-sim-badge { color: var(--m-success
 .circuit-editor .circ-buzz-wave { fill: none; stroke: var(--circ-servo); stroke-width: 2; stroke-linecap: round; }
 .circuit-editor .circ-buzz-hz { font: bold 11px var(--asm-mono, monospace); fill: var(--circ-servo); pointer-events: none; }
 .circuit-editor .circ-key.down rect { stroke: var(--asm-accent); stroke-width: 4; filter: brightness(.8); }
+/* an ultrasonic range sensor, an HC-SR04 (#5456, web/js/circuit-draw-sonar.js): its blue board, its two silver cans */
+.circuit-editor .circ-sonar-board { fill: var(--circ-pcb-blue); stroke: var(--circ-servo-edge); stroke-width: 1.2; }
+.circuit-editor .circ-sonar-can { fill: var(--circ-metal); stroke: var(--circ-metal-edge); stroke-width: 1.4; }
+.circuit-editor .circ-sonar-mesh { fill: var(--circ-slot); stroke: var(--circ-metal-edge); stroke-width: 1; stroke-dasharray: 2 2; }
+.circuit-editor .circ-sonar-tx { font: bold 11px Arial, sans-serif; fill: var(--circ-metal); pointer-events: none; }
+.circuit-editor .circ-sonar-xtal { fill: var(--circ-metal); stroke: var(--circ-metal-edge); stroke-width: 1; }
+.circuit-editor .circ-sonar-name, .circuit-editor .circ-sonar-pin { font: bold 10px Arial, sans-serif; fill: var(--circ-silk); pointer-events: none; }
+.circuit-editor .circ-sonar-pin { font-size: 8px; }
+.circuit-editor .circ-sonar-wave { fill: none; stroke: var(--circ-servo); stroke-width: 2; stroke-linecap: round; }
+.circuit-editor .circ-sonar-cm { font: bold 10px var(--asm-mono, monospace); fill: var(--circ-silk); cursor: default; }

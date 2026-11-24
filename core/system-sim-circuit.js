@@ -56,6 +56,10 @@ export class CircuitNode {
   servos() { return this.sim.servos(); }
   /** Its buzzers' states (#5454). */
   buzzers() { return this.sim.buzzers(); }
+  /** Its ultrasonic sensors' states (#5456). */
+  sonars() { return this.sim.sonars(); }
+  /** A part's sensed value set now (#5456: an ultrasonic sensor's distance, cm). */
+  setSensed(part, prop, v) { this.sim.setSensed(part, prop, v); }
 
   /** A pin set weak while weak() says so (an AVR's input with its pull-up). */
   weakWhile(name, weak) { this.weak.set(name, weak); }
@@ -73,7 +77,8 @@ export class CircuitNode {
     return num(this.sim.pin(ref));
   }
 
-  nextEventTime() { return Infinity; }
+  // (a device's own wake-up, #5456: an ultrasonic sensor's echo starting or ending, at its time, ps)
+  nextEventTime() { const w = this.sim.nextWake(); return w == null ? Infinity : Math.round((w - this.base) * 1000); }
 
   advanceTo(t) {
     if (t < this.now) throw new Error(`the node is at ${this.now} ps, not back at ${t}`);
