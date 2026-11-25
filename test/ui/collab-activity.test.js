@@ -119,6 +119,37 @@ uiTest('#4002 in Portuguese: the viewer follows the owner\'s selection; its own 
   } finally { await fp.close(); await page.eval(async () => (await import('/js/collab-share.js')).stopSharing()); }
 });
 
+// #5541: the owner's selection arriving while the viewer's button is down on a row of its own: the viewer's Design pane
+// was drawn again under the press, so the release was on another element and no click came (CI: 'waiting for browsing
+// alone'), the owner's selection followed. The press is the viewer's own action: browsing alone from it, the pane not
+// drawn again, the click its row's.
+uiTest('#5541 a viewer\'s press on a row while the owner selects another: browsing alone, its row selected, the owner\'s not followed', E, async (page) => {
+  await makeProject(env, { name: 'GatesPress', template: 'gates' });
+  await page.openProject('GatesPress');
+  if (await tasks(page)) await page.leftTab('design');
+  const link = await shareNow(page);
+  const fp = await join(link, 'Rui');
+  try {
+    if (await tasks(fp)) await fp.waitFor(() => document.documentElement.dataset.task === 'edit', [], { what: 'Design, as the owner' });
+    const key = await rowKey(page, 'gates');
+    await page.click(`#hier .row[data-key="${key}"] .lbl`);
+    await fp.waitFor((k) => window.SilinxApp.S.selKey === k && document.querySelector('#hier .row.sel')?.dataset.key === k, [key], { what: 'the owner\'s selection followed' });
+    // the viewer's button down on the project's row; the owner selects the device meanwhile; the button released
+    const { x, y } = await fp.point('#hier .row[data-key="project"] .lbl');
+    await fp.mouse('mouseMoved', x, y);
+    await fp.mouse('mousePressed', x, y);
+    await page.click('#hier .row[data-key="device"] .lbl');
+    await new Promise((r) => setTimeout(r, 700));
+    await fp.mouse('mouseReleased', x, y);
+    await fp.waitConsole(/^Browsing alone: Ana is no longer followed \(Follow Ana, in the toolbar, follows them again\)\.$/m);
+    assert.equal(await presence(fp), 'Follow Ana');
+    assert.deepEqual(await selected(fp), ['project', 'project']);
+    assert.deepEqual(await warnings(fp), []);
+    assert.deepEqual(await warnings(page), []);
+    assert.deepEqual(fp.errors, []);
+  } finally { await fp.close(); await page.eval(async () => (await import('/js/collab-share.js')).stopSharing()); }
+});
+
 // #4865: the viewer's own click while the owner's document was still opening at the viewer's (its Design Summary, its
 // summary.js held here by CDP's Fetch: a loaded machine): browsing alone, the document the viewer opens then stays in
 // front, the owner's Design Summary opening behind it, not brought over it once it has opened
