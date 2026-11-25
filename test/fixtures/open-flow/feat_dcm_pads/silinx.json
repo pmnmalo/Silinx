@@ -8,7 +8,7 @@
     "package": "fg320",
     "speed": "-4"
   },
-  "board": "nexys2-1200",
+  "board": "nexys2",
   "top": "top",
   "files": [
     {
