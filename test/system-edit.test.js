@@ -26,9 +26,9 @@ function built() {
 test('#4700 a system built by edits: its nodes, interfaces and link as the format has them; checked with its two warnings (the 5 V output, the terminal)', () => {
   const s = built();
   assert.deepEqual(s.nodes.map(n => n.id), ['fpga', 'mcu', 'term']);
-  assert.deepEqual(s.nodes[0], { id: 'fpga', kind: 'fpga', module: 'uart', board: 'basys2', variant: '250', pins: { rx: 'J3', tx: 'A3' },
+  assert.deepEqual(s.nodes[0], { id: 'fpga', kind: 'fpga', module: 'uart', board: 'basys2', variant: '250', pins: { rx: 'J3', tx: 'A3' }, lang: 'vhdl',
     interfaces: [{ name: 'uart', kind: 'uart', tx: 'tx', rx: 'rx', baud: 9600, frame: '8N1' }], x: 0, y: 0 });
-  assert.deepEqual(s.nodes[1], { id: 'mcu', kind: 'mcu', board: 'arduino-uno', firmware: null, interfaces: [{ name: 'Serial', kind: 'uart', baud: 9600, frame: '8N1' }], x: -200, y: 0 });
+  assert.deepEqual(s.nodes[1], { id: 'mcu', kind: 'mcu', board: 'arduino-uno', firmware: null, lang: 'c', interfaces: [{ name: 'Serial', kind: 'uart', baud: 9600, frame: '8N1' }], x: -200, y: 0 });
   assert.deepEqual(s.nodes[2], { id: 'term', kind: 'terminal', interfaces: [{ name: 'serial', kind: 'uart', baud: 9600, frame: '8N1' }], x: 0, y: 200 });
   assert.deepEqual(s.links, [{ id: 'serial', kind: 'uart', a: 'mcu.Serial', b: 'fpga.uart' }]);
   // (its text read back the same)
@@ -76,9 +76,9 @@ test('#4700 a node\'s fields: by its kind, its pins merged and removed, a varian
   assert.deepEqual([s.nodes[1].firmware, s.nodes[1].board], ['firmware/echo.hex', 'arduino-nano']);
   assert.equal(ok(changeNode(s, 'mcu', { firmware: '' })).system.nodes[1].firmware, null);
   assert.deepEqual(changeNode(s, 'mcu', { board: 'pico' }), { error: "no microcontroller board 'pico': arduino-uno, arduino-nano" });
-  assert.deepEqual(changeNode(s, 'mcu', { module: 'uart' }), { error: "mcu: a Microcontroller node has no field 'module' (id, board, firmware, x, y)" });
+  assert.deepEqual(changeNode(s, 'mcu', { module: 'uart' }), { error: "mcu: a Microcontroller node has no field 'module' (id, board, firmware, x, y, lang)" });
   assert.deepEqual(changeNode(s, 'term', { board: 'basys2' }), { error: "term: a Serial terminal node has no field 'board' (id, x, y)" });
-  assert.deepEqual(changeNode(s, 'fpga', { firmware: 'a.hex' }), { error: "fpga: a FPGA node has no field 'firmware' (id, module, board, variant, pins, x, y)" });
+  assert.deepEqual(changeNode(s, 'fpga', { firmware: 'a.hex' }), { error: "fpga: a FPGA node has no field 'firmware' (id, module, board, variant, pins, x, y, lang)" });
   assert.deepEqual(changeNode(s, 'nope', {}), { error: "no node 'nope' in the System" });
 });
 
@@ -87,7 +87,7 @@ test('#4700 nodes added: every kind, an unknown kind or board refused', () => {
   assert.deepEqual(addNode(s, { kind: 'pico' }), { error: "no node kind 'pico': fpga, mcu, terminal, circuit, design" });
   assert.deepEqual(addNode(s, { kind: 'mcu', board: 'esp32' }), { error: "no microcontroller board 'esp32': arduino-uno, arduino-nano" });
   const f = ok(addNode(s, { kind: 'fpga' }));
-  assert.deepEqual(f.system.nodes[0], { id: 'fpga', kind: 'fpga', module: null, board: 'basys2', pins: {}, interfaces: [], x: 0, y: 0 });
+  assert.deepEqual(f.system.nodes[0], { id: 'fpga', kind: 'fpga', module: null, board: 'basys2', pins: {}, lang: 'vhdl', interfaces: [], x: 0, y: 0 });
   assert.deepEqual(Object.keys(NODE_KIND_NAMES), ['fpga', 'mcu', 'terminal', 'circuit']);
   assert.deepEqual(UART_DEFAULTS, { baud: 9600, frame: '8N1' });
 });
@@ -169,9 +169,9 @@ test('#4700 a System described: its nodes, their interfaces, its links', () => {
   s = ok(addInterface(s, 'mcu', { kind: 'gpio', name: 'btn', pins: ['D2'] })).system;
   assert.deepEqual(describeSystem(s), [
     'System uart_avr: 3 nodes, 1 link',
-    'node fpga: FPGA, module uart on basys2-250',
+    'node fpga: FPGA, module uart on basys2-250, in VHDL',
     '  uart: UART 9600 baud 8N1, TX tx (A3), RX rx (J3)',
-    'node mcu: Arduino Uno, firmware (none)',
+    'node mcu: Arduino Uno, firmware (none), in C',
     '  Serial: UART 9600 baud 8N1, TX D1, RX D0',
     '  btn: GPIO in, D2',
     'node term: Serial terminal',
@@ -179,4 +179,18 @@ test('#4700 a System described: its nodes, their interfaces, its links', () => {
     'link serial: UART mcu.Serial ↔ fpga.uart',
   ]);
   assert.deepEqual(describeSystem(newSystem('e')), ['System e: 0 nodes, 0 links']);
+});
+
+test('#5488 a node\'s base language: its kind\'s default when added, given or changed; refused when not its kind\'s; kept through a rename', () => {
+  let s = newSystem('l');
+  s = addNode(s, { kind: 'fpga', module: 'top', board: 'basys2' }).system;
+  s = addNode(s, { kind: 'mcu', lang: 'micropython' }).system;
+  assert.deepEqual(s.nodes.map(n => n.lang), ['vhdl', 'micropython']);
+  assert.deepEqual(addNode(s, { kind: 'fpga', lang: 'c' }), { error: "'c' is not an FPGA node's base language: vhdl, verilog" });
+  assert.deepEqual(addNode(s, { kind: 'circuit', lang: 'vhdl' }), { error: 'a circuit node has no base language' });
+  s = changeNode(s, 'fpga', { lang: 'verilog', id: 'top' }).system;
+  assert.deepEqual(s.nodes.map(n => [n.id, n.lang]), [['top', 'verilog'], ['mcu', 'micropython']]);
+  assert.deepEqual(changeNode(s, 'mcu', { lang: 'verilog' }), { error: "mcu: 'verilog' is not a microcontroller node's base language: c, cpp, micropython" });
+  const t = addNode(s, { kind: 'terminal' }).system;
+  assert.deepEqual(changeNode(t, 'term', { lang: 'c' }), { error: "term: a Serial terminal node has no field 'lang' (id, x, y)" });
 });

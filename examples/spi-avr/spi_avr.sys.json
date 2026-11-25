@@ -8,6 +8,7 @@
       "kind": "mcu",
       "board": "arduino-uno",
       "firmware": "firmware/spi.hex",
+      "lang": "c",
       "interfaces": [
         {
           "name": "Serial",
@@ -46,6 +47,7 @@
         "led<6>": "P4",
         "led<7>": "G1"
       },
+      "lang": "vhdl",
       "interfaces": [
         {
           "name": "bus",

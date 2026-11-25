@@ -19,7 +19,7 @@ const short = r => r.nodes.map(n => [n.id, n.kind, n.board, n.module, n.files]);
 test('#5414 an FPGA project: one implicit node, its board, top module and constraints; nothing else', () => {
   const r = projectNodes({ name: 'p', board: 'nexys2', device: { part: 'xc3s500e' }, top: 'blink', constraints: 'c/top.ucf' });
   assert.deepEqual(r, { system: null, error: null, owned: ['c/top.ucf'],
-    nodes: [{ id: 'fpga', kind: 'fpga', implicit: true, board: 'nexys2', device: { part: 'xc3s500e' }, module: 'blink', files: ['c/top.ucf'] }] });
+    nodes: [{ id: 'fpga', kind: 'fpga', implicit: true, board: 'nexys2', device: { part: 'xc3s500e' }, module: 'blink', lang: 'vhdl', files: ['c/top.ucf'] }] });
   // (no board, no top, no constraints: still its one node)
   assert.deepEqual(short(projectNodes({ name: 'q' })), [['fpga', 'fpga', null, null, []]]);
   assert.deepEqual(short(projectNodes(null)), [['fpga', 'fpga', null, null, []]]);
@@ -27,7 +27,10 @@ test('#5414 an FPGA project: one implicit node, its board, top module and constr
 
 test('#5414 a design and simulation project: one implicit node, no board', () => {
   const r = projectNodes({ name: 'd', kind: 'design', top: 'adder' });
-  assert.deepEqual(r.nodes, [{ id: 'design', kind: 'design', implicit: true, board: null, device: null, module: 'adder', files: [] }]);
+  assert.deepEqual(r.nodes, [{ id: 'design', kind: 'design', implicit: true, board: null, device: null, module: 'adder', lang: 'vhdl', files: [] }]);
+  // (its base language the project's preferred HDL, #5488)
+  assert.equal(projectNodes({ name: 'd', kind: 'design', preferredLanguage: 'verilog' }).nodes[0].lang, 'verilog');
+  assert.equal(projectNodes({ name: 'f', preferredLanguage: 'verilog' }).nodes[0].lang, 'verilog');
 });
 
 test('#5414 a System project: its System document\'s nodes, each with its files; a shared file owned once', () => {

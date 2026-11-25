@@ -7,9 +7,9 @@ import { readSystem, writeSystem, newSystem, normalizeSystem, isSystemFile, link
 const UART_AVR = {
   format: 'silinx-system', version: 1, name: 'uart_avr',
   nodes: [
-    { id: 'fpga', kind: 'fpga', module: 'uart', board: 'basys2', variant: '250', pins: { rx: 'J3', tx: 'A3' },
+    { id: 'fpga', kind: 'fpga', module: 'uart', board: 'basys2', variant: '250', pins: { rx: 'J3', tx: 'A3' }, lang: 'vhdl',
       interfaces: [{ name: 'uart', kind: 'uart', tx: 'tx', rx: 'rx', baud: 9600, frame: '8N1' }, { name: 'leds', kind: 'gpio', pins: ['led<0>'], dir: 'out' }], x: 100, y: 40 },
-    { id: 'uno', kind: 'mcu', board: 'arduino-uno', firmware: 'firmware/echo.hex', interfaces: [{ name: 'Serial', kind: 'uart', baud: 9600, frame: '8N1' }], x: -120, y: 40 },
+    { id: 'uno', kind: 'mcu', board: 'arduino-uno', firmware: 'firmware/echo.hex', lang: 'c', interfaces: [{ name: 'Serial', kind: 'uart', baud: 9600, frame: '8N1' }], x: -120, y: 40 },
     { id: 'term', kind: 'terminal', interfaces: [{ name: 'serial', kind: 'uart', baud: 115200, frame: '8E2' }], x: 0, y: 200 },
   ],
   links: [{ id: 'serial', kind: 'uart', a: 'uno.Serial', b: 'fpga.uart' }],
@@ -31,17 +31,29 @@ test('normalized: the missing fields given, a kind\'s fields only, in their orde
     { id: 't', kind: 'terminal', module: 'x' },
   ], links: [{ b: 'm.Serial', a: 't.serial', kind: 'uart', id: 'l', baud: 9600 }] });
   assert.deepEqual(m, { format: SYSTEM_FORMAT, version: SYSTEM_VERSION, name: 's', nodes: [
-    { id: 'f', kind: 'fpga', module: null, board: null, pins: {}, interfaces: [{ name: 'g', kind: 'gpio', pins: ['a'], dir: 'in' }], x: 0, y: 0 },
-    { id: 'm', kind: 'mcu', board: 'arduino-nano', firmware: null, interfaces: [], x: 0, y: 0 },
+    { id: 'f', kind: 'fpga', module: null, board: null, pins: {}, lang: 'vhdl', interfaces: [{ name: 'g', kind: 'gpio', pins: ['a'], dir: 'in' }], x: 0, y: 0 },
+    { id: 'm', kind: 'mcu', board: 'arduino-nano', firmware: null, lang: 'c', interfaces: [], x: 0, y: 0 },
     { id: 't', kind: 'terminal', interfaces: [], x: 0, y: 0 },
   ], links: [{ id: 'l', kind: 'uart', a: 't.serial', b: 'm.Serial' }] });
-  assert.deepEqual(Object.keys(m.nodes[0]), ['id', 'kind', 'module', 'board', 'pins', 'interfaces', 'x', 'y']);
+  assert.deepEqual(Object.keys(m.nodes[0]), ['id', 'kind', 'module', 'board', 'pins', 'lang', 'interfaces', 'x', 'y']);
   // an interface of a kind not known: kept as it is (the check says it)
   assert.deepEqual(normalizeSystem({ nodes: [{ id: 'f', kind: 'fpga', interfaces: [{ name: 's', kind: 'can', mode: 0 }] }] }).nodes[0].interfaces, [{ name: 's', kind: 'can', mode: 0 }]);
   // (an SPI bus's: its ports, its rate and mode, 125 kHz and 0 by default, #5214)
   assert.deepEqual(normalizeSystem({ nodes: [{ id: 'f', kind: 'fpga', interfaces: [{ name: 's', kind: 'spi', x: 1, sck: 'c' }] }] }).nodes[0].interfaces, [{ name: 's', kind: 'spi', sck: 'c', hz: 125000, mode: 0 }]);
   assert.deepEqual(newSystem('top'), { format: SYSTEM_FORMAT, version: SYSTEM_VERSION, name: 'top', nodes: [], links: [] });
   assert.equal(writeSystem(newSystem('top')), '{\n  "format": "silinx-system",\n  "version": 1,\n  "name": "top",\n  "nodes": [],\n  "links": []\n}\n');
+});
+
+test('#5488 a node\'s base language: its own kept, its kind\'s default when not given, none for a terminal or a circuit; one not its kind\'s refused', () => {
+  const m = normalizeSystem({ nodes: [{ id: 'f', kind: 'fpga', lang: 'verilog' }, { id: 'm', kind: 'mcu', lang: 'micropython' }, { id: 'd', kind: 'design' },
+    { id: 't', kind: 'terminal', lang: 'c' }, { id: 'c', kind: 'circuit' }] });
+  assert.deepEqual(m.nodes.map(n => n.lang), ['verilog', 'micropython', 'vhdl', undefined, undefined]);
+  const doc = l => JSON.stringify({ format: 'silinx-system', version: 1, nodes: [{ id: 'f', kind: 'fpga', lang: l }] });
+  assert.deepEqual(readSystem(doc('c')), { error: 'node f: \'c\' is not an FPGA node\'s base language: vhdl, verilog' });
+  assert.deepEqual(readSystem(doc('Verilog')), { error: 'node f: \'Verilog\' is not an FPGA node\'s base language: vhdl, verilog' });
+  assert.equal(readSystem(doc('verilog')).system.nodes[0].lang, 'verilog');
+  // (a terminal's language ignored: its kind has none)
+  assert.equal(readSystem(JSON.stringify({ format: 'silinx-system', version: 1, nodes: [{ id: 't', kind: 'terminal', lang: 'x' }] })).system.nodes[0].lang, undefined);
 });
 
 test('not a System: not JSON, another format, no version, a newer version', () => {

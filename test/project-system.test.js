@@ -97,7 +97,7 @@ test('#5416 phase 3: an ISE project imported (.xise): its System implicit, its d
 
 test('#5416 phase 3: a design and simulation project; the old kind id, a profile, a module as the top; a System project with no or a damaged document', () => {
   const d = projectSystem({ name: 'dl', kind: 'design', top: 'adder', board: 'basys2' });
-  assert.deepEqual(d.model.nodes, [{ id: 'design', kind: 'design', module: 'adder', board: null, device: null, constraints: null, pins: {}, interfaces: [], x: 0, y: 0, implicit: true }]);
+  assert.deepEqual(d.model.nodes, [{ id: 'design', kind: 'design', module: 'adder', board: null, device: null, constraints: null, lang: 'vhdl', pins: {}, interfaces: [], x: 0, y: 0, implicit: true }]);
   // (a design node a node kind of a System document since #5440, the Digital Logic profile's: alone, it joins nothing)
   assert.deepEqual(checkSystem(d.model).map(said), ['warning: design joins nothing: no link reaches it']);
   // the old kind id of #5411: no System project's since #5440 (an FPGA project's implicit System); the profile's

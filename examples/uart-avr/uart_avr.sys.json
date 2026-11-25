@@ -8,6 +8,7 @@
       "kind": "mcu",
       "board": "arduino-uno",
       "firmware": "firmware/hello.hex",
+      "lang": "c",
       "interfaces": [
         {
           "name": "Serial",
@@ -51,6 +52,7 @@
         "an<2>": "M13",
         "an<3>": "K14"
       },
+      "lang": "vhdl",
       "interfaces": [
         {
           "name": "uart",
