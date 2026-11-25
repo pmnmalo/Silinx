@@ -9,3 +9,5 @@ export { irqPriority, irqFlag, irqEnabled, setIrqFlag, ENTRY_CYCLES } from './in
 export * as device from './device.js';
 export { Pic24Mcu } from './mcu.js';
 export { createGb610 } from './gb610.js';
+export { Ports } from './gpio.js';
+export { Explorer1632, EXPLORER_1632 } from './explorer1632.js';
