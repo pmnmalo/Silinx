@@ -177,6 +177,25 @@ interrupt.
 
 A value is at most 32 bits on a CPU (a wider one is refused).
 
+**Its C for the Arduino** (`core/reactive-c.js`) is a sketch as a student writes one, its HAL the Arduino API
+(`pinMode`, `digitalRead`, `digitalWrite`, `millis`):
+
+- `stepMachine()` is one tick, run by `loop()` every `TICK_MS` milliseconds (10 by default). It reads the inputs, sets the
+  outputs' defaults, runs `switch (state)` with one `case S_<state>:` per state, and writes the outputs;
+- `setup()` sets the pins' modes and the reset state;
+- the states are named constants (`enum State { S_CARS, … }`), the pins too (`PIN_<port>`, an array for a port of
+  several bits, bit 0 first);
+- a variable read after it is set in a tick (and a registered output, and a timer) keeps its next value apart
+  (`<name>_next`) until the end of the tick; the others are set in place;
+- the expressions carry only the masks and casts their widths need, the same on the AVR (an `int` of 16 bits) and on a
+  computer.
+
+The ports' pins (`core/reactive-c-pins.js`) are the user's, the others the next free ones: D2 to D13, then A0 to A5. D0
+and D1 are the USB serial port's, and a port given them is warned about. A port named as a word of C or of the Arduino
+API (`delay`, `int`) is renamed (`delay_v`) with a warning. The tests compile each drawing's sketch with the computer's
+C compiler, as C and as C++, against a mock of the Arduino API (`test/fixtures/arduino-mock`), and run it tick by tick
+against the model; the AVR run comes with #5503 (avr-gcc on the local server).
+
 ### The PIC24
 
 The PIC24 comes first (#5479's phase 1): a course uses the Explorer 16/32 with the PIC24FJ1024GB610 next semester, and
