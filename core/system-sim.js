@@ -29,6 +29,11 @@
 // The run is deterministic: the nodes in their order, the changes in time order, a delivery a window's edge. It is
 // isomorphic (browser, Node), synchronous and needs no
 // SharedArrayBuffer: the whole system runs in one Web Worker (core/system-sim-remote.js).
+//
+// The node contract (core/system-contract.js, #5485) is these adapters' run(t1, inputEvents): ContractNode puts one
+// behind it; a node of the contract only is put behind an adapter here (NodeEngine), and its lookahead bounds the
+// windows as a link's latency does (the links' lookahead by their protocols: core/system-links.js).
+import { NodeEngine } from './system-contract.js';
 
 /** The wide quantum by default (ps): 100 µs. */
 export const WIDE = 100e6;
@@ -80,8 +85,10 @@ export class SystemSim {
     this.stats = { windows: 0, changes: 0, late: 0 };
   }
 
-  /** A node: its name and its engine's adapter. */
+  /** A node: its name and its engine's adapter, or a node of the contract only (core/system-contract.js: run(t1,
+   *  inputEvents); a stimulus, the PIC24's), put behind an adapter (NodeEngine). */
   addNode(name, adapter) {
+    if (typeof adapter?.advanceTo !== 'function' && typeof adapter?.run === 'function') adapter = new NodeEngine(adapter);
     if (this.started) throw new Error('the nodes are added before the run');
     if (!name || /[.\s]/.test(name)) throw new Error(`'${name}' is not a node's name`);
     if (this.nodes.has(name)) throw new Error(`a node '${name}' already`);
@@ -212,6 +219,7 @@ export class SystemSim {
     for (const a of this.nodes.values()) {
       const e = a.nextEventTime();
       if (e > this.now) end = Math.min(end, e);
+      if (a.lookahead >= 1) end = Math.min(end, this.now + a.lookahead);   // (a node's own lookahead, the contract's)
     }
     return end;
   }

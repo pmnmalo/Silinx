@@ -26,6 +26,7 @@ import { readFirmware } from './avr-firmware.js';
 import { AvrSpi } from './system-sim-avr-spi.js';
 import { AvrTwi } from './system-sim-avr-twi.js';
 import { mcuBoard } from './system-doc.js';
+import { ContractNode } from './system-contract.js';
 
 /** The ATmega328P's clock on the Uno and the Nano (Hz), and a cycle's time (ps). */
 export const AVR_HZ = 16e6;
@@ -231,3 +232,14 @@ export class AvrNode {
 
   messages() { return this.log.slice(this.logN, (this.logN = this.log.length)); }
 }
+
+/** What the AVR's engine (avr8js) models and what it does not (the node contract's fidelity notes, #5499). */
+export const AVR_FIDELITY = [
+  { kind: 'models', text: 'the ATmega328P at 16 MHz, instruction by instruction: its GPIO ports, timers 0, 1 and 2, USART, SPI and TWI' },
+  { kind: 'approximates', text: 'the USART\'s, SPI\'s and TWI\'s pins as their waveforms at the program\'s settings' },
+  { kind: 'omits', text: 'SPI and TWI as a peripheral (master only)' },
+];
+
+/** An AVR node behind the node contract (core/system-contract.js): `opts` AvrNode's ({ board, firmware }), its pins at
+ *  its board's I/O level (5 V). */
+export const avrContract = (opts) => new ContractNode({ make: () => new AvrNode(opts), volts: mcuBoard(opts.board ?? 'arduino-uno')?.vio ?? null, fidelity: AVR_FIDELITY });

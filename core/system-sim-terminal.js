@@ -8,6 +8,7 @@
 //
 // Isomorphic ES module, no DOM.
 import { parseFrame, UartLinkDecoder } from './system-decode.js';
+import { ContractNode } from './system-contract.js';
 
 export class TerminalNode {
   /** baud, frame: its UART's ('8N1'). */
@@ -81,3 +82,13 @@ export class TerminalNode {
 
   messages() { return this.log.slice(this.logN, (this.logN = this.log.length)); }
 }
+
+/** What the terminal models (the node contract's fidelity notes, #5499). */
+export const TERMINAL_FIDELITY = [
+  { kind: 'models', text: 'a serial terminal: a UART at its baud and frame, the bytes it receives decoded at its own settings' },
+];
+
+/** A serial terminal behind the node contract (core/system-contract.js): `opts` TerminalNode's ({ baud, frame }); the
+ *  bytes to type `send` (sent from 0). */
+export const terminalContract = (opts = {}, { send = [] } = {}) =>
+  new ContractNode({ make: () => { const t = new TerminalNode(opts); if (send.length) t.send(send); return t; }, fidelity: TERMINAL_FIDELITY });

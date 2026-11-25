@@ -11,6 +11,7 @@
 import { Simulator } from './simulator.js';
 import * as V from './values.js';
 import { parsePin } from './system-sim.js';
+import { ContractNode } from './system-contract.js';
 
 const allX = (v) => v && !Array.isArray(v) && v.w > 0 && v.x === V.mask(v.w);
 // (as web/js/emulator.js powerUpZero; the waveform's value at 0 too, so that a pin starts at its value)
@@ -124,3 +125,15 @@ export class EventNode {
 
   messages() { return this.pending.splice(0); }
 }
+
+/** What the event-driven simulator models and what it does not (the node contract's fidelity notes, #5499). */
+export const EVENT_FIDELITY = [
+  { kind: 'models', text: 'the design\'s signals with their unknown and high-impedance values, its delays, every clock' },
+  { kind: 'approximates', text: 'the registers with no initial value start at 0, as on the FPGA' },
+  { kind: 'omits', text: 'the speed of the board: it is for short windows' },
+];
+
+/** An FPGA node of the event-driven simulator behind the node contract (core/system-contract.js): `opts` EventNode's, its
+ *  design made by `design()` (the simulator changes its signals: a new one for each engine), its pins at `volts`. */
+export const eventContract = ({ design, ...opts }, { volts = null } = {}) =>
+  new ContractNode({ make: () => new EventNode({ ...opts, design: design() }), volts, fidelity: EVENT_FIDELITY });

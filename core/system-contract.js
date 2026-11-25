@@ -19,7 +19,7 @@
 // behind the contract, its state saved as its inputs and restored by replaying them on a new engine (an engine is
 // deterministic: the same inputs at the same times give the same state). StimulusNode is a node's test bench: its
 // outputs' events given. Isomorphic module (browser + Node).
-import { portsProblems } from './system-ports.js';
+import { port, portsProblems, drives, reads } from './system-ports.js';
 
 /** A fidelity note's kinds: what the engine models, what it approximates (a timing, a peripheral's behaviour), what it
  *  leaves out. */
@@ -70,15 +70,24 @@ export function runEngine(engine, t1, inputEvents = []) {
   return { outputs, t: engine.now };
 }
 
+/** An engine adapter's pins as typed ports (its inputs and outputs; a pin both an inout one), each at `volts` (null:
+ *  not known), in the adapter's order (its outputs', then the inputs' that are no output). */
+export function adapterPorts(engine, { volts = null } = {}) {
+  const ins = new Set(engine.inputs), outs = new Set(engine.outputs);
+  return [...new Set([...engine.outputs, ...engine.inputs])].map(name => port({ name, dir: ins.has(name) && outs.has(name) ? 'inout' : outs.has(name) ? 'out' : 'in', volts }));
+}
+
 /**
  * An engine behind the contract. make(): a new engine (an adapter of core/system-sim.js's, or one that has run(t1,
- * inputEvents) itself: the PIC24's Pic24Node); ports: its typed ports; lookahead, fidelity: the contract's. Its state:
+ * inputEvents) itself and no advanceTo: the PIC24's Pic24Node; its run may end past t1, its next inputs then at its time); ports: its typed ports; lookahead, fidelity: the contract's. Its state:
  * the input events it was given and its time; restored on a new engine, the events replayed (their outputs and
  * messages dropped).
  */
 export class ContractNode {
-  constructor({ make, ports, lookahead = null, fidelity = [] }) {
+  constructor({ make, ports = null, volts = null, lookahead = null, fidelity = [] }) {
     if (typeof make !== 'function') throw new Error('a node\'s engine: make(), a function that makes it');
+    const engine = make();
+    ports ??= adapterPorts(engine, { volts });   // (none given: its adapter's pins at volts)
     this.make = make;
     this.ports = ports;
     this.lookahead = lookahead;
@@ -86,7 +95,7 @@ export class ContractNode {
     const why = contractProblems(this);
     if (why.length) throw new Error(why[0]);
     this.inputs = new Set(ports.filter(p => p.dir !== 'out').map(p => p.name));
-    this.engine = make();
+    this.engine = engine;
     this.now = 0;
     this.t1 = 0;   // (the last run's t1: its engine may have ended past it)
     this.events = [];
@@ -94,10 +103,14 @@ export class ContractNode {
 
   /** The engine advanced to t1, its inputs at their times: { outputs, t }. */
   run(t1, inputEvents = []) {
-    if (typeof t1 !== 'number' || Number.isNaN(t1) || t1 < this.now) throw new Error(`run(t1): a time from now (${this.now} ps) on, not ${t1}`);
-    const events = inputsOf(inputEvents, this.now, t1, this.inputs);
-    const r = typeof this.engine.run === 'function' ? this.engine.run(t1, events) : runEngine(this.engine, t1, events);
-    for (const e of events) this.events.push({ pin: e.pin, t: e.t, value: e.value });
+    if (typeof t1 !== 'number' || Number.isNaN(t1) || t1 < this.t1) throw new Error(`run(t1): a time from the last run's (${this.t1} ps) on, not ${t1}`);
+    // (an engine past the last t1, an instruction under way: the events before its time at its time, as it would
+    // apply them, and kept so, the replay the same)
+    const events = inputsOf(inputEvents, this.t1, t1, this.inputs).map(e => ({ pin: e.pin, t: Math.max(e.t, this.now), value: e.value }));
+    const to = Math.max(t1, this.now);
+    // (an adapter of the scheduler's, else an engine with the contract's run of its own: an AvrNode's run(t) is its own)
+    const r = typeof this.engine.advanceTo === 'function' ? runEngine(this.engine, to, events) : this.engine.run(to, events);
+    this.events.push(...events);
     this.now = r.t;
     this.t1 = t1;
     return { outputs: r.outputs, t: r.t };
@@ -107,6 +120,9 @@ export class ContractNode {
   value(pin) { return typeof this.engine.value === 'function' ? this.engine.value(pin) : null; }
 
   messages() { return this.engine.messages(); }
+
+  /** Why the engine stopped (an error…), falsy while it runs. */
+  get finished() { return this.engine.finished ?? null; }
 
   /** Its state: { t (the last run's t1), events } (plain data: structured-clonable, JSON). */
   save() { return { t: this.t1, events: this.events.map(e => ({ ...e })) }; }
@@ -170,4 +186,71 @@ export class StimulusNode {
     this.received = s.received.map(e => ({ ...e }));
     this.levels = new Map(s.levels);
   }
+}
+
+/**
+ * A node of the contract as the scheduler's adapter (core/system-sim.js: advanceTo, setPin, value…), for a node that has
+ * only the contract (a stimulus; the PIC24's): its inputs set at the time they are set, given to its next run; its
+ * outputs' levels kept; at(t, fn) at its time, the node run up to it first. A node that ends a run past t (an
+ * instruction under way) is run from there.
+ */
+export class NodeEngine {
+  constructor(node) {
+    const why = contractProblems(node);
+    if (why.length) throw new Error(why[0]);
+    this.node = node;
+    this.inputs = node.ports.filter(reads).map(p => p.name);
+    this.outputs = node.ports.filter(drives).map(p => p.name);
+    this.lookahead = node.lookahead ?? null;
+    this.levels = new Map(this.outputs.map(p => [p, node.value?.(p) ?? null]));
+    this.set = new Map();
+    this.pending = [];
+    this.queue = [];
+    this.now = 0;
+  }
+
+  get finished() { return this.node.finished ?? null; }
+
+  /** A pin's value now: an output's as the node drives it, an input's as set (null: not known). */
+  value(pin) {
+    if (this.levels.has(pin) && !this.set.has(pin)) return this.levels.get(pin);
+    return this.set.get(pin) ?? this.levels.get(pin) ?? null;
+  }
+
+  setPin(pin, value) {
+    if (!this.inputs.includes(pin)) throw new Error(`'${pin}' is not an input of the node`);
+    this.set.set(pin, value);
+    this.pending.push({ pin, t: this.now, value });
+  }
+
+  at(t, fn) {
+    let i = this.queue.length;
+    while (i && this.queue[i - 1].t > t) i--;
+    this.queue.splice(i, 0, { t: Math.max(t, this.now), fn });
+  }
+
+  nextEventTime() { return this.queue.length ? this.queue[0].t : Infinity; }
+
+  // the node run to t with the inputs set since its last run (at its time when it ended past them)
+  runTo(t, out) {
+    const from = this.node.now ?? this.now, to = Math.max(t, from);
+    const r = this.node.run(to, this.pending.splice(0).map(e => ({ ...e, t: Math.max(e.t, from) })));
+    for (const o of r.outputs) { this.levels.set(o.pin, o.value); out.push(o); }
+  }
+
+  advanceTo(t) {
+    if (t < this.now) throw new Error(`the node is at ${this.now} ps, not back at ${t}`);
+    const out = [];
+    while (this.queue.length && this.queue[0].t <= t) {
+      const e = this.queue.shift();
+      this.runTo(e.t, out);
+      this.now = e.t;
+      e.fn(this);
+    }
+    this.runTo(t, out);
+    this.now = t;
+    return out;
+  }
+
+  messages() { return this.node.messages(); }
 }

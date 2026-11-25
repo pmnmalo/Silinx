@@ -12,6 +12,7 @@
 // Isomorphic ES module, no DOM.
 import { createCircuitSim } from './circuit-sim.js';
 import { circuitNets, netText } from './circuit-net.js';
+import { ContractNode } from './system-contract.js';
 
 const num = (level) => (level === '1' ? 1 : level === '0' ? 0 : null);
 const lvl = (v) => (v == null ? 'Z' : Number(v) ? '1' : '0');
@@ -131,3 +132,13 @@ export class CircuitNode {
 
   messages() { return this.log.slice(this.logN, (this.logN = this.log.length)); }
 }
+
+/** What the circuit's simulation models and what it does not (the node contract's fidelity notes, #5499). */
+export const CIRCUIT_FIDELITY = [
+  { kind: 'models', text: 'the circuit\'s digital parts, event by event in ns, each IC with its delay' },
+  { kind: 'approximates', text: 'a pin pulled up is a weak 1; a short is said once a net' },
+  { kind: 'omits', text: 'analog behaviour: voltages, currents, rise and fall times' },
+];
+
+/** A circuit node behind the node contract (core/system-contract.js): `opts` CircuitNode's ({ model, pins }). */
+export const circuitContract = (opts) => new ContractNode({ make: () => new CircuitNode(opts), fidelity: CIRCUIT_FIDELITY });

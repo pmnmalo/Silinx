@@ -10,6 +10,7 @@
 import { compileNetlist, CompiledSim, portBit } from './compiled-sim.js';
 import { splitPads } from './compiled-inout.js';
 import { parsePin } from './system-sim.js';
+import { ContractNode } from './system-contract.js';
 
 /**
  * The model of an FPGA node: the word-level netlist (netlistOf's json and top) compiled with its output pins watched.
@@ -161,3 +162,14 @@ export class CompiledNode {
 
   messages() { return this.log.slice(this.logN, (this.logN = this.log.length)); }
 }
+
+/** What the compiled engine models and what it does not (the node contract's fidelity notes, #5499). */
+export const COMPILED_FIDELITY = [
+  { kind: 'models', text: 'the design\'s registers and logic, cycle by cycle, at its main clock' },
+  { kind: 'approximates', text: 'an input is seen at the first rising edge after it is set; an unknown or high-impedance input is 0 (two states)' },
+  { kind: 'omits', text: 'the gates\' and wires\' delays; clocks other than the main one' },
+];
+
+/** An FPGA node of the compiled engine behind the node contract (core/system-contract.js): `opts` CompiledNode's, its
+ *  pins at `volts` (its bank's level; null: not known). */
+export const compiledContract = (opts, { volts = null } = {}) => new ContractNode({ make: () => new CompiledNode(opts), volts, fidelity: COMPILED_FIDELITY });
