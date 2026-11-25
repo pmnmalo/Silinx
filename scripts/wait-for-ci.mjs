@@ -16,9 +16,16 @@
 //   (in GitHub Actions: GITHUB_TOKEN with actions: read, GITHUB_REPOSITORY)
 import { fileURLToPath } from 'node:url';
 
+/**
+ * The tags whose CI run a release takes: the IDE's v*, and each package's of ci.yml's tags (silinx-fpga-v*, #1681;
+ * silinx-pic24-v*, #5514: its release found none of its tag's runs); test/wait-for-ci.test.js checks every tag of
+ * ci.yml against it.
+ */
+export const RELEASE_TAG = /^(silinx-(?:fpga|pic24)-)?v\d/;
+
 /** { state: 'success' | 'failure' | 'pending' | 'none', reason } from the CI runs of a commit (the API's workflow_runs). */
 export function verdict(runs) {
-  const ours = runs.filter(r => (r.event === 'push' && /^(silinx-fpga-)?v\d/.test(r.head_branch)) || (['push', 'workflow_dispatch'].includes(r.event) && r.head_branch === 'main'));
+  const ours = runs.filter(r => (r.event === 'push' && RELEASE_TAG.test(r.head_branch)) || (['push', 'workflow_dispatch'].includes(r.event) && r.head_branch === 'main'));
   const url = r => (r.html_url || `run ${r.id}`) + (r.run_attempt > 1 ? ` (attempt ${r.run_attempt})` : '');
   const passed = ours.find(r => r.status === 'completed' && r.conclusion === 'success');
   if (passed) return { state: 'success', reason: `CI passed (${passed.head_branch}): ${url(passed)}` };
