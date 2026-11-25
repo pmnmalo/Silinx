@@ -9,6 +9,7 @@ import {
 } from '../core/fsm.js';
 import { validate as validateAsm, generate as generateAsm } from '../core/asm.js';
 import { randomVectors, runHdl, runModel } from './fsm-sim.js';
+import { simulate } from '../core/compile.js';
 
 // ---------------------------------------------------------------------------------------
 // Machines
@@ -320,6 +321,51 @@ test('generated HDL simulates like the diagram: Moore and Mealy, VHDL and Verilo
     }
   }
   assert.equal(n, 48);
+});
+
+test('#5518 Mealy outputs: a transition that sets no output, taken first, keeps the later ones\' outputs off (an empty branch), VHDL and Verilog', () => {
+  // A: x && k == 2 -> B / y = 3; k > 2'd2 -> C (no output); otherwise -> A / z = 1
+  const prio = () => normalizeFsm({
+    name: 'prio', type: 'mealy', lang: 'vhdl',
+    inputs: [{ name: 'x', width: 1 }, { name: 'k', width: 2 }],
+    outputs: [{ name: 'y', width: 2, default: '0' }, { name: 'z', width: 1, default: '0' }],
+    states: [{ id: 'a', name: 'A' }, { id: 'b', name: 'B' }, { id: 'c', name: 'C' }],
+    transitions: [
+      { id: 't1', from: 'a', to: 'b', cond: 'x && k == 2', outputs: { y: '3' } },
+      { id: 't2', from: 'a', to: 'c', cond: "k > 2'd2" },
+      { id: 't3', from: 'a', to: 'a', cond: '', outputs: { z: '1' } },
+      { id: 't4', from: 'b', to: 'a', cond: '' },
+      { id: 't5', from: 'c', to: 'a', cond: '' },
+    ],
+    initial: 'a',
+  });
+  assert.deepEqual(messages(prio()), []);
+  // the output logic's chain has every transition, in their order, k > 2 an empty branch
+  const chain = {
+    vhdl: ['if (x = \'1\') and (unsigned(k) = 2) then', '    y <= "11";', 'elsif unsigned(k) > 2 then', '    null;', 'else', '    z <= \'1\';', 'end if;'],
+    verilog: ['if (x && (k == 2)) begin', '    y = 2\'d3;', 'end else if (k > 2\'d2) begin', 'end else begin', '    z = 1\'b1;', 'end'],
+  };
+  for (const lang of ['vhdl', 'verilog']) {
+    const code = generateFsm(prio(), lang).code;
+    const out = code.slice(code.lastIndexOf('output logic')).split('\n').map((l) => l.trim());
+    const at = out.indexOf(chain[lang][0]);
+    assert.deepEqual(out.slice(at, at + chain[lang].length), chain[lang].map((l) => l.trim()), lang);
+    // compiled and elaborated with no warning
+    const r = simulate([{ path: lang === 'vhdl' ? 'prio.vhd' : 'prio.v', text: code }], 'prio', { until: 0 });
+    assert.deepEqual([...r.lib.errors, ...r.design.diags].map((d) => `${d.severity}: ${d.message}`), [], lang);
+  }
+  // simulated: in A with k = 3, the transition to C is taken and z stays 0 (y_z '00_0'); then as the diagram
+  const k3 = [{ x: 0, k: 3 }, { x: 0, k: 0 }, { x: 1, k: 3 }, { x: 0, k: 0 }, { x: 1, k: 2 }, { x: 0, k: 1 }, { x: 0, k: 1 }];
+  for (const style of ['3process', '2process']) {
+    for (const lang of ['vhdl', 'verilog']) {
+      const m = { ...prio(), style };
+      const got = runHdl(generateFsm(m, lang).code, lang, m, k3);
+      assert.deepEqual(got, ['00_0', '00_0', '00_0', '00_0', '11_0', '00_0', '00_1'], `${style} ${lang}`);
+      assert.deepEqual(got, runModel(m, k3), `${style} ${lang}`);
+      const vectors = randomVectors(m, 120, 5518);
+      assert.deepEqual(runHdl(generateFsm(m, lang).code, lang, m, vectors), runModel(m, vectors), `${style} ${lang} (random inputs)`);
+    }
+  }
 });
 
 // ---------------------------------------------------------------------------------------
