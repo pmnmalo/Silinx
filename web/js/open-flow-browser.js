@@ -5,6 +5,7 @@
 // with the page: .github/workflows/pages.yml).
 import { unconstrainedPorts } from '/core/auto-pins.js';
 import { isGeneratedSource, viewHdl } from '/core/view-hdl.js';
+import { inCpuNode } from '/core/drawing-code.js';
 import { blackboxesIn, blackboxModels } from '/core/c-blackbox.js';
 import { compile } from '/core/compile.js';
 import { synthEffort, synthGoal, s6OpenStatus } from '/packages/silinx-fpga/src/index.js';
@@ -167,7 +168,9 @@ export async function runBrowserFlow({ project, files, steps, resources = null, 
     .map(f => ({ path: f.path, lang: f.lang, text: files[f.path] }));
   // the drawn sources without an HDL file (schematics, ASM charts, state diagrams, truth tables): their HDL made here (#177)
   const excluded = new Set(project.excluded || []);
-  const viewPaths = Object.keys(files).filter(p => isGeneratedSource(p) && !excluded.has(p) && !p.startsWith('build/') && typeof files[p] === 'string');
+  // (not a System's CPU node's C sources and drawings: its board's program, #5486)
+  const cpu = inCpuNode(project, { files: Object.keys(files), texts: files });
+  const viewPaths = Object.keys(files).filter(p => isGeneratedSource(p) && !excluded.has(p) && !p.startsWith('build/') && typeof files[p] === 'string' && !cpu(p));
   if (viewPaths.length) {
     let modules = {};
     try { modules = modulesFromLibrary(compile(sources), { sources: Object.fromEntries(sources.map(s => [s.path, s.text])) }); } catch { /* none */ }

@@ -14,6 +14,12 @@ async function cContext(name, rel) {
   const pj = await readProject(name);
   if (typeof rel !== 'string' || !IS_C.test(rel)) throw toolError(`path: a C or C++ source of the project (.c, .cpp), not '${rel}'`);
   const text = await projectText(name, rel, `no file '${rel}' in the project '${name}'`);
+  // (a System's CPU node's C: its board's program, not Silinx HLS's, #5486)
+  const [{ inCpuNode, hlsRefusal }, tree0] = await Promise.all([import('../core/drawing-code.js'), P.fileTree(name)]);
+  const texts = {};
+  for (const f of tree0.filter(f => /\.sys\.json$/i.test(f))) { try { texts[f] = await P.readFile(name, f); } catch { /* unreadable */ } }
+  const refusal = hlsRefusal(rel, inCpuNode(pj, { files: tree0, texts }));
+  if (refusal) throw toolError(refusal);
   const { hlsClockOf, hlsFamilyOf, hlsMultsOf } = await import('../core/c-report.js');
   const { resolveBoard, findPart } = await import('./devices.js');
   const { blackboxesIn } = await import('../core/c-blackbox.js');

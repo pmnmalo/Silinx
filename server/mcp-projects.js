@@ -22,7 +22,7 @@ import { SYSTEM_TOP } from '../core/system-top.js';
 import { isSystemFile } from '../core/system-doc.js';
 import { projectNodes } from '../core/project-nodes.js';
 import { projectSystem } from '../core/project-system.js';
-import { toolError, clip, projectPath, readProject, viewSourcesOf, STR, PROJECT, deviceName, boardDevice, redactor } from './mcp-util.js';
+import { toolError, clip, projectPath, readProject, cpuRefusal, viewSourcesOf, STR, PROJECT, deviceName, boardDevice, redactor } from './mcp-util.js';
 import { backupOfDir } from './backup-store.js';
 import { lastBackup, BACKUP_HOW } from '../core/backup.js';
 
@@ -243,7 +243,7 @@ export const PROJECT_TOOLS = [
   },
   {
     name: 'write_file', title: 'Write a file of a project',
-    description: 'Write (create or replace) a file of a project. A new HDL file is added to the project (in sim/ or named tb_…: a simulation source). A drawing (.sch, .asm, .fsm, .tt, .bool or .pn .json) makes its HDL file again, as its editor does on save; one with errors leaves it as it was; one whose HDL file is taken gets none (said). A truth table\'s "kmapOrder": "rows" lays its Karnaugh maps\' variables out MSB → LSB by rows, then columns (left out: by columns, then rows). A state diagram\'s transition: "bend" (px, a signed bow) and a self-loop\'s "angle" (degrees); neither changes its HDL. A schematic instance with an empty "name" gets the next free inst_n. An open editor keeps its text until reopened.',
+    description: 'Write (create or replace) a file of a project. A new HDL file is added to the project (in sim/ or named tb_…: a simulation source). A drawing (.sch, .asm, .fsm, .tt, .bool or .pn .json) makes its HDL (a C node\'s: its C) again, as on save; one with errors leaves it as it was; one whose HDL file is taken gets none (said). A truth table\'s "kmapOrder": "rows" lays its Karnaugh maps\' variables out MSB → LSB by rows, then columns (left out: by columns, then rows). A state diagram\'s transition: "bend" (px, a signed bow) and a self-loop\'s "angle" (degrees); neither changes its HDL. A schematic instance with an empty "name" gets the next free inst_n. An open editor keeps its text until reopened.',
     inputSchema: { type: 'object', properties: { project: PROJECT, path: STR('The file\'s path in the project, e.g. src/counter.vhd.'), text: STR('The whole text of the file.') }, required: ['project', 'path', 'text'], additionalProperties: false },
     annotations: { readOnlyHint: false, destructiveHint: true, idempotentHint: true },
     async run({ project: name, path: rel, text }) {
@@ -262,6 +262,9 @@ export const PROJECT_TOOLS = [
       // a schematic's instance with an empty name: its automatic name, inst_n, as the editor gives it (#3300)
       const named = /\.sch\.json$/i.test(rel) ? nameInstances(text) : null;
       if (named) text = named.text;
+      // (a schematic, a circuit, a register map: hardware, refused in a CPU node, #5486)
+      const refusal = await cpuRefusal(name, rel);
+      if (refusal) throw toolError(refusal);
       const existed = (await P.fileTree(name)).includes(rel);
       try { await P.writeFile(name, rel, text); } catch (e) { throw toolError(e.message); }
       const added = !existed && (await P.readProject(name)).files.some(f => f.path === rel);
