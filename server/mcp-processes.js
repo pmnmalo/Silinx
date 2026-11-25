@@ -54,7 +54,7 @@ export const REPORT_FILES = {
     drc: top => `build/${top}_drc.rpt`,
   },
 };
-const TOOLCHAIN_NAMES = { silinx: 'Silinx toolchain', ise: 'Xilinx ISE', vivado: 'AMD Vivado', arduino: 'arduino-cli' };
+const TOOLCHAIN_NAMES = { silinx: 'Silinx toolchain', ise: 'Xilinx ISE', vivado: 'AMD Vivado', arduino: 'arduino-cli', system: 'its nodes\' toolchains' };
 // the map and par reports of a Silinx toolchain run, from its Design Summary (build/reports.json); the router's passes
 // only when the engine counts them (nextpnr's do not, #2420)
 export const OPEN_REPORTS = {
@@ -101,8 +101,10 @@ export async function runProcess(name, proc, { toolchain, node, timeoutS = 1800,
   const pj = await readProject(name);
   // (a System's Arduino node's firmware compiled by arduino-cli, #5503: server/avr-compile.js, the node's Compile Firmware)
   if (proc === 'firmware') return runFirmware(name, { toolchain, node, timeoutS, signal, progress });
+  // (a System built by its plan, the nodes not up to date, the FPGAs first, #5489: server/system-build-all.js, Build All)
+  if (proc === 'build') return runBuild(name, { toolchain, node, timeoutS, signal, progress });
   const steps = PROCESSES[proc];
-  if (!steps) throw toolError(`process: one of ${[...Object.keys(PROCESSES), 'firmware'].join(', ')}`);
+  if (!steps) throw toolError(`process: one of ${[...Object.keys(PROCESSES), 'firmware', 'build'].join(', ')}`);
   // (a System's FPGA node, or every one, on its own board, #5446: server/system-implement.js; else its top's)
   if (node === undefined && !pj.top) throw toolError(isSystemProject(pj) ? systemFlowRefusal(name) : `the project '${name}' has no top module`);   // (a System its top, #5443)
   if (node !== undefined && !['synthesize', 'implement', 'bitstream'].includes(proc)) throw toolError(`node: a System node runs synthesize, implement or bitstream (not ${proc})`);
@@ -133,6 +135,17 @@ async function runFirmware(name, { toolchain, node, timeoutS, signal, progress }
   return { top: node === '*' ? 'System' : `node ${node}`, lines, errors, warnings, locations, paths, ok: job.status === 'ok', silinx: false, toolchain: 'arduino' };
 }
 
+// a System built (node: its id, or * every node not up to date): run_process build's result, as a flow's
+async function runBuild(name, { toolchain, node = '*', timeoutS, signal, progress }) {
+  if (toolchain !== undefined) throw toolError('toolchain: a System is built by its nodes\' own (the Silinx toolchain, arduino-cli)');
+  let job;
+  try { job = await (await import('./system-build-all.js')).startSystemBuild(name, { node }); } catch (e) { throw toolError(e.message); }
+  const lines = await waitFor(job, 'build', { timeoutS, signal, progress });
+  const paths = await P.fileTree(name).catch(() => []);
+  const { errors, warnings, locations } = processMessages(lines, paths);
+  return { top: node === '*' ? 'System' : `node ${node}`, lines, errors, warnings, locations, paths, ok: job.status === 'ok', silinx: false, toolchain: 'system' };
+}
+
 // a job followed to its end (stopped after timeoutS, or when the client cancels): its lines redacted
 async function waitFor(job, proc, { timeoutS, signal, progress }) {
   const end = Date.now() + timeoutS * 1000;
@@ -156,11 +169,11 @@ const PROCESS_LIMITS = Object.freeze({ timeoutS: 7200, logLines: 1000 });
 export const PROCESS_TOOLS = [
   {
     name: 'run_process', title: 'Run a process',
-    description: 'Run a process of the project\'s top module and wait for it: synthesize, implement, bitstream (Generate Programming File), timing, power, pins (Back-annotate Pin Locations), post_synthesis_model / post_translate_model / post_map_model / post_par_model (then simulate with model); firmware: an Arduino node\'s sketch to its .hex (arduino-cli). The Silinx toolchain by default; toolchain ise for Xilinx ISE when configured. A 7-series device: AMD Vivado (toolchain vivado; no simulation models), the Artix-7 and the Zynq-7000\'s logic also the Silinx toolchain on trial (toolchain silinx). Returns the errors, the warnings (their files and lines) and the log\'s end.',
+    description: 'Run a process and wait for it: synthesize, implement, bitstream (Generate Programming File), timing, power, pins (Back-annotate Pin Locations), post_synthesis_model / post_translate_model / post_map_model / post_par_model (then simulate with model); firmware: an Arduino node\'s sketch to its .hex (arduino-cli); build: a System\'s nodes not up to date, by its plan. The Silinx toolchain by default; toolchain ise (Xilinx ISE, when configured) or vivado (AMD Vivado, a 7-series device; no simulation models; the Artix-7 and the Zynq-7000\'s logic also silinx, on trial). Returns the errors, the warnings (their files and lines) and the log\'s end.',
     inputSchema: { type: 'object', properties: {
-      project: PROJECT, process: { type: 'string', enum: [...Object.keys(PROCESSES), 'firmware'], description: 'The process.' },
+      project: PROJECT, process: { type: 'string', enum: [...Object.keys(PROCESSES), 'firmware', 'build'], description: 'The process.' },
       toolchain: { type: 'string', enum: ['silinx', 'ise', 'vivado'], description: 'The toolchain (default: the project\'s synthesis tool, else Toolchain Settings).' },
-      node: STR('A System node\'s id (* all): an FPGA\'s; firmware: an Arduino\'s.'),
+      node: STR('A System node\'s id (* all): an FPGA\'s; firmware: an Arduino\'s; build: any.'),
       log_lines: { type: 'integer', description: `The lines of the end of the log returned (default 40; from 1 to ${PROCESS_LIMITS.logLines}).` },
       timeout_s: { type: 'integer', description: `How long to wait, in seconds (default 1800; from 1 to ${PROCESS_LIMITS.timeoutS}): then the process is stopped.` },
     }, required: ['project', 'process'], additionalProperties: false },

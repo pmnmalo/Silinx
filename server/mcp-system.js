@@ -11,6 +11,7 @@ import { analyzeSystem, systemCheckLines, wiringLines } from '../core/system-che
 import { ucfPort } from '../core/board-constraints.js';
 import { normalizeCircuit } from '../core/circuit.js';
 import { layoutPlan } from '../core/system-layout.js';
+import { planLines } from '../core/system-plan.js';
 import { applyNodeFolders } from './system-folders.js';
 
 // the circuit nodes' circuits ({ path: circuit }; one that cannot be read left out: its node's check says so, #5215)
@@ -95,15 +96,18 @@ export const SYSTEM_TOOLS = [
   },
   {
     name: 'check_system', title: 'Check a System',
-    description: 'Describe and check a System project\'s System as Check System does.',
+    description: 'Describe and check a System project\'s System as Check System does; its build plan (plan: each node\'s state, Build Plan\'s lines).',
     inputSchema: { type: 'object', properties: { project: PROJECT, file: SYS_FILE }, required: ['project', 'file'], additionalProperties: false },
     annotations: { readOnlyHint: true },
     async run({ project: name, file }) {
       const { text, system } = await readSystemFile(name, file);
       const { lines, errors, warnings, wires, ports } = await checkSystemFile(name, file, text);
+      // (its build plan, the System row's Build Plan's lines too, #5489: server/system-plan.js; in its data, its text Check System's)
+      const { planOf } = await import('./system-plan.js');
+      const plan = await planOf(name, system, await P.fileTree(name));
       // (its wires: the editor's Wiring view, a line each, after the System described, #5216)
       return { text: [...describeSystem(system), ...wiringLines(wires), ...lines].join('\n'),
-        data: { project: name, file, system, ok: !errors.length, errors, warnings, wires, ports }, isError: false,
+        data: { project: name, file, system, ok: !errors.length, errors, warnings, wires, ports, plan: { ...plan, lines: planLines(plan) } }, isError: false,
         untrusted: 'the System\'s names and its problems, which quote them' };
     },
   },

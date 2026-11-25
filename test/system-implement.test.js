@@ -77,8 +77,8 @@ test('#5446 the uart-avr example\'s FPGA node implemented on its Basys2: the uar
   assert.ok(bitData(bit).equals(bitData(path.join(P.projectDir('ref'), 'build/uart.bit'))), 'the same configuration as the uart example\'s');
   assert.equal(fs.readFileSync(path.join(P.projectDir('ua'), 'silinx.json'), 'utf8'), desc);
   assert.deepEqual(fs.readdirSync(path.join(P.projectDir('ua'), 'build')), ['nodes']);
-  // (its folder alone built, #5488: the Arduino's not copied)
-  assert.deepEqual(fs.readdirSync(path.join(P.projectDir('ua'), 'build/nodes/fpga')).sort(), ['build', 'fpga', 'fpga.ucf']);
+  // (its folder alone built, #5488: the Arduino's not copied; what it was built from, the build plan's record, #5489)
+  assert.deepEqual(fs.readdirSync(path.join(P.projectDir('ua'), 'build/nodes/fpga')).sort(), ['build', 'built-from.json', 'fpga', 'fpga.ucf']);
   // Implement System: every FPGA node (the one), its line; a second run while one runs refused
   const s = await startNodeImplementation('ua', { node: '*', steps: ['synth'] });
   await assert.rejects(startNodeImplementation('ua', { node: '*' }), { status: 409 });

@@ -61,7 +61,7 @@ export const BOARD_TOOLS = [
   },
   {
     name: 'program_prom', title: 'Program, verify, back up or erase the PROM',
-    description: 'The board\'s Platform Flash PROM (Configure Target Device\'s PROM, iMPACT\'s window: the Basys2\'s XCF02S, the Nexys2\'s XCF04S), through adepttool and the board\'s USB: op program (the PROM erased and the project\'s build/<top>_prom.bit written, run_process bitstream first; verified unless verify false; the FPGA then loaded from it with reconfigure), verify (its contents against that file), read (a backup into build/prom-backup/), erase (the board then boots no design from flash), reconfigure (the FPGA loaded from the PROM: the mode jumper on ROM). A file built for another device than the project\'s is refused unless force. Only a trusted project. Returns the programmer\'s log.',
+    description: 'The board\'s Platform Flash PROM (iMPACT\'s Configure Target Device: the Basys2\'s XCF02S, the Nexys2\'s XCF04S), through adepttool and the board\'s USB: op program (the PROM erased and the project\'s build/<top>_prom.bit written, run_process bitstream first; verified unless verify false; the FPGA then loaded from it with reconfigure), verify (its contents against that file), read (a backup into build/prom-backup/), erase (the board then boots no design from flash), reconfigure (the FPGA loaded from the PROM: the mode jumper on ROM). A file built for another device than the project\'s is refused unless force. Only a trusted project. Returns the programmer\'s log.',
     inputSchema: { type: 'object', properties: {
       project: PROJECT,
       op: { type: 'string', enum: PROM_OPS, description: 'What to do: program, verify, read (a backup), erase, reconfigure.' },

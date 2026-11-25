@@ -19,8 +19,12 @@ import { readFirmware } from '../core/avr-firmware.js';
 import { syncNodeMain } from '../core/node-main-sync.js';
 import { baseLang } from '../core/system-layout.js';
 import { isTrusted, untrustedMessage } from '../core/trust.js';
+import { takeBuildRecord, writeBuildRecord } from './system-plan.js';
+import { sketchSources } from '../core/system-plan.js';
 
 const running = new Map();   // project -> job id
+/** The firmware compile of the project `name` running, its job, or null (one build of a project at a time, #5489). */
+export const runningFirmware = name => { const j = getJob(running.get(name.toLowerCase())); return j?.status === 'running' ? j : null; };
 // (where Homebrew and the installers put it, besides PATH: a server started from the Dock has a short PATH)
 const DIRS = ['/opt/homebrew/bin', '/usr/local/bin', '/usr/bin'];
 
@@ -78,13 +82,17 @@ async function sketchDir(name, node, sketch) {
   return { root, dir };
 }
 
-// one node's firmware compiled: its lines logged, its .hex written; its result
-async function compileOne(job, name, sys, node, bin) {
+/** One node's firmware compiled (the System `sys`: systemOf's; arduino-cli `bin`): its lines logged, its .hex written; its
+ *  result (Build All's too, server/system-build-all.js). */
+export async function compileOne(job, name, sys, node, bin) {
   // (the node's sketch made from its drawings made again first: a drawing deleted since no longer called, #5486)
   const main = await syncNodeMain(P, name, node, baseLang(node));
   for (const l of main?.messages ?? []) job.log(l);
-  const sketch = nodeSketch(node, main?.written || main?.removed ? await P.fileTree(name) : sys.files);
+  const files = main?.written || main?.removed ? await P.fileTree(name) : sys.files;
+  const sketch = nodeSketch(node, files);
   if (sketch.error) throw new Error(sketch.error);
+  // (what its .hex is built from, for the System's build plan, #5489: its sources as they are now)
+  const record = await takeBuildRecord(name, { ...node, firmware: node.firmware || sketch.hex }, sketchSources(files, node.id));
   const { root, dir } = await sketchDir(name, node, sketch);
   const out = path.join(root, 'out');
   const fqbn = AVR_FQBN[node.board];
@@ -106,8 +114,22 @@ async function compileOne(job, name, sys, node, bin) {
   const fw = readFirmware(sketch.hex, hex);
   if (fw.error) throw new Error(fw.error);
   await P.writeFile(name, sketch.hex, hex);
+  await writeBuildRecord(name, node, record);
   job.log(`System node ${node.id}: its firmware ${sketch.hex}, ${fw.size} bytes of the flash.`);
   return { node: node.id, hex: sketch.hex, size: fw.size, warnings: warnings.length, set: !node.firmware };
+}
+
+/** The nodes of `made` (compileOne's results) that had no firmware get the one made: their System document written once. */
+export async function setMadeFirmwares(j, name, sys, made) {
+  const unset = made.filter(m => m.set);
+  if (!unset.length || !sys.file || j.cancelled) return;
+  // (read again: the document as it is now, an edit during the compile kept)
+  let m = readSystem(await P.readFile(name, sys.file).catch(() => sys.text)).system;
+  for (const u of m ? unset : []) { const r = changeNode(m, u.node, { firmware: u.hex }); if (!r.error) m = r.system; }
+  if (m) {
+    await P.writeFile(name, sys.file, writeSystem(m));
+    for (const u of unset) j.log(`System node ${u.node}: its firmware set to ${u.hex} in ${sys.file}.`);
+  }
 }
 
 /**
@@ -134,17 +156,7 @@ export async function startFirmwareCompile(name, { node } = {}) {
       try { made.push(await compileOne(j, name, sys, n, tool.path)); }
       catch (e) { if (e?.name === 'JobCancelled') throw e; failed.push(n.id); j.log(`ERROR: System node ${n.id}: ${e.message}`); }
     }
-    // (a node with no firmware: the one made, its System document written once)
-    const unset = made.filter(m => m.set);
-    if (unset.length && sys.file && !j.cancelled) {
-      // (read again: the document as it is now, an edit during the compile kept)
-      let m = readSystem(await P.readFile(name, sys.file).catch(() => sys.text)).system;
-      for (const u of m ? unset : []) { const r = changeNode(m, u.node, { firmware: u.hex }); if (!r.error) m = r.system; }
-      if (m) {
-        await P.writeFile(name, sys.file, writeSystem(m));
-        for (const u of unset) j.log(`System node ${u.node}: its firmware set to ${u.hex} in ${sys.file}.`);
-      }
-    }
+    await setMadeFirmwares(j, name, sys, made);
     if (failed.length) throw new Error(`the System node(s) ${failed.join(', ')} failed`);
     return { nodes: made };
   }, { meta: { project: name, node, toolchain: 'arduino' } });

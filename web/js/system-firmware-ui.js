@@ -42,11 +42,13 @@ export async function runNodeFirmware(node, file) {
   } finally {
     procState.busy = false; runState.currentJob = null;
     // (its .hex a file of the project now, and the System's firmware set when it had none: the open System read again)
-    if (ok) await refresh(file);
+    if (ok) await refreshSystem(file);
   }
 }
 
-async function refresh(file) {
+/** The project read again after a build (its .hex a file of it now, the System's firmware set when it had none): the open
+ *  System `file` reopened unless it has unsaved edits. */
+export async function refreshSystem(file) {
   await reloadProject();
   const d = findDoc(`sys:${file}`);
   if (!d || d.dirty) return;

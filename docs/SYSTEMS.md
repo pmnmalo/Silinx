@@ -613,6 +613,34 @@ finds arduino-cli on the PATH, in `/opt/homebrew/bin` or `/usr/local/bin`, or at
   Compiled Binary).
 - Not compiled: the PIC24's firmware (XC16's `.hex`, made outside Silinx), and a MicroPython node's program.
 
+### The build and programming plan
+
+A System has a **build plan** (#5489, `core/system-plan.js`): each FPGA and microcontroller node's steps, the FPGA nodes
+first (in the document's order), then the microcontrollers, which leave reset once the FPGAs are configured.
+
+| Node | Built by | Its image | Programmed |
+| --- | --- | --- | --- |
+| FPGA | the Silinx toolchain, from its folder (not its `sim/`) | `build/nodes/<id>/build/<module>.bit` | over JTAG |
+| Arduino, a sketch | arduino-cli | its sketch's `.hex` (its firmware) | by avrdude (arduino-cli upload) |
+| Arduino, a `.hex` and no sketch | — (given) | its firmware | by avrdude |
+| PIC24 | — (its C: XC16, #5482) | its `.hex`, given | by a PICkit (MPLAB IPE) |
+| MicroPython | — (runs as it is) | its `.py` files | over its raw REPL (mpremote) |
+
+Each node is **up to date**, **out of date** (a source changed, new or removed since its last build, or its board,
+variant, module, pins, firmware or language; its place on the canvas does not count), **not built**, **given**,
+**nothing to build** or **not buildable** (said why). A node's build writes what it was built from, `built-from.json`
+in its build's folder (its description and its sources' hashes, taken when it starts), whichever process started it.
+
+- The System row's **Build Plan** says the plan in the console, one line a node:
+  `fpga: out of date (fpga/uart.vhd changed since its last build); built by the Silinx toolchain to build/nodes/fpga/build/uart.bit, programmed over JTAG`.
+- **Build All** builds the nodes that are not up to date, in the plan's order, each said (`System node fpga: built,
+  build/nodes/fpga/build/uart.bit.`), then a summary line. A node that fails is said and the next goes on. A node's own
+  Generate Programming File and Compile Firmware are its build.
+- The MCP's `run_process` process `build` (a node's id, built whatever its state; `*` Build All) and `check_system`'s
+  `plan`.
+- To come (#5489's parts 2 and 3): the boards matched to their nodes by USB id (vendor, product, serial), and **Program
+  All** / **Program Node** in the plan's order, only on the user's action.
+
 ## Emulation
 
 The Board Emulator gets a **system** mode.
@@ -702,6 +730,7 @@ Every action is a tool (#2674), through the same functions as the interface:
 | `simulate` (a System) | the existing tool: `top` a System document (a System project's by default) runs it for a time and returns each wire's bytes, the terminals' text and the warnings; the VCD in `build/<name>.vcd` (#4701) |
 | `node_firmware` | sets a node's firmware |
 | `run_process` `firmware` | compiles an Arduino node's sketch to its `.hex` with arduino-cli (#5503) |
+| `run_process` `build`, `check_system`'s `plan` | the System's build plan, its nodes not up to date built (#5489) |
 
 Later:
 
@@ -709,7 +738,7 @@ Later:
 |---|---|
 | `emulate_system` | presses, sets and reads each node |
 | `node_mode` | sets a node simulated or real |
-| `program_node` | programs a node's board |
+| `program_board` with `node` | programs a node's board (#5489's part 3, in place of a `program_node`: #5520) |
 
 The existing `program_board` and `capture` serve the FPGA nodes.
 
