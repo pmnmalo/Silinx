@@ -43,8 +43,8 @@ export async function ucfWizard({ path, back = null }) {
   const title = wizardTitle(pj.device), format = constraintsFormatOf(pj.device);
   const guard = replaceGuard(title);
   const board = app.projectBoard(pj);
-  // (the attributes the format writes, a column each: none for a UCF's and an XDC's, I/O Pin Planning's)
-  const can = ['ucf', 'xdc'].includes(format) ? {} : PIN_ATTRS[format];
+  // (the attributes the format writes, a column each: none for a UCF's, an XDC's and a QSF's, I/O Pin Planning's)
+  const can = ['ucf', 'xdc', 'qsf'].includes(format) ? {} : PIN_ATTRS[format];
   const COLS = [['iostandard', 'I/O Std.', can.iostandard], ['pull', 'Pull', can.pull], ['drive', 'Drive', can.drive]].filter(c => c[2]);
   const standardOf = pin => { for (const r of board?.resources || []) if (r.pins.includes(pin)) return r.pinIostandards?.[pin] || r.iostandard; return null; };
   const mods = designState.modules.filter(m => m.role === 'design');

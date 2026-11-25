@@ -203,7 +203,7 @@ export const SETTINGS_TOOLS = [
         const pk = String(pkg || (newPart ? only(Object.keys(p.packages), 'package') : next.package)).toLowerCase();
         const speeds = p.packages[pk]?.speeds || p.speeds;
         const sp = speed !== undefined ? String(speed) : newPart || pkg ? (speeds.length ? only(speeds, 'speed') : '') : next.speed;
-        next = { family: p.family, part: p.part, package: pk, speed: sp && !sp.startsWith('-') ? `-${sp}` : sp };
+        next = { family: p.family, part: p.part, package: pk, speed: sp && !sp.startsWith('-') && !/^[a-z]/i.test(sp) ? `-${sp}` : sp };   // (an Intel part's grade, c7, as it is, #5376)
       }
       const errs = D.validateDevice(next);
       if (errs.length) throw toolError(`${errs.join('; ')} (list_devices)`);
@@ -257,7 +257,7 @@ export const SETTINGS_TOOLS = [
       // (after the device, as the dialog's console says it)
       const noFlow = experimental && !vivado ? [`WARNING: ${R.noFlowMessage(next)}.`] : [];
       warnings.push(...noFlow);
-      const text = [...warnings.filter(w => !pins.includes(w) && !languageLines.includes(w) && !noFlow.includes(w)), ...languageLines, ...(fromDesign ? [`${name}: an FPGA project now: its HDL and its implementation shown.`] : []), `Device set to ${next.part}${next.speed}-${next.package}${nextBoard ? ` (board ${nextBoard})` : ''}; synthesis tool ${after.synthTool || 'of Toolchain Settings'}${constraints ? `; ${after.constraints} written from the ${nextBoard}'s pins` : ''}.`, ...pins, ...noFlow];
+      const text = [...warnings.filter(w => !pins.includes(w) && !languageLines.includes(w) && !noFlow.includes(w)), ...languageLines, ...(fromDesign ? [`${name}: an FPGA project now: its HDL and its implementation shown.`] : []), `Device set to ${R.deviceLabel(next)}${nextBoard ? ` (board ${nextBoard})` : ''}; synthesis tool ${after.synthTool || 'of Toolchain Settings'}${constraints ? `; ${after.constraints} written from the ${nextBoard}'s pins` : ''}.`, ...pins, ...noFlow];
       text.push(...topLine);
       return { text: text.join('\n'), data: { project: name, board: nextBoard, device: next, synthTool: after.synthTool || null, preferredLanguage: after.preferredLanguage || 'vhdl', constraints: after.constraints || null, constraintsUpdated: constraints, generics: generics ? { file: generics.path, ...generics.values } : null, warnings } };
     },

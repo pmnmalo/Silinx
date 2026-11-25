@@ -1,5 +1,5 @@
 // Silinx - the checks of the constraints of the families nextpnr implements (#2296): a PCF (iCE40), an LPF (ECP5), a CST
-// (Gowin), a CCF (GateMate, #2431) and an XDC (7-series, #3142), as Check Constraints, the editor's live check and the Constraints Wizard make them,
+// (Gowin), a CCF (GateMate, #2431), an XDC (7-series, #3142) and a QSF (the Intel families, #5376), as Check Constraints, the editor's live check and the Constraints Wizard make them,
 // in the interface (web/js/constraints-format.js) and in the MCP server (server/mcp-constraints.js); a UCF's are ucf.js
 // checkUcf's. What each format writes of a pin (PIN_ATTRS: its I/O standards, drive, slew, pull) and the checks:
 //   error    the line the back end would stop at; a pin that is no pin of the device's package; a pin given to two ports;
@@ -7,13 +7,14 @@
 //   warning  a name that is no port of the top; a pin on no resource of the board; an I/O standard Silinx does not know
 //            of the family; the ports with no pin (when the top is known), as checkUcf's
 // The names are the interface's model's (x<1>), nextpnr's in the messages (x[1]).
-import { PCF, LPF, CST, CCF, XDC, constraintsFormatOf } from '../packages/silinx-fpga/src/parts.js';
+import { PCF, LPF, CST, CCF, XDC, QSF, constraintsFormatOf, deviceFamily, familyName } from '../packages/silinx-fpga/src/parts.js';
 
-const FORMATS = { pcf: PCF, lpf: LPF, cst: CST, ccf: CCF, xdc: XDC };
+const FORMATS = { pcf: PCF, lpf: LPF, cst: CST, ccf: CCF, xdc: XDC, qsf: QSF };
 // a format's command that places a port: the messages'
-const PIN_COMMAND = { pcf: 'set_io', lpf: 'LOCATE COMP', cst: 'IO_LOC', ccf: 'NET', xdc: 'get_ports' };
+const PIN_COMMAND = { pcf: 'set_io', lpf: 'LOCATE COMP', cst: 'IO_LOC', ccf: 'NET', xdc: 'get_ports', qsf: 'set_location_assignment' };
 // the keyword of an I/O standard, a drive and a slew in the messages
-const KEYS = { lpf: { iostandard: 'IO_TYPE', drive: 'DRIVE', slew: 'SLEWRATE' }, cst: { iostandard: 'IO_TYPE', drive: 'DRIVE' }, ccf: { drive: 'DRIVE', slew: 'SLEW' } };
+const KEYS = { lpf: { iostandard: 'IO_TYPE', drive: 'DRIVE', slew: 'SLEWRATE' }, cst: { iostandard: 'IO_TYPE', drive: 'DRIVE' }, ccf: { drive: 'DRIVE', slew: 'SLEW' },
+  qsf: { iostandard: 'IO_STANDARD' } };
 
 // the I/O standards nextpnr-ecp5 (ecp5/iotypes.inc) and Apicula (the Gowin's IO_TYPE) take: an unknown one warned
 const ECP5_IO = ['LVCMOS33', 'LVCMOS25', 'LVCMOS18', 'LVCMOS15', 'LVCMOS12', 'LVCMOS10', 'LVTTL33', 'LVCMOS33D', 'LVCMOS25D', 'LVDS', 'BLVDS25', 'MLVDS25',
@@ -36,14 +37,20 @@ export const PIN_ATTRS = {
   // (the GateMate's, #2431: no I/O standard, its bank's voltage; nextpnr-himbaechel-gatemate's DRIVE and SLEW; a CCF's clock, Silinx's
   // create_clock in a comment, ccf.js)
   ccf: { iostandard: null, drive: ['3', '6', '9', '12'], slew: ['slow', 'fast'], pull: ['up', 'down', 'keeper'], clock: true },
+  // (the Intel families', #5376: Quartus's I/O standards, the family's; its weak pull-up; a QSF's clock, Silinx's create_clock in
+  // a comment, written into the SDC, qsf.js)
+  qsf: { iostandard: 'family', drive: null, slew: null, pull: ['up'], clock: true },
 };
 /** A device's: its format's attributes. */
 export const pinAttrsOf = device => PIN_ATTRS[constraintsFormatOf(device)];
 
-/** The voltage of an I/O standard (LVCMOS18: 1.8, SSTL135_I: 1.35), null for one with no single voltage (LVDS, SB_LVCMOS). */
+/** The voltage of an I/O standard (LVCMOS18: 1.8, SSTL135_I: 1.35; Quartus's 3.3-V LVTTL, 2.5 V: 3.3, 2.5), null for one with no
+ *  single voltage (LVDS, SB_LVCMOS). */
 export function standardVolts(std) {
   const s = String(std || '').toUpperCase();
-  let m = /^(?:LVCMOS|LVTTL)(\d)(\d)D?$/.exec(s);
+  let m = /^(\d\.\d+)[- ]V(?: |$)/.exec(s);
+  if (m) return +m[1];
+  m = /^(?:LVCMOS|LVTTL)(\d)(\d)D?$/.exec(s);
   if (m) return +`${m[1]}.${m[2]}`;
   if (s === 'LVTTL') return 3.3;
   m = /^(?:SSTL|HSTL|HSUL)(\d)(\d+)D?(?:_|$)/.exec(s);
@@ -55,6 +62,8 @@ export function standardVolts(std) {
 export function packagePinError(pin, pkg) {
   const p = String(pin), k = String(pkg || '').toLowerCase();
   // (the GateMate's FBGA324, #2431: its GPIOs by their bank and pair, IO_SB_A8: a bank NA…WC, a pin A0…B8)
+  // (an Intel package, #5376: F484, U23…; its balls PIN_A8, PIN_AA12 as Quartus names them)
+  if (/^[fmue]\d+$/.test(k)) return /^PIN_[A-Z]{1,2}\d{1,2}$/i.test(p) ? null : `${p} is not a pin of the ${k.toUpperCase()} package (its balls look like PIN_A8, PIN_AA12)`;
   if (k === 'fbga324') return /^IO_[NESW][A-C]_[AB][0-8]$/i.test(p) ? null : `${p} is not a GPIO of the ${k} package (its GPIOs look like IO_SB_A8, IO_EB_B1)`;
   const balls = /^(qn84|cm|cb|bg|ct|uwg|swg|cabga|csfbga|mg|pg|ug|ub)/.test(k);
   const numbered = !balls && /^(sg|qn|tq|vq|lq|eq|pq|tqfp)(\d+)/.exec(k);
@@ -78,10 +87,11 @@ function boardPins(board) {
   return m;
 }
 
-/** The diagnostics of a constraints text of format `id` (pcf, lpf, cst, ccf, xdc): [{ severity, line, message }].
+/** The diagnostics of a constraints text of format `id` (pcf, lpf, cst, ccf, xdc, qsf): [{ severity, line, message }].
  *  ports: the top's (ucfPort's: name, width, msb, lsb), its names checked; top: its name, the ports with no pin warned;
- *  device: its package's pins checked; board: its resources' pins and their banks' voltages. */
-export function constraintsDiagnostics(id, text, { ports = [], top = null, device = null, board = null } = {}) {
+ *  device: its package's pins checked; board: its resources' pins and their banks' voltages; iostandards: the family's (a QSF's
+ *  checked against them, #5376). */
+export function constraintsDiagnostics(id, text, { ports = [], top = null, device = null, board = null, iostandards = null } = {}) {
   const format = FORMATS[id];
   let model;
   try { model = format.read(text); } catch (e) {
@@ -89,7 +99,7 @@ export function constraintsDiagnostics(id, text, { ports = [], top = null, devic
   }
   const out = [], lines = String(text).split(/\r?\n/), command = PIN_COMMAND[id];
   const lineOf = net => lines.findIndex(l => namesIn(l).includes(net)) + 1;
-  if (id !== 'xdc') out.push(...pinDiagnostics(id, model, { device, board, lineOf }));
+  if (id !== 'xdc') out.push(...pinDiagnostics(id, model, { device, board, lineOf, iostandards }));
   if (ports.length) {
     const known = new Set(bitsOf(ports));
     const nets = id === 'xdc' ? [...model.netStatements.map(n => n.net), ...model.clocks.map(c => c.net)] : Object.keys(model.assignments);
@@ -105,13 +115,16 @@ export function constraintsDiagnostics(id, text, { ports = [], top = null, devic
   return out.sort((a, b) => a.line - b.line);
 }
 
+// an I/O standard as the format writes it: IO_TYPE=LVCMOS33; a QSF's IO_STANDARD "3.3-V LVTTL"
+const stdText = (id, v) => (id === 'qsf' ? `${KEYS.qsf.iostandard} "${v}"` : `${KEYS[id].iostandard}=${v}`);
+
 // the pins of a PCF's, an LPF's or a CST's model: of the package, once each, on the board, at its bank's voltage; the
 // attributes the family has
-function pinDiagnostics(id, model, { device, board, lineOf }) {
+function pinDiagnostics(id, model, { device, board, lineOf, iostandards }) {
   const out = [], attrs = PIN_ATTRS[id], keys = KEYS[id] || {}, onBoard = board ? boardPins(board) : null;
   const taken = new Map();
   for (const st of model.netStatements) {
-    const net = st.net, a = st.attrs || {}, line = st.line || lineOf(net);
+    const net = toNextpnr(st.net), a = st.attrs || {}, line = st.line || lineOf(net);   // (a QSF's model x<1>, its text x[1])
     const err = message => out.push({ severity: 'error', line, message }), warn = message => out.push({ severity: 'warning', line, message });
     if (a.loc) {
       const pin = String(a.loc).toUpperCase(), bad = device && packagePinError(a.loc, device.package);
@@ -123,6 +136,7 @@ function pinDiagnostics(id, model, { device, board, lineOf }) {
     }
     if (a.iostandard && keys.iostandard) {
       const std = String(a.iostandard).toUpperCase();
+      if (id === 'qsf' && iostandards && !iostandards.some(s => s.toUpperCase() === std)) warn(`${stdText(id, a.iostandard)} of ${net}: not an I/O standard Silinx knows of the ${familyName(deviceFamily(device))} (${iostandards.slice(0, 4).map(s => `"${s}"`).join(', ')}…)`);
       if (Array.isArray(attrs.iostandard) && !attrs.iostandard.includes(std)) warn(`${keys.iostandard}=${a.iostandard} of ${net}: not an I/O standard Silinx knows of the ${id === 'lpf' ? 'ECP5' : 'Gowin'} (${attrs.iostandard.slice(0, 6).join(', ')}…)`);
     }
     if (a.drive !== undefined && keys.drive && !attrs.drive.includes(String(a.drive))) err(`${keys.drive}=${a.drive} of ${net}: ${attrs.drive.slice(0, -1).join(', ')} or ${attrs.drive.at(-1)} mA`);
@@ -130,13 +144,13 @@ function pinDiagnostics(id, model, { device, board, lineOf }) {
   }
   // an I/O standard at its bank's voltage: the board's for its pin (the last statements', as the back end reads them)
   if (onBoard && keys.iostandard) {
-    for (const [net, a] of Object.entries(model.assignments)) {
-      const on = a?.loc && onBoard.get(String(a.loc).toUpperCase());
+    for (const [name, a] of Object.entries(model.assignments)) {
+      const net = toNextpnr(name), on = a?.loc && onBoard.get(String(a.loc).toUpperCase());
       const want = standardVolts(on?.standard), got = standardVolts(a?.iostandard);
       if (want === null || got === null || want === got) continue;
-      const st = model.netStatements.findLast(s => s.net === net && s.attrs?.iostandard);
+      const st = model.netStatements.findLast(s => s.net === name && s.attrs?.iostandard);
       out.push({ severity: 'error', line: st?.line || lineOf(net),
-        message: `${keys.iostandard}=${a.iostandard} of ${net}: the pin ${a.loc} (${on.label}) is in a bank at ${want} V on the ${board.name} (${on.standard}), not ${got} V` });
+        message: `${stdText(id, a.iostandard)} of ${net}: the pin ${a.loc} (${on.label}) is in a bank at ${want} V on the ${board.name} (${on.standard}), not ${got} V` });
     }
   }
   return out;

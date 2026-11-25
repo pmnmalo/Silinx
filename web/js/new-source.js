@@ -37,12 +37,13 @@ const SOURCE_TYPES = [
   { id: 'bramwiz', label: 'Block Memory', ico: 'template', ext: null, dir: 'src', wiz: 'memory', only: true },
   { id: 'tb', label: 'Test Bench', ico: 'vhdl', ext: null, dir: 'sim', wiz: 'testbench' },
   { id: 'ucf', label: 'Implementation Constraints File', ico: 'ucf', ext: '.ucf', dir: 'constraints', wiz: 'ucf' },
-  // (the Constraints Wizard in the device's format, #2296: the PCF, LPF, CST, CCF and XDC Wizards)
+  // (the Constraints Wizard in the device's format, #2296: the PCF, LPF, CST, CCF, XDC and QSF Wizards)
   { id: 'pcf', label: 'Implementation Constraints File', ico: 'ucf', ext: '.pcf', dir: 'constraints', hidden: true, wiz: 'ucf' },   // (the iCE40's: its device shows it for UCF's, #2296)
   { id: 'lpf', label: 'Implementation Constraints File', ico: 'ucf', ext: '.lpf', dir: 'constraints', hidden: true, wiz: 'ucf' },   // (the ECP5's, #2302)
   { id: 'cst', label: 'Implementation Constraints File', ico: 'ucf', ext: '.cst', dir: 'constraints', hidden: true, wiz: 'ucf' },   // (the Gowin's, #2303)
   { id: 'ccf', label: 'Implementation Constraints File', ico: 'ucf', ext: '.ccf', dir: 'constraints', hidden: true, wiz: 'ucf' },   // (the GateMate's, #2431)
   { id: 'xdc', label: 'Implementation Constraints File', ico: 'ucf', ext: '.xdc', dir: 'constraints', hidden: true, wiz: 'ucf' },   // (the 7-series', #3142)
+  { id: 'qsf', label: 'Implementation Constraints File', ico: 'ucf', ext: '.qsf', dir: 'constraints', hidden: true, wiz: 'ucf' },   // (the Intel families', #5376)
   { id: 'mem', label: 'Memory Initialization File (.mem)', ico: 'file', ext: '.mem', dir: 'src' },
   { id: 'lab', label: 'Guided Lab', ico: 'help', ext: '.lab.json', dir: 'labs' },   // (a teacher's, its steps checked: #3179)
   { id: 'c', label: 'C Function (HLS)', ico: 'file', ext: '.c', dir: 'src' },   // (Silinx HLS, compatible with Vitis HLS: #1531)
@@ -53,12 +54,12 @@ const SOURCE_TYPES = [
 // a design and simulation project's (#3780)
 const DESIGN_TYPES = ['tt', 'circuit', 'sch', 'fsm', 'asm', 'petri', 'lab'];
 // the constraints files' types: one shown, the device's format's
-const CONSTRAINTS = ['ucf', 'pcf', 'lpf', 'cst', 'ccf', 'xdc'];
+const CONSTRAINTS = ['ucf', 'pcf', 'lpf', 'cst', 'ccf', 'xdc', 'qsf'];
 
 // name, location, lang, atFile: a wizard's < Back (#2082): New Source again at the File Name and Location page, as left
 // New Source's types as core/new-source-text.js (the MCP's new_source) names them
 const KIND_OF = { hdl: 'module', 'vhdl-pkg': 'package', tb: 'test_bench', ucf: 'constraints', pcf: 'constraints', lpf: 'constraints',
-  cst: 'constraints', ccf: 'constraints', xdc: 'constraints', mem: 'mem', lab: 'lab', c: 'c', cpp: 'cpp', sch: 'schematic', asm: 'asm',
+  cst: 'constraints', ccf: 'constraints', xdc: 'constraints', qsf: 'constraints', mem: 'mem', lab: 'lab', c: 'c', cpp: 'cpp', sch: 'schematic', asm: 'asm',
   fsm: 'fsm', petri: 'petri', circuit: 'circuit', tt: 'boolean', regmap: 'regmap' };
 
 export async function newSourceWizard({ type, name = '', location = null, lang = null, atFile = false } = {}) {

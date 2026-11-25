@@ -1,0 +1,311 @@
+{
+ "board": "Terasic DE10-Lite",
+ "part": "10M50DAF484C7G",
+ "package": "484-pin FBGA (F484)",
+ "manual": {
+  "title": "DE10-Lite User Manual",
+  "revision": "V1.7 (revision history: 2022.10, 'Modify the bin32 file download link in section 2.1')",
+  "date": "October 17, 2022",
+  "url": "https://www.terasic.com.tw/attachment/archive/1021/DE10-Lite_User_Manual.pdf"
+ },
+ "tables": {
+  "MAX10_CLK1_50": {
+   "table": "Table 3-2",
+   "iostandard": "3.3-V LVTTL",
+   "pins": [
+    "PIN_P11"
+   ]
+  },
+  "MAX10_CLK2_50": {
+   "table": "Table 3-2",
+   "iostandard": "3.3-V LVTTL",
+   "pins": [
+    "PIN_N14"
+   ]
+  },
+  "ADC_CLK_10": {
+   "table": "Table 3-2",
+   "iostandard": "3.3-V LVTTL",
+   "pins": [
+    "PIN_N5"
+   ]
+  },
+  "KEY": {
+   "table": "Table 3-3",
+   "iostandard": "3.3 V SCHMITT TRIGGER",
+   "pins": [
+    "PIN_B8",
+    "PIN_A7"
+   ]
+  },
+  "SW": {
+   "table": "Table 3-4",
+   "iostandard": "3.3-V LVTTL",
+   "pins": [
+    "PIN_C10",
+    "PIN_C11",
+    "PIN_D12",
+    "PIN_C12",
+    "PIN_A12",
+    "PIN_B12",
+    "PIN_A13",
+    "PIN_A14",
+    "PIN_B14",
+    "PIN_F15"
+   ]
+  },
+  "LEDR": {
+   "table": "Table 3-5",
+   "iostandard": "3.3-V LVTTL",
+   "pins": [
+    "PIN_A8",
+    "PIN_A9",
+    "PIN_A10",
+    "PIN_B10",
+    "PIN_D13",
+    "PIN_C13",
+    "PIN_E14",
+    "PIN_D14",
+    "PIN_A11",
+    "PIN_B11"
+   ]
+  },
+  "HEX0": {
+   "table": "Table 3-6",
+   "iostandard": "3.3-V LVTTL",
+   "pins": [
+    "PIN_C14",
+    "PIN_E15",
+    "PIN_C15",
+    "PIN_C16",
+    "PIN_E16",
+    "PIN_D17",
+    "PIN_C17",
+    "PIN_D15"
+   ]
+  },
+  "HEX1": {
+   "table": "Table 3-6",
+   "iostandard": "3.3-V LVTTL",
+   "pins": [
+    "PIN_C18",
+    "PIN_D18",
+    "PIN_E18",
+    "PIN_B16",
+    "PIN_A17",
+    "PIN_A18",
+    "PIN_B17",
+    "PIN_A16"
+   ]
+  },
+  "HEX2": {
+   "table": "Table 3-6",
+   "iostandard": "3.3-V LVTTL",
+   "pins": [
+    "PIN_B20",
+    "PIN_A20",
+    "PIN_B19",
+    "PIN_A21",
+    "PIN_B21",
+    "PIN_C22",
+    "PIN_B22",
+    "PIN_A19"
+   ]
+  },
+  "HEX3": {
+   "table": "Table 3-6",
+   "iostandard": "3.3-V LVTTL",
+   "pins": [
+    "PIN_F21",
+    "PIN_E22",
+    "PIN_E21",
+    "PIN_C19",
+    "PIN_C20",
+    "PIN_D19",
+    "PIN_E17",
+    "PIN_D22"
+   ]
+  },
+  "HEX4": {
+   "table": "Table 3-6",
+   "iostandard": "3.3-V LVTTL",
+   "pins": [
+    "PIN_F18",
+    "PIN_E20",
+    "PIN_E19",
+    "PIN_J18",
+    "PIN_H19",
+    "PIN_F19",
+    "PIN_F20",
+    "PIN_F17"
+   ]
+  },
+  "HEX5": {
+   "table": "Table 3-6",
+   "iostandard": "3.3-V LVTTL",
+   "pins": [
+    "PIN_J20",
+    "PIN_K20",
+    "PIN_L18",
+    "PIN_N18",
+    "PIN_M20",
+    "PIN_N19",
+    "PIN_N20",
+    "PIN_L19"
+   ]
+  },
+  "VGA_R": {
+   "table": "Table 3-11",
+   "iostandard": "3.3-V LVTTL",
+   "pins": [
+    "PIN_AA1",
+    "PIN_V1",
+    "PIN_Y2",
+    "PIN_Y1"
+   ]
+  },
+  "VGA_G": {
+   "table": "Table 3-11",
+   "iostandard": "3.3-V LVTTL",
+   "pins": [
+    "PIN_W1",
+    "PIN_T2",
+    "PIN_R2",
+    "PIN_R1"
+   ]
+  },
+  "VGA_B": {
+   "table": "Table 3-11",
+   "iostandard": "3.3-V LVTTL",
+   "pins": [
+    "PIN_P1",
+    "PIN_T1",
+    "PIN_P4",
+    "PIN_N2"
+   ]
+  },
+  "VGA_HS": {
+   "table": "Table 3-11",
+   "iostandard": "3.3-V LVTTL",
+   "pins": [
+    "PIN_N3"
+   ]
+  },
+  "VGA_VS": {
+   "table": "Table 3-11",
+   "iostandard": "3.3-V LVTTL",
+   "pins": [
+    "PIN_N1"
+   ]
+  },
+  "GPIO": {
+   "table": "Table 3-7 (header pins: Figure 3-18, JP1)",
+   "iostandard": "3.3-V LVTTL",
+   "pins": [
+    "PIN_V10",
+    "PIN_W10",
+    "PIN_V9",
+    "PIN_W9",
+    "PIN_V8",
+    "PIN_W8",
+    "PIN_V7",
+    "PIN_W7",
+    "PIN_W6",
+    "PIN_V5",
+    "PIN_W5",
+    "PIN_AA15",
+    "PIN_AA14",
+    "PIN_W13",
+    "PIN_W12",
+    "PIN_AB13",
+    "PIN_AB12",
+    "PIN_Y11",
+    "PIN_AB11",
+    "PIN_W11",
+    "PIN_AB10",
+    "PIN_AA10",
+    "PIN_AA9",
+    "PIN_Y8",
+    "PIN_AA8",
+    "PIN_Y7",
+    "PIN_AA7",
+    "PIN_Y6",
+    "PIN_AA6",
+    "PIN_Y5",
+    "PIN_AA5",
+    "PIN_Y4",
+    "PIN_AB3",
+    "PIN_Y3",
+    "PIN_AB2",
+    "PIN_AA2"
+   ],
+   "headerPins": [
+    1,
+    2,
+    3,
+    4,
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    13,
+    14,
+    15,
+    16,
+    17,
+    18,
+    19,
+    20,
+    21,
+    22,
+    23,
+    24,
+    25,
+    26,
+    27,
+    28,
+    31,
+    32,
+    33,
+    34,
+    35,
+    36,
+    37,
+    38,
+    39,
+    40
+   ]
+  },
+  "ARDUINO_IO": {
+   "table": "Table 3-8",
+   "iostandard": "3.3-V LVTTL",
+   "pins": [
+    "PIN_AB5",
+    "PIN_AB6",
+    "PIN_AB7",
+    "PIN_AB8",
+    "PIN_AB9",
+    "PIN_Y10",
+    "PIN_AA11",
+    "PIN_AA12",
+    "PIN_AB17",
+    "PIN_AA17",
+    "PIN_AB19",
+    "PIN_AA19",
+    "PIN_Y19",
+    "PIN_AB20",
+    "PIN_AB21",
+    "PIN_AA20"
+   ]
+  },
+  "ARDUINO_RESET_N": {
+   "table": "Table 3-8",
+   "iostandard": "3.3 V SCHMITT TRIGGER",
+   "pins": [
+    "PIN_F16"
+   ]
+  }
+ }
+}

@@ -24,6 +24,7 @@ import { ICE40_FAMILY, ICE40_DEVICES, ICE40_PACKAGES } from './devices-ice40.js'
 import { ECP5_FAMILY, ECP5_DEVICES, ECP5_PACKAGES } from './devices-ecp5.js';
 import { GATEMATE_FAMILY, GATEMATE_DEVICES, GATEMATE_PACKAGES } from './devices-gatemate.js';
 import { GOWIN_FAMILY, GOWIN_DEVICES_DB, GOWIN_PACKAGES } from './devices-gowin.js';
+import { INTEL_FAMILIES, INTEL_DEVICES, INTEL_PACKAGES } from './devices-intel.js';
 export { FAMILY } from './boards-family.js';
 export { BOARDS } from './boards.js';
 
@@ -264,7 +265,7 @@ export const FAMILIES = [
   },
 ];
 
-FAMILIES.push(ICE40_FAMILY, ECP5_FAMILY, GOWIN_FAMILY, GATEMATE_FAMILY);   // (last: the ISE families first in the pickers)
+FAMILIES.push(ICE40_FAMILY, ECP5_FAMILY, GOWIN_FAMILY, GATEMATE_FAMILY, ...INTEL_FAMILIES);   // (last: the ISE families first in the pickers)
 const famById = Object.fromEntries(FAMILIES.map(f => [f.id, f]));
 famById.spartan3adsp.ioStandards = famById.spartan3a.ioStandards;
 famById.spartan7.ioStandards = famById.artix7.ioStandards;
@@ -446,7 +447,7 @@ const NEW_PARTS = [
 ];
 
 /** Every part of every WebPACK family (Spartan-3E entries are the same objects as DEVICES.parts). */
-export const PARTS = [...DEVICES.parts, ...NEW_PARTS, ...ICE40_DEVICES, ...ECP5_DEVICES, ...GOWIN_DEVICES_DB, ...GATEMATE_DEVICES];
+export const PARTS = [...DEVICES.parts, ...NEW_PARTS, ...ICE40_DEVICES, ...ECP5_DEVICES, ...GOWIN_DEVICES_DB, ...GATEMATE_DEVICES, ...INTEL_DEVICES];
 for (const p of PARTS) {
   for (const k of Object.keys(p)) if (p[k] === undefined) delete p[k];
   if (p.verified === undefined) p.verified = true;
@@ -458,6 +459,7 @@ export const PACKAGES = {
   ...ECP5_PACKAGES,
   ...GATEMATE_PACKAGES,
   ...GOWIN_PACKAGES,
+  ...INTEL_PACKAGES,
   ...DEVICES.packages,
   cp132: '132-ball Chip-Scale Package (CSP)', fg456: '456-ball Fine-Pitch BGA (FBGA)', fg676: '676-ball Fine-Pitch BGA (FBGA)',
   tqg144: '144-pin Thin Quad Flat Pack, Pb-free (TQFP)', ftg256: '256-ball Fine-Pitch Thin BGA, Pb-free',
@@ -523,7 +525,8 @@ export function validateDevice(dev) {
   const speeds = pk?.speeds || p.speeds;
   if (!speeds.length) return errs;   // (a family with no speed grades: the iCE40's)
   const sp = String(dev.speed ?? '');
-  if (!speeds.includes(sp.startsWith('-') ? sp : `-${sp}`)) errs.push(`speed grade '${dev.speed}' not available for ${p.part}-${dev.package} (valid: ${speeds.join(', ')})`);
+  // (an Intel part's grade as Quartus writes it: c7, i7, #5376)
+  if (!speeds.includes(sp) && !speeds.includes(sp.startsWith('-') ? sp : `-${sp}`)) errs.push(`speed grade '${dev.speed}' not available for ${p.part}-${dev.package} (valid: ${speeds.join(', ')})`);
   return errs;
 }
 

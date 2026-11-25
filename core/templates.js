@@ -251,6 +251,21 @@ export function ccfTemplate(project) {
 `;
 }
 
+export function qsfTemplate(project) {
+  const d = project.device;
+  return `# Quartus Prime pin assignments (QSF) for ${project.name}
+# Target: ${`${d.part}${d.package}${d.speed}`.toUpperCase()}
+# (the clocks' periods in create_clock comments: Silinx writes them into the SDC Quartus reads)
+#
+# Example:
+# set_location_assignment PIN_P11 -to clk
+# set_instance_assignment -name IO_STANDARD "3.3-V LVTTL" -to clk
+# set_location_assignment PIN_A8 -to led[0]
+# set_instance_assignment -name IO_STANDARD "3.3-V LVTTL" -to led[0]
+# # create_clock -name {clk} -period 20.000 [get_ports {clk}]
+`;
+}
+
 export function xdcTemplate(project) {
   return `# Xilinx Design Constraints for ${project.name}
 # Target: ${project.device.part}${project.device.speed}-${project.device.package}
