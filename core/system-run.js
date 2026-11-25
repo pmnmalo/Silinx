@@ -32,7 +32,8 @@ export async function systemInputs(sys, { ports = {}, netlist, firmware, regmap 
   if (plan.errors.length) return { error: plan.errors.join('; ') };
   const netlists = {}, fw = {};
   for (const f of plan.fpga) {
-    try { netlists[f.id] = await netlist(f.module); } catch (e) { return { error: `${f.id}: its module ${f.module} does not compile: ${e.message}` }; }
+    // (the node's id too: its model's netlist, its RTL's else, #5612)
+    try { netlists[f.id] = await netlist(f.module, f.id); } catch (e) { return { error: `${f.id}: its module ${f.module} does not compile: ${e.message}` }; }
   }
   for (const n of sys.nodes.filter(x => x.kind === 'mcu')) {
     try { fw[n.id] = { name: n.firmware, data: await firmware(n.firmware) }; } catch (e) { return { error: `${n.id}: its firmware ${n.firmware} cannot be read: ${e.message}` }; }

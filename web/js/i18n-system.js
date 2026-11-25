@@ -57,6 +57,7 @@ export const SYSTEM_PT = {
   'Its module\'s ports on its board\'s pins, written to its constraints file': 'As portas do seu módulo nos pinos da sua placa, escritas no seu ficheiro de restrições',
   'Its constraints file, as text': 'O seu ficheiro de restrições, como texto',
   'A node\'s: its User Constraints in the tree below': 'De um nó: as suas Restrições do Utilizador na árvore abaixo',
+  'Each FPGA node\'s model:': 'O modelo de cada nó FPGA:',
   // (the System Emulator's toolbar, #5613: web/js/system-emu-view.js)
   'Run the System at its rate until Pause': 'Correr o Sistema ao seu ritmo até Pausa', 'Rate:': 'Ritmo:',
   'Advance one clock cycle of its FPGA node (a System of several: one step of its scheduler, 100 µs)': 'Avançar um ciclo de relógio do seu nó FPGA (num Sistema de vários: um passo do seu escalonador, 100 µs)',
@@ -142,7 +143,11 @@ export const SYSTEM_PT_PATTERNS = [
   // (the Emulate task's tree, #5581: a node's firmware and circuit, the System's row, a terminal's; what runs)
   [/^(\S+) \(System\)$/, '$1 (Sistema)'], [/^(\S+) \(terminal\)$/, '$1 (terminal)'],
   [/^(\S+) runs with the nodes it is linked to$/, '$1 corre com os nós a que está ligado'],
-  [/^Emulation Properties: Emulate System runs (every node|.+)$/, (m, w) => `Propriedades da Emulação: Emular o Sistema corre ${w === 'every node' ? 'todos os nós' : w}`], [/^(\d+)% of real time$/, '$1% do tempo real'],
+  [/^Emulation Properties: Emulate System runs (every node|.+?)(; (.+))?$/, (m, w, x, models) => `Propriedades da Emulação: Emular o Sistema corre ${w === 'every node' ? 'todos os nós' : w}${models ? `; ${models.replace(/(\S+) on its (.+?) model/g, (y, id, mo) => `${id} no seu modelo ${{ 'Behavioral (RTL)': 'Comportamental (RTL)', 'Post-Synthesis': 'Pós-Síntese', 'Post-Translate': 'Pós-Translate', 'Post-Map': 'Pós-Map', 'Post-Place & Route': 'Pós-Place & Route' }[mo] ?? mo}`)}` : ''}`],
+  // (an FPGA node's model, #5612)
+  [/^(Emulate System|Emulate Node \S+): (\S+)'s (.+) model is not made yet: its flow makes it first\.$/, '$1: o modelo $3 de $2 ainda não está feito: o seu fluxo fá-lo primeiro.'],
+  [/^(Emulate System|Emulate Node \S+): (\S+)'s (.+) model could not be made$/, '$1: o modelo $3 de $2 não pôde ser feito'],
+  [/^(Emulate System|Emulate Node \S+): (\S+)'s flow made no (.+) model$/, '$1: o fluxo de $2 não fez nenhum modelo $3'], [/^(\d+)% of real time$/, '$1% do tempo real'],
   // (a node's Implement in the browser edition: web/js/system-implement-ui.js, #5446)
   [/^(.+): a System's node is implemented by the local server for now \(the browser edition implements an FPGA project\)$/,
     '$1: um nó de um Sistema é implementado pelo servidor local, por agora (a edição do browser implementa um projeto FPGA)'],

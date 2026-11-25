@@ -97,8 +97,11 @@ export function withEmulateNodes(pj, sys, ids) {
   const all = ids == null || runnableNodes(sys).every(id => ids.includes(id));
   const error = all ? null : runRefusal(sys, ids);
   if (error) return { error };
-  const { emulate, ...rest } = pj.system || {};
-  const system = all ? rest : { ...rest, emulate: { ...emulate, nodes: runnableNodes(sys).filter(id => ids.includes(id)) } };
+  const { emulate = {}, ...rest } = pj.system || {};
+  // (its other Emulation Properties kept: the FPGA nodes' models, #5612)
+  const { nodes: _was, ...others } = emulate;
+  const em = all ? others : { ...others, nodes: runnableNodes(sys).filter(id => ids.includes(id)) };
+  const system = Object.keys(em).length ? { ...rest, emulate: em } : rest;
   const out = { ...pj, system };
   if (!Object.keys(system).length) delete out.system;
   return out;

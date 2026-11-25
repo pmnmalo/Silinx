@@ -14,6 +14,11 @@ import { ucfPort } from '../core/board-constraints.js';
 import { normalizeCircuit } from '../core/circuit.js';
 import { runningSystem, emulateNodesOf, runName, simulateSettingsOf, SIMULATE_MS } from '../core/system-alone.js';
 import { readStimulus, setsControls, stimulusSteps, runSteps } from '../core/system-stimulus.js';
+import { MODEL_NAMES, emulateModelsOf, nodeModelFile, nodeReportsPath } from '../core/system-models.js';
+import { compile, elaborate } from '../core/compile.js';
+import { primitiveSources } from '../core/unisim.js';
+import { scalarizeNetlist } from '../core/netlist-hier.js';
+import { MODEL_PROCESS } from './mcp-hdl.js';
 import { withNodePins } from '../core/system-constraints.js';
 import { constraintsTexts } from './system-constraints.js';
 import { isRegmapFile, regmapFor, hierModules } from '../core/regmap.js';
@@ -24,6 +29,22 @@ async function circuitsOf(name, sys) {
   const out = {};
   for (const n of sys.nodes.filter(x => x.kind === 'circuit' && x.circuit)) {
     try { out[n.circuit] = normalizeCircuit(JSON.parse(await P.readFile(name, n.circuit))); } catch { /* (kept) */ }
+  }
+  return out;
+}
+
+// the FPGA nodes' models (`models`: { id: model }) read from their builds ({ id: { path, lang, text } }), or the tool's
+// error: one not made yet (its run_process says how, #5612)
+async function modelNetlists(name, sys, models) {
+  const out = {};
+  for (const [id, m] of Object.entries(models)) {
+    if (!sys.nodes.some(n => n.id === id)) continue;
+    let reports = null;
+    try { reports = JSON.parse(await P.readFile(name, nodeReportsPath(id))); } catch { /* not built */ }
+    const file = nodeModelFile(reports, id, m);
+    if (!file) throw toolError(`${id}'s ${MODEL_NAMES[m].toLowerCase()} model is not made yet: run_process ${MODEL_PROCESS[m]} with node ${id} first`);
+    const raw = await P.readFile(name, file), verilog = /\.v$/i.test(file);
+    out[id] = { path: file, lang: verilog ? 'verilog' : 'vhdl', text: verilog ? raw : scalarizeNetlist(raw), role: 'design', netlist: m };
   }
   return out;
 }
@@ -80,11 +101,16 @@ export async function simulateSystem(name, top, { ms, type = {}, controls = null
   const said = [...pinned.problems.map(p => p.message), ...cut.warnings].map(w => `WARNING: ${runName(controls ? 'Emulate' : 'Simulate', ids)}: ${w}`);
   const sys = cut.system;
   const { ports, designs } = await modulesOf(name, sys);
+  // (Emulate System's: each FPGA node's model, its Emulation Properties', #5612; read from its node's build)
+  const models = controls ? await modelNetlists(name, sys, emulateModelsOf(pj, sys)) : {};
   const { netlistOf } = await import('../core/compiled-sim.js');
   const { yosysNode } = await import('../packages/silinx-fpga/src/node.js');
   const how = {
     ports,
-    netlist: m => { if (!designs[m]) throw new Error(`no module '${m}' that elaborates in the project`); return netlistOf(designs[m], { run: yosysNode }); },
+    netlist: (m, id) => {
+      if (models[id]) { const d = elaborate(compile([...primitiveSources([models[id]]), models[id]]), m); if (!d.top) throw new Error(`its model ${models[id].path} does not elaborate`); return netlistOf(d, { run: yosysNode }); }
+      if (!designs[m]) throw new Error(`no module '${m}' that elaborates in the project`); return netlistOf(designs[m], { run: yosysNode });
+    },
     firmware: async p => (/\.elf$/i.test(p) ? P.readFileBytes(name, p) : P.readFile(name, p)),   // (the page's reads, #5198)
     circuit: p => P.readFile(name, p),   // (a circuit node's, #5215)
     regmap: async m => regmapFor(await mapTexts(name), designs[m] ? hierModules(designs[m].top) : [m]),   // (a module made from a register map, or one instancing it: its accesses, #5288)

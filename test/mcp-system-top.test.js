@@ -93,7 +93,7 @@ test('#5446 run_process node: a System\'s FPGA node synthesized on its own board
   assert.match(r.text, /^Process "synthesize" of <node fpga> completed successfully/m);
   assert.ok(r.text.includes('System node fpga: its module uart on basys2 (250), its constraints fpga/uart.ucf, built in build/nodes/fpga/.'), r.text);
   assert.ok(fs.existsSync(path.join(P.projectDir('rp2'), 'build/nodes/fpga/build/open/uart.json')), 'its netlist in its own folder');
-  await fails('run_process', { project: 'rp2', process: 'timing', node: 'fpga' }, 'node: a System node runs synthesize, implement or bitstream (not timing)');
+  await fails('run_process', { project: 'rp2', process: 'timing', node: 'fpga' }, 'node: a System node runs synthesize, implement, bitstream or a simulation model (not timing)');
   await fails('run_process', { project: 'rp2', process: 'synthesize', node: 'uno' }, 'no FPGA node \'uno\' in the System of \'rp2\' (fpga)');
 });
 

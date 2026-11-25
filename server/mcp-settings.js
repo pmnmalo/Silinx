@@ -15,6 +15,7 @@ import { PROFILES, profileById, profileChangedText, profileOf, systemProfile } f
 import { changeProfile } from '../core/profile-change.js';
 import { isSystemFile, readSystem } from '../core/system-doc.js';
 import { runnableNodes, emulateNodesOf, withEmulateNodes, simulateSettingsOf, withSimulateSettings } from '../core/system-alone.js';
+import { MODEL_NAMES, emulateModelsOf, withEmulateModels } from '../core/system-models.js';
 import { TOP_TYPES, topType, topTypeRefusal } from '../core/top-types.js';
 import { SYSTEM_TOP } from '../core/system-top.js';
 import { makeSystemTop } from './mcp-system-top.js';
@@ -49,7 +50,10 @@ async function systemProperties(name, pj, { nodes, simulation }, others) {
   const r = f ? readSystem(await P.readFile(name, f)) : { error: 'no System document (.sys.json)' };
   if (r.error) throw toolError(`${what}: ${f || name}: ${r.error}`);
   let next = pj;
-  if (nodes !== undefined) next = withEmulateNodes(next, r.system, nodes.length ? nodes : null);
+  // (fpga@postsynth: the node and its model, #5612; a node named alone: its RTL)
+  const ids = (nodes || []).map(x => String(x).split('@')[0]);
+  if (nodes !== undefined) next = withEmulateNodes(next, r.system, ids.length ? ids : null);
+  if (nodes !== undefined && !next.error) next = withEmulateModels(next, r.system, Object.fromEntries((nodes || []).map(x => String(x).split('@')).filter(([id, m]) => m !== undefined || r.system.nodes.some(n => n.id === id && n.kind === 'fpga')).map(([id, m]) => [id, m ?? 'rtl'])));
   if (next.error) throw toolError(`emulate_nodes: ${next.error}`);
   if (simulation !== undefined) {
     const s = simulation && typeof simulation === 'object' && !Array.isArray(simulation) ? simulation : null;
@@ -60,10 +64,10 @@ async function systemProperties(name, pj, { nodes, simulation }, others) {
   }
   await P.updateProject(name, () => next);
   // (what was given said)
-  const ids = emulateNodesOf(next, r.system), sim = simulateSettingsOf(next, r.system), said = [];
-  if (nodes !== undefined) said.push(`Emulate System runs ${ids ? ids.join(', ') : 'every node'}`);
+  const on = emulateNodesOf(next, r.system), mods = emulateModelsOf(next, r.system), sim = simulateSettingsOf(next, r.system), said = [];
+  if (nodes !== undefined) said.push(`Emulate System runs ${on ? on.join(', ') : 'every node'}${Object.entries(mods).map(([id, m]) => `, ${id} on its ${MODEL_NAMES[m]} model`).join('')}`);
   if (simulation !== undefined) said.push(`Simulate System runs ${sim.nodes ? sim.nodes.join(', ') : 'every node'} for ${sim.ms} ms${sim.stimulus ? `, its stimulus ${sim.stimulus}` : ''}`);
-  return { text: `${name}: ${said.join('; ')}.`, data: { project: name, ...(nodes !== undefined ? { emulateNodes: ids ?? runnableNodes(r.system) } : {}),
+  return { text: `${name}: ${said.join('; ')}.`, data: { project: name, ...(nodes !== undefined ? { emulateNodes: on ?? runnableNodes(r.system), emulateModels: mods } : {}),
     ...(simulation !== undefined ? { simulation: { nodes: sim.nodes ?? runnableNodes(r.system), ms: sim.ms, stimulus: sim.stimulus } } : {}) } };
 }
 
@@ -267,7 +271,7 @@ export const SETTINGS_TOOLS = [
       startup_clock: { type: 'string', enum: Object.keys(STARTUP_CLOCKS), description: 'The FPGA start-up clock.' },
       s6_map: { type: 'string', enum: S6_MAPS, description: 'A Spartan-6\'s Map: nextpnr (the default) or silinx.' },
       xc7_seeds: { type: 'integer', enum: XC7_SEEDS, description: 'A 7-series\' Place & Route: 1 seed (the default) or the best of 3.' },
-      emulate_nodes: { type: 'array', items: { type: 'string' }, description: 'The nodes Emulate System runs ([]: every node).' },
+      emulate_nodes: { type: 'array', items: { type: 'string' }, description: 'The nodes Emulate System runs (id@model; []: all).' },
       simulation: { type: 'object', description: 'Simulate System\'s { nodes, ms, stimulus }.' },
     }, required: ['project'], additionalProperties: false },
     annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true },
