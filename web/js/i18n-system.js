@@ -53,6 +53,10 @@ export const SYSTEM_PT = {
   'No wires: no link joins two resolved interfaces': 'Sem fios: nenhuma ligação junta duas interfaces resolvidas',
   // the System Emulator (#5212)
   'Emulate': 'Emular', 'Emulate the System: its boards side by side, interactive, in real time': 'Emular o Sistema: as suas placas lado a lado, interativas, em tempo real',
+  // (the Emulate task's tree of a System, #5581: web/js/system-emulate-ui.js)
+  'Emulate Node': 'Emular o Nó', 'Emulation Properties…': 'Propriedades da Emulação…', 'Emulation Properties': 'Propriedades da Emulação',
+  'The nodes Emulate System runs:': 'Os nós que Emular o Sistema corre:', 'Tick at least one node': 'Marque pelo menos um nó',
+  'An FPGA node\'s pins: its row in the System editor': 'Os pinos de um nó FPGA: a sua linha no editor do Sistema',
   'Emulate System': 'Emular o Sistema', 'Run the System in real time until Pause': 'Correr o Sistema em tempo real até Pausa',
   'Terminals': 'Terminais', '☰ Terminals': '☰ Terminais', 'Show / hide the terminals panel': 'Mostrar / ocultar o painel dos terminais',
   'Collapse the terminals panel': 'Recolher o painel dos terminais', 'Expand the terminals panel': 'Expandir o painel dos terminais',
@@ -91,7 +95,11 @@ export const SYSTEM_PT_PATTERNS = [
     (m, dir, id, n, trash, list) => `Apagar a pasta '${dir}' do nó removido ${id} e o(s) ${n} ficheiro(s) que contém do projeto?${trash ? '\n(São movidos para a pasta .trash da área de trabalho, de onde os pode repor.)' : ''}\n\n${list}`],
   [/^(FPGA|Microcontroller|Serial terminal|Circuit) ([A-Za-z]\w*)$/, (m, k, id) => `${{ FPGA: 'FPGA', Microcontroller: 'Microcontrolador', 'Serial terminal': 'Terminal série', Circuit: 'Circuito' }[k]} ${id}`],
   [/^Link ([A-Za-z]\w*)$/, 'Ligação $1'], [/^Waves \((.+)\)$/, 'Ondas ($1)'],
-  [/^Emulate \((.+)\)$/, 'Emular ($1)'], [/^(\d+)% of real time$/, '$1% do tempo real'],
+  [/^Emulate \((.+)\)$/, 'Emular ($1)'],
+  // (the Emulate task's tree, #5581: a node's firmware and circuit, the System's row, a terminal's; what runs)
+  [/^Firmware: (.+)$/, 'Firmware: $1'], [/^Circuit: (.+)$/, 'Circuito: $1'], [/^(\S+) \(System\)$/, '$1 (Sistema)'], [/^(\S+) \(terminal\)$/, '$1 (terminal)'],
+  [/^(\S+) runs with the nodes it is linked to$/, '$1 corre com os nós a que está ligado'],
+  [/^Emulation Properties: Emulate System runs (every node|.+)$/, (m, w) => `Propriedades da Emulação: Emular o Sistema corre ${w === 'every node' ? 'todos os nós' : w}`], [/^(\d+)% of real time$/, '$1% do tempo real'],
   // (a node's Implement in the browser edition: web/js/system-implement-ui.js, #5446)
   [/^(.+): a System's node is implemented by the local server for now \(the browser edition implements an FPGA project\)$/,
     '$1: um nó de um Sistema é implementado pelo servidor local, por agora (a edição do browser implementa um projeto FPGA)'],

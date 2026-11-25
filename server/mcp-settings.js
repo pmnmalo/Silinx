@@ -13,7 +13,8 @@ import { toolError, readProject, viewSourcesOf, STR, PROJECT, deviceName } from 
 import { DESIGN_KIND, DESIGN_ONLY_MESSAGES, isDesignOnly, isSystemProject } from '../core/project-kind.js';
 import { PROFILES, profileById, profileChangedText, profileOf, systemProfile } from '../core/project-profile.js';
 import { changeProfile } from '../core/profile-change.js';
-import { isSystemFile } from '../core/system-doc.js';
+import { isSystemFile, readSystem } from '../core/system-doc.js';
+import { runnableNodes, emulateNodesOf, withEmulateNodes } from '../core/system-alone.js';
 import { TOP_TYPES, topType, topTypeRefusal } from '../core/top-types.js';
 import { SYSTEM_TOP } from '../core/system-top.js';
 import { makeSystemTop } from './mcp-system-top.js';
@@ -38,6 +39,21 @@ async function changeProfileOf(name, pj, to) {
 const withoutKind = (pj, drop) => { if (drop) delete pj.kind; return pj; };
 
 // the device database (server/devices.js) and the toolchain package's checks, loaded on first use
+// a System project's Emulation Properties (#5581, core/system-alone.js): the nodes Emulate System runs (none: every node),
+// in its silinx.json, as the Emulate task's Emulation Properties… writes them
+async function emulationProperties(name, pj, nodes, others) {
+  if (!isSystemProject(pj)) throw toolError(`emulate_nodes: the project '${name}' is not a System project`);
+  if (Object.values(others).some(v => v !== undefined)) throw toolError('emulate_nodes: a System\'s, given alone (its FPGA nodes\' properties are not the project\'s)');
+  const f = (await P.fileTree(name)).find(isSystemFile);
+  const r = f ? readSystem(await P.readFile(name, f)) : { error: 'no System document (.sys.json)' };
+  if (r.error) throw toolError(`emulate_nodes: ${f || name}: ${r.error}`);
+  const next = withEmulateNodes(pj, r.system, nodes.length ? nodes : null);
+  if (next.error) throw toolError(`emulate_nodes: ${next.error}`);
+  await P.updateProject(name, () => next);
+  const ids = emulateNodesOf(next, r.system);
+  return { text: `${name}: Emulate System runs ${ids ? ids.join(', ') : 'every node'}.`, data: { project: name, emulateNodes: ids ?? runnableNodes(r.system) } };
+}
+
 const devices = () => import('./devices.js');
 const parts = () => import('../packages/silinx-fpga/src/parts.js');
 
@@ -231,18 +247,21 @@ export const SETTINGS_TOOLS = [
   },
   {
     name: 'set_process_properties', title: 'Process Properties',
-    description: 'Change a project\'s Process Properties: the Optimization (fast: the quickest build; area: the smallest circuit; speed: the fastest, several placements tried), the FPGA start-up clock (jtag; cclk booting from the PROM or flash; user); a Spartan-6\'s Map (s6_map: nextpnr, the default, or silinx, Silinx\'s own); a 7-series\' Place & Route seeds (xc7_seeds: 1, the default; 3: nextpnr\'s router2 with seeds 1, 2 and 3, the best Fmax kept, ties to the lowest seed).',
+    description: 'Change a project\'s Process Properties: the Optimization (fast; area: smallest; speed: fastest, several placements tried), the FPGA start-up clock (jtag; cclk: from the PROM or flash; user); a Spartan-6\'s Map (s6_map); a 7-series\' Place & Route seeds (xc7_seeds: 1, or the best Fmax of seeds 1-3); a System\'s Emulation Properties.',
     inputSchema: { type: 'object', properties: {
       project: PROJECT,
       optimization: { type: 'string', enum: OPTIMIZATIONS, description: 'The Optimization.' },
       startup_clock: { type: 'string', enum: Object.keys(STARTUP_CLOCKS), description: 'The FPGA start-up clock.' },
       s6_map: { type: 'string', enum: S6_MAPS, description: 'A Spartan-6\'s Map: nextpnr (the default) or silinx.' },
       xc7_seeds: { type: 'integer', enum: XC7_SEEDS, description: 'A 7-series\' Place & Route: 1 seed (the default) or the best of 3.' },
+      emulate_nodes: { type: 'array', items: { type: 'string' }, description: 'The nodes Emulate System runs ([]: every node).' },
     }, required: ['project'], additionalProperties: false },
     annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true },
-    async run({ project: name, optimization, startup_clock: clock, s6_map: map, xc7_seeds: seeds }) {
+    async run({ project: name, optimization, startup_clock: clock, s6_map: map, xc7_seeds: seeds, emulate_nodes: nodes }) {
       const pj = await readProject(name);
-      if (!optimization && !clock && !map && seeds === undefined) throw toolError('give optimization, startup_clock, s6_map or xc7_seeds');
+      // (a System project's Emulation Properties, #5581: the nodes Emulate System runs)
+      if (nodes !== undefined) return emulationProperties(name, pj, nodes, { optimization, clock, map, seeds });
+      if (!optimization && !clock && !map && seeds === undefined) throw toolError('give optimization, startup_clock, s6_map, xc7_seeds or emulate_nodes');
       const { familyProfile } = await import('../core/family-profile.js');
       const s6 = !!familyProfile((await parts()).deviceFamily(pj.device)).mapChoice;   // (a Spartan-6's Map, as Process Properties shows it)
       if (map && !S6_MAPS.includes(map)) throw toolError(`s6_map: one of ${S6_MAPS.join(', ')}`);

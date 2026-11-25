@@ -32,7 +32,7 @@ uiTest('#5503 an Arduino node\'s Compile Firmware from its row: its .hex in its 
   await page.waitFor(() => [...document.querySelectorAll('#hier .row .lbl')].some((l) => l.textContent.trim() === 'uno'), [], { what: 'the nodes' });
   await page.treeRow('#hier', 'uno', { exact: true });
   await page.waitFor(() => [...document.querySelectorAll('#procs .row .lbl')].some((l) => l.textContent.trim() === 'Compile Firmware'), [], { what: 'the node\'s processes' });
-  assert.deepEqual(await procs(page), ['View/Edit System', 'Compile Firmware', 'Program Node']);
+  assert.deepEqual(await procs(page), ['View/Edit System', 'Compile Firmware', 'Program Node', 'Emulate Node']);
   await page.treeRow('#procs', 'Compile Firmware', { exact: true, dbl: true });
   await page.waitConsole(/^Process "Compile Firmware \(System node uno\)" completed successfully$/m, { timeout: 60000 });
   const all = await lines(page);

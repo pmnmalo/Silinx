@@ -201,3 +201,38 @@ test('#5484 uart-pic24: its firmware lcd_uart.asm assembled, its FPGA module uar
   assert.deepEqual(Object.entries(b.data.boards.pic.leds).filter(([, v]) => v > 0.5).map(([d]) => d), ['D4', 'D6']);
   assert.deepEqual([b.data.warnings, b.data.errors], [[], []]);
 });
+
+test('#5581 uart-avr\'s nodes run alone with the MCP server: the FPGA with a terminal in the Uno\'s place (a byte typed, echoed), the Uno with one on its Serial (its hello); Emulation Properties\' nodes run by the emulation; refusals', async () => {
+  await ok('new_project_from_example', { name: 'un', example: 'uart-avr' });
+  const warnF = 'link serial: uno is not run, its end fpga.uart is the terminal serial here (9600 baud, 8N1)';
+  const f = await ok('simulate', { project: 'un', top: '#fpga', time_ns: 5e6, type: { serial: 'A' } });
+  assert.deepEqual([f.data.nodes, f.data.terminals, f.data.warnings, f.data.errors], [['fpga', 'serial'], { serial: 'A' }, [`WARNING: Simulate Node fpga: ${warnF}`], []]);
+  assert.equal(f.text.split('\n')[0], `WARNING: Simulate Node fpga: ${warnF}`);
+  // (the document named, the same)
+  const g = await ok('simulate', { project: 'un', top: 'uart_avr.sys.json#fpga', time_ns: 5e6, type: { serial: 'A' } });
+  assert.deepEqual(g.data.terminals, { serial: 'A' });
+  const u = await ok('simulate', { project: 'un', top: '#uno', time_ns: 30e6 });
+  assert.deepEqual([u.data.nodes, u.data.terminals, u.data.warnings], [['uno', 'serial'], { serial: 'Hello from Arduino!\r\n' }, ['WARNING: Simulate Node uno: link serial: fpga is not run, its end uno.Serial is the terminal serial here (9600 baud, 8N1)']]);
+  // (both: the System as it is, no warning)
+  const b = await ok('simulate', { project: 'un', top: '#uno,fpga', time_ns: 30e6 });
+  assert.deepEqual([b.data.nodes, b.data.terminals, b.data.warnings], [['uno', 'fpga'], {}, []]);
+  // the Emulation Properties: the FPGA alone, in silinx.json; the emulation (controls) runs it, the simulation every node
+  const p = await ok('set_process_properties', { project: 'un', emulate_nodes: ['fpga'] });
+  assert.deepEqual([p.text, p.data], ['un: Emulate System runs fpga.', { project: 'un', emulateNodes: ['fpga'] }]);
+  assert.deepEqual(JSON.parse(fs.readFileSync(path.join(tmp, 'ws', 'un', 'silinx.json'), 'utf8')).system, { emulate: { nodes: ['fpga'] } });
+  const e = await ok('simulate', { project: 'un', time_ns: 20e6, controls: [] });
+  assert.deepEqual([e.data.nodes, Object.keys(e.data.boards), e.data.warnings], [['fpga', 'serial'], ['fpga'], [`WARNING: Emulate Node fpga: ${warnF}`]]);
+  const s = await ok('simulate', { project: 'un', time_ns: 1e6 });
+  assert.deepEqual([s.data.nodes, s.data.warnings], [undefined, []]);
+  const all = await ok('set_process_properties', { project: 'un', emulate_nodes: [] });
+  assert.deepEqual([all.text, all.data], ['un: Emulate System runs every node.', { project: 'un', emulateNodes: ['uno', 'fpga'] }]);
+  assert.equal(JSON.parse(fs.readFileSync(path.join(tmp, 'ws', 'un', 'silinx.json'), 'utf8')).system, undefined);
+  // refused
+  const no = async (name, args, text) => { const r = await call(name, args); assert.deepEqual([r.isError, r.text], [true, text]); };
+  await no('simulate', { project: 'un', top: '#x', time_ns: 1e6 }, 'simulate: top: x: no such node to run in uart_avr (its nodes: uno, fpga)');
+  await no('set_process_properties', { project: 'un', emulate_nodes: ['x'] }, 'set_process_properties: emulate_nodes: x: no such node to run in uart_avr (its nodes: uno, fpga)');
+  await no('set_process_properties', { project: 'un', emulate_nodes: ['fpga'], optimization: 'area' }, 'set_process_properties: emulate_nodes: a System\'s, given alone (its FPGA nodes\' properties are not the project\'s)');
+  await ok('new_project_from_example', { name: 'ug', example: 'gates' });
+  await no('set_process_properties', { project: 'ug', emulate_nodes: ['fpga'] }, 'set_process_properties: emulate_nodes: the project \'ug\' is not a System project');
+  await no('simulate', { project: 'ug', top: '#fpga', time_ns: 1e6 }, 'simulate: top: #fpga: the project \'ug\' is not a System project');
+});

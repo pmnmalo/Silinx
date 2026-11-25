@@ -21,6 +21,7 @@ import { relInNode } from '/core/system-layout.js';
 import { systemsOn, SYSTEMS_OFF } from '/core/build-channel.js';
 import { checkSystem, analyzeSystem } from '/core/system-check.js';
 import { systemInputs } from '/core/system-run.js';
+import { emulateNodesOf } from '/core/system-alone.js';
 import { regmapFor, hierModules } from '/core/regmap.js';
 import { mountSystemSim } from './system-sim-view.js';
 import { openSystemWaves } from './system-waves-view.js';
@@ -115,7 +116,8 @@ export async function openSystem(path) {
         mountSim: (host, o) => mountSystemSim(host, { ...o, prepare: prepareHere, onMessage: (text, level) => log(text, level), openWaves: openSystemWaves }),
         // (Emulate: the System Emulator, its own document, #5212)
         wires: projectWires,   // (Wiring, #5216)
-        onEmulate: async () => (await import('./system-emu-open.js')).openSystemEmulator(path, () => ed.getModel()),
+        // (the nodes its Emulation Properties tick, #5581)
+        onEmulate: async () => (await import('./system-emu-open.js')).openSystemEmulator(path, () => ed.getModel(), { nodes: emulateNodesOf(S.project, ed.getModel()) }),
       });
       d.systemEditor = ed;
       let saved = r.system;   // (as last saved: its nodes' folders follow it, #5488)
@@ -146,6 +148,6 @@ export function systemContextMenu(e, file) {
   popupMenu([
     { label: 'Open', action: () => openSystem(file) },
     { label: 'Check System', action: async () => { await openSystem(file); findDoc(`sys:${file}`)?.checkSystem?.(); } },
-    { label: 'Emulate System', action: async () => (await import('./system-emu-open.js')).openSystemEmulator(file) },
+    { label: 'Emulate System', action: async () => (await import('./system-emulate-ui.js')).emulateSystem() },
   ], e.clientX, e.clientY);
 }
