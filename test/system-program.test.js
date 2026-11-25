@@ -4,7 +4,7 @@
 // chosen by hand), their exact lines; a programmer's option that picks the board by its serial number.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { programSteps, stepLine, toolBoard, deviceByKey } from '../core/system-program.js';
+import { programSteps, stepLine, toolBoard, deviceByKey, programRefusal } from '../core/system-program.js';
 import { matchBoards } from '../core/system-usb.js';
 
 const FPGA = { id: 'fpga', kind: 'fpga', module: 'uart', board: 'basys2', variant: '250', pins: { tx: 'A3' }, interfaces: [] };
@@ -47,6 +47,15 @@ test('#5489 the refusals and warnings: no board, two boards, not built, out of d
   // (an Uno seen by the system with no serial port: arduino-cli's list did not give one)
   const [, np] = steps([ADEPT, { ...UNO_A, port: undefined }]);
   assert.equal(np.refused, 'its board (USB 2341:0043, serial A1) has no serial port: arduino-cli\'s board list does not see it');
+});
+
+test('#5581 programRefusal: why a plan\'s entry is not programmed (the Implement tree\'s tip of a disabled Program Node), or null', () => {
+  assert.equal(programRefusal({ programmer: 'pickit', image: 'pic/blink.hex' }), 'a PIC24 is not programmed by Silinx yet: load its pic/blink.hex with MPLAB IPE');
+  assert.equal(programRefusal({ programmer: 'pickit', image: null }), 'a PIC24 is not programmed by Silinx yet: load its .hex with MPLAB IPE');
+  assert.equal(programRefusal({ programmer: 'repl' }), 'a MicroPython node is not programmed by Silinx yet: copy its .py files with mpremote');
+  assert.equal(programRefusal({ programmer: null, state: 'nothing to build' }), 'it has nothing to program (nothing to build)');
+  assert.equal(programRefusal({ programmer: 'jtag', state: 'up to date' }), null);
+  assert.equal(programRefusal({ programmer: 'avrdude', state: 'out of date' }), null, 'programmed, warned');
 });
 
 test('#5489 a board chosen by hand: by its serial number or its port, in place of the match; one not connected, refused', () => {

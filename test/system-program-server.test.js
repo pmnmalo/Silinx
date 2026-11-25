@@ -131,6 +131,17 @@ test('#5489 the refusals: an untrusted project, no such node, a node not built; 
   await assert.rejects(tool.run({ project: 'mc', connected: 'A1' }), { message: 'connected: the board of a System node (node)' });
 });
 
+test('#5581 the Implement tree\'s, by the MCP: each node\'s plan state (its mark) by check_system; the PIC24\'s Program Node refused, its tip\'s text', { skip: POSIX_ONLY }, async () => {
+  await P.createProject({ name: 'pic', template: 'uart-pic24' });
+  const sys = await TOOLS.find(t => t.name === 'check_system').run({ project: 'pic', file: 'uart_pic24.sys.json' });
+  assert.deepEqual(sys.data.plan.nodes.map(e => [e.id, e.state]), [['fpga', 'not built'], ['pic', 'given']]);
+  boards([ADEPT], []);
+  const r = await TOOLS.find(t => t.name === 'program_board').run({ project: 'pic', node: 'pic' });
+  assert.equal(r.isError, true);
+  assert.deepEqual(r.data.errors, ['System node pic: not programmed: a PIC24 is not programmed by Silinx yet: load its pic/lcd_uart.hex with MPLAB IPE', 'the System node(s) pic not programmed']);
+  assert.deepEqual(r.data.warnings, []);
+});
+
 test('#5489 openFPGALoader\'s board by its FTDI serial number; one that is no value refused', async () => {
   const prog = await import('../server/programmer.js');
   assert.deepEqual(prog.buildCommands('program', { tool: 'openFPGALoader', cable: 'digilent_hs2', ftdiSerial: '210183A', position: 0, bitfile: '/w/a.bit' }),

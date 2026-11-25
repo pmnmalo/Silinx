@@ -35,6 +35,7 @@ import { runState } from './state-run.js';
 import { systemProcesses } from './system-processes.js';
 import { systemEmulateProcesses } from './system-emulate-ui.js';
 import { systemSimulateProcesses } from './system-simulate-ui.js';
+import { systemImplementProcesses } from './system-implement-tree.js';
 import { systemTop } from './design-system.js';
 import { panes } from './state-panes.js';
 import { filesState } from './state-files.js';
@@ -174,9 +175,18 @@ function drawProcesses() {
   $('proc-caption').textContent = `Processes: ${sel.module || (sel.file ? sel.file.split('/').pop() : '')}`;
   // Implement with no top module: no processes, not even the Design Summary (#1287); why the list is empty, and a button to
   // set one (#1224)
-  const noTop = implTop() && S.project && !S.project.top;
-  renderProcessTree(host, noTop ? [] : processDefs(sel, view));
+  // (a System project's: its System's and its nodes' tree, #5581's part 4: web/js/system-implement-tree.js)
+  const implSys = implTop() && systemTop() ? systemImplementProcesses() : null;
+  const noTop = !implSys && implTop() && S.project && !S.project.top;
+  renderProcessTree(host, implSys || (noTop ? [] : processDefs(sel, view)));
   if (noTop) host.append(noTopNote());
+  // (its bar: Build All and Program All, the System's, #5581's part 4; web/js/tasks.js runs them)
+  const ibar = document.getElementById('task-impl-bar');
+  if (ibar) {
+    ibar.dataset.system = implSys ? '1' : '';
+    ibar.querySelector('[data-act=pins]').textContent = implSys ? 'Build All' : 'I/O Pin Planning';
+    ibar.querySelector('[data-act=program]').textContent = implSys ? 'Program All' : 'Program FPGA';
+  }
   // (Emulate's list in the Tasks interface: the states and the selection the same, #1204)
   // (with no top module, why the list is empty and Set Top Module…, as Implement's, #1422)
   // (a System project's: its System's and its nodes' tree, #5581: web/js/system-emulate-ui.js)
@@ -225,14 +235,14 @@ function renderProcessTree(host, defs) {
   const tree = h('ul', { class: 'tree' });
   const add = (ul, p) => {
     const li = h('li', { 'data-proc': p.id || null });   // (the Tasks interface leaves other tasks' groups out of Implement: #923)
-    const st = procState.status[p.id];
+    const st = p.status !== undefined ? p.status : procState.status[p.id];   // (a System node's: its build plan's state, #5581)
     // collapsed groups are remembered: the panel is redrawn on every status change
     const key = p.id || p.label;
     const collapsed = panes.procCollapsed.has(key);
     const group = !!p.children?.length;
     const tw = h('span', { class: 'twisty' }, group ? (collapsed ? '▸' : '▾') : '');
     const isSel = panes.selProc?.id === p.id && panes.selProc?.label === p.label;
-    const row = h('div', { class: `row${p.disabled ? ' disabled' : ''}${isSel ? ' sel' : ''}`, ...(p.title ? { title: p.title } : {}) }, tw, h('span', { class: 'status', html: st ? icons[STATUS_ICON[st]] : '' }), icon(p.ico || 'process'), h('span', { class: 'lbl' }, p.label));
+    const row = h('div', { class: `row${p.disabled ? ' disabled' : ''}${isSel ? ' sel' : ''}`, ...(p.title ? { title: p.title } : {}) }, tw, h('span', { class: 'status', 'data-status': st || null, html: st ? icons[STATUS_ICON[st]] : '' }), icon(p.ico || 'process'), h('span', { class: 'lbl' }, p.label));
     const sub = h('ul');
     if (collapsed) sub.style.display = 'none';
     li.append(row, sub);

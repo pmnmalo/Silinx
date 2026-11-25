@@ -143,6 +143,10 @@ export const SYSTEM_PT_PATTERNS = [
   // (the Emulate task's tree, #5581: a node's firmware and circuit, the System's row, a terminal's; what runs)
   [/^(\S+) \(System\)$/, '$1 (Sistema)'], [/^(\S+) \(terminal\)$/, '$1 (terminal)'],
   [/^(\S+) runs with the nodes it is linked to$/, '$1 corre com os nós a que está ligado'],
+  // (the Implement task's tree, #5581's part 4: a firmware given, a node Silinx does not program yet)
+  [/^Firmware: (\S+)$/, 'Firmware: $1'], [/^(\S+): its firmware (\S+), made outside Silinx: nothing to build$/, '$1: o seu firmware $2, feito fora do Silinx: nada a construir'],
+  [/^(\S+): a PIC24 is not programmed by Silinx yet: load its (\S+) with MPLAB IPE$/, '$1: um PIC24 ainda não é programado pelo Silinx: carregue o seu $2 com o MPLAB IPE'],
+  [/^(\S+): a MicroPython node is not programmed by Silinx yet: copy its \.py files with mpremote$/, '$1: um nó MicroPython ainda não é programado pelo Silinx: copie os seus ficheiros .py com o mpremote'],
   [/^Emulation Properties: Emulate System runs (every node|.+?)(; (.+))?$/, (m, w, x, models) => `Propriedades da Emulação: Emular o Sistema corre ${w === 'every node' ? 'todos os nós' : w}${models ? `; ${models.replace(/(\S+) on its (.+?) model/g, (y, id, mo) => `${id} no seu modelo ${{ 'Behavioral (RTL)': 'Comportamental (RTL)', 'Post-Synthesis': 'Pós-Síntese', 'Post-Translate': 'Pós-Translate', 'Post-Map': 'Pós-Map', 'Post-Place & Route': 'Pós-Place & Route' }[mo] ?? mo}`)}` : ''}`],
   // (an FPGA node's model, #5612)
   [/^(Emulate System|Emulate Node \S+): (\S+)'s (.+) model is not made yet: its flow makes it first\.$/, '$1: o modelo $3 de $2 ainda não está feito: o seu fluxo fá-lo primeiro.'],

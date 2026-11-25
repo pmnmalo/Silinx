@@ -701,6 +701,20 @@ in its build's folder (its description and its sources' hashes, taken when it st
   or a port). The browser edition says a System's boards are programmed by the local server (its nodes are built
   there). Not done: the microcontrollers leaving reset together (each upload resets its own board).
 
+
+**The Implement task** of a System project (#5581's part 4, `web/js/system-implement-tree.js`), in the Silinx interface,
+shows the System's tree where it said "No top module is set":
+
+- the System's row: Build Plan, Connected Boards, Build All and Program All;
+- a row per node of the plan, the FPGA nodes first, its plan's state its mark (✓ up to date or given, ! out of date) and
+  its plan's line its tip;
+- an FPGA node's User Constraints, Synthesize, Implement Design, Generate Programming File (its build) and Program Node;
+- an Arduino node's Compile Firmware (its build; its firmware, when it is given) and Program Node;
+- a PIC24 node's firmware (given) and a MicroPython node's Program Node disabled, its tip why (MPLAB IPE, mpremote);
+- the bar: Build All and Program All.
+
+The ISE style's Processes panel has the same on the System's and the nodes' rows. The MCP's: `check_system`'s `plan`
+(each node's state), `run_process` (`build`, `firmware`, a flow's steps with `node`) and `program_board` with `node`.
 **The boards by their USB id** (#5489's part 2, `core/system-usb.js`). Each FPGA and microcontroller node is matched to
 a board connected to the computer by its USB id:
 
@@ -764,7 +778,7 @@ boards show since the last.
   Emulate Node;
 - the bar: Emulate System.
 
-The ISE style's Processes panel has the same on the System's and the nodes' rows. Simulate and Implement get the same
+The ISE style's Processes panel has the same on the System's and the nodes' rows. Simulate and Implement have the same
 kind of tree (#5581's parts 3 and 4). An FPGA node's User Constraints (a `.ucf` in its folder) are part 2.
 
 **Its toolbar** (#5613) has the Board Emulator's controls that a System has, laid out as [UI-GUIDELINES.md](UI-GUIDELINES.md)

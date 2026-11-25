@@ -8,12 +8,16 @@
 // Properties tick, a node's Emulate Node that node alone (#5581).
 import { findDoc } from './app.js';
 import { openSystem } from './system-open.js';
-import { systemTop } from './design-system.js';
+import { systemTop, shownSystem } from './design-system.js';
 import { openView } from './drawings.js';
 import { firmwareRefusal } from '/core/avr-compile.js';
 import { RUN_KINDS } from '/core/system-alone.js';
 import { nodeConstraintsProcs } from './system-constraints-ui.js';
 import { nodeModelProcs } from './system-emulate-ui.js';
+import { unprogrammed } from './system-implement-tree.js';
+
+// the node of a node's row, as its System describes it
+const nodeOf = sel => shownSystem()?.system?.nodes.find(n => n.id === sel.node) || { id: sel.node, kind: sel.kind, board: sel.board, lang: sel.lang };
 
 // a node's (or the System's, '*') implementation on its own board, #5446: web/js/system-implement-ui.js
 const impl = (node, steps, label) => async () => (await import('./system-implement-ui.js')).runNodeImpl(node, steps, label);
@@ -69,6 +73,8 @@ export function systemProcesses(sel, view, { check, rtl }) {
       // (its .hex by arduino-cli upload on its board, #5489)
       { id: 'node-program', label: 'Program Node', ico: 'board', run: program(sel.node) },
     ] : []),
+    // (a PIC24's or a MicroPython node's: not programmed by Silinx yet, said why, #5581's part 4)
+    ...(sel.kind === 'mcu' && unprogrammed(nodeOf(sel)) ? [{ id: 'node-program', label: 'Program Node', ico: 'board', disabled: true, title: unprogrammed(nodeOf(sel)) }] : []),
     // (the node alone in the System Emulator, #5581; a terminal runs with what it is linked to)
     // (the node alone in the System editor's Try it panel, #5581)
     ...(RUN_KINDS.includes(sel.kind) ? [{ id: 'node-simulate', label: 'Simulate Node', ico: 'sim', run: async () => (await import('./system-simulate-ui.js')).simulateNode(sel.file, sel.node) }] : []),
