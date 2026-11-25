@@ -2,7 +2,7 @@
 // vectors, 2-D), records, constants, aliases and the predefined attributes (IEEE 1076-2008 §5, §16.2).
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { out, outW, vproc, vhd, sim, diags } from './lang-util.js';
+import { out, outW, vproc, vhd, sim, diags, warningsOf } from './lang-util.js';
 
 test('integer, natural, positive and ranged subtypes: defaults are the left bound', () => {
   const r = out(vproc(`
@@ -444,4 +444,16 @@ begin process begin report integer'image(g(100)); report integer'image(f(1)); wa
   const wr = sim(`entity tb is end tb; architecture a of tb is signal s : string(1 to 2) := "ab"; begin
 process begin s(3) <= 'x'; wait for 1 ns; report "after"; wait; end process; end a;`, 'tb', { allowErrors: true });
   assert.deepEqual(wr.lines, ['0 error index 3 out of range for a string of length 2', '0 note simulation finished ($error) at 0 ns']);
+});
+
+// (the Verilog time variable's case, #5467: VHDL's time is 64 bits already, kept so)
+test('time values over 2^32 ps: multiplied, compared, divided, a wait (#5467)', () => {
+  const res = sim(vproc(`
+    t := 3000 ns * 1000000;
+    report time'image(t) & " " & boolean'image(t > 4294967296 ps) & " " & integer'image(t / 1 ns);
+    wait for t;
+    report time'image(now) & " " & boolean'image(now = t);`,
+  `variable t : time;`), 'tb', { until: 1e13 });
+  assert.deepEqual(res.out, ['3000000 us true 3000000000', '3000000 us true']);
+  assert.deepEqual(warningsOf(res), []);
 });
