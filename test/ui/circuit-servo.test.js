@@ -50,7 +50,7 @@ const CIRC = { format: 'silinx-circuit', version: 1, name: 'bench', lang: 'vhdl'
   wires: [{ id: 'g', points: [uno('GND'), [30, 30]], color: 'black' }, { id: 'v', points: [uno('5V'), [31, 30]], color: 'red' }, { id: 's', points: [uno('D9'), [32, 30]], color: 'blue' }] };
 const PROG = ['ldi r16, 0x9c', 'sts 0x87, r16', 'ldi r16, 0x3f', 'sts 0x86, r16', 'ldi r16, 0x0f', 'sts 0x89, r16', 'ldi r16, 0x9f', 'sts 0x88, r16',
   'ldi r16, 0x82', 'sts 0x80, r16', 'ldi r16, 0x1a', 'sts 0x81, r16', 'ldi r16, 0x02', 'out 0x04, r16', 'end:', 'rjmp end'];
-const SYS = JSON.stringify({ format: 'silinx-system', version: 1, name: 'emu', nodes: [
+const SYS = JSON.stringify({ format: 'silinx-system', version: 2, name: 'emu', nodes: [
   { id: 'uno', kind: 'mcu', board: 'arduino-uno', firmware: 'fw/servo.hex', interfaces: [], x: 0, y: 0 },
   { id: 'bench', kind: 'circuit', circuit: 'src/bench.circ.json', interfaces: [], x: 300, y: 0 }], links: [] }, null, 2);
 

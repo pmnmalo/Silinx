@@ -1,13 +1,13 @@
 {
   "format": "silinx-system",
-  "version": 1,
+  "version": 2,
   "name": "regs_avr",
   "nodes": [
     {
       "id": "uno",
       "kind": "mcu",
       "board": "arduino-uno",
-      "firmware": "firmware/regs.hex",
+      "firmware": "uno/regs.hex",
       "lang": "c",
       "interfaces": [
         {

@@ -50,7 +50,7 @@ uiTest('#5215 a release: the Circuit editor\'s Parts panel has no Boards (the Sy
 });
 
 uiTest('#5202 a release: a System project\'s System not shown, its .sys.json opened refused in the console', E, async (page) => {
-  const sys = JSON.stringify({ format: 'silinx-system', version: 1, name: 'cd', nodes: [], links: [] }, null, 2);
+  const sys = JSON.stringify({ format: 'silinx-system', version: 2, name: 'cd', nodes: [], links: [] }, null, 2);
   await makeProject(env, { name: 'CdRel', template: 'uart', files: { 'cd.sys.json': sys } });
   const pj = await env.server.api('GET', '/api/projects/CdRel');
   delete pj.fileTree;

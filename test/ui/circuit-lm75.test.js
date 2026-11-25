@@ -59,7 +59,7 @@ uiTest('#5342 Circuit editor: the LM75\'s + and − in Try it, its OS lighting a
 }, { timeout: 180000 });
 
 const EMU = '.doc:not([hidden]) .sys-emu';
-const SYS = JSON.stringify({ format: 'silinx-system', version: 1, name: 'emu', nodes: [
+const SYS = JSON.stringify({ format: 'silinx-system', version: 2, name: 'emu', nodes: [
   { id: 'term', kind: 'terminal', interfaces: [{ name: 'serial', kind: 'uart', baud: 9600, frame: '8N1' }], x: 0, y: 0 },
   { id: 'bench', kind: 'circuit', circuit: 'src/temp.circ.json', interfaces: [], x: 300, y: 0 }], links: [] }, null, 2);
 

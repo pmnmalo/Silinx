@@ -109,7 +109,7 @@ test('#5476 an Arduino stepping the motor on D8..D11, 512 half steps 2 ms apart,
   // PB0..PB3 outputs; 64 times the 8 half steps (AB first: each a step), 2 ms apart
   const prog = ['ldi r16, 0x0f', 'out 0x04, r16', 'ldi r21, 64', 'cyc:', ...[3, 2, 6, 4, 12, 8, 9, 1].flatMap((b) => [`ldi r16, ${b}`, 'out 0x05, r16', 'rcall wait']), 'dec r21', 'brne cyc',
     'end:', 'rjmp end', 'wait:', 'ldi r19, 42', 'wa:', 'ldi r20, 255', 'wb:', 'dec r20', 'brne wb', 'dec r19', 'brne wa', 'ret'];
-  const sys = normalizeSystem({ format: 'silinx-system', version: 1, name: 's', nodes: [{ id: 'uno', kind: 'mcu', board: 'arduino-uno', firmware: 'fw/step.hex', interfaces: [] },
+  const sys = normalizeSystem({ format: 'silinx-system', version: 2, name: 's', nodes: [{ id: 'uno', kind: 'mcu', board: 'arduino-uno', firmware: 'fw/step.hex', interfaces: [] },
     { id: 'bench', kind: 'circuit', circuit: 'src/bench.circ.json', interfaces: [] }], links: [] });
   const inputs = await systemInputs(sys, { firmware: async () => intelHex(avrAssemble(prog)), circuit: async () => JSON.stringify(circ), netlist: () => null });
   const r = systemFromInputs(sys, inputs);

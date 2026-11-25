@@ -135,7 +135,7 @@ test('#5456 an Arduino triggering the sensor on D8 and timing its echo on D7 wit
     'ldi r16, 0x01', 'out 0x05, r16', 'ldi r17, 70', 'trig:', 'dec r17', 'brne trig', 'ldi r16, 0x00', 'out 0x05, r16',
     'rise:', 'in r16, 0x09', 'sbrs r16, 7', 'rjmp rise', 'ldi r16, 0x00', 'sts 0x85, r16', 'sts 0x84, r16',
     'fall:', 'in r16, 0x09', 'sbrc r16, 7', 'rjmp fall', 'lds r24, 0x84', 'lds r25, 0x85', 'sts 0x100, r24', 'sts 0x101, r25', 'end:', 'rjmp end'];
-  const sys = normalizeSystem({ format: 'silinx-system', version: 1, name: 's', nodes: [{ id: 'uno', kind: 'mcu', board: 'arduino-uno', firmware: 'fw/sonar.hex', interfaces: [] },
+  const sys = normalizeSystem({ format: 'silinx-system', version: 2, name: 's', nodes: [{ id: 'uno', kind: 'mcu', board: 'arduino-uno', firmware: 'fw/sonar.hex', interfaces: [] },
     { id: 'bench', kind: 'circuit', circuit: 'src/bench.circ.json', interfaces: [] }], links: [] });
   const inputs = await systemInputs(sys, { firmware: async () => intelHex(avrAssemble(prog)), circuit: async () => JSON.stringify(circ), netlist: () => null });
   const r = systemFromInputs(sys, inputs);

@@ -1,13 +1,13 @@
 {
   "format": "silinx-system",
-  "version": 1,
+  "version": 2,
   "name": "spi_avr",
   "nodes": [
     {
       "id": "uno",
       "kind": "mcu",
       "board": "arduino-uno",
-      "firmware": "firmware/spi.hex",
+      "firmware": "uno/spi.hex",
       "lang": "c",
       "interfaces": [
         {

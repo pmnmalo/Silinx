@@ -268,6 +268,14 @@ board, device, top module and constraints) and no link. The MCP's `project_info`
   language** (`lang`, #5488): VHDL or Verilog for an FPGA or a design node, C, C++ or MicroPython for a microcontroller,
   its kind's default when not given (VHDL, C). Its folder is named by its id (`core/system-layout.js`: the node's
   paths, the traversals refused, what mixes in a node: VHDL with Verilog, C with C++ and assembly).
+- **A node is a folder** (#5488, the document's version 2): its files (an FPGA node's modules, a microcontroller's
+  firmware, a circuit) in `<id>/`, the System document at the project's root; the edits refuse a firmware or a circuit
+  outside its node's folder. A node renamed renames its folder when the System is saved (the System editor's and the
+  MCP's `edit_system`, its files' entries and the drawings' links following); a node removed asks whether its folder
+  goes (to the workspace's `.trash`; the MCP's `delete_folders`), else it is kept. A folder is a path's, in every store
+  (git's and a zip's too): a new node has none until its first file. An FPGA node is built from its folder alone
+  (`build/nodes/<id>/`). A System document of version 1 (its files in `src/` and `firmware/`) is not read: no backward
+  compatibility (roadmap #5479); opening its project says so in the console.
 - **A System project has no `board` of its own.** Each FPGA node is a module of the System project itself (HDL
   or a drawing), names its own board and pins, and is built with the flow of that board's family.
 
@@ -330,11 +338,11 @@ that joins nothing (a warning).
 The format (version 1):
 
 ```json
-{ "format": "silinx-system", "version": 1, "name": "uart_avr",
+{ "format": "silinx-system", "version": 2, "name": "uart_avr",
   "nodes": [
-    { "id": "fpga", "kind": "fpga", "module": "uart", "board": "basys2", "variant": "250", "pins": { "rx": "J3", "tx": "A3" },
+    { "id": "fpga", "kind": "fpga", "module": "uart", "board": "basys2", "variant": "250", "pins": { "rx": "J3", "tx": "A3" }, "lang": "vhdl",
       "interfaces": [{ "name": "uart", "kind": "uart", "tx": "tx", "rx": "rx", "baud": 9600, "frame": "8N1" }], "x": 0, "y": 0 },
-    { "id": "uno", "kind": "mcu", "board": "arduino-uno", "firmware": "firmware/echo.hex",
+    { "id": "uno", "kind": "mcu", "board": "arduino-uno", "firmware": "uno/echo.hex", "lang": "c",
       "interfaces": [{ "name": "Serial", "kind": "uart", "baud": 9600, "frame": "8N1" },
                      { "name": "btn", "kind": "gpio", "pins": ["D2"], "dir": "in" }], "x": -200, "y": 0 },
     { "id": "term", "kind": "terminal", "interfaces": [{ "name": "serial", "kind": "uart", "baud": 9600, "frame": "8N1" }], "x": 0, "y": 200 } ],

@@ -117,7 +117,7 @@ test('#5347 an Arduino\'s Timer1 PWM on D9 (fast PWM, 20 ms, 2 ms pulses) moving
   // Timer1: fast PWM to ICR1 (mode 14), prescaler 8 (2 MHz), ICR1 39999 (20 ms), OCR1A 3999 (2 ms), OC1A (D9) an output
   const prog = ['ldi r16, 0x9c', 'sts 0x87, r16', 'ldi r16, 0x3f', 'sts 0x86, r16', 'ldi r16, 0x0f', 'sts 0x89, r16', 'ldi r16, 0x9f', 'sts 0x88, r16',
     'ldi r16, 0x82', 'sts 0x80, r16', 'ldi r16, 0x1a', 'sts 0x81, r16', 'ldi r16, 0x02', 'out 0x04, r16', 'end:', 'rjmp end'];
-  const sys = normalizeSystem({ format: 'silinx-system', version: 1, name: 's', nodes: [{ id: 'uno', kind: 'mcu', board: 'arduino-uno', firmware: 'fw/servo.hex', interfaces: [] },
+  const sys = normalizeSystem({ format: 'silinx-system', version: 2, name: 's', nodes: [{ id: 'uno', kind: 'mcu', board: 'arduino-uno', firmware: 'fw/servo.hex', interfaces: [] },
     { id: 'bench', kind: 'circuit', circuit: 'src/bench.circ.json', interfaces: [] }], links: [] });
   assert.deepEqual(analyzeSystem(sys, { modules: {}, files: ['fw/servo.hex', 'src/bench.circ.json'], circuits: { 'src/bench.circ.json': circ } }).diags, [], 'checked: no warnings');
   const inputs = await systemInputs(sys, { firmware: async () => intelHex(avrAssemble(prog)), circuit: async () => JSON.stringify(circ), netlist: () => null });

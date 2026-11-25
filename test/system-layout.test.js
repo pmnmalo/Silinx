@@ -4,7 +4,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { NODE_LANGS, nodeLangs, baseLang, langError, langMixes, sourceLang, relPathError, nodeDir, nodePath, nodeOfPath,
-  relInNode, renamedPath, nodeFilesOf, groupByNode } from '../core/system-layout.js';
+  relInNode, renamedPath, nodeFilesOf, groupByNode, layoutPlan } from '../core/system-layout.js';
 import { NODE_KINDS } from '../core/system-doc.js';
 
 test('#5488 a node\'s folder: its id; a file\'s path in it; ids and names that would leave it refused', () => {
@@ -78,4 +78,21 @@ test('#5488 languages mix in a node only where the toolchain joins them; a sourc
   const by = { 'a.vhd': 'vhdl', 'a.VHDL': 'vhdl', 'a.v': 'verilog', 'a.sv': 'verilog', 'a.c': 'c', 'a.h': 'c', 'a.cpp': 'cpp', 'a.ino': 'cpp',
     'a.hpp': 'cpp', 'a.asm': 'asm', 'a.S': 'asm', 'main.py': 'micropython', 'a.hex': null, 'a.sch.json': null, 'a.ucf': null };
   for (const [p, l] of Object.entries(by)) assert.equal(sourceLang(p), l, p);
+});
+
+test('#5488 a System saved: its nodes\' folders renamed with them (a chain of renames one), a removed node\'s said; a rename undone or reused nothing', () => {
+  const sys = (...ids) => ({ nodes: ids.map(id => ({ id })) });
+  assert.deepEqual(layoutPlan(sys('fpga', 'uno'), sys('fpga', 'uno')), { renames: [], removed: [] });
+  assert.deepEqual(layoutPlan(sys('fpga', 'uno'), sys('top', 'uno'), [{ from: 'fpga', to: 'top' }]), { renames: [{ from: 'fpga', to: 'top' }], removed: [] });
+  assert.deepEqual(layoutPlan(sys('fpga'), sys('c'), [{ from: 'fpga', to: 'b' }, { from: 'b', to: 'c' }]), { renames: [{ from: 'fpga', to: 'c' }], removed: [] });
+  // (undone: back to its name, or the editor's undo leaving the old id)
+  assert.deepEqual(layoutPlan(sys('fpga'), sys('fpga'), [{ from: 'fpga', to: 'b' }, { from: 'b', to: 'fpga' }]), { renames: [], removed: [] });
+  assert.deepEqual(layoutPlan(sys('fpga'), sys('fpga'), [{ from: 'fpga', to: 'b' }]), { renames: [], removed: [] });
+  // (its old id a new node's: no rename, the renamed one a new folder)
+  assert.deepEqual(layoutPlan(sys('fpga'), sys('fpga', 'b'), [{ from: 'fpga', to: 'b' }]), { renames: [], removed: [] });
+  // (a case changed: renamed)
+  assert.deepEqual(layoutPlan(sys('fpga'), sys('FPGA'), [{ from: 'fpga', to: 'FPGA' }]), { renames: [{ from: 'fpga', to: 'FPGA' }], removed: [] });
+  assert.deepEqual(layoutPlan(sys('fpga', 'uno', 'term'), sys('fpga2'), [{ from: 'fpga', to: 'fpga2' }]), { renames: [{ from: 'fpga', to: 'fpga2' }], removed: ['uno', 'term'] });
+  assert.deepEqual(layoutPlan(sys(), sys('fpga')), { renames: [], removed: [] });
+  assert.deepEqual(layoutPlan(null, null), { renames: [], removed: [] });
 });

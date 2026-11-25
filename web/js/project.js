@@ -8,7 +8,7 @@ import { PRODUCT, VERSION_LABEL } from '/core/version.js';
 import { isTrusted, untrustedNotice } from '/core/trust.js';
 import { S, closeAllDocs, compileProject, renderFilesPage, renderLibsPage, showLeftPage, fixMissingTops,
   restoreViewState, openSummary } from './app.js';
-import { appLog, commandError, log, logWarning, renderDiagnostics, trustAction } from './console.js';
+import { appLog, commandError, log, logError, logWarning, renderDiagnostics, trustAction } from './console.js';
 import { newerProject } from '/core/doc-format.js';
 import { drawingsAsBase, adoptDrawnHdl, drawnHdlClashes } from './drawings.js';
 import { renderProcesses, restoreImplStatus, reservedNameDiags } from './processes.js';
@@ -93,6 +93,9 @@ async function openProjectNow(name, { startup = false } = {}) {
   // (the browser edition: a project kept only in the browser's storage and not backed up for days, said once, #4971)
   if (api.standalone) import('./backup-reminder.js').then(m => m.remindBackup(name)).catch(() => {});
   warnReservedNames();
+  // (a System project whose System cannot be read, said: one made before its nodes were folders, #5488, or damaged)
+  const sysError = (await import('./design-system.js')).systemProblem();
+  if (sysError) logError(sysError);
   // (saved by a newer Silinx: said, #4756, core/doc-format.js)
   const newer = newerProject(S.project);
   if (newer) logWarning(newer);

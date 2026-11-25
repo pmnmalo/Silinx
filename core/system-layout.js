@@ -111,3 +111,28 @@ export function groupByNode(files, ids) {
   }
   return { root, nodes };
 }
+
+/** A node's renames chained ([{ from, to }] in the order its edits made them: a → b, b → c is a → c). */
+function chained(renames) {
+  const chain = new Map();   // its id when saved -> its id now
+  for (const { from, to } of renames) {
+    const origin = [...chain].find(([, now]) => now === from)?.[0] ?? from;
+    chain.set(origin, to);
+  }
+  return chain;
+}
+
+/**
+ * What saving a System does to its nodes' folders (#5488): { renames: [{ from, to }] (a node's folder renamed with it),
+ * removed: [id] (a removed node's folder, deleted when the user says so) }, from the System as it was saved (`before`),
+ * as it is (`after`) and the renames its edits made since ([{ from, to }], in order). A rename undone, or whose old id
+ * is a node's again, renames nothing; a node added has no folder until its first file (folders are a path's, in every
+ * store: git's and a zip's too).
+ */
+export function layoutPlan(before, after, renames = []) {
+  const was = new Set((before?.nodes ?? []).map(n => n.id)), now = new Set((after?.nodes ?? []).map(n => n.id));
+  const out = [];
+  for (const [from, to] of chained(renames)) if (from !== to && was.has(from) && !now.has(from) && now.has(to) && !was.has(to)) out.push({ from, to });
+  const moved = new Set(out.map(r => r.from));
+  return { renames: out, removed: [...was].filter(id => !now.has(id) && !moved.has(id)) };
+}

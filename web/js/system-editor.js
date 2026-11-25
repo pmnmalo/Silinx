@@ -3,9 +3,9 @@
 //
 //   import { mountSystemEditor } from './system-editor.js';
 //   const ed = mountSystemEditor(container, { model, onChange(model), onProblems(diags), onCheck(diags), onMessage(text, isError),
-//     check(model) -> diags, modules() -> [name], portsOf(module) -> [{ name, dir }], firmwares() -> [path], circuits() -> [path], readOnly, banner,
+//     check(model) -> diags, modules() -> [name], portsOf(module) -> [{ name, dir }], firmwares(id) -> [path], circuits(id) -> [path] (a node's folder's, #5488), readOnly, banner,
 //     mountSim(host, { system() }) -> its simulation view (system-sim-view.js), wires(model) -> its wires (#5216) });
-//   ed.getModel(); ed.setModel(m); ed.undo(); ed.redo(); ed.canUndo(); ed.canRedo(); ed.fit(); ed.check(); ed.select({ kind, id });
+//   ed.getModel(); ed.renames() (its nodes renamed since ed.savedAs(), #5488); ed.setModel(m); ed.undo(); ed.redo(); ed.canUndo(); ed.canRedo(); ed.fit(); ed.check(); ed.select({ kind, id });
 //   ed.deleteSelection(); ed.canDelete(); ed.showSim(); ed.sim (its simulation view, open); ed.setView('system' | 'wiring');
 //   ed.view; ed.destroy();
 //
@@ -28,7 +28,7 @@ import { statusLine } from './status-line.js';
 import { onLayoutToggled } from './layout-fit.js';
 import { mountDockPanel } from './dock-panel.js';
 import { normalizeSystem, newSystem } from '/core/system-doc.js';
-import { addNode, changeNode, removeNode, removeLink, removeInterface, addLink } from '/core/system-edit.js';
+import { addNode, changeNode, removeNode, removeLink, removeInterface, addLink, freeId } from '/core/system-edit.js';
 import { mountSystemDraw, NODE_W, nodeHeight } from './system-draw.js';
 import { mountSystemSide } from './system-side.js';
 import { drawWiring } from './system-wiring.js';
@@ -47,6 +47,7 @@ export function mountSystemEditor(container, opts = {}) {
   let shown = 'system';                  // system | wiring (#5216)
   const readOnly = !!opts.readOnly;
   const hist = [JSON.stringify(M)];
+  let renames = [];                      // the nodes renamed since the System was saved ({ from, to }, in order, #5488)
   let hi = 0;
 
   container.innerHTML = '';
@@ -126,11 +127,18 @@ export function mountSystemEditor(container, opts = {}) {
   /** An edit's result taken ({ system }) and committed, or its error said in the console; whether it was taken. */
   function apply(r) {
     if (r.error) { status(r.error, true); render(); return false; }
+    noteRename(M, r.system);
     M = r.system;
     commit();
     return true;
   }
-  const restore = i => { hi = i; M = normalizeSystem(JSON.parse(hist[hi])); if (sel && !exists(sel)) sel = null; opts.onChange?.(normalizeSystem(M)); render(); };
+  // a node renamed (one id gone, one new, as many nodes), its folder renamed with it when saved (#5488, renames())
+  function noteRename(a, b) {
+    const was = a.nodes.map(n => n.id), now = b.nodes.map(n => n.id);
+    const gone = was.filter(id => !now.includes(id)), added = now.filter(id => !was.includes(id));
+    if (was.length === now.length && gone.length === 1 && added.length === 1) renames.push({ from: gone[0], to: added[0] });
+  }
+  const restore = i => { const was = M; hi = i; M = normalizeSystem(JSON.parse(hist[hi])); noteRename(was, M); if (sel && !exists(sel)) sel = null; opts.onChange?.(normalizeSystem(M)); render(); };
   const undo = () => { if (hi > 0) restore(hi - 1); };
   const redo = () => { if (hi < hist.length - 1) restore(hi + 1); };
   function setTool(t) { tool = t; linkFrom = null; drag = null; pressTool(tools, t, svg, 'sys-adding'); render(); }
@@ -142,7 +150,7 @@ export function mountSystemEditor(container, opts = {}) {
     render();
   }
   function placeNode(at) {
-    const r = addNode(M, { ...PLACE[tool], module: tool === 'fpga' ? (opts.modules?.() || [])[0] ?? null : null, circuit: tool === 'circuit' ? (opts.circuits?.() || [])[0] ?? null : null, x: snap(at.x - NODE_W / 2), y: snap(at.y - 20) });
+    const r = addNode(M, { ...PLACE[tool], module: tool === 'fpga' ? (opts.modules?.() || [])[0] ?? null : null, circuit: tool === 'circuit' ? (opts.circuits?.(freeId(M, 'circuit')) || [])[0] ?? null : null, x: snap(at.x - NODE_W / 2), y: snap(at.y - 20) });
     if (apply(r)) { sel = { kind: 'node', id: r.id }; setTool('select'); }
   }
   // the System's problems: its check after every change, said when they changed; Check's in the console's lines too
@@ -270,7 +278,8 @@ export function mountSystemEditor(container, opts = {}) {
   requestAnimationFrame(initialFit);
   return {
     getModel: () => normalizeSystem(M),
-    setModel(m) { M = normalizeSystem(m); hist.length = 0; hist.push(JSON.stringify(M)); hi = 0; sel = null; render(); },
+    renames: () => [...renames], savedAs: () => { renames = []; },
+    setModel(m) { M = normalizeSystem(m); renames = []; hist.length = 0; hist.push(JSON.stringify(M)); hi = 0; sel = null; render(); },
     undo, redo, canUndo: () => hi > 0, canRedo: () => hi < hist.length - 1,
     deleteSelection, canDelete: () => !readOnly && shown !== 'wiring' && !!sel,
     check, fit, refresh: () => render(),

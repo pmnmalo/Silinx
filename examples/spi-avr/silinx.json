@@ -13,7 +13,7 @@
   "simTop": "",
   "files": [
     {
-      "path": "src/spi_echo.vhd",
+      "path": "fpga/spi_echo.vhd",
       "lang": "vhdl",
       "role": "design"
     }

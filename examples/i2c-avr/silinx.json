@@ -13,7 +13,7 @@
   "simTop": "",
   "files": [
     {
-      "path": "src/i2c_leds.vhd",
+      "path": "fpga/i2c_leds.vhd",
       "lang": "vhdl",
       "role": "design"
     }

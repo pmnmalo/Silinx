@@ -13,12 +13,12 @@
   "simTop": "",
   "files": [
     {
-      "path": "src/pwm_regs.vhd",
+      "path": "fpga/pwm_regs.vhd",
       "lang": "vhdl",
       "role": "design"
     },
     {
-      "path": "src/pwm_top.vhd",
+      "path": "fpga/pwm_top.vhd",
       "lang": "vhdl",
       "role": "design"
     }

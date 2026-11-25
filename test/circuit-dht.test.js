@@ -161,7 +161,7 @@ test('#5470 an Arduino reading a DHT22 on D2 through a System: its start, the 40
     'ldi r16, 0x00', 'out 0x0a, r16', 'ldi r16, 0x02', 'sts 0x81, r16', ...high('rr'), ...low('r0'), ...high('r1'), ...low('r2'),
     ...Array.from({ length: 40 }, (_, i) => [...high(`h${i}`), 'ldi r16, 0x00', 'sts 0x85, r16', 'sts 0x84, r16', ...low(`l${i}`), 'lds r24, 0x84', 'lds r25, 0x85', `sts ${0x100 + i}, r24`]).flat(),
     'end:', 'rjmp end'];
-  const sys = normalizeSystem({ format: 'silinx-system', version: 1, name: 's', nodes: [{ id: 'uno', kind: 'mcu', board: 'arduino-uno', firmware: 'fw/dht.hex', interfaces: [] },
+  const sys = normalizeSystem({ format: 'silinx-system', version: 2, name: 's', nodes: [{ id: 'uno', kind: 'mcu', board: 'arduino-uno', firmware: 'fw/dht.hex', interfaces: [] },
     { id: 'bench', kind: 'circuit', circuit: 'src/bench.circ.json', interfaces: [] }], links: [] });
   const inputs = await systemInputs(sys, { firmware: async () => intelHex(avrAssemble(prog)), circuit: async () => JSON.stringify(circ), netlist: () => null });
   const r = systemFromInputs(sys, inputs);

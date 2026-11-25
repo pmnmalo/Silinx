@@ -29,9 +29,9 @@ async function call(name, args = {}) {
 test('#5414 project_info of a System project: its nodes, each with its board, module and files; a line of them', async () => {
   await P.createProject({ name: 'ua', template: 'uart-avr' });
   const r = await call('project_info', { project: 'ua' });
-  assert.deepEqual(r.data.nodes, [{ id: 'uno', kind: 'mcu', board: 'arduino-uno', module: null, lang: 'c', files: ['firmware/hello.hex'] },
+  assert.deepEqual(r.data.nodes, [{ id: 'uno', kind: 'mcu', board: 'arduino-uno', module: null, lang: 'c', files: ['uno/hello.hex'] },
     { id: 'fpga', kind: 'fpga', board: 'basys2', variant: '250', module: 'uart', lang: 'vhdl', files: [] }]);
-  assert.ok(r.text.split('\n').includes('  nodes: uno (mcu, arduino-uno: firmware/hello.hex); fpga (fpga, basys2: module uart)'), r.text);
+  assert.ok(r.text.split('\n').includes('  nodes: uno (mcu, arduino-uno: uno/hello.hex); fpga (fpga, basys2: module uart)'), r.text);
 });
 
 test('#5414 project_info of an FPGA project and of a design project: its one implicit node; no nodes line', async () => {
@@ -60,7 +60,7 @@ test('#5416 project_info\'s system: a System project\'s document, an FPGA projec
   const desc = fs.readFileSync(path.join(P.projectDir('bl'), 'silinx.json'), 'utf8');
   const bl = await call('project_info', { project: 'bl' });
   const pj = JSON.parse(desc);
-  assert.deepEqual(bl.data.system, { format: 'silinx-system', version: 1, name: 'bl', links: [], nodes: [{ id: 'fpga', kind: 'fpga', module: 'top', board: 'basys2', variant: '250',
+  assert.deepEqual(bl.data.system, { format: 'silinx-system', version: 2, name: 'bl', links: [], nodes: [{ id: 'fpga', kind: 'fpga', module: 'top', board: 'basys2', variant: '250',
     device: pj.device, constraints: 'constraints/top.ucf', lang: 'vhdl', pins: {}, interfaces: [], x: 0, y: 0, implicit: true }] });
   assert.deepEqual([fs.readdirSync(P.projectDir('bl'), { recursive: true }).sort(), fs.readFileSync(path.join(P.projectDir('bl'), 'silinx.json'), 'utf8')], [before, desc]);
   const dl = await call('project_info', { project: 'dl' });

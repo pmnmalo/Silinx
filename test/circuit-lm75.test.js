@@ -220,7 +220,7 @@ test('#5342 an Arduino\'s TWI reading the LM75 through a System\'s circuit node:
   const prog = ['ldi r16, 72', 'sts 0xb8, r16', 'ldi r16, 0xa4', 'rcall go', ...byte(0x90), ...byte(0), 'ldi r16, 0xa4', 'rcall go', ...byte(0x91),
     'ldi r16, 0xc4', 'rcall go', 'lds r19, 0xbb', 'ldi r16, 0x84', 'rcall go', 'lds r20, 0xbb', 'ldi r16, 0x94', 'sts 0xbc, r16', 'end:', 'rjmp end',
     'go:', 'sts 0xbc, r16', 'wait:', 'lds r18, 0xbc', 'sbrs r18, 7', 'rjmp wait', 'ret'];
-  const sys = normalizeSystem({ format: 'silinx-system', version: 1, name: 's', nodes: [{ id: 'uno', kind: 'mcu', board: 'arduino-uno', firmware: 'fw/lm75.hex', interfaces: [] },
+  const sys = normalizeSystem({ format: 'silinx-system', version: 2, name: 's', nodes: [{ id: 'uno', kind: 'mcu', board: 'arduino-uno', firmware: 'fw/lm75.hex', interfaces: [] },
     { id: 'bench', kind: 'circuit', circuit: 'src/bench.circ.json', interfaces: [] }], links: [] });
   assert.deepEqual(analyzeSystem(sys, { modules: {}, files: ['fw/lm75.hex', 'src/bench.circ.json'], circuits: { 'src/bench.circ.json': circ } }).diags, [], 'checked: no warnings');
   assert.deepEqual(checkCircuit(circ).map((x) => x.message), []);

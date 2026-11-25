@@ -71,7 +71,7 @@ shows the Arduino, and Silinx generates both sides:
 - **the FPGA's module**, named as the map, in VHDL or Verilog (the project's language), its registers behind an SPI
   slave (mode 0) or an I²C slave (at the map's address, SDA an inout port). Its HDL file is made from the map, as a
   drawing's: in the Design pane, the map's row has its **Registers** badge first;
-- **the Arduino's header**: the editor's **Header** button writes `firmware/<name>.h`, the registers' addresses and a
+- **the Arduino's header**: the editor's **Header** button writes `<node>/<name>.h` (the System's first microcontroller's folder), the registers' addresses and a
   `<name>_read_<register>()` and `<name>_write_<register>(v)` for each, through `SPI` or `Wire`.
 
 The editor is a table, a row for each register: its address (a register takes a byte address for each 8 bits, the least
@@ -119,9 +119,9 @@ The status line shows the time and how fast the boards run against real time.
 ## Try it: the uart-avr example
 
 1. New Project ▸ **System**, Start from **Example: uart-avr**, Finish. Its System opens: `uno` (an Arduino Uno with
-   `firmware/hello.hex`) linked by `serial` to `fpga` (the `uart` module on a Basys2).
+   `uno/hello.hex`) linked by `serial` to `fpga` (the `uart` module on a Basys2).
 2. **Try it**, then **Run 100 ms**. In the link inspector, `serial_uno` (the Arduino's TX to the FPGA's RX) shows
    `Hello from Arduino!` and `serial_fpga` (the FPGA's TX back) the same text: the FPGA echoes each byte.
 3. **Waves**: the Arduino's D1 and D0, the FPGA's rx and tx, and the two wires, over the 100 ms.
 
-The firmware's source is `firmware/hello.asm`: it sends its greeting, then shows each byte it receives on port B.
+The firmware's source is `uno/hello.asm`: it sends its greeting, then shows each byte it receives on port B.

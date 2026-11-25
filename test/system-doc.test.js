@@ -2,10 +2,10 @@
 // documents that are not a System; the microcontrollers' boards; a link's ends.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { readSystem, writeSystem, newSystem, normalizeSystem, isSystemFile, linkEnd, mcuBoard, MCU_BOARDS, SYSTEM_FORMAT, SYSTEM_VERSION } from '../core/system-doc.js';
+import { readSystem, writeSystem, newSystem, normalizeSystem, isSystemFile, linkEnd, mcuBoard, MCU_BOARDS, SYSTEM_FORMAT, SYSTEM_VERSION, OLD_SYSTEM } from '../core/system-doc.js';
 
 const UART_AVR = {
-  format: 'silinx-system', version: 1, name: 'uart_avr',
+  format: 'silinx-system', version: 2, name: 'uart_avr',
   nodes: [
     { id: 'fpga', kind: 'fpga', module: 'uart', board: 'basys2', variant: '250', pins: { rx: 'J3', tx: 'A3' }, lang: 'vhdl',
       interfaces: [{ name: 'uart', kind: 'uart', tx: 'tx', rx: 'rx', baud: 9600, frame: '8N1' }, { name: 'leds', kind: 'gpio', pins: ['led<0>'], dir: 'out' }], x: 100, y: 40 },
@@ -41,29 +41,32 @@ test('normalized: the missing fields given, a kind\'s fields only, in their orde
   // (an SPI bus's: its ports, its rate and mode, 125 kHz and 0 by default, #5214)
   assert.deepEqual(normalizeSystem({ nodes: [{ id: 'f', kind: 'fpga', interfaces: [{ name: 's', kind: 'spi', x: 1, sck: 'c' }] }] }).nodes[0].interfaces, [{ name: 's', kind: 'spi', sck: 'c', hz: 125000, mode: 0 }]);
   assert.deepEqual(newSystem('top'), { format: SYSTEM_FORMAT, version: SYSTEM_VERSION, name: 'top', nodes: [], links: [] });
-  assert.equal(writeSystem(newSystem('top')), '{\n  "format": "silinx-system",\n  "version": 1,\n  "name": "top",\n  "nodes": [],\n  "links": []\n}\n');
+  assert.equal(writeSystem(newSystem('top')), '{\n  "format": "silinx-system",\n  "version": 2,\n  "name": "top",\n  "nodes": [],\n  "links": []\n}\n');
 });
 
 test('#5488 a node\'s base language: its own kept, its kind\'s default when not given, none for a terminal or a circuit; one not its kind\'s refused', () => {
   const m = normalizeSystem({ nodes: [{ id: 'f', kind: 'fpga', lang: 'verilog' }, { id: 'm', kind: 'mcu', lang: 'micropython' }, { id: 'd', kind: 'design' },
     { id: 't', kind: 'terminal', lang: 'c' }, { id: 'c', kind: 'circuit' }] });
   assert.deepEqual(m.nodes.map(n => n.lang), ['verilog', 'micropython', 'vhdl', undefined, undefined]);
-  const doc = l => JSON.stringify({ format: 'silinx-system', version: 1, nodes: [{ id: 'f', kind: 'fpga', lang: l }] });
+  const doc = l => JSON.stringify({ format: 'silinx-system', version: 2, nodes: [{ id: 'f', kind: 'fpga', lang: l }] });
   assert.deepEqual(readSystem(doc('c')), { error: 'node f: \'c\' is not an FPGA node\'s base language: vhdl, verilog' });
   assert.deepEqual(readSystem(doc('Verilog')), { error: 'node f: \'Verilog\' is not an FPGA node\'s base language: vhdl, verilog' });
   assert.equal(readSystem(doc('verilog')).system.nodes[0].lang, 'verilog');
   // (a terminal's language ignored: its kind has none)
-  assert.equal(readSystem(JSON.stringify({ format: 'silinx-system', version: 1, nodes: [{ id: 't', kind: 'terminal', lang: 'x' }] })).system.nodes[0].lang, undefined);
+  assert.equal(readSystem(JSON.stringify({ format: 'silinx-system', version: 2, nodes: [{ id: 't', kind: 'terminal', lang: 'x' }] })).system.nodes[0].lang, undefined);
 });
 
-test('not a System: not JSON, another format, no version, a newer version', () => {
+test('not a System: not JSON, another format, no version, a newer version, an old one (#5488)', () => {
   assert.match(readSystem('{ nodes').error, /^not a System document: /);
   assert.deepEqual(readSystem('[]'), { error: 'not a System document (its format is not \'silinx-system\')' });
   assert.deepEqual(readSystem('{"format":"silinx-schematic","version":1}'), { error: 'not a System document (its format is not \'silinx-system\')' });
   assert.deepEqual(readSystem('{"format":"silinx-system"}'), { error: 'not a System document (no version)' });
   assert.deepEqual(readSystem('{"format":"silinx-system","version":0}'), { error: 'not a System document (no version)' });
-  assert.deepEqual(readSystem('{"format":"silinx-system","version":2}'), { error: 'a System document of version 2: this Silinx reads version 1' });
-  assert.deepEqual(readSystem('{"format":"silinx-system","version":1}').system, { format: SYSTEM_FORMAT, version: 1, name: 'system', nodes: [], links: [] });
+  assert.deepEqual(readSystem('{"format":"silinx-system","version":3}'), { error: 'a System document of version 3: this Silinx reads version 2' });
+  assert.deepEqual(readSystem('{"format":"silinx-system","version":2}').system, { format: SYSTEM_FORMAT, version: 2, name: 'system', nodes: [], links: [] });
+  // (version 1's, before a node was a folder, #5488: not read, no backward compatibility, its message)
+  assert.equal(OLD_SYSTEM, 'a System document of version 1, made before each node was a folder of its project (#5488): this Silinx does not read it; make the System again in a new System project, each node\'s files in its folder');
+  assert.deepEqual(readSystem('{"format":"silinx-system","version":1,"nodes":[{"id":"uno","kind":"mcu","firmware":"firmware/a.hex"}]}'), { error: OLD_SYSTEM });
 });
 
 test('the files, the links\' ends, the microcontrollers\' boards', () => {

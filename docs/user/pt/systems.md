@@ -78,7 +78,7 @@ periférico na FPGA mostra ao Arduino, e o Silinx gera os dois lados:
 - **o módulo da FPGA**, com o nome do mapa, em VHDL ou Verilog (a linguagem do projeto), com os registos atrás de um
   escravo SPI (modo 0) ou I²C (no endereço do mapa, o SDA um porto inout). O seu ficheiro HDL é feito a partir do
   mapa, como o de um desenho: no painel Design, a linha do mapa tem primeiro o selo **Registers**;
-- **o cabeçalho do Arduino**: o botão **Header** do editor escreve `firmware/<nome>.h`, com os endereços dos registos e
+- **o cabeçalho do Arduino**: o botão **Header** do editor escreve `<nó>/<nome>.h` (a pasta do primeiro microcontrolador do Sistema), com os endereços dos registos e
   um `<nome>_read_<registo>()` e um `<nome>_write_<registo>(v)` para cada um, por `SPI` ou `Wire`.
 
 O editor é uma tabela, uma linha por registo: o endereço (um registo ocupa um endereço de byte por cada 8 bits, o byte
@@ -126,9 +126,9 @@ A linha de estado mostra o tempo e a rapidez com que as placas correm face ao te
 ## Experimente: o exemplo uart-avr
 
 1. Novo Projeto ▸ **Sistema**, Começar por **Exemplo: uart-avr**, Concluir. O Sistema abre: `uno` (um Arduino Uno com
-   `firmware/hello.hex`) ligado por `serial` a `fpga` (o módulo `uart` numa Basys2).
+   `uno/hello.hex`) ligado por `serial` a `fpga` (o módulo `uart` numa Basys2).
 2. **Experimentar**, depois **Correr 100 ms**. No inspetor de ligações, `serial_uno` (o TX do Arduino para o RX da FPGA)
    mostra `Hello from Arduino!` e `serial_fpga` (o TX da FPGA de volta) o mesmo texto: a FPGA devolve cada byte.
 3. **Ondas**: o D1 e o D0 do Arduino, o rx e o tx da FPGA, e os dois fios, ao longo dos 100 ms.
 
-O código do firmware é `firmware/hello.asm`: envia a saudação e depois mostra no porto B cada byte que recebe.
+O código do firmware é `uno/hello.asm`: envia a saudação e depois mostra no porto B cada byte que recebe.

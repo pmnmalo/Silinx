@@ -161,7 +161,7 @@ test('#5330 an Arduino writing to the LCD through a System\'s circuit node: 8-bi
   // each byte: RS on PORTB's bit 0, the byte on PORTD, E (PORTB's bit 1) high then low
   const put = (rs, b) => [`ldi r17, ${rs}`, 'out 0x05, r17', `ldi r16, ${b}`, 'out 0x0b, r16', `ldi r17, ${rs | 2}`, 'out 0x05, r17', `ldi r17, ${rs}`, 'out 0x05, r17'];
   const prog = ['ldi r16, 0xff', 'out 0x0a, r16', 'ldi r16, 0x03', 'out 0x04, r16', ...[0x38, 0x0c, 0x01, 0x06].flatMap((b) => put(0, b)), ...put(1, 0x48), ...put(1, 0x69), 'loop:', 'rjmp loop'];
-  const sys = normalizeSystem({ format: 'silinx-system', version: 1, name: 's', nodes: [{ id: 'uno', kind: 'mcu', board: 'arduino-uno', firmware: 'fw/lcd.hex', interfaces: [] },
+  const sys = normalizeSystem({ format: 'silinx-system', version: 2, name: 's', nodes: [{ id: 'uno', kind: 'mcu', board: 'arduino-uno', firmware: 'fw/lcd.hex', interfaces: [] },
     { id: 'bench', kind: 'circuit', circuit: 'src/bench.circ.json', interfaces: [] }], links: [] });
   assert.deepEqual(analyzeSystem(sys, { modules: {}, files: ['fw/lcd.hex', 'src/bench.circ.json'], circuits: { 'src/bench.circ.json': circ } }).diags, [], 'checked: no warnings');
   assert.deepEqual(checkCircuit(circ).map((x) => x.message), []);

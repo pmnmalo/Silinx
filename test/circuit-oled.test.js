@@ -186,7 +186,7 @@ test('#5336 an Arduino\'s TWI writing to the OLED through a System\'s circuit no
   const send = (bytes) => ['ldi r16, 0xa4', 'rcall go', ...bytes.flatMap((b) => [`ldi r16, ${b}`, 'sts 0xbb, r16', 'ldi r16, 0x84', 'rcall go']), 'ldi r16, 0x94', 'sts 0xbc, r16', 'rcall pause'];
   const prog = ['ldi r16, 72', 'sts 0xb8, r16', ...send(INIT), ...send([0x78, 0x40, 0xff, 0x81, 0x3c]), 'end:', 'rjmp end',
     'go:', 'sts 0xbc, r16', 'wait:', 'lds r18, 0xbc', 'sbrs r18, 7', 'rjmp wait', 'ret', 'pause:', 'ldi r22, 250', 'p1:', 'dec r22', 'brne p1', 'ret'];
-  const sys = normalizeSystem({ format: 'silinx-system', version: 1, name: 's', nodes: [{ id: 'uno', kind: 'mcu', board: 'arduino-uno', firmware: 'fw/oled.hex', interfaces: [] },
+  const sys = normalizeSystem({ format: 'silinx-system', version: 2, name: 's', nodes: [{ id: 'uno', kind: 'mcu', board: 'arduino-uno', firmware: 'fw/oled.hex', interfaces: [] },
     { id: 'bench', kind: 'circuit', circuit: 'src/bench.circ.json', interfaces: [] }], links: [] });
   assert.deepEqual(analyzeSystem(sys, { modules: {}, files: ['fw/oled.hex', 'src/bench.circ.json'], circuits: { 'src/bench.circ.json': circ } }).diags, [], 'checked: no warnings');
   assert.deepEqual(checkCircuit(circ).map((x) => x.message), []);

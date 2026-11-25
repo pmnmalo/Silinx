@@ -13,7 +13,7 @@ after(async () => { await env?.teardown?.(); });
 const E = () => env;
 const BENCH = { format: 'silinx-circuit', version: 1, name: 'bench', lang: 'vhdl',
   parts: [{ id: 'S1', type: 'logic-switch', x: 8, y: 25 }, { id: 'D2', type: 'led', x: 12, y: 26, color: 'green' }], wires: [] };
-const SYS = JSON.stringify({ format: 'silinx-system', version: 1, name: 'lab', nodes: [
+const SYS = JSON.stringify({ format: 'silinx-system', version: 2, name: 'lab', nodes: [
   { id: 'uno', kind: 'mcu', board: 'arduino-uno', firmware: 'fw/hello.hex', interfaces: [{ name: 'Serial', kind: 'uart', baud: 9600, frame: '8N1' }], x: 0, y: 0 },
   { id: 'fpga', kind: 'fpga', module: 'uart', board: 'basys2', variant: '250', pins: { clk: 'B8', rx: 'J3', tx: 'A3' }, interfaces: [{ name: 'uart', kind: 'uart', tx: 'tx', rx: 'rx', baud: 9600, frame: '8N1' }], x: 300, y: 0 },
   { id: 'term', kind: 'terminal', interfaces: [], x: 0, y: 200 },

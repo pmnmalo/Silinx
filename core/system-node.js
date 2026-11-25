@@ -9,6 +9,7 @@ import { resolveBoard } from './devices.js';
 import { withProfile } from './project-profile.js';
 import { isName } from './ident.js';
 import { nodeIdError } from './system-doc.js';
+import { relInNode } from './system-layout.js';
 
 const same = (a, b) => String(a ?? '').toUpperCase() === String(b ?? '').toUpperCase();
 
@@ -54,8 +55,10 @@ export function nodeConstraints(node, ports) {
 }
 
 /** The project `pj` as the FPGA node `node` implements it: an FPGA project, its top the node's module, its board and
- *  device the node's, its constraints `constraints` (nodeConstraints's path); nothing else changed. */
+ *  device the node's, its constraints `constraints` (nodeConstraints's path), its files those of the node's folder
+ *  (#5488); nothing else changed. */
 export function nodeProject(pj, node, constraints) {
   const board = nodeBoard(node);
-  return { ...withProfile(pj, 'fpga'), top: node.module, board: node.board, device: { ...board.device }, constraints, topSourceType: 'hdl' };
+  const files = (pj.files || []).filter(f => relInNode(f.path, node.id) != null);
+  return { ...withProfile(pj, 'fpga'), top: node.module, board: node.board, device: { ...board.device }, constraints, topSourceType: 'hdl', files };
 }

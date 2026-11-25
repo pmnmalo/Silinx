@@ -761,13 +761,23 @@ async function renameFolder(dir) {
   if (to.startsWith(`${dir}/`)) return commandError('Rename Folder', 'A folder cannot be moved into itself.');
   if (filesState.fileTree.some(f => f === to || f.startsWith(`${to}/`))) return commandError('Rename Folder', `'${to}' already exists.`);
   if (!await saveAll()) return;
+  await moveFolder(dir, to);
+}
+
+/** A folder moved (`dir` → `to`: Rename Folder's; a System node's folder renamed with its node, #5488): its documents
+ *  saved, closed and reopened at their new paths, the drawings' links to their HDL following. Whether it was moved. */
+export async function moveFolder(dir, to) {
   const remap = p => (p && p.startsWith(`${dir}/`) ? to + p.slice(dir.length) : p);
   const views = filesState.fileTree.filter(f => /\.(sch|asm|tt|bool|fsm|pn|circ|regs)\.json$/i.test(f));
   // the editors of moved files are closed and reopened at their new paths
   const reopen = [];
-  for (const d of [...docsState.docs]) if (d.path && d.path.startsWith(`${dir}/`)) { reopen.push(remap(d.path)); d.dirty = false; clearTimeout(d._autosave); await closeDoc(d); }
+  const inside = [...docsState.docs].filter(d => d.path && d.path.startsWith(`${dir}/`));
+  for (const d of inside) if (!await flushDoc(d)) return false;
+  for (const d of inside) { reopen.push(remap(d.path)); d.dirty = false; clearTimeout(d._autosave); await closeDoc(d); }
+  let moved = false;
   try {
     await api.renameFile(S.project.name, dir, to);
+    moved = true;
     // synchronized charts / schematics refer to their HDL file by path: follow the move
     for (const v of views) {
       const at = remap(v);
@@ -782,6 +792,7 @@ async function renameFolder(dir) {
   } catch (e) { log(`ERROR: cannot rename folder ${dir}: ${e.message}`, 'err'); }
   await reloadProject();
   for (const p of reopen) if (filesState.fileTree.includes(p)) await openFile(p);
+  return moved;
 }
 
 async function deleteFolder(dir) {
@@ -789,6 +800,14 @@ async function deleteFolder(dir) {
   const files = filesUnder(dir);
   const trash = !api.standalone || api.keepsTrash;   // (into the workspace's .trash, #3364; a browser's storage has none)
   if (!await confirmDlg('Delete Folder', `Delete the folder '${dir}' and the ${files.length} file(s) in it from the project?${trash ? '\n(They are moved to the workspace\'s .trash folder, from where you can move them back.)' : ''}\n\n${files.slice(0, 12).join('\n')}${files.length > 12 ? '\n…' : ''}`)) return;
+  await dropFolder(dir);
+}
+
+/** A project's folder deleted (Delete Folder's once asked; a removed System node's, #5488): its documents closed, into
+ *  the workspace's .trash where there is one, said in the console. */
+export async function dropFolder(dir) {
+  const files = filesUnder(dir);
+  const trash = !api.standalone || api.keepsTrash;   // (into the workspace's .trash, #3364; a browser's storage has none)
   for (const d of [...docsState.docs]) if (d.path && d.path.startsWith(`${dir}/`)) { d.dirty = false; clearTimeout(d._autosave); await closeDoc(d); }
   try {
     const r = await api.deleteFile(S.project.name, dir, { trash });

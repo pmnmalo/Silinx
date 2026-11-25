@@ -9,7 +9,8 @@
 //              { id, kind: 'circuit', circuit: <a .circ.json of the project>, interfaces: [], x, y } ],
 //     links: [ { id, kind: 'uart' | 'gpio' | 'spi' | 'i2c', a: '<node>.<interface>', b: '<node>.<interface>' } ] }
 //
-// A node's `lang` is its base language (#5488, core/system-layout.js: VHDL or Verilog for an FPGA or a design node; C,
+// Each node's files live in its folder, `<id>/` (#5488, core/system-layout.js): its firmware, its circuit, an FPGA node's
+// module's sources; the edits refuse a file outside it. A node's `lang` is its base language (#5488, core/system-layout.js: VHDL or Verilog for an FPGA or a design node; C,
 // C++ or MicroPython for a microcontroller), written for the kinds that have one, its kind's default when not given.
 // An interface is declared once, on its node: a UART { name, kind: 'uart', tx, rx, baud, frame } (an FPGA node's tx and
 // rx its module's ports; a microcontroller's its board's UART, named as the board's, its pins the board's), GPIO wires
@@ -29,7 +30,11 @@ import { isName } from './ident.js';
 import { nodeLangs, baseLang, langError } from './system-layout.js';
 
 export const SYSTEM_FORMAT = 'silinx-system';
-export const SYSTEM_VERSION = 1;
+// (version 2, #5488: a node a folder of the project, its files in `<id>/`; version 1's projects, their files in src/ and
+// firmware/, are not read: no backward compatibility, roadmap #5479)
+export const SYSTEM_VERSION = 2;
+/** Why a System document of version 1 is not read (#5488), the interface's and the MCP's words. */
+export const OLD_SYSTEM = 'a System document of version 1, made before each node was a folder of its project (#5488): this Silinx does not read it; make the System again in a new System project, each node\'s files in its folder';
 // (a design node: a design and simulation project's drawings, no board: the Digital Logic profile's, #5440)
 export const NODE_KINDS = ['fpga', 'mcu', 'terminal', 'circuit', 'design'];
 export const LINK_KINDS = ['uart', 'gpio', 'spi', 'i2c'];
@@ -112,6 +117,7 @@ export function readSystem(text) {
   try { m = JSON.parse(text); } catch (e) { return { error: `not a System document: ${e.message}` }; }
   if (!m || typeof m !== 'object' || Array.isArray(m) || m.format !== SYSTEM_FORMAT) return { error: `not a System document (its format is not '${SYSTEM_FORMAT}')` };
   if (!Number.isInteger(m.version) || m.version < 1) return { error: 'not a System document (no version)' };
+  if (m.version < SYSTEM_VERSION) return { error: OLD_SYSTEM };
   if (m.version > SYSTEM_VERSION) return { error: `a System document of version ${m.version}: this Silinx reads version ${SYSTEM_VERSION}` };
   const system = normalizeSystem(m);
   // (a node's id an identifier, #5446: it names its build folder, build/nodes/<id>/; the editor and the MCP make no other)

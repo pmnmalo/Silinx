@@ -36,7 +36,7 @@ test('#5288 a register map read and written: its fields in their order, a new on
   assert.deepEqual(readRegmap(writeRegmap(m)), { regmap: m });
   assert.ok(writeRegmap(m).endsWith('}\n'));
   assert.deepEqual(newRegmap('r').registers, [{ name: 'ctrl', addr: 0, width: 8, access: 'rw', reset: 0 }]);
-  assert.deepEqual(readRegmap('{"format":"silinx-system","version":1}'), { error: 'not a register map (its format is not \'silinx-regmap\')' });
+  assert.deepEqual(readRegmap('{"format":"silinx-system","version":2}'), { error: 'not a register map (its format is not \'silinx-regmap\')' });
   assert.deepEqual(readRegmap('{"format":"silinx-regmap","version":2}'), { error: 'a register map of version 2: this Silinx reads version 1' });
   assert.match(readRegmap('{').error, /^not a register map: /);
   assert.deepEqual([isRegmapFile('src/pwm.regs.json'), isRegmapFile('pwm.sys.json')], [true, false]);
@@ -149,7 +149,7 @@ test('#5288 the FPGA side run with an Uno, its SPI and its TWI (the compiled eng
   for (const bus of ['spi', 'i2c']) {
     const m = MAP(bus), PORTS = { pwm_regs: [['clk', 'in', 1], ...(bus === 'spi' ? [['sck', 'in', 1], ['mosi', 'in', 1], ['ss', 'in', 1], ['miso', 'out', 1]] : [['scl', 'in', 1], ['sda', 'inout', 1]]),
       ['duty', 'out', 8], ['count', 'in', 12], ['go', 'out', 1], ['mode', 'out', 3], ['go_wr', 'out', 1]].map(([name, dir, width]) => ({ name, dir, width })) };
-    const sys = normalizeSystem({ format: 'silinx-system', version: 1, name: 's', nodes: [
+    const sys = normalizeSystem({ format: 'silinx-system', version: 2, name: 's', nodes: [
       { id: 'fpga', kind: 'fpga', module: 'pwm_regs', board: 'basys2', variant: '250', pins: { clk: 'B8' },
         interfaces: [bus === 'spi' ? { name: 'bus', kind: 'spi', sck: 'sck', mosi: 'mosi', miso: 'miso', ss: 'ss' } : { name: 'bus', kind: 'i2c', scl: 'scl', sda: 'sda' }] },
       { id: 'uno', kind: 'mcu', board: 'arduino-uno', firmware: 'fw.hex', interfaces: [bus === 'spi' ? { name: 'SPI', kind: 'spi' } : { name: 'Wire', kind: 'i2c' }] },

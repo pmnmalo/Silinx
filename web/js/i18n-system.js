@@ -1,5 +1,5 @@
 // Portuguese strings of the System editor (web/js/system-editor.js, system-side.js, system-draw.js, system-open.js,
-// design-system.js, #4700; merged into the dictionary of i18n.js). The core's edit and check messages are said in the
+// design-system.js, system-folders-ui.js, #4700; merged into the dictionary of i18n.js). The core's edit and check messages are said in the
 // console as the MCP server says them.
 export const SYSTEM_PT = {
   // toolbar
@@ -64,8 +64,12 @@ export const SYSTEM_PT = {
   // (a circuit node, #5215)
   'Circuit': 'Circuito', 'Click the canvas to add a circuit node: a circuit of the project between the boards, its boards the nodes their labels name': 'Clique na tela para acrescentar um nó circuito: um circuito do projeto entre as placas, as suas placas os nós que as suas etiquetas nomeiam',
   'a .circ.json of the project: its boards are the nodes their labels name': 'um .circ.json do projeto: as suas placas são os nós que as suas etiquetas nomeiam', 'no module': 'sem módulo', 'no firmware': 'sem firmware', 'no board': 'sem placa',
+  // (a removed node's folder, #5488: web/js/system-folders-ui.js)
+  'Remove Node': 'Remover Nó',
 };
 export const SYSTEM_PT_PATTERNS = [
+  [/^Delete the folder '(.+)' of the removed node ([A-Za-z]\w*) and the (\d+) file\(s\) in it from the project\?(\n\(They are moved to the workspace's \.trash folder, from where you can move them back\.\))?\n\n([\s\S]*)$/,
+    (m, dir, id, n, trash, list) => `Apagar a pasta '${dir}' do nó removido ${id} e o(s) ${n} ficheiro(s) que contém do projeto?${trash ? '\n(São movidos para a pasta .trash da área de trabalho, de onde os pode repor.)' : ''}\n\n${list}`],
   [/^(FPGA|Microcontroller|Serial terminal|Circuit) ([A-Za-z]\w*)$/, (m, k, id) => `${{ FPGA: 'FPGA', Microcontroller: 'Microcontrolador', 'Serial terminal': 'Terminal série', Circuit: 'Circuito' }[k]} ${id}`],
   [/^Link ([A-Za-z]\w*)$/, 'Ligação $1'], [/^Waves \((.+)\)$/, 'Ondas ($1)'],
   [/^Emulate \((.+)\)$/, 'Emular ($1)'], [/^(\d+)% of real time$/, '$1% do tempo real'],

@@ -27,7 +27,7 @@ const FPGA = { id: 'fpga', kind: 'fpga', module: 'uart', board: 'basys2', varian
 const TERM = { id: 'term', kind: 'terminal', interfaces: [{ name: 'serial', kind: 'uart', baud: 9600, frame: '8N1' }] };
 const BLINK = ['ldi r16, 0x20', 'out 0x04, r16', 'out 0x05, r16', 'loop:', 'rjmp loop'];   // D13 (PB5) an output, high
 const UNO = { id: 'uno', kind: 'mcu', board: 'arduino-uno', firmware: 'fw/l.hex', interfaces: [] };
-const sys = normalizeSystem({ format: 'silinx-system', version: 1, name: 'emu', nodes: [FPGA, TERM, UNO], links: [{ id: 'console', kind: 'uart', a: 'term.serial', b: 'fpga.uart' }] });
+const sys = normalizeSystem({ format: 'silinx-system', version: 2, name: 'emu', nodes: [FPGA, TERM, UNO], links: [{ id: 'console', kind: 'uart', a: 'term.serial', b: 'fpga.uart' }] });
 const PORTS = { uart: [{ name: 'clk', dir: 'in', width: 1 }, { name: 'rx', dir: 'in', width: 1 }, { name: 'tx', dir: 'out', width: 1 }] };
 async function inputs() {
   return { plan: systemPlan(sys, { ports: PORTS }), netlists: { fpga: await uartNetlist() }, firmware: { uno: { name: 'fw/l.hex', data: intelHex(avrAssemble(BLINK)) } } };
