@@ -17,7 +17,7 @@ import { topSourceFiles } from '../core/top-source.js';
 import { designProjectInfo } from './mcp-design-only.js';
 import { flowFiles } from '../core/flow-files.js';
 import { topRefusal } from '../core/project-entries.js';
-import { makeSystemTop, makeModuleTop } from './mcp-system-top.js';
+import { makeSystemTop, makeNodeTop } from './mcp-system-top.js';
 import { SYSTEM_TOP } from '../core/system-top.js';
 import { isSystemFile } from '../core/system-doc.js';
 import { projectNodes } from '../core/project-nodes.js';
@@ -165,7 +165,7 @@ export const PROJECT_TOOLS = [
   },
   {
     name: 'set_top', title: 'Set the top module and the test bench',
-    description: 'Choose a project\'s top module (what run_process builds) and / or its test bench (what simulate runs), as Set as Top Module does: any module of its view, even one with errors; a System (.sys.json): a System project then, its module an FPGA one. update_constraints: the constraints file written again from the board\'s pins, as Update Constraints does.',
+    description: 'Choose a project\'s top module (what run_process builds) and / or its test bench (what simulate runs), as Set as Top Module does: any module of its view, even one with errors; a System (.sys.json): a System project then (a node\'s module: its node\'s top). update_constraints: as Update Constraints does.',
     inputSchema: { type: 'object', properties: { project: PROJECT, top: STR('The top module (an entity or module of the project\'s design sources).'), sim_top: STR('The test bench (a simulation source\'s entity or module).'), update_constraints: { type: 'boolean', description: 'Write the constraints file again from the board\'s pins (default false).' } }, required: ['project'], additionalProperties: false },
     annotations: { readOnlyHint: false, destructiveHint: true, idempotentHint: true },
     async run({ project: name, top, sim_top: simTop, update_constraints: constraints = false }) {
@@ -175,19 +175,21 @@ export const PROJECT_TOOLS = [
       if (top && isSystemFile(top)) { if (simTop) throw toolError('a System as the top: give no sim_top with it'); return makeSystemTop(name, top); }
       // each a module of its view, even one with errors (core/project-entries.js topRefusal, the interface's rule, #4733:
       // check_syntax says its errors); a C source's or a drawing's module not made for now too (#2995)
+      let topFile = null;   // (the top's file: a System project's node is the one whose folder holds it, #5583)
       for (const [mod, sim] of [[top, false], [simTop, true]]) {
         if (!mod) continue;
         const { compile } = await import('../core/compile.js');
         const failed = [];
         const srcs = await viewSourcesOf(name, before, sim, failed);
-        let names = [];
-        try { names = [...compile(srcs).modules.values()].filter(m => m.kind !== 'package').map(m => m.name); } catch { /* none */ }
+        let mods = [];
+        try { mods = [...compile(srcs).modules.values()].filter(m => m.kind !== 'package'); } catch { /* none */ }
         const same = a => String(a || '').toLowerCase() === String(mod).toLowerCase();
-        const refusal = topRefusal(mod, sim, () => names.some(same) || failed.some(v => same(v.module)));
+        const refusal = topRefusal(mod, sim, () => mods.some(m => same(m.name)) || failed.some(v => same(v.module)));
         if (refusal) throw toolError(refusal);
+        if (!sim) topFile = mods.find(m => same(m.name))?.file ?? failed.find(v => same(v.module))?.path ?? null;
       }
-      // (a module of a System project: an FPGA project again, on its FPGA node's board, #5402)
-      if (top && isSystemProject(before)) { const r = await makeModuleTop(name, top); if (simTop) await P.updateProject(name, pj => ({ ...pj, simTop })); return r; }
+      // (a module of a System project: its FPGA node's top module, the System still the project's top, #5583)
+      if (top && isSystemProject(before)) { const r = await makeNodeTop(name, top, topFile); if (simTop) await P.updateProject(name, pj => ({ ...pj, simTop })); return r; }
       if (constraints && !before.board) throw toolError(`the project '${name}' has no board: its constraints cannot come from a board's pins`);
       await P.updateProject(name, pj => ({ ...pj, ...(top ? { top } : {}), ...(simTop ? { simTop } : {}) }));
       const pj = await P.readProject(name);

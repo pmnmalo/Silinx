@@ -74,7 +74,8 @@ export function topRow(treeItem, select, { sim, dev, menu }) {
  *  design.js's rows can be made: an FPGA node's module with addModule, then its folder's other root modules (`roots`, the
  *  view's), a node's files with fileRow, or its module's row if the file is a module's, moduleOf; ulOf the branch a row of
  *  the file `path` goes under, its node's, else null: the System's; finish marks the empty branches), or null (no
- *  System). A node's sub-folders (a Zynq's PL and PS, later) are rows of its branch. */
+ *  System), tops the FPGA nodes' top modules (lower case). A node's sub-folders (a Zynq's PL and PS, later) are rows of its
+ *  branch. */
 function systemRow(treeItem, select) {
   const { system: f, nodes, owned } = shownNodes();
   if (!f) return null;
@@ -118,7 +119,9 @@ function systemRow(treeItem, select) {
   };
   const ulOf = path => branches.get(nodeOfPath(path, ids))?.ul ?? null;
   const finish = () => { for (const it of branches.values()) if (!it.ul.children.length) it.setLeaf(); };
-  return { item, owned: [...owned, ...nodes.flatMap(sources)], fill, ulOf, finish };
+  // (each FPGA node's top module, marked as an FPGA project's top, #5583)
+  const tops = new Set(nodes.filter(n => n.kind === 'fpga' && n.module).map(n => String(n.module).toLowerCase()));
+  return { item, owned: [...owned, ...nodes.flatMap(sources)], fill, ulOf, finish, tops };
 }
 
 // a module's file (its drawing's, when it is drawn), or null

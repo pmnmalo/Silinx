@@ -1,6 +1,6 @@
 // The MCP server's System as a project's top (#5402, server/mcp-system-top.js), as the interface's: set_design_properties'
 // top_source_type system and set_top with a System document make the project a System project, its System its top;
-// set_top with one of its modules makes it an FPGA project again, on its FPGA node's board; new_project's top_source_type
+// set_top with one of its modules sets its FPGA node's top module, the System still its top (#5583); new_project's top_source_type
 // system makes a System project; refused in a release and in a design project, with the interface's messages.
 import { test, before, after } from 'node:test';
 import assert from 'node:assert/strict';
@@ -8,6 +8,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { scratchEnv } from './server-helpers.js';
 import { setBuildChannel, SYSTEMS_OFF } from '../core/build-channel.js';
+import { unlabelled } from './mcp-label.js';
 
 let tmp;
 before(async () => {
@@ -31,24 +32,40 @@ const fails = async (name, args, message) => { const r = await call(name, args);
 test('#5402 set_design_properties top_source_type system: an FPGA project made a System project, its new System its top', async () => {
   await ok('new_project', { name: 's1', board: 'nexys2' });
   const r = await ok('set_design_properties', { project: 's1', top_source_type: 'system' });
-  assert.equal(r.text, 's1: a System project now, its System s1.sys.json its top (its board kept: set_top with a module makes it an FPGA project again).');
+  assert.equal(r.text, 's1: a System project now, its System s1.sys.json its top (its board kept).');
   const pj = await P.readProject('s1');
   assert.deepEqual([pj.kind, pj.profile, pj.board, pj.topSourceType, pj.fpga.board], [undefined, 'system', null, 'system', 'nexys2']);   // (its profile, #5440)
   assert.ok(fs.existsSync(path.join(P.projectDir('s1'), 's1.sys.json')));
   await fails('set_design_properties', { project: 's1', top_source_type: 'system', board: 'basys2' }, 'top_source_type system: give it alone (a System project has no board of its own)');
 });
 
-test('#5402 set_top: a module of a System project its top (an FPGA project on its node\'s board), then its System again', async () => {
+test('#5583 set_top / unset_top in a System project: a module of an FPGA node\'s folder that node\'s top, the System still the project\'s top; refused outside it', async () => {
   await ok('new_project_from_example', { name: 's2', example: 'uart-avr' });
-  const r = await ok('set_top', { project: 's2', top: 'uart' });
-  assert.match(r.text, /^s2: an FPGA project now, its top module 'uart' on basys2 \(xc3s250e/);
+  const ent = n => `library ieee;\nuse ieee.std_logic_1164.all;\nentity ${n} is\n  port (clk : in std_logic; led : out std_logic);\nend ${n};\narchitecture rtl of ${n} is\nbegin\n  led <= clk;\nend rtl;\n`;
+  await ok('write_file', { project: 's2', path: 'fpga/other.vhd', text: ent('other') });
+  const sysText = () => JSON.parse(fs.readFileSync(path.join(P.projectDir('s2'), 'uart_avr.sys.json'), 'utf8'));
+  // (before #5583: the project made an FPGA project, its System gone from its top)
+  const r = await ok('set_top', { project: 's2', top: 'other' });
+  assert.deepEqual([r.text.split('\n')[0], unlabelled(r.data)], ['s2: \'other\' is now fpga\'s top module (the System uart_avr stays the project\'s top).', { project: 's2', top: 'uart_avr.sys.json', node: 'fpga', nodeTop: 'other', changed: true }]);
   let pj = await P.readProject('s2');
-  assert.deepEqual([pj.kind, pj.board, pj.top, pj.device.part], [undefined, 'basys2', 'uart', 'xc3s250e']);
-  // (its System its top again: the one it has)
+  assert.deepEqual([pj.kind, pj.board, pj.top || ''], ['system', null, '']);   // (the example's: a System project, as it was)
+  assert.deepEqual(sysText().nodes.map(n => [n.id, n.module ?? null]), [['uno', null], ['fpga', 'other']]);
+  // (its top already: nothing written)
+  const again = await ok('set_top', { project: 's2', top: 'OTHER' });
+  assert.deepEqual([again.text.split('\n')[0], again.data.changed], ['s2: \'OTHER\' is already fpga\'s top module.', false]);
+  await ok('set_top', { project: 's2', top: 'uart' });
+  assert.equal(sysText().nodes[1].module, 'uart');
+  // refused: a module in no node's folder; unset_top (the test bench's still unset)
+  await ok('write_file', { project: 's2', path: 'lone.vhd', text: ent('lone') });
+  await fails('set_top', { project: 's2', top: 'lone' }, '\'lone\' is in no node\'s folder of the System uart_avr: a System project\'s top is its System, and an FPGA node\'s top module is a module of its folder');
+  await fails('unset_top', { project: 's2' }, 'a System project\'s top is its System, and each FPGA node always has a top module: Set as Top Module on another module of its folder changes it');
+  const u = await ok('unset_top', { project: 's2', simulation: true });
+  assert.equal(u.text, 'The project \'s2\' has no test bench: nothing to unset.');
+  pj = await P.readProject('s2');
+  assert.deepEqual([pj.kind, pj.top || '', sysText().nodes[1].module], ['system', '', 'uart']);
+  // (its System its top: as it is)
   const b = await ok('set_top', { project: 's2', top: 'uart_avr.sys.json' });
   assert.deepEqual([b.data.kind, b.data.system, b.data.made], ['system', 'uart_avr.sys.json', false]);
-  pj = await P.readProject('s2');
-  assert.deepEqual([pj.kind, pj.profile, pj.board, pj.fpga.board], [undefined, 'system', null, 'basys2']);
   await fails('set_top', { project: 's2', top: 'none.sys.json' }, 'none.sys.json: no such file in the project \'s2\'');
 });
 

@@ -71,7 +71,8 @@ export function renderHierarchy() {
 
   const lib = designState.lib;
   const topName = !sim ? pj.top : null;   // the Simulation view has no top: Simulate runs the selected module
-  const isTopName = n => !!topName && String(n).toLowerCase() === String(topName).toLowerCase();
+  // (a System project's: each FPGA node's top module, #5583)
+  const isTopName = n => (!!topName && String(n).toLowerCase() === String(topName).toLowerCase()) || !!sysRow?.tops?.has(String(n).toLowerCase());
   // (the top first, then in natural order: x_2 before x_10, #3819)
   const roots = sysRow ? [] : hierarchyOrder(viewRoots(sim), topName);
   // (cpu: a CPU node's base language's name, #5488: its drawing's last badge that language's, not its HDL's, and no
@@ -129,7 +130,7 @@ export function renderHierarchy() {
     parentUl.append(it.li);
     // the Implementation view's top: the files its flow reads (its constraints, the memory images) under it, after its
     // instances, as ISE's (#4591)
-    const files = isTop && !sim && !one ? flowFileRows() : [];
+    const files = isTop && !sim && !one && !sysRow ? flowFileRows() : [];   // (not a System node's top's, #5583: its files are its folder's)
     if (info && depth < 30) {
       // (by their names in natural order, then their modules', #3819; a circuit's ICs none of its rows, #4216)
       const kids = instanceOrder(instancesOf(info.mod)).filter(k => !designState.partModules?.has(String(k.module).toLowerCase()));
@@ -528,8 +529,9 @@ export async function setTop(mod, sim = designState.view === 'sim') {
   const has = () => { const m = moduleInfo(mod); return (!!m && inView(m.role || 'design', sim)) || Object.values(cState.cFailed || {}).some(c => same(c.module)); };
   const refusal = topRefusal(mod, sim, has);
   if (refusal) { log(`ERROR: Set as Top Module: ${refusal}.`, 'err'); return; }
-  // (a module of a System project: an FPGA project again, on its node's board, #5402)
-  if (!sim && systemProject()) return (await import('./system-top-ui.js')).makeModuleTop(mod);
+  // (a module of a System project: the top module of the FPGA node whose folder holds it, the System still the project's
+  // top, #5583)
+  if (!sim && systemProject()) return (await import('./system-top-ui.js')).makeNodeTop(mod, moduleInfo(mod)?.file ?? Object.entries(cState.cFailed || {}).find(([, c]) => same(c.module))?.[0] ?? null);
   if (sim) S.project.simTop = mod; else S.project.top = mod;
   await saveProjectJson();
   markStale();

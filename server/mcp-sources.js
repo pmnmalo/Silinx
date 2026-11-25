@@ -6,7 +6,8 @@
 // none (web/js/app.js fixMissingTops).
 import * as P from './projects.js';
 import { toolError, projectPath, readProject, viewSourcesOf, STR, PROJECT } from './mcp-util.js';
-import { hdlSideFile, isDesignOnly } from '../core/project-kind.js';
+import { hdlSideFile, isDesignOnly, isSystemProject } from '../core/project-kind.js';
+import { NODE_UNSET_REFUSAL } from '../core/system-top.js';
 import { addToProject, addsToProject, declares, missingTops, removeFromProject } from '../core/project-entries.js';
 
 const VIEW_RE = /\.(sch|asm|tt|bool|fsm|pn|circ|regs)\.json$/i;
@@ -54,6 +55,8 @@ export const SOURCE_TOOLS = [
     annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true },
     async run({ project: name, simulation = false }) {
       const pj = await readProject(name);
+      // (a System project: its top its System, each FPGA node's top module always there, #5583)
+      if (!simulation && isSystemProject(pj)) throw toolError(NODE_UNSET_REFUSAL);
       const key = simulation ? 'simTop' : 'top';
       const old = pj[key];
       if (!old) return { text: `The project '${name}' has no ${simulation ? 'test bench' : 'top module'}: nothing to unset.`, data: { project: name, unset: null, ...await tops(name) } };
