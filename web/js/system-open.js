@@ -21,7 +21,9 @@ import { relInNode } from '/core/system-layout.js';
 import { systemsOn, SYSTEMS_OFF } from '/core/build-channel.js';
 import { checkSystem, analyzeSystem } from '/core/system-check.js';
 import { systemInputs } from '/core/system-run.js';
-import { emulateNodesOf } from '/core/system-alone.js';
+import { emulateNodesOf, simulateSettingsOf, runningSystem, runName } from '/core/system-alone.js';
+import { readStimulus } from '/core/system-stimulus.js';
+import { circuitsOf } from './system-emu-open.js';
 import { regmapFor, hierModules } from '/core/regmap.js';
 import { mountSystemSim } from './system-sim-view.js';
 import { openSystemWaves } from './system-waves-view.js';
@@ -41,7 +43,7 @@ function projectModules(sys) {
 // the System made ready to run (core/system-run.js systemInputs): its FPGA nodes' modules compiled by Yosys (the Board
 // Emulator's: the page's workers, the browser edition's own), its firmware read (a .hex's text, an .elf's bytes, #5198:
 // as the MCP's simulate of a System); then run in its Web Worker (system-remote.js), where the compiled engine may make its code
-export async function prepareHere(sys, { emulate = false } = {}) {
+export async function prepareHere(sys, { emulate = false, stimulus = null } = {}) {
   sys = nodePinsHere(sys).system;   // (each FPGA node's pins its constraints file's, #5581)
   const lib = designState.lib;
   if (!lib) return { error: 'the project does not compile: Check Syntax says why' };
@@ -61,8 +63,36 @@ export async function prepareHere(sys, { emulate = false } = {}) {
   });
   if (inputs.error) return inputs;
   // (the System Emulator's: its boards too, and the inputs it draws them from, #5212)
-  const r = await (await import('./system-remote.js')).startSystemRun(sys, inputs, { emulate });
+  const r = await (await import('./system-remote.js')).startSystemRun(sys, inputs, { emulate, stimulus });   // (its stimulus file's, #5581)
   return r.error ? r : Object.assign(r, { inputs, system: sys });   // (the System run: its nodes' pins read, #5581)
+}
+
+/** A System's simulation view (the editor's Try it; Simulate System and Simulate Node's document, #5581:
+ *  web/js/system-sim-open.js): the System cut to the nodes that run (`o.nodes()`, else the Simulation Properties'), its
+ *  links' open ends said; its run's time; its stimulus file applied. */
+export function mountSimulation(host, o) {
+  const settings = () => simulateSettingsOf(S.project, o.system());
+  const ids = () => o.nodes?.() ?? settings().nodes;
+  const cut = all => runningSystem(all, ids(), { circuits: circuitsOf(all) });
+  const name = () => runName('Simulate', ids());
+  return mountSystemSim(host, { ...o, system: () => cut(o.system()).system ?? o.system(), ms: () => settings().ms, name,
+    async prepare(s) {
+      const c = cut(o.system());
+      if (c.error) return c;
+      for (const w of c.warnings) log(`WARNING: ${name()}: ${w}`, 'warn');
+      const st = await stimulusHere(settings().stimulus);
+      return st.error ? st : prepareHere(s, { stimulus: st.stimulus });
+    },
+    onMessage: (text, level) => log(text, level), openWaves: openSystemWaves });
+}
+
+// the stimulus file `path` read (#5581): { stimulus } (null: none), or { error }
+async function stimulusHere(path) {
+  if (!path) return { stimulus: null };
+  let text;
+  try { text = await api.readFile(S.project.name, path); } catch (e) { return { error: `${path}: ${e.message}` }; }
+  const r = readStimulus(text);
+  return r.error ? { error: `${path}: ${r.error}` } : r;
 }
 
 /** A System's problems, as Check System says them (the MCP server's check_system's). */
@@ -115,7 +145,8 @@ export async function openSystem(path) {
         // (a project followed, #3181: read only, the follower's notice at the end of its toolbar; no live editing yet)
         ...(following() ? { readOnly: true, banner: followNotice() } : phoneOnly()),   // (a phone's, #5121)
         // (Simulate: the System's simulation view, #4701)
-        mountSim: (host, o) => mountSystemSim(host, { ...o, prepare: prepareHere, onMessage: (text, level) => log(text, level), openWaves: openSystemWaves }),
+        // (#5581: the Simulation Properties' nodes, or Simulate Node's, its run's time and its stimulus file)
+        mountSim: (host, o) => mountSimulation(host, o),
         // (Emulate: the System Emulator, its own document, #5212)
         wires: projectWires,   // (Wiring, #5216)
         // (the nodes its Emulation Properties tick, #5581)

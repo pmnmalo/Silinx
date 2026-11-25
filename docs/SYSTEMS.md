@@ -487,6 +487,33 @@ reads the firmware (`core/system-run.js` systemInputs), a Web Worker builds and 
 a fixed latency, a sixteenth of its bit), and the panel shows the run: its time, a terminal for each terminal node, the
 link inspector (each wire's decoded bytes) and the waves in the waveform viewer.
 
+**The Simulate task** of a System project (#5581's part 3, `web/js/system-simulate-ui.js`) shows the System's tree in
+place of the test benches:
+
+- the System's row: **Simulation Properties…** and **Simulate System**;
+- each node's row: an FPGA node's test benches (its folder's `sim/`, each simulated as an FPGA project's), and
+  **Simulate Node**.
+
+The ISE style's Processes panel has the same on the System's and the nodes' rows. Simulate System and Simulate Node open
+the System's simulation view in a document of its own, `syssim:<file>`, in the Simulate task (`web/js/system-sim-open.js`):
+its tab says which (`Simulate (uart_avr: fpga)`), its status line its time. The run goes on for the run's time.
+
+- **The Simulation Properties** are the project's (`silinx.json`'s `system.simulate`, `core/system-alone.js`):
+  - the nodes Simulate System runs, cut as Emulate's are, each open end said (`WARNING: Simulate Node fpga: link serial:
+    …`);
+  - the run's time, 100 ms by default (the view's `Run 100 ms`);
+  - its stimulus file.
+- **The stimulus file** (`<name>.stim.json`, `core/system-stimulus.js`) makes a run repeatable:
+  `{ "format": "silinx-stimulus", "version": 1, "controls": [{ "node", "control", "on" | "value", "at_ns" }], "type": [{
+  "terminal", "text", "at_ns" }] }`.
+  - Its controls are the MCP simulate's: a board's switch or button, a circuit's part, an Explorer 16/32's button or R6
+    (`core/system-controls.js`).
+  - Its typed text goes into a terminal at its time.
+  - The run sets each step as it reaches it (`runSteps`, in the worker's host too).
+  - Simulation Properties… makes a new one (`New: <name>.stim.json`) and opens it.
+- **The MCP:** `simulate` of a System with no `controls` runs its Simulation Properties: the nodes (unless `#a,b`), the
+  time (unless `time_ns`) and the stimulus file. `set_process_properties` takes `simulation: { nodes, ms, stimulus }`.
+
 **One co-simulation scheduler**, a new core module (system-sim, #4696). It is isomorphic and runs in one Web Worker; it needs no
 `SharedArrayBuffer`, so no cross-origin isolation, which GitHub Pages cannot set.
 

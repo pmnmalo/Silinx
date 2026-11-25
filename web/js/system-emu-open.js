@@ -13,8 +13,8 @@ import { normalizeCircuit } from '/core/circuit.js';
 import { runningSystem, runName } from '/core/system-alone.js';
 import { systemsOn, SYSTEMS_OFF } from '/core/build-channel.js';
 
-// the circuit nodes' circuits, as the project has them (their boards: which run)
-function circuitsOf(sys) {
+/** The circuit nodes' circuits, as the project has them (their boards: which run). */
+export function circuitsOf(sys) {
   const out = {};
   for (const n of sys.nodes.filter(x => x.kind === 'circuit' && x.circuit)) {
     try { out[n.circuit] = normalizeCircuit(JSON.parse(designState.viewTexts?.[n.circuit] ?? '')); } catch { /* (not read: kept) */ }

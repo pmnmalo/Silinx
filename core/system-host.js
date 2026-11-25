@@ -4,7 +4,7 @@
 // netlists, the firmware) and drives the run by messages; the host builds it (systemFromInputs) and answers each with
 // the run as it is then (systemReport).
 //
-// The messages, page -> host: init { system, inputs, emulate }, run { id, until } (ps), send { node, bytes } (a
+// The messages, page -> host: init { system, inputs, emulate, stimulus } (its stimulus file's, #5581: core/system-stimulus.js), run { id, until } (ps), send { node, bytes } (a
 // terminal's line), set { node, pin, value } (a board's switch or button, a circuit's, #5322: the System Emulator's), waves { id }; host ->
 // page: ready { nodes, wires, terminals, boards } or failed { error }, state { id, report, finished, boards }, waves
 // { id, design } (core/system-waves.js), error { id, message }. emulate: the boards emulated too (core/system-emu.js,
@@ -14,16 +14,20 @@
 import { systemFromInputs, systemReport } from './system-run.js';
 import { systemWaves } from './system-waves.js';
 import { emulationBoards, withBoards, watchBoards, boardStates, setBoardInput } from './system-emu.js';
+import { setsControls, stimulusSteps, runSteps } from './system-stimulus.js';
 
 /** The host: a System's run driven by the messages of `port` (a worker's self, a MessagePort). */
 export function hostSystemRun(port) {
-  let run = null, name = 'system', boards = null, shown = 0, prev = {};
+  let run = null, name = 'system', boards = null, shown = 0, prev = {}, steps = [];
   const post = m => port.postMessage(m);
   const handle = {
-    init({ system, inputs, emulate = false }) {
-      boards = emulate ? emulationBoards(system, inputs) : null;
+    init({ system, inputs, emulate = false, stimulus = null }) {
+      // (a stimulus that sets a board's controls: the boards emulated, #5581)
+      boards = emulate || setsControls(stimulus) ? emulationBoards(system, inputs) : null;
       const r = systemFromInputs(system, boards ? withBoards(inputs, boards) : inputs);
       if (r.error) { run = null; post({ type: 'failed', error: r.error }); return; }
+      try { steps = stimulus ? stimulusSteps(stimulus, { boards: boards || [], terminals: [...r.terminals.keys()] }) : []; }
+      catch (e) { run = null; post({ type: 'failed', error: `its stimulus file: ${e.message}` }); return; }
       run = r; name = system.name; shown = 0; prev = {};
       if (boards) watchBoards(r.sim, boards);
       post({ type: 'ready', nodes: [...r.sim.nodes.keys()], wires: r.wires, terminals: [...r.terminals.keys()],
@@ -32,7 +36,7 @@ export function hostSystemRun(port) {
     },
     run({ id, until }) {
       if (!run) throw new Error('no System: init first');
-      const f = run.sim.run(until);
+      const f = runSteps(run, steps, until);   // (its stimulus's steps due on the way, #5581)
       const shows = boards ? (prev = boardStates(run.sim, boards, shown, run.sim.now, prev)) : undefined;
       shown = run.sim.now;
       post({ type: 'state', id, report: systemReport(run), finished: f.finished, boards: shows });

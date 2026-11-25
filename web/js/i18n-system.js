@@ -57,6 +57,11 @@ export const SYSTEM_PT = {
   'Its module\'s ports on its board\'s pins, written to its constraints file': 'As portas do seu módulo nos pinos da sua placa, escritas no seu ficheiro de restrições',
   'Its constraints file, as text': 'O seu ficheiro de restrições, como texto',
   'A node\'s: its User Constraints in the tree below': 'De um nó: as suas Restrições do Utilizador na árvore abaixo',
+  // (the Simulate task's tree of a System, #5581: web/js/system-simulate-ui.js)
+  'Simulate the System: Simulate System runs its nodes together, a node\'s Simulate Node that node alone; the run opens here.': 'Simular o Sistema: Simular o Sistema corre os seus nós juntos, Simular o Nó de um nó corre esse nó sozinho; a execução abre aqui.',
+  'Simulate System': 'Simular o Sistema', 'Simulate Node': 'Simular o Nó', 'Simulation Properties…': 'Propriedades da Simulação…',
+  'Simulation Properties': 'Propriedades da Simulação', 'The nodes Simulate System runs:': 'Os nós que Simular o Sistema corre:',
+  'Run time (ms):': 'Tempo de execução (ms):', 'Stimulus file:': 'Ficheiro de estímulos:', 'The run time: from 1 to 10000 ms': 'O tempo de execução: de 1 a 10000 ms',
   // (the Emulate task's tree of a System, #5581: web/js/system-emulate-ui.js)
   'Emulate Node': 'Emular o Nó', 'Emulation Properties…': 'Propriedades da Emulação…', 'Emulation Properties': 'Propriedades da Emulação',
   'The nodes Emulate System runs:': 'Os nós que Emular o Sistema corre:', 'Tick at least one node': 'Marque pelo menos um nó',
@@ -106,7 +111,13 @@ export const SYSTEM_PT_PATTERNS = [
     (m, dir, id, n, trash, list) => `Apagar a pasta '${dir}' do nó removido ${id} e o(s) ${n} ficheiro(s) que contém do projeto?${trash ? '\n(São movidos para a pasta .trash da área de trabalho, de onde os pode repor.)' : ''}\n\n${list}`],
   [/^(FPGA|Microcontroller|Serial terminal|Circuit) ([A-Za-z]\w*)$/, (m, k, id) => `${{ FPGA: 'FPGA', Microcontroller: 'Microcontrolador', 'Serial terminal': 'Terminal série', Circuit: 'Circuito' }[k]} ${id}`],
   [/^Link ([A-Za-z]\w*)$/, 'Ligação $1'], [/^Waves \((.+)\)$/, 'Ondas ($1)'],
-  [/^Emulate \((.+)\)$/, 'Emular ($1)'],
+  [/^Emulate \((.+)\)$/, 'Emular ($1)'], [/^Simulate \((.+)\)$/, 'Simular ($1)'],
+  // (the System's run's time, its Simulation Properties', #5581)
+  [/^Run (\d+) ms$/, 'Correr $1 ms'], [/^Run the System for (\d+) ms$/, 'Correr o Sistema durante $1 ms'], [/^New: (\S+)$/, 'Novo: $1'],
+  [/^Simulation Properties: (\S+) made, the System's stimulus file \(its controls and the text typed, at their times\)\.$/,
+    'Propriedades da Simulação: $1 criado, o ficheiro de estímulos do Sistema (os seus controlos e o texto escrito, nos seus tempos).'],
+  [/^Simulation Properties: Simulate System runs (every node|.+?) for (\d+) ms(, its stimulus (\S+))?$/,
+    (m, w, ms, x, f) => `Propriedades da Simulação: Simular o Sistema corre ${w === 'every node' ? 'todos os nós' : w} durante ${ms} ms${f ? `, os seus estímulos ${f}` : ''}`],
   // (an FPGA node's constraints file, #5581)
   [/^I\/O Pin Planning \((\S+)\)$/, 'Planeamento de Pinos de E/S ($1)'],
   [/^(\S+): no constraints file (\S+) yet: its module's ports are on no pin of its board \(its I\/O Pin Planning\)$/,

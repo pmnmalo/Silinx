@@ -11,8 +11,13 @@ import { benchSelect, modelSelect, promptChoices, refreshBench, simChoices, simT
 import { benchItems, treeBar, treeItems } from './tasks-sim-tree.js';
 import { mountSimPages } from './tasks-sim-files.js';
 import { designState } from './state-design.js';
+import { isSystemProject } from '../../core/project-kind.js';   // (relative: tasks.js loads in Node too, #4843)
+import { systemsOn } from '../../core/build-channel.js';
 
 /** The panel, appended to the work area: `simulate` runs the test bench chosen. */
+// (a System project's tree in place of the test benches, #5581: its System the top)
+export const systemTree = pj => !!pj && isSystemProject(pj) && systemsOn() && !pj.top;
+
 export function mountSimPanel(app, { simulate }) {
   const row = (cls, ico, ...kids) => h('li', {}, h('div', { class: `row ${cls}` }, h('span', { class: 'twisty' }), icon(ico), ...kids));
   const clickable = (r, run) => {
@@ -24,9 +29,11 @@ export function mountSimPanel(app, { simulate }) {
   const choices = h('ul', { class: 'tree task-sim-choices' },
     row('task-sim-choice', 'moduleTop', benchSelect(app)), row('task-sim-choice', 'wave', modelSelect(app)));
   const benches = h('ul', { class: 'tree task-sim-benches' });
+  // (a System project's: its System's and its nodes' tree, #5581: web/js/system-simulate-ui.js, drawn by processes.js)
+  const system = h('div', { class: 'task-sim-system', hidden: true });
   // (its commands above it, a test bench's menu and the empty space's, as Design's: #1385)
   const tabs = h('div', { class: 'task-sim-tabs', role: 'tablist' }, h('span', { class: 'tab active', role: 'tab' }, h('span', { class: 'tab-lbl' }, 'Simulation')));
-  const tree = [treeBar(app), h('div', { class: 'task-sim-trees' }, choices, benches)];
+  const tree = [treeBar(app), h('div', { class: 'task-sim-trees' }, choices, benches, system)];
   const panel = h('div', { id: 'task-sim-panel', hidden: true }, tabs, ...tree);
   const pages = mountSimPages(app, tabs, tree);   // (and the Files page, #1395)
   panel.addEventListener('contextmenu', e => {
@@ -48,11 +55,12 @@ export function mountSimPanel(app, { simulate }) {
     /** Its rows as the project is now (`shown`: the panel shown, else as it is). */
     refresh(shown = !panel.hidden) {
       pages.refresh();
-      const S = app.S, names = S.project ? simChoices(S.project, designState.modules).benches : [];
-      promptChoices(shown && !names.length);
+      const S = app.S, sys = systemTree(S.project), names = S.project && !sys ? simChoices(S.project, designState.modules).benches : [];
+      promptChoices(shown && !names.length && !sys);
       panel.hidden = !shown;
-      choices.hidden = !!names.length;
+      choices.hidden = !!names.length || sys;
       benches.hidden = !names.length;
+      system.hidden = !sys;
       refreshBench(app);
       if (benches.dataset.key !== names.join()) { benches.dataset.key = names.join(); benches.replaceChildren(...names.map(bench)); }
       const cur = S.project ? simTarget(S.project, designState.modules) : null;

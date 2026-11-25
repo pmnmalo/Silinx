@@ -12,7 +12,8 @@ import { loadAvr8js } from '../core/system-sim-avr.js';
 import { systemVcd } from '../core/system-waves.js';
 import { ucfPort } from '../core/board-constraints.js';
 import { normalizeCircuit } from '../core/circuit.js';
-import { runningSystem, emulateNodesOf, runName } from '../core/system-alone.js';
+import { runningSystem, emulateNodesOf, runName, simulateSettingsOf, SIMULATE_MS } from '../core/system-alone.js';
+import { readStimulus, setsControls, stimulusSteps, runSteps } from '../core/system-stimulus.js';
 import { withNodePins } from '../core/system-constraints.js';
 import { constraintsTexts } from './system-constraints.js';
 import { isRegmapFile, regmapFor, hierModules } from '../core/regmap.js';
@@ -25,6 +26,13 @@ async function circuitsOf(name, sys) {
     try { out[n.circuit] = normalizeCircuit(JSON.parse(await P.readFile(name, n.circuit))); } catch { /* (kept) */ }
   }
   return out;
+}
+
+// the stimulus file `path` read (#5581), or the tool's error
+async function stimulusOf(name, path) {
+  const r = readStimulus(await projectText(name, path, `no stimulus file '${path}' in the project '${name}' (its Simulation Properties name it)`));
+  if (r.error) throw toolError(`${path}: ${r.error}`);
+  return r.stimulus;
 }
 
 // the System's FPGA nodes' modules elaborated: their ports ({ module: [{ name, dir, width }] }) and designs
@@ -52,15 +60,19 @@ async function mapTexts(name) {
   return out;
 }
 
-export async function simulateSystem(name, top, { ms = 100, type = {}, controls = null } = {}) {
+export async function simulateSystem(name, top, { ms, type = {}, controls = null } = {}) {
   if (!systemsOn()) throw toolError(SYSTEMS_OFF);   // (Systems not in a release yet, #5202)
-  // (`<file>#a,b`: its nodes a and b alone, #5581; else with controls, Emulate System's: the Emulation Properties' nodes)
+  // (`<file>#a,b`: its nodes a and b alone, #5581; else with controls, Emulate System's: the Emulation Properties' nodes;
+  // with none, Simulate System's: the Simulation Properties' nodes, time and stimulus file)
   const [file, only] = String(top).split('#');
   if (!isSystemFile(file)) throw toolError(`'${file}' is not a System document (.sys.json)`);
-  if (!(ms > 0) || ms > 10000) throw toolError('time_ns: a System runs from 0 to 1e10 ns (10 s)');
   const r = readSystem(await projectText(name, file, `no System '${file}' in the project '${name}'`));
   if (r.error) throw toolError(`${file}: ${r.error}`);
-  const ids = only != null ? only.split(',').map(x => x.trim()).filter(Boolean) : controls ? emulateNodesOf(await P.readProject(name), r.system) : null;
+  const pj = await P.readProject(name), set = controls ? null : simulateSettingsOf(pj, r.system);
+  ms ??= set?.ms ?? SIMULATE_MS;
+  if (!(ms > 0) || ms > 10000) throw toolError('time_ns: a System runs from 0 to 1e10 ns (10 s)');
+  const ids = only != null ? only.split(',').map(x => x.trim()).filter(Boolean) : controls ? emulateNodesOf(pj, r.system) : set.nodes;
+  const stimulus = set?.stimulus ? await stimulusOf(name, set.stimulus) : null;
   // (each FPGA node's pins its constraints file's, #5581; its problems the run's warnings)
   const pinned = withNodePins(r.system, await constraintsTexts(name, r.system, await P.fileTree(name)));
   const cut = runningSystem(pinned.system, ids, { circuits: await circuitsOf(name, r.system) });
@@ -77,22 +89,26 @@ export async function simulateSystem(name, top, { ms = 100, type = {}, controls 
     circuit: p => P.readFile(name, p),   // (a circuit node's, #5215)
     regmap: async m => regmapFor(await mapTexts(name), designs[m] ? hierModules(designs[m].top) : [m]),   // (a module made from a register map, or one instancing it: its accesses, #5288)
   };
-  const emu = controls ? await emulated(sys, how) : null;
+  // (a stimulus that sets a board's controls: the boards emulated, their steps set as the run goes, #5581)
+  const emu = controls || setsControls(stimulus) ? await emulated(sys, how) : null;
   const ready = emu ? emu.ready : await prepareSystem(sys, how);
   if (ready.error) throw toolError(`${file}: ${ready.error}`);
+  let steps = [];   // (a step after the run's end: not reached)
+  try { steps = stimulus ? stimulusSteps(stimulus, { boards: emu?.boards ?? [], terminals: [...ready.terminals.keys()] }) : []; }
+  catch (e) { throw toolError(`${set.stimulus}: ${e.message}`); }
   for (const [id, text] of Object.entries(type || {})) {
     const t = ready.terminals.get(id);
     if (!t) throw toolError(`type: no terminal '${id}' in the System`);
     t.send([...new TextEncoder().encode(String(text))]);
   }
-  const shown = emu ? runControls(ready.sim, emu.boards, controls, ms * 1e9) : null;
-  if (!emu) ready.sim.run(ms * 1e9);
+  const shown = controls ? runControls(ready.sim, emu.boards, controls, ms * 1e9) : null;
+  if (!controls) runSteps(ready, steps, ms * 1e9);
   const rep = systemReport(ready);
   const vcd = `build/${sys.name}.vcd`;
   await P.writeFile(name, vcd, systemVcd(ready.sim, { name: sys.name }));
   const bytes = t => t.bytes.map(b => ({ t: b.t, byte: b.byte, ...(b.error ? { error: b.error } : {}) }));
   return { text: [...said, ...rep.lines, ...(shown ? boardLines(shown) : []), `The waves: ${vcd}.`].join('\n'), isError: false,
-    data: { project: name, file, time: runTimeText(rep.now), traffic: rep.traffic.map(t => ({ wire: t.wire, link: t.link, from: t.from, to: t.to, bytes: bytes(t) })), spi: rep.spi.map(x => ({ link: x.link, from: x.from, to: x.to, hz: x.hz, mode: x.mode, transfers: x.transfers })), i2c: rep.i2c.map(x => ({ link: x.link, from: x.from, to: x.to, hz: x.hz, transfers: x.transfers })), regs: rep.regs.map(x => ({ link: x.link, map: x.map, accesses: x.accesses.map(({ text, ...y }) => y) })), terminals: rep.terminals, ...(Object.keys(rep.circuits).length ? { circuits: rep.circuits } : {}), warnings: [...said, ...rep.warnings], errors: rep.errors, vcd, ...(ids ? { nodes: sys.nodes.map(n => n.id) } : {}), ...(shown ? { boards: shown } : {}) },
+    data: { project: name, file, ...(stimulus ? { stimulus: set.stimulus } : {}), time: runTimeText(rep.now), traffic: rep.traffic.map(t => ({ wire: t.wire, link: t.link, from: t.from, to: t.to, bytes: bytes(t) })), spi: rep.spi.map(x => ({ link: x.link, from: x.from, to: x.to, hz: x.hz, mode: x.mode, transfers: x.transfers })), i2c: rep.i2c.map(x => ({ link: x.link, from: x.from, to: x.to, hz: x.hz, transfers: x.transfers })), regs: rep.regs.map(x => ({ link: x.link, map: x.map, accesses: x.accesses.map(({ text, ...y }) => y) })), terminals: rep.terminals, ...(Object.keys(rep.circuits).length ? { circuits: rep.circuits } : {}), warnings: [...said, ...rep.warnings], errors: rep.errors, vcd, ...(ids ? { nodes: sys.nodes.map(n => n.id) } : {}), ...(shown ? { boards: shown } : {}) },
     untrusted: 'the System\'s names and the bytes its nodes sent' };
 }
 

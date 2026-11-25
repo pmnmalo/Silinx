@@ -199,11 +199,11 @@ export const HDL_TOOLS = [
   },
   {
     name: 'simulate', title: 'Simulate Behavioral Model',
-    description: 'Run the simulation of the project\'s test bench (or another top) for a time, behavioural or against a simulation model of the flow (post-synthesis, post-translate, post-map, post-place & route with its timing): its messages (report / $display, assertions), where it stopped, and the values of signals (the test bench\'s by default; hierarchical names as tb/uut/count) with their changes.',
+    description: 'Run the simulation of the project\'s test bench (or another top) for a time, behavioural or against a model of the flow (post-synthesis, -translate, -map, -place & route with its timing): its messages (report / $display, assertions), where it stopped, and the signals\' values (the bench\'s by default; paths as tb/uut/count) with their changes.',
     inputSchema: { type: 'object', properties: {
-      project: PROJECT, top: STR('The simulation top (default: the project\'s test bench); a System project\'s System (.sys.json, its default; #a,b: nodes a and b alone): each link\'s bytes, build/<name>.vcd.'),
+      project: PROJECT, top: STR('The simulation top (default: the project\'s test bench); a System (.sys.json, a System project\'s default; #a,b: nodes a, b alone): its links\' bytes, build/<name>.vcd.'),
       type: { type: 'object', description: 'A System\'s terminals: { terminal: text }.' },
-      controls: { type: 'array', items: { type: 'object' }, description: 'Emulate System: [{ node, control: btn0, S1, S3, U1 (°C value), R6 (0-1), on, at_ns }]: the boards shown' },
+      controls: { type: 'array', items: { type: 'object' }, description: 'Emulate System: [{ node, control (btn0, S1, U1 °C, R6 0-1), on | value, at_ns }]: the boards shown' },
       time_ns: { type: 'number', description: 'How long to simulate, in ns (default 1000; at most 1e9).' },
       signals: { type: 'array', items: { type: 'string' }, description: 'The signals to return (names of the top, or paths through instances: uut/count).' },
       max_changes: { type: 'integer', description: `The changes of each signal returned at most (default 20, the last ones; from 1 to ${SIM_LIMITS.maxChanges}, and ${nth(SIM_LIMITS.changes)} in all).` },
@@ -223,7 +223,7 @@ export const HDL_TOOLS = [
     async run({ project: name, top, time_ns: timeGiven, type, controls, signals, max_changes: maxChanges = 20, timeout_s: timeoutS = SIM_LIMITS.timeoutS, model = 'behavioral', generate = false, vcd, forces }, { signal } = {}) {
       // (a System project's System, #4701: Simulate System, 100 ms by default)
       const sysFile = await systemOf(name, top);
-      if (sysFile) return (await import('./mcp-system-sim.js')).simulateSystem(name, sysFile, { ms: timeGiven != null ? timeGiven / 1e6 : 100, type, controls });
+      if (sysFile) return (await import('./mcp-system-sim.js')).simulateSystem(name, sysFile, { ms: timeGiven != null ? timeGiven / 1e6 : undefined, type, controls });
       const timeNs = timeGiven ?? 1000;
       if (type) throw toolError('type: a System\'s terminals (top: a .sys.json)');
       if (!(timeNs > 0) || timeNs > 1e9) throw toolError('time_ns: from 0 to 1e9 ns');
