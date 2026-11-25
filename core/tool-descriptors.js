@@ -10,7 +10,7 @@
 // - tasks: the tasks of the Tasks interface, each with its main action and its state dot's processes.
 // What a tool does not have is not in its descriptor, and so not in the interface. No DOM here: unit tested
 // (test/tool-descriptors.test.js).
-import { deviceFamily, experimentalDevice, openFlowDevice, vivadoDevice } from '../packages/silinx-fpga/src/parts.js';
+import { constraintsFormatOf, deviceFamily, experimentalDevice, openFlowDevice, vivadoDevice } from '../packages/silinx-fpga/src/parts.js';
 
 export const OPEN_SYNTH = 'Synthesize - Yosys';
 export const SYNTH_OPEN = 'Synthesize - Yosys (open)';   // (ISE's tree: the open synthesis beside XST's)
@@ -167,6 +167,7 @@ const LPF = { format: 'lpf', ext: '.lpf', label: 'LPF' };
 const CST = { format: 'cst', ext: '.cst', label: 'CST' };
 const CCF = { format: 'ccf', ext: '.ccf', label: 'CCF' };
 const XDC = { format: 'xdc', ext: '.xdc', label: 'XDC' };
+const QSF = { format: 'qsf', ext: '.qsf', label: 'QSF' };
 
 /** Xilinx ISE 14.7. */
 export const ISE = {
@@ -328,6 +329,8 @@ export const NO_FLOW = {
   tree: [{ part: 'summary' }, { part: 'constraints' }, proc('rtl', 'View RTL Schematic', { ico: 'schematic' }), proc('check', 'Check Syntax'), { part: 'emulate' }],
   tasks: LAB_TASKS.filter(t => t.id !== 'impl'),
 };
+/** The Intel families' (#5376): NO_FLOW's, their constraints QSF. */
+export const NO_FLOW_QSF = { ...NO_FLOW, constraints: QSF };
 
 /** A design and simulation project's (#3780, core/project-kind.js: no FPGA): no flow, no constraints, no board, no programming;
  *  its tree Check Design alone, its tasks Design and Simulate. */
@@ -376,7 +379,7 @@ const OPEN_BY_FAMILY = { ice40: SILINX_ICE40, artix7: SILINX_XC7, ecp5: SILINX_E
  *  (`designOnly`, #3780) DESIGN_ONLY whatever its device. */
 export const toolOf = (device, open, { standalone = false, designOnly = false } = {}) => (designOnly ? DESIGN_ONLY
   : vivadoDevice(device) ? (!openFlowDevice(device) ? (standalone ? NO_FLOW : VIVADO) : open || standalone ? SILINX_XC7 : VIVADO)
-  : experimentalDevice(device) ? NO_FLOW : open ? OPEN_BY_FAMILY[deviceFamily(device)] || SILINX : ISE);
+  : experimentalDevice(device) ? (constraintsFormatOf(device) === 'qsf' ? NO_FLOW_QSF : NO_FLOW) : open ? OPEN_BY_FAMILY[deviceFamily(device)] || SILINX : ISE);
 
 /** Every tool's tasks, in their order: the kept state's and the switchers'. */
 export const allTasks = (tools = TOOLS) => [...new Map(tools.flatMap(t => t.tasks).map(t => [t.id, t])).values()];

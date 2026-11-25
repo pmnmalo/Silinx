@@ -469,7 +469,7 @@ export function fileContextMenu(e, file) {
     // (a System of an FPGA project: the project made a System project, it its top, #5402)
     isSystemFile(file) && !systemProject() && systemsOn() ? { label: 'Set as Top Module', action: async () => (await import('./system-top-ui.js')).makeSystemTop(file) } : null,
     /\.(vhdl?|v|sv|c)$/i.test(file) && !designOnly() ? { label: 'Check Syntax', action: () => checkFileSyntax(file) } : null,   // (.c: Silinx HLS, #1524)
-    /\.(ucf|pcf|lpf|cst|ccf|xdc)$/i.test(file) ? { label: 'Check Syntax', action: () => checkUcfFile(file) } : null,
+    /\.(ucf|pcf|lpf|cst|ccf|xdc|qsf)$/i.test(file) ? { label: 'Check Syntax', action: () => checkUcfFile(file) } : null,
     { label: 'Remove from Project', action: () => removeFile(file) },
     { label: 'Delete File…', action: () => deleteFile(file) },
     { label: 'Source Properties…', action: () => wiz.sourceProperties(file), disabled: !S.project.files.some(f => f.path === file) && designState.viewTexts?.[file] === undefined },

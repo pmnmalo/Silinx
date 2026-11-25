@@ -9,7 +9,7 @@
 import { isDesignOnly } from './project-kind.js';
 
 /** A constraints file's name (any family's format). */
-export const CONSTRAINTS_FILE = /\.(ucf|pcf|lpf|cst|ccf|xdc)$/i;
+export const CONSTRAINTS_FILE = /\.(ucf|pcf|lpf|cst|ccf|xdc|qsf)$/i;
 /** A memory image's name (the files the synthesis and the emulator read as data). */
 export const MEMORY_FILE = /\.(mem|hex|coe)$/i;
 

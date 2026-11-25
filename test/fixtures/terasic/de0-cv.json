@@ -1,0 +1,372 @@
+{
+ "board": "Terasic DE0-CV",
+ "part": "5CEBA4F23C7N",
+ "package": "484-pin FBGA (F23)",
+ "manual": {
+  "title": "DE0-CV User Manual",
+  "revision": "1.1.2 (as listed on Terasic's resources page, dated 2015-05-08 there; the document's own revision history ends '2015.5 Modified DE0-CV package content figure')",
+  "date": "May 4, 2015",
+  "url": "https://www.terasic.com.tw/cgi-bin/page/archive_download.pl?Language=English&No=921&FID=f23586755af207055fa8a4c6aaac3198"
+ },
+ "tables": {
+  "CLOCK_50": {
+   "table": "Table 3-6",
+   "iostandard": "3.3-V LVTTL",
+   "pins": [
+    "PIN_M9"
+   ]
+  },
+  "CLOCK2_50": {
+   "table": "Table 3-6",
+   "iostandard": "3.3-V LVTTL",
+   "pins": [
+    "PIN_H13"
+   ]
+  },
+  "CLOCK3_50": {
+   "table": "Table 3-6",
+   "iostandard": "3.3-V LVTTL",
+   "pins": [
+    "PIN_E10"
+   ]
+  },
+  "CLOCK4_50": {
+   "table": "Table 3-6",
+   "iostandard": "3.3-V LVTTL",
+   "pins": [
+    "PIN_V15"
+   ]
+  },
+  "KEY": {
+   "table": "Table 3-2",
+   "iostandard": "3.3-V LVTTL",
+   "pins": [
+    "PIN_U7",
+    "PIN_W9",
+    "PIN_M7",
+    "PIN_M6"
+   ]
+  },
+  "RESET_N": {
+   "table": "Table 3-2",
+   "iostandard": "3.3-V LVTTL",
+   "pins": [
+    "PIN_P22"
+   ]
+  },
+  "SW": {
+   "table": "Table 3-3",
+   "iostandard": "3.3-V LVTTL",
+   "pins": [
+    "PIN_U13",
+    "PIN_V13",
+    "PIN_T13",
+    "PIN_T12",
+    "PIN_AA15",
+    "PIN_AB15",
+    "PIN_AA14",
+    "PIN_AA13",
+    "PIN_AB13",
+    "PIN_AB12"
+   ]
+  },
+  "LEDR": {
+   "table": "Table 3-4",
+   "iostandard": "3.3-V LVTTL",
+   "pins": [
+    "PIN_AA2",
+    "PIN_AA1",
+    "PIN_W2",
+    "PIN_Y3",
+    "PIN_N2",
+    "PIN_N1",
+    "PIN_U2",
+    "PIN_U1",
+    "PIN_L2",
+    "PIN_L1"
+   ]
+  },
+  "HEX0": {
+   "table": "Table 3-5",
+   "iostandard": "3.3-V LVTTL",
+   "pins": [
+    "PIN_U21",
+    "PIN_V21",
+    "PIN_W22",
+    "PIN_W21",
+    "PIN_Y22",
+    "PIN_Y21",
+    "PIN_AA22"
+   ]
+  },
+  "HEX1": {
+   "table": "Table 3-5",
+   "iostandard": "3.3-V LVTTL",
+   "pins": [
+    "PIN_AA20",
+    "PIN_AB20",
+    "PIN_AA19",
+    "PIN_AA18",
+    "PIN_AB18",
+    "PIN_AA17",
+    "PIN_U22"
+   ]
+  },
+  "HEX2": {
+   "table": "Table 3-5",
+   "iostandard": "3.3-V LVTTL",
+   "pins": [
+    "PIN_Y19",
+    "PIN_AB17",
+    "PIN_AA10",
+    "PIN_Y14",
+    "PIN_V14",
+    "PIN_AB22",
+    "PIN_AB21"
+   ]
+  },
+  "HEX3": {
+   "table": "Table 3-5",
+   "iostandard": "3.3-V LVTTL",
+   "pins": [
+    "PIN_Y16",
+    "PIN_W16",
+    "PIN_Y17",
+    "PIN_V16",
+    "PIN_U17",
+    "PIN_V18",
+    "PIN_V19"
+   ]
+  },
+  "HEX4": {
+   "table": "Table 3-5",
+   "iostandard": "3.3-V LVTTL",
+   "pins": [
+    "PIN_U20",
+    "PIN_Y20",
+    "PIN_V20",
+    "PIN_U16",
+    "PIN_U15",
+    "PIN_Y15",
+    "PIN_P9"
+   ]
+  },
+  "HEX5": {
+   "table": "Table 3-5",
+   "iostandard": "3.3-V LVTTL",
+   "pins": [
+    "PIN_N9",
+    "PIN_M8",
+    "PIN_T14",
+    "PIN_P14",
+    "PIN_C1",
+    "PIN_C2",
+    "PIN_W19"
+   ]
+  },
+  "VGA_R": {
+   "table": "Table 3-10",
+   "iostandard": "3.3-V LVTTL",
+   "pins": [
+    "PIN_A9",
+    "PIN_B10",
+    "PIN_C9",
+    "PIN_A5"
+   ]
+  },
+  "VGA_G": {
+   "table": "Table 3-10",
+   "iostandard": "3.3-V LVTTL",
+   "pins": [
+    "PIN_L7",
+    "PIN_K7",
+    "PIN_J7",
+    "PIN_J8"
+   ]
+  },
+  "VGA_B": {
+   "table": "Table 3-10",
+   "iostandard": "3.3-V LVTTL",
+   "pins": [
+    "PIN_B6",
+    "PIN_B7",
+    "PIN_A8",
+    "PIN_A7"
+   ]
+  },
+  "VGA_HS": {
+   "table": "Table 3-10",
+   "iostandard": "3.3-V LVTTL",
+   "pins": [
+    "PIN_H8"
+   ]
+  },
+  "VGA_VS": {
+   "table": "Table 3-10",
+   "iostandard": "3.3-V LVTTL",
+   "pins": [
+    "PIN_G8"
+   ]
+  },
+  "GPIO_0": {
+   "table": "Table 3-7 (header pins: Figure 3-12, JP1)",
+   "iostandard": "3.3-V LVTTL",
+   "pins": [
+    "PIN_N16",
+    "PIN_B16",
+    "PIN_M16",
+    "PIN_C16",
+    "PIN_D17",
+    "PIN_K20",
+    "PIN_K21",
+    "PIN_K22",
+    "PIN_M20",
+    "PIN_M21",
+    "PIN_N21",
+    "PIN_R22",
+    "PIN_R21",
+    "PIN_T22",
+    "PIN_N20",
+    "PIN_N19",
+    "PIN_M22",
+    "PIN_P19",
+    "PIN_L22",
+    "PIN_P17",
+    "PIN_P16",
+    "PIN_M18",
+    "PIN_L18",
+    "PIN_L17",
+    "PIN_L19",
+    "PIN_K17",
+    "PIN_K19",
+    "PIN_P18",
+    "PIN_R15",
+    "PIN_R17",
+    "PIN_R16",
+    "PIN_T20",
+    "PIN_T19",
+    "PIN_T18",
+    "PIN_T17",
+    "PIN_T15"
+   ],
+   "headerPins": [
+    1,
+    2,
+    3,
+    4,
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    13,
+    14,
+    15,
+    16,
+    17,
+    18,
+    19,
+    20,
+    21,
+    22,
+    23,
+    24,
+    25,
+    26,
+    27,
+    28,
+    31,
+    32,
+    33,
+    34,
+    35,
+    36,
+    37,
+    38,
+    39,
+    40
+   ]
+  },
+  "GPIO_1": {
+   "table": "Table 3-7 (header pins: Figure 3-12, JP2)",
+   "iostandard": "3.3-V LVTTL",
+   "pins": [
+    "PIN_H16",
+    "PIN_A12",
+    "PIN_H15",
+    "PIN_B12",
+    "PIN_A13",
+    "PIN_B13",
+    "PIN_C13",
+    "PIN_D13",
+    "PIN_G18",
+    "PIN_G17",
+    "PIN_H18",
+    "PIN_J18",
+    "PIN_J19",
+    "PIN_G11",
+    "PIN_H10",
+    "PIN_J11",
+    "PIN_H14",
+    "PIN_A15",
+    "PIN_J13",
+    "PIN_L8",
+    "PIN_A14",
+    "PIN_B15",
+    "PIN_C15",
+    "PIN_E14",
+    "PIN_E15",
+    "PIN_E16",
+    "PIN_F14",
+    "PIN_F15",
+    "PIN_F13",
+    "PIN_F12",
+    "PIN_G16",
+    "PIN_G15",
+    "PIN_G13",
+    "PIN_G12",
+    "PIN_J17",
+    "PIN_K16"
+   ],
+   "headerPins": [
+    1,
+    2,
+    3,
+    4,
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    13,
+    14,
+    15,
+    16,
+    17,
+    18,
+    19,
+    20,
+    21,
+    22,
+    23,
+    24,
+    25,
+    26,
+    27,
+    28,
+    31,
+    32,
+    33,
+    34,
+    35,
+    36,
+    37,
+    38,
+    39,
+    40
+   ]
+  }
+ }
+}

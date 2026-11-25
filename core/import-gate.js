@@ -56,7 +56,7 @@ const KINDS = [
   ['c', /\.(c|h|cc|cpp|cxx|hpp|hh)$/i],
   ['asm', /\.(asm|s)$/i],   // (a microcontroller's assembly: the AVR examples' firmware, core/system-layout.js sourceLang, #5535)
   ['python', /\.py$/i],     // (a microcontroller node's MicroPython program, core/system-layout.js sourceLang, #5551)
-  ['constraints', /\.(ucf|pcf|lpf|cst|ccf|xdc|sdc)$/i],
+  ['constraints', /\.(ucf|pcf|lpf|cst|ccf|xdc|qsf|sdc)$/i],
   ['xml', /\.(xise|sch|sym|pnml|wcfg|xml|svg)$/i],
   ['json', /\.json$/i],
   ['data', /\.(mem|hex|coe|txt|dat|csv|md|vcd|do|tcl|ini|log)$/i],

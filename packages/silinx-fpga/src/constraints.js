@@ -7,7 +7,7 @@
 //   forPorts(ports) the same text read knowing the top's ports (a name may depend on them, #63)
 // A format is { id, read(text, { ports }) -> the fields above, write(model) -> text }; a back end says its own
 // (open-flow-backends.js), UCF when it says none. PCF is the iCE40's (pcf.js, #2295), LPF the ECP5's (lpf.js, #2302), CST the Gowin's (cst.js, #2303), CCF the GateMate's (ccf.js, #2431), XDC the
-// 7-series' (xdc.js, #3142).
+// 7-series' (xdc.js, #3142), QSF the Intel families' (qsf.js, #5376).
 import { generateUcf, parseUcf } from './ucf.js';
 
 export const UCF = {

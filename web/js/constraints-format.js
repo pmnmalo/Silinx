@@ -1,5 +1,5 @@
 // Silinx - a project's constraints in its family's format: UCF, the iCE40's PCF (#2296), the ECP5's LPF (#2302), the Gowin's CST
-// (#2303), the GateMate's CCF (#2431) or the 7-series' XDC (#3142). The interface's model is parseUcf's: a bus's bit written x<1>, as PCF, LPF and XDC write x[1]; PCF's and LPF's
+// (#2303), the GateMate's CCF (#2431), the 7-series' XDC (#3142) or the Intel families' QSF (#5376). The interface's model is parseUcf's: a bus's bit written x<1>, as PCF, LPF and XDC write x[1]; PCF's and LPF's
 // own text stays nextpnr's.
 import { constraintsExtOf } from '/packages/silinx-fpga/src/parts.js';
 import { constraintsDiagnostics } from '/core/constraints-check.js';
@@ -20,6 +20,8 @@ export const cstDiagnostics = (text, ports = [], opts) => constraintsDiagnostics
 export const ccfDiagnostics = (text, ports = [], opts) => constraintsDiagnostics('ccf', text, { ports, ...opts });
 /** An XDC's errors (the line Vivado would stop at) and its ports that are no port of the top (#3142: Vivado's [Common 17-55]). */
 export const xdcDiagnostics = (text, ports = [], opts) => constraintsDiagnostics('xdc', text, { ports, ...opts });
+/** A QSF's errors (the line Quartus would stop at, a pin's, an I/O standard at another voltage than its bank's on the board) and warnings (#5376). */
+export const qsfDiagnostics = (text, ports = [], opts) => constraintsDiagnostics('qsf', text, { ports, ...opts });
 
 /** A device's change of format: the project's constraints another file, nothing converted, the user told. */
 export function constraintsForDevice(pj, fileTree, log) {
