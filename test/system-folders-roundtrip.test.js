@@ -97,9 +97,9 @@ test('#5488 a System project shared and followed: the follower sees each node\'s
   const { data: { link } } = await ok('share_project', { project: 'ua', name: 'Ana', server: base });
   const f = await ok('follow_project', { link, name: 'Bot' });
   assert.deepEqual(f.data.files.filter(x => x !== 'silinx.json').sort(), UA);
-  // (each node's text files read through the import gate, as the interface's follower reads them; an .asm is not a text
-  // file of its, in any folder: #5535)
-  for (const p of ['uno/hello.hex', 'uart_avr.sys.json', 'fpga/uart.vhd']) assert.equal((await ok('follow_project', { link, path: p })).data.text, await P.readFile('ua', p), p);
+  // (each node's text files read through the import gate, as the interface's follower reads them: the Arduino's program
+  // too, an .asm a text file of the gate, #5535)
+  for (const p of ['uno/hello.asm', 'uno/hello.hex', 'uart_avr.sys.json', 'fpga/uart.vhd']) assert.equal((await ok('follow_project', { link, path: p })).data.text, await P.readFile('ua', p), p);
   assert.equal((await ok('follow_project', { link, stop: true })).text, 'Stopped following.');
   await ok('share_project', { project: 'ua', action: 'stop' });
 });

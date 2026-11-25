@@ -18,12 +18,13 @@ after(async () => { await env?.teardown?.(); });
 const E = () => env;
 
 const TOP = 'entity top is\nend top;\n';
+const ASM = '; a microcontroller\'s program (#5535: a text file of the gate)\n    ldi r16, 0x3f\n    out 0x04, r16\n';
 const plant = (doc, path, text) => { const yt = new Y.Text(); yt.insert(0, text); doc.getMap('files').set(path, yt); };
 const notes = async (page) => (await page.consoleText()).split('\n').map((l) => l.trim()).filter((l) => /^(WARNING|ERROR)/.test(l));
 
 uiTest('#3361 a hostile owner\'s room: a file the import gate refuses not shown, said; past a follower\'s caps, left with an error', E, async (page) => {
   const doc = projectDoc();
-  publishProject(doc, { project: { name: 'Hostile', top: 'top', device: { family: 'spartan3e', part: 'xc3s250e', package: 'cp132', speed: '-4' }, files: [{ path: 'src/top.vhd', lang: 'vhdl' }, { path: 'src/page.vhd', lang: 'vhdl' }], fileTree: ['src/top.vhd'] }, files: { 'src/top.vhd': TOP }, owner: 'Eve' });
+  publishProject(doc, { project: { name: 'Hostile', top: 'top', device: { family: 'spartan3e', part: 'xc3s250e', package: 'cp132', speed: '-4' }, files: [{ path: 'src/top.vhd', lang: 'vhdl' }, { path: 'src/page.vhd', lang: 'vhdl' }], fileTree: ['src/top.vhd', 'uno/blink.asm'] }, files: { 'src/top.vhd': TOP, 'uno/blink.asm': ASM }, owner: 'Eve' });
   plant(doc, 'src/page.vhd', '<!doctype html><html><body><script>alert(1)</script></body></html>');
   const owner = await shareRoom({ url: relayUrl(env.server.url, 'share'), doc, user: { name: 'Eve' } });
   try {
@@ -39,13 +40,15 @@ uiTest('#3361 a hostile owner\'s room: a file the import gate refuses not shown,
     const opened = await page.eval(async () => { try { await window.SilinxApp.openFile('src/page.vhd'); } catch { /* refused */ } return window.Silinx.docs.some((d) => d.path === 'src/page.vhd' && d.editor?.getValue?.().includes('<script>')); });
     assert.equal(opened, false);
     assert.equal(await page.eval(async () => { await window.SilinxApp.openFile('src/top.vhd'); return window.Silinx.active?.editor?.getValue(); }), TOP);
+    // (an assembly program: shown, as the owner has it, #5535)
+    assert.equal(await page.eval(async () => { await window.SilinxApp.openFile('uno/blink.asm'); return window.Silinx.active?.editor?.getValue(); }), ASM);
     // (opening it: refused, the error in the console, #3540)
     const cannot = 'ERROR: cannot open src/page.vhd: file \'src/page.vhd\' not shown: a web page (HTML), not the file its name says';
     assert.deepEqual(await notes(page), [refused, cannot]);
     // past the files a follower takes: left, with an error
     doc.transact(() => { for (let i = 0; i < 5000; i++) plant(doc, `src/f${i}.v`, ''); });
-    const why = 'the shared project has more files than a follower takes (5002, at most 5000)';
-    await page.waitConsole(/no longer followed/);
+    const why = 'the shared project has more files than a follower takes (5003, at most 5000)';
+    await page.waitConsole(/project "Hostile" is no longer followed/);   // (not "Browsing alone: Eve is no longer followed", once a second file is opened)
     assert.deepEqual(await notes(page), [
       refused,
       cannot,
