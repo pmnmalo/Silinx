@@ -133,6 +133,50 @@ real circuits with ngspice (#5386) later.
 **OS-based nodes** (a Raspberry Pi, the Zynq's Linux) are a real board, or QEMU on the local server, only: no
 emulation of an operating system in the browser.
 
+### The synchronous reactive model
+
+The neutral model a drawing is turned into to run on a CPU (#5486, `core/reactive.js`; the translations:
+`core/reactive-from.js`, `core/reactive-asm.js`). A drawing's code on a CPU does, tick by tick, what its HDL does cycle by
+cycle: the tests run each translation against the drawing's VHDL and Verilog simulated.
+
+**What it holds:** the inputs, the outputs (combinational, or registered), the variables (an ASM chart's registers, a
+synchroniser's flip-flops, a timer), the constants (an ASM chart's generics), the states with the initial one, and the
+statements of a tick: those of every tick (`every`), then those of the present state (its arm). A statement sets an
+output or a variable, goes to a state, or chooses (an `if`, a `switch`). Each expression carries its widths: Verilog's
+width rules, those of the drawings' HDL, are applied when a drawing is turned into it.
+
+**A tick:**
+
+1. The inputs are sampled once; every read of an input in the tick sees that sample.
+2. Every read sees the values at the start of the tick: the inputs' sample, and the present values of the variables, of
+   the registered outputs and of the state. A combinational output is never read.
+3. A combinational output starts at its default. The next value of a variable, of a registered output and of the state
+   starts at its present value; a timer's at its present value + 1, held at its maximum (a timer counts ticks).
+4. `every` runs, then the present state's arm, in order. A `set` gives a combinational output its value in this tick, and
+   a variable or a registered output its next value; a `go` gives the next state. The last one of a tick wins.
+5. The tick's outputs are the combinational outputs' values and the registered outputs' present values. Then the next
+   values become the present ones.
+
+**Moore and Mealy outputs:** an arm sets its Moore outputs before any choice (they depend on the state alone); a
+transition's branch sets its Mealy outputs (they depend on the inputs too). **A guard's priority** is its order: a
+state's transitions are an if / else-if chain, the first true guard is taken, the otherwise is the last `else`, and with
+none true the state stays. **The reset state** is the initial state, each variable at its initial value and each
+registered output at its default; on a CPU it is set by `setup()`, and the drawing's reset input is not an input of the
+model (the board's reset button resets the CPU).
+
+**On an FPGA a tick is a clock cycle; on a CPU** it is one turn of `loop()` at a fixed period (`millis()`), or a timer's
+interrupt.
+
+| Drawing | Turned into |
+|---|---|
+| State diagram | its states (in their codes' order); each arm its Moore outputs, then its transitions as an if / else-if chain |
+| ASM chart | its registers and registered outputs; its every-cycle blocks `every`; each arm the state's actions, its decision boxes `if`s, its case boxes `switch`es, its conditional outputs where they are reached |
+| Petri net | its controller's state machine (one state per reachable marking, `core/petri-fsm.js`, at most 200), then as a state diagram |
+| Truth table | combinational: each output in `every`, the expression of its HDL module (its form; a don't care the value that form gives it) |
+| Schematic | refused: it is hardware |
+
+A value is at most 32 bits on a CPU (a wider one is refused).
+
 ### The PIC24
 
 The PIC24 comes first (#5479's phase 1): a course uses the Explorer 16/32 with the PIC24FJ1024GB610 next semester, and
