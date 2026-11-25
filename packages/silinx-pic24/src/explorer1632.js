@@ -26,11 +26,14 @@ export const EXPLORER_1632 = {
 import { SerialTerminal } from './serial.js';
 
 export class Explorer1632 {
-  /** The board around a device (gb610.js's): its buttons released, their pull-ups on the pins. */
+  /** The board around a device (gb610.js's): its buttons released (their pull-ups on the pins), the potentiometer at
+   *  its middle, the room at 25 °C. */
   constructor(dev) {
     this.dev = dev;
     this.pressed = new Set();
     for (const b of Object.keys(EXPLORER_1632.buttons)) this.release(b);
+    this.setPotentiometer(0.5);
+    this.setTemperature(25);
   }
 
   get ports() { return this.dev.ports; }
@@ -40,6 +43,11 @@ export class Explorer1632 {
     this.terminal ??= new SerialTerminal(this.dev, { tx: EXPLORER_1632.uart.tx, rx: EXPLORER_1632.uart.rx, baud });
     return this.terminal;
   }
+
+  /** The potentiometer R6 (AN5) at a share of its travel, 0 to 1: 0 to 3.3 V. */
+  setPotentiometer(share) { this.dev.adc.setAnalog(EXPLORER_1632.analog.R6, 3.3 * Math.max(0, Math.min(1, share))); }
+  /** The TC1047A (AN4) at a temperature (°C, -40 to 125): 500 mV + 10 mV/°C. */
+  setTemperature(c) { this.dev.adc.setAnalog(EXPLORER_1632.analog.TC1047A, 0.5 + 0.01 * Math.max(-40, Math.min(125, c))); }
 
   /** A button pressed (its pin to 0). */
   press(name) { this.button(name, true); }
