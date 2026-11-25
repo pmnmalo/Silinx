@@ -701,7 +701,7 @@ boards show since the last.
 - A node's **Emulate Node** runs that node alone, in the same document, its tab saying which (`Emulate (uart_avr: fpga)`).
 - The System is cut to those nodes. A link to a node that does not run has its open end replaced:
   - a UART's end becomes a serial terminal named after the link, at its baud and frame;
-  - a GPIO, SPI or I²C end is left open;
+  - a GPIO input is held at 0; a GPIO output, an SPI or an I²C end is left open;
   - a circuit whose boards do not all run is not run;
   - a terminal runs with the nodes it is linked to.
 - Each replaced end is a warning in the console:

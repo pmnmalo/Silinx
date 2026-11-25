@@ -1,7 +1,8 @@
 // Silinx - the nodes of a System that run (#5581, docs/SYSTEMS.md, Emulation): the System Emulator runs every node, or the ones
 // the project's Emulation Properties tick, or one node alone (its Emulate Node). The System is cut to them, and each link
 // to a node that does not run has its open end replaced: a UART's by a serial terminal (the user reads what the node sends
-// and types what it receives, at the link's baud and frame), a GPIO's, an SPI's and an I²C's left open; a circuit node
+// and types what it receives, at the link's baud and frame), a GPIO input's held at 0 (the cut System's `held`, its ends:
+// core/system-build.js sets their pins at 0), a GPIO output's, an SPI's and an I²C's left open; a circuit node
 // whose boards do not all run is not run. Each replacement is said, one warning a link. Isomorphic module.
 import { partDef } from './circuit-parts.js';
 import { boardNodeId } from './system-circuit.js';
@@ -35,7 +36,8 @@ function freeId(taken, base) {
 const boardsOf = m => (m?.parts || []).filter(p => partDef(p.type)?.kind === 'board').map(boardNodeId);
 
 /**
- * The System `sys` with only the nodes `ids` running (null: all, the System as it is): { system, warnings: [text] }.
+ * The System `sys` with only the nodes `ids` running (null: all, the System as it is): { system, warnings: [text] }; the
+ * system's `held` ('<node>.<interface>') its GPIO inputs held at 0, its link cut.
  * `circuits`: { path: its circuit (normalized) } to know a circuit node's boards (a circuit not given is kept). Refused
  * (runRefusal): { error }.
  */
@@ -58,7 +60,7 @@ export function runningSystem(sys, ids = null, { circuits = {} } = {}) {
     if (kind(a.node) === 'terminal' && run.has(b.node)) run.add(a.node);
     if (kind(b.node) === 'terminal' && run.has(a.node)) run.add(b.node);
   }
-  const taken = new Set(sys.nodes.map(n => n.id)), nodes = sys.nodes.filter(n => run.has(n.id)), links = [];
+  const taken = new Set(sys.nodes.map(n => n.id)), nodes = sys.nodes.filter(n => run.has(n.id)), links = [], held = [];
   for (const l of sys.links) {
     const a = endOf(l.a), b = endOf(l.b);
     if (run.has(a.node) && run.has(b.node)) { links.push(l); continue; }
@@ -71,10 +73,13 @@ export function runningSystem(sys, ids = null, { circuits = {} } = {}) {
       nodes.push({ id, kind: 'terminal', interfaces: [{ name: 'uart', kind: 'uart', baud, frame }], x: 0, y: 0 });
       links.push({ ...l, a: `${mine.node}.${mine.iface}`, b: `${id}.uart` });
       warnings.push(`${head} is the terminal ${id} here (${baud} baud, ${frame})`);
-    } else if (l.kind === 'gpio' && f?.dir === 'in') warnings.push(`${head} is left open: nothing drives its input${f.pins.length > 1 ? 's' : ''} ${f.pins.join(', ')}`);
+    } else if (l.kind === 'gpio' && f?.dir === 'in') {
+      held.push(`${mine.node}.${mine.iface}`);
+      warnings.push(`${head} is held at 0: its input${f.pins.length > 1 ? 's' : ''} ${f.pins.join(', ')}`);
+    }
     else warnings.push(`${head} is left open`);
   }
-  return { system: { ...sys, nodes, links }, warnings };
+  return { system: { ...sys, nodes, links, ...(held.length ? { held } : {}) }, warnings };
 }
 
 /** The nodes the project `pj`'s Emulation Properties tick to run (silinx.json's `system.emulate.nodes`, #5581), those

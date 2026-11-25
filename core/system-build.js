@@ -64,7 +64,8 @@ function endOf(sys, end) {
 /**
  * What to simulate: { fpga: [{ id, module, clock, pins }] (each FPGA node: its module, its clock ({ port, period, hz }),
  * the output pins its links read), circuits: [{ id, model, pins }] (each circuit node: its circuit, its pins of the
- * nodes, #5215), wires: [{ name, link, kind, from, to, baud, frame }], idle: [{ node, pin, value }], errors: [text] }
+ * nodes, #5215), wires: [{ name, link, kind, from, to, baud, frame }], idle: [{ node, pin, value, held }] (held: a GPIO
+ * input held at 0, its link cut, #5581), errors: [text] }
  * (`ports`: { module: [{ name, dir, width }] }; `circuits`: { id: its circuit, read }). An error: the System cannot be
  * simulated (a node with no module, no clock, no firmware, no circuit; a circuit's board that names no node).
  */
@@ -132,6 +133,8 @@ export function systemPlan(sys, { ports = {}, circuits = {} } = {}) {
     const e = f.kind === 'uart' ? endOf(sys, `${n.id}.${f.name}`) : null;
     if (e?.rx && !driven.has(`${n.id}.${e.rx}`)) idle.push({ node: n.id, pin: e.rx, value: 1 });
   }
+  // (a GPIO input whose link's other node does not run: held at 0, #5581: core/system-alone.js's `held`)
+  for (const end of sys.held ?? []) for (const pin of endOf(sys, end)?.pins ?? []) idle.push({ node: linkEnd(end).node, pin, value: 0, held: true });
   for (const f of fpga) f.pins = [...outs.get(f.id)];
   return { fpga, circuits: circ, wires, idle, errors };
 }
