@@ -7,8 +7,10 @@ import { Watchdog } from './wdt.js';
 import { Ports } from './gpio.js';
 import { Timers } from './timers.js';
 import { createUarts } from './uart.js';
+import { Pps } from './pps.js';
+import { ExternalInterrupts } from './extint.js';
 
-/** The device: { mcu, cpu, osc, wdt, ports, timers, uarts (UART1-6) }. opts: Pic24Mcu's (program, config, primaryHz, log); fcy: the instruction
+/** The device: { mcu, cpu, osc, wdt, ports, timers, uarts (UART1-6), pps }. opts: Pic24Mcu's (program, config, primaryHz, log); fcy: the instruction
  *  clock forced (the oscillator's ignored). */
 export function createGb610(opts = {}) {
   const mcu = new Pic24Mcu(opts);
@@ -18,6 +20,22 @@ export function createGb610(opts = {}) {
   const ports = new Ports(mcu);
   const timers = new Timers(mcu);
   const uarts = createUarts(mcu);
+  const pps = new Pps(mcu, ports, osc);
+  new ExternalInterrupts(mcu, ports, pps);
+  // UART1-4 through PPS (UxTX an output function, UxRX an input one); UART5 and 6 on their fixed pins
+  const FIXED = { 5: { tx: 'RD1', rx: 'RD6' }, 6: { tx: 'RB7', rx: 'RB12' } };
+  for (const u of uarts) {
+    if (u.n <= 4) {
+      u.onTxBits((b, t) => pps.outputAt(`U${u.n}TX`, b, t));
+      u.rxLevel = () => pps.input(`U${u.n}RX`);
+      pps.watch(`U${u.n}RX`, (level) => u.rxEdge(level));
+    } else {
+      const { tx, rx } = FIXED[u.n];
+      u.onTxBits((b, t) => { const set = () => ports.override(tx, `U${u.n}TX`, b); if (t <= mcu.time) set(); else mcu.schedule(t, set); });
+      u.rxLevel = () => ports.level(rx) ?? 0;
+      ports.onLevel((pin, level) => { if (pin === rx) u.rxEdge(level); });
+    }
+  }
   mcu.powerOn();
-  return { mcu, cpu: mcu.cpu, osc, wdt, ports, timers, uarts };
+  return { mcu, cpu: mcu.cpu, osc, wdt, ports, timers, uarts, pps };
 }

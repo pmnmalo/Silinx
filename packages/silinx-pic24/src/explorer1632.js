@@ -23,6 +23,8 @@ export const EXPLORER_1632 = {
   primaryHz: 8e6,
 };
 
+import { SerialTerminal } from './serial.js';
+
 export class Explorer1632 {
   /** The board around a device (gb610.js's): its buttons released, their pull-ups on the pins. */
   constructor(dev) {
@@ -32,6 +34,12 @@ export class Explorer1632 {
   }
 
   get ports() { return this.dev.ports; }
+
+  /** The USB-UART (the MCP2221A) as a terminal: the device's TX on RF5, its RX on RF4, at the terminal's baud. */
+  usbUart(baud = 9600) {
+    this.terminal ??= new SerialTerminal(this.dev, { tx: EXPLORER_1632.uart.tx, rx: EXPLORER_1632.uart.rx, baud });
+    return this.terminal;
+  }
 
   /** A button pressed (its pin to 0). */
   press(name) { this.button(name, true); }
