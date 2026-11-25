@@ -10,8 +10,8 @@ let env;
 before(async () => { env = await setupUi(); });
 after(async () => { await env?.teardown?.(); });
 const E = () => env;
-const SYS = JSON.stringify({ format: 'silinx-system', version: 1, name: 'lab', nodes: [
-  { id: 'uno', kind: 'mcu', board: 'arduino-uno', lang: 'c', firmware: 'fw/hello.hex', interfaces: [{ name: 'Serial', kind: 'uart', baud: 9600, frame: '8N1' }], x: 0, y: 0 },
+const SYS = JSON.stringify({ format: 'silinx-system', version: 2, name: 'lab', nodes: [
+  { id: 'uno', kind: 'mcu', board: 'arduino-uno', lang: 'c', firmware: 'uno/hello.hex', interfaces: [{ name: 'Serial', kind: 'uart', baud: 9600, frame: '8N1' }], x: 0, y: 0 },
   { id: 'fpga', kind: 'fpga', module: 'uart', board: 'basys2', variant: '250', pins: { clk: 'B8', rx: 'J3', tx: 'A3' }, interfaces: [{ name: 'uart', kind: 'uart', tx: 'tx', rx: 'rx', baud: 9600, frame: '8N1' }], x: 300, y: 0 },
 ], links: [{ id: 'serial', kind: 'uart', a: 'uno.Serial', b: 'fpga.uart' }] }, null, 2);
 const lines = (page) => page.eval(() => [...document.querySelectorAll('#console-log .ln')].map((l) => l.textContent));
@@ -19,7 +19,7 @@ const rows = (page) => page.eval(() => [...document.querySelectorAll('#hier .row
 
 uiTest('#5486 a CPU node\'s C is not compiled by Silinx HLS: not a module of the design, its errors not the FPGA\'s', E, async (page) => {
   await makeProject(env, { name: 'CpuC', template: 'uart', files: {
-    'lab.sys.json': SYS, 'fw/hello.hex': ':00000001FF\n',
+    'lab.sys.json': SYS, 'uno/hello.hex': ':00000001FF\n',
     'uno/blink.c': 'int blink(int a) { return a ^ 1; }\n', 'uno/broken.c': 'int broken(int a) { return a +; }\n',
   } });
   const pj = await env.server.api('GET', '/api/projects/CpuC');
