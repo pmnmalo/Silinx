@@ -39,7 +39,7 @@ export function hostSystemRun(port) {
     },
     set({ node, pin, value }) {
       const b = boards?.find(x => x.id === node);
-      if (!b || b.kind === 'mcu') throw new Error(`no board of an FPGA node or a circuit '${node}'`);
+      if (!b || (b.kind === 'mcu' && b.arch !== 'pic24')) throw new Error(`no board of an FPGA node, a circuit or an Explorer 16/32 '${node}'`);
       setBoardInput(run.sim, b, pin, value);
     },
     send({ node, bytes }) {

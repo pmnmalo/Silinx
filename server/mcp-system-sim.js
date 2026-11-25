@@ -110,8 +110,19 @@ function runControls(sim, boards, controls, end) {
       }
       return { t, b: cb, pin: String(c.control), on: !!c.on };
     }
+    // (an Explorer 16/32's button, on; R6, a share of its travel, or the TC1047A, °C: a value, #5484)
+    const eb = boards.find(x => x.id === c?.node && x.arch === 'pic24');
+    if (eb) {
+      const ei = eb.inputs.find(x => x.pin === String(c.control ?? ''));
+      if (!ei) throw toolError(`controls[${i}]: no button, potentiometer nor temperature sensor '${c.control}' on ${eb.id}'s Explorer 16/32 (${eb.inputs.map(x => x.pin).join(', ')})`);
+      if (!(t >= 0) || t > end) throw toolError(`controls[${i}]: at_ns from 0 to the run's time`);
+      if (ei.kind === 'button') return { t, b: eb, pin: ei.pin, on: c.on ? 1 : 0 };
+      const v = Number(c.value);
+      if (!Number.isFinite(v) || v < ei.min || v > ei.max) throw toolError(`controls[${i}]: ${ei.pin}'s value: ${ei.kind === 'pot' ? 'its travel' : 'a temperature (°C)'} from ${ei.min} to ${ei.max}`);
+      return { t, b: eb, pin: ei.pin, on: v };
+    }
     const b = boards.find(x => x.id === c?.node && x.kind === 'fpga');
-    if (!b) throw toolError(`controls[${i}]: no FPGA node '${c?.node}' with a board, nor a circuit, in the System`);
+    if (!b) throw toolError(`controls[${i}]: no FPGA node '${c?.node}' with a board, a circuit nor an Explorer 16/32, in the System`);
     const m = /^([a-z_]+?)(\d+)$/i.exec(String(c.control ?? ''));
     const x = m && b.wiring.bits.find(y => y.res.name === m[1].toLowerCase() && y.idx === Number(m[2]));
     if (!x || !b.inputs.some(i2 => i2.pin === pinOf(x))) throw toolError(`controls[${i}]: no switch or button '${c.control}' of ${b.id}'s board linked to its module (${b.inputs.map(i2 => `${i2.res}${i2.idx}`).join(', ') || 'none'})`);
@@ -127,9 +138,13 @@ function runControls(sim, boards, controls, end) {
 }
 
 // what the boards show, a line each
-const boardLines = shown => Object.entries(shown).map(([id, s]) => (s.inputs && s.lit ? `${id}'s circuit: lit ${s.lit.join(' ') || 'none'}${Object.entries(s.sensors || {}).map(([k, x]) => `; ${k} ${x.temp.toFixed(1)} °C`).join('')}${Object.entries(s.servos || {}).map(([k, x]) => `; ${k} at ${Math.round(x.angle)}°`).join('')}${Object.entries(s.buzzers || {}).map(([k, x]) => `; ${k} ${x.sounding ? `${x.hz} Hz` : 'silent'}`).join('')}${Object.entries(s.steppers || {}).map(([k, x]) => `; ${k} at ${x.angle}°`).join('')}${Object.entries(s.sds || {}).map(([k, x]) => `; ${k} ${x.stage}, ${x.written.length} block(s) written`).join('')}${Object.entries(s.sonars || {}).map(([k, x]) => `; ${k} ${x.cm} cm`).join('')}${Object.entries(s.pirs || {}).map(([k, x]) => `; ${k} OUT ${x.out ? 1 : 0}`).join('')}${Object.entries(s.dhts || {}).map(([k, x]) => `; ${k} ${x.temp} °C ${x.hum} %`).join('')}.` : s.leds
+const boardLines = shown => Object.entries(shown).map(([id, s]) => (s.lcd ? explorerLine(id, s) : s.inputs && s.lit ? `${id}'s circuit: lit ${s.lit.join(' ') || 'none'}${Object.entries(s.sensors || {}).map(([k, x]) => `; ${k} ${x.temp.toFixed(1)} °C`).join('')}${Object.entries(s.servos || {}).map(([k, x]) => `; ${k} at ${Math.round(x.angle)}°`).join('')}${Object.entries(s.buzzers || {}).map(([k, x]) => `; ${k} ${x.sounding ? `${x.hz} Hz` : 'silent'}`).join('')}${Object.entries(s.steppers || {}).map(([k, x]) => `; ${k} at ${x.angle}°`).join('')}${Object.entries(s.sds || {}).map(([k, x]) => `; ${k} ${x.stage}, ${x.written.length} block(s) written`).join('')}${Object.entries(s.sonars || {}).map(([k, x]) => `; ${k} ${x.cm} cm`).join('')}${Object.entries(s.pirs || {}).map(([k, x]) => `; ${k} OUT ${x.out ? 1 : 0}`).join('')}${Object.entries(s.dhts || {}).map(([k, x]) => `; ${k} ${x.temp} °C ${x.hum} %`).join('')}.` : s.leds
   ? `${id}'s board: LEDs ${s.leds.map((v, k) => [v, k]).filter(([v]) => v > 0.5).map(([, k]) => `LD${k}`).join(' ') || 'off'}${s.digits?.some(Boolean) ? `; display ${s.digits.map(d => (d ? digitText(d) : ' ')).reverse().join('')}` : ''}.`
   : `${id}'s board: LED L ${s.led > 0.5 ? 'on' : 'off'}; pins high ${Object.entries(s.pins).filter(([, v]) => v === 1).map(([p]) => p).join(' ') || 'none'}.`));
+// an Explorer 16/32's (#5484): its LEDs lit, its buttons held, R6, the temperature, the LCD's rows
+const explorerLine = (id, s) => `${id}'s Explorer 16/32: LEDs ${Object.entries(s.leds).filter(([, v]) => v > 0.5).map(([d]) => d).join(' ') || 'off'}`
+  + `; held ${Object.entries(s.held).filter(([, v]) => v).map(([b]) => b).join(' ') || 'none'}; R6 at ${Math.round(s.analog.R6 * 100)} %, ${s.analog.TC1047A} °C`
+  + `; LCD "${s.lcd[0].trimEnd()}" / "${s.lcd[1].trimEnd()}".`;
 // a digit's segments as the hexadecimal digit they draw, or ? (other patterns)
 const HEX = ['1111110', '0110000', '1101101', '1111001', '0110011', '1011011', '1011111', '1110000', '1111111', '1111011', '1110111', '0011111', '1001110', '0111101', '1001111', '1000111'];
 const digitText = d => { const i = HEX.indexOf(d.seg.map(x => (x > 0.5 ? 1 : 0)).join('')); return i < 0 ? '?' : i.toString(16).toUpperCase(); };

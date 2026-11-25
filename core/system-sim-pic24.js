@@ -73,3 +73,7 @@ export class Pic24Board {
 /** A PIC24 node behind the node contract (core/system-contract.js): `opts` Pic24Board's ({ board, firmware }), its
  *  pins at its board's I/O level (3.3 V); its state its inputs, replayed on a new engine. */
 export const pic24Contract = (opts) => new ContractNode({ make: () => new Pic24Board(opts), volts: mcuBoard(opts.board ?? BOARD)?.vio ?? null, fidelity: PIC24_FIDELITY });
+
+/** The board's model (silinx-pic24's Explorer1632: its buttons, potentiometer, LCD) of a PIC24 node of the scheduler (its
+ *  NodeEngine, around pic24Contract's ContractNode), or null: the System Emulator's (core/system-emu-explorer.js). */
+export const explorerOf = (adapter) => adapter?.node?.engine?.explorer ?? null;

@@ -18,6 +18,7 @@ import { resolveBoard } from './devices.js';
 import { mcuBoard } from './system-doc.js';
 import { partInputs } from './circuit-io.js';
 import { partDef, sensePin } from './circuit-parts.js';
+import { explorerBoard, explorerState, setExplorerInput } from './system-emu-explorer.js';
 
 // a netlist's top's ports: [{ name, dir, width }]
 function portsOf(netlist) {
@@ -31,7 +32,7 @@ export const pinOf = b => (b.sig.t.w === 1 ? b.port : `${b.port}[${b.pos}]`);
 
 /**
  * The System's boards to emulate: [{ id, kind: 'fpga', board, wiring, inputs: [{ pin, kind, res, idx }], outputs: [pin] }
- * | { id, kind: 'mcu', board, outputs: [pin], led } | { id, kind: 'circuit', model, inputs: [{ pin, part, index, kind }],
+ * | { id, kind: 'mcu', board, outputs: [pin], led } (an Arduino's) | an Explorer 16/32's (explorerBoard's) | { id, kind: 'circuit', model, inputs: [{ pin, part, index, kind }],
  * outputs: [] }] (`inputs`: systemInputs'; an FPGA node with no board: none). An FPGA board's inputs are its switches'
  * and buttons' pins that no link drives; its outputs, its LEDs' and displays'. A circuit's inputs are its parts'
  * (switches, buttons, a DIP switch's levers: `S1`, `DIP1:2`; its clocks tick themselves).
@@ -53,8 +54,9 @@ export function emulationBoards(sys, inputs) {
     }
     if (n.kind === 'mcu') {
       const b = mcuBoard(n.board);
-      // (an Arduino's; the Explorer 16/32's drawing is #5484's next part: its PIC24 runs, its board not shown)
+      // (an Arduino's; an Explorer 16/32's, its LEDs, buttons, potentiometer and LCD: core/system-emu-explorer.js, #5484)
       if (b?.arch === 'avr') out.push({ id: n.id, kind: 'mcu', board: b, outputs: b.pins.filter(p => !/^A[67]$/.test(p)), led: 'D13' });
+      else if (b?.arch === 'pic24') out.push(explorerBoard(n, b, driven));
       continue;
     }
     if (n.kind !== 'fpga' || !n.board || !inputs.netlists[n.id]) continue;
@@ -120,6 +122,9 @@ export function boardStates(sim, boards, t0, t1, prev = {}) {
       // (each bit its own waveform: the wiring's bits as boardOutputs reads them, at position 0 of theirs)
       const bits = b.wiring.bits.map(x => (b.outputs.includes(pinOf(x)) ? { ...x, pos: 0, sig: { wave: waveOf(trace(pinOf(x))) } } : x));
       out[b.id] = boardOutputs({ ...b.wiring, bits }, t0, t1, prev[b.id] || null);
+    } else if (b.arch === 'pic24') {
+      const span = t1 - t0;
+      out[b.id] = explorerState(sim, b, pin => (span > 0 ? onTime(trace(pin), t0, t1) / span : trace(pin).at(-1) ?? 0));
     } else {
       const span = t1 - t0;
       out[b.id] = { pins: Object.fromEntries(b.outputs.map(p => [p, trace(p).at(-1)])), led: span > 0 ? onTime(trace(b.led), t0, t1) / span : trace(b.led).at(-1) ?? 0 };
@@ -130,7 +135,7 @@ export function boardStates(sim, boards, t0, t1, prev = {}) {
 }
 
 /** An FPGA board's switch or button set (`value`: on 1, off 0; its pin at the level its board gives it); a circuit's
- *  switch or button (its part's id; a DIP switch's lever, `DIP1:2`). */
+ *  switch or button (its part's id; a DIP switch's lever, `DIP1:2`); an Explorer 16/32's button, R6 or TC1047A. */
 export function setBoardInput(sim, board, pin, value) {
   if (board.kind === 'circuit') {
     const c = board.inputs.find(x => x.pin === pin);
@@ -140,6 +145,7 @@ export function setBoardInput(sim, board, pin, value) {
     else sim.nodes.get(board.id).setInput(c.part, value, c.index);
     return;
   }
+  if (board.arch === 'pic24') { setExplorerInput(sim, board, pin, value); return; }
   const i = board.inputs.find(x => x.pin === pin);
   if (!i) throw new Error(`'${pin}' is not a switch or a button of ${board.id}'s board`);
   sim.nodes.get(board.id).setPin(pin, (value ? 1 : 0) ^ (i.activeLow ? 1 : 0));

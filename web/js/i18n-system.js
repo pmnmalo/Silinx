@@ -51,6 +51,9 @@ export const SYSTEM_PT = {
   'Terminals': 'Terminais', '☰ Terminals': '☰ Terminais', 'Show / hide the terminals panel': 'Mostrar / ocultar o painel dos terminais',
   'Collapse the terminals panel': 'Recolher o painel dos terminais', 'Expand the terminals panel': 'Expandir o painel dos terminais',
   'LED L (D13)': 'LED L (pino D13)', 'Power': 'Alimentação',
+  // an Explorer 16/32 (#5484)
+  'Potentiometer R6 (AN5): 0 to 3.3 V': 'Potenciómetro R6 (AN5): 0 a 3,3 V', 'Temperature sensor TC1047A (AN4), °C': 'Sensor de temperatura TC1047A (AN4), °C',
+  'LCD 16x2 (the PMP: PMD0-7 RE0-RE7, RS RB15, E RD4)': 'LCD 16x2 (o PMP: PMD0-7 RE0-RE7, RS RB15, E RD4)',
   // a register map (#5288)
   'Register Map': 'Mapa de Registos', 'register map': 'mapa de registos', 'Generated from the register map': 'Gerado a partir do mapa de registos',
   '+ Register': '+ Registo', 'Add a register after the last one': 'Acrescentar um registo a seguir ao último', 'Remove the selected register': 'Remover o registo selecionado',
@@ -70,6 +73,8 @@ export const SYSTEM_PT = {
   'Not made: its file is not in the project folder': 'Não gerado: o seu ficheiro não está na pasta do projeto',
 };
 export const SYSTEM_PT_PATTERNS = [
+  [/^Button (S\d) \((R[A-G]\d+)\)$/, 'Botão $1 ($2)'], [/^Button (S\d): its pin is a link's$/, 'Botão $1: o seu pino é de uma ligação'],
+  [/^LED (D\d+) \((R[A-G]\d+)\)$/, 'LED $1 ($2)'], [/^(PIC24\w+), its 8 MHz crystal$/, '$1, o seu cristal de 8 MHz'],
   // (a CPU node's drawing's last badge, #5488: web/js/design.js)
   [/^The node's base language: (.+)$/, 'A linguagem de base do nó: $1'],
   // (a CPU node's drawing's [C], #5486: web/js/design-cpu.js)

@@ -2,7 +2,7 @@
 // together in real time by the co-simulation scheduler in its Web Worker (web/js/system-remote.js, `emulate`: core/
 // system-emu.js). An FPGA node's board is the Board Emulator's drawing and parts (web/js/emulator-board.js
 // mountBoardParts: its switches and buttons set the node's pins, its LEDs and digits painted from what the worker says
-// they showed); an Arduino's is Silinx's own (web/js/emulator-arduino.js); a serial terminal per terminal node in the
+// they showed); an Arduino's is Silinx's own (web/js/emulator-arduino.js), an Explorer 16/32's too (web/js/emulator-explorer.js, #5484); a serial terminal per terminal node in the
 // side panel; a circuit node's circuit as the Circuit editor draws it (#5322: its LEDs lit from the run, a click on a
 // switch or a DIP switch's lever turning it, a button held down while pressed). Run / Pause and Restart in its toolbar; its status line the time and the rate against real time; the
 // nodes' and the decoders' messages in the console (`onMessage`), never in the view (docs/UI-GUIDELINES.md).
@@ -16,6 +16,7 @@ import { mountBoardParts } from './emulator-board.js';
 import { injectStyle } from './emulator.js';
 import { ledLook } from './emulator-paint.js';
 import { arduinoLayout } from './emulator-arduino.js';
+import { explorerLayout } from './emulator-explorer.js';
 import { statusLine } from './status-line.js';
 import { mountSideFold } from './side-fold.js';
 import { panelToggle, PROPS_KEY } from './narrow.js';
@@ -126,7 +127,8 @@ export function mountSystemEmulator(host, opts) {
     views = new Map(boards.map(b => {
       if (b.kind === 'fpga') return [b.id, fpgaView(b)];
       if (b.kind === 'circuit') return [b.id, circuitView(b)];
-      const a = arduinoLayout({ h, board: b.board, title: b.id });
+      // (an Explorer 16/32's buttons, potentiometer and temperature sensor set through the worker, #5484)
+      const a = b.arch === 'pic24' ? explorerLayout({ h, emu: b, title: b.id, set: (part, v) => ready?.set(b.id, part, v) }) : arduinoLayout({ h, board: b.board, title: b.id });
       return [b.id, { el: h('div', { class: 'sys-emu-board', 'data-node': b.id }, a.wrap), paint: a.paint }];
     }));
     boardsEl.replaceChildren(...[...views.values()].map(v => v.el));
