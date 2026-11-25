@@ -87,6 +87,14 @@ export const SYSTEM_PT_PATTERNS = [
   [/^The board to program the node (\w+) on:$/, 'A placa onde programar o nó $1:'],
   [/^Button (S\d) \((R[A-G]\d+)\)$/, 'Botão $1 ($2)'], [/^Button (S\d): its pin is a link's$/, 'Botão $1: o seu pino é de uma ligação'],
   [/^LED (D\d+) \((R[A-G]\d+)\)$/, 'LED $1 ($2)'], [/^(PIC24\w+), its 8 MHz crystal$/, '$1, o seu cristal de 8 MHz'],
+  // (Find Boards in the browser edition, #5586: web/js/system-build-ui.js)
+  [/^(.+): the local server lists the boards connected to its computer \(the browser edition sees only a board it was given, when it programs it\)$/,
+    '$1: o servidor local lista as placas ligadas ao seu computador (a edição para browser só vê uma placa que lhe foi dada, quando a programa)'],
+  [/^(.+): a System's boards are programmed by the local server for now \(the browser edition programs an FPGA project's board\)$/,
+    '$1: por agora, as placas de um System são programadas pelo servidor local (a edição para browser programa a placa de um projeto FPGA)'],
+  [/^the System project '(.+)' has no System document \(\.sys\.json\)$/, "o projeto System '$1' não tem documento System (.sys.json)"],
+  // (the System Emulator's panel, web/js/system-emulate-ui.js)
+  [/^Emulation Properties: ([\s\S]+)$/, 'Propriedades da emulação: $1'],
   // (a CPU node's drawing's last badge, #5488: web/js/design.js)
   [/^The node's base language: (.+)$/, 'A linguagem de base do nó: $1'],
   // (a CPU node's drawing's [C], #5486: web/js/design-cpu.js)
