@@ -30,7 +30,7 @@ uiTest('#5446 a System\'s FPGA node synthesized on its own board from its row; t
   // the System's row: Implement System
   await page.treeRow('#hier', 'uart_avr', { exact: true });
   await page.waitFor(() => [...document.querySelectorAll('#procs .row .lbl')].some((l) => l.textContent.trim() === 'Implement System'), [], { what: 'the System\'s processes' });
-  assert.deepEqual(await procs(page), ['View/Edit System', 'Check System', 'Emulate System', 'Implement System']);
+  assert.deepEqual(await procs(page), ['View/Edit System', 'Check System', 'Emulate System', 'Implement System', 'Build Plan', 'Build All']);
   await page.eval(async () => { (await import('/js/i18n.js')).setLanguage('pt'); });
   await page.waitFor(() => [...document.querySelectorAll('#procs .row .lbl')].some((l) => l.textContent.trim() === 'Implementar Sistema'), [], { what: 'Portuguese' });
   await page.eval(async () => { (await import('/js/i18n.js')).setLanguage('en'); });

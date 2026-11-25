@@ -39,8 +39,11 @@ test('check_system: a valid System, no warnings; an Arduino at 5 V, its warning;
     'node term: Serial terminal', '  serial: UART 9600 baud 8N1', 'link console: UART term.serial ↔ fpga.uart',
     'console TX: term serial.tx → fpga rx (pin J3)', 'console TX: fpga tx (pin A3) → term serial.rx',   // (its wiring, #5216)
     'Process "Check System" of uart_avr.sys.json completed successfully.'].join('\n')]);
-  const { wires: w0, ports: p0, ...rest0 } = data0;
+  const { wires: w0, ports: p0, plan: plan0, ...rest0 } = data0;
   assert.deepEqual(rest0, { project: 'u', file: 'uart_avr.sys.json', ok: true, errors: [], warnings: [] });
+  // (its build plan, Build Plan's, #5489: its FPGA node not built yet)
+  assert.deepEqual(plan0.lines, ['Build plan (the FPGA nodes first, then the microcontrollers):',
+    '  fpga: not built (no build/nodes/fpga/build/uart.bit yet); built by the Silinx toolchain to build/nodes/fpga/build/uart.bit, programmed over JTAG']);
   // (its wires, the Wiring view's, #5216: each end's pin, package pin, levels and what the board says the pin is)
   assert.deepEqual(w0[0], { link: 'console', kind: 'uart', signal: 'TX', warnings: [],
     from: { node: 'term', pin: 'serial.tx', loc: null, dir: 'out', kind: 'transaction', volts: null, std: null, place: null },
@@ -55,7 +58,7 @@ test('check_system: a valid System, no warnings; an Arduino at 5 V, its warning;
   const m = system({ nodes: [uno] }); m.links[0].a = 'uno.Serial';
   await write('uart_avr.sys.json', m);
   const r = await ok('check_system', { project: 'u', file: 'uart_avr.sys.json' });
-  const { untrusted, system: _s, wires, ports, ...data } = r.data;
+  const { untrusted, system: _s, wires, ports, plan: _p, ...data } = r.data;
   assert.deepEqual(ports.uno.map(p => [p.name, p.dir, p.volts]), [['D1', 'out', 5], ['D0', 'in', 5]], 'the Arduino\'s pins at 5 V');
   assert.deepEqual(wires.map(w => [w.from.node, w.to.node, w.warnings.length]), [['uno', 'fpga', 1], ['fpga', 'uno', 0]]);
   assert.match(untrusted.content, /the System's names/, 'the names quoted: untrusted');

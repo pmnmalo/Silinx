@@ -15,8 +15,12 @@ import { isSystemFile } from '../core/system-doc.js';
 import { nodeConstraints, nodeProject, nodeRefusal } from '../core/system-node.js';
 import { ucfPort } from '../core/board-constraints.js';
 import { relInNode } from '../core/system-layout.js';
+import { fpgaSources } from '../core/system-plan.js';
+import { takeBuildRecord, writeBuildRecord } from './system-plan.js';
 
 const running = new Map();   // project -> job id
+/** The implementation of the project `name` running, its job, or null (one build of a project at a time, #5489). */
+export const runningImplementation = name => { const j = getJob(running.get(name.toLowerCase())); return j?.status === 'running' ? j : null; };
 
 /** The folder a node is built in (its own build/ inside). */
 // (a second guard, #5446: its id an identifier already, nodeRefusal; the folder inside build/nodes/, never build/nodes/ itself)
@@ -51,11 +55,13 @@ async function portsOf(name, pj, node) {
 }
 
 // one node made ready in its folder (the project's files copied, its constraints written) and implemented
-async function implementOne(job, name, pj, node, steps) {
+export async function implementOne(job, name, pj, node, steps) {
   const why = nodeRefusal(node);
   if (why) throw new Error(why);
   const ports = await portsOf(name, pj, node);
   const c = nodeConstraints(node, ports);
+  // (what its bitstream is built from, for the System's build plan, #5489: its sources as they are now)
+  const record = !steps?.length || steps.includes('bitgen') ? await takeBuildRecord(name, node, fpgaSources(await P.fileTree(name), node.id)) : null;
   const dir = nodeDir(name, node.id), src = P.projectDir(name);
   await fs.rm(dir, { recursive: true, force: true });
   await fs.mkdir(dir, { recursive: true });
@@ -65,7 +71,9 @@ async function implementOne(job, name, pj, node, steps) {
   await fs.writeFile(P.safeJoin(dir, c.path), c.text);
   const project = nodeProject(pj, node, c.path);
   job.log(`System node ${node.id}: its module ${node.module} on ${node.board}${node.variant ? ` (${node.variant})` : ''}, its constraints ${c.path} from its pins, built in build/nodes/${node.id}/.`);
-  return runOpenImplementation(job, { project, projectDir: dir, steps: openSteps(steps, { family: openFamilyOf(deviceFamily(project.device)) }) });
+  const out = await runOpenImplementation(job, { project, projectDir: dir, steps: openSteps(steps, { family: openFamilyOf(deviceFamily(project.device)) }) });
+  if (record) await writeBuildRecord(name, node, record);
+  return out;
 }
 
 /**

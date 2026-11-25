@@ -106,7 +106,7 @@ test('the tools: those of the areas, the ones of before the split in their order
 });
 
 test('the processes: run_process\'s choices, and a report for each of the two toolchains', () => {
-  assert.deepEqual(PROCESS_TOOLS.find(t => t.name === 'run_process').inputSchema.properties.process.enum, [...Object.keys(PROCESSES), 'firmware']);   // (firmware: an Arduino node's, #5503)
+  assert.deepEqual(PROCESS_TOOLS.find(t => t.name === 'run_process').inputSchema.properties.process.enum, [...Object.keys(PROCESSES), 'firmware', 'build']);   // (firmware: an Arduino node's, #5503; build: a System's, #5489)
   assert.deepEqual(PROCESSES.implement, ['synth', 'translate', 'map', 'par']);
   // (#4751: the interface's tree's, core/tool-descriptors.js processSteps: as they were written here before)
   assert.deepEqual(PROCESSES, { synthesize: ['synth'], implement: ['synth', 'translate', 'map', 'par'], bitstream: ['synth', 'translate', 'map', 'par', 'bitgen'],

@@ -286,6 +286,10 @@ export function registerImplRoutes(api, { wrap, projects: P }) {
   // (a System's Arduino node's firmware compiled by arduino-cli: server/avr-compile.js, #5503)
   api.post('/projects/:p/firmware', checkBody(FIRMWARE_BODY), wrap(async req => ({ job: (await (await import('./avr-compile.js')).startFirmwareCompile(req.params.p, req.body)).id })));
 
+  // (a System built by its plan, the FPGA nodes first: server/system-build-all.js and server/system-plan.js, #5489)
+  api.get('/projects/:p/build-plan', wrap(async req => (await import('./system-plan.js')).readBuildPlan(req.params.p)));
+  api.post('/projects/:p/build', checkBody(FIRMWARE_BODY), wrap(async req => ({ job: (await (await import('./system-build-all.js')).startSystemBuild(req.params.p, req.body)).id })));
+
   api.get('/projects/:p/reports', wrap(req => projectReports(req.params.p)));
 
   // the logic analyzer's capture on the board (#3176, server/ila-board.js: adepttool, the MCP tool capture's): a job, its

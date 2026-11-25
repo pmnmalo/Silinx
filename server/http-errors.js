@@ -55,7 +55,7 @@ export const IMPLEMENT_BODY = {
 };
 export const FIRMWARE_BODY = {
   type: 'object', additionalProperties: false, required: ['node'],
-  properties: { node: { type: 'string' } },   // (a System's microcontroller node, its id, or '*' every Arduino one: server/avr-compile.js, #5503)
+  properties: { node: { type: 'string' } },   // (a System's microcontroller node, its id, or '*' every Arduino one: server/avr-compile.js, #5503; a node to build, or '*' all: server/system-build-all.js, #5489)
 };
 export const CAPTURE_BODY = {
   type: 'object', additionalProperties: false,
