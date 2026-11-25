@@ -15,7 +15,8 @@
 // Isomorphic ES module, no DOM.
 import { mcuBoard, linkEnd } from './system-doc.js';
 import { resolveBoard } from './devices.js';
-import { SystemSim, FINE, UART_DIV } from './system-sim.js';
+import { SystemSim } from './system-sim.js';
+import { lookahead } from './system-links.js';
 import { CompiledNode } from './system-sim-compiled.js';
 import { AvrNode } from './system-sim-avr.js';
 import { TerminalNode } from './system-sim-terminal.js';
@@ -167,7 +168,7 @@ export function buildSystem(sys, plan, { fpga = {}, firmware = {} } = {}) {
   for (const w of plan.wires) {
     // (an SPI or I²C wire: a sixteenth of its clock's period, the peripheral's answer in time for the master's next edge;
     // SS and I²C's lines pulled up, #5214)
-    const latency = w.kind === 'uart' ? Math.round(1e12 / w.baud / UART_DIV) : w.kind === 'spi' || w.kind === 'i2c' ? Math.round(1e12 / w.hz / 16) : FINE;
+    const latency = lookahead({ protocol: w.kind, baud: w.baud, hz: w.hz });
     sim.link({ name: w.name, from: w.from, to: w.to, kind: w.kind === 'uart' ? 'uart' : 'wire', baud: w.baud, latency, pull: w.line === 'ss' || w.kind === 'i2c' ? 1 : null });
   }
   for (const { node, pin, value } of plan.idle) sim.nodes.get(node).setPin(pin, value);
