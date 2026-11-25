@@ -16,6 +16,8 @@ export const UNARY = new Set(['!', '~', '-', '+', '&', '|', '^', '~&', '~|', '~^
 // SystemVerilog data types that are not Verilog-2001 keywords: identifiers everywhere else (a
 // Verilog-2001 design may name a signal `bit`); int / shortint / longint / byte are signed
 export const ATOMS = { __proto__: null, int: 32, shortint: 16, longint: 64, byte: 8 };
+// a time variable: an unsigned 64-bit reg (IEEE 1364-2005 4.8, #5467), not an integer's 32 bits
+export const timeType = () => ({ kind: 'logic', range: { left: { op: 'int', value: '63' }, right: { op: 'int', value: '0' }, dir: null }, signed: false });
 export const TYPEWORDS = new Set(['bit', ...Object.keys(ATOMS)]);
 // nets of a port declaration (input wor x): the wired ones resolve their drivers (WIRED)
 export const PORT_NETS = ['wire', 'reg', 'logic', 'tri', 'var', 'supply0', 'supply1', ...Object.keys(WIRED)];

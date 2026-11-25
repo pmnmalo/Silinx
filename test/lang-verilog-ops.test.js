@@ -2,7 +2,7 @@
 // (IEEE 1364-2005 §5: operators, §5.4 bit lengths, §5.5 signed expressions, 4-state logic).
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { out, vinit } from './lang-util.js';
+import { out, sim, vinit, warningsOf } from './lang-util.js';
 
 test('arithmetic operators + - * / % ** and unary minus on unsigned vectors (results wrap to the context width)', () => {
   const r = out(vinit(`
@@ -142,6 +142,25 @@ test('integer, real and time types; real to integer conversion rounds', () => {
   // 7 / 2 is an integer division; a real assigned to an integer is rounded away from zero
   // $rtoi truncates toward zero
   assert.deepEqual(r, ['3 3 3.500000', '3 -3', '10 10', '3 -3 2.500000']);
+});
+
+test('a time variable is an unsigned 64-bit reg (IEEE 1364-2005 4.8): over 2^32 assigned, multiplied, compared with $time, a delay (#5467)', () => {
+  const res = sim(`\`timescale 1ns / 1ps
+module tb; time t1, t2; reg [63:0] r;
+  initial begin
+    t1 = 64'd6000000000; r = 64'd6000000000;
+    $display("time=%0d reg=%0d", t1, r);
+    t1 = 3000; t1 = t1 * 1000000; $display("%0d", t1);
+    t1 = -1; $display("%0d %0d", t1, t1 > 0);
+    t2 = 32'hFFFFFFFF; t2 = t2 + 10;
+    #t2 $display("%0d %0d %0d", $time, $time == t2, t2 > 32'hFFFFFFFF);
+    $finish;
+  end
+endmodule
+`, 'tb', { until: 1e13 });
+  // (before: the low 32 bits only, as a signed integer: 1705032704, -1294967296, -1 0, a delay of 9 ns)
+  assert.deepEqual(res.out, ['time=6000000000 reg=6000000000', '3000000000', '18446744073709551615 1', '4294967305 1 1']);
+  assert.deepEqual(warningsOf(res), []);
 });
 
 test('operator precedence (unary > ** > * / % > + - > shifts > relational > equality > & > ^ > | > && > || > ?:)', () => {

@@ -1,7 +1,7 @@
 // Verilog-2001 (+ a few SystemVerilog conveniences) recursive-descent parser producing the Silinx IR.
 // See docs/IR.md.
 import { tokenize, tokenText } from './lexer.js';
-import { ATOMS, GATES, PORT_NETS, SYS_NOARG, Sync, TYPEWORDS, WIRED, lit1 } from './parser-defs.js';
+import { ATOMS, GATES, PORT_NETS, SYS_NOARG, Sync, TYPEWORDS, WIRED, lit1, timeType } from './parser-defs.js';
 import { itemMethods } from './parser-items.js';
 import { stmtMethods } from './parser-stmts.js';
 import { exprMethods } from './parser-exprs.js';
@@ -369,7 +369,8 @@ class Parser {
   // struct packed { … }, enum [base type] { … }. The IR types: logic (range, signed, inner: the
   // packed dimensions after the first), integer, named (name, dims), struct (fields), svenum.
   dataType() {
-    if (this.accept('integer') || this.accept('time')) return { kind: 'integer', range: null };
+    if (this.accept('integer')) return { kind: 'integer', range: null };
+    if (this.accept('time')) return timeType();
     if (this.isAny('real', 'realtime')) { this.next(); return { kind: 'real' }; }
     const t = this.tok;
     if (t.t === 'id' && ATOMS[t.v]) {
@@ -696,7 +697,8 @@ class Parser {
     const kw = this.tok.t === 'id' ? 'logic' : this.next().v;
     if (kw === 'genvar') { do { this.ident(); } while (this.accept(',')); this.expect(';'); return; }
     let type;
-    if (kw === 'integer' || kw === 'time') type = { kind: 'integer', range: null };
+    if (kw === 'integer') type = { kind: 'integer', range: null };
+    else if (kw === 'time') type = timeType();
     else if (kw === 'real' || kw === 'realtime') type = { kind: 'real' };
     else {
       if (this.isAny('reg', 'logic', 'wire')) this.next();
