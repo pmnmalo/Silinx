@@ -78,7 +78,7 @@ test('#5581 each kind of link\'s open end: a UART\'s a terminal (its id free), a
   assert.deepEqual(f.warnings, [
     'circuit board is not run: its board uno is not run',
     'link ser: uno is not run, its end fpga.uart is the terminal ser_2 here (115200 baud, 8E1)',
-    'link g1: uno is not run, its end fpga.btns is left open: nothing drives its inputs b<0>, b<1>',
+    'link g1: uno is not run, its end fpga.btns is held at 0: its inputs b<0>, b<1>',
     'link g2: uno is not run, its end fpga.led is left open',
     'link bus: uno is not run, its end fpga.spi is left open',
     'link i2: uno is not run, its end fpga.i2c is left open',
@@ -88,7 +88,7 @@ test('#5581 each kind of link\'s open end: a UART\'s a terminal (its id free), a
   assert.deepEqual(u.warnings, [
     'link ser: fpga is not run, its end uno.Serial is the terminal ser_2 here (115200 baud, 8E1)',
     'link g1: fpga is not run, its end uno.outs is left open',
-    'link g2: fpga is not run, its end uno.ins is left open: nothing drives its input D4',
+    'link g2: fpga is not run, its end uno.ins is held at 0: its input D4',
     'link bus: fpga is not run, its end uno.SPI is left open',
     'link i2: fpga is not run, its end uno.Wire is left open',
   ]);
@@ -128,4 +128,27 @@ test('#5581 a run\'s name: Emulate System, Emulate Node <id> for one node, Simul
   assert.equal(runName('Emulate', ['fpga', 'uno']), 'Emulate System');
   assert.equal(runName('Emulate', ['fpga']), 'Emulate Node fpga');
   assert.equal(runName('Simulate', ['uno']), 'Simulate Node uno');
+});
+
+test('#5581 a GPIO input held at 0, its link cut: in the engine, the Uno\'s D4 (an input with its pull-up, copied to D13) reads 0, not its pull-up\'s 1; the plan says so', async () => {
+  const { prepareSystem } = await import('../core/system-run.js');
+  const { avrAssemble, intelHex } = await import('./avr-asm.mjs');
+  // D13 an output; D4 an input with its pull-up; D13 = D4, again and again
+  const hex = intelHex(avrAssemble(['ldi r16, 0x20', 'out 0x04, r16', 'ldi r16, 0x10', 'out 0x0B, r16', 'loop:', 'in r17, 0x09', 'ldi r18, 0', 'sbrc r17, 4', 'ldi r18, 0x20', 'out 0x05, r18', 'rjmp loop']));
+  const sys = { format: 'silinx-system', version: 2, name: 'held', nodes: [
+    { id: 'uno', kind: 'mcu', board: 'arduino-uno', firmware: 'uno/a.hex', lang: 'c', interfaces: [{ name: 'ins', kind: 'gpio', pins: ['D4'], dir: 'in' }], x: 0, y: 0 },
+    { id: 'uno2', kind: 'mcu', board: 'arduino-uno', firmware: 'uno/a.hex', lang: 'c', interfaces: [{ name: 'outs', kind: 'gpio', pins: ['D13'], dir: 'out' }], x: 0, y: 0 },
+  ], links: [{ id: 'g', kind: 'gpio', a: 'uno2.outs', b: 'uno.ins' }] };
+  const cut = runningSystem(sys, ['uno']);
+  assert.deepEqual([cut.system.held, cut.warnings], [['uno.ins'], ['link g: uno2 is not run, its end uno.ins is held at 0: its input D4']]);
+  const d13 = async (s) => {
+    const r = await prepareSystem(s, { ports: {}, firmware: async () => hex, netlist: () => null });
+    assert.equal(r.error, undefined, r.error);
+    r.sim.watch('uno', ['D13']);
+    r.sim.run(2e9);
+    return { idle: r.plan.idle, d13: r.sim.nodes.get('uno').value('D13') };
+  };
+  assert.deepEqual(await d13(cut.system), { idle: [{ node: 'uno', pin: 'D4', value: 0, held: true }], d13: 0 });
+  // (the same Uno with no link and nothing held: its pull-up's 1)
+  assert.deepEqual(await d13({ ...sys, nodes: [sys.nodes[0]], links: [] }), { idle: [], d13: 1 });
 });

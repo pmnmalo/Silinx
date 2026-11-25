@@ -39,7 +39,8 @@ export const pinOf = b => (b.sig.t.w === 1 ? b.port : `${b.port}[${b.pos}]`);
  */
 export function emulationBoards(sys, inputs) {
   const out = [];
-  const driven = new Set(inputs.plan.wires.map(w => w.to));
+  // (driven by a link, or held at 0, its link cut, #5581: not a switch of its board)
+  const driven = new Set([...inputs.plan.wires.map(w => w.to), ...(inputs.plan.idle ?? []).filter(i => i.held).map(i => `${i.node}.${i.pin}`)]);
   for (const n of sys.nodes) {
     if (n.kind === 'circuit') {
       const c = inputs.plan.circuits?.find(x => x.id === n.id);

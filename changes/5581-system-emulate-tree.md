@@ -18,8 +18,8 @@ In detail:
   - Emulate System runs the nodes the Emulation Properties tick, and Emulate Node runs that node alone, in the same
     document. Its tab says which ("Emulate (uart_avr: fpga)").
   - The System is cut to those nodes. A link to a node that does not run has its open end replaced: a UART's end
-    becomes a serial terminal, at the link's baud and frame. A GPIO, SPI or I²C end is left open. A circuit whose boards
-    do not all run is not run.
+    becomes a serial terminal, at the link's baud and frame. A GPIO input is held at 0 (`core/system-build.js`). A GPIO
+    output, an SPI or an I²C end is left open. A circuit whose boards do not all run is not run.
   - Each replaced end is a warning in the console, for example `WARNING: Emulate Node fpga: link serial: uno is not
     run, its end fpga.uart is the terminal serial here (9600 baud, 8N1)`.
 - **The Emulation Properties are the project's** (Pedro's decision): `silinx.json`'s `system.emulate.nodes`, left out
