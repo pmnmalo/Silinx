@@ -125,16 +125,14 @@ export function generateFsm(model, lang, { source } = {}) {
     printIf(chain.map((b) => ({ cond: b.cond, body: body(b.t) })), 0, lang, out, otherwise ? body(otherwise) : null);
     return out;
   };
-  // Mealy outputs alone (3-process style): the branches with outputs; earlier branches without
-  // outputs are kept (empty) only when their conditions can overlap a later one
+  // Mealy outputs alone (3-process style): every branch up to the last one with outputs, in their order, the
+  // ones without outputs kept empty: a branch taken first blocks the later ones' outputs (#5518: left out, a later
+  // branch, the otherwise one or one its condition overlaps, set its outputs where it was taken)
   const mealyStmts = (s) => {
     const all = ts(s.id);
     const last = all.map((t) => Object.keys(t.outputs).length > 0).lastIndexOf(true);
     if (last < 0) return [];
-    const st = an.states.find((x) => x.id === s.id);
-    const ids = new Set(all.slice(0, last + 1).map((t) => t.id));
-    const overlapping = st.overlaps.some((o) => ids.has(o.a) && ids.has(o.b));
-    const use = all.slice(0, last + 1).filter((t) => overlapping || Object.keys(t.outputs).length);
+    const use = all.slice(0, last + 1);
     const chain = [];
     let otherwise = null;
     for (const t of use) {
