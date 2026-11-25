@@ -135,6 +135,7 @@ const PRODUCERS = {
   'web/js/system-implement-ui.js': {},
   'web/js/system-firmware-ui.js': {},
   'web/js/system-build-ui.js': {},   // (a System's Build Plan and Build All, #5489: runs of their own)   // (an Arduino node's Compile Firmware, #5503: a run of its own, as a node's implementation)
+  'web/js/system-program-ui.js': {},   // (a System's Program All and Program Node, #5489, #5584: a run of its own, Implement's)
   'web/js/tasks-check.js': { 'Check Schematic': 'check', 'Try it': 'check', 'Validate': 'check', 'Check State Diagram': 'check', 'Check Petri Net': 'check', 'Check Circuit': 'check' },
   'web/js/processes.js': { 'Check Syntax': 'check', 'Behavioral Check Syntax': 'check', 'Check Design': 'check' },
   'web/js/viewers.js': { 'Simulate Behavioral Model': 'sim', 'Simulate Post-Place & Route Model': 'sim', 'Simulate Post-Synthesis Model': 'sim' },
