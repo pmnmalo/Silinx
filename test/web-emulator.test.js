@@ -5,7 +5,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 import './ui/core-hooks.js';
 import { getDeviceDb } from '../server/devices.js';
 
@@ -69,7 +69,7 @@ async function placesUsed(fn, board) {
   const file = [...REGISTRY.matchAll(/from '\.\/([\w-]+\.js)'/g)].map((m) => m[1]).find((f) => fs.readFileSync(path.join(JS, f), 'utf8').includes(`function ${places}(`));
   const used = new Map();
   const use = (name, idx = 0) => used.set(name, Math.max(used.get(name) ?? -1, idx));
-  for (const q of (await import(path.join(JS, file)))[places](board)) {
+  for (const q of (await import(pathToFileURL(path.join(JS, file)).href))[places](board)) {
     if (q.kind === 'digit') { use('an', q.k); use('seg', 6); } else if (['led', 'sw', 'btn'].includes(q.kind)) use(q.kind, q.k);
     else if (q.kind === 'port') use(q.res, q.k);
   }

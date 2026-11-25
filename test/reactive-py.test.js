@@ -33,7 +33,7 @@ function runProgram(model, prog, vectors) {
     const r = spawnSync(PY, ['-I', '-W', 'error', RUN, path.join(dir, prog.filename), path.join(dir, 'spec.json')], { encoding: 'utf8', maxBuffer: 1 << 26 });
     assert.equal(r.status, 0, `${model.name}: ${r.stderr}`);
     assert.equal(r.stderr, '', `${model.name}: no warning`);
-    return r.stdout.trim().split('\n');
+    return r.stdout.trim().split(/\r?\n/);   // (Python's print on Windows ends its lines with \r\n)
   } finally {
     fs.rmSync(dir, { recursive: true, force: true });
   }

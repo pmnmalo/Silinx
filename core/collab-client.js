@@ -255,7 +255,15 @@ export async function shareRoom({ url, token = null, doc, user, editors = false,
   const sendRole = (c, client, msg) => sendTo(c, client, KIND.role, new TextEncoder().encode(JSON.stringify(msg)));
   const keyOfPeer = client => { const k = awareness.getStates().get(client)?.key; return PUB_RE.test(String(k)) ? k : null; };
   const control = async (c, msg) => {
-    if (c.first?.(msg)) { c.first = null; return; }
+    if (c.first?.(msg)) {
+      c.first = null;
+      // (#5545: the room resumed, the owner's last list of its editors given to it again, before any frame: one
+      // published while the connection was being lost never reached it, and the room would refuse that editor's edits;
+      // a list it has already is left)
+      const list = ownerKey && room !== null && msg.type === 'opened' ? doc.getMap('meta').get('editorsList') : null;
+      if (list) c.control({ type: 'editors', list });
+      return;
+    }
     if (msg.type === 'join') {   // (someone joined: the whole document and who is in, for them only, #3529)
       const client = Number(msg.client);
       if (!Number.isSafeInteger(client) || client < 0 || client > 0xFFFFFFFF) return;

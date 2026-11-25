@@ -85,6 +85,12 @@ export const SYSTEM_PT_PATTERNS = [
   [/^(FPGA|Microcontroller|Serial terminal|Circuit) ([A-Za-z]\w*)$/, (m, k, id) => `${{ FPGA: 'FPGA', Microcontroller: 'Microcontrolador', 'Serial terminal': 'Terminal série', Circuit: 'Circuito' }[k]} ${id}`],
   [/^Link ([A-Za-z]\w*)$/, 'Ligação $1'], [/^Waves \((.+)\)$/, 'Ondas ($1)'],
   [/^Emulate \((.+)\)$/, 'Emular ($1)'], [/^(\d+)% of real time$/, '$1% do tempo real'],
+  // (a node's Implement in the browser edition: web/js/system-implement-ui.js, #5446)
+  [/^(.+): a System's node is implemented by the local server for now \(the browser edition implements an FPGA project\)$/,
+    '$1: um nó de um Sistema é implementado pelo servidor local, por agora (a edição do browser implementa um projeto FPGA)'],
+  // (a node's firmware compiled in the browser edition: web/js/system-firmware-ui.js, #4695 phase 5)
+  [/^(.+): a node's firmware is compiled by the local server's arduino-cli \(the browser edition has no compiler\): give the node a \.hex made elsewhere, the Arduino IDE's Export Compiled Binary$/,
+    '$1: o programa (firmware) de um nó é compilado pelo arduino-cli do servidor local (a edição do browser não tem compilador): dê ao nó um .hex feito noutro lado, o Export Compiled Binary do Arduino IDE'],
   // (the register map's Header, its map in error: web/js/drawings-regs.js)
   [/^([^:]+): (.+): no header written$/, '$1: $2: cabeçalho não escrito'],
   [/^(\d+) registers? · (\d+) bytes?$/, (m, n, b) => `${n} ${n === '1' ? 'registo' : 'registos'} · ${b} byte${b === '1' ? '' : 's'}`],
