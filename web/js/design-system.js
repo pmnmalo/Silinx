@@ -51,6 +51,12 @@ export function systemProblem() {
 /** Whether the open project's top is its System (#5443): a System project with no module as its top, its document read. */
 export const systemTop = () => systemProject() && !!shownNodes().system;
 
+/** The open System project's System: { file, system } (system null when it is not read), or null (no System). */
+export function shownSystem() {
+  const f = systemProject() ? shownNodes().system : null;
+  return f ? { file: f, system: readSystem(designState.viewTexts?.[f] || '').system } : null;
+}
+
 /** The Design pane's top row of any project (#5443, #5416's phase 5: one path, from its nodes): a System's row with its
  *  nodes' branches (systemRow), or the one implicit node of a project with one drawn as its device row as before: the
  *  device (an FPGA project's), Design (a design project's), Behavioral (the Simulation view's). Returns { item, owned,

@@ -33,6 +33,8 @@ import { syncState } from './state-sync.js';
 import { cState } from './state-c.js';
 import { runState } from './state-run.js';
 import { systemProcesses } from './system-processes.js';
+import { systemEmulateProcesses } from './system-emulate-ui.js';
+import { systemTop } from './design-system.js';
 import { panes } from './state-panes.js';
 import { filesState } from './state-files.js';
 import { docsState } from './state-docs.js';
@@ -176,7 +178,19 @@ function drawProcesses() {
   if (noTop) host.append(noTopNote());
   // (Emulate's list in the Tasks interface: the states and the selection the same, #1204)
   // (with no top module, why the list is empty and Set Top Module…, as Implement's, #1422)
-  for (const el of document.querySelectorAll('.task-emu-tree')) { renderProcessTree(el, emulateProcesses()); if (S.project && !S.project.top) el.append(noTopNote()); }
+  // (a System project's: its System's and its nodes' tree, #5581: web/js/system-emulate-ui.js)
+  const sys = systemTop() ? systemEmulateProcesses() : null;
+  for (const el of document.querySelectorAll('.task-emu-tree')) { renderProcessTree(el, sys || emulateProcesses()); if (!sys && S.project && !S.project.top) el.append(noTopNote()); }
+  // (its bar: Emulate System; I/O Pin Planning a node's, its User Constraints, #5581's part 2)
+  const bar = document.getElementById('task-emu-bar');
+  if (bar) {
+    const emu = bar.querySelector('[data-act=emulate]'), pins = bar.querySelector('[data-act=pins]');
+    bar.dataset.system = sys ? '1' : '';
+    emu.textContent = sys ? 'Emulate System' : 'Emulate on Board';
+    pins.disabled = !!sys || !S.project?.top;
+    emu.disabled = !sys && !S.project?.top;
+    pins.title = sys ? 'An FPGA node\'s pins: its row in the System editor' : '';
+  }
 }
 
 function noTopNote() {

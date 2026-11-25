@@ -694,6 +694,30 @@ and shown as the Board Emulator shows them (`boardOutputs`). An Arduino's board 
 (D13); an Explorer 16/32's its LEDs, buttons, R6, temperature and LCD (`core/system-emu-explorer.js`, #5484). The System's worker (`core/system-host.js`) gets `init { emulate }`, `set`, and each `state` with what the
 boards show since the last.
 
+**The nodes it runs** (#5581, `core/system-alone.js`). There is one System Emulator, and it runs the nodes chosen:
+
+- **Emulate System** runs the nodes the project's **Emulation Properties** tick (`silinx.json`'s `system.emulate.nodes`; every
+  node when none is ticked off).
+- A node's **Emulate Node** runs that node alone, in the same document, its tab saying which (`Emulate (uart_avr: fpga)`).
+- The System is cut to those nodes. A link to a node that does not run has its open end replaced:
+  - a UART's end becomes a serial terminal named after the link, at its baud and frame;
+  - a GPIO, SPI or I²C end is left open;
+  - a circuit whose boards do not all run is not run;
+  - a terminal runs with the nodes it is linked to.
+- Each replaced end is a warning in the console:
+  `WARNING: Emulate Node fpga: link serial: uno is not run, its end fpga.uart is the terminal serial here (9600 baud, 8N1)`.
+
+**The Emulate task** of a System project, in the Silinx interface, shows the System's tree in its panel
+(`web/js/system-emulate-ui.js`):
+
+- the System's row: Emulation Properties… and Emulate System;
+- each node's row: its processes (an Arduino's or a PIC24's firmware and Compile Firmware, a circuit's circuit) and
+  Emulate Node;
+- the bar: Emulate System.
+
+The ISE style's Processes panel has the same on the System's and the nodes' rows. Simulate and Implement get the same
+kind of tree (#5581's parts 3 and 4). An FPGA node's User Constraints (a `.ucf` in its folder) are part 2.
+
 **Its view** (#5212, `web/js/system-emu-view.js`): a document of its own, `sysemu:<file>`, opened from the System
 editor's Emulate or the System row's Emulate System. An FPGA board is mounted with the Board Emulator's parts
 (`mountBoardParts`), a button held down until the design saw a real press (`pressHolds`). An Arduino is drawn by
@@ -766,7 +790,8 @@ Every action is a tool (#2674), through the same functions as the interface:
 |---|---|
 | `edit_system` | adds, changes or removes a node, an interface or a link (#4700) |
 | `check_system` | describes the system and runs the check (#4700) |
-| `simulate` (a System) | the existing tool: `top` a System document (a System project's by default) runs it for a time and returns each wire's bytes, the terminals' text and the warnings; the VCD in `build/<name>.vcd` (#4701) |
+| `simulate` (a System) | the existing tool: `top` a System document (a System project's by default) runs it for a time and returns each wire's bytes, the terminals' text and the warnings; the VCD in `build/<name>.vcd` (#4701); `#a,b` its nodes a and b alone, and with `controls` the Emulation Properties' nodes (#5581) |
+| `set_process_properties` `emulate_nodes` | the nodes Emulate System runs, the Emulation Properties (#5581) |
 | `node_firmware` | sets a node's firmware |
 | `run_process` `firmware` | compiles an Arduino node's sketch to its `.hex` with arduino-cli (#5503) |
 | `run_process` `build`, `check_system`'s `plan` | the System's build plan, its nodes not up to date built (#5489) |

@@ -42,10 +42,11 @@ uiTest('#5489 Program All and Program Node: the FPGA, then the Uno on the board 
   await page.openProject('SysProg');
   await page.leftTab('design');
   await page.waitFor(() => [...document.querySelectorAll('#hier .row .lbl')].some((l) => l.textContent.trim() === 'uart_avr'), [], { what: 'the System' });
-  for (const [row, last] of [['fpga', 'Program Node'], ['uno', 'Program Node'], ['uart_avr', 'Program All']]) {
+  // (a node's Program Node before its Emulate Node, #5581)
+  for (const [row, last, tail] of [['fpga', 'Program Node', ['Program Node', 'Emulate Node']], ['uno', 'Program Node', ['Program Node', 'Emulate Node']], ['uart_avr', 'Program All', ['Program All']]]) {
     await page.treeRow('#hier', row, { exact: true });
     await page.waitFor((last) => [...document.querySelectorAll('#procs .row .lbl')].some((l) => l.textContent.trim() === last), [last], { what: `${row}'s processes` });
-    assert.equal((await procs(page)).at(-1), last, row);
+    assert.deepEqual((await procs(page)).slice(-tail.length), tail, row);
   }
   // Program All: the Uno's board asked, the second picked
   await page.treeRow('#procs', 'Program All', { exact: true, dbl: true });

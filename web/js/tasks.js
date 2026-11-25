@@ -442,7 +442,11 @@ function build() {
   $('proc-panel').after(h('div', { class: 'ise-panel', id: 'task-emu-panel' },
     h('div', { id: 'task-emu-bar' },
       h('button', { class: 'btn', type: 'button', 'data-act': 'pins', onclick: () => app.S.project?.top && app.openPinPlanner() }, 'I/O Pin Planning'),
-      h('button', { class: 'btn', type: 'button', 'data-act': 'emulate', onclick: () => app.S.project?.top && import('./viewers.js').then(v => v.openEmulator(app.S.project.top)) }, 'Emulate on Board')),
+      // (a System project's: Emulate System, its ticked nodes, #5581; web/js/processes.js names the button)
+      h('button', { class: 'btn', type: 'button', 'data-act': 'emulate', onclick: async () => {
+        if ((await import('./design-system.js')).systemTop()) return (await import('./system-emulate-ui.js')).emulateSystem();
+        if (app.S.project?.top) (await import('./viewers.js')).openEmulator(app.S.project.top);
+      } }, 'Emulate on Board')),
     h('div', { class: 'body task-emu-tree' }),
     h('ul', { id: 'task-emu-files', class: 'tree task-flow-files', 'aria-label': 'Files' })));
   for (const t of $('left-tabs').querySelectorAll('.tab')) t.title = PAGE_NAME[t.dataset.page];
@@ -573,7 +577,9 @@ export function initTasks(a) {
   new MutationObserver(() => fitHeader()).observe($('topbar'), { childList: true, subtree: true, characterData: true });
   // the bars' buttons as the project is: at once when it opens, is drawn again or its design changes (its top set or
   // unset), and once a second (#1423)
-  const barsNow = () => { for (const b of document.querySelectorAll('#task-src-bar button, #task-files-bar button, #task-close-bar button, #task-impl-bar button, #task-emu-bar button')) b.disabled = !app.S.project || (['check-design', 'pins', 'emulate'].includes(b.dataset.act) && !app.S.project.top); };
+  // (a System project's Emulate: Emulate System, its I/O Pin Planning a node's, #5581: web/js/processes.js marks the bar)
+  const sysEmu = b => b.closest('#task-emu-bar')?.dataset.system === '1';
+  const barsNow = () => { for (const b of document.querySelectorAll('#task-src-bar button, #task-files-bar button, #task-close-bar button, #task-impl-bar button, #task-emu-bar button')) b.disabled = !app.S.project || (sysEmu(b) ? b.dataset.act === 'pins' : ['check-design', 'pins', 'emulate'].includes(b.dataset.act) && !app.S.project.top); };
   for (const ev of ['silinx:project-opened', 'silinx:design-changed']) addEventListener(ev, () => { if (on()) barsNow(); });
   new MutationObserver(() => { if (on()) barsNow(); }).observe($('procs'), { childList: true });
   setInterval(() => { if (on()) { refreshDots(); if (current() === 'sim') { if (simPanel) simPanel.refresh(); else refreshBench(app); tagDocs(); } const g = document.querySelector('#task-empty button'); if (g) g.disabled = !mainEnabled();

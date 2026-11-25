@@ -24,7 +24,7 @@ const fails = async (name, args, message) => { const r = await call(name, args);
 
 test('set_process_properties: s6_map in its schema, nextpnr or silinx', () => {
   const t = TOOLS.find(x => x.name === 'set_process_properties');
-  assert.deepEqual(Object.keys(t.inputSchema.properties), ['project', 'optimization', 'startup_clock', 's6_map', 'xc7_seeds']);
+  assert.deepEqual(Object.keys(t.inputSchema.properties), ['project', 'optimization', 'startup_clock', 's6_map', 'xc7_seeds', 'emulate_nodes']);
   assert.deepEqual(t.inputSchema.properties.s6_map.enum, ['nextpnr', 'silinx']);
 });
 
@@ -48,7 +48,7 @@ test('set_process_properties s6_map: a Spartan-6 project\'s Map, nextpnr\'s by d
   assert.equal((await ok('set_process_properties', { project: 'n3', optimization: 'fast' })).text, 'n3: Optimization fast, FPGA start-up clock jtag, Map nextpnr.');
   assert.equal((await P.readProject('n3')).impl.s6Map, undefined);
   await fails('set_process_properties', { project: 'n3', s6_map: 'xst' }, 's6_map: one of nextpnr, silinx');
-  await fails('set_process_properties', { project: 'n3' }, 'give optimization, startup_clock, s6_map or xc7_seeds');
+  await fails('set_process_properties', { project: 'n3' }, 'give optimization, startup_clock, s6_map, xc7_seeds or emulate_nodes');
   await ok('new_project_from_example', { name: 'b2', example: 'gates' });
   await fails('set_process_properties', { project: 'b2', s6_map: 'nextpnr' }, 's6_map: the project\'s device (xc3s250ecp132-4) is not a Spartan-6');
   // (a Spartan-3E's properties say no Map)

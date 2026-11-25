@@ -25,7 +25,7 @@ const fails = async (name, args, message) => { const r = await call(name, args);
 test('set_process_properties: xc7_seeds in its schema, 1 or 3', () => {
   const t = TOOLS.find(x => x.name === 'set_process_properties');
   assert.deepEqual(t.inputSchema.properties.xc7_seeds.enum, [1, 3]);
-  assert.match(t.description, /xc7_seeds: 1, the default; 3: nextpnr's router2 with seeds 1, 2 and 3, the best Fmax kept/);
+  assert.match(t.description, /xc7_seeds: 1, or the best Fmax of seeds 1-3/);
 });
 
 test('set_process_properties xc7_seeds: a 7-series project\'s seeds, one by default; said with the other properties; refused on another family', async () => {
