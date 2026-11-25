@@ -74,6 +74,18 @@ test('a module is chosen: the one marked top, or the only one that is not a blac
   assert.throws(() => readYosysJson(j, { top: 'nope' }), /no module 'nope'/);
 });
 
+test('#5605 a module named with a backslash found as Yosys 0.70 and 0.71 write it: \\$__SHREG_DFF_P_, \\1dff', () => {
+  const sw = JSON.parse(fs.readFileSync(path.join(FIX, 'sw.json'), 'utf8')).modules.sw;
+  const json = names => ({ modules: Object.fromEntries(names.map(n => [n, sw])) });
+  // Yosys 0.71: no backslash ("$__SHREG_DFF_P_", "1dff"); 0.70: kept ("\\$__SHREG_DFF_P_", "\\1dff")
+  for (const [top, key] of [['\\$__SHREG_DFF_P_', '$__SHREG_DFF_P_'], ['\\1dff', '1dff'], ['\\$__SHREG_DFF_P_', '\\$__SHREG_DFF_P_'], ['\\1dff', '\\1dff'], ['1dff', '\\1dff'], ['sw', 'sw']]) {
+    const nl = readYosysJson(json([key, 'other']), { top });
+    assert.equal(nl.name, key, `${top} as ${key}`);
+    assert.deepEqual(nl.ports.map(p => p.name), readYosysJson(json(['sw'])).ports.map(p => p.name));
+  }
+  assert.throws(() => readYosysJson(json(['\\1dffx', 'other']), { top: '\\1dff' }), /no module '\\1dff'/);
+});
+
 test('constant outputs and undriven bits', () => {
   const nl = load('sw');
   const one = nl.ports.find(p => p.name === 'one');

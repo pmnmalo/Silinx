@@ -39,12 +39,17 @@ export function paramInt(v, dflt = 0) {
   return n;
 }
 
-/** Pick the top module: the one Yosys marked top, else the only module that is not a black box. */
+/**
+ * Pick the top module: the one named, else the one Yosys marked top, else the only module that is not a black box.
+ * A named one is found with or without its backslash (#5605): a public name that starts with `$` or a digit
+ * (`\$__SHREG_DFF_P_`, `\1dff`) is "\\$__SHREG_DFF_P_" in Yosys 0.70's JSON, "$__SHREG_DFF_P_" in 0.71's.
+ */
 function topModule(json, top) {
   const mods = json.modules || {};
   if (top) {
-    if (!mods[top]) throw new Error(`netlist: no module '${top}'`);
-    return [top, mods[top]];
+    const name = [top, top.replace(/^\\/, ''), `\\${top}`].find(n => Object.hasOwn(mods, n));
+    if (!name) throw new Error(`netlist: no module '${top}'`);
+    return [name, mods[name]];
   }
   const real = Object.entries(mods).filter(([, m]) => !paramInt(m.attributes?.blackbox));
   const marked = real.find(([, m]) => paramInt(m.attributes?.top));
