@@ -297,7 +297,7 @@ export const COLLAB_TOOLS = [
   },
   {
     name: 'follow_project', title: 'Follow a shared project (read only)',
-    description: 'Follow a project someone shares (a link …/#view=… of Share Project… or share_project; …&relay=… through that relay; an older …/#follow=…), read only, as the interface opened at that link; an editor\'s link (…/#edit=…) can write, source and settings. Gives its files, who is in it, the owner\'s open file, cursor and selection (ownerView), and their activity (ownerActivity: documents, processes and logs, simulations, Board Emulators, Try it). path: that file\'s text now (a drawing as merged, with its Check). stop: leave; keep: a copy in the workspace, untrusted, as Keep a Copy. Reconnects on its own (connected; ownerAway, ownerResumed). Nothing is copied into the workspace otherwise.',
+    description: 'Follow a project someone shares (a link …/#view=… of Share Project… or share_project; …&relay=… through that relay; an older …/#follow=…), read only, as the interface opened at that link; an editor\'s link (…/#edit=…) can write, source and settings. Gives its files, who is in it, the owner\'s open file, cursor and selection (ownerView), and their activity (ownerActivity: documents, processes and logs, simulations, Board Emulators, Try it). path: that file\'s text now (a drawing as merged, with its Check). stop: leave; keep: a copy in the workspace, untrusted, as Keep a Copy. Reconnects on its own (connected; ownerAway, ownerResumed).',
     inputSchema: { type: 'object', properties: {
       link: STR('The link to follow (the whole address).'),
       path: STR('A file of the project: its text as it is now.'),

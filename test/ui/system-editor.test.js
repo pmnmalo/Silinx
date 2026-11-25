@@ -114,7 +114,7 @@ uiTest('#4700 the System editor: its Design row, a system built, saved and reope
   await page.eval(async () => (await import('/js/i18n.js')).setLanguage('pt'));
   await page.waitFor((ed) => document.querySelector(`${ed} .sys-selection h3`)?.textContent === 'Microcontrolador mcu' && document.querySelector(`${ed} .doc-status`)?.textContent === '3 nós · 1 ligação', [ED], { what: 'Portuguese' });
   const pt = await page.eval((ed) => [...document.querySelectorAll(`${ed} .asm-side .asm-label`)].map((l) => l.textContent), ED);
-  assert.deepEqual(pt.slice(0, 3), ['Identificador', 'Placa', 'Programa (firmware)']);
+  assert.deepEqual(pt.slice(0, 5), ['Identificador', 'Placa', 'Identificador USB', 'Número de série USB', 'Programa (firmware)']);   // (its board's USB id and serial, #5489)
   await page.eval(async () => (await import('/js/i18n.js')).setLanguage('en'));
   // (the warnings: the refusal only, said by the editor)
   assert.deepEqual(page.console.filter((c) => c.type === 'warning' || c.type === 'warn' || c.type === 'error').map((c) => c.text), []);

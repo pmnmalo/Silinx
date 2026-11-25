@@ -48,7 +48,7 @@ uiTest('#5414 a System project\'s nodes as the Design pane\'s branches, each wit
   // the processes: the System's, a microcontroller's, an FPGA node's
   await page.treeRow('#hier', 'lab', { exact: true });
   await page.waitFor(() => [...document.querySelectorAll('#procs .row .lbl')].some((l) => l.textContent.trim() === 'Check System'), [], { what: 'the System\'s processes' });
-  assert.deepEqual(await procs(page), ['View/Edit System', 'Check System', 'Emulate System', 'Implement System', 'Build Plan', 'Build All']);   // (Implement System, #5446; Build Plan, Build All, #5489)
+  assert.deepEqual(await procs(page), ['View/Edit System', 'Check System', 'Emulate System', 'Implement System', 'Build Plan', 'Build All', 'Connected Boards']);   // (Implement System, #5446; Build Plan, Build All, #5489)
   await page.treeRow('#hier', 'uno', { exact: true });
   await page.waitFor(() => ![...document.querySelectorAll('#procs .row .lbl')].some((l) => l.textContent.trim() === 'Check System'), [], { what: 'the node\'s processes' });
   assert.deepEqual(await procs(page), ['View/Edit System', 'Compile Firmware']);   // (its sketch's, #5503)

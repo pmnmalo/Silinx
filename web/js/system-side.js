@@ -1,12 +1,13 @@
 // The System editor's side panel (#4700, web/js/system-editor.js): the selection's properties, each change an edit of
 // core/system-edit.js (the MCP server's edit_system's): a node's id, an FPGA node's module, board, variant and its ports'
-// pins, a microcontroller's board and firmware (a .hex / .elf of the project); an interface's name, a UART's TX and RX
+// pins, a microcontroller's board and firmware (a .hex / .elf of the project), either's USB id and serial number (#5489); an interface's name, a UART's TX and RX
 // ports, baud and frame, GPIO's pins and direction; a link's id and ends; and the System's name. An edit refused says
 // why in the console (opts.onMessage).
 import { h } from './ui.js';
 import { BOARDS } from '/core/devices.js';
 import { MCU_BOARDS, mcuBoard } from '/core/system-doc.js';
 import { BAUDS } from '/core/uart.js';
+import { readUsbId, usbIdText } from '/core/usb-id.js';
 import { changeNode, changeInterface, addInterface, removeInterface, changeLink, NODE_KIND_NAMES } from '/core/system-edit.js';
 
 /** { renderSide } of mountSystemEditor (M(), sel(): its values; apply(r): an edit's result taken, or its error said). */
@@ -33,6 +34,15 @@ export function mountSystemSide(ctx) {
     const ps = (opts.portsOf?.(n.module) || []).map(p => p.name), find = re => ps.find(p => re.test(p));
     return Object.fromEntries(Object.entries({ scl: /^(i2c_)?scl$/i, sda: /^(i2c_)?sda$/i }).map(([k, re]) => [k, find(re)]).filter(([, v]) => v));
   };
+  // its board's USB id and serial number (#5489: the board told apart from another of the same kind); an id that is not one
+  // given as it is, for the edit's message
+  const usbFields = n => [
+    field('USB id', text(n.usb?.vendor ? usbIdText({ vendor: n.usb.vendor, product: n.usb.product }) : '', v => {
+      const id = readUsbId(v);
+      take(changeNode(M(), n.id, { usb: !v ? { vendor: null, product: null } : id ? { vendor: id.vendor, product: id.product } : { vendor: v } }), 'node');
+    }, 'mono sys-usb-id'), "vendor:product, hexadecimal (empty: the board's)"),
+    field('USB serial', text(n.usb?.serial, v => take(changeNode(M(), n.id, { usb: { serial: v } }), 'node'), 'mono sys-usb-serial'), 'its board told apart from another of the same kind'),
+  ];
   function nodeFields(n) {
     const out = [h('h3', {}, `${NODE_KIND_NAMES[n.kind] || n.kind} ${n.id}`), field('Id', text(n.id, v => take(changeNode(M(), n.id, { id: v }), 'node')))];
     if (n.kind === 'fpga') {
@@ -41,6 +51,7 @@ export function mountSystemSide(ctx) {
       out.push(field('Module', choose(n.module, [['', '(none)'], ...mods.map(m => [m, m])], v => take(changeNode(M(), n.id, { module: v }), 'node'), 'sys-module')),
         field('Board', choose(n.board, BOARDS.map(b => [b.id, b.name]), v => take(changeNode(M(), n.id, { board: v, variant: null }), 'node'), 'sys-board')));
       if (board?.variants?.length) out.push(field('Variant', choose(n.variant || '', [['', '(the board\'s)'], ...board.variants.map(v => [v.id, v.id])], v => take(changeNode(M(), n.id, { variant: v }), 'node'), 'sys-variant')));
+      out.push(...usbFields(n));
       // the pins of the ports its interfaces name
       const ports = [...new Set(n.interfaces.flatMap(f => (f.kind === 'uart' ? [f.tx, f.rx] : f.kind === 'spi' ? [f.sck, f.mosi, f.miso, f.ss] : f.kind === 'i2c' ? [f.scl, f.sda] : f.pins)).filter(Boolean))];
       if (ports.length) out.push(h('div', { class: 'asm-label' }, 'Pins of the board'), ...ports.map(p => field(p, text(n.pins[p], v => take(changeNode(M(), n.id, { pins: { [p]: v } }), 'node'), 'mono sys-pin'))));
@@ -53,6 +64,7 @@ export function mountSystemSide(ctx) {
       const pic = mcuBoard(n.board)?.arch === 'pic24';
       const fw = (opts.firmwares?.(n.id) || []).filter(f => !pic || /\.hex$/i.test(f));   // (its folder's, #5488; a PIC24's .hex only, #5484)
       out.push(field('Board', choose(n.board, MCU_BOARDS.map(b => [b.id, b.name]), v => take(changeNode(M(), n.id, { board: v }), 'node'), 'sys-board')),
+        ...usbFields(n),
         field('Firmware', choose(n.firmware || '', [['', '(none)'], ...[...new Set([...fw, ...(n.firmware ? [n.firmware] : [])])].map(f => [f, f])], v => take(changeNode(M(), n.id, { firmware: v }), 'node'), 'sys-firmware'), pic ? 'a .hex of the project (XC16\'s)' : 'a .hex or an .elf of the project'),
         // (the Explorer 16/32's SPI and I²C links: #5484's next part)
         h('div', { class: 'asm-row' }, btn('+ GPIO', 'Add GPIO wires: the board\'s pins and their direction', () => take(addInterface(M(), n.id, { kind: 'gpio' }), 'iface'), 'asm-small sys-add-gpio'),

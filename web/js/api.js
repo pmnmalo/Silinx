@@ -195,6 +195,7 @@ export const api = {
   implement: (name, body) => req('POST', `/api/projects/${enc(name)}/implement`, body),
   firmware: (name, node) => req('POST', `/api/projects/${enc(name)}/firmware`, { node }),   // (an Arduino node's, #5503)
   buildPlan: name => req('GET', `/api/projects/${enc(name)}/build-plan`),   // (a System's, #5489)
+  connectedBoards: name => req('GET', `/api/projects/${enc(name)}/boards`),   // (a System's nodes and their boards, #5489)
   buildSystem: (name, node) => req('POST', `/api/projects/${enc(name)}/build`, { node }),
   // the logic analyzer's capture on the board (#3176): { job }, its result { capture, file }
   capture: (name, opts) => req('POST', `/api/projects/${enc(name)}/capture`, captureBody(opts)),

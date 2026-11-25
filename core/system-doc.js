@@ -4,7 +4,7 @@
 //
 //   { format: 'silinx-system', version: 1, name,
 //     nodes: [ { id, kind: 'fpga', module, board, variant?, pins: { <port>: <pin of the board> }, lang, interfaces, x, y }
-//              { id, kind: 'mcu', board: 'arduino-uno' | 'arduino-nano' | 'explorer-1632', firmware: <a .hex / .elf of the project>, lang, interfaces, x, y }
+//              { id, kind: 'mcu', board: 'arduino-uno' | 'arduino-nano' | 'explorer-1632', firmware: <a .hex / .elf of the project>, lang, usb, interfaces, x, y }
 //              { id, kind: 'terminal', interfaces, x, y }
 //              { id, kind: 'circuit', circuit: <a .circ.json of the project>, interfaces: [], x, y } ],
 //     links: [ { id, kind: 'uart' | 'gpio' | 'spi' | 'i2c', a: '<node>.<interface>', b: '<node>.<interface>' } ] }
@@ -28,6 +28,7 @@
 
 import { isName } from './ident.js';
 import { nodeLangs, baseLang, langError } from './system-layout.js';
+import { normalUsb } from './usb-id.js';
 
 export const SYSTEM_FORMAT = 'silinx-system';
 // (version 2, #5488: a node a folder of the project, its files in `<id>/`; version 1's projects, their files in src/ and
@@ -102,6 +103,9 @@ function normalNode(n) {
   } else if (out.kind === 'circuit') out.circuit = n.circuit ?? null;
   else if (out.kind === 'design') out.module = n.module ?? null;
   if (nodeLangs(out.kind).length) out.lang = baseLang(n);
+  // (its board told apart by its USB id, #5489: an FPGA's or a microcontroller's)
+  const usb = (out.kind === 'fpga' || out.kind === 'mcu') && normalUsb(n.usb);
+  if (usb) out.usb = usb;
   out.interfaces = Array.isArray(n?.interfaces) ? n.interfaces.map(normalInterface) : [];
   out.x = Number.isFinite(n?.x) ? n.x : 0; out.y = Number.isFinite(n?.y) ? n.y : 0;
   return out;

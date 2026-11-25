@@ -1,0 +1,8 @@
+#!/usr/bin/env node
+// A stand-in for the system's USB listing (#5489, config.json's paths['usb-devices']): the devices of
+// $SILINX_CONFIG_DIR/usb-devices.json as it is (none when there is no such file), as JSON on its output.
+import fs from 'node:fs';
+import path from 'node:path';
+let text = '[]';
+try { text = fs.readFileSync(path.join(process.env.SILINX_CONFIG_DIR || '.', 'usb-devices.json'), 'utf8'); } catch { /* none */ }
+process.stdout.write(text);

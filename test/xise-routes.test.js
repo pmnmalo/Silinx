@@ -23,7 +23,7 @@ test('#405 ISE project routes: mounted alone, the .xise and zip routes', () => {
 test('#405 ISE project routes: registerImplRoutes registers them after its own, then Merge Contribution\'s (#4206), then KiCad\'s libraries\' (#4285)', () => {
   const { api, calls } = recorder();
   registerImplRoutes(api, { wrap: f => f, projects });
-  assert.equal(calls.length, 33);   // (program's and prom's with the project in the address, #4754; an Arduino node's firmware, #5503; a System's build plan and build, #5489)
+  assert.equal(calls.length, 34);   // (program's and prom's with the project in the address, #4754; an Arduino node's firmware, #5503; a System's build plan and build, #5489; its connected boards, #5489)
   assert.ok(calls.includes('get /projects/:p/build-plan') && calls.includes('post /projects/:p/build'), 'a System\'s build plan and Build All (#5489)');
   assert.ok(calls.includes('post /projects/:p/capture'), 'the capture of the logic analyzer (#3176)');
   assert.deepEqual(calls.slice(-12, -7), ['get /projects/:p/export.xise', 'post /import-xise /projects/import-xise', 'get /projects/:p/export.zip', 'post /import-zip /projects/import-zip', 'post /projects/:p/sync-xise']);

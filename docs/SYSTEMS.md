@@ -638,8 +638,30 @@ in its build's folder (its description and its sources' hashes, taken when it st
   Generate Programming File and Compile Firmware are its build.
 - The MCP's `run_process` process `build` (a node's id, built whatever its state; `*` Build All) and `check_system`'s
   `plan`.
-- To come (#5489's parts 2 and 3): the boards matched to their nodes by USB id (vendor, product, serial), and **Program
-  All** / **Program Node** in the plan's order, only on the user's action.
+- To come (#5489's part 3, with #5447): **Program All** / **Program Node** in the plan's order, only on the user's
+  action, each node on its matched board (or one the user picks instead).
+
+**The boards by their USB id** (#5489's part 2, `core/system-usb.js`). Each FPGA and microcontroller node is matched to
+a board connected to the computer by its USB id:
+
+- a node's ids are its board's: an FPGA board's programmer, as the browser drives it (`core/usb-program.js`: the
+  Digilent Adept's vendor 1443, the FT2232H's 0403:6010, the ULX3S's FT231X 0403:6015); an Arduino Uno's ATmega16U2
+  (2341:0043, 2341:0001, 2341:0243, 2a03:0043) and its clones' CH340 (1a86:7523); a Nano's FT232RL (0403:6001) and
+  CH340; the Explorer 16/32's debugger, a Microchip device (04d8);
+- a node may give its own (`usb`: `{ vendor, product, serial }`, the System editor's **USB id** and **USB serial**, the
+  MCP's `edit_system`): its board's serial number tells it apart from another of the same kind; the check refuses an
+  id that is not 4 hexadecimal digits and two nodes with one serial number;
+- a node with a serial number takes its board; the others a board of their ids that no other node could take (a Nano
+  that can only be the CH340 leaves the Uno its ATmega16U2);
+- the problems are warnings in the console: `uno: no board connected for it (Arduino Uno, USB 2341:0043 or …)`, `uno:
+  2 connected boards could be it (…): give it its board's serial number`, `uno, nano: one connected board could be
+  any of them (…): give each its board's serial number`.
+
+The local server lists the devices, read only (`server/usb-devices.js`): macOS's `system_profiler`, Linux's
+`/sys/bus/usb/devices`, Windows's `Get-PnpDevice`, and arduino-cli's `board list` for a serial port's address (an
+upload's). config.json's `paths["usb-devices"]` names a command printing them as JSON instead. The System row's
+**Connected Boards** says the devices and each node's board; the MCP's `check_system` with `boards` gives them. The
+browser edition sees only a board it was given, when it programs it.
 
 ## Emulation
 
@@ -731,6 +753,7 @@ Every action is a tool (#2674), through the same functions as the interface:
 | `node_firmware` | sets a node's firmware |
 | `run_process` `firmware` | compiles an Arduino node's sketch to its `.hex` with arduino-cli (#5503) |
 | `run_process` `build`, `check_system`'s `plan` | the System's build plan, its nodes not up to date built (#5489) |
+| `check_system` with `boards` | the connected boards matched to the nodes by USB id, as Connected Boards (#5489) |
 
 Later:
 
