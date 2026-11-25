@@ -138,7 +138,7 @@ export class Simulator {
       s.forced = null;
       s.wave = Array.isArray(s.init) || s.t.kind === 'str' ? null : { t: [0], v: [s.val] };
     }
-    this.rts = this.design.procs.map(p => ({ p, gen: null, native: null, done: false, rec: null, ctx: null, fork: null, parent: null, kids: null, waitKids: false }));
+    this.rts = this.design.procs.map(p => ({ p, gen: null, native: null, done: false, rec: null, ctx: null, fork: null, parent: null, kids: null, waitKids: false, evWaits: 0 }));
     // Resolved signals: a logic signal with several drivers (VHDL processes / concurrent
     // statements, Verilog continuous assignments and port connections; all the procedural code of
     // a Verilog module counts as one driver) keeps one value per driver and resolves them.
@@ -386,9 +386,11 @@ export class Simulator {
       case 'initial': return (function* () { yield* exec(body, ctx); })();
       case 'loop': return (function* () {
         for (;;) {
-          const t0 = sim.now, s0 = sim.stamp;
+          // (a wait on an event counts though it ends in the same delta: a Verilog blocking assignment wakes its
+          // waiters at once, a VHDL port aliased to a Verilog reg too, #5465)
+          const t0 = sim.now, s0 = sim.stamp, e0 = rt.evWaits;
           yield* exec(body, ctx);
-          if (sim.now === t0 && sim.stamp === s0) throw new SimError(`process '${p.name}' loops forever without waiting (missing wait/delay?)`, p.loc);
+          if (sim.now === t0 && sim.stamp === s0 && rt.evWaits === e0) throw new SimError(`process '${p.name}' loops forever without waiting (missing wait/delay?)`, p.loc);
         }
       })();
       case 'wait-first': return (function* () {
@@ -455,6 +457,7 @@ export class Simulator {
         for (const tr of req.triggers) tr.sig.waiters.add(rec);
         if (req.deadline != null) this.heap.push(req.deadline, { timeout: rec });
         rt.rec = rec;
+        for (let t = rt; t; t = t.parent) t.evWaits++;   // (a fork's thread: its process's too)
       } else if (req.forever) {
         rt.done = true;   // (a thread blocked forever never completes its fork)
       } else if (req.fork) {
@@ -479,7 +482,7 @@ export class Simulator {
     if (!rt.kids) rt.kids = new Set();
     for (const b of s.branches) {
       const cctx = { ...ctx };
-      const kid = { p: rt.p, gen: exec(b, cctx), done: false, rec: null, ctx: cctx, fork: F, parent: rt, kids: null, waitKids: false };
+      const kid = { p: rt.p, gen: exec(b, cctx), done: false, rec: null, ctx: cctx, fork: F, parent: rt, kids: null, waitKids: false, evWaits: 0 };
       rt.kids.add(kid);
       this.active.push({ rt: kid, val: undefined });
     }

@@ -444,6 +444,17 @@ test('$finish / $stop end the simulation; $random is repeatable with a seed; $ti
   assert.equal(r.r.status.now, 5000);
 });
 
+// Regression (#5465): a blocking assignment wakes the always block's event control in the same delta; that wait
+// counted as none, and the block was said to loop forever at 0 ns (and a fork waiting on it: its branch's wait is its process's)
+test('always without a sensitivity list waiting on an event a blocking assignment ends in the same delta (#5465)', () => {
+  const res = sim(vlog(`reg P;
+  always begin @(P); $display("woke %0t %b", $time, P); end
+  always begin fork @(P); join $display("fork %0t %b", $time, P); end
+  initial begin #0 P = 0; #10 P = 1; #10 P = 0; #10 $finish; end`));
+  assert.deepEqual(res.out, ['woke 0 0', 'fork 0 0', 'woke 10 1', 'fork 10 1', 'woke 20 0', 'fork 20 0']);
+  assert.deepEqual(warningsOf(res), []);
+});
+
 test('fork / join: parallel branches with delays; the block ends when the last branch ends', () => {
   const r = sim(vlog(`
   initial begin
