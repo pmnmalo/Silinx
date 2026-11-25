@@ -66,7 +66,7 @@ export const SYSTEM_PT = {
   'a .circ.json of the project: its boards are the nodes their labels name': 'um .circ.json do projeto: as suas placas são os nós que as suas etiquetas nomeiam', 'no module': 'sem módulo', 'no firmware': 'sem firmware', 'no board': 'sem placa',
   // (a removed node's folder, #5488: web/js/system-folders-ui.js)
   'Remove Node': 'Remover Nó',
-  'Its MicroPython is not made yet': 'O seu MicroPython ainda não é gerado', 'Not made: its file is not in the project folder': 'Não gerado: o seu ficheiro não está na pasta do projeto',
+  'Not made: its file is not in the project folder': 'Não gerado: o seu ficheiro não está na pasta do projeto',
 };
 export const SYSTEM_PT_PATTERNS = [
   // (a CPU node's drawing's last badge, #5488: web/js/design.js)

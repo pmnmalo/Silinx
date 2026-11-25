@@ -203,6 +203,29 @@ API (`delay`, `int`) is renamed (`delay_v`) with a warning. The tests compile ea
 C compiler, as C and as C++, against a mock of the Arduino API (`test/fixtures/arduino-mock`), and run it tick by tick
 against the model; the AVR run comes with #5503 (avr-gcc on the local server).
 
+**Its MicroPython** (`core/reactive-py.js`, #5487) is a program as a student writes one, the same `.py` on the ESP32 and
+on the Pico, its HAL MicroPython's `machine.Pin` and `time.ticks_ms`, with the same ticks as the C:
+
+- `step_machine()` is one tick, run by `main()`'s loop every `TICK_MS` milliseconds (10 by default). It reads the inputs,
+  sets the outputs' defaults, runs `if state == S_<state>:` / `elif …` with one branch per state, and writes the outputs;
+- `main()` sets the reset state, then loops; the file ends by calling it (on the board, `main.py` is the program, or
+  imports it);
+- the states are named constants (`S_CARS = 0`), the pins too (`PIN_<port> = Pin(4, Pin.IN)`, a tuple for a port of
+  several bits, bit 0 first);
+- a variable read after it is set in a tick (and a registered output, and a timer) keeps its next value apart
+  (`<name>_next`), as in the C;
+- Python's integers have no width: a sum, a difference, a `~`, a `-` and a `<<` are masked to their width, a shift left
+  by a variable is 0 from the width on, written so; a logical operand that may be above 1 is compared with 0, so that
+  `and` and `or` give 0 or 1.
+
+The ports' pins (`core/reactive-py-pins.js`) are GPIO numbers: on the ESP32 DevKit the user's (GPIO1 and GPIO3, the USB
+serial port's, warned about; GPIO6 to GPIO11, the flash's, refused; GPIO34 to GPIO39 inputs only), the others the next
+free ones (GPIO4, 13, 14, 16 to 19, 21 to 23, 25 to 27, 32, 33: not the strapping pins); on the Pico GP2 to GP22, then
+GP26 to GP28. A port named as a word of Python, a builtin or a name of the program's (`pass`, `len`, `state`) is renamed
+(`pass_v`) with a warning. The tests run each drawing's program on the computer's Python (`py_compile`, its warnings
+errors) with a mock of `machine` and `time` (`test/fixtures/micropython-mock/run.py`), tick by tick against the model;
+the board's own run comes with the ESP32's and the Pico's nodes (#5495, #5494).
+
 **A drawing in a CPU node** (`core/drawing-code.js`, #5486): in a microcontroller node whose base language is C or C++
 (its `lang`, #5488), a state diagram's, an ASM chart's, a Petri net's or a truth table's file is its sketch,
 `<node>/<module>.ino`, next to it, as an FPGA node's drawing has its HDL file. It is made when the drawing is made, and
@@ -211,9 +234,13 @@ made again when the drawing changes (`core/drawing-sync.js`, as for the HDL: the
 was made before its node's language was C gets its sketch instead, its HDL file removed. The pins of its ports are its
 node's GPIO interfaces named as the ports (their pins, bit 0 first), the others the board's next free ones; its ports are
 the node contract's typed ports (`core/system-ports.js`, at the board's 5 V). A schematic, a circuit and a register map
-are refused in a CPU node, with their messages. A drawing in a MicroPython node is said not made yet (#5487).
+are refused in a CPU node, with their messages. In a MicroPython node (#5487) the drawing's file is its MicroPython
+program, `<node>/<module>.py`, in the same way, its ports at 3.3 V; until the ESP32's and the Pico's nodes (#5495,
+#5494) such a node is on an Arduino's board, which does not run MicroPython: the program is the ESP32 DevKit's, on its
+free pins, said. A node whose language changes from C to MicroPython, or back, gets its drawings' other file, the old one
+removed.
 On the Design pane (`web/js/design-cpu.js`) such a drawing's row, under its node, is named after its module: its
-drawing's badge first (the base), its node's language's last, `[C]` (or `[C++]`), its sketch, opened from it; marked when
+drawing's badge first (the base), its node's language's last, `[C]` (or `[C++]`, `[Py]`), its code, opened from it; marked when
 its sketch is not made (the drawing has errors: its tip says them) or not made again since. A drawing with no sketch gets
 it when the project is opened, as the MCP's tools give it (`adoptDrawing`); the sketch has no row of its own.
 

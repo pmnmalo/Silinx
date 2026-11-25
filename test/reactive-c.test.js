@@ -15,7 +15,7 @@ import { assignPins, boardPin, apiPin } from '../core/reactive-c-pins.js';
 import { cExpr, cValue, cConst, cType } from '../core/reactive-c-expr.js';
 import { lower, maskOf } from '../core/reactive-expr.js';
 import { CC, noCC } from './c-helpers.js';
-import { EDGES, EXAMPLE_DRAWINGS, ROOT, randomVectors, readJson, runModel } from './reactive-lib.mjs';
+import { EDGES, EXAMPLE_DRAWINGS, ROOT, randomVectors, readJson, runModel, timerModel, wide } from './reactive-lib.mjs';
 
 const MOCK = path.join(ROOT, 'test/fixtures/arduino-mock');
 const GOLDEN = path.join(ROOT, 'test/fixtures/reactive-c');
@@ -75,33 +75,6 @@ test('edge cases (Mealy outputs, a case box, a registered output, a synchroniser
     const sketch = sketchOf(model, { tickMs: 3 });
     for (const lang of ['c', 'c++']) assert.deepEqual(runSketch(model, sketch, vectors, lang), runModel(model, vectors), `${model.name} ${lang}`);
   }
-});
-
-/** Wide values: a 20-bit and a 32-bit register, sums, differences, shifts by constants and by inputs, comparisons. */
-const wide = () => ({
-  version: 1, name: 'wide', lang: 'verilog', clock: 'clk', reset: { name: 'rst', active: 'high', sync: true }, encoding: 'binary',
-  inputs: [{ name: 'a', width: 4 }, { name: 'n', width: 3 }],
-  outputs: [{ name: 'lo', width: 3, default: '0' }, { name: 'big', width: 1, default: '0' }, { name: 'mid', width: 6, default: '0' }],
-  registers: [{ name: 'r', width: 20, init: '1' }, { name: 'q', width: 32, init: '0' }, { name: 'm', width: 12, init: '5' }],
-  nodes: [
-    { id: 's1', type: 'state', name: 'GO', actions: ['r = (r << 3) + a - 7', 'q = q - (a << n) + (r >> n) + (q << 5)', 'lo = (q >> 28) ^ a', 'm = (m << 2) - ~a', 'mid = m + (1 << n)'] },
-    { id: 'd1', type: 'decision', cond: 'q > r + 1000 || -a == 8\'d3' },
-    { id: 'o1', type: 'output', actions: ['big', 'q = ~q'] },
-  ],
-  edges: [{ from: 's1', to: 'd1' }, { from: 'd1', to: 'o1', port: 'true' }, { from: 'd1', to: 's1', port: 'false' }, { from: 'o1', to: 's1' }],
-  initial: 's1',
-});
-
-/** A timer: counts ticks, restarted by an input, held at its maximum. */
-const timerModel = () => ({
-  kind: 'reactive', version: 1, name: 'blink', from: 'fsm',
-  inputs: [{ name: 'go', width: 1 }], outputs: [{ name: 'led', width: 1, default: 0n }, { name: 'n', width: 3, default: 0n, registered: true }],
-  vars: [{ name: 't', width: 3, init: 0n, timer: true }], consts: [], states: [{ name: 'OFF' }, { name: 'ON' }], initial: 'OFF',
-  every: [{ k: 'set', target: 'n', expr: { k: 'ref', name: 't', w: 3 } }],
-  arms: [
-    { state: 'OFF', body: [{ k: 'if', cond: { k: 'cmp', op: '>=', a: { k: 'ref', name: 't', w: 3 }, b: { k: 'const', v: 5n, w: 3 } }, then: [{ k: 'set', target: 't', expr: { k: 'const', v: 0n, w: 3 } }, { k: 'go', state: 'ON' }], else: [] }] },
-    { state: 'ON', body: [{ k: 'set', target: 'led', expr: { k: 'const', v: 1n, w: 1 } }, { k: 'if', cond: { k: 'ref', name: 'go', w: 1 }, then: [{ k: 'set', target: 't', expr: { k: 'const', v: 0n, w: 3 } }, { k: 'go', state: 'OFF' }], else: [] }] },
-  ],
 });
 
 test('wide values (20 and 32 bits: the C\'s uint32_t, its masks) and a timer counting ticks: the sketch is the model', { skip: noCC }, () => {

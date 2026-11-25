@@ -89,8 +89,9 @@ function systemRow(treeItem, select) {
         onSelect: () => select({ type: 'node', file: f, node: n.id, kind: n.kind, module: n.module }), onOpen: () => openSystem(f), onContext: menu });
       item.ul.append(it.li);
       branches.set(n.id, it);
-      // (a CPU node's drawings: rows as an FPGA node's, their last badge its base language's, #5488)
-      const cpu = n.kind === 'mcu' ? LANG_NAMES[n.lang] ?? null : null;
+      // (a CPU node's drawings: rows as an FPGA node's, their last badge its base language's, #5488: [Py] MicroPython's,
+      // #5487)
+      const cpu = n.kind === 'mcu' ? (n.lang === 'micropython' ? 'Py' : LANG_NAMES[n.lang]) ?? null : null;
       if (n.module) addModule(it.ul, n.module, null, 0, n.module);
       const mine = roots.filter(r => r !== n.module && nodeOfPath(moduleFile(r), ids) === n.id);
       for (const m of mine) addModule(it.ul, m, null, 0, m, cpu);
