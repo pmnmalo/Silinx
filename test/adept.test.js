@@ -5,6 +5,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { scanAdept, programAdept, byterev, bitHeader, Adept, Djtg, Chain, JtagSeq, RTI_PAIRS, DR_TDI_BITS } from '../core/adept.js';
 import { SimAdeptBoard } from './fixtures/adept-sim.js';
+import { WINUSB_HINT } from '../core/webusb-support.js';   // (its own text asserted in webusb-support.test.js, #5472)
 
 // a .bit: a header, dummy words, the sync word, then the configuration
 function fakeBit(n = 4000, part = '3s250ecp132') {
@@ -180,5 +181,5 @@ test('open() that fails after claiming the board releases it: the next attempt f
   // (#4593) Windows: Chrome cannot open a board whose driver is Digilent Adept's, "Access denied.": WinUSB with Zadig
   const windows = new SimAdeptBoard();
   windows.open = async () => { throw new Error('Access denied.'); };
-  await assert.rejects(new Adept(windows).open(), { message: 'Adept USB: the board cannot be opened (Access denied.): another program may be using it (Digilent Adept, iMPACT, the Silinx application); on Windows, Digilent Adept\'s or FTDI\'s driver holds the board unless it has the WinUSB driver: give it WinUSB with Zadig (zadig.akeo.ie) to program it from the browser (Adept then no longer sees it until its driver is put back)' });
+  await assert.rejects(new Adept(windows).open(), { message: `Adept USB: the board cannot be opened (Access denied.): another program may be using it (Digilent Adept, iMPACT, the Silinx application); ${WINUSB_HINT}` });
 });

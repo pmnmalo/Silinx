@@ -23,10 +23,20 @@ const types = ev => ev.map(e => e.type).filter(t => t !== 'peers');
 const followerSocket = h => function FollowerSocket() { const { client, room } = socketPair(); h.follower(room); return client; };
 
 // the owner's room (a grace as the relay's, but short), its sockets kept: the last one its connection now
-async function setup({ grace = 2000, editors = false, reconnect = FAST } = {}) {
+// (`cut`: the network's end as the owner's first connection sends its cut-th list of the editors, #5545: that list lost)
+async function setup({ grace = 2000, editors = false, reconnect = FAST, cut = 0 } = {}) {
   const h = hostedRooms({ limits: { ...HOST_LIMITS, grace } });
   const socks = [];
-  const OwnerSocket = function OwnerSocket(...a) { const s = new h.owner(...a); socks.push(s); return s; };
+  let lists = 0;
+  const OwnerSocket = function OwnerSocket(...a) {
+    const s = new h.owner(...a);
+    socks.push(s);
+    if (cut && socks.length === 1) {
+      const send = s.send.bind(s);
+      s.send = d => { if (typeof d === 'string' && JSON.parse(d).type === 'editors' && ++lists === cut) s.close(); else send(d); };
+    }
+    return s;
+  };
   const doc = owned();
   const ownerEv = [];
   const owner = keep(await shareRoom({ url: 'silinx-host:', doc, user: { name: 'Ana' }, editors, WebSocket: OwnerSocket, onEvent: e => ownerEv.push(e), reconnect }));
@@ -71,6 +81,18 @@ test('#3835 an editor\'s change made while the owner was lost reaches the owner 
   await until(() => docFile(doc, 'src/tb.vhd') === '-- the test bench\n-- by Rui\n', 'the editor\'s change at the owner\'s');
   await until(() => docFile(f.doc, 'src/top.vhd') === '-- by Ana\nentity top is end;\n', 'the owner\'s at the editor\'s');
   assert.deepEqual(types(ownerEv), ['offline', 'online']);   // (nothing refused)
+});
+
+test('#5545 the owner\'s list of its editors lost with its connection: given to the room again once resumed, the editor\'s edits reach the owner', async () => {
+  // (the owner's second list, the one that lists Rui, never reaches the room: its connection ends as it is sent)
+  const { socks, doc, owner, ownerEv, f, ev } = await setup({ editors: true, cut: 2 });
+  await until(() => types(ownerEv).includes('offline') && owner.connected(), 'lost and resumed');
+  assert.equal(socks.length, 2);
+  await until(() => f.listed, 'Rui listed, at the follower\'s');
+  editFile(f.doc, 'src/tb.vhd', '-- the test bench\n-- by Rui\n');
+  await until(() => docFile(doc, 'src/tb.vhd') === '-- the test bench\n-- by Rui\n', 'the editor\'s change at the owner\'s');
+  assert.deepEqual(types(ownerEv), ['offline', 'online']);
+  assert.deepEqual(ev.filter(e => e.type === 'error'), []);   // (no edit refused by the room)
 });
 
 test('#3835 a room the relay no longer keeps (no grace): the resume refused, the owner\'s session ended, said; the follower told', async () => {

@@ -41,6 +41,7 @@ const sampled = (tpl) => SAMPLES.some((s) => [0, 1].some((k) => { const x = fill
 const EXAMPLES = {  '${doc.path || doc.title} could not be saved. Close it and lose the unsaved changes?': 'src/top.vhd could not be saved. Close it and lose the unsaved changes?',
   "New path of the folder '${dir}':": "New path of the folder 'src':",
   'Open ${viewTitle(sch)}': 'Open Circuit',
+  'Generated from the ${noun}': 'Generated from the state machine',   // (a CPU node's drawing's badge, #5487)
   'cannot open ${path}: ${e.message}': 'cannot open src/a.sch.json: Unexpected end of JSON input',
   '${sel().nodes.size} boxes selected': '3 boxes selected',
   "The reset (active-${M().reset.active}, ${M().reset.sync ? 'synchronous' : 'asynchronous'}): click to toggle it": 'The reset (active-high, synchronous): click to toggle it',
@@ -125,7 +126,7 @@ const EXAMPLES = {  '${doc.path || doc.title} could not be saved. Close it and l
   'Time offsets are relative to the current simulation time (${fmtTime(sim.now)}); default unit is ns.': 'Time offsets are relative to the current simulation time (1.5 us); default unit is ns.',
 };
 // the same in both languages (a name, a number, a unit)
-const SAME = new Set(['${b} baud', 'Cursor: ${fmtTime(st.cursor)}', 'FPGA (${top})', '${filename}.png: ${p.width} × ${p.height} px',
+const SAME = new Set(['${b} baud', 'LED ${d} (${pin})', 'Cursor: ${fmtTime(st.cursor)}', 'FPGA (${top})', '${filename}.png: ${p.width} × ${p.height} px',
   // (Print's summary and the Design Summary's bitstream: a file and its size; the rest of Print's line is translated with it)
   "${n} page${n > 1 ? 's' : ''} (${L.cols} across × ${L.rows} down), ${paper.value} ${L.land ? 'landscape' : 'portrait'}; ",
   'build/${pj.top}${bitstreamExtOf(pj.device)} (${Math.round(rep.bit.size / 1024)} KB)', 'build/${pj.top}.bit (${Math.round(rep.bit.size / 1024)} KB)']);

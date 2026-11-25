@@ -45,7 +45,7 @@ function runSketch(model, sketch, vectors, lang) {
     const cc = spawnSync(CC, [...std, '-Wall', '-Wextra', '-I', MOCK, '-o', path.join(dir, 'run'), path.join(dir, 'main.c')], { encoding: 'utf8' });
     assert.equal(cc.status, 0, `${model.name} ${lang}: ${cc.stderr}`);
     assert.equal(cc.stderr.trim(), '', `${model.name} ${lang}: no compiler warning`);
-    return execFileSync(path.join(dir, 'run'), { encoding: 'utf8' }).trim().split('\n');
+    return execFileSync(path.join(dir, 'run'), { encoding: 'utf8' }).trim().split(/\r?\n/);   // (Windows's printf ends its lines with \r\n)
   } finally {
     fs.rmSync(dir, { recursive: true, force: true });
   }

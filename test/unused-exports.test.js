@@ -134,10 +134,12 @@ function missingDynamicImports(text) {
   return out;
 }
 
+// (#5560: a hidden folder below the top ones, as another test's temporary one, test/.tmp-times-*, left: it may go
+// between the listing and the reading)
 function repository() {
   const walk = dir => fs.readdirSync(path.join(ROOT, dir), { withFileTypes: true }).flatMap(e => {
     const rel = path.posix.join(dir, e.name);
-    if (e.isDirectory()) return SKIP.has(e.name) ? [] : walk(rel);
+    if (e.isDirectory()) return SKIP.has(e.name) || e.name.startsWith('.') ? [] : walk(rel);
     return /\.(m?js|cjs|html|ya?ml|md)$/.test(e.name) || e.name === 'package.json' ? [rel] : [];
   });
   const files = ['server', 'core', 'web', 'packages', 'bin', 'scripts', 'test', 'research', 'relay', 'docs', '.github']
@@ -152,6 +154,16 @@ test('no module exports a name nothing else uses, but the reviewed exceptions (#
   // no longer found: take it out of LEFT)
   assert.deepEqual(found.filter(x => !left.includes(x)), [], 'exported, used by no other module');
   assert.deepEqual(left.filter(x => !found.includes(x)), [], 'in LEFT, no longer an unused export');
+});
+
+test('#5560 another test\'s temporary folder under test/ (.tmp-*) is not scanned: it may be removed meanwhile', () => {
+  const dir = fs.mkdtempSync(path.join(ROOT, 'test', '.tmp-unused-'));
+  try {
+    fs.writeFileSync(path.join(dir, 'lib.mjs'), 'export const gone = 1;\n');
+    const files = [...repository().keys()];
+    assert.deepEqual(files.filter(f => f.includes('/.tmp-')), []);
+    assert.ok(files.includes('test/unused-exports.test.js') && files.includes('.github/workflows/ci.yml'), 'the rest scanned');
+  } finally { fs.rmSync(dir, { recursive: true, force: true }); }
 });
 
 test('every name taken from a dynamic import is one its module exports (#3734)', () => {
