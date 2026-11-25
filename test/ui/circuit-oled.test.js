@@ -42,8 +42,8 @@ uiTest('#5336 a graphic OLED: an Arduino writing to it over I²C in Emulate, its
   await page.waitFor((ed) => document.querySelector(ed), [ED], { what: 'the System editor' });
   await page.click(`${ED} .sys-emu-btn`);
   await page.waitFor((e) => document.querySelector(`${e} [data-node=bench] .sys-emu-circ [data-id=OLED1] .circ-oled-glass`), [EMU], { what: 'the circuit drawn', timeout: 60000 });
-  assert.equal(await page.eval((e) => !!document.querySelector(`${e} [data-node=bench] .circ-oled-px`), EMU), false, 'dark before the run');
-  await page.click(`${EMU} .sysemu-run`);
+  // (no "dark before the run": the System Emulator runs as soon as it is ready, #5619)
+  await page.waitFor((e) => document.querySelector(`${e} .sysemu-run`)?.textContent === '⏸ Pause', [EMU], { what: 'running once ready (#5619)', timeout: 60000 });
   await page.waitFor((e) => document.querySelector(`${e} [data-node=bench] [data-id=OLED1] .circ-oled-px`), [EMU], { what: 'its pixels lit', timeout: 60000 });
   const s = await page.eval(() => window.SilinxApp.findDoc('sysemu:oled.sys.json').emulator.state());
   assert.deepEqual([s.boards.bench.oleds.OLED1.on, s.boards.bench.oleds.OLED1.lit], [true, 14]);

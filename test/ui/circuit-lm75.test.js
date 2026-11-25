@@ -73,7 +73,7 @@ uiTest('#5342 Emulate System: a circuit node\'s LM75, its + clicked, its tempera
   await page.waitFor(() => document.querySelector('.doc:not([hidden]) .system-editor .sys-emu-btn'), [], { what: 'the System editor' });
   await page.click('.doc:not([hidden]) .system-editor .sys-emu-btn');
   await page.waitFor((e) => document.querySelector(`${e} [data-node=bench] [data-id=U1] .circ-temp`), [EMU], { what: 'the circuit', timeout: 60000 });
-  await page.click(`${EMU} .sysemu-run`);
+  await page.waitFor((e) => document.querySelector(`${e} .sysemu-run`)?.textContent === '⏸ Pause', [EMU], { what: 'running once ready (#5619)', timeout: 60000 });
   await page.eval((e) => document.querySelector(`${e} [data-node=bench]`).scrollIntoView({ block: 'center' }), EMU);
   await page.eval((e) => document.querySelector(`${e} [data-node=bench] [data-id=U1] [data-input="temp-up"] rect`).dispatchEvent(new PointerEvent('pointerdown', { bubbles: true, pointerId: 1 })), EMU);
   await page.waitFor(() => window.SilinxApp.findDoc('sysemu:emu.sys.json')?.emulator?.state()?.boards?.bench?.sensors?.U1?.temp === 80, [], { what: '80 °C', timeout: 30000 });
