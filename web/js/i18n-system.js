@@ -6,6 +6,7 @@ export const SYSTEM_PT = {
   'Arduino Uno': 'Arduino Uno', 'Arduino Nano': 'Arduino Nano', 'Terminal': 'Terminal', 'Link': 'Ligação',
   'Click the canvas to add an FPGA node: a module of the project on a board': 'Clique na tela para acrescentar um nó FPGA: um módulo do projeto numa placa',
   'Click the canvas to add an Arduino Uno': 'Clique na tela para acrescentar um Arduino Uno', 'Click the canvas to add an Arduino Nano': 'Clique na tela para acrescentar um Arduino Nano',
+  'Explorer 16/32': 'Explorer 16/32', 'Click the canvas to add an Explorer 16/32: a PIC24FJ1024GB610, its firmware a .hex': 'Clique na tela para acrescentar uma Explorer 16/32: um PIC24FJ1024GB610, o seu programa um .hex',
   'Click the canvas to add a serial terminal': 'Clique na tela para acrescentar um terminal série',
   'Click an interface, then an interface of another node of its kind': 'Clique numa interface e depois numa interface do mesmo tipo de outro nó',
   'Check the System for errors and warnings': 'Verificar erros e avisos do Sistema',
@@ -14,7 +15,7 @@ export const SYSTEM_PT = {
   'View/Edit Drawing': 'Ver/Editar Desenho',   // (a System's FPGA module's, #5443)
   'Implement System': 'Implementar Sistema', 'Synthesize': 'Sintetizar',   // (every FPGA node on its own board; a node's, #5446)
   'Id': 'Identificador', 'Module': 'Módulo', 'Board': 'Placa', 'Variant': 'Variante', "(the board's)": '(a da placa)',
-  'Firmware': 'Programa (firmware)', 'a .hex or an .elf of the project': 'um .hex ou um .elf do projeto', '(none)': '(nenhum)',
+  'Firmware': 'Programa (firmware)', 'a .hex or an .elf of the project': 'um .hex ou um .elf do projeto', "a .hex of the project (XC16's)": 'um .hex do projeto (do XC16)', '(none)': '(nenhum)',
   'Pins of the board': 'Pinos da placa', '+ UART': '+ UART', '+ GPIO': '+ GPIO',
   'Add a UART interface: its TX and RX ports': 'Acrescentar uma interface UART: os portos TX e RX',
   'Add GPIO wires: their ports and direction': 'Acrescentar fios GPIO: os portos e a direção',
@@ -31,7 +32,7 @@ export const SYSTEM_PT = {
   'SCL (an input of the module)': 'SCL (uma entrada do módulo)', 'SDA (an inout port)': 'SDA (um porto inout)',
   'SCL rate (Hz)': 'Ritmo do SCL (Hz)', "at least the program's: 100000 with Wire": 'pelo menos o do programa: 100000 com Wire',
   'Baud': 'Débito (baud)', 'Frame': 'Trama', 'data bits, parity, stop bits: 8N1, 7E1…': 'bits de dados, paridade, bits de paragem: 8N1, 7E1…',
-  'Pins': 'Pinos', "the module's ports, a bus's bit as led<0>": 'os portos do módulo, um bit de um barramento como led<0>', "the board's pins: D2, A0…": 'os pinos da placa: D2, A0…',
+  'Pins': 'Pinos', "the module's ports, a bus's bit as led<0>": 'os portos do módulo, um bit de um barramento como led<0>', "the board's pins: D2, A0…": 'os pinos da placa: D2, A0…', "the board's pins: RA0, RD6…": 'os pinos da placa: RA0, RD6…',
   'Direction': 'Direção', 'in': 'in', 'out': 'out', 'Remove Interface': 'Remover Interface', 'Remove the interface and its link': 'Remover a interface e a sua ligação',
   // the simulation view (#4701)
   'Try the System out: its nodes run together, its links decoded, its waves': 'Experimentar o Sistema: os nós a correr juntos, as ligações descodificadas, as ondas',

@@ -27,7 +27,8 @@ const pinOf = (type, name) => PARTS[type].pins.find((p) => p.name === name);
 const lines = (ds) => ds.map((d) => `${d.severity}: ${d.message}`);
 
 test('#5215 the Arduinos\' pins are their boards\' (the System\'s): every digital and analog pin, its level, SDA and SCL', () => {
-  for (const b of MCU_BOARDS) {
+  // (the Arduinos': the Explorer 16/32's part is #5484's next part)
+  for (const b of MCU_BOARDS.filter((x) => x.arch === 'avr')) {
     const d = PARTS[b.id];
     assert.equal(d.kind, 'board');
     assert.equal(d.board, b.id);

@@ -53,7 +53,8 @@ export function emulationBoards(sys, inputs) {
     }
     if (n.kind === 'mcu') {
       const b = mcuBoard(n.board);
-      if (b) out.push({ id: n.id, kind: 'mcu', board: b, outputs: b.pins.filter(p => !/^A[67]$/.test(p)), led: 'D13' });
+      // (an Arduino's; the Explorer 16/32's drawing is #5484's next part: its PIC24 runs, its board not shown)
+      if (b?.arch === 'avr') out.push({ id: n.id, kind: 'mcu', board: b, outputs: b.pins.filter(p => !/^A[67]$/.test(p)), led: 'D13' });
       continue;
     }
     if (n.kind !== 'fpga' || !n.board || !inputs.netlists[n.id]) continue;

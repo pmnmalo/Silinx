@@ -19,6 +19,7 @@ import { SystemSim } from './system-sim.js';
 import { lookahead } from './system-links.js';
 import { CompiledNode } from './system-sim-compiled.js';
 import { AvrNode } from './system-sim-avr.js';
+import { pic24Contract } from './system-sim-pic24.js';
 import { TerminalNode } from './system-sim-terminal.js';
 import { CircuitNode } from './system-sim-circuit.js';
 import { circuitNodePins } from './system-circuit.js';
@@ -77,7 +78,7 @@ export function systemPlan(sys, { ports = {}, circuits = {} } = {}) {
       if (!clock) { errors.push(`${n.id}: the module ${n.module} has no clock input (clk)`); continue; }
       fpga.push({ id: n.id, module: n.module, clock, pins: [] });
       outs.set(n.id, new Set());
-    } else if (n.kind === 'mcu' && !n.firmware) errors.push(`${n.id}: no firmware: a .hex or an .elf of the project`);
+    } else if (n.kind === 'mcu' && !n.firmware) errors.push(`${n.id}: no firmware: ${mcuBoard(n.board)?.arch === 'pic24' ? 'a .hex of the project (XC16\'s)' : 'a .hex or an .elf of the project'}`);
     else if (n.kind === 'circuit' && !n.circuit) errors.push(`${n.id}: no circuit: a .circ.json of the project`);
     else if (n.kind === 'circuit' && !circuits[n.id]) errors.push(`${n.id}: its circuit ${n.circuit} not read`);
   }
@@ -151,7 +152,10 @@ export function buildSystem(sys, plan, { fpga = {}, firmware = {} } = {}) {
       const p = plan.fpga.find(x => x.id === n.id), m = fpga[n.id];
       if (!m) throw new Error(`${n.id}: its module ${n.module} not compiled`);
       sim.addNode(n.id, new CompiledNode({ ...m, period: p.clock.period }));
-    } else if (n.kind === 'mcu') sim.addNode(n.id, new AvrNode({ board: n.board, firmware: firmware[n.id] }));
+    } else if (n.kind === 'mcu') {
+      // (an Arduino's AVR, avr8js's; the Explorer 16/32's PIC24, silinx-pic24's behind the node contract, #5484)
+      sim.addNode(n.id, mcuBoard(n.board)?.arch === 'pic24' ? pic24Contract({ board: n.board, firmware: firmware[n.id] }) : new AvrNode({ board: n.board, firmware: firmware[n.id] }));
+    }
     else if (n.kind === 'circuit') {
       const c = plan.circuits.find(x => x.id === n.id);
       sim.addNode(n.id, new CircuitNode({ model: c.model, pins: c.pins }));

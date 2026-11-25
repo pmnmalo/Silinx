@@ -803,6 +803,27 @@ test('static files outside web/: the app\'s assets only, with a CSP that runs no
   assert.equal((await fetch(app.origin + '/js/app.js')).headers.get('content-security-policy'), null);
 });
 
+test('#5484 the PIC24 emulator\'s code (packages/silinx-pic24/src): its .js files, as the other packages\'; nothing else, no traversal out of it', async () => {
+  const http = await import('node:http');
+  // (a raw path: fetch would resolve the dots itself)
+  const raw = (p) => new Promise((ok, no) => { const u = new URL(app.origin); http.get({ host: u.hostname, port: u.port, path: p }, (r) => { r.resume(); ok(r.statusCode); }).on('error', no); });
+  const r = await fetch(app.origin + '/packages/silinx-pic24/src/index.js');
+  assert.equal(r.status, 200);
+  assert.match(r.headers.get('content-type'), /javascript/);
+  assert.equal(r.headers.get('x-content-type-options'), 'nosniff');
+  assert.equal(r.headers.get('content-security-policy'), null);
+  assert.match(await r.text(), /export \{ Pic24Node \}/);
+  for (const p of ['/packages/silinx-pic24/src/../package.json', '/packages/silinx-pic24/src/%2e%2e/package.json', '/packages/silinx-pic24/src/%2E%2E%2Fpackage.json',
+    '/packages/silinx-pic24/src/..%2f..%2fpackage.json', '/packages/silinx-pic24/src/../../../server/server.js', '/packages/silinx-pic24/src/%2e%2e/%2e%2e/%2e%2e/core/zip.js',
+    '/packages/silinx-pic24/src/', '/packages/silinx-pic24/src', '/packages/silinx-pic24/README.md', '/packages/silinx-pic24/package.json', '/packages/silinx-pic24/src/index.js.map',
+    '/packages/silinx-pic24/src/.hidden.js']) {
+    const code = await raw(p);
+    assert.ok(code === 404 || code === 403, `${p}: ${code}`);
+  }
+  // (no link out of the folder: every file a plain .js file)
+  for (const f of fss.readdirSync(path.join(HERE, '..', 'packages/silinx-pic24/src'), { withFileTypes: true })) assert.ok(f.isFile() && f.name.endsWith('.js'), f.name);
+});
+
 // ------------------------------------------------------------------------------------------------
 // .xise
 // ------------------------------------------------------------------------------------------------

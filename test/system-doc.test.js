@@ -77,7 +77,7 @@ test('the files, the links\' ends, the microcontrollers\' boards', () => {
   assert.deepEqual(linkEnd('uno.Serial'), { node: 'uno', iface: 'Serial' });
   assert.deepEqual(linkEnd('fpga.uart.x'), { node: 'fpga', iface: 'uart.x' });
   for (const e of ['uno', '.Serial', 'uno.', '', null]) assert.equal(linkEnd(e), null, String(e));
-  assert.deepEqual(MCU_BOARDS.map(b => b.id), ['arduino-uno', 'arduino-nano']);
+  assert.deepEqual(MCU_BOARDS.map(b => b.id), ['arduino-uno', 'arduino-nano', 'explorer-1632']);
   const uno = mcuBoard('arduino-uno');
   assert.equal(uno.vio, 5);
   assert.deepEqual(uno.uarts, { Serial: { tx: 'D1', rx: 'D0' } });

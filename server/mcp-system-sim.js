@@ -4,7 +4,7 @@
 // terminals' text, the warnings, and the System's waves written as a VCD (build/<name>.vcd).
 import * as P from './projects.js';
 import { toolError, projectText, elaborateView } from './mcp-util.js';
-import { readSystem, isSystemFile } from '../core/system-doc.js';
+import { readSystem, isSystemFile, mcuBoard } from '../core/system-doc.js';
 import { systemsOn, SYSTEMS_OFF } from '../core/build-channel.js';
 import { prepareSystem, systemReport, runTimeText, systemInputs, systemFromInputs } from '../core/system-run.js';
 import { emulationBoards, withBoards, watchBoards, boardStates, setBoardInput, pinOf } from '../core/system-emu.js';
@@ -79,7 +79,7 @@ export async function simulateSystem(name, file, { ms = 100, type = {}, controls
 async function emulated(sys, how) {
   const inputs = await systemInputs(sys, how);
   if (inputs.error) return { ready: inputs };
-  if (sys.nodes.some(n => n.kind === 'mcu')) await loadAvr8js();
+  if (sys.nodes.some(n => n.kind === 'mcu' && mcuBoard(n.board)?.arch !== 'pic24')) await loadAvr8js();
   const boards = emulationBoards(sys, inputs);
   const ready = systemFromInputs(sys, withBoards(inputs, boards));
   if (!ready.error) watchBoards(ready.sim, boards);
