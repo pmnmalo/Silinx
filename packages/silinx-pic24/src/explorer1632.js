@@ -25,10 +25,12 @@ export const EXPLORER_1632 = {
 
 import { SerialTerminal } from './serial.js';
 import { CharacterLcd } from './lcd.js';
+import { Eeprom25lc256 } from './eeprom25lc.js';
 
 export class Explorer1632 {
   /** The board around a device (gb610.js's): its buttons released (their pull-ups on the pins), the potentiometer at
-   *  its middle, the room at 25 °C, its LCD (lcd) on the PMP. */
+   *  its middle, the room at 25 °C, its LCD (lcd) on the PMP, its
+   *  EEPROM (eeprom) on SPI. */
   constructor(dev) {
     this.dev = dev;
     this.pressed = new Set();
@@ -39,6 +41,18 @@ export class Explorer1632 {
     const { mcu } = dev;
     this.lcd = new CharacterLcd({ now: () => mcu.time, say: (t) => mcu.cpu.say('warning', t, 'lcd-busy') });
     dev.pmp.attach('any', { write: (a, v) => this.lcd.write(a & 1, v), read: (a) => this.lcd.read(a & 1) });
+    // the 25LC256 on SPI: it hears an SPI module whose SCK, SDO and SDI the program maps to its pins (PPS), while CS
+    // (RD12) is low
+    this.eeprom = new Eeprom25lc256({ now: () => mcu.time });
+    const { sck, so, si, cs } = EXPLORER_1632.eeprom;
+    dev.ports.setInput(cs, 1);   // (the board's pull-up)
+    dev.ports.onLevel((pin, level) => { if (pin === cs) { if (level === 0) this.eeprom.select(); else this.eeprom.end(); } });
+    for (const spi of dev.spis) spi.onTransfer((word, bits) => {
+      const { pps } = dev, n = spi.n;
+      const wired = pps.outputPins(`SCK${n}OUT`).includes(sck) && pps.outputPins(`SDO${n}`).includes(si) && pps.inputPin(`SDI${n}`) === so;
+      if (!wired || dev.ports.level(cs) !== 0 || bits !== 8) return undefined;
+      return this.eeprom.transfer(word);
+    });
   }
 
   get ports() { return this.dev.ports; }

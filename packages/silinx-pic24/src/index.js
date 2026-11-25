@@ -16,3 +16,4 @@ export { SerialTerminal } from './serial.js';
 export { Adc, AN_PINS } from './adc.js';
 export { Pmp } from './pmp.js';
 export { CharacterLcd } from './lcd.js';
+export { Eeprom25lc256 } from './eeprom25lc.js';

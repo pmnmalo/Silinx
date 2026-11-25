@@ -11,8 +11,10 @@ import { Pps } from './pps.js';
 import { ExternalInterrupts } from './extint.js';
 import { Adc } from './adc.js';
 import { Pmp } from './pmp.js';
+import { createSpis } from './spi.js';
+import { createI2cs } from './i2c.js';
 
-/** The device: { mcu, cpu, osc, wdt, ports, timers, uarts (UART1-6), pps, adc, pmp }. opts: Pic24Mcu's (program, config, primaryHz, log); fcy: the instruction
+/** The device: { mcu, cpu, osc, wdt, ports, timers, uarts (UART1-6), pps, adc, pmp, spis (SPI1-3), i2cs (I2C1-3) }. opts: Pic24Mcu's (program, config, primaryHz, log); fcy: the instruction
  *  clock forced (the oscillator's ignored). */
 export function createGb610(opts = {}) {
   const mcu = new Pic24Mcu(opts);
@@ -27,6 +29,8 @@ export function createGb610(opts = {}) {
   const adc = new Adc(mcu, ports);
   mcu.timerPeriod = (name) => adc.trigger(name);
   const pmp = new Pmp(mcu);
+  const spis = createSpis(mcu);
+  const i2cs = createI2cs(mcu);
   // UART1-4 through PPS (UxTX an output function, UxRX an input one); UART5 and 6 on their fixed pins
   const FIXED = { 5: { tx: 'RD1', rx: 'RD6' }, 6: { tx: 'RB7', rx: 'RB12' } };
   for (const u of uarts) {
@@ -42,5 +46,5 @@ export function createGb610(opts = {}) {
     }
   }
   mcu.powerOn();
-  return { mcu, cpu: mcu.cpu, osc, wdt, ports, timers, uarts, pps, adc, pmp };
+  return { mcu, cpu: mcu.cpu, osc, wdt, ports, timers, uarts, pps, adc, pmp, spis, i2cs };
 }
