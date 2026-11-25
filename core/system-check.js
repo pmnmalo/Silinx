@@ -10,11 +10,16 @@
 //            ends; an I²C peripheral's SDA not an inout port (#5214)
 //   warning  a baud that is no standard rate; a GPIO wire nothing drives; a 5 V output on a 3.3 V FPGA's input; a node
 //            that joins nothing (a circuit node's: core/system-check-circuit.js, #5215)
+// Each node's resolved pins are its typed ports (#5485, core/system-ports.js: a direction, a kind, a level), each wire's
+// ends checked against its link's kind (core/system-links.js endsProblem: the port kinds it joins, a driver and a driven
+// end); the levels are there for the 3.3 V / 5 V check (#5498).
 import { NODE_KINDS, LINK_KINDS, INTERFACE_KINDS, FRAME_RE, mcuBoard, linkEnd, nodeIdError } from './system-doc.js';
 import { isName } from './ident.js';
 import { resolveBoard } from './devices.js';
 import { BAUDS } from './uart.js';
 import { checkCircuitFields, checkCircuitNodes } from './system-check-circuit.js';
+import { port } from './system-ports.js';
+import { endsProblem } from './system-links.js';
 
 const node = id => ({ kind: 'node', id });
 const link = id => ({ kind: 'link', id });
@@ -61,12 +66,30 @@ export const checkSystem = (sys, ctx = {}) => analyzeSystem(sys, ctx).diags;
  */
 export function analyzeSystem(sys, { modules = null, files = null, circuits = null } = {}) {
   const out = [], wires = [];
+  // (the nodes' typed ports: { node: [port] }, each resolved pin of their interfaces once)
   const say = { err: (message, ref) => out.push({ severity: 'error', message, ref }), warn: (message, ref) => out.push({ severity: 'warning', message, ref }) };
   const nodes = checkNodes(sys, { modules, files }, say);
   const used = checkLinks(sys, nodes, say, wires);
   for (const id of checkCircuitNodes(sys, { circuits, modules }, wires, say)) used.add(id);
   for (const n of sys.nodes) if (n.id && nodes.has(lc(n.id)) && !used.has(lc(n.id))) say.warn(`${n.id} joins nothing: no link reaches it`, node(n.id));
-  return { diags: out, wires };
+  return { diags: out, wires, ports: nodePorts(nodes) };
+}
+
+// a resolved pin as a typed port: a pin, or a terminal's UART (a transaction bus's, bytes); its level (V, null: not known)
+const typed = p => port({ name: p.pin, dir: p.dir, kind: p.kind ?? 'pin', volts: p.volts ?? null, protocol: p.protocol ?? null });
+
+// each node's typed ports, from its interfaces' resolved pins, each once, in their order
+function nodePorts(nodes) {
+  const out = {};
+  for (const { n, ifaces } of nodes.values()) {
+    const seen = new Map();
+    for (const r of ifaces.values()) {
+      const pins = [r.tx, r.rx, ...(r.pins || []), ...Object.values(r.spi || {}), ...Object.values(r.i2c || {})].filter(Boolean);
+      for (const p of pins) if (!seen.has(p.pin)) seen.set(p.pin, typed(p));
+    }
+    out[n.id] = [...seen.values()];
+  }
+  return out;
 }
 
 // the nodes, each with its interfaces' pins resolved: Map(id → { n, board, ifaces: Map(name → { f, tx, rx, pins }) })
@@ -86,7 +109,7 @@ function checkNodes(sys, ctx, { err, warn }) {
     else for (const f of n.interfaces) {
       if (!checkInterface(n, f, at, { err, warn })) continue;
       if (f.kind !== 'uart') { err(`${n.id}: a serial terminal has UART interfaces only (${f.name} is ${f.kind})`, node(n.id)); continue; }
-      at.ifaces.set(lc(f.name), { f, tx: { pin: `${f.name}.tx`, dir: 'out' }, rx: { pin: `${f.name}.rx`, dir: 'in' } });
+      at.ifaces.set(lc(f.name), { f, tx: { pin: `${f.name}.tx`, dir: 'out', kind: 'transaction', protocol: 'uart' }, rx: { pin: `${f.name}.rx`, dir: 'in', kind: 'transaction', protocol: 'uart' } });
     }
   }
   return nodes;
@@ -310,7 +333,7 @@ function gpioWires(l, a, b, { err }) {
 }
 
 // a wire's end as the Wiring view shows it
-const wireEnd = p => ({ node: p.end.at.n.id, pin: p.pin, loc: p.loc ?? null, dir: p.dir, volts: p.volts ?? null, std: p.std ?? null, place: p.place ?? null });
+const wireEnd = p => ({ node: p.end.at.n.id, pin: p.pin, loc: p.loc ?? null, dir: p.dir, kind: p.kind ?? 'pin', volts: p.volts ?? null, std: p.std ?? null, place: p.place ?? null });
 
 const pinName = p => `${p.end.at.n.id}'s ${p.pin}${p.loc ? ` (pin ${p.loc})` : ''}`;
 
@@ -325,6 +348,9 @@ function checkWire(l, x, y, byPin, { err, warn }) {
   if (x.dir === 'out' && y.dir === 'out') err(`${l.id}: ${pinName(x)} and ${pinName(y)} are both outputs: a wire driven twice`, ref);
   else if (x.dir === 'in' && y.dir === 'in') warn(`${l.id}: ${pinName(x)} and ${pinName(y)} are both inputs: nothing drives the wire`, ref);
   const [drv, rcv] = x.dir === 'out' ? [x, y] : [y, x];
+  // (its ends as typed ports against its link's kind, #5485: the port kinds it joins)
+  const why = drv.dir === 'out' && rcv.dir === 'in' ? endsProblem(l.kind, typed(drv), typed(rcv)) : null;
+  if (why) err(`${l.id}: ${why}`, ref);
   if (drv.dir === 'out' && rcv.dir === 'in' && drv.volts === 5 && rcv.end.at.n.kind === 'fpga' && rcv.volts != null && rcv.volts < 5) {
     warn(`${l.id}: ${pinName(drv)}, a 5 V output, drives ${pinName(rcv)}, a ${rcv.volts} V input of the FPGA${rcv.std ? ` (${rcv.std})` : ''}: a level shifter or a divider on the real boards`, ref);
   }

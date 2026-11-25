@@ -3,7 +3,8 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { checkSystem, systemCheckLines, analyzeSystem, wiringLines } from '../core/system-check.js';
-import { normalizeSystem } from '../core/system-doc.js';
+import { normalizeSystem, LINK_KINDS } from '../core/system-doc.js';
+import { linkTypeOf } from '../core/system-links.js';
 
 // the uart example's top (its ports), and a module of the project whose ports are not known (it does not elaborate)
 const MODULES = { uart: [{ name: 'clk', dir: 'in', width: 1 }, { name: 'rx', dir: 'in', width: 1 }, { name: 'tx', dir: 'out', width: 1 },
@@ -156,4 +157,25 @@ test('#5216 the wires, pin by pin (the Wiring view\'s): each link\'s, its signal
   F(s, 'uno', 'btn').pins = ['D2', 'D4'];
   assert.deepEqual(analyzeSystem(normalizeSystem(s), CTX).wires, []);
   assert.deepEqual(wiringLines([]), ['No wires: no link joins two resolved interfaces.']);
+});
+
+test('#5485 each node\'s typed ports: a direction, a kind, a level; each wire\'s ends\' kinds; the doc\'s link kinds those of a link type', () => {
+  const s = base();
+  s.links[0].a = 'uno.Serial';
+  const { diags, ports, wires } = analyzeSystem(normalizeSystem(s), CTX);
+  const P = n => ports[n].map(p => [p.name, p.dir, p.kind, p.volts, p.protocol]);
+  assert.deepEqual(P('fpga'), [['tx', 'out', 'pin', 3.3, null], ['rx', 'in', 'pin', 3.3, null], ['led<0>', 'out', 'pin', 3.3, null], ['sw<0>', 'in', 'pin', 3.3, null]]);
+  assert.deepEqual(P('uno'), [['D1', 'out', 'pin', 5, null], ['D0', 'in', 'pin', 5, null], ['D2', 'in', 'pin', 5, null], ['D3', 'out', 'pin', 5, null]]);
+  assert.deepEqual(P('term'), [['serial.tx', 'out', 'transaction', null, 'uart'], ['serial.rx', 'in', 'transaction', null, 'uart']]);
+  assert.ok(Object.values(ports).flat().every(p => Object.isFrozen(p)));
+  assert.deepEqual(wires.map(w => [w.link, w.from.kind, w.to.kind]), [['console', 'pin', 'pin'], ['console', 'pin', 'pin'], ['w1', 'pin', 'pin']]);
+  assert.deepEqual(diags.map(d => d.message), [
+    'console: uno\'s D1, a 5 V output, drives fpga\'s rx (pin J3), a 3.3 V input of the FPGA (LVCMOS33): a level shifter or a divider on the real boards',
+    'term joins nothing: no link reaches it'], 'no other problem: the ports\' kinds those of their links');
+  // (the terminal's UART, a transaction bus's ports, on its UART link: no problem)
+  assert.deepEqual(run(), []);
+  // (a node in error: its ports those resolved; none known, none)
+  assert.deepEqual(analyzeSystem(normalizeSystem({ name: 'x', nodes: [{ id: 'f', kind: 'fpga', interfaces: [] }], links: [] })).ports, { f: [] });
+  for (const k of LINK_KINDS) assert.ok(linkTypeOf(k), `${k}: a protocol of a link kind`);
+  assert.deepEqual(LINK_KINDS.map(linkTypeOf), ['transaction', 'pin', 'transaction', 'transaction']);
 });
