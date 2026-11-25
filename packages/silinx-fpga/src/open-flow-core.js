@@ -44,6 +44,14 @@ function noSimModels() {
 }
 
 
+/** An unexpected error as the flow says it: its type when it is not a plain Error (Firefox's InternalError, a TypeError…),
+ *  its message, and the top `frames` frames of its stack, the first one too (#5592: V8's stack starts with the message,
+ *  Firefox's and WebKit's with the frame that threw, which slice(1) left out). */
+export function errorText(e, frames = 8) {
+  const head = `${e?.name && e.name !== 'Error' ? `${e.name}: ` : ''}${e?.message ?? e}`;
+  const stack = String(e?.stack || '').split('\n').filter(l => /^\s+at |@.*:\d+(?::\d+)?$/.test(l)).slice(0, frames);
+  return stack.length ? `${head}\n${stack.join('\n')}` : head;
+}
 export const ISE_HINT = 'The Silinx toolchain does not support this yet: implement the design in an ISE mode (Toolchain Settings).';
 
 export class StepError extends Error {
@@ -202,7 +210,7 @@ export async function runFlow(spec, io) {
     return { ok: true, report };
   } catch (e) {
     save();
-    const msg = e instanceof StepError ? e.message : `${e.message}${e.stack ? `\n${e.stack.split('\n').slice(1, 4).join('\n')}` : ''}`;
+    const msg = e instanceof StepError ? e.message : errorText(e);
     log(`ERROR:Silinx - ${msg}`);
     for (const x of e.list || []) log(`  ${x}`);
     if (e.hint !== '') log(e.hint || ISE_HINT);

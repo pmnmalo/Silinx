@@ -70,6 +70,34 @@ test('#1675 runFlow without the simulation models: their steps fail; runOpenFlow
   assert.deepEqual(b.lines.filter(l => /warning/i.test(l)), []);
 });
 
+// #5592: an unexpected error as the flow says it: its type, its message and its stack's frames, the first one too (Firefox's
+// and WebKit's stack start with the frame that threw, which the flow used to leave out as V8's message line)
+const FIREFOX_STACK = 'parseXdl@blob:http://127.0.0.1/w:21:601\nplaceRoute@blob:http://127.0.0.1/w:427:9554\nasync*par@blob:http://127.0.0.1/w:427:9667\n';
+const thrown = (name, message, stack) => Object.assign(new Error(message), { name, stack });
+test('#5592 errorText: the type, the message and the top frames of V8\'s, Firefox\'s and WebKit\'s stacks; none without one', () => {
+  assert.equal(core.errorText(thrown('InternalError', 'too much recursion', FIREFOX_STACK)),
+    'InternalError: too much recursion\nparseXdl@blob:http://127.0.0.1/w:21:601\nplaceRoute@blob:http://127.0.0.1/w:427:9554\nasync*par@blob:http://127.0.0.1/w:427:9667');
+  // (V8's: its message line left, its frames kept; a plain Error without its type)
+  assert.equal(core.errorText(thrown('Error', 'x', 'Error: x\n    at a (file:///f.js:1:2)\n    at b (file:///f.js:3:4)')), 'x\n    at a (file:///f.js:1:2)\n    at b (file:///f.js:3:4)');
+  // (WebKit's: frames as Firefox's, a native one with no location left)
+  assert.equal(core.errorText(thrown('RangeError', 'Maximum call stack size exceeded.', 'f@http://h/w.js:5:6\n[native code]\ng@http://h/w.js:7')),
+    'RangeError: Maximum call stack size exceeded.\nf@http://h/w.js:5:6\ng@http://h/w.js:7');
+  // (at most `frames`; no stack, or no error at all)
+  assert.equal(core.errorText(thrown('InternalError', 'r', FIREFOX_STACK), 1), 'InternalError: r\nparseXdl@blob:http://127.0.0.1/w:21:601');
+  assert.equal(core.errorText(thrown('TypeError', 'a is undefined', undefined)), 'TypeError: a is undefined');
+  assert.equal(core.errorText('a string thrown'), 'a string thrown');
+});
+
+test('#5592 runOpenFlow: an unexpected error\'s line says its type, its message and the frame that threw', async () => {
+  const { io, lines } = memoryIo([], { frontEnd: () => { throw thrown('InternalError', 'too much recursion', FIREFOX_STACK); } });
+  const res = await runOpenFlow({ ...spec, steps: ['synth'] }, io);
+  assert.equal(res.ok, false);
+  const at = lines.findIndex(l => l.startsWith('ERROR:Silinx - '));
+  assert.deepEqual(lines.slice(at, at + 2), ['ERROR:Silinx - InternalError: too much recursion\nparseXdl@blob:http://127.0.0.1/w:21:601\nplaceRoute@blob:http://127.0.0.1/w:427:9554\nasync*par@blob:http://127.0.0.1/w:427:9667',
+    'The Silinx toolchain does not support this yet: implement the design in an ISE mode (Toolchain Settings).']);
+  assert.match(res.error, /^InternalError: too much recursion\nparseXdl@/);
+});
+
 test('#1675 runOpenFlow: an io\'s own hooks win over the IDE\'s', async () => {
   const { io } = memoryIo([], { frontEnd: () => ({ errors: ['given:1 its own front end'], input: () => null }) });
   const res = await runOpenFlow({ ...spec, steps: ['synth'] }, io);
