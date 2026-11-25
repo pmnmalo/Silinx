@@ -3,7 +3,7 @@
 // Arduino AVR core installed, or none with STUB_NO_CORE=1) and `compile --fqbn F … --output-dir O <sketch>`: each
 // `#error X` / `#warning X` line of the sketch's files said as gcc says it (its file's path, line and column, the
 // function's context, the line quoted, as arduino-cli prints them), exit 1 on an error; else O/<sketch>.ino.hex, a
-// one-word program (rjmp .), and arduino-cli's size lines; `board list --format json` (#5489). Its arguments are written to O/../args.json.
+// one-word program (rjmp .), and arduino-cli's size lines; `board list --format json` and `upload` (#5489). Its arguments are written to O/../args.json.
 import fs from 'node:fs';
 import path from 'node:path';
 const a = process.argv.slice(2);
@@ -17,6 +17,17 @@ if (a[0] === 'board' && a[1] === 'list') {
   let ports = [];
   try { ports = JSON.parse(fs.readFileSync(path.join(process.env.SILINX_CONFIG_DIR || '.', 'arduino-ports.json'), 'utf8')); } catch { /* none */ }
   console.log(JSON.stringify({ detected_ports: ports }));
+  process.exit(0);
+}
+// (#5489: `upload --fqbn F --port P --input-file H --verify`: its arguments appended to $SILINX_CONFIG_DIR/uploads.json;
+// STUB_UPLOAD_FAIL=1, avrdude's answer when the board does not reply)
+if (a[0] === 'upload') {
+  const log = path.join(process.env.SILINX_CONFIG_DIR || '.', 'uploads.json');
+  let all = [];
+  try { all = JSON.parse(fs.readFileSync(log, 'utf8')); } catch { /* none yet */ }
+  fs.writeFileSync(log, JSON.stringify([...all, a]));
+  if (process.env.STUB_UPLOAD_FAIL === '1') { console.error('avrdude: stk500_recv(): programmer is not responding'); console.error('Failed uploading: uploading error: exit status 1'); process.exit(1); }
+  console.log('avrdude: 2 bytes of flash verified');
   process.exit(0);
 }
 if (a[0] !== 'compile') { console.error(`stub: no command ${a[0]}`); process.exit(2); }

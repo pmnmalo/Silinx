@@ -15,6 +15,7 @@ export const SYSTEM_PT = {
   'View/Edit Drawing': 'Ver/Editar Desenho',   // (a System's FPGA module's, #5443)
   'Implement System': 'Implementar Sistema', 'Synthesize': 'Sintetizar',   // (every FPGA node on its own board; a node's, #5446)
   'Build Plan': 'Plano de Construção', 'Build All': 'Construir Tudo',   // (the System's build plan and its nodes built, #5489)
+  'Program All': 'Programar Tudo', 'Program Node': 'Programar Nó', 'Choose the Board': 'Escolher a Placa', 'Skip': 'Saltar',   // (its nodes on their boards, #5489)
   'Connected Boards': 'Placas Ligadas', 'USB id': 'Identificador USB', 'USB serial': 'Número de série USB',   // (its nodes' boards by their USB id, #5489)
   "vendor:product, hexadecimal (empty: the board's)": 'fabricante:produto, em hexadecimal (vazio: o da placa)',
   'its board told apart from another of the same kind': 'distingue a sua placa de outra do mesmo tipo',
@@ -78,6 +79,8 @@ export const SYSTEM_PT = {
   'Not made: its file is not in the project folder': 'Não gerado: o seu ficheiro não está na pasta do projeto',
 };
 export const SYSTEM_PT_PATTERNS = [
+  // (Program All / Program Node's board picked by hand, #5489: web/js/system-program-ui.js)
+  [/^The board to program the node (\w+) on:$/, 'A placa onde programar o nó $1:'],
   [/^Button (S\d) \((R[A-G]\d+)\)$/, 'Botão $1 ($2)'], [/^Button (S\d): its pin is a link's$/, 'Botão $1: o seu pino é de uma ligação'],
   [/^LED (D\d+) \((R[A-G]\d+)\)$/, 'LED $1 ($2)'], [/^(PIC24\w+), its 8 MHz crystal$/, '$1, o seu cristal de 8 MHz'],
   // (a CPU node's drawing's last badge, #5488: web/js/design.js)

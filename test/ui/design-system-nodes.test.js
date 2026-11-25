@@ -48,13 +48,13 @@ uiTest('#5414 a System project\'s nodes as the Design pane\'s branches, each wit
   // the processes: the System's, a microcontroller's, an FPGA node's
   await page.treeRow('#hier', 'lab', { exact: true });
   await page.waitFor(() => [...document.querySelectorAll('#procs .row .lbl')].some((l) => l.textContent.trim() === 'Check System'), [], { what: 'the System\'s processes' });
-  assert.deepEqual(await procs(page), ['View/Edit System', 'Check System', 'Emulate System', 'Implement System', 'Build Plan', 'Build All', 'Connected Boards']);   // (Implement System, #5446; Build Plan, Build All, #5489)
+  assert.deepEqual(await procs(page), ['View/Edit System', 'Check System', 'Emulate System', 'Implement System', 'Build Plan', 'Build All', 'Connected Boards', 'Program All']);   // (Implement System, #5446; Build Plan, Build All, #5489)
   await page.treeRow('#hier', 'uno', { exact: true });
   await page.waitFor(() => ![...document.querySelectorAll('#procs .row .lbl')].some((l) => l.textContent.trim() === 'Check System'), [], { what: 'the node\'s processes' });
-  assert.deepEqual(await procs(page), ['View/Edit System', 'Compile Firmware']);   // (its sketch's, #5503)
+  assert.deepEqual(await procs(page), ['View/Edit System', 'Compile Firmware', 'Program Node']);   // (its sketch's, #5503)
   await page.treeRow('#hier', 'fpga', { exact: true });
   await page.waitFor(() => [...document.querySelectorAll('#procs .row .lbl')].some((l) => l.textContent.trim() === 'Check Syntax'), [], { what: 'the FPGA node\'s processes' });
-  assert.deepEqual(await procs(page), ['View/Edit System', 'Check Syntax', 'View RTL Schematic', 'Synthesize', 'Implement Design', 'Generate Programming File']);   // (on its own board, #5446)
+  assert.deepEqual(await procs(page), ['View/Edit System', 'Check Syntax', 'View RTL Schematic', 'Synthesize', 'Implement Design', 'Generate Programming File', 'Program Node']);   // (on its own board, #5446)
   await page.treeRow('#procs', 'Check Syntax', { exact: true, dbl: true });
   await page.waitConsole(/^Process "Check Syntax" completed successfully$/m);
   // (its module's row: its node's processes, no flow on the project's default device, #5443)
@@ -66,7 +66,7 @@ uiTest('#5414 a System project\'s nodes as the Design pane\'s branches, each wit
   // in Portuguese
   await page.eval(async () => { (await import('/js/i18n.js')).setLanguage('pt'); });
   await page.waitFor(() => [...document.querySelectorAll('#procs .row .lbl')].some((l) => l.textContent.trim() === 'Ver/Editar Sistema'), [], { what: 'the processes in Portuguese' });
-  assert.deepEqual(await procs(page), ['Ver/Editar Sistema', 'Verificar Sintaxe', 'Ver Esquemático RTL', 'Sintetizar', 'Implementar Projeto', 'Gerar Ficheiro de Programação']);
+  assert.deepEqual(await procs(page), ['Ver/Editar Sistema', 'Verificar Sintaxe', 'Ver Esquemático RTL', 'Sintetizar', 'Implementar Projeto', 'Gerar Ficheiro de Programação', 'Programar Nó']);
   await page.eval(async () => { (await import('/js/i18n.js')).setLanguage('en'); });
   assert.deepEqual(await warnings(page), []);
   assert.deepEqual(page.console.filter((c) => c.type === 'error' || c.type === 'warning' || c.type === 'warn').map((c) => c.text), []);
