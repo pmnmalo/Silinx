@@ -106,9 +106,11 @@ test('#4734 while a simulation runs: ping, initialize, tools/list and another pr
 });
 
 // #5065: a simulation's yield lets the event loop wait for the file system, so that another call's reads, one after
-// another, go through at its yields several at a time, not one read a yield (project_info then took 5 s, not 40 ms);
-// counted by the yields, not timed
-test('#5065 while a simulation runs, another call\'s reads go through several at each of its yields', async () => {
+// another, go through at its yields several at a time, not one read a yield (project_info then took 5 s, not 40 ms).
+// Counted by the yields, not timed, nor by the reads' rate, which a loaded machine slows (#5415): some yield lets more
+// than one read through. A yield that does not wait (setImmediate's) lets one at most: the next read is asked only
+// once the last one's answer has come, and the loop goes on without waiting for it.
+test('#5065 while a simulation runs, another call\'s reads go through several at one of its yields', async () => {
   const s = served();
   let running = false, yields = 0;
   SIM_TESTING.onRun = () => { running = true; };
@@ -116,9 +118,16 @@ test('#5065 while a simulation runs, another call\'s reads go through several at
   s.send(call(1, 'simulate', { project: 'd', time_ns: 1e9, timeout_s: 600 }));
   try {
     assert.ok(await s.until(() => running || s.got.some(a => a.id === 1)) && running, JSON.stringify(s.got.find(a => a.id === 1)));
-    const from = yields;
-    for (let i = 0; i < 40; i++) await fs.promises.stat(tmp);
-    assert.ok(yields - from < 20, `40 reads over ${yields - from} of the simulation's yields`);
+    // (the reads answered after each yield, by the yields' count then: the reads of one yield's wait share it)
+    const at = new Map();
+    let most = 0;
+    for (let i = 0; i < 100 && most < 2; i++) {
+      await fs.promises.stat(tmp);
+      at.set(yields, (at.get(yields) || 0) + 1);
+      most = Math.max(most, at.get(yields));
+    }
+    assert.ok(!s.got.some(a => a.id === 1), 'the simulation still running');
+    assert.equal(most, 2, `one read a yield: ${[...at.values()].join(' ')}`);
   } finally {
     SIM_TESTING.onRun = SIM_TESTING.onYield = null;
     s.send({ method: 'notifications/cancelled', params: { requestId: 1 } });
