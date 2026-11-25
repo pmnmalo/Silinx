@@ -43,7 +43,7 @@ function cNames(model) {
 }
 
 /** The variables a tick may read after it set them (they need their next value apart). */
-function readAfterSet(model) {
+export function readAfterSet(model) {
   const need = new Set();
   const walk = (body, set) => {
     for (const s of body) {

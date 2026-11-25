@@ -13,7 +13,7 @@ import { VIEW_RE, definesModule, drawingInLanguage, drawnHdlClash, drawnHdlPath,
 import { isDesignOnly } from './project-kind.js';
 import { useProjectParts } from './circuit-kicad.js';
 import { modelRunners } from './circuit-live-model.js';
-import { cpuDrawingRefusal, drawingC, drawingNode, isCodeFile, isCpuLang, nodePins } from './drawing-code.js';
+import { codeName, cpuDrawingRefusal, drawingC, drawingNode, isCodeFile, isCpuLang, nodeCodeOpts } from './drawing-code.js';
 
 const kindOf = path => VIEW_RE.exec(path)?.[1].toLowerCase();
 const indent = path => (kindOf(path) === 'sch' ? 1 : 2);
@@ -104,35 +104,37 @@ export async function syncDrawing(P, name, path, modules = null) {
   return { target, written: target, removed: null, stale: null, messages: await designProject(P, name) ? [] : [`${target} updated from ${path}`] };
 }
 
-// a drawing's C made again (its file the C, or its HDL from before its node's language was C: the C instead)
+// a drawing's code made again (its file the C or the MicroPython, or its HDL from before its node's language was C,
+// or its other language's code: its node's language's instead)
 async function syncCode(P, name, path, { m, target, tree }, at) {
-  const r = drawingC(path, JSON.stringify(m), { lang: at.lang, pins: nodePins(at.node) });
+  const r = drawingC(path, JSON.stringify(m), { lang: at.lang, ...nodeCodeOpts(at.node) });
+  const ext = f => /\.(\w+)$/.exec(f)?.[1].toLowerCase();
   const warn = r.warnings.map(w => `WARNING: ${w}`);
   if (r.errors.length) {
     const why = r.errors.map(e => e.replace(`${path}: `, '')).join('; ');
     return { target, written: null, removed: null, stale: why, messages: [`WARNING: ${target} not updated: ${path} has errors: ${why}`] };
   }
-  if (!isCodeFile(target)) {
-    if (tree.includes(r.target)) return { target, written: null, removed: null, stale: null, messages: [`WARNING: the C of ${path} is not made: ${r.target} exists already`] };
+  if (!isCodeFile(target) || ext(target) !== ext(r.target)) {
+    if (tree.includes(r.target)) return { target, written: null, removed: null, stale: null, messages: [`WARNING: the ${codeName(at.lang)} of ${path} is not made: ${r.target} exists already`] };
     await P.writeFile(name, r.target, r.text);
     await P.deleteFile(name, target);
     await P.writeFile(name, path, JSON.stringify({ ...m, generatedFile: r.target }, null, indent(path)));
-    return { target: r.target, written: r.target, removed: target, stale: null, messages: [`${path}: its node's language is C: its file is now ${r.target} (${target} removed)`, ...warn] };
+    return { target: r.target, written: r.target, removed: target, stale: null, messages: [`${path}: its node's language is ${codeName(at.lang)}: its file is now ${r.target} (${target} removed)`, ...warn] };
   }
   if (await P.readFile(name, target) === r.text) return { target, written: null, removed: null, stale: null, messages: warn };
   await P.writeFile(name, target, r.text);
   return { target, written: target, removed: null, stale: null, messages: [`${target} updated from ${path}`, ...warn] };
 }
 
-// a drawing with no file in a CPU node gets its C (adoptDrawing's): a schematic, a circuit, a register map refused, said
+// a drawing with no file in a CPU node gets its C or its MicroPython (adoptDrawing's): a schematic, a circuit, a register
+// map refused, said
 async function adoptCode(P, name, path, m, at) {
   const none = messages => ({ target: null, written: null, removed: null, stale: null, messages });
   const refusal = cpuDrawingRefusal(path, at.lang);
   if (refusal) return none([`WARNING: ${refusal}`]);
-  const r = drawingC(path, JSON.stringify(m), { lang: at.lang, pins: nodePins(at.node) });
-  if (at.lang === 'micropython') return none(r.errors.map(e => `WARNING: ${e}`));
+  const r = drawingC(path, JSON.stringify(m), { lang: at.lang, ...nodeCodeOpts(at.node) });
   if (r.errors.length || !r.text) return null;
-  if ((await P.fileTree(name)).includes(r.target)) return none([`WARNING: ${path} has no C file: ${r.target} exists already`]);
+  if ((await P.fileTree(name)).includes(r.target)) return none([`WARNING: ${path} has no ${codeName(at.lang)} file: ${r.target} exists already`]);
   await P.writeFile(name, r.target, r.text);
   await P.writeFile(name, path, JSON.stringify({ ...m, generatedFile: r.target }, null, indent(path)));
   return { target: r.target, written: r.target, removed: null, stale: null, messages: [`${r.target} generated from ${path}`, ...r.warnings.map(w => `WARNING: ${w}`)] };
@@ -206,7 +208,7 @@ export async function staleDrawings(P, name) {
     if (kindOf(f) === 'sch') mods ||= await projectModules(P, name);
     let r = null;
     const at = await nodeOfDrawing(P, name, f);
-    try { r = isCpuLang(at?.lang) ? drawingC(f, JSON.stringify(link.m), { lang: at.lang, pins: nodePins(at.node) }) : viewHdl(f, JSON.stringify(link.m), { modules: kindOf(f) === 'sch' ? mods : {}, linked: () => false }); } catch { /* not a drawing */ }
+    try { r = isCpuLang(at?.lang) ? drawingC(f, JSON.stringify(link.m), { lang: at.lang, ...nodeCodeOpts(at.node) }) : viewHdl(f, JSON.stringify(link.m), { modules: kindOf(f) === 'sch' ? mods : {}, linked: () => false }); } catch { /* not a drawing */ }
     if (r?.errors?.length) out.push({ target: link.target, from: f, why: `it has errors: ${r.errors.map(e => e.replace(`${f}: `, '')).join('; ')}` });
   }
   return out;

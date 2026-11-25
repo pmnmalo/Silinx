@@ -1,15 +1,17 @@
 // Tests of a drawing's generated code by its node's base language (#5486, core/drawing-code.js): a drawing in a System's
 // CPU node (base language C or C++) gets its C (the Arduino sketch of core/reactive-c.js), next to it as <module>.ino; in
 // an FPGA node, an FPGA project or at a System's root its HDL, as before (core/view-hdl.js); a schematic, a circuit and
-// a register map refused in a CPU node, with their messages; MicroPython not made yet, said; the node's GPIO interfaces
-// named as the drawing's ports give their pins.
+// a register map refused in a CPU node, with their messages; in a MicroPython node its MicroPython (core/reactive-py.js,
+// #5487), <module>.py, on an Arduino board the ESP32's, said; the node's GPIO interfaces named as the drawing's ports
+// give their pins.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
-import { CPU_LANGS, hlsRefusal, inCpuNode, cpuDrawingRefusal, drawingC, drawingCode, drawingNode, drawnCodePath, isCodeFile, isCpuLang, nodePins } from '../core/drawing-code.js';
+import { CPU_LANGS, codeExt, codeName, hlsRefusal, inCpuNode, cpuDrawingRefusal, drawingC, drawingCode, drawingNode, drawnCodePath, isCodeFile, isCpuLang, nodeCodeOpts, nodePins } from '../core/drawing-code.js';
 import { reactiveFromFile } from '../core/reactive-from.js';
 import { generateArduino } from '../core/reactive-c.js';
+import { generateMicroPython } from '../core/reactive-py.js';
 import { viewHdl } from '../core/view-hdl.js';
 import { port, portsProblems } from '../core/system-ports.js';
 import { ROOT } from './reactive-lib.mjs';
@@ -49,7 +51,7 @@ test('a drawing in a C node: its sketch, the model\'s generateArduino\'s, next t
   assert.deepEqual(drawingCode('src/traffic.fsm.json', TRAFFIC), viewHdl('src/traffic.fsm.json', TRAFFIC));
 });
 
-test('a drawing\'s C refused: the hardware drawings in a CPU node, its errors, its pins\', MicroPython not made yet; its warnings', () => {
+test('a drawing\'s C refused: the hardware drawings in a CPU node, its errors, its pins\'; its warnings', () => {
   assert.equal(cpuDrawingRefusal('uno/c.sch.json', 'c'), 'uno/c.sch.json: A schematic is hardware: it cannot run on a CPU. Draw the module as a state diagram, an ASM chart, a Petri net or a truth table, or write its code.');
   assert.equal(cpuDrawingRefusal('uno/b.circ.json', 'cpp'), 'uno/b.circ.json: A circuit is hardware: it cannot run on a CPU.');
   assert.equal(cpuDrawingRefusal('uno/r.regs.json', 'micropython'), 'uno/r.regs.json: A register map is hardware: it cannot run on a CPU.');
@@ -57,12 +59,34 @@ test('a drawing\'s C refused: the hardware drawings in a CPU node, its errors, i
   assert.equal(cpuDrawingRefusal('uno/t.fsm.json', 'c'), null);
   const fail = (r) => { assert.deepEqual(r.ports, []); return [r.text, r.target, r.errors]; };
   assert.deepEqual(fail(drawingC('uno/c.sch.json', '{}')), ['', null, ['uno/c.sch.json: A schematic is hardware: it cannot run on a CPU. Draw the module as a state diagram, an ASM chart, a Petri net or a truth table, or write its code.']]);
-  assert.deepEqual(fail(drawingC('uno/t.fsm.json', TRAFFIC, { lang: 'micropython' })), ['', null, ['uno/t.fsm.json: a drawing\'s MicroPython is not made yet (#5487): its node\'s base language is MicroPython']]);
   assert.deepEqual(fail(drawingC('uno/t.fsm.json', TRAFFIC, { pins: { req: 'D99' } })), ['', null, ["uno/t.fsm.json: 'D99' is not a digital pin of the board (D0 to D13, A0 to A5)"]]);
   assert.match(drawingC('uno/t.fsm.json', TRAFFIC.replace('"cond": "done"', '"cond": "done &&"')).errors[0], /^uno\/t\.fsm\.json: /);
   const delay = TRAFFIC.replace(/\bdone\b/g, 'delay');
   assert.deepEqual(drawingC('uno/t.fsm.json', delay).warnings, ["uno/t.fsm.json: 'delay' is a word of C or of the Arduino API, or a name of the sketch's: it is delay_v in the sketch"]);
   assert.deepEqual(drawingC('uno/t.fsm.json', TRAFFIC, { pins: { req: 'D0' } }).warnings, ["uno/t.fsm.json: D0 is the USB serial port's: 'req' on it disturbs the upload of the program"]);
+});
+
+test('#5487 a drawing in a MicroPython node: its program, the model\'s generateMicroPython\'s, next to it as <module>.py; on the ESP32 or the Pico its pins its node\'s, at 3.3 V; on an Arduino the ESP32\'s, said', () => {
+  const model = reactiveFromFile('esp/traffic.fsm.json', TRAFFIC).model;
+  const esp = { id: 'esp', kind: 'mcu', board: 'esp32-devkit', lang: 'micropython', interfaces: [{ name: 'phase', kind: 'gpio', pins: ['GPIO25', 'GPIO26', 'GPIO27'], dir: 'out' }] };
+  assert.deepEqual(nodeCodeOpts(esp), { pins: { phase: ['GPIO25', 'GPIO26', 'GPIO27'] }, board: 'esp32-devkit' });
+  const r = drawingCode('esp/traffic.fsm.json', TRAFFIC, { nodeLang: 'micropython', node: esp });
+  assert.deepEqual(r, { path: 'esp/traffic.fsm.json', lang: 'micropython', text: generateMicroPython(model, { pins: { phase: ['GPIO25', 'GPIO26', 'GPIO27'] } }).code, module: 'traffic', target: 'esp/traffic.py', errors: [], warnings: [],
+    pins: { phase: [25, 26, 27], req: [4], done: [13], night: [14] },
+    ports: [port({ name: 'req', dir: 'in', volts: 3.3 }), port({ name: 'done', dir: 'in', volts: 3.3 }), port({ name: 'night', dir: 'in', volts: 3.3 }), port({ name: 'phase', dir: 'out', volts: 3.3, width: 3 })] });
+  assert.deepEqual(portsProblems(r.ports), []);
+  const pico = drawingC('pico/traffic.fsm.json', TRAFFIC, { lang: 'micropython', board: 'rp2040-pico' });
+  assert.deepEqual([pico.text, pico.target, pico.warnings], [generateMicroPython(model, { board: 'pico' }).code, 'pico/traffic.py', []]);
+  // (no board: the ESP32's; an Arduino: the ESP32's, on its free pins, its node's D pins not used, said)
+  assert.equal(drawingC('esp/traffic.fsm.json', TRAFFIC, { lang: 'micropython' }).text, generateMicroPython(model).code);
+  const uno = drawingC('uno/traffic.fsm.json', TRAFFIC, { lang: 'micropython', board: 'arduino-uno', pins: { phase: ['A0', 'A1', 'A2'] } });
+  assert.deepEqual([uno.text, uno.target, uno.errors, uno.warnings], [generateMicroPython(model).code, 'uno/traffic.py', [],
+    ["uno/traffic.fsm.json: the node's board, the Arduino Uno, does not run MicroPython: its program is the ESP32 DevKit's, on its free pins"]]);
+  // (its errors and its warnings, the generator's, each with its path)
+  assert.deepEqual(drawingC('esp/t.fsm.json', TRAFFIC, { lang: 'micropython', board: 'esp32', pins: { req: 'GPIO7' } }).errors, ["esp/t.fsm.json: GPIO7 is the ESP32 DevKit's flash memory's: 'req' cannot use it"]);
+  assert.deepEqual(drawingC('esp/t.fsm.json', TRAFFIC.replace(/\bdone\b/g, 'pass'), { lang: 'micropython' }).warnings, ["esp/t.fsm.json: 'pass' is a word of Python or of MicroPython, or a name of the program's: it is pass_v in the program"]);
+  assert.deepEqual([codeExt('micropython'), codeExt('c'), codeExt('cpp'), codeName('micropython'), codeName('cpp')], ['py', 'ino', 'ino', 'MicroPython', 'C']);
+  assert.deepEqual([drawnCodePath('esp/a.fsm.json', 'traffic', 'py'), isCodeFile('esp/x.py'), isCodeFile('esp/x.pyc')], ['esp/traffic.py', true, false]);
 });
 
 test('a path in a CPU node\'s folder: its board\'s program, not Silinx HLS\'s nor the FPGA\'s design (#5486); none in an FPGA project', () => {

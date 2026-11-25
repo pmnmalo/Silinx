@@ -83,6 +83,33 @@ export const table = () => ({ version: 1, name: 'edge_t', inputs: ['a', 'b', 'c'
 
 export const EDGES = [['fsm', mealy], ['asm', chart], ['pn', net], ['bool', table]];
 
+/** Wide values: a 20-bit and a 32-bit register, sums, differences, shifts by constants and by inputs, comparisons. */
+export const wide = () => ({
+  version: 1, name: 'wide', lang: 'verilog', clock: 'clk', reset: { name: 'rst', active: 'high', sync: true }, encoding: 'binary',
+  inputs: [{ name: 'a', width: 4 }, { name: 'n', width: 3 }],
+  outputs: [{ name: 'lo', width: 3, default: '0' }, { name: 'big', width: 1, default: '0' }, { name: 'mid', width: 6, default: '0' }],
+  registers: [{ name: 'r', width: 20, init: '1' }, { name: 'q', width: 32, init: '0' }, { name: 'm', width: 12, init: '5' }],
+  nodes: [
+    { id: 's1', type: 'state', name: 'GO', actions: ['r = (r << 3) + a - 7', 'q = q - (a << n) + (r >> n) + (q << 5)', 'lo = (q >> 28) ^ a', 'm = (m << 2) - ~a', 'mid = m + (1 << n)'] },
+    { id: 'd1', type: 'decision', cond: 'q > r + 1000 || -a == 8\'d3' },
+    { id: 'o1', type: 'output', actions: ['big', 'q = ~q'] },
+  ],
+  edges: [{ from: 's1', to: 'd1' }, { from: 'd1', to: 'o1', port: 'true' }, { from: 'd1', to: 's1', port: 'false' }, { from: 'o1', to: 's1' }],
+  initial: 's1',
+});
+
+/** A timer: counts ticks, restarted by an input, held at its maximum. */
+export const timerModel = () => ({
+  kind: 'reactive', version: 1, name: 'blink', from: 'fsm',
+  inputs: [{ name: 'go', width: 1 }], outputs: [{ name: 'led', width: 1, default: 0n }, { name: 'n', width: 3, default: 0n, registered: true }],
+  vars: [{ name: 't', width: 3, init: 0n, timer: true }], consts: [], states: [{ name: 'OFF' }, { name: 'ON' }], initial: 'OFF',
+  every: [{ k: 'set', target: 'n', expr: { k: 'ref', name: 't', w: 3 } }],
+  arms: [
+    { state: 'OFF', body: [{ k: 'if', cond: { k: 'cmp', op: '>=', a: { k: 'ref', name: 't', w: 3 }, b: { k: 'const', v: 5n, w: 3 } }, then: [{ k: 'set', target: 't', expr: { k: 'const', v: 0n, w: 3 } }, { k: 'go', state: 'ON' }], else: [] }] },
+    { state: 'ON', body: [{ k: 'set', target: 'led', expr: { k: 'const', v: 1n, w: 1 } }, { k: 'if', cond: { k: 'ref', name: 'go', w: 1 }, then: [{ k: 'set', target: 't', expr: { k: 'const', v: 0n, w: 3 } }, { k: 'go', state: 'OFF' }], else: [] }] },
+  ],
+});
+
 function rng(seed) { let s = seed >>> 0 || 1; return () => { s ^= s << 13; s >>>= 0; s ^= s >>> 17; s ^= s << 5; s >>>= 0; return s; }; }
 
 /** Random inputs for a model's inputs ([{ name, width }]), each kept a few ticks: n vectors of { name: number }. */
