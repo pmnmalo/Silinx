@@ -2,7 +2,7 @@
 // MCP server's tools as the interface's: export_project and import_project (a zip round trip: the same files in the same
 // node folders, the same System, checked as before); git_clone of a System project from a local bare repository (no
 // network), a drawing of a node's folder committed and diffed by its objects; share_project and follow_project (the
-// follower sees each node's files in its folder, and reads them).
+// follower sees each node's files in its folder, and reads them: a MicroPython program too, #5551).
 import { test, before, after } from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
@@ -102,4 +102,16 @@ test('#5488 a System project shared and followed: the follower sees each node\'s
   for (const p of ['uno/hello.asm', 'uno/hello.hex', 'uart_avr.sys.json', 'fpga/uart.vhd']) assert.equal((await ok('follow_project', { link, path: p })).data.text, await P.readFile('ua', p), p);
   assert.equal((await ok('follow_project', { link, stop: true })).text, 'Stopped following.');
   await ok('share_project', { project: 'ua', action: 'stop' });
+});
+
+test('#5551 a MicroPython program (.py) of a node\'s folder followed: read through the import gate as the owner has it', async () => {
+  await ok('new_project_from_example', { name: 'up', example: 'uart-avr' });
+  const PY = '# blink\nfrom machine import Pin\nled = Pin(2, Pin.OUT)\nled.value(1)\n';
+  await P.writeFile('up', 'esp/main.py', PY);
+  const { data: { link } } = await ok('share_project', { project: 'up', name: 'Ana', server: base });
+  const f = await ok('follow_project', { link, name: 'Bot' });
+  assert.ok(f.data.files.includes('esp/main.py'), f.data.files.join(', '));
+  assert.equal((await ok('follow_project', { link, path: 'esp/main.py' })).data.text, PY);
+  assert.equal((await ok('follow_project', { link, stop: true })).text, 'Stopped following.');
+  await ok('share_project', { project: 'up', action: 'stop' });
 });
