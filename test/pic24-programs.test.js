@@ -57,7 +57,7 @@ test('#5480 an interrupt-driven counter: Timer1\'s IRQ 3 every 1000 cycles, its 
   node.run(10500 * 62500);   // 10500 cycles: 10 ticks
   assert.equal(node.cpu.mem[0x800], 10);
   assert.deepEqual([node.cpu.ipl, node.cpu.W(15), node.cpu.mem[0x44]], [0, 0x0900, 0], 'every ISR returned, its flag cleared');
-  assert.deepEqual(node.messages().filter((m) => m.kind !== 'warning' || !/watchdog/.test(m.text)), []);
+  assert.deepEqual(node.messages(), []);
 });
 
 test('#5480 a table of constants in the program memory: summed through PSV (DSRPAG 0x200) and through TBLRDL, alike', () => {

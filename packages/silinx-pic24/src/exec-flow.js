@@ -123,13 +123,13 @@ function disi(cpu, op) {
 function control(cpu, op) {
   if (pushPopShadow(cpu, op)) return;
   if (op === 0xfe0000) { cpu.reset('RESET instruction'); cpu.npc = 0; return; }
-  if (op === 0xfe6000) return;   // (the watchdog: #5481, off by its configuration word)
+  if (op === 0xfe6000) { cpu.onClrwdt?.(); return; }   // (the watchdog's, wdt.js)
   if (op === 0xfe2000) {
     cpu.cyc = 2;
     cpu.say('warning', 'BOOTSWP: the dual partitions\' swap is not emulated', 'bootswp');
     return;
   }
-  if ((op & 0xfffffe) === 0xfe4000) { cpu.sleeping = op & 1 ? 'idle' : 'sleep'; cpu.intDirty = true; return; }
+  if ((op & 0xfffffe) === 0xfe4000) { cpu.sleeping = op & 1 ? 'idle' : 'sleep'; cpu.intDirty = true; cpu.onPwrsav?.(cpu.sleeping); return; }
   cpu.illegal(op);
 }
 

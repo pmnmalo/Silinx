@@ -8,9 +8,8 @@
 // A peripheral (#5481) attaches to node.cpu (its SFRs' hooks, its clock events), takes its input pins
 // (node.onInput(pin, fn)) and drives its output pins (node.drive(pin, value)): their changes come back from run().
 
-import { CPU } from './cpu.js';
+import { createGb610 } from './gb610.js';
 import { parseHex } from './hex.js';
-import { readConfig } from './config.js';
 
 export class Pic24Node {
   /** hex: XC16's Intel HEX (text), or program: the program words (index = address / 2); fcy: the instruction clock
@@ -25,20 +24,20 @@ export class Pic24Node {
       config = h.config;
       for (const w of h.warnings) this.log.push({ kind: 'warning', cycle: 0, text: w });
     }
-    this.cpu = new CPU(prog, { log: this.log });
-    for (const [a, v] of config) this.cpu.configSpace.set(a, v);
-    this.config = readConfig((a) => this.cpu.progWord(a), { primaryHz });
+    this.device = createGb610({ program: prog, config, primaryHz, fcy, log: this.log });
+    this.mcu = this.device.mcu;
+    this.cpu = this.mcu.cpu;
+    this.config = this.mcu.config;
     if (hex != null) for (const w of this.config.warnings) this.log.push({ kind: 'warning', cycle: 0, text: w });
-    this.fcy = fcy ?? this.config.oscillator.fcy;
-    this.cyclePs = 1e12 / this.fcy;
     this.inputs = new Map();     // pin -> its level (0, 1, null floating)
     this.handlers = new Map();   // pin -> [fn(value)]
     this.out = [];
     this.levels = new Map();
   }
 
-  /** The node's time (ps): its cycles at Fcy. */
-  get time() { return this.cpu.cycles * this.cyclePs; }
+  /** The node's time (ps): its cycles at Fcy (Fcy as the oscillator sets it, as it changes). */
+  get time() { return this.mcu.time; }
+  get fcy() { return this.mcu.fcy; }
 
   /** A peripheral's input pin: fn(value) on each change. */
   onInput(pin, fn) {
@@ -73,10 +72,7 @@ export class Pic24Node {
     return { outputs: this.out.splice(0).sort((a, b) => a.t - b.t), t: this.time };
   }
 
-  runTo(t) {
-    const end = t / this.cyclePs, cpu = this.cpu;
-    while (cpu.cycles < end) cpu.step();
-  }
+  runTo(t) { this.mcu.runTo(t); }
 
   /** The log since the last call: [{ kind, cycle, pc, text }]. */
   messages() { return this.log.slice(this.logN, (this.logN = this.log.length)); }

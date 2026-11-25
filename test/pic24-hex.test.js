@@ -38,10 +38,9 @@ test('#5480 HEX: its errors (a checksum, no end of file, a malformed record, a r
 
 test('#5480 the configuration words: the oscillator (FNOSC, PLLMODE) and Fcy = Fosc / 2; the watchdog (FWDTEN)', () => {
   const at = (words) => (a) => words[a] ?? 0xffffff;
-  // erased: the FRC divided (OSCFDIV, /2 at reset): 4 MHz, Fcy 2 MHz; the watchdog on, said
+  // erased: the FRC divided (OSCFDIV, /2 at reset): 4 MHz, Fcy 2 MHz; the watchdog on (wdt.js emulates it, #5481)
   let c = readConfig(at({}));
-  assert.deepEqual([c.oscillator, c.watchdog], [{ source: 'FRCDIV', fosc: 4e6, fcy: 2e6 }, 'on']);
-  assert.deepEqual(c.warnings, ['the watchdog is enabled (FWDT\'s FWDTEN): it is not emulated yet']);
+  assert.deepEqual([c.oscillator, c.watchdog, c.warnings], [{ source: 'FRCDIV', fosc: 4e6, fcy: 2e6 }, 'on', []]);
   // FRCPLL with the 96 MHz USB PLL (input 8 MHz): 32 MHz, Fcy 16 MHz; the watchdog off (FWDTEN 00)
   c = readConfig(at({ 0x0abf18: 0xfffc09, 0x0abf20: 0xffff9f }));
   assert.deepEqual([c.oscillator, c.watchdog, c.warnings], [{ source: 'FRCPLL', fosc: 32e6, fcy: 16e6 }, 'off', []]);
@@ -70,9 +69,9 @@ test('#5480 Pic24Node: XC16\'s HEX loaded, Fcy from its configuration (16 MHz: 6
   assert.deepEqual(outputs, []);
   // GOTO (2), then (INC 1, BRA 2) five times: 17 cycles
   assert.deepEqual([node.cpu.cycles, t, node.cpu.W(0)], [17, 17 * 62500, 5]);
-  // an erased configuration: the watchdog said, Fcy 2 MHz
+  // an erased configuration: Fcy 2 MHz, the watchdog on (its 135 s ahead), nothing said
   const e = new Pic24Node({ hex: writeHex(pic24Assemble(['bra 0']).words) });
-  assert.deepEqual([e.fcy, e.messages().map((m) => m.text)], [2e6, ['the watchdog is enabled (FWDT\'s FWDTEN): it is not emulated yet']]);
+  assert.deepEqual([e.fcy, e.messages()], [2e6, []]);
 });
 
 test('#5480 Pic24Node: the input events applied at their times, the outputs driven with theirs; the state saved and restored', () => {
