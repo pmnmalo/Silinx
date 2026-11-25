@@ -10,7 +10,7 @@
 // is waited for again, and a failed run is given --rerun minutes to be run again before the release fails (#4236).
 // The wait has no limit of its own but --timeout: the tags' runs go one at a time (ci.yml's concurrency), so the
 // release may wait for another tag's run, its own and a re-run of its failed jobs, hours in all (#4236: 150 minutes
-// were not enough).
+// were not enough). A transient error of the API (5xx, network) is retried with a backoff, a 4xx ends the wait (#5574).
 //
 //   node scripts/wait-for-ci.mjs <sha> [--timeout <minutes, none>] [--appear <minutes, 10>] [--rerun <minutes, 0>]
 //   (in GitHub Actions: GITHUB_TOKEN with actions: read, GITHUB_REPOSITORY)
@@ -51,6 +51,57 @@ export function next({ state, reason }, minutes, failedSince, { timeout = Infini
   return { action: 'wait', failedSince };
 }
 
+/**
+ * A transient error of the GitHub API (#5574): a 5xx answer or a network error (fetch's TypeError) is retried, a 4xx
+ * is not. The minutes to wait before the n-th retry (1, 2, 4, 8, 8…): `TRANSIENT_RETRIES` retries in a row at most,
+ * about half an hour, then the error ends the wait.
+ */
+export const TRANSIENT_RETRIES = 5;
+export const backoff = n => Math.min(8, 2 ** (n - 1));
+const transient = e => e.status >= 500 || (e.status === undefined && e.name === 'TypeError');
+
+/** The CI runs of a commit from the API (the injected fetch); an Error with its status when the API answers an error. */
+async function runsOf(sha, { repo, token, fetch }) {
+  const r = await fetch(`https://api.github.com/repos/${repo}/actions/workflows/ci.yml/runs?head_sha=${sha}&per_page=20`,
+    { headers: { Authorization: `Bearer ${token}`, Accept: 'application/vnd.github+json' } });
+  if (!r.ok) throw Object.assign(new Error(`GitHub API: ${r.status} ${r.statusText}`), { status: r.status });
+  return (await r.json()).workflow_runs || [];
+}
+
+/**
+ * Waits for the CI run of `sha`: resolves when it passed, throws when it did not (or a limit was reached). `fetch`,
+ * `sleep(ms)`, `now()` and `log` are injected for the tests; a transient API error is logged and retried after its
+ * backoff, within `limits.timeout`.
+ */
+export async function waitForCi(sha, { repo, token, limits = {}, fetch = globalThis.fetch, sleep = ms => new Promise(res => setTimeout(res, ms)), now = Date.now, log = console.log } = {}) {
+  const start = now();
+  const minutes = () => (now() - start) / 60000;
+  let failedSince = null, errors = 0;
+  for (;;) {
+    let runs;
+    try {
+      runs = await runsOf(sha, { repo, token, fetch });
+      errors = 0;
+    } catch (e) {
+      if (!transient(e)) throw e;
+      errors++;
+      const wait = backoff(errors);
+      if (errors > TRANSIENT_RETRIES) throw new Error(`${e.message} (${TRANSIENT_RETRIES} retries failed)`);
+      if (minutes() + wait > (limits.timeout ?? Infinity)) throw new Error(`${e.message}, and the --timeout of ${limits.timeout} minutes reached`);
+      log(`${sha.slice(0, 7)}: ${e.message}: trying again in ${wait} minute${wait > 1 ? 's' : ''} (${errors} of ${TRANSIENT_RETRIES})`);
+      await sleep(wait * 60000);
+      continue;
+    }
+    const v = verdict(runs);
+    log(`${sha.slice(0, 7)}: ${v.reason}`);
+    let action;
+    ({ action, failedSince } = next(v, minutes(), failedSince, limits));
+    if (action === 'done') return;
+    if (action !== 'wait') throw new Error(action);
+    await sleep(60000);
+  }
+}
+
 async function main() {
   const args = process.argv.slice(2);
   const opt = (name, d) => { const i = args.indexOf(name); return i >= 0 ? +args[i + 1] : d; };
@@ -58,20 +109,7 @@ async function main() {
   const limits = { timeout: opt('--timeout', Infinity), appear: opt('--appear', 10), rerun: opt('--rerun', 0) };
   const { GITHUB_TOKEN: token, GITHUB_REPOSITORY: repo } = process.env;
   if (!sha || !repo) { console.error('usage: wait-for-ci.mjs <sha> [--timeout <minutes>] [--appear <minutes>] [--rerun <minutes>] (in GitHub Actions)'); process.exit(2); }
-  const start = Date.now();
-  let failedSince = null;
-  for (;;) {
-    const r = await fetch(`https://api.github.com/repos/${repo}/actions/workflows/ci.yml/runs?head_sha=${sha}&per_page=20`,
-      { headers: { Authorization: `Bearer ${token}`, Accept: 'application/vnd.github+json' } });
-    if (!r.ok) throw new Error(`GitHub API: ${r.status} ${r.statusText}`);
-    const v = verdict((await r.json()).workflow_runs || []);
-    console.log(`${sha.slice(0, 7)}: ${v.reason}`);
-    let action;
-    ({ action, failedSince } = next(v, (Date.now() - start) / 60000, failedSince, limits));
-    if (action === 'done') return;
-    if (action !== 'wait') throw new Error(action);
-    await new Promise(res => setTimeout(res, 60000));
-  }
+  await waitForCi(sha, { repo, token, limits });
 }
 
 if (process.argv[1] === fileURLToPath(import.meta.url)) main().catch(e => { console.error(e.message); process.exit(1); });
