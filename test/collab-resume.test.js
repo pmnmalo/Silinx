@@ -95,6 +95,27 @@ test('#5545 the owner\'s list of its editors lost with its connection: given to 
   assert.deepEqual(ev.filter(e => e.type === 'error'), []);   // (no edit refused by the room)
 });
 
+test('#5570 an editor joining while the owner is away: listed once the owner is back, its change reaches the owner', async () => {
+  const h = hostedRooms({ limits: { ...HOST_LIMITS, grace: 2000 } });
+  const socks = [];
+  const OwnerSocket = function OwnerSocket(...a) { const s = new h.owner(...a); socks.push(s); return s; };
+  const doc = owned(), ownerEv = [];
+  // (the owner's first try again after 300 ms: the editor joins meanwhile)
+  const owner = keep(await shareRoom({ url: 'silinx-host:', doc, user: { name: 'Ana' }, editors: true, WebSocket: OwnerSocket, onEvent: e => ownerEv.push(e), reconnect: { delays: [300], for: 5000 } }));
+  socks.at(-1).close();
+  await until(() => types(ownerEv).includes('offline'), 'offline');
+  const ev = [];
+  const f = keep(await followRoom({ url: 'silinx-host:', room: owner.room, key: owner.key, owner: owner.ownerKey, sign: owner.editKey, user: { name: 'Rui' }, WebSocket: followerSocket(h), onEvent: e => ev.push(e) }));
+  await until(() => types(ev).includes('away'), 'the follower told the owner is away');
+  assert.equal(owner.connected(), false, 'joined while the owner was away');
+  await f.ready;   // (the project, once the owner is back)
+  await until(() => f.listed, 'Rui listed');
+  editFile(f.doc, 'src/tb.vhd', '-- the test bench\n-- by Rui\n');
+  await until(() => docFile(doc, 'src/tb.vhd') === '-- the test bench\n-- by Rui\n', 'the editor\'s change at the owner\'s');
+  assert.deepEqual(types(ownerEv), ['offline', 'online']);
+  assert.deepEqual(ev.filter(e => e.type === 'error'), []);
+});
+
 test('#3835 a room the relay no longer keeps (no grace): the resume refused, the owner\'s session ended, said; the follower told', async () => {
   const { socks, owner, ownerEv, f, ev } = await setup({ grace: 0 });
   socks.at(-1).close();
