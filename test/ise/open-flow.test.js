@@ -174,7 +174,7 @@ test('feat_iob_lone on the XC3S1200E: input registers on pads whose neighbouring
   const name = 'feat_iob_lone-xc3s1200e', dir = path.join(tmp, name);
   fs.cpSync(path.join(ROOT, 'test/fixtures/open-flow/feat_iob_lone'), dir, { recursive: true });
   const proj = JSON.parse(fs.readFileSync(path.join(dir, 'silinx.json'), 'utf8'));
-  fs.writeFileSync(path.join(dir, 'silinx.json'), JSON.stringify({ ...proj, name, device: { ...proj.device, part: 'xc3s1200e' }, board: 'nexys2-1200' }));
+  fs.writeFileSync(path.join(dir, 'silinx.json'), JSON.stringify({ ...proj, name, device: { ...proj.device, part: 'xc3s1200e' }, board: 'nexys2' }));
   const r = spawnSync(process.execPath, [path.join(ROOT, 'scripts/check-open-flow.mjs'), dir], { encoding: 'utf8', env: process.env });
   fs.rmSync(tmp, { recursive: true, force: true });
   assert.equal(r.status, 0, `${r.stdout}\n${r.stderr}`);
@@ -189,7 +189,7 @@ test('feat_iob_owners on the XC3S1200E: IDDR2s on pads whose neighbour held some
   const name = 'feat_iob_owners-xc3s1200e', dir = path.join(tmp, name);
   fs.cpSync(path.join(ROOT, 'test/fixtures/open-flow/feat_iob_owners'), dir, { recursive: true });
   const proj = JSON.parse(fs.readFileSync(path.join(dir, 'silinx.json'), 'utf8'));
-  fs.writeFileSync(path.join(dir, 'silinx.json'), JSON.stringify({ ...proj, name, device: { ...proj.device, part: 'xc3s1200e' }, board: 'nexys2-1200' }));
+  fs.writeFileSync(path.join(dir, 'silinx.json'), JSON.stringify({ ...proj, name, device: { ...proj.device, part: 'xc3s1200e' }, board: 'nexys2' }));
   const r = spawnSync(process.execPath, [path.join(ROOT, 'scripts/check-open-flow.mjs'), dir], { encoding: 'utf8', env: process.env });
   fs.rmSync(tmp, { recursive: true, force: true });
   assert.equal(r.status, 0, `${r.stdout}\n${r.stderr}`);

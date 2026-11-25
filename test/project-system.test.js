@@ -63,6 +63,8 @@ test('#5416 phase 3: every project of the corpus its System; one node as silinx.
       assert.deepEqual(r.model.links, [], rel);
       assert.equal(r.model.nodes.length, 1, rel);
       const [n] = r.model.nodes;
+      // (every board of the corpus is one of the board lists': its variant from the device, never in its id, #5439)
+      if (pj.board) assert.ok(resolveBoard(pj.board, { part: pj.device?.part }), `${rel}: no FPGA board '${pj.board}'`);
       assert.deepEqual([n.id, n.kind, n.implicit, n.module, n.board, n.device, n.constraints],
         ['fpga', 'fpga', true, pj.top || null, pj.board ?? null, pj.device ?? null, pj.constraints ?? null], rel);
       const variant = pj.board ? resolveBoard(pj.board, { part: pj.device?.part })?.variant?.id ?? null : null;
