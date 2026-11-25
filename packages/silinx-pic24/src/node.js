@@ -9,6 +9,7 @@
 // (node.onInput(pin, fn)) and drives its output pins (node.drive(pin, value)): their changes come back from run().
 
 import { createGb610 } from './gb610.js';
+import { Ports } from './gpio.js';
 import { parseHex } from './hex.js';
 
 export class Pic24Node {
@@ -33,6 +34,8 @@ export class Pic24Node {
     this.handlers = new Map();   // pin -> [fn(value)]
     this.out = [];
     this.levels = new Map();
+    // the ports' pins: their outputs' changes are run()'s, an input event a pin's level from outside
+    this.device.ports.onChange((pin, driven) => this.drive(pin, driven));
   }
 
   /** The node's time (ps): its cycles at Fcy (Fcy as the oscillator sets it, as it changes). */
@@ -49,6 +52,7 @@ export class Pic24Node {
   setInput(pin, value) {
     const v = value == null ? null : Number(value) ? 1 : 0;
     this.inputs.set(pin, v);
+    if (Ports.parse(pin)) this.device.ports.setInput(pin, v);
     for (const fn of this.handlers.get(pin) ?? []) fn(v);
   }
 
