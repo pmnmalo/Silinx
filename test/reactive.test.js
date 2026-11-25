@@ -13,7 +13,7 @@ import { clockStep, outputsOf, initialMarking } from '../core/petri.js';
 import { reactiveReset, reactiveTick, reactiveType, simulateReactive, validateReactive } from '../core/reactive.js';
 import { evalExpr, lower, lowerCond, narrow, selfWidth, maskOf } from '../core/reactive-expr.js';
 import { REACTIVE_KINDS, SCHEMATIC_ON_CPU, drawingKind, drawingToReactive, reactiveFromFile, fsmToReactive, petriToReactive, tableToReactive } from '../core/reactive-from.js';
-import { EXAMPLE_DRAWINGS, ROOT, randomVectors, readJson, runHdl, runModel } from './reactive-lib.mjs';
+import { EDGES, EXAMPLE_DRAWINGS, ROOT, chart, mealy, net, randomVectors, readJson, runHdl, runModel, table } from './reactive-lib.mjs';
 
 const modelOf = (kind, doc) => {
   const r = drawingToReactive(kind, doc);
@@ -21,67 +21,6 @@ const modelOf = (kind, doc) => {
   assert.deepEqual(validateReactive(r.model), [], `${doc.name}: no problem`);
   return r.model;
 };
-
-// ---------------------------------------------------------------------------------------------------- edge cases
-/** A Mealy machine: a 2-bit input, a comparison, an output set on transitions, the otherwise written first. */
-const mealy = () => ({
-  kind: 'fsm', name: 'edge_m', lang: 'vhdl', clock: 'clk', reset: { name: 'rst', active: 'low', sync: false }, encoding: 'onehot',
-  inputs: [{ name: 'x', width: 1 }, { name: 'k', width: 2 }],
-  outputs: [{ name: 'z', width: 1, default: '0' }, { name: 'y', width: 3, default: '5' }],
-  states: [{ id: 'a', name: 'A', outputs: { y: '1' } }, { id: 'b', name: 'B', outputs: {} }, { id: 'c', name: 'C', outputs: { y: '7' } }],
-  transitions: [
-    { id: 't0', from: 'a', to: 'a', cond: 'else', outputs: { z: '1' } },
-    { id: 't1', from: 'a', to: 'b', cond: 'x && k == 2', outputs: { y: '3' } },
-    { id: 't2', from: 'a', to: 'c', cond: 'k > 2\'d2', outputs: { y: '2' } },
-    { id: 't3', from: 'b', to: 'c', cond: '!x | k[1]', outputs: { z: '1' } },
-    { id: 't4', from: 'c', to: 'a', cond: 'k - 1 == 0', outputs: {} },
-  ],
-  initial: 'a',
-});
-
-/** An ASM chart: a case box, a registered output, a synchronised input, a generic, an every-cycle block, shifts. */
-const chart = () => ({
-  version: 1, name: 'edge_a', lang: 'verilog', clock: 'clk', reset: { name: 'rst', active: 'high', sync: true }, encoding: 'gray',
-  generics: [{ name: 'K', default: 3 }],
-  inputs: [{ name: 'a', width: 4 }, { name: 'op', width: 2 }, { name: 'go', width: 1, sync: true }],
-  outputs: [{ name: 'y', width: 4, default: '0' }, { name: 'f', width: 1, default: '0' }, { name: 'acc', width: 6, default: '1', registered: true }],
-  registers: [{ name: 'n', width: 3, init: '2' }],
-  nodes: [
-    { id: 's1', type: 'state', name: 'IDLE', actions: ['y = a >> 1'] },
-    { id: 'd1', type: 'decision', cond: 'go' },
-    { id: 's2', type: 'state', name: 'RUN', actions: ['acc = acc + a'] },
-    { id: 'c1', type: 'case', expr: 'op' },
-    { id: 'o1', type: 'output', actions: ['y = n << 1', 'n = n - 1'] },
-    { id: 'o2', type: 'output', actions: ['f', 'acc = (acc << 1) | K'] },
-    { id: 'a1', type: 'always', name: 'calc', actions: ['f = a == 4\'d15'] },
-  ],
-  edges: [
-    { from: 's1', to: 'd1' }, { from: 'd1', to: 's2', port: 'true' }, { from: 'd1', to: 's1', port: 'false' },
-    { from: 's2', to: 'c1' }, { from: 'c1', to: 'o1', port: '00|11' }, { from: 'c1', to: 'o2', port: '01' }, { from: 'c1', to: 's1', port: 'others' },
-    { from: 'o1', to: 's2' }, { from: 'o2', to: 's1' },
-  ],
-  initial: 's1',
-});
-
-/** A Petri net: two tokens in parallel, a pulse output, a guard on a 2-bit input. */
-const net = () => ({
-  kind: 'petri', version: 1, name: 'edge_p', lang: 'vhdl', clock: 'clk', reset: { name: 'rst', active: 'high', sync: true },
-  inputs: [{ name: 'g', width: 1 }, { name: 'm', width: 2 }], outputs: [{ name: 'busy', width: 1 }, { name: 'pulse', width: 1 }, { name: 'v', width: 2 }],
-  places: [
-    { id: 'p1', name: 'ready', tokens: 1, capacity: 1, outputs: {} }, { id: 'p2', name: 'left', tokens: 0, capacity: 1, outputs: { busy: '1', v: '1' } },
-    { id: 'p3', name: 'right', tokens: 0, capacity: 1, outputs: { busy: '1', v: '2' } },
-  ],
-  transitions: [{ id: 't1', name: 'split', guard: 'g', outputs: { pulse: '1' } }, { id: 't2', name: 'join', guard: 'm == 3', outputs: {} }],
-  arcs: [
-    { id: 'a1', from: 'p1', to: 't1', weight: 1 }, { id: 'a2', from: 't1', to: 'p2', weight: 1 }, { id: 'a3', from: 't1', to: 'p3', weight: 1 },
-    { id: 'a4', from: 'p2', to: 't2', weight: 1 }, { id: 'a5', from: 'p3', to: 't2', weight: 1 }, { id: 'a6', from: 't2', to: 'p1', weight: 1 },
-  ],
-});
-
-/** A truth table in the XOR form, with don't cares. */
-const table = () => ({ version: 1, name: 'edge_t', inputs: ['a', 'b', 'c'], outputs: ['p', 'q'], table: { p: '01101001', q: '1X0X11X0' }, exprs: {}, form: 'xor', lang: 'vhdl' });
-
-const EDGES = [['fsm', mealy], ['asm', chart], ['pn', net], ['bool', table]];
 
 // ---------------------------------------------------------------------------------------------------- against the HDL
 test('the examples\' drawings: their models do, tick by tick, what their VHDL and their Verilog do', () => {
