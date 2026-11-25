@@ -288,6 +288,8 @@ export function registerImplRoutes(api, { wrap, projects: P }) {
 
   // (a System built by its plan, the FPGA nodes first: server/system-build-all.js and server/system-plan.js, #5489)
   api.get('/projects/:p/build-plan', wrap(async req => (await import('./system-plan.js')).readBuildPlan(req.params.p)));
+  // (the connected boards matched to the System's nodes by their USB id: server/usb-devices.js, #5489)
+  api.get('/projects/:p/boards', wrap(async req => (await import('./usb-devices.js')).connectedBoards(req.params.p)));
   api.post('/projects/:p/build', checkBody(FIRMWARE_BODY), wrap(async req => ({ job: (await (await import('./system-build-all.js')).startSystemBuild(req.params.p, req.body)).id })));
 
   api.get('/projects/:p/reports', wrap(req => projectReports(req.params.p)));

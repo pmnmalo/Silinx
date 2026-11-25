@@ -3,13 +3,20 @@
 // Arduino AVR core installed, or none with STUB_NO_CORE=1) and `compile --fqbn F … --output-dir O <sketch>`: each
 // `#error X` / `#warning X` line of the sketch's files said as gcc says it (its file's path, line and column, the
 // function's context, the line quoted, as arduino-cli prints them), exit 1 on an error; else O/<sketch>.ino.hex, a
-// one-word program (rjmp .), and arduino-cli's size lines. Its arguments are written to O/../args.json.
+// one-word program (rjmp .), and arduino-cli's size lines; `board list --format json` (#5489). Its arguments are written to O/../args.json.
 import fs from 'node:fs';
 import path from 'node:path';
 const a = process.argv.slice(2);
 if (a[0] === 'version') { console.log('arduino-cli  Version: 1.6.0 Commit: stub Date: 2026-11-10T15:27:00Z'); process.exit(0); }
 if (a[0] === 'core' && a[1] === 'list') {
   console.log(JSON.stringify({ platforms: process.env.STUB_NO_CORE === '1' ? [] : [{ id: 'arduino:avr', installed_version: '1.8.6', name: 'Arduino AVR Boards' }] }));
+  process.exit(0);
+}
+// (#5489: `board list --format json`, its ports those of $SILINX_CONFIG_DIR/arduino-ports.json, none when it has none)
+if (a[0] === 'board' && a[1] === 'list') {
+  let ports = [];
+  try { ports = JSON.parse(fs.readFileSync(path.join(process.env.SILINX_CONFIG_DIR || '.', 'arduino-ports.json'), 'utf8')); } catch { /* none */ }
+  console.log(JSON.stringify({ detected_ports: ports }));
   process.exit(0);
 }
 if (a[0] !== 'compile') { console.error(`stub: no command ${a[0]}`); process.exit(2); }

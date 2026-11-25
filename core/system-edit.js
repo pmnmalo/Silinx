@@ -5,6 +5,7 @@
 import { NODE_KINDS, INTERFACE_KINDS, FRAME_RE, MCU_BOARDS, SPI_HZ, I2C_HZ, mcuBoard, linkEnd, normalizeSystem } from './system-doc.js';
 import { isName } from './ident.js';
 import { nodeLangs, langError, LANG_NAMES, relInNode, renamedPath } from './system-layout.js';
+import { usbError } from './usb-id.js';
 
 const lc = s => String(s).toLowerCase();
 const copy = sys => normalizeSystem(JSON.parse(JSON.stringify(sys)));
@@ -73,14 +74,14 @@ function renameEnds(sys, { node, to, iface = null, toIface = null }) {
 }
 
 /**
- * A node's fields changed ({ id, board, module, variant, firmware, lang, x, y, pins }: those given; a firmware or a
+ * A node's fields changed ({ id, board, module, variant, firmware, lang, usb, x, y, pins }: those given; a firmware or a
  * circuit in the node's folder, renamed with it; `pins` merged, a port's pin
  * null or '' removing it; a variant or a firmware null removing it). Its id renamed in its links' ends too.
  */
 export function changeNode(sys, id, fields = {}) {
   const out = copy(sys), n = nodeOf(out, id);
   if (!n) return { error: `no node '${id}' in the System` };
-  const allowed = [...({ fpga: ['id', 'module', 'board', 'variant', 'pins', 'x', 'y'], mcu: ['id', 'board', 'firmware', 'x', 'y'], terminal: ['id', 'x', 'y'], circuit: ['id', 'circuit', 'x', 'y'] }[n.kind] || ['id', 'x', 'y']),
+  const allowed = [...({ fpga: ['id', 'module', 'board', 'variant', 'pins', 'usb', 'x', 'y'], mcu: ['id', 'board', 'firmware', 'usb', 'x', 'y'], terminal: ['id', 'x', 'y'], circuit: ['id', 'circuit', 'x', 'y'] }[n.kind] || ['id', 'x', 'y']),
     ...(nodeLangs(n.kind).length ? ['lang'] : [])];
   for (const k of Object.keys(fields)) if (!allowed.includes(k)) return { error: `${id}: a ${NODE_KIND_NAMES[n.kind] || n.kind} node has no field '${k}' (${allowed.join(', ')})` };
   if (fields.id != null && fields.id !== n.id) {
@@ -118,6 +119,14 @@ export function changeNode(sys, id, fields = {}) {
   }
   if (fields.variant !== undefined) { if (fields.variant == null || fields.variant === '') delete n.variant; else n.variant = String(fields.variant); }
   if (fields.pins) for (const [port, pin] of Object.entries(fields.pins)) { if (pin == null || pin === '') delete n.pins[port]; else n.pins[port] = String(pin).trim().toUpperCase(); }
+  // (its board's USB id and serial number, #5489: the fields given merged, one null or '' removing it)
+  if (fields.usb !== undefined) {
+    const usb = fields.usb === null ? {} : { ...(n.usb || {}) };
+    for (const [k, v] of Object.entries(fields.usb && typeof fields.usb === 'object' ? fields.usb : {})) { if (v == null || v === '') delete usb[k]; else usb[k] = v; }
+    const why = fields.usb !== null && (typeof fields.usb !== 'object' || Array.isArray(fields.usb)) ? usbError(fields.usb) : usbError(usb);
+    if (why) return { error: `${id}: ${why}` };
+    if (Object.keys(usb).length) n.usb = usb; else delete n.usb;
+  }
   for (const k of ['x', 'y']) if (fields[k] !== undefined) n[k] = Math.round(+fields[k] || 0);
   return { system: normalizeSystem(out), id: n.id };
 }

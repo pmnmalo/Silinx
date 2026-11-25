@@ -34,6 +34,8 @@ export function systemProcesses(sel, view, { check, rtl }) {
     // (its build plan and Build All, the FPGA nodes first, #5489: web/js/system-build-ui.js)
     { id: 'sys-plan', label: 'Build Plan', ico: 'process', run: async () => (await import('./system-build-ui.js')).runBuildPlan() },
     { id: 'sys-build', label: 'Build All', ico: 'process', run: async () => (await import('./system-build-ui.js')).runBuildAll(sel.file) },
+    // (its nodes' boards by their USB id, #5489's part 2)
+    { id: 'sys-boards', label: 'Connected Boards', ico: 'board', run: async () => (await import('./system-build-ui.js')).runConnectedBoards() },
   ];
   if (sel.type !== 'node') return null;
   return [

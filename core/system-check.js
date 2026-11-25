@@ -20,6 +20,7 @@ import { BAUDS } from './uart.js';
 import { checkCircuitFields, checkCircuitNodes } from './system-check-circuit.js';
 import { port } from './system-ports.js';
 import { endsProblem } from './system-links.js';
+import { usbError } from './usb-id.js';
 
 const node = id => ({ kind: 'node', id });
 const link = id => ({ kind: 'link', id });
@@ -102,6 +103,11 @@ function checkNodes(sys, ctx, { err, warn }) {
     if (!NODE_KINDS.includes(n.kind)) { err(`${n.id}: no node kind '${n.kind}' (the kinds: ${NODE_KINDS.join(', ')})`, node(n.id)); continue; }
     const at = { n, ifaces: new Map(), volts: null };
     nodes.set(lc(n.id), at);
+    // (its board's USB id and serial number, #5489: one serial number one board)
+    const usbWhy = usbError(n.usb);
+    if (usbWhy) err(`${n.id}: ${usbWhy}`, node(n.id));
+    const twin = n.usb?.serial && [...nodes.values()].find(o => o.n !== n && o.n.usb?.serial === n.usb.serial);
+    if (twin) err(`${twin.n.id} and ${n.id} have the same USB serial number ${n.usb.serial}: one board is one node`, node(n.id));
     if (n.kind === 'fpga') checkFpga(n, at, ctx, { err, warn });
     else if (n.kind === 'mcu') checkMcu(n, at, ctx, { err, warn });
     else if (n.kind === 'circuit') checkCircuitFields(n, ctx, { err, warn });
