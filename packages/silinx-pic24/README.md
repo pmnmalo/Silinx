@@ -27,13 +27,13 @@ The device and its peripherals (since 0.2.0, [#5481](https://github.com/pmnmalo/
 - Timer1 to Timer5 (Timer2 / 3 and Timer4 / 5 as 32-bit timers, the SOSC and LPRC clocks, Timer3's A/D trigger);
 - the UARTs, the SPI and I²C masters, the PMP (master modes), the 10/12-bit A/D converter with its scan;
 - the MCCP and SCCP modules (after 0.2.0, [#5529](https://github.com/pmnmalo/Silinx/issues/5529)): their timers, output compare,
-  PWM on the pins (dual edge, buffered) and input capture.
+  PWM on the pins (dual edge, buffered) and input capture; the input capture and output compare modules with
+  dedicated timers, IC1–6 and OC1–6 (compare, edge-aligned PWM, synchronised to a timer).
 
 The Explorer 16/32 board around it (`Explorer1632`): the LEDs D3–D10, the buttons S3–S6, the potentiometer R6 and
 the TC1047A temperature sensor, the USB-UART, the 16x2 character LCD on the PMP, the 25LC256 EEPROM on SPI.
 
-Left out: the legacy input capture and output compare modules (IC1–6, OC1–6, #5529's next part); MCCP's
-center-aligned PWM, dead time and auto-shutdown; the pins' waveforms of SPI, I²C and the PMP (a word, an
+Left out: center-aligned PWM, dead time, auto-shutdown, the Faults and the cascaded 32-bit IC / OC; the pins' waveforms of SPI, I²C and the PMP (a word, an
 event, a transaction); their slave modes; USB, the RTCC, the CRC, the comparators, the CTMU, DMA and the
 cryptographic engine; the timers' external clocks and gated mode.
 
