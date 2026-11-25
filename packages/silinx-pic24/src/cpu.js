@@ -35,7 +35,11 @@ export class CPU {
     // the external memory of the EDS pages 2 and above (the EPMP, #5481): (address24, byte) -> value, and its writes
     this.edsRead = null;
     this.edsWrite = null;
-    this.onReset = null;   // (cause) after a device reset (RCON's bits are the peripherals', #5481)
+    this.onReset = null;   // (cause) after a device reset (RCON's bits are mcu.js's)
+    // the power-saving hooks (the watchdog's, wdt.js): CLRWDT, PWRSAV's mode, the wake-up from it
+    this.onClrwdt = null;
+    this.onPwrsav = null;
+    this.onWake = null;
     this.latches = new Map();   // the table writes' latches (TBLWT, programmed by the NVM controller, #5481)
     this.shadow = null;         // PUSH.S's
     this.cycles = 0;
@@ -65,6 +69,14 @@ export class CPU {
     this.divIter = 0;
     this.resetCause = cause;
     this.onReset?.(cause);
+  }
+
+  /** Out of Sleep or Idle (an interrupt, the watchdog). */
+  wake() {
+    if (!this.sleeping) return;
+    const mode = this.sleeping;
+    this.sleeping = null;
+    this.onWake?.(mode);
   }
 
   say(kind, text, once = null) {
@@ -289,7 +301,7 @@ export class CPU {
     const c0 = this.cycles;
     if (this.intDirty || this.trapReq) this.irq = nextException(this);
     if (this.irq) {
-      if (this.sleeping) this.sleeping = null;
+      if (this.sleeping) this.wake();
       enterException(this, this.irq);
       this.irq = null;
       this.tick();

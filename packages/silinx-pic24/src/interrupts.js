@@ -53,7 +53,7 @@ export function nextException(cpu) {
   }
   if (best < 0) {
     // asleep, an enabled request at a priority not above the IPL wakes the CPU without its vector
-    if (cpu.sleeping && wakes(cpu)) cpu.sleeping = null;
+    if (cpu.sleeping && wakes(cpu)) cpu.wake();
     return null;
   }
   return { irq: best, priority: bp, vector: irqVector(best) };

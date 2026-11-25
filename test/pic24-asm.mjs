@@ -2,7 +2,7 @@
 // with no XC16. It reads the syntax of Microchip's 16-bit MCU and DSC Programmer's Reference Manual (DS70000157):
 // one instruction a line, ';' comments, 'label:' labels, '.word expr' (a raw program word), '.org address' (the
 // erased flash up to it), its mnemonics with their
-// .B/.W/.D/.C/.Z/.S/.U/.SD/.UD/.UU/.US/.SU/.SS suffixes, the operands Wn, WREG, [Wn], [Wn++], [Wn--], [++Wn], [--Wn],
+// .B/.W/.D/.C/.Z/.S/.U/.SD/.UD/.UU/.US/.SU/.SS suffixes, '$' its own address, the operands Wn, WREG, [Wn], [Wn++], [Wn--], [++Wn], [--Wn],
 // [Wn+Wb], [Wn+lit], #lit, f (a number, a label or a symbol), a branch's target. Its encodings are checked against the
 // manual's in test/pic24-asm.test.js.
 //
@@ -50,6 +50,7 @@ function value(expr, env) {
     if (/^0x[0-9a-f]+$/i.test(t)) x = parseInt(t.slice(2), 16);
     else if (/^0b[01]+$/i.test(t)) x = parseInt(t.slice(2), 2);
     else if (/^\d+$/.test(t)) x = parseInt(t, 10);
+    else if (t === '$') x = env.pc;
     else if (t in env.labels) x = env.labels[t];
     else if (t.toUpperCase() in env.symbols) x = env.symbols[t.toUpperCase()];
     else if (env.pass === 1) x = 0;
@@ -331,6 +332,7 @@ export function pic24Assemble(lines, { org = 0, symbols = {} } = {}) {
       const [mn, ...sfx] = head.toUpperCase().split('.');
       const enc = TABLE[mn] ?? fail(`no instruction ${mn}: ${raw}`);
       let out;
+      env.pc = pc;
       try { out = enc({ m: mn, sfx: sfx.filter((x) => x !== 'W'), ops: rest ? split(rest) : [], env, pc }); } catch (e) { throw new Error(`${raw.trim()}: ${e.message}`); }
       for (const w of out) put(w);
     }

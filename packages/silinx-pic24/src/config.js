@@ -1,6 +1,6 @@
 // silinx-pic24 - the configuration words read (#5480, DS30010074 section 30): the oscillator that FOSCSEL and FOSC
 // select, and so the instruction clock (Fcy = Fosc / 2), and the watchdog FWDT enables. An erased word reads as all
-// ones (its defaults: the FRC divided, the watchdog on).
+// ones (its defaults: the FRC divided, the watchdog on, wdt.js's).
 
 import { CONFIG_WORDS } from './device.js';
 
@@ -39,6 +39,5 @@ export function readConfig(progWord, { primaryHz = PRIMARY_HZ } = {}) {
   if (fosc > MAX_FOSC) { warnings.push(`the oscillator's ${fosc / 1e6} MHz is above the device's 32 MHz`); }
   const fwdten = (words.FWDT >> 5) & 3;
   const watchdog = ['off', 'active', 'software', 'on'][fwdten];
-  if (watchdog === 'on' || watchdog === 'active') warnings.push('the watchdog is enabled (FWDT\'s FWDTEN): it is not emulated yet');
   return { words, oscillator: { source, fosc, fcy: fosc / 2 }, watchdog, warnings };
 }

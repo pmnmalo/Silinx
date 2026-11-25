@@ -7,3 +7,5 @@ export { parseHex, writeHex } from './hex.js';
 export { readConfig } from './config.js';
 export { irqPriority, irqFlag, irqEnabled, setIrqFlag, ENTRY_CYCLES } from './interrupts.js';
 export * as device from './device.js';
+export { Pic24Mcu } from './mcu.js';
+export { createGb610 } from './gb610.js';
