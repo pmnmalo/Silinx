@@ -895,8 +895,12 @@ changelog fragment.
 
 - The System is a System project's top, its one System document (#5041); its FPGA nodes are modules of that project.
   A System made the top of an FPGA project (Top-Level Source Type System, Set as Top Module on it, the MCP's `set_top`,
-  `set_design_properties`, `new_project`) makes it a System project, its board kept in `fpga`; a module made the top
-  of a System project makes it an FPGA project again, on its FPGA node's board (`core/system-top.js`, #5402).
+  `set_design_properties`, `new_project`) makes it a System project, its board kept in `fpga` (`core/system-top.js`,
+  #5402). A top module is a device's, not the System's (Pedro, #5583): Set as Top Module (the MCP's `set_top`) on a
+  module of an FPGA node's folder makes it that node's top module (its `module`, which Build Node, Implement and
+  Program Node use), and the System stays the project's top. A module in no node's folder, or in a microcontroller's, is
+  refused. Unset as Top Module (`unset_top`) is refused, because an FPGA node always has its top module. The Design pane
+  marks each FPGA node's top module as an FPGA project's top.
 - The AVR comes first; the ESP32 comes in MicroPython.
 - The firmware is a given `.hex` or `.elf` first; a compiler on the server comes later.
 - The System is the model, the circuit a second view of it: the boards are the circuit's parts, a circuit can be a

@@ -141,9 +141,16 @@ const label = what => (WIZARDS_PT[`${what}:`] || `${what}:`).replace(/:$/, '');
 const PROFILE_PT = { 'Digital Logic': 'Lógica Digital', FPGA: 'FPGA', 'Embedded / SoC': 'Embebido / SoC', System: 'Sistema' };
 export const WIZARDS_PT_PATTERNS = [
   // (a System as the top, #5402: web/js/system-top-ui.js)
-  [/^(\S+): a System project now, its System (\S+) its top \(its board kept: Set as Top Module on a module makes it an FPGA project again\)\.$/,
-    '$1: agora um projeto de Sistema, o seu Sistema $2 é o topo (a placa fica guardada: Definir como Módulo de Topo num módulo torna-o de novo um projeto FPGA).'],
-  [/^(\S+): an FPGA project now, its top module '(\S+)' on (.+) \((\S+)\)\.$/, "$1: agora um projeto FPGA, o seu módulo de topo '$2' na $3 ($4)."],
+  [/^(\S+): a System project now, its System (\S+) its top \(its board kept\)\.$/, '$1: agora um projeto de Sistema, o seu Sistema $2 é o topo (a placa fica guardada).'],
+  // (a module of a System project: its FPGA node's top, #5583)
+  [/^(Set as Top Module: )?'(.+)' is now (\S+)'s top module \(the System (\S+) stays the project's top\)\.?$/,
+    (m, p, mod, n, sys) => `${p ? 'Definir como Módulo de Topo: ' : ''}'${mod}' é agora o módulo de topo de ${n} (o Sistema ${sys} continua o topo do projeto)${m.endsWith('.') ? '.' : ''}`],
+  [/^(Set as Top Module: )?'(.+)' is already (\S+)'s top module\.?$/, (m, p, mod, n) => `${p ? 'Definir como Módulo de Topo: ' : ''}'${mod}' já é o módulo de topo de ${n}${m.endsWith('.') ? '.' : ''}`],
+  [/^'(.+)' is in no node's folder of the System (\S+): a System project's top is its System, and an FPGA node's top module is a module of its folder$/,
+    "'$1' não está na pasta de nenhum nó do Sistema $2: o topo de um projeto de Sistema é o seu Sistema, e o módulo de topo de um nó FPGA é um módulo da sua pasta"],
+  [/^'(.+)' is in the folder of (\S+), a (.+) node: only an FPGA node has a top module$/,
+    (m, mod, n, k) => `'${mod}' está na pasta de ${n}, um nó ${{ Microcontroller: 'Microcontrolador', 'Serial terminal': 'Terminal série', Circuit: 'Circuito' }[k] ?? k}: só um nó FPGA tem módulo de topo`],
+  [/^(\S+) has unsaved changes: save it first$/, '$1 tem alterações por guardar: guarde-o primeiro'],
   // (the browser edition's first run, #4962)
   [/^This browser's storage has (\d+) project\(s\): (.*)\. Copy them into the folder '(.*)'\? Move… copies them, then deletes them from this browser's storage once you confirm\.$/,
     "O armazenamento deste navegador tem $1 projeto(s): $2. Copiá-los para a pasta '$3'? Mover… copia-os e depois apaga-os do armazenamento deste navegador, depois de confirmar."],
