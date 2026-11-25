@@ -13,7 +13,7 @@ const E = () => env;
 const ED = '.doc:not([hidden]) .system-editor';
 // the example's System with no SPI yet: the Uno, the FPGA node on spi_echo with its pins
 const SYS = JSON.stringify({ format: 'silinx-system', version: 2, name: 'spi_avr', nodes: [
-  { id: 'uno', kind: 'mcu', board: 'arduino-uno', firmware: 'firmware/spi.hex', interfaces: [{ name: 'Serial', kind: 'uart', baud: 9600, frame: '8N1' }], x: 0, y: 0 },
+  { id: 'uno', kind: 'mcu', board: 'arduino-uno', firmware: 'uno/spi.hex', interfaces: [{ name: 'Serial', kind: 'uart', baud: 9600, frame: '8N1' }], x: 0, y: 0 },
   { id: 'fpga', kind: 'fpga', module: 'spi_echo', board: 'basys2', variant: '250', pins: { clk: 'B8', sck: 'B2', mosi: 'A3', miso: 'J3', ss: 'B5' }, interfaces: [], x: 320, y: 0 },
 ], links: [] }, null, 2);
 const setField = (page, sel, value) => page.eval((ed, sel, value) => { const el = document.querySelector(`${ed} .asm-side ${sel}`); el.value = value; el.dispatchEvent(new Event('change', { bubbles: true })); }, ED, sel, value);
