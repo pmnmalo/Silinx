@@ -1,0 +1,36 @@
+#!/usr/bin/env node
+// A stand-in for arduino-cli (#5503, test/avr-compile-server.test.js): `version`, `core list --format json` (the
+// Arduino AVR core installed, or none with STUB_NO_CORE=1) and `compile --fqbn F … --output-dir O <sketch>`: each
+// `#error X` / `#warning X` line of the sketch's files said as gcc says it (its file's path, line and column, the
+// function's context, the line quoted, as arduino-cli prints them), exit 1 on an error; else O/<sketch>.ino.hex, a
+// one-word program (rjmp .), and arduino-cli's size lines. Its arguments are written to O/../args.json.
+import fs from 'node:fs';
+import path from 'node:path';
+const a = process.argv.slice(2);
+if (a[0] === 'version') { console.log('arduino-cli  Version: 1.6.0 Commit: stub Date: 2026-11-10T15:27:00Z'); process.exit(0); }
+if (a[0] === 'core' && a[1] === 'list') {
+  console.log(JSON.stringify({ platforms: process.env.STUB_NO_CORE === '1' ? [] : [{ id: 'arduino:avr', installed_version: '1.8.6', name: 'Arduino AVR Boards' }] }));
+  process.exit(0);
+}
+if (a[0] !== 'compile') { console.error(`stub: no command ${a[0]}`); process.exit(2); }
+const opt = k => a[a.indexOf(k) + 1];
+const dir = a[a.length - 1], out = opt('--output-dir'), name = path.basename(dir);
+fs.mkdirSync(out, { recursive: true });
+fs.writeFileSync(path.join(out, '..', 'args.json'), JSON.stringify(a));
+let errors = 0;
+const walk = d => fs.readdirSync(d, { withFileTypes: true }).flatMap(e => (e.isDirectory() ? walk(path.join(d, e.name)) : [path.join(d, e.name)])).sort();
+for (const f of walk(dir)) {
+  fs.readFileSync(f, 'utf8').split('\n').forEach((l, i) => {
+    const m = /^(\s*)#(error|warning)\s+(.*)$/.exec(l);
+    if (!m) return;
+    if (m[2] === 'error') errors++;
+    console.error(`${f}: In function 'void setup()':`);
+    console.error(`${f}:${i + 1}:${m[1].length + 2}: ${m[2]}: #${m[2]} ${m[3]}`);
+    console.error(`    ${i + 1} | ${l}`);
+    console.error(`      | ${' '.repeat(m[1].length)} ^~~~~`);
+  });
+}
+if (errors) { console.error('exit status 1'); console.error('Error during build: exit status 1'); process.exit(1); }
+fs.writeFileSync(path.join(out, `${name}.ino.hex`), ':02000000FFCF30\n:00000001FF\n');
+console.log('Sketch uses 2 bytes (0%) of program storage space. Maximum is 32256 bytes.');
+console.log('Global variables use 0 bytes (0%) of dynamic memory, leaving 2048 bytes for local variables. Maximum is 2048 bytes.');

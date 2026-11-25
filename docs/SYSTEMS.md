@@ -201,7 +201,8 @@ The ports' pins (`core/reactive-c-pins.js`) are the user's, the others the next 
 and D1 are the USB serial port's, and a port given them is warned about. A port named as a word of C or of the Arduino
 API (`delay`, `int`) is renamed (`delay_v`) with a warning. The tests compile each drawing's sketch with the computer's
 C compiler, as C and as C++, against a mock of the Arduino API (`test/fixtures/arduino-mock`), and run it tick by tick
-against the model; the AVR run comes with #5503 (avr-gcc on the local server).
+against the model; on the local server, the node's Compile Firmware compiles the sketch to the `.hex` the AVR runs
+(#5503, below).
 
 **Its MicroPython** (`core/reactive-py.js`, #5487) is a program as a student writes one, the same `.py` on the ESP32 and
 on the Pico, its HAL MicroPython's `machine.Pin` and `time.ticks_ms`, with the same ticks as the C:
@@ -574,6 +575,27 @@ node alone, as the Design pane's processes do for a module.
 
 Each action says its nodes' results in the console, one line a node; the MCP server does the same (#2674).
 
+### Compiling an Arduino node's firmware
+
+An Arduino node's row in the Design pane has **Compile Firmware** (#5503, `server/avr-compile.js`,
+`core/avr-compile.js`). The local server's [arduino-cli](https://arduino.github.io/arduino-cli/) compiles the node's
+sketch for its board (the Uno's `arduino:avr:uno`, the Nano's `arduino:avr:nano:cpu=atmega328`). Silinx installs
+nothing: the user installs arduino-cli and its Arduino AVR core (`arduino-cli core install arduino:avr`). The server
+finds arduino-cli on the PATH, in `/opt/homebrew/bin` or `/usr/local/bin`, or at config.json's
+`paths["arduino-cli"]`. The MCP's `toolchain_info` gives its version and its core's.
+
+- The sketch is the node's folder's `.ino`, C and C++ files, hand-written or generated from a drawing (#5486). Its main
+  `.ino` is the one named as the node's firmware, else the first. It is compiled in `build/nodes/<id>/firmware/`.
+- The compiler's errors and warnings go to the console as `ERROR: uno/blink.ino:12:3: …` lines, by the project's file
+  and line, and the Errors and Warnings tabs' rows open the file there. gcc's notes and quoted lines are left out.
+- The `.hex` is written to the node's folder: over the node's firmware when that is a `.hex`, else to
+  `<id>/<sketch>.hex`, which becomes the node's firmware. Emulate System runs it on avr8js.
+- The MCP's `run_process` does the same, with process `firmware` and the node's id (`*`: every Arduino node).
+- A project imported from elsewhere compiles once it is trusted, as with ISE.
+- The browser edition has no compiler: it says so, and the node takes a `.hex` made elsewhere (the Arduino IDE's Export
+  Compiled Binary).
+- Not compiled: the PIC24's firmware (XC16's `.hex`, made outside Silinx), and a MicroPython node's program.
+
 ## Emulation
 
 The Board Emulator gets a **system** mode.
@@ -648,7 +670,7 @@ A scenario test fits `grade` and the labs: press the Arduino's button, expect "O
 | AVR, RP2040 | yes | yes | avr8js, rp2040js (MIT) |
 | ESP32 (behavioural) | yes | yes | MicroPython (MIT) |
 | ESP32 (real firmware) | — | yes, if the user installs it | Espressif's QEMU (GPL-2.0) |
-| Compiling C / Arduino | later, if ever | yes, if the user has the tools | avr-gcc / arduino-cli (GPL); ESP-IDF (Apache-2.0, binary Wi-Fi libraries), arduino-esp32 (LGPL-2.1) |
+| Compiling C / Arduino | later, if ever | yes, if the user has the tools (arduino-cli, #5503) | avr-gcc / arduino-cli (GPL); ESP-IDF (Apache-2.0, binary Wi-Fi libraries), arduino-esp32 (LGPL-2.1) |
 | The System Emulator, the waves | yes | yes | — |
 | Programming over Web Serial | Chrome, Edge, Firefox | yes | esptool-js (Apache-2.0) |
 
@@ -662,6 +684,7 @@ Every action is a tool (#2674), through the same functions as the interface:
 | `check_system` | describes the system and runs the check (#4700) |
 | `simulate` (a System) | the existing tool: `top` a System document (a System project's by default) runs it for a time and returns each wire's bytes, the terminals' text and the warnings; the VCD in `build/<name>.vcd` (#4701) |
 | `node_firmware` | sets a node's firmware |
+| `run_process` `firmware` | compiles an Arduino node's sketch to its `.hex` with arduino-cli (#5503) |
 
 Later:
 
@@ -670,7 +693,6 @@ Later:
 | `emulate_system` | presses, sets and reads each node |
 | `node_mode` | sets a node simulated or real |
 | `program_node` | programs a node's board |
-| `compile_firmware` | compiles a node's firmware |
 
 The existing `program_board` and `capture` serve the FPGA nodes.
 
@@ -722,7 +744,7 @@ The existing `program_board` and `capture` serve the FPGA nodes.
    - `.py` onto the real boards;
    - an MQTT broker node.
 5. **Compiling firmware:**
-   - avr-gcc / arduino-cli on the local server;
+   - arduino-cli on the local server: an Arduino node's Compile Firmware (done, #5503);
    - Espressif's QEMU as an optional engine.
 6. **Zynq and soft cores:**
    - a Zynq board as a co-design node (roadmap #5412);

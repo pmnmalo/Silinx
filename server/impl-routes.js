@@ -27,7 +27,7 @@ import { isTrusted, untrustedMessage } from '../core/trust.js';
 import { normalizePath } from '../core/import-gate.js';
 import { foldName } from '../core/fold-name.js';
 import { familyProfile } from '../core/family-profile.js';
-import { checkBody, pathFree, IMPLEMENT_BODY, CAPTURE_BODY } from './http-errors.js';
+import { checkBody, pathFree, IMPLEMENT_BODY, CAPTURE_BODY, FIRMWARE_BODY } from './http-errors.js';
 
 // files that only Silinx understands: not part of an exported Xilinx ISE project
 export const SILINX_ONLY = /(^|\/)(silinx\.json|[^/]+\.(asm|sch|tt|bool|fsm|sym|regs)\.json)$/i;   // (a module's symbol too, #3828)
@@ -282,6 +282,9 @@ export function registerImplRoutes(api, { wrap, projects: P }) {
   // ----- implementation -----------------------------------------------------------------------
   // (its body checked as the MCP's run_process takes it, #4753)
   api.post('/projects/:p/implement', checkBody(IMPLEMENT_BODY), wrap(async req => ({ job: (await startImplementation(req.params.p, req.body || {})).id })));
+
+  // (a System's Arduino node's firmware compiled by arduino-cli: server/avr-compile.js, #5503)
+  api.post('/projects/:p/firmware', checkBody(FIRMWARE_BODY), wrap(async req => ({ job: (await (await import('./avr-compile.js')).startFirmwareCompile(req.params.p, req.body)).id })));
 
   api.get('/projects/:p/reports', wrap(req => projectReports(req.params.p)));
 

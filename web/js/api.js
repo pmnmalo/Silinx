@@ -193,6 +193,7 @@ export const api = {
   saveToolchain: (cfg, project = null) => req('PUT', `/api/toolchain${project ? `?project=${enc(project)}` : ''}`, cfg),
   openStatus: name => req('GET', `/api/projects/${enc(name)}/open-status`),
   implement: (name, body) => req('POST', `/api/projects/${enc(name)}/implement`, body),
+  firmware: (name, node) => req('POST', `/api/projects/${enc(name)}/firmware`, { node }),   // (an Arduino node's, #5503)
   // the logic analyzer's capture on the board (#3176): { job }, its result { capture, file }
   capture: (name, opts) => req('POST', `/api/projects/${enc(name)}/capture`, captureBody(opts)),
   reports: name => req('GET', `/api/projects/${enc(name)}/reports`),

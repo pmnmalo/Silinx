@@ -86,7 +86,7 @@ function systemRow(treeItem, select) {
     for (const n of nodes) {
       const board = n.board ? boardName(n) : null;
       const it = treeItem({ label: n.id, meta: board ? `(${board})` : '', ico: NODE_ICON[n.kind] || 'system', open: true, key: `node:${f}:${n.id}`,
-        onSelect: () => select({ type: 'node', file: f, node: n.id, kind: n.kind, module: n.module }), onOpen: () => openSystem(f), onContext: menu });
+        onSelect: () => select({ type: 'node', file: f, node: n.id, kind: n.kind, module: n.module, board: n.board, lang: n.lang }), onOpen: () => openSystem(f), onContext: menu });
       item.ul.append(it.li);
       branches.set(n.id, it);
       // (a CPU node's drawings: rows as an FPGA node's, their last badge its base language's, #5488: [Py] MicroPython's,

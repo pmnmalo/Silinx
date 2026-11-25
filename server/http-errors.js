@@ -53,6 +53,10 @@ export const IMPLEMENT_BODY = {
     node: { type: 'string' },   // (a System's FPGA node, its id, or '*' every one: server/system-implement.js, #5446)
   },
 };
+export const FIRMWARE_BODY = {
+  type: 'object', additionalProperties: false, required: ['node'],
+  properties: { node: { type: 'string' } },   // (a System's microcontroller node, its id, or '*' every Arduino one: server/avr-compile.js, #5503)
+};
 export const CAPTURE_BODY = {
   type: 'object', additionalProperties: false,
   properties: {

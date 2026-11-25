@@ -1,12 +1,14 @@
 // The Processes pane of a System project's rows (#5414, #5416's phase 2): its System's row (View/Edit, Check, Emulate
 // System, as the row's menu) and each node's (its node in the System editor; an FPGA node's module checked and its RTL
 // schematic; its Synthesize, Implement Design and Generate Programming File on its own board, #5446), and its FPGA nodes'
-// modules' (#5443: the same, no flow on the project's default device); the System's Implement System. A node's Program
-// and firmware build: docs/SYSTEMS.md's phases 3 and 5, they join this list.
+// modules' (#5443: the same, no flow on the project's default device); the System's Implement System; an Arduino node's
+// Compile Firmware (#5503: its sketch to its .hex by the local server's arduino-cli). A node's Program: docs/SYSTEMS.md's
+// phase 3, it joins this list.
 import { findDoc } from './app.js';
 import { openSystem } from './system-open.js';
 import { systemTop } from './design-system.js';
 import { openView } from './drawings.js';
+import { firmwareRefusal } from '/core/avr-compile.js';
 
 // a node's (or the System's, '*') implementation on its own board, #5446: web/js/system-implement-ui.js
 const impl = (node, steps, label) => async () => (await import('./system-implement-ui.js')).runNodeImpl(node, steps, label);
@@ -37,6 +39,10 @@ export function systemProcesses(sel, view, { check, rtl }) {
       { id: 'check', label: 'Check Syntax', ico: 'process', run: () => check(sel.module) },
       { id: 'rtl', label: 'View RTL Schematic', ico: 'schematic', run: () => rtl(sel.module) },
       ...FLOW.map(([id, label, steps]) => ({ id, label, ico: 'process', run: impl(sel.node, steps, label) })),
+    ] : []),
+    // (an Arduino node's C or C++, #5503: web/js/system-firmware-ui.js)
+    ...(sel.kind === 'mcu' && !firmwareRefusal({ id: sel.node, kind: sel.kind, board: sel.board, lang: sel.lang }) ? [
+      { id: 'node-firmware', label: 'Compile Firmware', ico: 'process', run: async () => (await import('./system-firmware-ui.js')).runNodeFirmware(sel.node, sel.file) },
     ] : []),
   ];
 }

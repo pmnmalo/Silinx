@@ -54,7 +54,7 @@ export const REPORT_FILES = {
     drc: top => `build/${top}_drc.rpt`,
   },
 };
-const TOOLCHAIN_NAMES = { silinx: 'Silinx toolchain', ise: 'Xilinx ISE', vivado: 'AMD Vivado' };
+const TOOLCHAIN_NAMES = { silinx: 'Silinx toolchain', ise: 'Xilinx ISE', vivado: 'AMD Vivado', arduino: 'arduino-cli' };
 // the map and par reports of a Silinx toolchain run, from its Design Summary (build/reports.json); the router's passes
 // only when the engine counts them (nextpnr's do not, #2420)
 export const OPEN_REPORTS = {
@@ -99,8 +99,10 @@ export function processMessageList({ errors, warnings, head, ok, process, paths 
  *  warnings, whether it ended well, its toolchain. Errors: tool errors. */
 export async function runProcess(name, proc, { toolchain, node, timeoutS = 1800, signal, progress } = {}) {
   const pj = await readProject(name);
+  // (a System's Arduino node's firmware compiled by arduino-cli, #5503: server/avr-compile.js, the node's Compile Firmware)
+  if (proc === 'firmware') return runFirmware(name, { toolchain, node, timeoutS, signal, progress });
   const steps = PROCESSES[proc];
-  if (!steps) throw toolError(`process: one of ${Object.keys(PROCESSES).join(', ')}`);
+  if (!steps) throw toolError(`process: one of ${[...Object.keys(PROCESSES), 'firmware'].join(', ')}`);
   // (a System's FPGA node, or every one, on its own board, #5446: server/system-implement.js; else its top's)
   if (node === undefined && !pj.top) throw toolError(isSystemProject(pj) ? systemFlowRefusal(name) : `the project '${name}' has no top module`);   // (a System its top, #5443)
   if (node !== undefined && !['synthesize', 'implement', 'bitstream'].includes(proc)) throw toolError(`node: a System node runs synthesize, implement or bitstream (not ${proc})`);
@@ -111,6 +113,28 @@ export async function runProcess(name, proc, { toolchain, node, timeoutS = 1800,
   const { startImplementation } = await import('./impl-routes.js');
   let job;
   try { job = await startImplementation(name, { steps, ...(toolchain ? { toolchain } : {}), ...(node !== undefined ? { node } : {}) }); } catch (e) { throw toolError(e.message); }
+  const lines = await waitFor(job, proc, { timeoutS, signal, progress });
+  const paths = (await P.readSources(name).catch(() => [])).map(s => s.path);
+  const { errors, warnings, locations } = processMessages(lines, paths);
+  const tc = ['silinx', 'vivado'].includes(job.meta?.toolchain) ? job.meta.toolchain : 'ise';
+  return { top: node === undefined ? pj.top : node === '*' ? 'System' : `node ${node}`, lines, errors, warnings, locations, paths, ok: job.status === 'ok', silinx: tc === 'silinx', toolchain: tc };
+}
+
+// a node's firmware compiled (node: its id, or * every Arduino node): run_process firmware's result, as a flow's
+async function runFirmware(name, { toolchain, node, timeoutS, signal, progress }) {
+  if (node === undefined) throw toolError('node: the firmware process compiles a System microcontroller node\'s firmware (its id, or * every Arduino node)');
+  if (toolchain !== undefined) throw toolError('toolchain: a firmware is compiled by arduino-cli (no toolchain to choose)');
+  let job;
+  try { job = await (await import('./avr-compile.js')).startFirmwareCompile(name, { node }); } catch (e) { throw toolError(e.message); }
+  const lines = await waitFor(job, 'firmware', { timeoutS, signal, progress });
+  // (the node's sources: its sketch's files, the messages' locations)
+  const paths = await P.fileTree(name).catch(() => []);
+  const { errors, warnings, locations } = processMessages(lines, paths);
+  return { top: node === '*' ? 'System' : `node ${node}`, lines, errors, warnings, locations, paths, ok: job.status === 'ok', silinx: false, toolchain: 'arduino' };
+}
+
+// a job followed to its end (stopped after timeoutS, or when the client cancels): its lines redacted
+async function waitFor(job, proc, { timeoutS, signal, progress }) {
   const end = Date.now() + timeoutS * 1000;
   // (its log's lines as its progress, when the client asks for it: the count, the last line redacted, #4734)
   const redactLine = progress ? await redactor() : null;
@@ -123,11 +147,7 @@ export async function runProcess(name, proc, { toolchain, node, timeoutS = 1800,
     throw toolError(signal?.aborted ? `the process ${proc} was cancelled: stopped` : `the process ${proc} did not end in ${timeoutS} s: stopped`);
   }
   const redact = await redactor();
-  const lines = job.lines.map(redact);
-  const paths = (await P.readSources(name).catch(() => [])).map(s => s.path);
-  const { errors, warnings, locations } = processMessages(lines, paths);
-  const tc = ['silinx', 'vivado'].includes(job.meta?.toolchain) ? job.meta.toolchain : 'ise';
-  return { top: node === undefined ? pj.top : node === '*' ? 'System' : `node ${node}`, lines, errors, warnings, locations, paths, ok: job.status === 'ok', silinx: tc === 'silinx', toolchain: tc };
+  return job.lines.map(redact);
 }
 
 // run_process's bounds (#3408): how long it waits (then the process is stopped), the lines of the log returned
@@ -136,11 +156,11 @@ const PROCESS_LIMITS = Object.freeze({ timeoutS: 7200, logLines: 1000 });
 export const PROCESS_TOOLS = [
   {
     name: 'run_process', title: 'Run a process',
-    description: 'Run a process of the project\'s top module and wait for it: synthesize, implement, bitstream (Generate Programming File), timing, power, pins (Back-annotate Pin Locations), post_synthesis_model / post_translate_model / post_map_model / post_par_model (Generate Post-… Simulation Model; then simulate with model). The Silinx toolchain by default; toolchain ise for Xilinx ISE when configured. A 7-series device is implemented by AMD Vivado (toolchain vivado; no simulation models), the Artix-7 and the Zynq-7000\'s logic also by the Silinx toolchain on trial (toolchain silinx, or synthesis tool silinx). Returns the errors, the warnings (locations: their files and lines) and the end of the log.',
+    description: 'Run a process of the project\'s top module and wait for it: synthesize, implement, bitstream (Generate Programming File), timing, power, pins (Back-annotate Pin Locations), post_synthesis_model / post_translate_model / post_map_model / post_par_model (then simulate with model); firmware: an Arduino node\'s sketch to its .hex (arduino-cli). The Silinx toolchain by default; toolchain ise for Xilinx ISE when configured. A 7-series device: AMD Vivado (toolchain vivado; no simulation models), the Artix-7 and the Zynq-7000\'s logic also the Silinx toolchain on trial (toolchain silinx). Returns the errors, the warnings (their files and lines) and the log\'s end.',
     inputSchema: { type: 'object', properties: {
-      project: PROJECT, process: { type: 'string', enum: Object.keys(PROCESSES), description: 'The process.' },
+      project: PROJECT, process: { type: 'string', enum: [...Object.keys(PROCESSES), 'firmware'], description: 'The process.' },
       toolchain: { type: 'string', enum: ['silinx', 'ise', 'vivado'], description: 'The toolchain (default: the project\'s synthesis tool, else Toolchain Settings).' },
-      node: STR('A System FPGA node\'s id (* all).'),
+      node: STR('A System node\'s id (* all): an FPGA\'s; firmware: an Arduino\'s.'),
       log_lines: { type: 'integer', description: `The lines of the end of the log returned (default 40; from 1 to ${PROCESS_LIMITS.logLines}).` },
       timeout_s: { type: 'integer', description: `How long to wait, in seconds (default 1800; from 1 to ${PROCESS_LIMITS.timeoutS}): then the process is stopped.` },
     }, required: ['project', 'process'], additionalProperties: false },
@@ -150,7 +170,7 @@ export const PROCESS_TOOLS = [
       if (!Number.isInteger(timeoutS) || timeoutS < 1 || timeoutS > PROCESS_LIMITS.timeoutS) throw toolError(`timeout_s: from 1 to ${PROCESS_LIMITS.timeoutS} s`);
       const { top, lines, errors, warnings, locations, paths, ok, toolchain: tc } = await runProcess(name, proc, { toolchain, node, timeoutS, signal, progress });
       // (a project shared live: its followers see the run, #4002)
-      await (await import('./mcp-collab.js')).sharedRun(name, { steps: PROCESSES[proc], ok, warnings, lines }).catch(() => {});
+      await (await import('./mcp-collab.js')).sharedRun(name, { steps: PROCESSES[proc] || [proc], ok, warnings, lines }).catch(() => {});
       const pj = { top };
       const head = `Process "${proc}" of <${pj.top}> ${ok ? `completed successfully${warnings.length ? ` with ${warnings.length} warning(s)` : ''}` : `failed (${errors.length} error(s), ${warnings.length} warning(s))`} (${TOOLCHAIN_NAMES[tc]}).`;
       return { text: processText({ errors, warnings, lines, head, logLines }),
