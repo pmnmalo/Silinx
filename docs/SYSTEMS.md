@@ -261,7 +261,16 @@ it needs the emulation.
   gives a `.hex`.
 - **MPLAB X's simulator is the oracle** (#5483): the same `.hex` in both, compared trace by trace, as ISE is the open
   toolchain's.
-- **Its node:** the board's drawing and the node kind (#5484).
+- **Its node** (#5484): the Explorer 16/32 is a microcontroller's board of the System (`explorer-1632`, `core/system-doc.js`
+  MCU_BOARDS: the PIC24FJ1024GB610, its 84 port pins RA0–RG15 at 3.3 V, its UART the USB-UART's pins, TX RF5 and RX
+  RF4, whichever UART module the program maps there through PPS). Its engine (`core/system-sim-pic24.js`) is
+  silinx-pic24's `Pic24Node` with the board around it (`Explorer1632`: the buttons' pull-ups, the potentiometer, the
+  temperature sensor, the LCD, the EEPROM), behind the node contract (`pic24Contract`, its fidelity notes); its firmware
+  is a `.hex` (no `.elf`). The System editor's **Explorer 16/32** places one; the check warns of a 5 V output on its 3.3 V
+  inputs as on an FPGA's; a System's UART link takes the USB-UART's place (a terminal node is the computer on its USB).
+  A drawing in its folder has no C yet (#5552: the generated C is an Arduino's sketch). Its parts still to come (the
+  plan in #5484): the board drawn (the System Emulator, the circuit's part: its LEDs, buttons, potentiometer and LCD),
+  SPI and I²C as links, an example System for the course.
 - **XC16 in the browser, an experiment** (#5491). XC16 is GCC 4.5.1 with Microchip's pic30 back end and binutils,
   whose GPL source Microchip publishes ("MPLAB XC16 C-Compiler Source"); the native build from it already needs
   patches. The experiment builds `cc1`, `as` and `ld` with Emscripten, chained by a driver of Silinx's own (as the
@@ -330,7 +339,7 @@ board, device, top module and constraints) and no link. The MCP's `project_info`
 | Node | Holds | Board |
 |---|---|---|
 | FPGA | a module of the System project (HDL or a drawing) as the node's top | a Silinx board and its pins |
-| Microcontroller | its firmware: an `.hex` / `.elf` / `.uf2` given, later a C / Arduino sketch compiled on the server, or MicroPython (`.py`) | Arduino Uno / Nano (ATmega328P), Raspberry Pi Pico (RP2040), ESP32 DevKit, ESP32-C3 |
+| Microcontroller | its firmware: an `.hex` / `.elf` / `.uf2` given, later a C / Arduino sketch compiled on the server, or MicroPython (`.py`) | Arduino Uno / Nano (ATmega328P), the Explorer 16/32 (PIC24FJ1024GB610, a `.hex`, #5484), Raspberry Pi Pico (RP2040), ESP32 DevKit, ESP32-C3 |
 | Circuit | a `.circ.json` (breadboards, 74xx, an Arduino on a breadboard) | — |
 | Peripheral | a model: a serial terminal, a potentiometer (ADC), an I²C sensor, an OLED, a servo, an MQTT broker, a VGA monitor | — |
 | Zynq (with its roadmap) | the PS's program and the PL's module | Zybo Z7, Arty Z7 |

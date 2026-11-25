@@ -186,6 +186,9 @@ export async function createApp({ host = '127.0.0.1', token = null, codes = crea
   app.use('/packages/silinx-fpga/src', asset(path.join(ROOT, 'packages/silinx-fpga/src')));
   // the HDL front end's package (silinx-hdl, #1710): its code, which core/'s re-exports import
   app.use('/packages/silinx-hdl/src', asset(path.join(ROOT, 'packages/silinx-hdl/src')));
+  // the PIC24 emulator's package (silinx-pic24, #5480): its code, which a System's PIC24 node imports (#5484)
+  // (its .js files only: what the page imports, nothing else of the folder)
+  app.use('/packages/silinx-pic24/src', (req, res, next) => (/^(?!.*\.\.)\/[\w./-]+\.js$/.test(decodedPath(req)) ? next() : res.status(404).end()), asset(path.join(ROOT, 'packages/silinx-pic24/src')));
   app.use('/vendor/elk', asset(path.join(ROOT, 'node_modules/elkjs/lib')));
   // the editor's ES modules (CodeMirror 6): the packages the import map of web/index.html names, only
   // (avr8js's ES modules import each other with no extension, './cpu/cpu', '..': resolved as a bundler does, the Systems

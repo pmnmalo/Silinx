@@ -94,6 +94,14 @@ export function changeNode(sys, id, fields = {}) {
   if (n.kind === 'mcu' && fields.board != null) {
     const b = mcuBoard(fields.board);
     if (!b) return { error: `no microcontroller board '${fields.board}': ${MCU_BOARDS.map(m => m.id).join(', ')}` };
+    // (its UART named as the old board's: the new board's, its links following; an Uno's Serial, an Explorer 16/32's
+    // UART, #5484)
+    const was = mcuBoard(n.board), ours = Object.keys(b.uarts);
+    for (const f of n.interfaces) {
+      if (f.kind !== 'uart' || !was?.uarts?.[f.name] || b.uarts[f.name] || ours.length !== 1 || n.interfaces.some(g => g.name === ours[0])) continue;
+      renameEnds(out, { node: n.id, iface: f.name, toIface: ours[0] });
+      f.name = ours[0];
+    }
     n.board = b.id;
   } else if (fields.board !== undefined) n.board = fields.board || null;
   if (fields.module !== undefined) n.module = fields.module || null;

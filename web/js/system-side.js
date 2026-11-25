@@ -5,7 +5,7 @@
 // why in the console (opts.onMessage).
 import { h } from './ui.js';
 import { BOARDS } from '/core/devices.js';
-import { MCU_BOARDS } from '/core/system-doc.js';
+import { MCU_BOARDS, mcuBoard } from '/core/system-doc.js';
 import { BAUDS } from '/core/uart.js';
 import { changeNode, changeInterface, addInterface, removeInterface, changeLink, NODE_KIND_NAMES } from '/core/system-edit.js';
 
@@ -50,12 +50,14 @@ export function mountSystemSide(ctx) {
         btn('+ SPI', 'Add an SPI bus, the peripheral: its SCK, MOSI, MISO and SS ports', () => take(addInterface(M(), n.id, { kind: 'spi', ...spiPorts(n) }), 'iface'), 'asm-small sys-add-spi'),
         btn('+ I²C', 'Add an I²C bus, the peripheral: its SCL port and its SDA, an inout port', () => take(addInterface(M(), n.id, { kind: 'i2c', ...i2cPorts(n) }), 'iface'), 'asm-small sys-add-i2c')));
     } else if (n.kind === 'mcu') {
-      const fw = opts.firmwares?.(n.id) || [];   // (its folder's, #5488)
+      const pic = mcuBoard(n.board)?.arch === 'pic24';
+      const fw = (opts.firmwares?.(n.id) || []).filter(f => !pic || /\.hex$/i.test(f));   // (its folder's, #5488; a PIC24's .hex only, #5484)
       out.push(field('Board', choose(n.board, MCU_BOARDS.map(b => [b.id, b.name]), v => take(changeNode(M(), n.id, { board: v }), 'node'), 'sys-board')),
-        field('Firmware', choose(n.firmware || '', [['', '(none)'], ...[...new Set([...fw, ...(n.firmware ? [n.firmware] : [])])].map(f => [f, f])], v => take(changeNode(M(), n.id, { firmware: v }), 'node'), 'sys-firmware'), 'a .hex or an .elf of the project'),
+        field('Firmware', choose(n.firmware || '', [['', '(none)'], ...[...new Set([...fw, ...(n.firmware ? [n.firmware] : [])])].map(f => [f, f])], v => take(changeNode(M(), n.id, { firmware: v }), 'node'), 'sys-firmware'), pic ? 'a .hex of the project (XC16\'s)' : 'a .hex or an .elf of the project'),
+        // (the Explorer 16/32's SPI and I²C links: #5484's next part)
         h('div', { class: 'asm-row' }, btn('+ GPIO', 'Add GPIO wires: the board\'s pins and their direction', () => take(addInterface(M(), n.id, { kind: 'gpio' }), 'iface'), 'asm-small sys-add-gpio'),
-          btn('+ SPI', 'Add the board\'s SPI bus, the master: SCK D13, MOSI D11, MISO D12, SS D10', () => take(addInterface(M(), n.id, { kind: 'spi' }), 'iface'), 'asm-small sys-add-spi'),
-          btn('+ I²C', 'Add the board\'s I²C bus (Wire), the master: SCL A5, SDA A4', () => take(addInterface(M(), n.id, { kind: 'i2c' }), 'iface'), 'asm-small sys-add-i2c')));
+          ...(pic ? [] : [btn('+ SPI', 'Add the board\'s SPI bus, the master: SCK D13, MOSI D11, MISO D12, SS D10', () => take(addInterface(M(), n.id, { kind: 'spi' }), 'iface'), 'asm-small sys-add-spi'),
+            btn('+ I²C', 'Add the board\'s I²C bus (Wire), the master: SCL A5, SDA A4', () => take(addInterface(M(), n.id, { kind: 'i2c' }), 'iface'), 'asm-small sys-add-i2c')])));
     } else if (n.kind === 'circuit') {
       // (its circuit, #5215: a .circ.json of the project, its boards the nodes their labels name)
       const cs = opts.circuits?.(n.id) || [];   // (its folder's, #5488)
@@ -102,7 +104,7 @@ export function mountSystemSide(ctx) {
       hz.addEventListener('change', () => change({ hz: Math.round(+hz.value) }));
       out.push(field('SCL rate (Hz)', hz, 'at least the program\'s: 100000 with Wire'));
     } else {
-      out.push(field('Pins', text(f.pins.join(', '), v => change({ pins: v.split(/[,;\s]+/).filter(Boolean) }), 'mono sys-pins'), n.kind === 'fpga' ? 'the module\'s ports, a bus\'s bit as led<0>' : 'the board\'s pins: D2, A0…'),
+      out.push(field('Pins', text(f.pins.join(', '), v => change({ pins: v.split(/[,;\s]+/).filter(Boolean) }), 'mono sys-pins'), n.kind === 'fpga' ? 'the module\'s ports, a bus\'s bit as led<0>' : mcuBoard(n.board)?.arch === 'pic24' ? 'the board\'s pins: RA0, RD6…' : 'the board\'s pins: D2, A0…'),
         field('Direction', choose(f.dir, [['in', 'in'], ['out', 'out']], v => change({ dir: v }), 'sys-dir')));
     }
     if (n.kind === 'fpga' || f.kind !== 'uart') out.push(h('div', { class: 'asm-row' }, btn('Remove Interface', 'Remove the interface and its link', () => { if (apply(removeInterface(M(), nid, name))) setSel({ kind: 'node', id: nid }); }, 'asm-small asm-danger')));

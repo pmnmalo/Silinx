@@ -4,7 +4,7 @@
 //
 //   { format: 'silinx-system', version: 1, name,
 //     nodes: [ { id, kind: 'fpga', module, board, variant?, pins: { <port>: <pin of the board> }, lang, interfaces, x, y }
-//              { id, kind: 'mcu', board: 'arduino-uno' | 'arduino-nano', firmware: <a .hex / .elf of the project>, lang, interfaces, x, y }
+//              { id, kind: 'mcu', board: 'arduino-uno' | 'arduino-nano' | 'explorer-1632', firmware: <a .hex / .elf of the project>, lang, interfaces, x, y }
 //              { id, kind: 'terminal', interfaces, x, y }
 //              { id, kind: 'circuit', circuit: <a .circ.json of the project>, interfaces: [], x, y } ],
 //     links: [ { id, kind: 'uart' | 'gpio' | 'spi' | 'i2c', a: '<node>.<interface>', b: '<node>.<interface>' } ] }
@@ -48,11 +48,19 @@ export const FRAME_RE = /^[5-8][NEO][12]$/;
 
 const digital = n => Array.from({ length: n }, (_, i) => `D${i}`);
 const analog = n => Array.from({ length: n }, (_, i) => `A${i}`);
-/** The microcontrollers' boards: their pins, their I/O voltage, their UARTs ({ name: { tx, rx } }), their SPI buses
- *  ({ name: { sck, mosi, miso, ss } }), their I²C buses ({ name: { scl, sda } }). */
+// the PIC24FJ1024GB610's port pins (100 pins: PORTA to PORTG, those its package has)
+const PIC24_PINS = { A: [0, 1, 2, 3, 4, 5, 6, 7, 9, 10, 14, 15], B: [...Array(16).keys()], C: [1, 2, 3, 4, 12, 13, 14, 15],
+  D: [...Array(16).keys()], E: [...Array(10).keys()], F: [0, 1, 2, 3, 4, 5, 7, 8, 12, 13], G: [0, 1, 2, 3, 6, 7, 8, 9, 12, 13, 14, 15] };
+const pic24Pins = () => Object.entries(PIC24_PINS).flatMap(([p, bits]) => bits.map(b => `R${p}${b}`));
+/** The microcontrollers' boards: their engine (`arch`: avr, avr8js's; pic24, silinx-pic24's), their pins, their I/O
+ *  voltage, their firmware's kinds (`firmwares`: its files' extensions), their UARTs ({ name: { tx, rx } }), their SPI buses ({ name: { sck, mosi, miso, ss } }), their I²C buses
+ *  ({ name: { scl, sda } }). The Explorer 16/32's UART is its USB-UART's pins (the MCP2221A's: the device's TX RF5, its
+ *  RX RF4), any UART module its program maps there through PPS; its clock the 8 MHz crystal (Fcy its configuration
+ *  words'). */
 export const MCU_BOARDS = [
-  { id: 'arduino-uno', name: 'Arduino Uno', mcu: 'ATmega328P', clockHz: 16e6, vio: 5, pins: [...digital(14), ...analog(6)], uarts: { Serial: { tx: 'D1', rx: 'D0' } }, spis: { SPI: { sck: 'D13', mosi: 'D11', miso: 'D12', ss: 'D10' } }, i2cs: { Wire: { scl: 'A5', sda: 'A4' } } },
-  { id: 'arduino-nano', name: 'Arduino Nano', mcu: 'ATmega328P', clockHz: 16e6, vio: 5, pins: [...digital(14), ...analog(8)], inputOnly: ['A6', 'A7'], uarts: { Serial: { tx: 'D1', rx: 'D0' } }, spis: { SPI: { sck: 'D13', mosi: 'D11', miso: 'D12', ss: 'D10' } }, i2cs: { Wire: { scl: 'A5', sda: 'A4' } } },
+  { id: 'arduino-uno', name: 'Arduino Uno', arch: 'avr', mcu: 'ATmega328P', clockHz: 16e6, vio: 5, pins: [...digital(14), ...analog(6)], firmwares: ['hex', 'elf'], uarts: { Serial: { tx: 'D1', rx: 'D0' } }, spis: { SPI: { sck: 'D13', mosi: 'D11', miso: 'D12', ss: 'D10' } }, i2cs: { Wire: { scl: 'A5', sda: 'A4' } } },
+  { id: 'arduino-nano', name: 'Arduino Nano', arch: 'avr', mcu: 'ATmega328P', clockHz: 16e6, vio: 5, pins: [...digital(14), ...analog(8)], firmwares: ['hex', 'elf'], inputOnly: ['A6', 'A7'], uarts: { Serial: { tx: 'D1', rx: 'D0' } }, spis: { SPI: { sck: 'D13', mosi: 'D11', miso: 'D12', ss: 'D10' } }, i2cs: { Wire: { scl: 'A5', sda: 'A4' } } },
+  { id: 'explorer-1632', name: 'Explorer 16/32', arch: 'pic24', mcu: 'PIC24FJ1024GB610', clockHz: 8e6, vio: 3.3, pins: pic24Pins(), firmwares: ['hex'], uarts: { UART: { tx: 'RF5', rx: 'RF4' } }, spis: {}, i2cs: {} },
 ];
 /** A microcontroller's board by its id, or null. */
 export const mcuBoard = id => MCU_BOARDS.find(b => b.id === id) || null;

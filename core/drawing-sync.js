@@ -133,6 +133,7 @@ async function adoptCode(P, name, path, m, at) {
   const refusal = cpuDrawingRefusal(path, at.lang);
   if (refusal) return none([`WARNING: ${refusal}`]);
   const r = drawingC(path, JSON.stringify(m), { lang: at.lang, ...nodeCodeOpts(at.node) });
+  if (r.notMade) return none(r.errors.map(e => `WARNING: ${e}`));   // (a PIC24's C, #5552)
   if (r.errors.length || !r.text) return null;
   if ((await P.fileTree(name)).includes(r.target)) return none([`WARNING: ${path} has no ${codeName(at.lang)} file: ${r.target} exists already`]);
   await P.writeFile(name, r.target, r.text);

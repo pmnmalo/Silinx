@@ -36,12 +36,12 @@ import { drawWiring } from './system-wiring.js';
 const GRID = 20;
 const snap = v => Math.round(v / GRID) * GRID;
 // the tools that place a node: its kind and board
-const PLACE = { fpga: { kind: 'fpga' }, uno: { kind: 'mcu', board: 'arduino-uno' }, nano: { kind: 'mcu', board: 'arduino-nano' }, terminal: { kind: 'terminal' }, circuit: { kind: 'circuit' } };
+const PLACE = { fpga: { kind: 'fpga' }, uno: { kind: 'mcu', board: 'arduino-uno' }, nano: { kind: 'mcu', board: 'arduino-nano' }, explorer: { kind: 'mcu', board: 'explorer-1632' }, terminal: { kind: 'terminal' }, circuit: { kind: 'circuit' } };
 
 export function mountSystemEditor(container, opts = {}) {
   let M = normalizeSystem(opts.model || newSystem('system'));
   let sel = null;                        // { kind: 'node' | 'iface' | 'link', id } (an interface's id: node.name)
-  let tool = 'select';                   // select | fpga | uno | nano | terminal | circuit | link
+  let tool = 'select';                   // select | fpga | uno | nano | explorer | terminal | circuit | link
   let linkFrom = null;                   // the first end of a link being drawn ('node.iface')
   let view = { tx: 40, ty: 40, k: 1 }, drag = null, fitted = false, destroyed = false, said = null;
   let shown = 'system';                  // system | wiring (#5216)
@@ -63,6 +63,7 @@ export function mountSystemEditor(container, opts = {}) {
     fpga: btn('FPGA', 'Click the canvas to add an FPGA node: a module of the project on a board', () => setTool('fpga'), 'sys-tool asm-wide'),
     uno: btn('Arduino Uno', 'Click the canvas to add an Arduino Uno', () => setTool('uno'), 'sys-tool asm-wide'),
     nano: btn('Arduino Nano', 'Click the canvas to add an Arduino Nano', () => setTool('nano'), 'sys-tool asm-wide'),
+    explorer: btn('Explorer 16/32', 'Click the canvas to add an Explorer 16/32: a PIC24FJ1024GB610, its firmware a .hex', () => setTool('explorer'), 'sys-tool asm-wide sys-add-explorer'),
     terminal: btn('Terminal', 'Click the canvas to add a serial terminal', () => setTool('terminal'), 'sys-tool asm-wide'),
     circuit: btn('Circuit', 'Click the canvas to add a circuit node: a circuit of the project between the boards, its boards the nodes their labels name', () => setTool('circuit'), 'sys-tool asm-wide sys-add-circuit'),
     link: toolWide('arc', 'Link', 'Click an interface, then an interface of another node of its kind', () => setTool('link'), 'sys-tool'),

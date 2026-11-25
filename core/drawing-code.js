@@ -89,7 +89,11 @@ const pyBoardOf = (board) => (/^esp32/i.test(board ?? '') ? 'esp32' : /pico|rp20
  * language; pins: { port: [pins] }; board: the node's (core/system-doc.js MCU_BOARDS', or an ESP32's or a Pico's).
  */
 export function drawingC(path, text, { lang = 'c', pins = {}, board = null, tickMs } = {}) {
-  const fail = (module, messages) => ({ path, lang, text: '', module, target: null, errors: messages.map((m) => `${path}: ${m}`), warnings: [], pins: {}, ports: [] });
+  // (notMade: no generator yet for the node's board, said when the drawing is adopted, not an error of the drawing)
+  const fail = (module, messages, notMade = false) => ({ path, lang, text: '', module, target: null, errors: messages.map((m) => `${path}: ${m}`), warnings: [], pins: {}, ports: [], ...(notMade ? { notMade } : {}) });
+  // (the generated C is the Arduino's: a PIC24's, on its registers, is #5552's)
+  const b = board && lang !== 'micropython' ? mcuBoard(board) : null;
+  if (b && b.arch !== 'avr') return fail(null, [`a drawing's C for the ${b.name}'s ${b.mcu} is not made yet (#5552): only an Arduino's sketch is`], true);
   const r = reactiveFromFile(path, text);
   if (r.errors) return fail(null, r.errors.map((d) => d.message));
   const py = lang === 'micropython';

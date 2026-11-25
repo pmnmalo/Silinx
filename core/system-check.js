@@ -8,12 +8,12 @@
 //            ends; GPIO widths different; a pin driven twice; a pin (an interface) used by two links; an SPI or I²C
 //            link's master not a microcontroller, its peripheral not an FPGA, its rate (and SPI's mode) different at its
 //            ends; an I²C peripheral's SDA not an inout port (#5214)
-//   warning  a baud that is no standard rate; a GPIO wire nothing drives; a 5 V output on a 3.3 V FPGA's input; a node
+//   warning  a baud that is no standard rate; a GPIO wire nothing drives; a 5 V output on a 3.3 V input (an FPGA's, a PIC24's); a node
 //            that joins nothing (a circuit node's: core/system-check-circuit.js, #5215)
 // Each node's resolved pins are its typed ports (#5485, core/system-ports.js: a direction, a kind, a level), each wire's
 // ends checked against its link's kind (core/system-links.js endsProblem: the port kinds it joins, a driver and a driven
 // end); the levels are there for the 3.3 V / 5 V check (#5498).
-import { NODE_KINDS, LINK_KINDS, INTERFACE_KINDS, FRAME_RE, mcuBoard, linkEnd, nodeIdError } from './system-doc.js';
+import { NODE_KINDS, LINK_KINDS, INTERFACE_KINDS, FRAME_RE, MCU_BOARDS, mcuBoard, linkEnd, nodeIdError } from './system-doc.js';
 import { isName } from './ident.js';
 import { resolveBoard } from './devices.js';
 import { BAUDS } from './uart.js';
@@ -206,9 +206,10 @@ function checkMcu(n, at, { files }, { err, warn }) {
   const ref = node(n.id);
   const b = mcuBoard(n.board);
   if (!n.board) err(`${n.id}: a microcontroller with no board`, ref);
-  else if (!b) err(`${n.id}: no microcontroller board '${n.board}' (the boards: arduino-uno, arduino-nano)`, ref);
+  else if (!b) err(`${n.id}: no microcontroller board '${n.board}' (the boards: ${MCU_BOARDS.map(m => m.id).join(', ')})`, ref);
   if (n.firmware) {
-    if (!/\.(hex|elf)$/i.test(n.firmware)) err(`${n.id}: its firmware ${n.firmware} is not a .hex or an .elf`, ref);
+    const exts = b?.firmwares ?? ['hex', 'elf'], ext = /\.([a-z0-9]+)$/i.exec(n.firmware)?.[1]?.toLowerCase();
+    if (!exts.includes(ext)) err(`${n.id}: its firmware ${n.firmware} is not ${exts.map(e => (e === 'elf' ? 'an .elf' : `a .${e}`)).join(' or ')}${b?.arch === 'pic24' ? ' (XC16\'s Intel HEX)' : ''}`, ref);
     else if (files && !files.includes(n.firmware)) err(`${n.id}: no firmware ${n.firmware} in the project`, ref);
   }
   const has = p => !b || b.pins.includes(String(p).toUpperCase());
@@ -351,8 +352,11 @@ function checkWire(l, x, y, byPin, { err, warn }) {
   // (its ends as typed ports against its link's kind, #5485: the port kinds it joins)
   const why = drv.dir === 'out' && rcv.dir === 'in' ? endsProblem(l.kind, typed(drv), typed(rcv)) : null;
   if (why) err(`${l.id}: ${why}`, ref);
-  if (drv.dir === 'out' && rcv.dir === 'in' && drv.volts === 5 && rcv.end.at.n.kind === 'fpga' && rcv.volts != null && rcv.volts < 5) {
-    warn(`${l.id}: ${pinName(drv)}, a 5 V output, drives ${pinName(rcv)}, a ${rcv.volts} V input of the FPGA${rcv.std ? ` (${rcv.std})` : ''}: a level shifter or a divider on the real boards`, ref);
+  // (a 5 V output on an FPGA's input, or on a 3.3 V microcontroller's: the PIC24's, #5484)
+  const rk = rcv.end.at.n.kind;
+  if (drv.dir === 'out' && rcv.dir === 'in' && drv.volts === 5 && (rk === 'fpga' || rk === 'mcu') && rcv.volts != null && rcv.volts < 5) {
+    const of = rk === 'fpga' ? 'the FPGA' : `the ${mcuBoard(rcv.end.at.n.board)?.name ?? rcv.end.at.n.board}`;
+    warn(`${l.id}: ${pinName(drv)}, a 5 V output, drives ${pinName(rcv)}, a ${rcv.volts} V input of ${of}${rcv.std ? ` (${rcv.std})` : ''}: a level shifter or a divider on the real boards`, ref);
   }
 }
 

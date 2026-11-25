@@ -7,6 +7,7 @@
 import { systemPlan, buildSystem, wireFrames } from './system-build.js';
 import { compiledNodeModel } from './system-sim-compiled.js';
 import { loadAvr8js } from './system-sim-avr.js';
+import { mcuBoard } from './system-doc.js';
 import { linkTraffic, usText, decodeSpi, spiWarnings, decodeI2c, i2cWarnings, wiredAnd } from './system-decode.js';
 import { regAccesses, accessText } from './regmap-decode.js';
 import { normalizeCircuit } from './circuit.js';
@@ -55,7 +56,7 @@ export function systemFromInputs(sys, { plan, netlists, firmware, regmaps = {} }
 /** The System ready to run here: systemInputs, then systemFromInputs. */
 export async function prepareSystem(sys, opts) {
   const inputs = await systemInputs(sys, opts);
-  if (sys.nodes.some(n => n.kind === 'mcu')) await loadAvr8js();
+  if (sys.nodes.some(n => n.kind === 'mcu' && mcuBoard(n.board)?.arch !== 'pic24')) await loadAvr8js();
   return inputs.error ? inputs : systemFromInputs(sys, inputs);
 }
 
