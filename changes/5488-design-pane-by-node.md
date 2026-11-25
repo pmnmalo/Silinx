@@ -15,3 +15,7 @@ In detail:
   `new_source` the same (its location a node's folder, or none: the first FPGA node's). `core/system-layout.js`
   sourcePlace is both's. The MCP's `project_info` gives a System's node its folder and the files in it (`folder`,
   `inFolder`; its nodes' line their count).
+- **A System project's node folders kept as it leaves the workspace and comes back (#5488):** a zip exported and
+  imported, a git clone (a drawing of a node's folder committed and diffed by its objects), a project shared live and
+  followed: each node's files in the same folder, its System the same, checked as before (a test of each,
+  `test/system-folders-roundtrip.test.js`).
