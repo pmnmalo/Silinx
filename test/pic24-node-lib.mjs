@@ -13,11 +13,14 @@ const FWDT = 0x0abf20, FWDT_OFF = 0xffff9f;
 // (the SFRs: TRISA 0x0662, LATA 0x0666, ANSA 0x066a; PORTD 0x06a0, ANSD 0x06a6; UART2's 0x03ae…; RPINR19, RPOR8)
 const START = ['goto main', '.org 0x200', 'main: mov #0x0900, w15'];
 
-/** A program's .hex: its words from 0, then the configuration word FWDT (the watchdog off). */
-export function hexOf(lines) {
-  const { words } = pic24Assemble([...START, ...lines]);
+/** A program's .hex (its source's lines, from address 0): its words, then the configuration word FWDT (the watchdog
+ *  off): an example's firmware (examples/uart-pic24/pic/lcd_uart.asm). */
+export function asmHex(lines) {
+  const { words } = pic24Assemble(lines);
   return writeHex(words).replace(/:00000001FF\n$/, '') + writeHex([FWDT_OFF], FWDT >> 1);
 }
+/** A program's .hex, its lines after a GOTO to 0x200 and the stack set. */
+export const hexOf = (lines) => asmHex([...START, ...lines]);
 
 const BUTTONS = [
   'clr 0x066a', 'clr 0x06a6', 'mov #0xff00, w0', 'mov w0, 0x0662',

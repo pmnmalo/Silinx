@@ -275,7 +275,8 @@ it needs the emulation.
   whose pin a link drives is not one), its potentiometer R6 and its temperature sensor set on the board's model; the
   MCP's `simulate` with `controls` sets them (`S3` on, `R6` a value from 0 to 1, `TC1047A` in °C) and says what the
   board shows. The static editions bundle silinx-pic24 in the System's worker. Its parts still to come (the plan in
-  #5484): the board as a circuit's part, SPI and I²C as links, an example System for the course.
+  #5484): the board as a circuit's part, SPI and I²C as links. The **uart-pic24** example is its System for the course
+  (below, Example systems for a course).
 - **XC16 in the browser, an experiment** (#5491). XC16 is GCC 4.5.1 with Microchip's pic30 back end and binutils,
   whose GPL source Microchip publishes ("MPLAB XC16 C-Compiler Source"); the native build from it already needs
   patches. The experiment builds `cc1`, `as` and `ld` with Emscripten, chained by a driver of Silinx's own (as the
@@ -659,6 +660,12 @@ Web Serial is in Chrome, Edge and Firefox. It is not in Safari nor on the iPad, 
    The broker is a node of Silinx's. It teaches IoT and topics.
 5. **Precise PWM.** The AVR computes the servos' positions; the FPGA generates eight exact PWMs.
 6. **Zynq.** The A9's C writes the student's module's AXI-Lite registers.
+7. **`uart-pic24`** (#5484). The PIC24 course's board, the Explorer 16/32, with an FPGA: the PIC24 writes its title on
+   its LCD, sends "Hi from PIC24!" over UART (UART2 on the USB-UART's pins through PPS, 9600 baud), and shows on the
+   LCD's second row each byte the FPGA echoes back or sends (its BTN0: "Hello from Silinx!"), the last one on its LEDs;
+   the FPGA (the uart example's module) shows them on its LEDs. Both sides are at 3.3 V: no level shifter. Its firmware
+   is `pic/lcd_uart.asm`, assembled into `pic/lcd_uart.hex` by the tests' assembler (XC16 is #5482's). It teaches
+   PPS, a UART polled while it sends (its 4-byte receive buffer) and a character LCD through the PMP.
 
 A scenario test fits `grade` and the labs: press the Arduino's button, expect "OK" on the FPGA's UART.
 
