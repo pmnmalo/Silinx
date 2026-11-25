@@ -142,7 +142,8 @@ test('#5503 the real arduino-cli: a sketch compiled, its .hex read as the Board 
     const e = await waitJob(jobs, (await startFirmwareCompile(name, { node: 'uno' })).id, { timeoutMs: 280000 });
     assert.equal(e.status, 'error');
     assert.ok(e.lines.some(l => /^ERROR: uno\/hello\.ino:3:3: 'digitalWrit' was not declared in this scope/.test(l)), e.lines.join('\n'));
-    // (#5486's generated C: a state diagram drawn in the uno node, its sketch uno/traffic.ino, compiled)
+    // (#5486's generated C: a state diagram drawn in the uno node, its C uno/traffic.c and the node's sketch uno/uno.ino
+    // calling it, compiled)
     const d = await project({});
     const fsm = JSON.parse(fs.readFileSync(path.join(ROOT, 'examples/traffic/src/traffic.fsm.json'), 'utf8'));
     delete fsm.generatedFile;
@@ -150,7 +151,7 @@ test('#5503 the real arduino-cli: a sketch compiled, its .hex read as the Board 
     const g = await waitJob(jobs, (await startFirmwareCompile(d, { node: 'uno' })).id, { timeoutMs: 280000 });
     assert.equal(g.status, 'ok', g.lines.join('\n'));
     assert.deepEqual(g.lines.filter(l => /^(ERROR|WARNING)/.test(l)), [], 'no warning');
-    assert.equal(g.lines[0], 'System node uno: its sketch uno/traffic.ino (1 file(s) of uno/) for arduino-uno (arduino:avr:uno), by arduino-cli, in build/nodes/uno/firmware/.');
+    assert.equal(g.lines[0], 'System node uno: its sketch uno/uno.ino (2 file(s) of uno/) for arduino-uno (arduino:avr:uno), by arduino-cli, in build/nodes/uno/firmware/.');
     assert.ok(!readFirmware('uno/hello.hex', hexOf(d, 'uno/hello.hex')).error);
   } finally { await writeConfig({ mode: 'silinx', paths: { 'arduino-cli': STUB } }); }
 });

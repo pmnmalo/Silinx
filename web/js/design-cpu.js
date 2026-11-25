@@ -1,7 +1,7 @@
 // The Design pane's row of a drawing in a System's CPU node (#5486, docs/SYSTEMS.md): a state diagram, an ASM chart, a
 // Petri net or a truth table in a microcontroller node (its base language C, C++ or MicroPython) is its board's program,
 // no module of the FPGA's design: its row is named after its module, its drawing's badge first (the base, Open), its
-// node's language's last ([C], [C++], [Py]), its generated code (core/drawing-code.js, `<module>.ino` or `<module>.py`
+// node's language's last ([C], [C++], [Py]), its generated code (core/drawing-code.js, `<module>.c`, `.cpp` or `.py`
 // next to it, #5487, linked by generatedFile), opened from it. Not made (errors) or not made again (errors since): the
 // badge marked, its tip why.
 import { designState } from './state-design.js';

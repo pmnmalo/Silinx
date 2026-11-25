@@ -1,7 +1,8 @@
 // Silinx - a System's Arduino node's firmware compiled by the local server (#5503, roadmap #4695's phase 5,
 // docs/SYSTEMS.md): its node's Compile Firmware, for the interface (POST /projects/:p/firmware with { node }) and the
 // MCP's run_process (process firmware, node). arduino-cli, which the user installs with its Arduino AVR core (Silinx
-// installs nothing), compiles the node's sketch (its folder's .ino, C and C++: core/avr-compile.js) for its board, in a
+// installs nothing), compiles the node's sketch (its folder's .ino, C and C++: core/avr-compile.js; the one its drawings
+// make, core/node-main-sync.js, made again first) for its board, in a
 // folder of its own, build/nodes/<id>/firmware/; its .hex is written to the node's folder, the node's firmware (set to it
 // when it had none), which the Board Emulator runs on avr8js. The compiler's errors and warnings are the job's ERROR and
 // WARNING lines, by the project's file and line, as Check Syntax's.
@@ -15,6 +16,8 @@ import { isSystemFile, readSystem, writeSystem } from '../core/system-doc.js';
 import { changeNode } from '../core/system-edit.js';
 import { AVR_CORE, AVR_FQBN, compilerMessages, firmwareRefusal, nodeSketch, sketchFileOf } from '../core/avr-compile.js';
 import { readFirmware } from '../core/avr-firmware.js';
+import { syncNodeMain } from '../core/node-main-sync.js';
+import { baseLang } from '../core/system-layout.js';
 import { isTrusted, untrustedMessage } from '../core/trust.js';
 
 const running = new Map();   // project -> job id
@@ -77,7 +80,10 @@ async function sketchDir(name, node, sketch) {
 
 // one node's firmware compiled: its lines logged, its .hex written; its result
 async function compileOne(job, name, sys, node, bin) {
-  const sketch = nodeSketch(node, sys.files);
+  // (the node's sketch made from its drawings made again first: a drawing deleted since no longer called, #5486)
+  const main = await syncNodeMain(P, name, node, baseLang(node));
+  for (const l of main?.messages ?? []) job.log(l);
+  const sketch = nodeSketch(node, main?.written || main?.removed ? await P.fileTree(name) : sys.files);
   if (sketch.error) throw new Error(sketch.error);
   const { root, dir } = await sketchDir(name, node, sketch);
   const out = path.join(root, 'out');
