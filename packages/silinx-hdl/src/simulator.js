@@ -443,7 +443,7 @@ export class Simulator {
         this.processError(rt, e);
         return;
       }
-      if (r.done) { rt.done = true; if (rt.fork) this.threadDone(rt); return; }
+      if (r.done) { rt.done = true; if (rt.fork) this.threadDone(rt, r.value); return; }
       const req = r.value;
       if (req.delay !== undefined) {
         // VHDL `wait for 0 ns` resumes after the pending signal updates (next delta);
@@ -485,24 +485,32 @@ export class Simulator {
     }
     return F.woke;
   }
-  // child thread kid finished: wake the thread waiting on its fork / on `wait fork`
-  threadDone(kid) {
+  // child thread kid finished (res: its branch's result): wake the thread waiting on its fork / on `wait fork`
+  threadDone(kid, res) {
     const F = kid.fork, par = kid.parent;
     par.kids.delete(kid);
     F.left--;
+    // its branch disabled a block enclosing the fork (`disable w`, the event-with-a-timeout idiom): the fork's other
+    // branches end, and the waiting thread goes on with the disable, which leaves that block (IEEE 1364-2005 11, #5464)
+    if (res?.brk === 'disable' && !F.woke) {
+      for (const k of par.kids) if (k.fork === F) { this.killThread(k); par.kids.delete(k); }
+      F.woke = true; this.active.push({ rt: par, val: res });
+      return;
+    }
     if (!F.woke && (F.mode === 'any' || F.left === 0)) { F.woke = true; this.active.push({ rt: par, val: 'fork' }); }
     else if (par.waitKids && !par.kids.size) { par.waitKids = false; this.active.push({ rt: par, val: 'fork' }); }
   }
   // `disable fork`: terminate every child thread of rt (and their descendants)
   killKids(rt) {
     if (!rt.kids) return;
-    for (const kid of rt.kids) {
-      kid.done = true;
-      const rec = kid.rec;
-      if (rec && !rec.fired) { rec.fired = true; for (const tr of rec.triggers) tr.sig.waiters.delete(rec); }
-      this.killKids(kid);
-    }
+    for (const kid of rt.kids) this.killThread(kid);
     rt.kids.clear();
+  }
+  killThread(kid) {
+    kid.done = true;
+    const rec = kid.rec;
+    if (rec && !rec.fired) { rec.fired = true; for (const tr of rec.triggers) tr.sig.waiters.delete(rec); }
+    this.killKids(kid);
   }
 
   start() {

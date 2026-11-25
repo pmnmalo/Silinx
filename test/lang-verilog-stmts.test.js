@@ -534,6 +534,48 @@ test('named blocks with local variables; disable of a named block', () => {
   assert.deepEqual(r, ['k=0', 'k=1', 'k=2', 'after']);
 });
 
+// Regression (#5464): a branch's disable of the named block around a fork ends the fork's other branches (IEEE 1364-2005
+// 11: every activity in the block ends), the Verilog-2001 idiom of an event with a timeout; as Icarus and XSim
+test('disable of a named block from a fork branch ends the fork\'s other branches (#5464)', () => {
+  const run = mt => sim(vlog(`reg m;
+  initial begin m = 0;
+    begin : w
+      fork
+        begin #100; $display("timeout %0t", $time); disable w; end
+        begin @(m); $display("event %0t", $time); disable w; end
+      join
+    end
+    $display("after %0t", $time);
+  end
+  initial begin #${mt} m = 1; #1000 $finish; end`));
+  const timeout = run(120), event = run(40);
+  assert.deepEqual(timeout.out, ['timeout 100', 'after 100']);
+  assert.deepEqual(event.out, ['event 40', 'after 40']);
+  assert.deepEqual([...warningsOf(timeout), ...warningsOf(event)], []);
+  // two levels: a nested fork's branch disables the outer block (both forks end); a block inside a branch disabled
+  // ends that branch only (the fork waits for the other one)
+  const nested = sim(vlog(`initial begin
+    begin : outer
+      fork
+        fork
+          begin #10 $display("inner %0t", $time); disable outer; end
+          begin #50 $display("inner late %0t", $time); end
+        join
+        begin #60 $display("outer late %0t", $time); end
+      join
+    end
+    $display("after outer %0t", $time);
+    fork
+      begin : b1 #5 disable b1; $display("not shown"); end
+      begin #20 $display("b2 %0t", $time); end
+    join
+    $display("after join %0t", $time);
+    #100 $finish;
+  end`));
+  assert.deepEqual(nested.out, ['inner 10', 'after outer 10', 'b2 30', 'after join 30']);
+  assert.deepEqual(warningsOf(nested), []);
+});
+
 test('VHDL and Verilog agree: a 4-bit counter with synchronous reset and enable', () => {
   const vl = out(`
 module cnt(input clk, rst, en, output reg [3:0] q);

@@ -841,10 +841,12 @@ export function* exec(s, ctx) {
     case 'textio': textio(s, ctx); return;
     // Verilog fork / join: the simulator starts one child thread per branch (sharing this frame)
     // and resumes this one when all (join) / any (join_any) / none (join_none) of them are done.
-    case 'fork':
+    // A branch's `disable` of a block enclosing the fork ended its other branches: it goes on from here (#5464).
+    case 'fork': {
       ctx.loc = s.loc;
-      if (s.branches.length) yield { fork: s, ctx };
-      return;
+      const r = s.branches.length ? yield { fork: s, ctx } : undefined;
+      return r?.brk === 'disable' ? r : undefined;
+    }
     case 'waitfork': yield { waitFork: true }; return;
     case 'disablefork': yield { disableFork: true }; return;
     case 'report': {
