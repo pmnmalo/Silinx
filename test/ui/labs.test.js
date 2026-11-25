@@ -51,6 +51,26 @@ async function runProcess(page, name) {
   return page.eval((c) => window.__console().slice(c), before);
 }
 
+// #5590: a step chosen in the Steps panel, its save slow (held in the page), the lab closed and opened again at once:
+// opened at that step, its save waited for (before, the progress file as it was: the step checked last)
+uiTest('#5590 a step chosen and the lab opened again at once: opened at that step, its save waited for', E, async (page) => {
+  await makeProject(env, { name: 'gatesStep', template: 'gates' });
+  await page.openProject('gatesStep');
+  await openLab(page, LAB);
+  await page.eval(() => {
+    const f = window.fetch;
+    window.fetch = async (u, o) => { if (o?.method === 'PUT' && String(u).includes('progress.json')) await new Promise((r) => setTimeout(r, 1000)); return f(u, o); };
+  });
+  const num = () => page.eval((d) => document.querySelector(`${d} .lab-num`).textContent, D);
+  await page.click(`${D} .lab-step`, { index: 2 });
+  assert.equal(await num(), 'Step 3 of 5');
+  await page.eval((id) => window.SilinxApp.closeDoc(window.SilinxApp.findDoc(`lab:${id}`), { force: true }), LAB);
+  await openLab(page, LAB);
+  assert.equal(await num(), 'Step 3 of 5', 'opened at the step chosen');
+  assert.equal(JSON.parse(await readWs(env, 'gatesStep', 'labs/progress.json'))[LAB].step, 3);
+  assert.deepEqual(await page.eval(() => [...document.querySelectorAll('#console-log .ln')].map((l) => l.textContent).filter((l) => /^(WARNING|ERROR)/.test(l))), []);
+});
+
 uiTest('#3179 a guided lab: the gates example\'s first steps run step by step (the right action ticks a step, a wrong one does not, its hint then), resumed, restarted; its Steps panel folded and on a narrow window; Portuguese', E, async (page) => {
   await makeProject(env, { name: 'gates', template: 'gates' });
   await page.setViewport(1366, 768);

@@ -44,7 +44,10 @@ function projectIo(name) {
   };
 }
 
-const readProgress = async name => { try { return parseProgress(await api.readFile(name, PROGRESS_FILE)); } catch { return {}; } };
+// (#5590: a project's saves of its progress one after another, a read after the ones made before it: a step chosen
+// and the lab opened again at once reads it, not the file as it was)
+const saving = new Map();
+const readProgress = async name => { await saving.get(name); try { return parseProgress(await api.readFile(name, PROGRESS_FILE)); } catch { return {}; } };
 /** The labs the project `name` can run (core/labs.js listLabs): { labs, problems }. */
 async function projectLabs(name) {
   const pj = await api.project(name);
@@ -154,7 +157,13 @@ function mountLab(el, doc, lab) {
   el.append(root);
   mountSideFold({ root, side, key: 'silinx.lab.steps.folded', titles: { fold: 'Collapse the Steps panel', unfold: 'Expand the Steps panel' } });
 
-  const save = () => api.writeFile(name, PROGRESS_FILE, progressText(all)).catch(e => log(`WARNING: the lab's progress is not saved (${PROGRESS_FILE}: ${e.message})`, 'warn'));
+  const save = () => {
+    const text = progressText(all);
+    const done = (saving.get(name) || Promise.resolve()).then(() => api.writeFile(name, PROGRESS_FILE, text))
+      .catch(e => log(`WARNING: the lab's progress is not saved (${PROGRESS_FILE}: ${e.message})`, 'warn'));
+    saving.set(name, done);
+    return done;
+  };
   function render() {
     const L = lang(), k = p.step, step = lab.steps[k - 1];
     const done = !!p.done[step.id], tries = p.tries[step.id] || 0;
