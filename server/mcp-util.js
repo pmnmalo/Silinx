@@ -124,6 +124,14 @@ export async function readProject(name) {
   try { return await P.readProject(name); } catch (e) { throw toolError(e.status === 404 || /not found|ENOENT/.test(e.message) ? `no project '${name}' in the workspace` : e.message); }
 }
 
+/** Why the drawing `rel` cannot be written in its node (a schematic, a circuit, a register map in a CPU node, #5486), or
+ *  null (core/drawing-code.js cpuDrawingRefusal). */
+export async function cpuRefusal(name, rel) {
+  const [{ nodeOfDrawing }, { cpuDrawingRefusal }] = await Promise.all([import('./drawing-sync.js'), import('../core/drawing-code.js')]);
+  const at = await nodeOfDrawing(P, name, rel);
+  return at ? cpuDrawingRefusal(rel, at.lang) : null;
+}
+
 // the HDL of a view (the project's sources of that view and the HDL of its drawings), as the
 // application's Check Syntax and simulation take it; sim: the simulation view (failed: the C sources whose HDL cannot be
 // made, viewHdl's results, added to it, #2995)
