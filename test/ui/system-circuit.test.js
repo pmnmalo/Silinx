@@ -19,7 +19,7 @@ const consoleLines = (page) => page.eval(() => [...document.querySelectorAll('#c
 const HOT = 'WARNING: serial: uno\'s D1, a 5 V output, drives fpga\'s rx (pin J3), a 3.3 V input of the FPGA (LVCMOS33): a level shifter or a divider on the real boards';
 
 uiTest('#5215 a circuit node: placed with the project\'s circuit, its Properties, checked, tried (the LED on the Uno\'s D8); Portuguese', E, async (page) => {
-  await makeProject(env, { name: 'CoCirc', template: 'uart-avr', files: { 'src/bench.circ.json': JSON.stringify(BENCH, null, 2) } });
+  await makeProject(env, { name: 'CoCirc', template: 'uart-avr', files: { 'circuit/bench.circ.json': JSON.stringify(BENCH, null, 2) } });
   await page.openProject('CoCirc');
   await page.eval(() => window.SilinxApp.openFile('uart_avr.sys.json'));
   await page.waitFor((ed) => document.querySelector(`${ed} .sys-add-circuit`), [ED], { what: 'the System editor' });
@@ -28,7 +28,7 @@ uiTest('#5215 a circuit node: placed with the project\'s circuit, its Properties
   await page.click(`${ED} .sys-add-circuit`);
   await page.click({ x: canvas.x + canvas.w * 0.45, y: canvas.y + canvas.h * 0.8 });
   await page.waitFor((ed) => document.querySelector(`${ed} .sys-node[data-id="circuit"]`), [ED], { what: 'the circuit node' });
-  assert.deepEqual((await page.eval(() => window.Silinx.active.systemEditor.getModel().nodes.at(-1))).circuit, 'src/bench.circ.json');
+  assert.deepEqual((await page.eval(() => window.Silinx.active.systemEditor.getModel().nodes.at(-1))).circuit, 'circuit/bench.circ.json');
   // saved now (else 800 ms after the edit, its check's lines then, docs/SYSTEMS.md: any time later on a slow runner)
   await page.eval(() => window.SilinxApp.saveAll());
   await page.waitFor(() => !window.SilinxApp.findDoc('sys:uart_avr.sys.json').dirty && [...document.querySelectorAll('#console-log .ln')].some((l) => l.textContent.trim() === 'Process "Check System" completed successfully with 1 warning(s)'), [], { what: 'saved, checked' });
@@ -36,7 +36,7 @@ uiTest('#5215 a circuit node: placed with the project\'s circuit, its Properties
   // its Properties: its circuit
   await page.click(`${ED} .sys-node[data-id="circuit"] .sys-head`);
   await page.waitFor((ed) => document.querySelector(`${ed} .sys-selection h3`)?.textContent === 'Circuit circuit', [ED], { what: 'its properties' });
-  assert.deepEqual(await page.eval((ed) => { const s = document.querySelector(`${ed} .sys-circuit`); return [s.value, [...s.options].map((o) => o.value)]; }, ED), ['src/bench.circ.json', ['', 'src/bench.circ.json']]);
+  assert.deepEqual(await page.eval((ed) => { const s = document.querySelector(`${ed} .sys-circuit`); return [s.value, [...s.options].map((o) => o.value)]; }, ED), ['circuit/bench.circ.json', ['', 'circuit/bench.circ.json']]);
   // Check: the example's warning only (the Uno reached by the circuit)
   await page.click(`${ED} .sys-check`);
   await page.waitFor(() => [...document.querySelectorAll('#console-log .ln')].filter((l) => l.textContent.trim() === 'Process "Check System" completed successfully with 1 warning(s)').length === 2, [], { what: 'Check' });

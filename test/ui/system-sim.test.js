@@ -19,7 +19,7 @@ const ED = '.doc:not([hidden]) .system-editor';
 const FPGA = { id: 'fpga', kind: 'fpga', module: 'uart', board: 'basys2', variant: '250', pins: { rx: 'J3', tx: 'A3' }, interfaces: [{ name: 'uart', kind: 'uart', tx: 'tx', rx: 'rx', baud: 9600, frame: '8N1' }], x: 300, y: 0 };
 const UNO = { id: 'uno', kind: 'mcu', board: 'arduino-uno', firmware: 'fw/echo.hex', interfaces: [{ name: 'Serial', kind: 'uart', baud: 9600, frame: '8N1' }], x: 0, y: 0 };
 const TERM = { id: 'term', kind: 'terminal', interfaces: [{ name: 'serial', kind: 'uart', baud: 9600, frame: '8N1' }], x: 0, y: 200 };
-const doc = (nodes, links) => JSON.stringify({ format: 'silinx-system', version: 1, name: 'uart_avr', nodes, links }, null, 2);
+const doc = (nodes, links) => JSON.stringify({ format: 'silinx-system', version: 2, name: 'uart_avr', nodes, links }, null, 2);
 
 async function systemProject(name, system) {
   await makeProject(env, { name, template: 'uart', files: { 'uart_avr.sys.json': system, 'fw/echo.hex': intelHex(echoProgram()) } });

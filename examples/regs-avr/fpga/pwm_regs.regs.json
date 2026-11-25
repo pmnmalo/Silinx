@@ -27,5 +27,5 @@
     }
   ],
   "lang": "vhdl",
-  "generatedFile": "src/pwm_regs.vhd"
+  "generatedFile": "fpga/pwm_regs.vhd"
 }

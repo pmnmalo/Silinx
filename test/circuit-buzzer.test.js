@@ -103,7 +103,7 @@ test('#5454 an Arduino\'s Timer1 toggling OC1A (D9) at 440 Hz (CTC, prescaler 8)
   // is 2272 counts, 2273 a period's half: 439.9 Hz, said 440)
   const prog = ['ldi r16, 0x08', 'sts 0x89, r16', 'ldi r16, 0xe0', 'sts 0x88, r16', 'ldi r16, 0x40', 'sts 0x80, r16', 'ldi r16, 0x0a', 'sts 0x81, r16',
     'ldi r16, 0x02', 'out 0x04, r16', 'end:', 'rjmp end'];
-  const sys = normalizeSystem({ format: 'silinx-system', version: 1, name: 's', nodes: [{ id: 'uno', kind: 'mcu', board: 'arduino-uno', firmware: 'fw/tone.hex', interfaces: [] },
+  const sys = normalizeSystem({ format: 'silinx-system', version: 2, name: 's', nodes: [{ id: 'uno', kind: 'mcu', board: 'arduino-uno', firmware: 'fw/tone.hex', interfaces: [] },
     { id: 'bench', kind: 'circuit', circuit: 'src/bench.circ.json', interfaces: [] }], links: [] });
   const inputs = await systemInputs(sys, { firmware: async () => intelHex(avrAssemble(prog)), circuit: async () => JSON.stringify(circ), netlist: () => null });
   const r = systemFromInputs(sys, inputs);

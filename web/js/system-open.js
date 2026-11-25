@@ -17,12 +17,14 @@ import { elaborate } from '/core/compile.js';
 import { ucfPort } from '/core/board-constraints.js';
 import { normalizeCircuit } from '/core/circuit.js';
 import { readSystem, writeSystem } from '/core/system-doc.js';
+import { relInNode } from '/core/system-layout.js';
 import { systemsOn, SYSTEMS_OFF } from '/core/build-channel.js';
 import { checkSystem, analyzeSystem } from '/core/system-check.js';
 import { systemInputs } from '/core/system-run.js';
 import { regmapFor, hierModules } from '/core/regmap.js';
 import { mountSystemSim } from './system-sim-view.js';
 import { openSystemWaves } from './system-waves-view.js';
+import { saveNodeFolders } from './system-folders-ui.js';
 
 // the project's modules ({ name: ports, null when not elaborated }): every module, the FPGA nodes' elaborated
 function projectModules(sys) {
@@ -76,8 +78,10 @@ const projectWires = sys => analyzeSystem(sys, { modules: projectModules(sys), f
 // ports, the project's firmware files
 const modules = () => [...new Set([...viewRoots(false), ...(designState.modules || []).filter(m => m.role !== 'sim').map(m => m.name)])];
 const portsOf = name => (designState.modules || []).find(m => m.name === name)?.portList || [];
-const firmwares = () => (filesState.fileTree || []).filter(f => /\.(hex|elf)$/i.test(f));
-const circuits = () => (filesState.fileTree || []).filter(f => /\.circ\.json$/i.test(f));   // (a circuit node's, #5215)
+// (a node's: its folder's, #5488)
+const inNode = (f, id) => id == null || relInNode(f, id) != null;
+const firmwares = id => (filesState.fileTree || []).filter(f => /\.(hex|elf)$/i.test(f) && inNode(f, id));
+const circuits = id => (filesState.fileTree || []).filter(f => /\.circ\.json$/i.test(f) && inNode(f, id));   // (a circuit node's, #5215)
 
 export async function openSystem(path) {
   // (Systems not in a release yet, #5202: said in the console, no editor)
@@ -114,13 +118,18 @@ export async function openSystem(path) {
         onEmulate: async () => (await import('./system-emu-open.js')).openSystemEmulator(path, () => ed.getModel()),
       });
       d.systemEditor = ed;
+      let saved = r.system;   // (as last saved: its nodes' folders follow it, #5488)
       d.checkSystem = () => problems.log(ed.check());
       // (the project compiled again: its modules and files as they are now)
       d.onProject = () => ed.refresh();
       return {
         save: async () => {
-          const text = writeSystem(ed.getModel());
+          const model = ed.getModel();
+          // (the nodes' folders first, #5488: one that cannot be renamed, the System not written)
+          await saveNodeFolders(saved, model, ed.renames());
+          const text = writeSystem(model);
           await api.writeFile(S.project.name, path, text); setDirty(d, false);
+          saved = model; ed.savedAs();
           // (its Design row: its name, its FPGA nodes' modules)
           designState.viewTexts = { ...designState.viewTexts, [path]: text };
           renderHierarchy();

@@ -10,6 +10,8 @@ import { editSystem, describeSystem, EDIT_ACTIONS } from '../core/system-edit.js
 import { analyzeSystem, systemCheckLines, wiringLines } from '../core/system-check.js';
 import { ucfPort } from '../core/board-constraints.js';
 import { normalizeCircuit } from '../core/circuit.js';
+import { layoutPlan } from '../core/system-layout.js';
+import { applyNodeFolders } from './system-folders.js';
 
 // the circuit nodes' circuits ({ path: circuit }; one that cannot be read left out: its node's check says so, #5215)
 async function projectCircuits(name, sys, files) {
@@ -66,19 +68,24 @@ const EDIT = { type: 'object', properties: {
 export const SYSTEM_TOOLS = [
   {
     name: 'edit_system', title: 'Edit a System',
-    description: 'Edit a System project\'s System in order (one refused: none): add_, change_, remove_ a node (fpga, mcu, terminal, circuit), interface (uart, gpio, spi, i2c), link; checked.',
-    inputSchema: { type: 'object', properties: { project: PROJECT, file: SYS_FILE, edits: { type: 'array', maxItems: 100, items: EDIT } }, required: ['project', 'file', 'edits'], additionalProperties: false },
-    annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false },
-    async run({ project: name, file, edits }) {
+    description: 'Edit a System project\'s System in order (one refused: none): add_, change_, remove_ a node (fpga, mcu, terminal, circuit), interface (uart, gpio, spi, i2c), link; checked. Files in <id>/.',
+    inputSchema: { type: 'object', properties: { project: PROJECT, file: SYS_FILE, edits: { type: 'array', maxItems: 100, items: EDIT },
+      delete_folders: { type: 'boolean' } }, required: ['project', 'file', 'edits'], additionalProperties: false },
+    annotations: { readOnlyHint: false, destructiveHint: true, idempotentHint: false },
+    async run({ project: name, file, edits, delete_folders: deleteFolders = false }) {
       let { system } = await readSystemFile(name, file);
+      const before = system, renames = [];
       if (!Array.isArray(edits) || !edits.length) throw toolError('edits: a list of { action, … }');
       const said = [];
       for (const [k, e] of edits.entries()) {
         const r = editSystem(system, e || {});
         if (r.error) throw toolError(`edit ${k} (${e?.action ?? '?'}): ${r.error} (nothing written)`);
+        if (e.action === 'change_node' && r.id !== e.node) renames.push({ from: e.node, to: r.id });
         system = r.system;
         said.push(`${e.action} ${r.id}`);
       }
+      // (the nodes' folders first, #5488: one that cannot be renamed writes nothing)
+      said.push(...await applyNodeFolders(name, layoutPlan(before, system, renames), { deleteFolders: !!deleteFolders }));
       const text = writeSystem(system);
       await P.writeFile(name, file, text);
       const { lines, errors, warnings } = await checkSystemFile(name, file, text);
@@ -88,7 +95,7 @@ export const SYSTEM_TOOLS = [
   },
   {
     name: 'check_system', title: 'Check a System',
-    description: 'Describe and check a System project\'s System (.sys.json) as Check System does: nodes, links, wires, errors, warnings.',
+    description: 'Describe and check a System project\'s System as Check System does.',
     inputSchema: { type: 'object', properties: { project: PROJECT, file: SYS_FILE }, required: ['project', 'file'], additionalProperties: false },
     annotations: { readOnlyHint: true },
     async run({ project: name, file }) {

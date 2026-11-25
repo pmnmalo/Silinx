@@ -13,7 +13,7 @@ before(async () => { env = await setupUi(); });
 after(async () => { await env?.teardown?.(); });
 const E = () => env;
 const ED = '.doc:not([hidden]) .system-editor';
-const SYS = JSON.stringify({ format: 'silinx-system', version: 1, name: 'g', nodes: [
+const SYS = JSON.stringify({ format: 'silinx-system', version: 2, name: 'g', nodes: [
   { id: 'fpga', kind: 'fpga', module: 'uart', board: 'basys2', variant: '250', pins: { clk: 'B8', rx: 'J3', tx: 'A3', 'btn<0>': 'G12' }, interfaces: [{ name: 'uart', kind: 'uart', tx: 'tx', rx: 'rx', baud: 9600, frame: '8N1' }], x: 300, y: 0 },
   { id: 'uno', kind: 'mcu', board: 'arduino-uno', firmware: 'fw/p.hex', interfaces: [{ name: 'Serial', kind: 'uart', baud: 9600, frame: '8N1' }], x: 0, y: 0 },
   { id: 'term', kind: 'terminal', interfaces: [{ name: 'serial', kind: 'uart', baud: 9600, frame: '8N1' }], x: 300, y: 260 },

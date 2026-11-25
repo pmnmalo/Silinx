@@ -72,8 +72,8 @@ test('#4700 a node\'s fields: by its kind, its pins merged and removed, a varian
   let s = built();
   s = ok(changeNode(s, 'fpga', { pins: { tx: null, rx: 'K3' }, variant: null, x: 13.4, y: '-7' })).system;
   assert.deepEqual([s.nodes[0].pins, s.nodes[0].variant, s.nodes[0].x, s.nodes[0].y], [{ rx: 'K3' }, undefined, 13, -7]);
-  s = ok(changeNode(s, 'mcu', { firmware: 'firmware/echo.hex', board: 'arduino-nano' })).system;
-  assert.deepEqual([s.nodes[1].firmware, s.nodes[1].board], ['firmware/echo.hex', 'arduino-nano']);
+  s = ok(changeNode(s, 'mcu', { firmware: 'mcu/echo.hex', board: 'arduino-nano' })).system;
+  assert.deepEqual([s.nodes[1].firmware, s.nodes[1].board], ['mcu/echo.hex', 'arduino-nano']);
   assert.equal(ok(changeNode(s, 'mcu', { firmware: '' })).system.nodes[1].firmware, null);
   assert.deepEqual(changeNode(s, 'mcu', { board: 'pico' }), { error: "no microcontroller board 'pico': arduino-uno, arduino-nano" });
   assert.deepEqual(changeNode(s, 'mcu', { module: 'uart' }), { error: "mcu: a Microcontroller node has no field 'module' (id, board, firmware, x, y, lang)" });

@@ -4,7 +4,7 @@
 // is never changed. Isomorphic module (browser + Node).
 import { NODE_KINDS, INTERFACE_KINDS, FRAME_RE, MCU_BOARDS, SPI_HZ, I2C_HZ, mcuBoard, linkEnd, normalizeSystem } from './system-doc.js';
 import { isName } from './ident.js';
-import { nodeLangs, langError, LANG_NAMES } from './system-layout.js';
+import { nodeLangs, langError, LANG_NAMES, relInNode, renamedPath } from './system-layout.js';
 
 const lc = s => String(s).toLowerCase();
 const copy = sys => normalizeSystem(JSON.parse(JSON.stringify(sys)));
@@ -29,6 +29,8 @@ const idError = (sys, id, self = null) => {
   if ([...sys.nodes, ...sys.links].some(x => x !== self && lc(x.id) === lc(id))) return `the id '${id}' is used already`;
   return null;
 };
+// a node's file (its firmware, its circuit) outside its folder, said (#5488: a node's files in `<id>/`)
+const outside = (id, what, f) => (f && relInNode(f, id) == null ? `${id}: its ${what} '${f}' is not in its folder ${id}/` : null);
 // the links that reach a node's interface (or any of the node's: `iface` null)
 const reaching = (sys, node, iface = null) => sys.links.filter(l => [l.a, l.b].some(e => { const x = linkEnd(e); return x?.node === node && (iface == null || x.iface === iface); }));
 
@@ -51,7 +53,11 @@ export function addNode(sys, { kind, id = null, board = null, module = null, cir
     const b = mcuBoard(board ?? 'arduino-uno');
     if (!b) return { error: `no microcontroller board '${board}': ${MCU_BOARDS.map(m => m.id).join(', ')}` };
     n = { id: nid, kind, board: b.id, firmware: null, interfaces: Object.keys(b.uarts).map(name => ({ name, kind: 'uart', ...UART_DEFAULTS })) };
-  } else if (kind === 'circuit') n = { id: nid, kind, circuit, interfaces: [] };
+  } else if (kind === 'circuit') {
+    const why = outside(nid, 'circuit', circuit);
+    if (why) return { error: why };
+    n = { id: nid, kind, circuit, interfaces: [] };
+  }
   else n = { id: nid, kind, interfaces: [{ name: 'serial', kind: 'uart', ...UART_DEFAULTS }] };
   out.nodes.push({ ...n, ...(lang != null ? { lang } : {}), x: Math.round(+x || 0), y: Math.round(+y || 0) });
   return { system: normalizeSystem(out), id: nid };
@@ -67,7 +73,8 @@ function renameEnds(sys, { node, to, iface = null, toIface = null }) {
 }
 
 /**
- * A node's fields changed ({ id, board, module, variant, firmware, lang, x, y, pins }: those given; `pins` merged, a port's pin
+ * A node's fields changed ({ id, board, module, variant, firmware, lang, x, y, pins }: those given; a firmware or a
+ * circuit in the node's folder, renamed with it; `pins` merged, a port's pin
  * null or '' removing it; a variant or a firmware null removing it). Its id renamed in its links' ends too.
  */
 export function changeNode(sys, id, fields = {}) {
@@ -80,6 +87,8 @@ export function changeNode(sys, id, fields = {}) {
     const bad = idError(out, fields.id, n);
     if (bad) return { error: bad };
     renameEnds(out, { node: n.id, to: fields.id });
+    // (its files with its folder, #5488)
+    for (const k of ['firmware', 'circuit']) if (n[k]) n[k] = renamedPath(n[k], n.id, fields.id);
     n.id = fields.id;
   }
   if (n.kind === 'mcu' && fields.board != null) {
@@ -93,8 +102,12 @@ export function changeNode(sys, id, fields = {}) {
     if (why) return { error: `${id}: ${why}` };
     n.lang = fields.lang;
   }
-  if (fields.firmware !== undefined) n.firmware = fields.firmware || null;
-  if (fields.circuit !== undefined) n.circuit = fields.circuit || null;
+  for (const k of ['firmware', 'circuit']) {
+    if (fields[k] === undefined) continue;
+    const why = outside(n.id, k, fields[k]);
+    if (why) return { error: why };
+    n[k] = fields[k] || null;
+  }
   if (fields.variant !== undefined) { if (fields.variant == null || fields.variant === '') delete n.variant; else n.variant = String(fields.variant); }
   if (fields.pins) for (const [port, pin] of Object.entries(fields.pins)) { if (pin == null || pin === '') delete n.pins[port]; else n.pins[port] = String(pin).trim().toUpperCase(); }
   for (const k of ['x', 'y']) if (fields[k] !== undefined) n[k] = Math.round(+fields[k] || 0);

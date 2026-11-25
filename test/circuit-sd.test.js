@@ -185,7 +185,7 @@ test('#5477 an Arduino\'s SPI (D10..D13) initialising the card, writing block 5 
     'sts 0x100, r24', 'sts 0x101, r25', 'ldi r16, 0x04', 'out 0x05, r16',
     'end:', 'rjmp end',
     'spi:', 'out 0x2e, r16', 'sw:', 'in r16, 0x2d', 'sbrs r16, 7', 'rjmp sw', 'ret'];
-  const sys = normalizeSystem({ format: 'silinx-system', version: 1, name: 's', nodes: [{ id: 'uno', kind: 'mcu', board: 'arduino-uno', firmware: 'fw/sd.hex', interfaces: [] },
+  const sys = normalizeSystem({ format: 'silinx-system', version: 2, name: 's', nodes: [{ id: 'uno', kind: 'mcu', board: 'arduino-uno', firmware: 'fw/sd.hex', interfaces: [] },
     { id: 'bench', kind: 'circuit', circuit: 'src/bench.circ.json', interfaces: [] }], links: [] });
   const inputs = await systemInputs(sys, { firmware: async () => intelHex(avrAssemble(prog)), circuit: async () => JSON.stringify(circ), netlist: () => null });
   const r = systemFromInputs(sys, inputs);

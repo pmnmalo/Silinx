@@ -27,7 +27,7 @@ const FPGA = { id: 'fpga', kind: 'fpga', module: 'uart', board: 'basys2', varian
 const TERM = { id: 'term', kind: 'terminal', interfaces: [{ name: 'serial', kind: 'uart', baud: 9600, frame: '8N1' }] };
 const UNO = { id: 'uno', kind: 'mcu', board: 'arduino-uno', firmware: 'fw/p.hex', interfaces: [] };
 const BENCH = { id: 'bench', kind: 'circuit', circuit: 'src/bench.circ.json', interfaces: [] };
-const system = (nodes = [FPGA, TERM, UNO, BENCH], links = [{ id: 'console', kind: 'uart', a: 'term.serial', b: 'fpga.uart' }]) => normalizeSystem({ format: 'silinx-system', version: 1, name: 's', nodes, links });
+const system = (nodes = [FPGA, TERM, UNO, BENCH], links = [{ id: 'console', kind: 'uart', a: 'term.serial', b: 'fpga.uart' }]) => normalizeSystem({ format: 'silinx-system', version: 2, name: 's', nodes, links });
 
 // the bench: the Uno (labelled uno) above, the Basys2 (fpga) below; the Uno's D2 to the Basys2's JB1 (the FPGA's btn, C6)
 // and to the LED D1 (its cathode on the Uno's GND); the Basys2's JB3 (the FPGA's led<0>, C5) to the Uno's D8 and to the
@@ -157,14 +157,17 @@ test('#5215 the circuit\'s adapter alone: its pins, set strong or weak, its valu
 
 test('#5215 a circuit node edited: added with its circuit, changed, no interface; described; read refused', async () => {
   const s0 = system([FPGA, TERM, UNO]);
-  const a = addNode(s0, { kind: 'circuit', circuit: 'src/bench.circ.json', x: 40, y: 10 });
-  assert.deepEqual([a.id, a.system.nodes.at(-1)], ['circuit', { id: 'circuit', kind: 'circuit', circuit: 'src/bench.circ.json', interfaces: [], x: 40, y: 10 }]);
-  const b = changeNode(a.system, 'circuit', { id: 'bench', circuit: 'src/b2.circ.json' });
-  assert.deepEqual(b.system.nodes.at(-1), { id: 'bench', kind: 'circuit', circuit: 'src/b2.circ.json', interfaces: [], x: 40, y: 10 });
+  const a = addNode(s0, { kind: 'circuit', circuit: 'circuit/bench.circ.json', x: 40, y: 10 });
+  assert.deepEqual([a.id, a.system.nodes.at(-1)], ['circuit', { id: 'circuit', kind: 'circuit', circuit: 'circuit/bench.circ.json', interfaces: [], x: 40, y: 10 }]);
+  const b = changeNode(a.system, 'circuit', { id: 'bench', circuit: 'bench/b2.circ.json' });
+  assert.deepEqual(b.system.nodes.at(-1), { id: 'bench', kind: 'circuit', circuit: 'bench/b2.circ.json', interfaces: [], x: 40, y: 10 });
   assert.deepEqual(changeNode(b.system, 'bench', { board: 'x' }), { error: 'bench: a Circuit node has no field \'board\' (id, circuit, x, y)' });
   assert.deepEqual(addInterface(b.system, 'bench', { kind: 'gpio' }), { error: 'bench: a circuit node has no interfaces: its boards\' pins it wires are its links' });
-  assert.equal(editSystem(s0, { action: 'add_node', fields: { kind: 'circuit', id: 'mid', circuit: 'src/m.circ.json' } }).id, 'mid');
-  assert.ok(describeSystem(b.system).includes('node bench: circuit src/b2.circ.json'));
+  assert.equal(editSystem(s0, { action: 'add_node', fields: { kind: 'circuit', id: 'mid', circuit: 'mid/m.circ.json' } }).id, 'mid');
+  assert.ok(describeSystem(b.system).includes('node bench: circuit bench/b2.circ.json'));
+  // (renamed with its node, #5488; one outside its folder refused)
+  assert.equal(changeNode(a.system, 'circuit', { id: 'board2' }).system.nodes.at(-1).circuit, 'board2/bench.circ.json');
+  assert.deepEqual(addNode(s0, { kind: 'circuit', circuit: 'src/bench.circ.json' }), { error: "circuit: its circuit 'src/bench.circ.json' is not in its folder circuit/" });
   const bad = await systemInputs(system(), { ports: PORTS, netlist: () => uartNetlist(), firmware: async () => '', circuit: async () => { throw new Error('no such file'); } });
   assert.deepEqual(bad, { error: 'bench: its circuit src/bench.circ.json cannot be read: no such file' });
 });

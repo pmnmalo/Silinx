@@ -13,7 +13,7 @@ after(async () => { await env?.teardown?.(); });
 const E = () => env;
 const ED = '.doc:not([hidden]) .system-editor';
 // the example's System with no I²C yet: the Uno, the FPGA node on i2c_leds with its pins
-const SYS = JSON.stringify({ format: 'silinx-system', version: 1, name: 'i2c_avr', nodes: [
+const SYS = JSON.stringify({ format: 'silinx-system', version: 2, name: 'i2c_avr', nodes: [
   { id: 'uno', kind: 'mcu', board: 'arduino-uno', firmware: 'firmware/i2c.hex', interfaces: [], x: 0, y: 0 },
   { id: 'fpga', kind: 'fpga', module: 'i2c_leds', board: 'basys2', variant: '250', pins: { clk: 'B8', scl: 'B2', sda: 'A3' }, interfaces: [], x: 320, y: 0 },
 ], links: [] }, null, 2);

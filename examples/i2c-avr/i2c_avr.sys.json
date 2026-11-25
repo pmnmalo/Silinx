@@ -1,13 +1,13 @@
 {
   "format": "silinx-system",
-  "version": 1,
+  "version": 2,
   "name": "i2c_avr",
   "nodes": [
     {
       "id": "uno",
       "kind": "mcu",
       "board": "arduino-uno",
-      "firmware": "firmware/i2c.hex",
+      "firmware": "uno/i2c.hex",
       "lang": "c",
       "interfaces": [
         {

@@ -117,7 +117,7 @@ test('#5364 an Arduino scanning the keypad through a System\'s circuit node: its
     'ldi r16, 0xb0', 'out 0x0b, r16', 'rcall wait', 'in r22, 0x03', 'ldi r16, 0x70', 'out 0x0b, r16', 'rcall wait', 'in r23, 0x03', 'rjmp loop',
     // (about 1 ms: the keypad's levels reach the AVR through the System's links, a window later)
     'wait:', 'ldi r18, 20', 'w1:', 'ldi r19, 255', 'w2:', 'dec r19', 'brne w2', 'dec r18', 'brne w1', 'ret'];
-  const sys = normalizeSystem({ format: 'silinx-system', version: 1, name: 's', nodes: [{ id: 'uno', kind: 'mcu', board: 'arduino-uno', firmware: 'fw/scan.hex', interfaces: [] },
+  const sys = normalizeSystem({ format: 'silinx-system', version: 2, name: 's', nodes: [{ id: 'uno', kind: 'mcu', board: 'arduino-uno', firmware: 'fw/scan.hex', interfaces: [] },
     { id: 'bench', kind: 'circuit', circuit: 'src/bench.circ.json', interfaces: [] }], links: [] });
   const inputs = await systemInputs(sys, { firmware: async () => intelHex(avrAssemble(prog)), circuit: async () => JSON.stringify(circ), netlist: () => null });
   assert.equal(inputs.error, undefined);
@@ -176,7 +176,7 @@ end rtl;
     ...[0, 1, 2, 3].map((i) => ({ id: `R${i + 1}`, type: 'pull-up', x: 9 + i, y: 50 }))],
   wires: [...[0, 1, 2, 3].map((i) => ({ id: `r${i}`, points: [at(`JA${i + 1}`), [i, 70]] })),
     ...[0, 1, 2, 3].flatMap((i) => [{ id: `c${i}`, points: [at(`JB${i + 1}`), [9 + i, 50]] }, { id: `k${i}`, points: [[9 + i, 50], [4 + i, 70]] }])] });
-  const sys = normalizeSystem({ format: 'silinx-system', version: 1, name: 's', nodes: [{ id: 'fpga', kind: 'fpga', module: 'kscan', board: 'basys2', variant: '250', pins, interfaces: [] },
+  const sys = normalizeSystem({ format: 'silinx-system', version: 2, name: 's', nodes: [{ id: 'fpga', kind: 'fpga', module: 'kscan', board: 'basys2', variant: '250', pins, interfaces: [] },
     { id: 'bench', kind: 'circuit', circuit: 'src/bench.circ.json', interfaces: [] }], links: [] });
   const ports = { kscan: [{ name: 'clk', dir: 'in', width: 1 }, { name: 'rows', dir: 'out', width: 4 }, { name: 'cols', dir: 'in', width: 4 }, { name: 'led', dir: 'out', width: 4 }] };
   const inputs = await systemInputs(sys, { ports, netlist: () => net, firmware: async () => '', circuit: async () => JSON.stringify(circ) });

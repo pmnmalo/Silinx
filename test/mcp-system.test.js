@@ -21,7 +21,7 @@ async function call(name, args = {}) {
 }
 const ok = async (name, args) => { const r = await call(name, args); assert.equal(r.isError, false, r.text); return r; };
 
-const system = (over = {}) => ({ format: 'silinx-system', version: 1, name: 'uart_avr', nodes: [
+const system = (over = {}) => ({ format: 'silinx-system', version: 2, name: 'uart_avr', nodes: [
   { id: 'fpga', kind: 'fpga', module: 'uart', board: 'basys2', variant: '250', pins: { rx: 'J3', tx: 'A3' }, interfaces: [{ name: 'uart', kind: 'uart', tx: 'tx', rx: 'rx', baud: 9600, frame: '8N1' }] },
   { id: 'term', kind: 'terminal', interfaces: [{ name: 'serial', kind: 'uart', baud: 9600, frame: '8N1' }] },
   ...(over.nodes || []),
@@ -88,12 +88,12 @@ test('check_system: not a System document, not in the project, not a System\'s t
   await write('x.sys.json', '{"format":"silinx-schematic","version":1}');
   await err({ project: 'u', file: 'x.sys.json' }, 'x.sys.json: not a System document (its format is not \'silinx-system\')');
   await write('x.sys.json', '{"format":"silinx-system","version":9}');
-  await err({ project: 'u', file: 'x.sys.json' }, 'x.sys.json: a System document of version 9: this Silinx reads version 1');
+  await err({ project: 'u', file: 'x.sys.json' }, 'x.sys.json: a System document of version 9: this Silinx reads version 2');
   await err({ project: 'nope', file: 'x.sys.json' }, 'no System \'x.sys.json\' in the project \'nope\'');
 });
 
 test('#4700 edit_system: edits applied in order, written, checked (its warnings); one refused writes nothing', async () => {
-  await write('e.sys.json', { format: 'silinx-system', version: 1, name: 'e', nodes: [], links: [] });
+  await write('e.sys.json', { format: 'silinx-system', version: 2, name: 'e', nodes: [], links: [] });
   const r = await ok('edit_system', { project: 'u', file: 'e.sys.json', edits: [
     { action: 'add_node', fields: { kind: 'fpga', module: 'uart', board: 'basys2' } },
     { action: 'change_node', node: 'fpga', fields: { variant: '250', pins: { rx: 'J3', tx: 'A3' } } },
@@ -116,7 +116,7 @@ test('#4700 edit_system: edits applied in order, written, checked (its warnings)
 });
 
 test('#5488 edit_system: a node\'s base language given when added and changed, said by check_system; one not its kind\'s refused', async () => {
-  await write('l.sys.json', { format: 'silinx-system', version: 1, name: 'l', nodes: [], links: [] });
+  await write('l.sys.json', { format: 'silinx-system', version: 2, name: 'l', nodes: [], links: [] });
   await ok('edit_system', { project: 'u', file: 'l.sys.json', edits: [
     { action: 'add_node', fields: { kind: 'fpga', id: 'f', module: 'uart', board: 'basys2', lang: 'verilog' } },
     { action: 'add_node', fields: { kind: 'mcu', id: 'm' } },
@@ -199,19 +199,19 @@ test('#5215 a circuit node by edit_system, checked and simulated: the Uno\'s D2 
   // the Uno: D2 an output, high
   await write('fw/d2.hex', intelHex(avrAssemble(['ldi r16, 0x04', 'out 0x0a, r16', 'out 0x0b, r16', 'loop:', 'rjmp loop'])));
   // the bench: the Uno's D2 to the Basys2's JB1 (the FPGA's btn<0>, C6) and to the LED D1; the Basys2's JB3 (led<0>, C5) to D2
-  await write('src/bench.circ.json', { format: 'silinx-circuit', version: 1, name: 'bench', lang: 'vhdl',
+  await write('bench/bench.circ.json', { format: 'silinx-circuit', version: 1, name: 'bench', lang: 'vhdl',
     parts: [{ id: 'A1', type: 'arduino-uno', x: 0, y: 0, label: 'uno' }, { id: 'F1', type: 'fpga-basys2', x: 0, y: 30, label: 'fpga' }, { id: 'D1', type: 'led', x: 20, y: -5, color: 'red' }, { id: 'D2', type: 'led', x: 12, y: 26, color: 'red' }],
     wires: [{ id: 'w1', points: [[16, 0], [9, 30]], color: 'blue' }, { id: 'w2', points: [[16, 0], [20, -5]], color: 'blue' }, { id: 'w3', points: [[21, -5], [3, 0]], color: 'black' },
       { id: 'w5', points: [[11, 30], [12, 26]], color: 'blue' }, { id: 'w6', points: [[13, 26], [4, 30]], color: 'black' }] });
   const m = system({ nodes: [{ id: 'uno', kind: 'mcu', board: 'arduino-uno', firmware: 'fw/d2.hex', interfaces: [] }] });
   m.nodes[0].pins = { clk: 'B8', rx: 'J3', tx: 'A3', 'btn<0>': 'C6', 'led<0>': 'C5' };
   await write('bench.sys.json', m);
-  const e = await ok('edit_system', { project: 'u', file: 'bench.sys.json', edits: [{ action: 'add_node', fields: { kind: 'circuit', id: 'bench', circuit: 'src/bench.circ.json', x: 300, y: 0 } }] });
+  const e = await ok('edit_system', { project: 'u', file: 'bench.sys.json', edits: [{ action: 'add_node', fields: { kind: 'circuit', id: 'bench', circuit: 'bench/bench.circ.json', x: 300, y: 0 } }] });
   const HOT = 'bench: A1 D2 (uno\'s, 5 V) and F1 JB1 (fpga\'s btn<0>, pin C6, a 3.3 V input) are on one net: a level shifter or a divider on the real boards';
   assert.deepEqual(e.text.split('\n'), ['add_node bench', `WARNING: ${HOT}`, 'Process "Check System" of bench.sys.json completed successfully with 1 warning(s).']);
   // checked: described (the circuit node), its 5 V pin on the FPGA's 3.3 V input; the Uno, reached by the circuit, joins something
   const c = await ok('check_system', { project: 'u', file: 'bench.sys.json' });
-  assert.ok(c.text.split('\n').includes('node bench: circuit src/bench.circ.json'));
+  assert.ok(c.text.split('\n').includes('node bench: circuit bench/bench.circ.json'));
   assert.deepEqual(c.text.split('\n').slice(-2), [`WARNING: ${HOT}`, 'Process "Check System" of bench.sys.json completed successfully with 1 warning(s).']);
   assert.deepEqual(c.data.warnings, [{ message: HOT, item: 'bench' }]);
   // simulated: A echoed, then the button's message (pressed by the Uno's D2 through the circuit); both LEDs lit
@@ -224,10 +224,10 @@ test('#5215 a circuit node by edit_system, checked and simulated: the Uno\'s D2 
   assert.equal(lines[8], 'circuit bench: D1 on, lit 1 time(s); D2 on, lit 1 time(s)');
   assert.deepEqual([r.data.warnings, r.data.errors], [[], []]);
   // its circuit not there: the run refused, said
-  await ok('edit_system', { project: 'u', file: 'bench.sys.json', edits: [{ action: 'change_node', node: 'bench', fields: { circuit: 'src/none.circ.json' } }] });
+  await ok('edit_system', { project: 'u', file: 'bench.sys.json', edits: [{ action: 'change_node', node: 'bench', fields: { circuit: 'bench/none.circ.json' } }] });
   const x = await call('simulate', { project: 'u', top: 'bench.sys.json', time_ns: 1e6 });
   assert.equal(x.isError, true);
-  assert.match(x.text, /^simulate: bench\.sys\.json: bench: its circuit src\/none\.circ\.json cannot be read: /);
+  assert.match(x.text, /^simulate: bench\.sys\.json: bench: its circuit bench\/none\.circ\.json cannot be read: /);
 });
 
 test('#5322 simulate with controls on a circuit node: its switch S1 set at 5 ms presses the FPGA\'s button (its message); what its LEDs show; a wrong control refused', async () => {
@@ -255,7 +255,7 @@ test('#5342 simulate with a control on a circuit\'s temperature sensor: its valu
   await write('src/temp.circ.json', { format: 'silinx-circuit', version: 1, name: 'temp', lang: 'vhdl',
     parts: [{ id: 'A1', type: 'arduino-uno', x: 0, y: 0, label: 'uno' }, { id: 'U1', type: 'lm75', x: 30, y: 25, temp: 25 }, { id: 'R1', type: 'pull-up', x: 36, y: 20 }],
     wires: [{ id: 'v', points: [uno('5V'), [30, 22]], color: 'red' }, { id: 'g', points: [uno('GND'), [33, 25]], color: 'black' }, { id: 'o', points: [[36, 20], [32, 25]], color: 'blue' }] });
-  const m = { format: 'silinx-system', version: 1, name: 'temp', nodes: [{ id: 'uno', kind: 'mcu', board: 'arduino-uno', firmware: 'fw/d2.hex', interfaces: [] },
+  const m = { format: 'silinx-system', version: 2, name: 'temp', nodes: [{ id: 'uno', kind: 'mcu', board: 'arduino-uno', firmware: 'fw/d2.hex', interfaces: [] },
     { id: 'bench', kind: 'circuit', circuit: 'src/temp.circ.json', interfaces: [] }], links: [] };
   await write('temp.sys.json', m);
   const r = await ok('simulate', { project: 'u', top: 'temp.sys.json', time_ns: 5e6, controls: [{ node: 'bench', control: 'U1', value: 90, at_ns: 1e6 }] });
@@ -276,7 +276,7 @@ test('#5456 simulate with a control on a circuit\'s ultrasonic sensor: its dista
   await write('src/son.circ.json', { format: 'silinx-circuit', version: 1, name: 'son', lang: 'vhdl',
     parts: [{ id: 'A1', type: 'arduino-uno', x: 0, y: 0, label: 'uno' }, { id: 'US1', type: 'hc-sr04', x: 30, y: 30, cm: 50 }],
     wires: [{ id: 'v', points: [uno('5V'), [30, 30]], color: 'red' }, { id: 't', points: [uno('D8'), [31, 30]], color: 'blue' }, { id: 'e', points: [uno('D7'), [32, 30]], color: 'blue' }, { id: 'g', points: [uno('GND'), [33, 30]], color: 'black' }] });
-  await write('son.sys.json', { format: 'silinx-system', version: 1, name: 'son', nodes: [{ id: 'uno', kind: 'mcu', board: 'arduino-uno', firmware: 'fw/sonar.hex', interfaces: [] },
+  await write('son.sys.json', { format: 'silinx-system', version: 2, name: 'son', nodes: [{ id: 'uno', kind: 'mcu', board: 'arduino-uno', firmware: 'fw/sonar.hex', interfaces: [] },
     { id: 'bench', kind: 'circuit', circuit: 'src/son.circ.json', interfaces: [] }], links: [] });
   const r = await ok('simulate', { project: 'u', top: 'son.sys.json', time_ns: 12e6, controls: [{ node: 'bench', control: 'US1', value: 120, at_ns: 0 }] });
   const lines = r.text.split('\n');
@@ -294,7 +294,7 @@ test('#5463 simulate with a control on a circuit\'s motion sensor: someone movin
   await write('src/pir.circ.json', { format: 'silinx-circuit', version: 1, name: 'pir', lang: 'vhdl',
     parts: [{ id: 'A1', type: 'arduino-uno', x: 0, y: 0, label: 'uno' }, { id: 'PIR1', type: 'hc-sr501', x: 30, y: 30 }],
     wires: [{ id: 'v', points: [uno('5V'), [30, 30]], color: 'red' }, { id: 'o', points: [uno('D2'), [31, 30]], color: 'blue' }, { id: 'g', points: [uno('GND'), [32, 30]], color: 'black' }] });
-  await write('pir.sys.json', { format: 'silinx-system', version: 1, name: 'pir', nodes: [{ id: 'uno', kind: 'mcu', board: 'arduino-uno', firmware: 'fw/pir.hex', interfaces: [] },
+  await write('pir.sys.json', { format: 'silinx-system', version: 2, name: 'pir', nodes: [{ id: 'uno', kind: 'mcu', board: 'arduino-uno', firmware: 'fw/pir.hex', interfaces: [] },
     { id: 'bench', kind: 'circuit', circuit: 'src/pir.circ.json', interfaces: [] }], links: [] });
   const r = await ok('simulate', { project: 'u', top: 'pir.sys.json', time_ns: 2e9, controls: [{ node: 'bench', control: 'PIR1', on: true, at_ns: 1e6 }, { node: 'bench', control: 'PIR1', on: false, at_ns: 5e8 }] });
   const lines = r.text.split('\n');
@@ -309,7 +309,7 @@ test('#5470 simulate with controls on a circuit\'s DHT22: its temperature and hu
   await write('src/dht.circ.json', { format: 'silinx-circuit', version: 1, name: 'dht', lang: 'vhdl',
     parts: [{ id: 'A1', type: 'arduino-uno', x: 0, y: 0, label: 'uno' }, { id: 'DHT1', type: 'dht22', x: 30, y: 30 }, { id: 'R1', type: 'pull-up', x: 31, y: 33 }],
     wires: [{ id: 'v', points: [uno('5V'), [30, 30]], color: 'red' }, { id: 'd', points: [uno('D2'), [31, 30]], color: 'blue' }, { id: 'r', points: [[31, 30], [31, 33]], color: 'blue' }, { id: 'g', points: [uno('GND'), [33, 30]], color: 'black' }] });
-  await write('dht.sys.json', { format: 'silinx-system', version: 1, name: 'dht', nodes: [{ id: 'uno', kind: 'mcu', board: 'arduino-uno', firmware: 'fw/d2.hex', interfaces: [] },
+  await write('dht.sys.json', { format: 'silinx-system', version: 2, name: 'dht', nodes: [{ id: 'uno', kind: 'mcu', board: 'arduino-uno', firmware: 'fw/d2.hex', interfaces: [] },
     { id: 'bench', kind: 'circuit', circuit: 'src/dht.circ.json', interfaces: [] }], links: [] });
   const r = await ok('simulate', { project: 'u', top: 'dht.sys.json', time_ns: 2e6, controls: [{ node: 'bench', control: 'DHT1.temp', value: -5.5, at_ns: 0 }, { node: 'bench', control: 'DHT1.hum', value: 72.4, at_ns: 1e6 }] });
   const lines = r.text.split('\n');

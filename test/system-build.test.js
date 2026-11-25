@@ -19,7 +19,7 @@ await loadAvr8js();   // (avr8js, before an AvrNode is made: core/system-sim-avr
 const PORTS = { uart: [{ name: 'clk', dir: 'in', width: 1 }, { name: 'rx', dir: 'in', width: 1 }, { name: 'tx', dir: 'out', width: 1 }, { name: 'btn', dir: 'in', width: 1 }, { name: 'led', dir: 'out', width: 8 }] };
 const fpgaNode = (over = {}) => ({ id: 'fpga', kind: 'fpga', module: 'uart', board: 'basys2', variant: '250', pins: { rx: 'J3', tx: 'A3' },
   interfaces: [{ name: 'uart', kind: 'uart', tx: 'tx', rx: 'rx', baud: 9600, frame: '8N1' }], ...over });
-const system = (nodes, links) => normalizeSystem({ format: 'silinx-system', version: 1, name: 's', nodes, links });
+const system = (nodes, links) => normalizeSystem({ format: 'silinx-system', version: 2, name: 's', nodes, links });
 const uno = { id: 'uno', kind: 'mcu', board: 'arduino-uno', firmware: 'fw/echo.hex', interfaces: [{ name: 'Serial', kind: 'uart', baud: 9600, frame: '8N1' }] };
 const term = { id: 'term', kind: 'terminal', interfaces: [{ name: 'serial', kind: 'uart', baud: 9600, frame: '8N1' }] };
 const text = bytes => bytes.map(b => String.fromCharCode(b.byte)).join('');

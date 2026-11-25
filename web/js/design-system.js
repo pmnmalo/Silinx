@@ -23,6 +23,16 @@ const NODE_ICON = { fpga: 'chip', mcu: 'board', circuit: 'circuit', terminal: 's
 // a node's board, as the user knows it (its name, else its id)
 const boardName = n => (n.kind === 'mcu' ? mcuBoard(n.board)?.name : S.devices?.boards?.find(b => b.id === n.board)?.name) || n.board;
 
+/** The folder of the open System project's first microcontroller node (#5488: its id), or null. */
+export const mcuFolder = () => (systemProject() ? shownNodes().nodes.find(n => n.kind === 'mcu')?.id ?? null : null);
+
+/** Why the open System project's System cannot be read (`<file>: <why>`: one of version 1, #5488, or damaged), or null. */
+export function systemProblem() {
+  if (!systemProject()) return null;
+  const { system, error } = shownNodes();
+  return error ? `${system}: ${error}` : null;
+}
+
 /** Whether the open project's top is its System (#5443): a System project with no module as its top, its document read. */
 export const systemTop = () => systemProject() && !!shownNodes().system;
 

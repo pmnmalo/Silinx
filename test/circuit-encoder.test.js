@@ -115,7 +115,7 @@ test('#5451 an Arduino counting the encoder\'s detents through a System\'s circu
   const prog = ['ldi r16, 0x3f', 'out 0x04, r16', 'ldi r16, 0x10', 'out 0x0b, r16', 'ldi r20, 0', 'ldi r21, 0x04',
     'loop:', 'in r17, 0x09', 'sbrs r21, 2', 'rjmp save', 'sbrc r17, 2', 'rjmp save', 'sbrs r17, 3', 'rjmp ccw', 'inc r20', 'rjmp show',
     'ccw:', 'dec r20', 'show:', 'out 0x05, r20', 'save:', 'ldi r21, 0', 'sbrc r17, 2', 'ldi r21, 0x04', 'rjmp loop'];
-  const sys = normalizeSystem({ format: 'silinx-system', version: 1, name: 's', nodes: [{ id: 'uno', kind: 'mcu', board: 'arduino-uno', firmware: 'fw/count.hex', interfaces: [] },
+  const sys = normalizeSystem({ format: 'silinx-system', version: 2, name: 's', nodes: [{ id: 'uno', kind: 'mcu', board: 'arduino-uno', firmware: 'fw/count.hex', interfaces: [] },
     { id: 'bench', kind: 'circuit', circuit: 'src/bench.circ.json', interfaces: [] }], links: [] });
   const inputs = await systemInputs(sys, { firmware: async () => intelHex(avrAssemble(prog)), circuit: async () => JSON.stringify(circ), netlist: () => null });
   assert.equal(inputs.error, undefined);

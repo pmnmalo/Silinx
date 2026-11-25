@@ -1,5 +1,5 @@
 // A System's I²C links (#5214): an Arduino Uno, the master (its TWI, Wire's SCL A5 and SDA A4), and an FPGA peripheral
-// (examples/i2c-avr/src/i2c_leds.vhd, the i2c-avr example's: at the address 0x42, each byte written shown on its LEDs,
+// (examples/i2c-avr/fpga/i2c_leds.vhd, the i2c-avr example's: at the address 0x42, each byte written shown on its LEDs,
 // a read answered with its switches), its SDA an inout port (the compiled engine's pads, #4709). The System document's
 // I²C interface and its check (the master and the peripheral, one rate, SDA an inout port, its 5 V warnings); the plan's
 // three wires (SCL, and SDA each way, each end pulling it low or releasing it, pulled up), each at a sixteenth of SCL's
@@ -24,10 +24,10 @@ import { ROOT } from './examples-lib.mjs';
 
 await loadAvr8js();
 const EX = path.join(ROOT, 'examples/i2c-avr');
-const SRC = fs.readFileSync(path.join(EX, 'src/i2c_leds.vhd'), 'utf8');
-const FW = intelHex(avrAssemble(fs.readFileSync(path.join(EX, 'firmware/i2c.asm'), 'utf8').split('\n')));
+const SRC = fs.readFileSync(path.join(EX, 'fpga/i2c_leds.vhd'), 'utf8');
+const FW = intelHex(avrAssemble(fs.readFileSync(path.join(EX, 'uno/i2c.asm'), 'utf8').split('\n')));
 const PORTS = { i2c_leds: [['clk', 'in', 1], ['scl', 'in', 1], ['sda', 'inout', 1], ['sw', 'in', 8], ['led', 'out', 8]].map(([name, dir, width]) => ({ name, dir, width })) };
-const system = (over = {}) => normalizeSystem({ format: 'silinx-system', version: 1, name: 's', nodes: [
+const system = (over = {}) => normalizeSystem({ format: 'silinx-system', version: 2, name: 's', nodes: [
   { id: 'fpga', kind: 'fpga', module: 'i2c_leds', board: 'basys2', variant: '250', pins: { clk: 'B8', scl: 'B2', sda: 'A3' }, interfaces: [{ name: 'bus', kind: 'i2c', scl: 'scl', sda: 'sda', ...over.fpga }] },
   { id: 'uno', kind: 'mcu', board: 'arduino-uno', firmware: 'fw/i2c.hex', interfaces: [{ name: 'Wire', kind: 'i2c', ...over.uno }] },
 ], links: [{ id: 'i2c', kind: 'i2c', a: 'uno.Wire', b: 'fpga.bus' }] });
@@ -113,7 +113,7 @@ test('#5214 the I²C decoder: a write and a read, a repeated START, an address n
 
 test('#5214 an I²C interface added and changed as the editor and edit_system do: the Uno\'s its board\'s Wire, the FPGA\'s its ports; described; a link named i2c', async () => {
   const { addInterface, changeInterface, describeSystem, addLink } = await import('../core/system-edit.js');
-  const s0 = normalizeSystem({ format: 'silinx-system', version: 1, name: 's', nodes: [
+  const s0 = normalizeSystem({ format: 'silinx-system', version: 2, name: 's', nodes: [
     { id: 'fpga', kind: 'fpga', module: 'i2c_leds', board: 'basys2', variant: '250', pins: { scl: 'B2', sda: 'A3' }, interfaces: [{ name: 'u', kind: 'uart', tx: 'tx', rx: 'rx', baud: 9600, frame: '8N1' }] },
     { id: 'uno', kind: 'mcu', board: 'arduino-uno', interfaces: [] }], links: [] });
   let r = addInterface(s0, 'uno', { kind: 'i2c' });

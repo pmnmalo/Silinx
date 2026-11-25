@@ -34,7 +34,7 @@ import { normalizeSystem } from '../../core/system-doc.js';
 import { intelHex, echoProgram } from '../avr-asm.mjs';
 // (an AVR and a terminal linked by UART, as the System's worker takes them, #4701)
 const SYSTEM_RUN = (() => {
-  const system = normalizeSystem({ format: 'silinx-system', version: 1, name: 'hi', links: [{ id: 'serial', kind: 'uart', a: 'uno.Serial', b: 'term.serial' }], nodes: [
+  const system = normalizeSystem({ format: 'silinx-system', version: 2, name: 'hi', links: [{ id: 'serial', kind: 'uart', a: 'uno.Serial', b: 'term.serial' }], nodes: [
     { id: 'uno', kind: 'mcu', board: 'arduino-uno', firmware: 'fw/echo.hex', interfaces: [{ name: 'Serial', kind: 'uart', baud: 9600, frame: '8N1' }] },
     { id: 'term', kind: 'terminal', interfaces: [{ name: 'serial', kind: 'uart', baud: 9600, frame: '8N1' }] }] });
   return { system, inputs: { plan: systemPlan(system), netlists: {}, firmware: { uno: { name: 'fw/echo.hex', data: intelHex(echoProgram()) } } } };

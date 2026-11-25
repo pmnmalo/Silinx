@@ -29,10 +29,10 @@ const ok = async (name, args) => { const r = await call(name, args); assert.equa
 
 test('#4702 uart-avr: its FPGA module the uart example\'s sources, its firmware hello.asm assembled, its System the format\'s', () => {
   for (const f of fs.readdirSync(path.join(ROOT, 'examples/uart/src'))) {
-    assert.equal(fs.readFileSync(path.join(EX, 'src', f), 'utf8'), fs.readFileSync(path.join(ROOT, 'examples/uart/src', f), 'utf8'), `src/${f} as the uart example's`);
+    assert.equal(fs.readFileSync(path.join(EX, 'fpga', f), 'utf8'), fs.readFileSync(path.join(ROOT, 'examples/uart/src', f), 'utf8'), `fpga/${f} as the uart example's`);
   }
-  const asm = fs.readFileSync(path.join(EX, 'firmware/hello.asm'), 'utf8').split('\n');
-  assert.equal(fs.readFileSync(path.join(EX, 'firmware/hello.hex'), 'utf8'), intelHex(avrAssemble(asm)));
+  const asm = fs.readFileSync(path.join(EX, 'uno/hello.asm'), 'utf8').split('\n');
+  assert.equal(fs.readFileSync(path.join(EX, 'uno/hello.hex'), 'utf8'), intelHex(avrAssemble(asm)));
   const pj = JSON.parse(fs.readFileSync(path.join(EX, 'silinx.json'), 'utf8'));
   assert.deepEqual([pj.kind, pj.board, pj.constraints, pj.top], ['system', null, null, '']);   // (the example's own silinx.json: a kind of before #5440, read as the System profile)
   const sys = readSystem(fs.readFileSync(path.join(EX, 'uart_avr.sys.json'), 'utf8'));
@@ -57,7 +57,7 @@ test('#4702 the kinds\' rules: a System project empty or from a System example; 
   const j = newProjectJson('sys1', { kind: 'system' });
   assert.deepEqual([j.kind, j.profile, j.board, j.constraints, j.top, isSystemProject(j)], [undefined, 'system', null, null, '', true]);   // (its profile, #5440)
   assert.deepEqual(asSystemProject({ name: 'x', board: 'basys2', constraints: 'c.ucf', top: 'uart' }), { name: 'x', board: null, constraints: null, top: '', profile: 'system', topSourceType: 'system' });   // (its top type System, #5402)
-  assert.deepEqual(newSystemFile('sys1'), { path: 'sys1.sys.json', text: '{\n  "format": "silinx-system",\n  "version": 1,\n  "name": "sys1",\n  "nodes": [],\n  "links": []\n}\n' });
+  assert.deepEqual(newSystemFile('sys1'), { path: 'sys1.sys.json', text: '{\n  "format": "silinx-system",\n  "version": 2,\n  "name": "sys1",\n  "nodes": [],\n  "links": []\n}\n' });
 });
 
 test('#4702 uart-avr made with the MCP server: its System checked (the 5 V warning) and simulated (the Arduino\'s hello echoed)', async () => {
@@ -68,7 +68,7 @@ test('#4702 uart-avr made with the MCP server: its System checked (the 5 V warni
   await ok('new_project_from_example', { name: 'ua', example: 'uart-avr' });
   const warn = "serial: uno's D1, a 5 V output, drives fpga's rx (pin J3), a 3.3 V input of the FPGA (LVCMOS33): a level shifter or a divider on the real boards";
   const c = await ok('check_system', { project: 'ua', file: 'uart_avr.sys.json' });
-  assert.deepEqual(c.text.split('\n'), ['System uart_avr: 2 nodes, 1 link', 'node uno: Arduino Uno, firmware firmware/hello.hex, in C', '  Serial: UART 9600 baud 8N1, TX D1, RX D0',
+  assert.deepEqual(c.text.split('\n'), ['System uart_avr: 2 nodes, 1 link', 'node uno: Arduino Uno, firmware uno/hello.hex, in C', '  Serial: UART 9600 baud 8N1, TX D1, RX D0',
     'node fpga: FPGA, module uart on basys2-250, in VHDL', '  uart: UART 9600 baud 8N1, TX tx (A3), RX rx (J3)', 'link serial: UART uno.Serial ↔ fpga.uart',
     'serial TX: uno D1 → fpga rx (pin J3), 5 V → 3.3 V', 'serial TX: fpga tx (pin A3) → uno D0',   // (its wiring, #5216)
     `WARNING: ${warn}`, 'Process "Check System" of uart_avr.sys.json completed successfully with 1 warning(s).']);
@@ -89,12 +89,12 @@ test('#4702 uart-avr made with the MCP server: its System checked (the 5 V warni
 
 test('#5214 spi-avr: its firmware spi.asm assembled; made with the MCP server, its System checked (its 5 V warnings) and simulated (the counts sent, each answered with the one before plus one)', async () => {
   const SPI = path.join(ROOT, 'examples/spi-avr');
-  assert.equal(fs.readFileSync(path.join(SPI, 'firmware/spi.hex'), 'utf8'), intelHex(avrAssemble(fs.readFileSync(path.join(SPI, 'firmware/spi.asm'), 'utf8').split('\n'))));
+  assert.equal(fs.readFileSync(path.join(SPI, 'uno/spi.hex'), 'utf8'), intelHex(avrAssemble(fs.readFileSync(path.join(SPI, 'uno/spi.asm'), 'utf8').split('\n'))));
   assert.deepEqual(readSystem(fs.readFileSync(path.join(SPI, 'spi_avr.sys.json'), 'utf8')).system.links, [{ id: 'spi', kind: 'spi', a: 'uno.SPI', b: 'fpga.bus' }]);
   await ok('new_project_from_example', { name: 'sa', example: 'spi-avr' });
   const W = (pin, port, loc) => `WARNING: spi: uno's ${pin}, a 5 V output, drives fpga's ${port} (pin ${loc}), a 3.3 V input of the FPGA (LVCMOS33): a level shifter or a divider on the real boards`;
   const c = await ok('check_system', { project: 'sa', file: 'spi_avr.sys.json' });
-  assert.deepEqual(c.text.split('\n'), ['System spi_avr: 2 nodes, 1 link', 'node uno: Arduino Uno, firmware firmware/spi.hex, in C', '  Serial: UART 9600 baud 8N1, TX D1, RX D0',
+  assert.deepEqual(c.text.split('\n'), ['System spi_avr: 2 nodes, 1 link', 'node uno: Arduino Uno, firmware uno/spi.hex, in C', '  Serial: UART 9600 baud 8N1, TX D1, RX D0',
     '  SPI: SPI 125000 Hz mode 0, SCK D13, MOSI D11, MISO D12, SS D10', 'node fpga: FPGA, module spi_echo on basys2-250, in VHDL',
     '  bus: SPI 125000 Hz mode 0, SCK sck (B2), MOSI mosi (A3), MISO miso (J3), SS ss (B5)', 'link spi: SPI uno.SPI ↔ fpga.bus',
     'spi SCK: uno D13 → fpga sck (pin B2), 5 V → 3.3 V', 'spi MOSI: uno D11 → fpga mosi (pin A3), 5 V → 3.3 V', 'spi MISO: fpga miso (pin J3) → uno D12',
@@ -116,12 +116,12 @@ test('#5214 spi-avr: its firmware spi.asm assembled; made with the MCP server, i
 
 test('#5214 i2c-avr: its firmware i2c.asm assembled; made with the MCP server, its System checked (its 5 V warnings), simulated (the counts written, the switches read) and emulated (SW1, SW3 and SW6 on: the Uno\'s D3 and D6)', async () => {
   const I2C = path.join(ROOT, 'examples/i2c-avr');
-  assert.equal(fs.readFileSync(path.join(I2C, 'firmware/i2c.hex'), 'utf8'), intelHex(avrAssemble(fs.readFileSync(path.join(I2C, 'firmware/i2c.asm'), 'utf8').split('\n'))));
+  assert.equal(fs.readFileSync(path.join(I2C, 'uno/i2c.hex'), 'utf8'), intelHex(avrAssemble(fs.readFileSync(path.join(I2C, 'uno/i2c.asm'), 'utf8').split('\n'))));
   assert.deepEqual(readSystem(fs.readFileSync(path.join(I2C, 'i2c_avr.sys.json'), 'utf8')).system.links, [{ id: 'i2c', kind: 'i2c', a: 'uno.Wire', b: 'fpga.bus' }]);
   await ok('new_project_from_example', { name: 'ia', example: 'i2c-avr' });
   const W = (pin, port, loc) => `WARNING: i2c: uno's ${pin}, a 5 V output, drives fpga's ${port} (pin ${loc}), a 3.3 V input of the FPGA (LVCMOS33): a level shifter or a divider on the real boards`;
   const c = await ok('check_system', { project: 'ia', file: 'i2c_avr.sys.json' });
-  assert.deepEqual(c.text.split('\n'), ['System i2c_avr: 2 nodes, 1 link', 'node uno: Arduino Uno, firmware firmware/i2c.hex, in C', '  Wire: I²C 100000 Hz, SCL A5, SDA A4',
+  assert.deepEqual(c.text.split('\n'), ['System i2c_avr: 2 nodes, 1 link', 'node uno: Arduino Uno, firmware uno/i2c.hex, in C', '  Wire: I²C 100000 Hz, SCL A5, SDA A4',
     'node fpga: FPGA, module i2c_leds on basys2-250, in VHDL', '  bus: I²C 100000 Hz, SCL scl (B2), SDA sda (A3)', 'link i2c: I²C uno.Wire ↔ fpga.bus',
     'i2c SCL: uno A5 → fpga scl (pin B2), 5 V → 3.3 V', 'i2c SDA: uno A4 → fpga sda (pin A3), 5 V → 3.3 V',   // (its wiring, #5216)
     W('A5', 'scl', 'B2'), W('A4', 'sda', 'A3'), 'Process "Check System" of i2c_avr.sys.json completed successfully with 2 warning(s).']);
@@ -148,18 +148,18 @@ test('#5288 regs-avr: its map\'s slave generated from it, its firmware regs.asm 
   const RA = path.join(ROOT, 'examples/regs-avr');
   const { readRegmap } = await import('../core/regmap.js');
   const { generateRegmap } = await import('../core/regmap-hdl.js');
-  const map = readRegmap(fs.readFileSync(path.join(RA, 'src/pwm_regs.regs.json'), 'utf8')).regmap;
-  assert.equal(fs.readFileSync(path.join(RA, 'src/pwm_regs.vhd'), 'utf8'), generateRegmap(map, { lang: 'vhdl' }).code, 'its slave as the map generates it');
-  assert.equal(fs.readFileSync(path.join(RA, 'firmware/regs.hex'), 'utf8'), intelHex(avrAssemble(fs.readFileSync(path.join(RA, 'firmware/regs.asm'), 'utf8').split('\n'))));
+  const map = readRegmap(fs.readFileSync(path.join(RA, 'fpga/pwm_regs.regs.json'), 'utf8')).regmap;
+  assert.equal(fs.readFileSync(path.join(RA, 'fpga/pwm_regs.vhd'), 'utf8'), generateRegmap(map, { lang: 'vhdl' }).code, 'its slave as the map generates it');
+  assert.equal(fs.readFileSync(path.join(RA, 'uno/regs.hex'), 'utf8'), intelHex(avrAssemble(fs.readFileSync(path.join(RA, 'uno/regs.asm'), 'utf8').split('\n'))));
   await ok('new_project_from_example', { name: 'ra', example: 'regs-avr' });
   const W = (pin, port, loc) => `WARNING: spi: uno's ${pin}, a 5 V output, drives fpga's ${port} (pin ${loc}), a 3.3 V input of the FPGA (LVCMOS33): a level shifter or a divider on the real boards`;
   const c = await ok('check_system', { project: 'ra', file: 'regs_avr.sys.json' });
-  assert.deepEqual(c.text.split('\n'), ['System regs_avr: 2 nodes, 1 link', 'node uno: Arduino Uno, firmware firmware/regs.hex, in C', '  SPI: SPI 125000 Hz mode 0, SCK D13, MOSI D11, MISO D12, SS D10',
+  assert.deepEqual(c.text.split('\n'), ['System regs_avr: 2 nodes, 1 link', 'node uno: Arduino Uno, firmware uno/regs.hex, in C', '  SPI: SPI 125000 Hz mode 0, SCK D13, MOSI D11, MISO D12, SS D10',
     'node fpga: FPGA, module pwm_top on basys2-250, in VHDL', '  bus: SPI 125000 Hz mode 0, SCK sck (B2), MOSI mosi (A3), MISO miso (J3), SS ss (B5)', 'link spi: SPI uno.SPI ↔ fpga.bus',
     // (its wires, the Wiring view's, #5216, #5320)
     'spi SCK: uno D13 → fpga sck (pin B2), 5 V → 3.3 V', 'spi MOSI: uno D11 → fpga mosi (pin A3), 5 V → 3.3 V', 'spi MISO: fpga miso (pin J3) → uno D12', 'spi SS: uno D10 → fpga ss (pin B5), 5 V → 3.3 V',
     W('D13', 'sck', 'B2'), W('D11', 'mosi', 'A3'), W('D10', 'ss', 'B5'), 'Process "Check System" of regs_avr.sys.json completed successfully with 3 warning(s).']);
-  assert.equal((await ok('check_drawing', { project: 'ra', file: 'src/pwm_regs.regs.json' })).text, 'Process "Check Register Map" of pwm_regs.regs.json completed successfully.');
+  assert.equal((await ok('check_drawing', { project: 'ra', file: 'fpga/pwm_regs.regs.json' })).text, 'Process "Check Register Map" of pwm_regs.regs.json completed successfully.');
   assert.match((await ok('check_syntax', { project: 'ra', top: 'pwm_top' })).text, /^Process "Check Syntax" of <pwm_top> completed successfully \(\d+ signals, \d+ process(es)?\)\.$/);
   // 100 ms: clear written, then twice duty written (0, then 1) and count read (the milliseconds since the clear)
   const s = await ok('simulate', { project: 'ra', time_ns: 100e6 });

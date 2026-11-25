@@ -13,27 +13,27 @@
   "simTop": "",
   "files": [
     {
-      "path": "src/uart_rx.vhd",
+      "path": "fpga/uart_rx.vhd",
       "lang": "vhdl",
       "role": "design"
     },
     {
-      "path": "src/uart_tx.vhd",
+      "path": "fpga/uart_tx.vhd",
       "lang": "vhdl",
       "role": "design"
     },
     {
-      "path": "src/debounce.vhd",
+      "path": "fpga/debounce.vhd",
       "lang": "vhdl",
       "role": "design"
     },
     {
-      "path": "src/sevenseg.vhd",
+      "path": "fpga/sevenseg.vhd",
       "lang": "vhdl",
       "role": "design"
     },
     {
-      "path": "src/uart.vhd",
+      "path": "fpga/uart.vhd",
       "lang": "vhdl",
       "role": "design"
     }

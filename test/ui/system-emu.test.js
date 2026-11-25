@@ -19,7 +19,7 @@ const ED = '.doc:not([hidden]) .system-editor';
 const EMU = '.doc:not([hidden]) .sys-emu';
 const UCF = fs.readFileSync(path.join(ROOT, 'examples/uart/constraints/top.ucf'), 'utf8');
 const PINS = Object.fromEntries([...UCF.matchAll(/^NET "([^"]+)"\s+LOC = "([^"]+)"/gm)].map((m) => [m[1], m[2]]));
-const SYS = JSON.stringify({ format: 'silinx-system', version: 1, name: 'emu', nodes: [
+const SYS = JSON.stringify({ format: 'silinx-system', version: 2, name: 'emu', nodes: [
   { id: 'fpga', kind: 'fpga', module: 'uart', board: 'basys2', variant: '250', pins: PINS, interfaces: [{ name: 'uart', kind: 'uart', tx: 'tx', rx: 'rx', baud: 9600, frame: '8N1' }], x: 300, y: 0 },
   { id: 'term', kind: 'terminal', interfaces: [{ name: 'serial', kind: 'uart', baud: 9600, frame: '8N1' }], x: 0, y: 0 },
   { id: 'uno', kind: 'mcu', board: 'arduino-uno', firmware: 'fw/l.hex', interfaces: [], x: 0, y: 200 },

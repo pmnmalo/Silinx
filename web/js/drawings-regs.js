@@ -18,8 +18,9 @@ import { phoneOnly } from './phone-readonly.js';
 import { designState } from './state-design.js';
 import { readRegmap, writeRegmap, checkRegmap } from '/core/regmap.js';
 
-// where the editor's Header button writes the map's header: firmware/<name>.h
-const headerPath = m => `firmware/${m.name}.h`;
+// where the editor's Header button writes the map's header: its System's first microcontroller's folder (#5488,
+// <id>/<name>.h), else firmware/<name>.h
+const headerPath = async m => `${(await import('./design-system.js')).mcuFolder() ?? 'firmware'}/${m.name}.h`;
 
 export async function openRegs(path) {
   const id = `regs:${path}`;
@@ -61,12 +62,12 @@ export async function openRegs(path) {
   });
 }
 
-// the Arduino's header written (firmware/<name>.h), the MCP's related_view header's text; a map in error: none, said why
+// the Arduino's header written (its node's folder's <name>.h, headerPath), the MCP's related_view header's text; a map in error: none, said why
 async function writeHeader(path, m) {
   const errors = checkRegmap(m).filter(x => x.severity === 'error');
   if (errors.length) { logError(`${path.split('/').pop()}: ${errors.map(x => x.message).join('; ')}: no header written`); return; }
   const { regmapHeader } = await import('/core/regmap-c.js');
-  const file = headerPath(m);
+  const file = await headerPath(m);
   await api.writeFile(S.project.name, file, regmapHeader(m).code);
   log(`Wrote ${file}, the header of ${path.split('/').pop()}.`, 'ok');
 }

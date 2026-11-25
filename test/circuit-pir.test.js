@@ -111,7 +111,7 @@ test('#5463 an Arduino reading the sensor\'s OUT on D2 and lighting its LED (D13
     wires: [{ id: 'v', points: [uno('5V'), [30, 30]] }, { id: 'o', points: [uno('D2'), [31, 30]] }, { id: 'g', points: [uno('GND'), [32, 30]] }] });
   // D13 (PB5) an output; PD2 read again and again, copied to it
   const prog = ['ldi r16, 0x20', 'out 0x04, r16', 'loop:', 'in r16, 0x09', 'sbrs r16, 2', 'rjmp off', 'ldi r17, 0x20', 'out 0x05, r17', 'rjmp loop', 'off:', 'ldi r17, 0x00', 'out 0x05, r17', 'rjmp loop'];
-  const sys = normalizeSystem({ format: 'silinx-system', version: 1, name: 's', nodes: [{ id: 'uno', kind: 'mcu', board: 'arduino-uno', firmware: 'fw/pir.hex', interfaces: [] },
+  const sys = normalizeSystem({ format: 'silinx-system', version: 2, name: 's', nodes: [{ id: 'uno', kind: 'mcu', board: 'arduino-uno', firmware: 'fw/pir.hex', interfaces: [] },
     { id: 'bench', kind: 'circuit', circuit: 'src/bench.circ.json', interfaces: [] }], links: [] });
   const inputs = await systemInputs(sys, { firmware: async () => intelHex(avrAssemble(prog)), circuit: async () => JSON.stringify(circ), netlist: () => null });
   const r = systemFromInputs(sys, inputs);

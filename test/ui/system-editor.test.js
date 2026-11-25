@@ -121,7 +121,7 @@ uiTest('#4700 the System editor: its Design row, a system built, saved and reope
 });
 
 uiTest('#4700 the System editor mounted alone, read only (a project followed): no tools, its notice, nothing moved, deleted or changed', E, async (page) => {
-  const model = { format: 'silinx-system', version: 1, name: 'ro', nodes: [
+  const model = { format: 'silinx-system', version: 2, name: 'ro', nodes: [
     { id: 'uno', kind: 'mcu', board: 'arduino-uno', firmware: null, interfaces: [{ name: 'Serial', kind: 'uart', baud: 9600, frame: '8N1' }], x: 0, y: 0 },
     { id: 'term', kind: 'terminal', interfaces: [{ name: 'serial', kind: 'uart', baud: 9600, frame: '8N1' }], x: 300, y: 0 }],
   links: [{ id: 'serial', kind: 'uart', a: 'uno.Serial', b: 'term.serial' }] };
