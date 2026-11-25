@@ -183,7 +183,7 @@ PLIST
   $LAUNCHCTL bootstrap system "$WPLIST"
   host_name_note
   echo "Installed in $DEST, the runner as $RUSER. Check:"
-  echo "  sudo RUNNER_DIR=\"$RUNNER_DIR\" RUNNER_DAEMON=\"$RPLIST\" STATE_DIR=\"$DEST\" sh \"$DEST/window.sh\" status"
+  echo "  sudo sh \"$DEST/window.sh\" status"
   echo "  then Actions > ISE > Run workflow: its log says 'Silinx runner: ... allowed' (the hook ran)."
   exit 0
 fi

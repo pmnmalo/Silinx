@@ -14,6 +14,9 @@
 //   window.sh tick | open | close | status
 //     open: on line now (a run by hand: Actions > ISE > Run workflow), closed by the same rule, once a
 //     run of either workflow has finished; close: off now, when idle.
+//   By hand: `sudo /Library/Silinx-runner/window.sh open` (--system), `~/Library/Silinx-runner/window.sh open`
+//   otherwise; the settings launchd gives the tick (RUNNER_DIR, RUNNER_DAEMON, STATE_DIR) are read from the
+//   window's own plist (#5606).
 // No token: the repository's runs are public (GitHub's API, 60 requests an hour; a tick makes 7).
 import fs from 'node:fs';
 import os from 'node:os';
@@ -25,6 +28,8 @@ export const REPO = 'pmnmalo/Silinx';
 export const WORKFLOWS = ['ise.yml', 'quality.yml'];
 export const OPEN = { hour: 21, minute: 15 };
 export const HARD_CLOSE = 18;               // hours after the opening
+export const WINDOW = 'com.github.pmnmalo.silinx.runner-window';
+const SETTINGS = ['RUNNER_DIR', 'RUNNER_DAEMON', 'STATE_DIR'];
 const ACTIVE = ['queued', 'in_progress', 'waiting', 'requested', 'pending'];
 const HOUR = 3600e3;
 
@@ -120,9 +125,11 @@ export async function run(cmd, sys) {
  * it go); otherwise the logged-in user's
  * agent, through the runner's svc.sh.
  */
-export function serviceCommands(action, env = process.env) {
+export function serviceCommands(action, env = process.env, uid = process.getuid?.()) {
   if (action !== 'start' && action !== 'stop') throw new Error(`service: start or stop, not '${action}'`);
   const plist = env.RUNNER_DAEMON;
+  // svc.sh refuses root ("Must not run with sudo", #5606): its agent is the logged-in user's
+  if (!plist && uid === 0) throw new Error('the runner\'s service is its user\'s svc.sh agent (install.sh without --system): run window.sh as that user, not with sudo');
   if (!plist) return [{ cmd: './svc.sh', args: [action], cwd: env.RUNNER_DIR, optional: false }];
   const label = `system/${path.basename(plist, '.plist')}`;
   const bootout = { cmd: 'launchctl', args: ['bootout', label], cwd: '/' };
@@ -132,10 +139,34 @@ export function serviceCommands(action, env = process.env) {
   return [{ ...bootout, optional: true }, gone, { cmd: 'launchctl', args: ['bootstrap', 'system', plist], cwd: '/', optional: false }];
 }
 
+/** The EnvironmentVariables of a launchd plist (install.sh's: one <string> per <key>). */
+export function plistEnv(xml) {
+  const dict = /<key>EnvironmentVariables<\/key>\s*<dict>([\s\S]*?)<\/dict>/.exec(xml);
+  const unescape = v => v.replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"').replace(/&apos;/g, "'").replace(/&amp;/g, '&');
+  return Object.fromEntries([...(dict?.[1] || '').matchAll(/<key>([^<]+)<\/key>\s*<string>([^<]*)<\/string>/g)].map(m => [m[1], unescape(m[2])]));
+}
+
+/**
+ * The window's settings for a run by hand (#5606): those `env` lacks of RUNNER_DIR, RUNNER_DAEMON and STATE_DIR, from
+ * the plist of the window's launchd job beside the scripts' folder `dir` (install.sh --system: <Library>/Silinx-runner
+ * and <Library>/LaunchDaemons; without it: ~/Library/Silinx-runner and ~/Library/LaunchAgents). `env`'s own win.
+ */
+export function windowEnv(env, dir, read = f => fs.readFileSync(f, 'utf8')) {
+  if (SETTINGS.every(k => env[k])) return env;
+  for (const sub of ['LaunchDaemons', 'LaunchAgents']) {
+    let xml;
+    try { xml = read(path.join(dir, '..', sub, `${WINDOW}.plist`)); } catch { continue; }
+    const vars = plistEnv(xml), out = { ...env };
+    for (const k of SETTINGS) if (!out[k] && vars[k]) out[k] = vars[k];
+    return out;
+  }
+  return env;
+}
+
 /** The real machine: the runner's service (svc.sh or its daemon), its processes, the state file. */
 function machine(env = process.env) {
   const dir = env.RUNNER_DIR;
-  if (!dir) throw new Error('RUNNER_DIR: the runner\'s folder');
+  if (!dir) throw new Error(`RUNNER_DIR: the runner's folder (no ${WINDOW}.plist beside window.mjs's folder: is it install.sh's copy?)`);
   const stateFile = path.join(env.STATE_DIR || path.join(os.homedir(), 'Library', 'Silinx-runner'), 'window.json');
   const pgrep = p => { try { execFileSync('pgrep', ['-f', p], { stdio: 'ignore' }); return true; } catch { return false; } };
   return {
@@ -155,5 +186,6 @@ function machine(env = process.env) {
 }
 
 if (process.argv[1] && fileURLToPath(import.meta.url) === path.resolve(process.argv[1])) {
-  run(process.argv[2] || 'tick', machine()).catch(e => { console.error(e.message); process.exit(1); });
+  const env = windowEnv(process.env, path.dirname(fileURLToPath(import.meta.url)));
+  Promise.resolve().then(() => run(process.argv[2] || 'tick', machine(env))).catch(e => { console.error(e.message); process.exit(1); });
 }
