@@ -2,7 +2,8 @@
 // assembler: the LCD's two rows written, then S3 lighting D3, RD13 to RA1, RD8's inverse on RA2): its System editor's
 // Emulate draws the board as Silinx's own (its LCD, its LEDs D3 to D10, its buttons S3 to S6, R6, the TC1047A); Run:
 // the LCD shows its rows, D4 and D5 lit, S3 held down lights D3, let go turns it off; R6's slider and the temperature
-// set on the board's model; no warnings. Portuguese; both interfaces.
+// set on the board's model; no warnings. Portuguese; both interfaces. The uart-pic24 example emulated: the PIC24's hello
+// echoed by the FPGA on the LCD, then BTN0's message; the LEDs the last byte.
 import { before, after } from 'node:test';
 import assert from 'node:assert/strict';
 import { setupUi, uiTest, makeProject } from './harness.js';
@@ -66,5 +67,27 @@ uiTest('#5484 Emulate: the Explorer 16/32 drawn, its LCD\'s rows, S3 held lights
   assert.deepEqual(await page.eval((e) => { const b = document.querySelector(`${e} [data-node=pic]`); return [b.querySelector('.sys-exp-led').title, b.querySelector('.sys-exp-btn').title, b.querySelector('.sys-exp-pot').title, b.querySelector('.sys-exp-temp').title, b.querySelector('.sys-exp-lcd').title, b.querySelector('.emu-board-note').textContent]; }, EMU),
     ['LED D3 (RA0)', 'Botão S3 (RD6)', 'Potenciómetro R6 (AN5): 0 a 3,3 V', 'Sensor de temperatura TC1047A (AN4), °C', 'LCD 16x2 (o PMP: PMD0-7 RE0-RE7, RS RB15, E RD4)', 'Explorer 16/32 — pic · PIC24FJ1024GB610, o seu cristal de 8 MHz']);
   await page.eval(async () => (await import('/js/i18n.js')).setLanguage('en'));
+  assert.deepEqual(page.console.filter((c) => c.type === 'warning' || c.type === 'warn' || c.type === 'error').map((c) => c.text), []);
+});
+
+uiTest('#5484 the uart-pic24 example emulated: the PIC24\'s hello echoed by the FPGA on its LCD, BTN0\'s message there next; its LEDs the last byte', E, async (page) => {
+  await makeProject(env, { name: 'UartPic', template: 'uart-pic24' });
+  await page.openProject('UartPic');
+  await page.eval(() => window.SilinxApp.openFile('uart_pic24.sys.json'));
+  await page.waitFor((ed) => document.querySelector(ed), [ED], { what: 'the System editor' });
+  await page.click(`${ED} .sys-emu-btn`);
+  await page.waitFor((e) => document.querySelector(`${e} [data-node=pic] .emu-pcb`) && document.querySelector(`${e} [data-node=fpga] .emu-pcb`), [EMU], { what: 'the boards', timeout: 60000 });
+  await page.click(`${EMU} .sysemu-run`);
+  await page.waitFor((e, t) => [...document.querySelectorAll(`${e} [data-node=pic] .sys-exp-lcd-row`)].map((r) => r.textContent).join('|') === t, [EMU, 'PIC24 + FPGA    |Hi from PIC24!  '], { what: 'the echo on the LCD', timeout: 60000 });
+  // BTN0 on the FPGA's board: its message on the LCD's second row (its first 16 characters), LF on the LEDs (D4, D6)
+  await page.eval((e) => { const b = [...document.querySelectorAll(`${e} [data-node=fpga] .emu-btn`)].find((x) => /^BTN0:/.test(x.title)); b.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true, pointerId: 1 })); b.dispatchEvent(new PointerEvent('pointerup', { bubbles: true, pointerId: 1 })); }, EMU);
+  await page.waitFor((e, t) => [...document.querySelectorAll(`${e} [data-node=pic] .sys-exp-lcd-row`)].map((r) => r.textContent).join('|') === t, [EMU, 'PIC24 + FPGA    |Hello from Silin'], { what: 'BTN0\'s message on the LCD', timeout: 60000 });
+  await page.waitFor(() => { const b = window.SilinxApp.findDoc('sysemu:uart_pic24.sys.json').emulator.state()?.boards.pic; return b && Object.entries(b.leds).filter(([, v]) => v > 0.5).map(([d]) => d).join() === 'D4,D6'; }, [], { what: 'LF on the LEDs', timeout: 30000 });
+  const s = await page.eval(() => window.SilinxApp.findDoc('sysemu:uart_pic24.sys.json').emulator.state());
+  assert.deepEqual([s.warnings, s.errors], [[], []]);
+  await page.click(`${EMU} .sysemu-run`);
+  const lines = await page.eval(() => [...document.querySelectorAll('#console-log .ln')].map((l) => l.textContent.trim()));
+  assert.ok(lines.includes('Emulate System: pic, fpga ready, 2 board(s).'), lines.join('\n'));
+  assert.deepEqual(lines.filter((l) => /^(ERROR|WARNING)/.test(l)), []);
   assert.deepEqual(page.console.filter((c) => c.type === 'warning' || c.type === 'warn' || c.type === 'error').map((c) => c.text), []);
 });

@@ -1,0 +1,49 @@
+{
+  "name": "uart-pic24",
+  "version": 1,
+  "kind": "system",
+  "device": {
+    "family": "spartan3e",
+    "part": "xc3s250e",
+    "package": "cp132",
+    "speed": "-4"
+  },
+  "board": null,
+  "top": "",
+  "simTop": "",
+  "files": [
+    {
+      "path": "fpga/uart_rx.vhd",
+      "lang": "vhdl",
+      "role": "design"
+    },
+    {
+      "path": "fpga/uart_tx.vhd",
+      "lang": "vhdl",
+      "role": "design"
+    },
+    {
+      "path": "fpga/debounce.vhd",
+      "lang": "vhdl",
+      "role": "design"
+    },
+    {
+      "path": "fpga/sevenseg.vhd",
+      "lang": "vhdl",
+      "role": "design"
+    },
+    {
+      "path": "fpga/uart.vhd",
+      "lang": "vhdl",
+      "role": "design"
+    }
+  ],
+  "constraints": null,
+  "stimuli": {},
+  "impl": {
+    "optMode": "Speed",
+    "optLevel": 1,
+    "startupClk": "JtagClk"
+  },
+  "preferredLanguage": "vhdl"
+}
