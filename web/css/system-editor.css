@@ -59,11 +59,12 @@
 .sys-emu .asm-side { width: 300px; }
 /* an Explorer 16/32 (#5484): its board's colours (its own, the same in every theme, #5575: web/js/emulator-explorer.js reads
    them), its LCD's rows, its buttons, its potentiometer and temperature sensor */
-.sys-emu { --exp-pcb: #1f4f8f; --exp-edge: #123563; --exp-metal: #b9bec2; --exp-metal-edge: #7d8286; --exp-black: #151515;
-  --exp-gold: #c9a54a; --exp-silk: #eef3fb; --exp-lcd: #9fc23a; --exp-pim: #0f2f12; }
-.sys-emu .sys-exp-lcd { width: 260px; color: #1c2a08; font: bold 19px/24px var(--asm-mono, monospace); white-space: pre; letter-spacing: 1px; }
+.sys-emu { --exp-pcb: #2a7a3f; --exp-edge: #1b5a2b; --exp-trace: #3a8f4f; --exp-metal: #c3c7c9; --exp-metal-edge: #7d8286;
+  --exp-black: #151515; --exp-gold: #c9a54a; --exp-silk: #f2f5ef; --exp-lcd: #c6cdbd; --exp-lcd-frame: #26315c; --exp-pim: #1d6a33;
+  --exp-slider: #3a3a3a; }
+.sys-emu .sys-exp-lcd { width: 270px; color: #1c2a08; font: bold 20px/26px var(--asm-mono, monospace); white-space: pre; letter-spacing: 1px; }
 .sys-emu .sys-exp-btn.nc { opacity: .45; cursor: default; }
-.sys-emu .sys-exp-pot { width: 110px; }
+.sys-emu .sys-exp-pot { width: 170px; }
 .sys-emu .sys-exp-temp { width: 64px; }
 
 /* a register map's editor (web/js/regmap-editor.js, #5288): its registers in a table, a row selected */

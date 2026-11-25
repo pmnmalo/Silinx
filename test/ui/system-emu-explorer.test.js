@@ -41,10 +41,11 @@ uiTest('#5484 Emulate: the Explorer 16/32 drawn, its LCD\'s rows, S3 held lights
   assert.deepEqual(parts.leds, [['D3', 'LED D3 (RA0)'], ['D4', 'LED D4 (RA1)'], ['D5', 'LED D5 (RA2)'], ['D6', 'LED D6 (RA3)'], ['D7', 'LED D7 (RA4)'], ['D8', 'LED D8 (RA5)'], ['D9', 'LED D9 (RA6)'], ['D10', 'LED D10 (RA7)']]);
   assert.deepEqual(parts.buttons, [['S3', 'Button S3 (RD6)'], ['S6', 'Button S6 (RD7)'], ['S5', 'Button S5 (RA7)'], ['S4', 'Button S4 (RD13)']]);
   assert.deepEqual([parts.pot, parts.temp, parts.rows, parts.note], [['50', 'Potentiometer R6 (AN5): 0 to 3.3 V'], ['25', 'Temperature sensor TC1047A (AN4), °C'], 2, 'Explorer 16/32 — pic · PIC24FJ1024GB610, its 8 MHz crystal']);
-  // (its colours the stylesheet's, #5575: the board's own, the same in the light and the dark theme)
-  const colours = () => page.eval((e) => { const s = document.querySelector(`${e} [data-node=pic] .emu-pcb-art`), r = s.querySelectorAll('rect'), t = [...s.querySelectorAll('text')].find((x) => x.textContent === 'EXPLORER 16/32');
-    return [getComputedStyle(r[0]).fill, getComputedStyle(r[2]).fill, getComputedStyle(t).fill]; }, EMU);
-  const BOARD = ['rgb(31, 79, 143)', 'rgb(159, 194, 58)', 'rgb(238, 243, 251)'];   // (its PCB, its LCD's glass, its silkscreen)
+  // (its colours the stylesheet's, #5575: the board's own, the same in the light and the dark theme; the real board's
+  // green solder mask, its LCD's grey glass in a blue frame, its white silkscreen, #5579)
+  const colours = () => page.eval((e) => { const s = document.querySelector(`${e} [data-node=pic] .emu-pcb-art`), r = (v) => s.querySelector(`rect[fill="var(--exp-${v})"]`), t = [...s.querySelectorAll('text')].find((x) => x.textContent === 'EXPLORER 16/32');
+    return [r('pcb'), r('lcd'), r('lcd-frame'), t].map((x) => getComputedStyle(x).fill); }, EMU);
+  const BOARD = ['rgb(42, 122, 63)', 'rgb(198, 205, 189)', 'rgb(38, 49, 92)', 'rgb(242, 245, 239)'];   // (its PCB, its LCD's glass and frame, its silkscreen)
   for (const theme of ['light', 'dark']) {
     await page.eval(async (x) => (await import('/js/silinx.js')).setTheme(x), theme);
     assert.equal(await page.eval(() => document.documentElement.dataset.theme), theme);
