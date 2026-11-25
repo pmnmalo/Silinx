@@ -1,7 +1,8 @@
 // Silinx - a drawing's generated code by its node's base language (#5486, roadmap #5479): in a System's microcontroller
-// node whose base language is C or C++ (core/system-layout.js baseLang, #5488), a drawing's file is an Arduino sketch
-// made through the synchronous reactive model (core/reactive-from.js, core/reactive-c.js), next to it as
-// `<module>.ino`; in one of MicroPython a MicroPython program (core/reactive-py.js, #5487), `<module>.py`; elsewhere its
+// node whose base language is C or C++ (core/system-layout.js baseLang, #5488), a drawing's file is a unit of its node's
+// Arduino program made through the synchronous reactive model (core/reactive-from.js, core/reactive-c.js generateUnit),
+// next to it as `<module>.c` (`.cpp` in C++), its <module>_init() and <module>_tick() called by the node's one sketch
+// (core/reactive-c-main.js); in one of MicroPython a MicroPython program (core/reactive-py.js, #5487), `<module>.py`; elsewhere its
 // HDL (core/view-hdl.js), as before. A schematic, a circuit and a register map are hardware: refused in a CPU node. The
 // pins of the drawing's ports are its node's GPIO interfaces named as the ports (their pins, bit 0 first); the others the
 // board's next free ones. Its ports are the node contract's typed ports (core/system-ports.js, #5485): pins at the
@@ -11,7 +12,7 @@
 // Isomorphic ES module: no DOM and no Node APIs.
 import { viewHdl } from './view-hdl.js';
 import { SCHEMATIC_ON_CPU, drawingKind, reactiveFromFile } from './reactive-from.js';
-import { generateArduino } from './reactive-c.js';
+import { generateUnit } from './reactive-c.js';
 import { generateMicroPython } from './reactive-py.js';
 import { PY_BOARDS } from './reactive-py-pins.js';
 import { mcuBoard } from './system-doc.js';
@@ -22,14 +23,14 @@ import { port } from './system-ports.js';
 /** A CPU node's base languages (core/system-layout.js NODE_LANGS' mcu). */
 export const CPU_LANGS = ['c', 'cpp', 'micropython'];
 export const isCpuLang = (lang) => CPU_LANGS.includes(lang);
-/** The extension of a drawing's code in a node of base language `lang`: py for MicroPython, else ino (C and C++). */
-export const codeExt = (lang) => (lang === 'micropython' ? 'py' : 'ino');
+/** The extension of a drawing's code in a node of base language `lang`: py for MicroPython, cpp for C++, else c. */
+export const codeExt = (lang) => (lang === 'micropython' ? 'py' : lang === 'cpp' ? 'cpp' : 'c');
 /** The name of a drawing's code in a node of base language `lang` in the messages: MicroPython, else C. */
 export const codeName = (lang) => (lang === 'micropython' ? 'MicroPython' : 'C');
 /** The file a drawing's code is written to: next to it, named after its module (its extension `ext`, codeExt's). */
-export const drawnCodePath = (path, module, ext = 'ino') => `${String(path).includes('/') ? String(path).replace(/\/[^/]*$/, '') : 'src'}/${module}.${ext}`;
+export const drawnCodePath = (path, module, ext = 'c') => `${String(path).includes('/') ? String(path).replace(/\/[^/]*$/, '') : 'src'}/${module}.${ext}`;
 /** Whether a drawing's generated file is its code (an Arduino sketch, a MicroPython program). */
-export const isCodeFile = (path) => /\.(ino|py)$/i.test(String(path ?? ''));
+export const isCodeFile = (path) => /\.(c|cpp|ino|py)$/i.test(String(path ?? ''));
 
 const HARDWARE = { sch: SCHEMATIC_ON_CPU, circ: 'A circuit is hardware: it cannot run on a CPU.', regs: 'A register map is hardware: it cannot run on a CPU.' };
 
@@ -84,7 +85,7 @@ const reactivePorts = (model, volts = UNO_VOLTS) => [...model.inputs.map((i) => 
 const pyBoardOf = (board) => (/^esp32/i.test(board ?? '') ? 'esp32' : /pico|rp2040/i.test(board ?? '') ? 'pico' : null);
 
 /**
- * A drawing's code on a CPU node, its C or its MicroPython: { path, lang, text, module, target (its .ino or .py), errors,
+ * A drawing's code on a CPU node, its C or its MicroPython: { path, lang, text, module, target (its .c, .cpp or .py), errors,
  * warnings, pins, ports (typed, reactivePorts') } (errors and warnings each `<path>: <message>`). lang: the node's base
  * language; pins: { port: [pins] }; board: the node's (core/system-doc.js MCU_BOARDS', or an ESP32's or a Pico's).
  */
@@ -103,7 +104,7 @@ export function drawingC(path, text, { lang = 'c', pins = {}, board = null, tick
   // (a port its node names but not the drawing: not the drawing's)
   const own = notPy ? {} : Object.fromEntries(Object.entries(pins).filter(([p]) => [...r.model.inputs, ...r.model.outputs].some((x) => x.name === p)));
   const opts = { pins: own, ...(tickMs ? { tickMs } : {}) };
-  const g = py ? generateMicroPython(r.model, { ...opts, board: pyBoard || 'esp32' }) : generateArduino(r.model, opts);
+  const g = py ? generateMicroPython(r.model, { ...opts, board: pyBoard || 'esp32' }) : generateUnit(r.model, { pins: own, lang });
   if (g.errors) return fail(r.model.name, g.errors);
   const warnings = [...(notPy ? [notPy] : []), ...g.warnings].map((w) => `${path}: ${w}`);
   return { path, lang, text: g.code, module: r.model.name, target: drawnCodePath(path, r.model.name, codeExt(lang)), errors: [], warnings, pins: g.pins, ports: reactivePorts(r.model, py ? PY_BOARDS[g.board].vio : UNO_VOLTS) };

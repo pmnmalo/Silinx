@@ -43,7 +43,7 @@ uiTest('#5488 the Design pane grouped by node: each node\'s folder\'s rows under
   await page.openProject('Groups');
   await page.leftTab('design');
   await page.waitFor(() => [...document.querySelectorAll('#hier .row .lbl')].some((l) => l.textContent.trim() === 'misc'), [], { what: 'the rows' });
-  assert.deepEqual(await groups(page), [['uno', ['lock', 'hello.hex', 'hello.asm']], ['fpga', ['uart', 'extra', 'consts']], 'misc']);
+  assert.deepEqual(await groups(page), [['uno', ['lock', 'hello.hex', 'hello.asm', 'uno.ino']], ['fpga', ['uart', 'extra', 'consts']], 'misc']);
   // (the Arduino's drawing: its badge first, then its node's language, C, its generated C (#5486), no schematic of it; the FPGA node's module: its HDL's)
   const badges = (label) => page.eval((l) => [...[...document.querySelectorAll('#hier .row')].find((r) => r.querySelector('.lbl')?.textContent.trim() === l).querySelectorAll('.badge')].map((b) => [b.textContent, b.title]), label);
   assert.deepEqual(await badges('lock'), [['FSM', 'Open'], ['C', 'Generated from the state diagram']]);

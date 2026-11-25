@@ -202,7 +202,22 @@ and D1 are the USB serial port's, and a port given them is warned about. A port 
 API (`delay`, `int`) is renamed (`delay_v`) with a warning. The tests compile each drawing's sketch with the computer's
 C compiler, as C and as C++, against a mock of the Arduino API (`test/fixtures/arduino-mock`), and run it tick by tick
 against the model; on the local server, the node's Compile Firmware compiles the sketch to the `.hex` the AVR runs
-(#5503, below).
+(#5503, below). With arduino-cli and its AVR core (CI's Linux unit tests have them), `test/reactive-avr.test.js`
+compiles every drawing's unit for the Uno, as C and as C++, with no compiler warning, and runs the `.hex` on avr8js tick
+by tick against the model; and a node's sketch of two drawings, its ticks timed by `millis()`.
+
+**Several drawings in one node** (#5486): arduino-cli joins all of a sketch folder's `.ino` files into one, so a node has
+one sketch. In a node, a drawing is a unit of the node's program (`generateUnit`): its own file, `<module>.c` (`.cpp`
+in a C++ node), its every name `static` but its two functions, `<module>_init()` (the pins' modes, the reset state) and
+`<module>_tick()` (one tick), its state type its own (`<module>_State`: one definition of a type per program in C++)
+and its A pins by their numbers (`14 /* A0 */`: in C an initializer is a constant). The node's sketch,
+`<id>/<id>.ino` (`core/reactive-c-main.js`, `core/node-main-sync.js`), calls them all: `setup()` each one's init,
+`loop()` each one's tick every `TICK_MS` milliseconds, in the order of their files, the C ones declared `extern "C"`.
+It is made again whenever a drawing's C is made or made again, and before the node's firmware is compiled (a drawing
+deleted since is no longer called); removed when no drawing has its C, or when the node's language is no longer C. A
+pin one drawing writes and another one uses is warned about (`uno: D5 D6 are a's y and b's k: give one of them its
+pins …`), one warning for the pins of the same two ports; a pin two drawings read is not. A hand-written `.ino` in the
+node's folder is the node's program instead: no sketch is made, and it calls the drawings' functions itself.
 
 **Its MicroPython** (`core/reactive-py.js`, #5487) is a program as a student writes one, the same `.py` on the ESP32 and
 on the Pico, its HAL MicroPython's `machine.Pin` and `time.ticks_ms`, with the same ticks as the C:
@@ -228,11 +243,13 @@ errors) with a mock of `machine` and `time` (`test/fixtures/micropython-mock/run
 the board's own run comes with the ESP32's and the Pico's nodes (#5495, #5494).
 
 **A drawing in a CPU node** (`core/drawing-code.js`, #5486): in a microcontroller node whose base language is C or C++
-(its `lang`, #5488), a state diagram's, an ASM chart's, a Petri net's or a truth table's file is its sketch,
-`<node>/<module>.ino`, next to it, as an FPGA node's drawing has its HDL file. It is made when the drawing is made, and
-made again when the drawing changes (`core/drawing-sync.js`, as for the HDL: the interface and the MCP's `write_file`,
-`new_source` and the drawings' tools). A drawing with errors leaves its sketch as it was, said. A drawing whose HDL file
-was made before its node's language was C gets its sketch instead, its HDL file removed. The pins of its ports are its
+(its `lang`, #5488), a state diagram's, an ASM chart's, a Petri net's or a truth table's file is its C,
+`<node>/<module>.c` (`.cpp` in C++: a unit of the node's program, above), next to it, as an FPGA node's drawing has its
+HDL file. It is made when the drawing is made, and made again when the drawing changes (`core/drawing-sync.js`, as for
+the HDL: the interface and the MCP's `write_file`, `new_source` and the drawings' tools), the node's sketch with it. A
+drawing with errors leaves its C as it was, said. A drawing whose HDL file was made before its node's language was C
+gets its C instead, its HDL file removed (and one whose sketch of its own, `<module>.ino`, was made before, #5486's
+first form: its unit). The pins of its ports are its
 node's GPIO interfaces named as the ports (their pins, bit 0 first), the others the board's next free ones; its ports are
 the node contract's typed ports (`core/system-ports.js`, at the board's 5 V). A schematic, a circuit and a register map
 are refused in a CPU node, with their messages. In a MicroPython node (#5487) the drawing's file is its MicroPython
@@ -242,8 +259,8 @@ free pins, said. A node whose language changes from C to MicroPython, or back, g
 removed.
 On the Design pane (`web/js/design-cpu.js`) such a drawing's row, under its node, is named after its module: its
 drawing's badge first (the base), its node's language's last, `[C]` (or `[C++]`, `[Py]`), its code, opened from it; marked when
-its sketch is not made (the drawing has errors: its tip says them) or not made again since. A drawing with no sketch gets
-it when the project is opened, as the MCP's tools give it (`adoptDrawing`); the sketch has no row of its own.
+its C is not made (the drawing has errors: its tip says them) or not made again since. A drawing with no C gets it when
+the project is opened, as the MCP's tools give it (`adoptDrawing`); its C has no row of its own, the node's sketch has.
 
 ### The PIC24
 
@@ -584,8 +601,8 @@ nothing: the user installs arduino-cli and its Arduino AVR core (`arduino-cli co
 finds arduino-cli on the PATH, in `/opt/homebrew/bin` or `/usr/local/bin`, or at config.json's
 `paths["arduino-cli"]`. The MCP's `toolchain_info` gives its version and its core's.
 
-- The sketch is the node's folder's `.ino`, C and C++ files, hand-written or generated from a drawing (#5486). Its main
-  `.ino` is the one named as the node's firmware, else the first. It is compiled in `build/nodes/<id>/firmware/`.
+- The sketch is the node's folder's `.ino`, C and C++ files, hand-written or generated from its drawings (#5486: their
+  units and the node's sketch, made again first). Its main `.ino` is the one named as the node's firmware, else the first. It is compiled in `build/nodes/<id>/firmware/`.
 - The compiler's errors and warnings go to the console as `ERROR: uno/blink.ino:12:3: …` lines, by the project's file
   and line, and the Errors and Warnings tabs' rows open the file there. gcc's notes and quoted lines are left out.
 - The `.hex` is written to the node's folder: over the node's firmware when that is a `.hex`, else to

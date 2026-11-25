@@ -13,6 +13,7 @@ import { VIEW_RE, definesModule, drawingInLanguage, drawnHdlClash, drawnHdlPath,
 import { isDesignOnly } from './project-kind.js';
 import { useProjectParts } from './circuit-kicad.js';
 import { modelRunners } from './circuit-live-model.js';
+import { syncNodeMain } from './node-main-sync.js';
 import { codeName, cpuDrawingRefusal, drawingC, drawingNode, isCodeFile, isCpuLang, nodeCodeOpts } from './drawing-code.js';
 
 const kindOf = path => VIEW_RE.exec(path)?.[1].toLowerCase();
@@ -106,7 +107,18 @@ export async function syncDrawing(P, name, path, modules = null) {
 
 // a drawing's code made again (its file the C or the MicroPython, or its HDL from before its node's language was C,
 // or its other language's code: its node's language's instead)
-async function syncCode(P, name, path, { m, target, tree }, at) {
+async function syncCode(P, name, path, link, at) {
+  return withMain(P, name, at, await codeAgain(P, name, path, link, at));
+}
+
+// the result's messages followed by the node's sketch's, made again when the drawing's C was written (#5486)
+async function withMain(P, name, at, r) {
+  if (!r?.written) return r;
+  const s = await syncNodeMain(P, name, at.node, at.lang);
+  return s ? { ...r, main: s.written || s.removed, messages: [...r.messages, ...s.messages] } : r;
+}
+
+async function codeAgain(P, name, path, { m, target, tree }, at) {
   const r = drawingC(path, JSON.stringify(m), { lang: at.lang, ...nodeCodeOpts(at.node) });
   const ext = f => /\.(\w+)$/.exec(f)?.[1].toLowerCase();
   const warn = r.warnings.map(w => `WARNING: ${w}`);
@@ -153,7 +165,7 @@ export async function adoptDrawing(P, name, path) {
   try { m = JSON.parse(await P.readFile(name, path)); } catch { return null; }
   if (!m || typeof m !== 'object' || m.base === 'hdl' || m.generatedFile) return null;
   const at = await nodeOfDrawing(P, name, path);
-  if (isCpuLang(at?.lang)) return adoptCode(P, name, path, m, at);   // (in a CPU node: its C, #5486)
+  if (isCpuLang(at?.lang)) return withMain(P, name, at, await adoptCode(P, name, path, m, at));   // (in a CPU node: its C, #5486)
   const r = viewHdl(path, JSON.stringify(m), { modules: kindOf(path) === 'sch' ? await projectModules(P, name) : {}, linked: () => false });
   if (!r || r.errors.length || !r.module || !r.text) return null;
   const target = drawnHdlPath(path, r.module, r.lang);
