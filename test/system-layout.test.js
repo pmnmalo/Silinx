@@ -4,7 +4,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { NODE_LANGS, nodeLangs, baseLang, langError, langMixes, sourceLang, relPathError, nodeDir, nodePath, nodeOfPath,
-  relInNode, renamedPath, nodeFilesOf, groupByNode, layoutPlan } from '../core/system-layout.js';
+  relInNode, renamedPath, nodeFilesOf, groupByNode, layoutPlan, sourcePlace } from '../core/system-layout.js';
 import { NODE_KINDS } from '../core/system-doc.js';
 
 test('#5488 a node\'s folder: its id; a file\'s path in it; ids and names that would leave it refused', () => {
@@ -95,4 +95,21 @@ test('#5488 a System saved: its nodes\' folders renamed with them (a chain of re
   assert.deepEqual(layoutPlan(sys('fpga', 'uno', 'term'), sys('fpga2'), [{ from: 'fpga', to: 'fpga2' }]), { renames: [{ from: 'fpga', to: 'fpga2' }], removed: ['uno', 'term'] });
   assert.deepEqual(layoutPlan(sys(), sys('fpga')), { renames: [], removed: [] });
   assert.deepEqual(layoutPlan(null, null), { renames: [], removed: [] });
+});
+
+test('#5488 a new source\'s place: the node\'s folder (its sub-folder), else the first FPGA node\'s; the node\'s base language', () => {
+  const sys = { nodes: [{ id: 'uno', kind: 'mcu', lang: 'cpp' }, { id: 'term', kind: 'terminal' }, { id: 'pl', kind: 'fpga', lang: 'verilog' }, { id: 'f2', kind: 'fpga' }] };
+  assert.deepEqual(sourcePlace(sys), { node: 'pl', location: 'pl', lang: 'verilog' });
+  assert.deepEqual(sourcePlace(sys, { id: 'f2', preferred: 'verilog' }), { node: 'f2', location: 'f2', lang: 'verilog' });
+  assert.deepEqual(sourcePlace(sys, { id: 'f2' }), { node: 'f2', location: 'f2', lang: 'vhdl' });
+  assert.deepEqual(sourcePlace(sys, { id: 'uno' }), { node: 'uno', location: 'uno', lang: 'cpp' });
+  assert.deepEqual(sourcePlace(sys, { id: 'pl', dir: 'sim' }), { node: 'pl', location: 'pl/sim', lang: 'verilog' });
+  assert.deepEqual(sourcePlace(sys, { id: 'pl', dir: 'constraints' }), { node: 'pl', location: 'pl/constraints', lang: 'verilog' });
+  assert.deepEqual(sourcePlace(sys, { id: 'pl', dir: 'labs' }), { node: 'pl', location: 'labs', lang: 'verilog' });
+  // (a terminal or an unknown node: the first FPGA node's)
+  assert.deepEqual(sourcePlace(sys, { id: 'term' }).node, 'pl');
+  assert.deepEqual(sourcePlace(sys, { id: 'nope' }).node, 'pl');
+  assert.equal(sourcePlace({ nodes: [{ id: 'uno', kind: 'mcu' }, { id: 't', kind: 'terminal' }] }), null);
+  assert.equal(sourcePlace({ nodes: [{ id: 'd', kind: 'design' }] }).location, 'd');
+  assert.equal(sourcePlace(null), null);
 });

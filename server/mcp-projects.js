@@ -74,7 +74,7 @@ async function systemOf(name, pj) {
   const texts = system ? { [system]: await P.readFile(name, system).catch(() => '') } : {};
   return { system: projectSystem(pj, { files, texts }).model, nodes: projectNodes(pj, { files, texts }).nodes };
 }
-const nodeText = n => `${n.id} (${[n.kind, n.board].filter(Boolean).join(', ')}${n.module ? `: module ${n.module}` : ''}${n.files.length ? `: ${n.files.join(', ')}` : ''})`;
+const nodeText = n => `${n.id} (${[n.kind, n.board].filter(Boolean).join(', ')}${n.module ? `: module ${n.module}` : ''}${n.files.length ? `: ${n.files.join(', ')}` : ''}${n.folder ? `; ${n.folder}/: ${n.inFolder.length} file(s)` : ''})`;
 
 export const PROJECT_TOOLS = [
   {

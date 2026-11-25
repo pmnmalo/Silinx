@@ -136,3 +136,15 @@ export function layoutPlan(before, after, renames = []) {
   const moved = new Set(out.map(r => r.from));
   return { renames: out, removed: [...was].filter(id => !now.has(id) && !moved.has(id)) };
 }
+
+/** Where a new source goes in a System (#5488): { node, location, lang } in the node `id`'s folder, else the System's first
+ *  FPGA or design node's: its folder (a sub-folder `dir`, a test bench's sim or a constraints file's, inside it; a lab's
+ *  labs at the root), its base language (`preferred`, the project's preferred HDL, when it has none of its own); null when
+ *  the System has no such node. New Source's and the MCP's new_source's. */
+export function sourcePlace(sys, { id = null, dir = 'src', preferred = null } = {}) {
+  const nodes = sys?.nodes ?? [];
+  const n = nodes.find(x => x.id === id && nodeLangs(x.kind).length) ?? nodes.find(x => x.kind === 'fpga' || x.kind === 'design');
+  if (!n) return null;
+  const location = dir === 'labs' ? 'labs' : !dir || dir === 'src' ? n.id : `${n.id}/${dir}`;
+  return { node: n.id, location, lang: baseLang(n, preferred) };
+}

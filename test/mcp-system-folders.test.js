@@ -96,3 +96,17 @@ test('#5488 the regs-avr example\'s FPGA node renamed: its register map\'s link 
   assert.equal(JSON.parse(await P.readFile('ra', 'pl/pwm_regs.regs.json')).generatedFile, 'pl/pwm_regs.vhd');
   assert.deepEqual((await ok('check_drawing', { project: 'ra', file: 'pl/pwm_regs.regs.json' })).isError, false);
 });
+
+test('#5488 new_source in a System project: the first FPGA node\'s folder, its base language; a location in a node\'s folder, that node\'s', async () => {
+  await P.createProject({ name: 'ns', template: 'uart-avr' });
+  const made = async (args) => (await ok('new_source', { project: 'ns', type: 'module', ...args })).data.path;
+  assert.equal(await made({ name: 'blink' }), 'fpga/blink.vhd');
+  await ok('edit_system', { project: 'ns', file: 'uart_avr.sys.json', edits: [{ action: 'change_node', node: 'fpga', fields: { lang: 'verilog' } }] });
+  assert.equal(await made({ name: 'count' }), 'fpga/count.v');
+  assert.equal(await made({ name: 'shift', location: 'fpga/sub' }), 'fpga/sub/shift.v');
+  assert.equal(await made({ name: 'tb_count', type: 'test_bench', module: 'count' }), 'fpga/sim/tb_count.v');
+  // (a folder of no node's, or a node with no HDL: the project's preferred language)
+  assert.equal(await made({ name: 'misc', location: 'other' }), 'other/misc.vhd');
+  assert.equal(await made({ name: 'glue', location: 'uno' }), 'uno/glue.vhd');
+  assert.equal(await made({ name: 'mine', language: 'vhdl' }), 'fpga/mine.vhd');
+});
