@@ -9,6 +9,7 @@
 // (core/system-emu-explorer.js, silinx-pic24's EXPLORER_1632); what they do is the worker's.
 import { boardFrame, svgText, ic } from './emulator-pcb.js';
 import { ledLook } from './emulator-paint.js';
+import { PRESS_MS } from '/core/emulate-press.js';
 
 // the board's colours: the stylesheet's (web/css/system-editor.css, .sys-emu's --exp-*: the board's own, the same in every
 // theme), none written here (#5575, test/hex-colours.test.js)
@@ -68,8 +69,10 @@ function explorerArt() {
 }
 
 /** The board drawn: { wrap, paint(shown) } (emu: core/system-emu-explorer.js explorerBoard's, shown: its explorerState's);
- *  set(part, value): a button pressed (1) or let go (0), R6 (0 to 1) or the TC1047A (°C) set. */
-export function explorerLayout({ h, emu, title, set }) {
+ *  set(part, value): a button pressed (1) or let go (0), R6 (0 to 1) or the TC1047A (°C) set; holds and clock: the System
+ *  Emulator's (core/emulate-press.js pressHolds, the boards' time: { now, busy }), a button let go held down until the
+ *  PIC24 has had it for a real press (#5618). */
+export function explorerLayout({ h, emu, title, set, holds, clock }) {
   const board = emu.board, buttonPins = Object.fromEntries(emu.inputs.filter((i) => i.kind === 'button').map((i) => [i.pin, i.nodePin]));
   const { put, wrap } = boardFrame({ h, W, H, art: explorerArt(), board, title, clockNote: `${board.mcu}, its 8 MHz crystal` });
   // the LCD's rows
@@ -82,18 +85,30 @@ export function explorerLayout({ h, emu, title, set }) {
     leds.set(d, el);
     put(el, ledX(k), LED_Y - 8);
   });
-  // the buttons, S3 S6 S5 S4 as on the board, each held down while pressed
+  // the buttons, S3 S6 S5 S4 as on the board, each held down while pressed; let go, held down until the PIC24 has had it
+  // for PRESS_MS of the boards' time, from when the press reached it (a click's press and release both sent before the
+  // worker's next run: the PIC24 never saw it, #5618; the Board Emulator's buttons, #3109)
   const buttons = new Map();
   ['S3', 'S6', 'S5', 'S4'].forEach((s, k) => {
     const pin = buttonPins[s];
     const el = h('div', { class: 'b2-btn sys-exp-btn', 'data-part': s, title: pin ? `Button ${s} (${pin})` : `Button ${s}: its pin is a link's` });
     if (!pin) el.classList.add('nc');
+    let down = false;
+    const up = () => {
+      if (!down) return;
+      down = false;
+      holds.release(el, { until: (from) => from + PRESS_MS * 1e9, now: clock.now, go: () => set(s, 0) });
+    };
     el.addEventListener('pointerdown', (e) => {
       if (!pin) return;
       e.preventDefault();
+      holds.press(el, { now: clock.now, busy: !!clock.busy });
+      down = true;
       set(s, 1);
-      window.addEventListener('pointerup', () => set(s, 0), { once: true });
+      try { el.setPointerCapture(e.pointerId); } catch { /* (a pointer the page does not know: a test's event) */ }
     });
+    el.addEventListener('pointerup', up);
+    el.addEventListener('pointercancel', up);
     buttons.set(s, el);
     put(el, BTN_XS[k], BTN_Y - 16);
   });
