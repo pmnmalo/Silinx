@@ -51,19 +51,49 @@ class Uart {
 
   /** A character sent: fn(byte, t). */
   onTransmit(fn) { this.listeners.push(fn); }
-  /** The TX line's levels: fn(level, t) at each bit. */
+  /** The TX line's levels: fn(level, t) at each bit (undefined: the line no longer the UART's). */
   onTxBits(fn) { this.bitListeners.push(fn); }
 
   writeMode(v, old) {
     if (!(v & UARTEN) && old & UARTEN) this.clear();
-    if (v & UARTEN && !(old & UARTEN)) this.idle();
+    this.line();
   }
   writeSta(v, old) {
     // OERR only cleared; UTXEN set: the transmit buffer empty, its interrupt
     if (old & OERR && !(v & OERR)) this.rxq.length = 0;
     this.setSta((v & ~OERR) | (old & v & OERR));
-    if (v & UTXEN && !(old & UTXEN) && this.enabled) { this.mcu.cpu.raise(this.irq.tx); this.idle(); }
+    if (v & UTXEN && !(old & UTXEN) && this.enabled) this.mcu.cpu.raise(this.irq.tx);
     if (!(v & UTXEN) && old & UTXEN) { this.txq.length = 0; this.mcu.cancel(this.shifting?.event); this.shifting = null; }
+    this.line();
+  }
+
+  // the TX line: idle (1) while UARTEN and UTXEN, else the port's again (undefined)
+  line() {
+    const on = this.enabled && (this.sta & UTXEN) !== 0;
+    if (on === this.lineOn) return;
+    this.lineOn = on;
+    for (const fn of this.bitListeners) fn(on ? 1 : undefined, this.mcu.time);
+  }
+
+  /** The RX line's level changed (the UxRX pin's, through PPS): a start bit (a fall, idle) starts a frame, sampled at
+   *  each bit's middle; its stop bit 0 a framing error. rxLevel() reads the line. */
+  rxEdge(level) {
+    if (level !== 0 || this.rxBusy || !this.enabled || !(this.sta & URXEN) || !this.rxLevel) return;
+    this.rxBusy = true;
+    this.setSta(this.sta & ~RIDLE);
+    const t0 = this.mcu.time, bit = this.bitPs, pd = (this.mode >> 1) & 3, data = pd === 3 ? 9 : 8, par = pd === 1 || pd === 2;
+    let v = 0, ones = 0;
+    const at = (k, fn) => this.mcu.schedule(t0 + (k + 0.5) * bit, fn);
+    at(0, () => { if (this.rxLevel()) { this.rxBusy = false; this.setSta(this.sta | RIDLE); } });   // (a glitch)
+    for (let i = 0; i < data; i++) at(i + 1, () => { const b = this.rxLevel() ? 1 : 0; v |= b << i; ones += b; });
+    if (par) at(data + 1, () => { ones += this.rxLevel() ? 1 : 0; });
+    at(data + 1 + (par ? 1 : 0), () => {
+      if (!this.rxBusy) return;
+      this.rxBusy = false;
+      this.setSta(this.sta | RIDLE);
+      if (par && ones % 2 !== (pd === 2 ? 1 : 0)) this.setSta(this.sta | PERR);
+      this.receive(v, { framingError: !this.rxLevel() });
+    });
   }
 
   // UxSTA's read-only bits from the buffers
@@ -76,7 +106,6 @@ class Uart {
   }
 
   clear() { this.txq.length = 0; this.rxq.length = 0; this.mcu.cancel(this.shifting?.event); this.shifting = null; this.setSta(this.sta & ~(OERR | FERR | PERR)); }
-  idle() { for (const fn of this.bitListeners) fn(1, this.mcu.time); }
 
   // a character to UxTXREG: to the buffer (a full one's lost, said), its frame started when the line is idle
   write(v) {
@@ -137,7 +166,7 @@ class Uart {
   }
   flags() { const top = this.rxq[0]; this.setSta((this.sta & ~FERR) | (top?.ferr ? FERR : 0)); }
 
-  reset() { this.txq.length = 0; this.rxq.length = 0; this.shifting = null; }
+  reset() { this.txq.length = 0; this.rxq.length = 0; this.shifting = null; this.rxBusy = false; this.line(); }
 }
 
 /** The six UARTs. */
