@@ -39,7 +39,10 @@ export function nextException(cpu) {
     if (best >= 0) return { trap: best, priority: TRAPS[best].priority, vector: TRAPS[best].vector };
   }
   const intcon2 = cpu.mem[SFR.INTCON2 >> 1];
-  if (!(intcon2 & GIE) || ipl >= 7) return null;
+  if (!(intcon2 & GIE) || ipl >= 7) {
+    if (cpu.sleeping && wakes(cpu)) cpu.wake();
+    return null;
+  }
   const disi = (intcon2 & DISI_BIT) !== 0;
   let best = -1, bp = 0;
   for (let k = 0; k < 8; k++) {

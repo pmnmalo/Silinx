@@ -5,8 +5,9 @@ import { Pic24Mcu } from './mcu.js';
 import { Oscillator } from './osc.js';
 import { Watchdog } from './wdt.js';
 import { Ports } from './gpio.js';
+import { Timers } from './timers.js';
 
-/** The device: { mcu, cpu, osc, wdt, ports }. opts: Pic24Mcu's (program, config, primaryHz, log); fcy: the instruction
+/** The device: { mcu, cpu, osc, wdt, ports, timers }. opts: Pic24Mcu's (program, config, primaryHz, log); fcy: the instruction
  *  clock forced (the oscillator's ignored). */
 export function createGb610(opts = {}) {
   const mcu = new Pic24Mcu(opts);
@@ -14,6 +15,7 @@ export function createGb610(opts = {}) {
   const osc = new Oscillator(mcu);
   const wdt = new Watchdog(mcu);
   const ports = new Ports(mcu);
+  const timers = new Timers(mcu);
   mcu.powerOn();
-  return { mcu, cpu: mcu.cpu, osc, wdt, ports };
+  return { mcu, cpu: mcu.cpu, osc, wdt, ports, timers };
 }
