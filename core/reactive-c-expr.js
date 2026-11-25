@@ -24,8 +24,10 @@ export function cConst(v) {
 
 const node = (s, p, u32 = false) => ({ s, p, u32 });
 const paren = (x) => node(`(${x.s})`, P.primary, x.u32);
-/** x as an operand that needs at least precedence `p` (`ok(x)`: may it stand bare beside its operator). */
-const at = (x, p, ok = () => true) => (x.p >= P.unary || (x.p >= p && ok(x)) ? x : paren(x));
+/** x as an operand that needs at least precedence `p` (`ok(x)`: may it stand bare beside its operator). A logical not
+ *  stands bare only beside && and || (`!x && y`) and another not: beside a bitwise operator, a comparison or a sum in
+ *  parentheses, as GCC's -Wparentheses asks (`(!x) | y`, its warning: '!' or '|' meant otherwise). */
+const at = (x, p, ok = () => true, not = false) => ((x.op === '!' && !not) ? paren(x) : x.p >= P.unary || (x.p >= p && ok(x)) ? x : paren(x));
 const cast32 = (x) => (x.u32 ? x : node(`(uint32_t)${at(x, P.unary).s}`, P.unary, true));
 const maskTo = (x, w) => (w >= 32 && x.u32 ? x : node(`${at(x, P.primary).s} & ${cConst(maskOf(w))}`, P.band, x.u32 || w > SMALL));
 
@@ -47,11 +49,11 @@ export function cExpr(e, sym, bare = false) {
       const full = e.k === 'slice' ? s.width - e.lo : s.width;
       return w < full ? masked(x, w) : x;
     }
-    case 'not': return node(`!${at(C(e.a), P.unary).s}`, P.unary);
+    case 'not': return { ...node(`!${at(C(e.a), P.unary, undefined, true).s}`, P.unary), op: '!' };
     case 'and': case 'or': {
       const op = e.k === 'and' ? '&&' : '||';
       const ok = (x) => x.p !== P.land || op === '&&';   // (an && beside an ||: in parentheses)
-      return node(`${at(C(e.a), BIN_P[op], ok).s} ${op} ${at(C(e.b), BIN_P[op], ok).s}`, BIN_P[op]);
+      return node(`${at(C(e.a), BIN_P[op], ok, true).s} ${op} ${at(C(e.b), BIN_P[op], ok, true).s}`, BIN_P[op]);
     }
     case 'cmp': {
       const p = BIN_P[e.op];
