@@ -206,7 +206,7 @@ export const COLLAB_TOOLS = [
       user: STR('promote, demote: the participant, by the name status lists (a share with editors only).'),
       name: STR('The name the followers see (default: "MCP agent").'),
       server: STR(`The address of the Silinx server whose relay shares it (default ${DEFAULT_SERVER}).`),
-      editors: { type: 'boolean', description: 'start: editors may change its text files and drawings too (an editor\'s link besides the follower\'s); their changes written to the disk through the import gate, the project untrusted from their first change (ISE waits until the user trusts it).' },
+      editors: { type: 'boolean', description: 'start: editors may change its text files and drawings too (an editor\'s link besides the follower\'s); written through the import gate, the project untrusted from their first change.' },
       qr: { type: 'boolean', description: 'start, status: the follow link\'s QR code too (qr, an SVG); with editors, the editors\' link\'s too (editQr).' },
       key: STR('start: the key of a relay on another computer (its config.json\'s relay.key), instead of the token of a Silinx server on this one.'),
       via: { type: 'string', enum: ['cloudflare', 'server'], description: 'start: as Share Project… ▸ Live\'s choice: cloudflare, through the Cloudflare relay set with live_relay, the links opening on the Silinx site; server (default), a Silinx server\'s relay (server, key). Peer to peer is a browser page\'s only.' },

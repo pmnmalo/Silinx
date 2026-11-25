@@ -11,6 +11,20 @@ import { TOOLS } from './programmer-values.js';
 
 // (the most a programming waits: openFPGALoader writing a flash of 16 MB, iMPACT's Identify)
 const TIMEOUT_MS = 600000;
+// a System's nodes programmed (node: its id, or * every one; connected: its board picked by hand), program_board's result
+async function programNodes(name, { node, connected, tool, position, force }, signal) {
+  if (tool !== undefined || position !== undefined || force) throw toolError('node: a System node is programmed with its board\'s own programmer (no tool, position or force)');
+  if (connected !== undefined && node === '*') throw toolError('connected: one node\'s board (node its id, not *)');
+  const { startSystemProgram } = await import('./system-program.js');
+  const job = await waited(() => startSystemProgram(name, { node, chosen: connected !== undefined ? { [node]: connected } : {} }), signal, 'programming');
+  const redact = await redactor(), lines = job.lines.map(redact), ok = job.status === 'ok', r = job.result || {};
+  const warnings = lines.filter(l => /^WARNING: /.test(l)).map(l => l.slice(9)), errors = lines.filter(l => /^ERROR: /.test(l)).map(l => l.slice(7));
+  const head = ok ? `Programmed ${node === '*' ? 'the System' : `the System node ${node}`}: ${lines.filter(l => /^Program: /.test(l)).pop()?.slice(9) || ''}` : `Programming failed: ${redact(job.error || 'see the log')}`;
+  return { text: [head, ...warnings.map(w => `WARNING: ${w}`), '', ...lines.slice(-40)].join('\n'), isError: !ok,
+    data: { project: name, node, ok, programmed: r.programmed || [], errors, warnings, log: lines },
+    untrusted: 'the programmers\' log, which quotes the project\'s file names' };
+}
+
 // a job of the server's (impl-routes.js) started and waited for, as the interface follows it: stopped when the call is
 // cancelled or after TIMEOUT_MS; a refusal to start it (an untrusted project, no file) the tool's error
 async function waited(start, signal, what) {
@@ -38,15 +52,20 @@ const pathless = t => String(t ?? '').replace(/docker image '?[^\s',)]+'?/gi, 'i
 export const BOARD_TOOLS = [
   {
     name: 'program_board', title: 'Program the board',
-    description: 'Program the project\'s board (Configure Target Device: Program FPGA, or Program Flash on an iCE40) with the file run_process bitstream made: a .bit loaded into the FPGA\'s SRAM (Spartan-3E / 6, 7-series, the ECP5\'s ULX3S), a Gowin\'s .fs into its SRAM, an iCE40\'s .bin written into the board\'s SPI flash. Through the board\'s USB and its programmer (openFPGALoader, djtgcfg, adepttool, xc3sprog or iMPACT; tool to choose another). A bitstream built for another device than the project\'s is refused unless force. Only a trusted project. Returns the programmer\'s log.',
+    description: 'Program the project\'s board (Configure Target Device) with the file run_process bitstream made: a .bit into the FPGA\'s SRAM (Spartan-3E / 6, 7-series, the ULX3S\'s ECP5), a Gowin\'s .fs into its SRAM, an iCE40\'s .bin into the board\'s SPI flash, by its programmer (openFPGALoader, djtgcfg, adepttool, xc3sprog, iMPACT: tool). Another device\'s file is refused unless force. node: a System\'s, each on its board by USB id (Program All / Program Node), an FPGA over JTAG, an Arduino by arduino-cli upload. A trusted project only. Returns the log.',
     inputSchema: { type: 'object', properties: {
       project: PROJECT,
       tool: { type: 'string', enum: TOOLS, description: 'The programmer (default: the board\'s, else Toolchain Settings\').' },
-      position: { type: 'integer', minimum: 1, maximum: 32, description: 'The FPGA\'s position in the JTAG chain, iMPACT\'s numbering from 1 (the Program view\'s "position N"), whatever the programmer (default: the board\'s FPGA). A Spartan-3E / 6 or 7-series .bit only: a Zynq\'s, iCE40\'s, ECP5\'s or Gowin\'s has none.' },
+      position: { type: 'integer', minimum: 1, maximum: 32, description: 'The FPGA\'s position in the JTAG chain, iMPACT\'s numbering from 1 (the Program view\'s "position N"), whatever the programmer (default: the board\'s FPGA). A Spartan-3E / 6 or 7-series .bit only.' },
       force: { type: 'boolean', description: 'Program a bitstream built for another device than the project\'s anyway (default false), warned.' },
+      node: STR('A System node (* all).'),
+      connected: STR('Its board by hand: a serial number or port.'),
     }, required: ['project'], additionalProperties: false },
     annotations: { readOnlyHint: false, destructiveHint: true, idempotentHint: true, openWorldHint: false },
-    async run({ project: name, tool, position, force = false }, { signal } = {}) {
+    async run({ project: name, tool, position, force = false, node, connected }, { signal } = {}) {
+      // (a System's node, or every one, on its board, #5489, #5447: server/system-program.js, Program All / Program Node)
+      if (node !== undefined) return programNodes(name, { node, connected, tool, position, force }, signal);
+      if (connected !== undefined) throw toolError('connected: the board of a System node (node)');
       const pj = await readProject(name);
       if (!pj.top) throw toolError(`'${name}' has no top module: set_top first`);
       const { startProgramming } = await import('./impl-routes.js');

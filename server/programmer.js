@@ -138,7 +138,7 @@ export function impactScript({ bitfile, position = 1, cable = 'auto' } = {}) {
  * Build the command(s) for a scan or program operation.
  * @returns {Array<{cmd:string,args:string[],impactScript?:string}>}
  */
-export function buildCommands(op, { tool, cable, device, position, bitfile, fpgaBoard, target }) {
+export function buildCommands(op, { tool, cable, device, position, bitfile, fpgaBoard, target, ftdiSerial }) {
   const pos = position === undefined || position === null || position === '' ? null : parseInt(position, 10);
   if (pos !== null && (!Number.isInteger(pos) || pos < 0 || pos > 31)) throw new Error(`invalid chain position '${position}'`);
   const prog = op === 'program';
@@ -146,7 +146,8 @@ export function buildCommands(op, { tool, cable, device, position, bitfile, fpga
   switch (tool) {
     case 'openFPGALoader': {
       // (-b: openFPGALoader's board, its cable and pins: the iCE40's ice40_generic, #2298)
-      const base = [...(fpgaBoard ? ['-b', fpgaBoard] : []), ...(cable ? ['-c', cable] : [])];
+      // (--ftdi-serial: the board of a System's node, by its serial number, among several, #5489)
+      const base = [...(fpgaBoard ? ['-b', fpgaBoard] : []), ...(cable ? ['-c', cable] : []), ...(ftdiSerial ? ['--ftdi-serial', ftdiSerial] : [])];
       if (!prog) return [{ cmd: tool, args: [...base, '--detect'] }];
       // (an open family's file, target: an iCE40's .bin to its SPI flash; an ECP5's .bit, a Gowin's .fs to its SRAM, -m: never
       // its flash; no JTAG chain, the board's)
@@ -200,7 +201,7 @@ export function toolPosition(tool, position) {
  */
 export function resolveOptions(req, cfg, boardId) {
   // a cable or a device the page names is a value of the tool's option, never an option of its own (#1236)
-  for (const k of ['cable', 'device', 'fpgaBoard'])
+  for (const k of ['cable', 'device', 'fpgaBoard', 'ftdiSerial'])
     if (req[k] != null && req[k] !== '' && !VALUE.test(String(req[k]))) throw Object.assign(new Error(`invalid ${k} '${req[k]}'`), { status: 400 });
   const b = boardId ? findBoard(boardId) : null;
   let tool = req.tool || (b?.programmer?.preferred) || cfg?.programmer?.tool || 'openFPGALoader';
@@ -217,6 +218,7 @@ export function resolveOptions(req, cfg, boardId) {
     cable: req.cable || bd.cable || (cfg?.programmer?.tool === tool ? cfg.programmer.cable : '') || (tool === 'impact' ? 'auto' : ''),
     device: req.device || bd.device || '',
     fpgaBoard: req.fpgaBoard || bd.board || '',
+    ftdiSerial: req.ftdiSerial || '',
     position: toolPosition(tool, req.position) ?? bd.position ?? (tool === 'impact' ? 1 : 0),
     board: b?.id || null,
     note: bd.note || null,

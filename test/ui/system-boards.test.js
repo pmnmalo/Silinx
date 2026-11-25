@@ -41,7 +41,7 @@ uiTest('#5489 Connected Boards: the System\'s nodes and their boards by USB id; 
   await page.waitFor(() => [...document.querySelectorAll('#hier .row .lbl')].some((l) => l.textContent.trim() === 'uart_avr'), [], { what: 'the System' });
   await page.treeRow('#hier', 'uart_avr', { exact: true });
   await page.waitFor(() => [...document.querySelectorAll('#procs .row .lbl')].some((l) => l.textContent.trim() === 'Connected Boards'), [], { what: 'the System\'s processes' });
-  assert.equal((await procs(page)).at(-1), 'Connected Boards');
+  assert.equal((await procs(page)).at(-2), 'Connected Boards');
   await page.treeRow('#procs', 'Connected Boards', { exact: true, dbl: true });
   await page.waitConsole(/^Process "Connected Boards" completed successfully$/m);
   let all = await lines(page);

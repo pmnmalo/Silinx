@@ -27,7 +27,7 @@ import { isTrusted, untrustedMessage } from '../core/trust.js';
 import { normalizePath } from '../core/import-gate.js';
 import { foldName } from '../core/fold-name.js';
 import { familyProfile } from '../core/family-profile.js';
-import { checkBody, pathFree, IMPLEMENT_BODY, CAPTURE_BODY, FIRMWARE_BODY } from './http-errors.js';
+import { checkBody, pathFree, IMPLEMENT_BODY, CAPTURE_BODY, FIRMWARE_BODY, PROGRAM_SYSTEM_BODY } from './http-errors.js';
 
 // files that only Silinx understands: not part of an exported Xilinx ISE project
 export const SILINX_ONLY = /(^|\/)(silinx\.json|[^/]+\.(asm|sch|tt|bool|fsm|sym|regs)\.json)$/i;   // (a module's symbol too, #3828)
@@ -290,6 +290,13 @@ export function registerImplRoutes(api, { wrap, projects: P }) {
   api.get('/projects/:p/build-plan', wrap(async req => (await import('./system-plan.js')).readBuildPlan(req.params.p)));
   // (the connected boards matched to the System's nodes by their USB id: server/usb-devices.js, #5489)
   api.get('/projects/:p/boards', wrap(async req => (await import('./usb-devices.js')).connectedBoards(req.params.p)));
+  // (its nodes programmed on their boards, the FPGAs first: server/system-program.js, #5489, #5447; the steps first, for the
+  // interface to ask for a board the match left open)
+  api.get('/projects/:p/program-plan', wrap(async req => {
+    const { steps, devices } = await (await import('./system-program.js')).programPlan(req.params.p, { node: String(req.query.node || '*') });
+    return { steps, devices };
+  }));
+  api.post('/projects/:p/program-system', checkBody(PROGRAM_SYSTEM_BODY), wrap(async req => ({ job: (await (await import('./system-program.js')).startSystemProgram(req.params.p, req.body)).id })));
   api.post('/projects/:p/build', checkBody(FIRMWARE_BODY), wrap(async req => ({ job: (await (await import('./system-build-all.js')).startSystemBuild(req.params.p, req.body)).id })));
 
   api.get('/projects/:p/reports', wrap(req => projectReports(req.params.p)));

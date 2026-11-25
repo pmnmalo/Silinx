@@ -639,8 +639,18 @@ in its build's folder (its description and its sources' hashes, taken when it st
   Generate Programming File and Compile Firmware are its build.
 - The MCP's `run_process` process `build` (a node's id, built whatever its state; `*` Build All) and `check_system`'s
   `plan`.
-- To come (#5489's part 3, with #5447): **Program All** / **Program Node** in the plan's order, only on the user's
-  action, each node on its matched board (or one the user picks instead).
+- **Program All** (the System row) and **Program Node** (an FPGA's or an Arduino's row) program the nodes in the plan's
+  order (#5489's part 3, #5447, `core/system-program.js`, `server/system-program.js`), only on the user's action and a
+  trusted project's: an FPGA node's bitstream over JTAG by its board's programmer, its board picked by its serial
+  number where the tool can (djtgcfg's `-d SN:<serial>`, openFPGALoader's `--ftdi-serial`; else the first board the
+  tool finds, said); then an Arduino's `.hex` by `arduino-cli upload --verify` (avrdude) on its board's serial port.
+  A node whose board is missing or not told apart asks which connected board it is (**Choose the Board**: the user's
+  pick an override of the match; Skip: not programmed). A node not built, a PIC24 (MPLAB IPE with its `.hex`) and a
+  MicroPython node (mpremote) are not programmed, said; one out of date is programmed, warned. One line a node in the
+  console, then `Program: 2 node(s) programmed (fpga, uno), 0 failed, 0 not programmed.`; a node that fails, the next
+  goes on. The MCP's `program_board` with `node` (`*` Program All) and `connected` (its board by hand: a serial number
+  or a port). The browser edition says a System's boards are programmed by the local server (its nodes are built
+  there). Not done: the microcontrollers leaving reset together (each upload resets its own board).
 
 **The boards by their USB id** (#5489's part 2, `core/system-usb.js`). Each FPGA and microcontroller node is matched to
 a board connected to the computer by its USB id:
@@ -768,7 +778,7 @@ Later:
 |---|---|
 | `emulate_system` | presses, sets and reads each node |
 | `node_mode` | sets a node simulated or real |
-| `program_board` with `node` | programs a node's board (#5489's part 3, in place of a `program_node`: #5520) |
+| `program_board` with `node` | programs a node's board, `*` every one (#5489, #5447: in place of a `program_node`, #5520) |
 
 The existing `program_board` and `capture` serve the FPGA nodes.
 

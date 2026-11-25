@@ -3,7 +3,8 @@
 // schematic; its Synthesize, Implement Design and Generate Programming File on its own board, #5446), and its FPGA nodes'
 // modules' (#5443: the same, no flow on the project's default device); the System's Implement System; an Arduino node's
 // Compile Firmware (#5503: its sketch to its .hex by the local server's arduino-cli); the System's Build Plan and Build All
-// (#5489: the nodes not up to date built, the FPGAs first). A node's Program: #5489's part 3, it joins this list.
+// (#5489: the nodes not up to date built, the FPGAs first), Connected Boards and Program All; an FPGA or Arduino node's
+// Program Node (#5489's part 3, #5447: on its board, matched by its USB id).
 import { findDoc } from './app.js';
 import { openSystem } from './system-open.js';
 import { systemTop } from './design-system.js';
@@ -13,6 +14,9 @@ import { firmwareRefusal } from '/core/avr-compile.js';
 // a node's (or the System's, '*') implementation on its own board, #5446: web/js/system-implement-ui.js
 const impl = (node, steps, label) => async () => (await import('./system-implement-ui.js')).runNodeImpl(node, steps, label);
 const FLOW = [['node-synth', 'Synthesize', ['synth']], ['node-impl', 'Implement Design', ['synth', 'translate', 'map', 'par']], ['node-bitgen', 'Generate Programming File', ['synth', 'translate', 'map', 'par', 'trce', 'bitgen']]];
+
+// a node's (or every node's, '*') Program on its board, #5489: web/js/system-program-ui.js
+const program = node => async () => (await import('./system-program-ui.js')).runProgramNodes(node);
 
 const editSystem = file => ({ id: 'sys-open', label: 'View/Edit System', ico: 'system', run: () => openSystem(file) });
 
@@ -36,6 +40,8 @@ export function systemProcesses(sel, view, { check, rtl }) {
     { id: 'sys-build', label: 'Build All', ico: 'process', run: async () => (await import('./system-build-ui.js')).runBuildAll(sel.file) },
     // (its nodes' boards by their USB id, #5489's part 2)
     { id: 'sys-boards', label: 'Connected Boards', ico: 'board', run: async () => (await import('./system-build-ui.js')).runConnectedBoards() },
+    // (every node on its board, the FPGAs first, #5489: web/js/system-program-ui.js)
+    { id: 'sys-program', label: 'Program All', ico: 'board', run: program('*') },
   ];
   if (sel.type !== 'node') return null;
   return [
@@ -44,10 +50,13 @@ export function systemProcesses(sel, view, { check, rtl }) {
       { id: 'check', label: 'Check Syntax', ico: 'process', run: () => check(sel.module) },
       { id: 'rtl', label: 'View RTL Schematic', ico: 'schematic', run: () => rtl(sel.module) },
       ...FLOW.map(([id, label, steps]) => ({ id, label, ico: 'process', run: impl(sel.node, steps, label) })),
+      { id: 'node-program', label: 'Program Node', ico: 'board', run: program(sel.node) },   // (on its board over JTAG, #5447)
     ] : []),
     // (an Arduino node's C or C++, #5503: web/js/system-firmware-ui.js)
     ...(sel.kind === 'mcu' && !firmwareRefusal({ id: sel.node, kind: sel.kind, board: sel.board, lang: sel.lang }) ? [
       { id: 'node-firmware', label: 'Compile Firmware', ico: 'process', run: async () => (await import('./system-firmware-ui.js')).runNodeFirmware(sel.node, sel.file) },
+      // (its .hex by arduino-cli upload on its board, #5489)
+      { id: 'node-program', label: 'Program Node', ico: 'board', run: program(sel.node) },
     ] : []),
   ];
 }
