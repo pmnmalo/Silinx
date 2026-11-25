@@ -3,12 +3,14 @@
 // check is core/system-check.js. Isomorphic module (browser + Node).
 //
 //   { format: 'silinx-system', version: 1, name,
-//     nodes: [ { id, kind: 'fpga', module, board, variant?, pins: { <port>: <pin of the board> }, interfaces, x, y }
-//              { id, kind: 'mcu', board: 'arduino-uno' | 'arduino-nano', firmware: <a .hex / .elf of the project>, interfaces, x, y }
+//     nodes: [ { id, kind: 'fpga', module, board, variant?, pins: { <port>: <pin of the board> }, lang, interfaces, x, y }
+//              { id, kind: 'mcu', board: 'arduino-uno' | 'arduino-nano', firmware: <a .hex / .elf of the project>, lang, interfaces, x, y }
 //              { id, kind: 'terminal', interfaces, x, y }
 //              { id, kind: 'circuit', circuit: <a .circ.json of the project>, interfaces: [], x, y } ],
 //     links: [ { id, kind: 'uart' | 'gpio' | 'spi' | 'i2c', a: '<node>.<interface>', b: '<node>.<interface>' } ] }
 //
+// A node's `lang` is its base language (#5488, core/system-layout.js: VHDL or Verilog for an FPGA or a design node; C,
+// C++ or MicroPython for a microcontroller), written for the kinds that have one, its kind's default when not given.
 // An interface is declared once, on its node: a UART { name, kind: 'uart', tx, rx, baud, frame } (an FPGA node's tx and
 // rx its module's ports; a microcontroller's its board's UART, named as the board's, its pins the board's), GPIO wires
 // { name, kind: 'gpio', pins: [...], dir: 'in' | 'out' } (an FPGA node's pins its module's ports, `led<0>` a bus's bit;
@@ -24,6 +26,7 @@
 // their pins the links (core/system-circuit.js); it has no interfaces.
 
 import { isName } from './ident.js';
+import { nodeLangs, baseLang, langError } from './system-layout.js';
 
 export const SYSTEM_FORMAT = 'silinx-system';
 export const SYSTEM_VERSION = 1;
@@ -85,6 +88,7 @@ function normalNode(n) {
     out.board = n.board ?? null; out.firmware = n.firmware ?? null;
   } else if (out.kind === 'circuit') out.circuit = n.circuit ?? null;
   else if (out.kind === 'design') out.module = n.module ?? null;
+  if (nodeLangs(out.kind).length) out.lang = baseLang(n);
   out.interfaces = Array.isArray(n?.interfaces) ? n.interfaces.map(normalInterface) : [];
   out.x = Number.isFinite(n?.x) ? n.x : 0; out.y = Number.isFinite(n?.y) ? n.y : 0;
   return out;
@@ -113,6 +117,9 @@ export function readSystem(text) {
   // (a node's id an identifier, #5446: it names its build folder, build/nodes/<id>/; the editor and the MCP make no other)
   const bad = system.nodes.find(n => !isName(n.id));
   if (bad) return { error: nodeIdError(bad.id) };
+  // (a node's base language one of its kind's, #5488: never replaced by the default unsaid)
+  const wrong = (Array.isArray(m.nodes) ? m.nodes : []).find(n => n?.lang != null && nodeLangs(n.kind).length && langError(n.kind, n.lang));
+  if (wrong) return { error: `node ${wrong.id}: ${langError(wrong.kind, wrong.lang)}` };
   return { system };
 }
 

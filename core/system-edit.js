@@ -4,6 +4,7 @@
 // is never changed. Isomorphic module (browser + Node).
 import { NODE_KINDS, INTERFACE_KINDS, FRAME_RE, MCU_BOARDS, SPI_HZ, I2C_HZ, mcuBoard, linkEnd, normalizeSystem } from './system-doc.js';
 import { isName } from './ident.js';
+import { nodeLangs, langError, LANG_NAMES } from './system-layout.js';
 
 const lc = s => String(s).toLowerCase();
 const copy = sys => normalizeSystem(JSON.parse(JSON.stringify(sys)));
@@ -32,13 +33,14 @@ const idError = (sys, id, self = null) => {
 const reaching = (sys, node, iface = null) => sys.links.filter(l => [l.a, l.b].some(e => { const x = linkEnd(e); return x?.node === node && (iface == null || x.iface === iface); }));
 
 /**
- * A node added ({ kind, id?, board?, module?, x?, y? }): an FPGA node with its module and board (no interface yet: its
+ * A node added ({ kind, id?, board?, module?, lang?, x?, y? }, lang its base language, its kind's default when not given): an FPGA node with its module and board (no interface yet: its
  * ports are named in its UART's or GPIO's fields), a microcontroller with its board's UART (`Serial`), a serial terminal
  * with its UART (`serial`), a circuit (#5215) with its circuit (a .circ.json of the project; no interface: its boards'
  * pins are its links). Returns { system, id } or { error }.
  */
-export function addNode(sys, { kind, id = null, board = null, module = null, circuit = null, x = 0, y = 0 } = {}) {
+export function addNode(sys, { kind, id = null, board = null, module = null, circuit = null, lang = null, x = 0, y = 0 } = {}) {
   if (!NODE_KINDS.includes(kind)) return { error: `no node kind '${kind}': ${NODE_KINDS.join(', ')}` };
+  if (lang != null && langError(kind, lang)) return { error: langError(kind, lang) };
   const out = copy(sys);
   const nid = id ?? freeId(out, kind === 'mcu' ? 'mcu' : kind === 'terminal' ? 'term' : kind === 'circuit' ? 'circuit' : 'fpga');
   const bad = idError(out, nid);
@@ -51,7 +53,7 @@ export function addNode(sys, { kind, id = null, board = null, module = null, cir
     n = { id: nid, kind, board: b.id, firmware: null, interfaces: Object.keys(b.uarts).map(name => ({ name, kind: 'uart', ...UART_DEFAULTS })) };
   } else if (kind === 'circuit') n = { id: nid, kind, circuit, interfaces: [] };
   else n = { id: nid, kind, interfaces: [{ name: 'serial', kind: 'uart', ...UART_DEFAULTS }] };
-  out.nodes.push({ ...n, x: Math.round(+x || 0), y: Math.round(+y || 0) });
+  out.nodes.push({ ...n, ...(lang != null ? { lang } : {}), x: Math.round(+x || 0), y: Math.round(+y || 0) });
   return { system: normalizeSystem(out), id: nid };
 }
 
@@ -65,13 +67,14 @@ function renameEnds(sys, { node, to, iface = null, toIface = null }) {
 }
 
 /**
- * A node's fields changed ({ id, board, module, variant, firmware, x, y, pins }: those given; `pins` merged, a port's pin
+ * A node's fields changed ({ id, board, module, variant, firmware, lang, x, y, pins }: those given; `pins` merged, a port's pin
  * null or '' removing it; a variant or a firmware null removing it). Its id renamed in its links' ends too.
  */
 export function changeNode(sys, id, fields = {}) {
   const out = copy(sys), n = nodeOf(out, id);
   if (!n) return { error: `no node '${id}' in the System` };
-  const allowed = { fpga: ['id', 'module', 'board', 'variant', 'pins', 'x', 'y'], mcu: ['id', 'board', 'firmware', 'x', 'y'], terminal: ['id', 'x', 'y'], circuit: ['id', 'circuit', 'x', 'y'] }[n.kind] || ['id', 'x', 'y'];
+  const allowed = [...({ fpga: ['id', 'module', 'board', 'variant', 'pins', 'x', 'y'], mcu: ['id', 'board', 'firmware', 'x', 'y'], terminal: ['id', 'x', 'y'], circuit: ['id', 'circuit', 'x', 'y'] }[n.kind] || ['id', 'x', 'y']),
+    ...(nodeLangs(n.kind).length ? ['lang'] : [])];
   for (const k of Object.keys(fields)) if (!allowed.includes(k)) return { error: `${id}: a ${NODE_KIND_NAMES[n.kind] || n.kind} node has no field '${k}' (${allowed.join(', ')})` };
   if (fields.id != null && fields.id !== n.id) {
     const bad = idError(out, fields.id, n);
@@ -85,6 +88,11 @@ export function changeNode(sys, id, fields = {}) {
     n.board = b.id;
   } else if (fields.board !== undefined) n.board = fields.board || null;
   if (fields.module !== undefined) n.module = fields.module || null;
+  if (fields.lang !== undefined) {
+    const why = langError(n.kind, fields.lang);
+    if (why) return { error: `${id}: ${why}` };
+    n.lang = fields.lang;
+  }
   if (fields.firmware !== undefined) n.firmware = fields.firmware || null;
   if (fields.circuit !== undefined) n.circuit = fields.circuit || null;
   if (fields.variant !== undefined) { if (fields.variant == null || fields.variant === '') delete n.variant; else n.variant = String(fields.variant); }
@@ -280,7 +288,7 @@ export function describeSystem(sys) {
   for (const n of sys.nodes) {
     const what = n.kind === 'fpga' ? `FPGA, module ${n.module ?? '(none)'} on ${n.board ?? '(no board)'}${n.variant ? `-${n.variant}` : ''}`
       : n.kind === 'mcu' ? `${mcuBoard(n.board)?.name ?? n.board}, firmware ${n.firmware ?? '(none)'}` : n.kind === 'circuit' ? `circuit ${n.circuit ?? '(none)'}` : NODE_KIND_NAMES[n.kind] || n.kind;
-    lines.push(`node ${n.id}: ${what}`);
+    lines.push(`node ${n.id}: ${what}${n.lang ? `, in ${LANG_NAMES[n.lang] ?? n.lang}` : ''}`);
     for (const f of n.interfaces) lines.push(`  ${ifaceText(n, f)}`);
   }
   for (const l of sys.links) lines.push(`link ${l.id}: ${l.kind === 'i2c' ? 'I²C' : String(l.kind).toUpperCase()} ${l.a} ↔ ${l.b}`);

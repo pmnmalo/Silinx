@@ -264,7 +264,10 @@ board, device, top module and constraints) and no link. The MCP's `project_info`
   editor (`web/js/system-editor.js`, #4700) places the nodes (an FPGA node, an Arduino Uno or Nano, a serial terminal),
   links their interfaces (a click on one, then on another of its kind), and edits a node's, an interface's and a link's
   properties in its side panel; each edit is one of `core/system-edit.js`, the MCP's `edit_system`'s.
-- **It holds nodes and links.**
+- **It holds nodes and links.** Each node of a kind with sources (an FPGA, a design, a microcontroller) has its **base
+  language** (`lang`, #5488): VHDL or Verilog for an FPGA or a design node, C, C++ or MicroPython for a microcontroller,
+  its kind's default when not given (VHDL, C). Its folder is named by its id (`core/system-layout.js`: the node's
+  paths, the traversals refused, what mixes in a node: VHDL with Verilog, C with C++ and assembly).
 - **A System project has no `board` of its own.** Each FPGA node is a module of the System project itself (HDL
   or a drawing), names its own board and pins, and is built with the flow of that board's family.
 
