@@ -10,7 +10,7 @@ import net from 'node:net';
 import { fileURLToPath } from 'node:url';
 import os from 'node:os';
 import { workflowFiles } from './workflows-lib.mjs';
-import { REPO, WORKFLOWS, OPEN, HARD_CLOSE, lastOpening, needs, decide, runs, run, serviceCommands } from '../scripts/ise-runner/window.mjs';
+import { REPO, WORKFLOWS, OPEN, HARD_CLOSE, lastOpening, needs, decide, runs, run, serviceCommands, plistEnv, windowEnv, WINDOW } from '../scripts/ise-runner/window.mjs';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const DIR = path.join(ROOT, 'scripts/ise-runner');
@@ -338,7 +338,58 @@ test('window: the runner\'s service started and stopped through svc.sh, or as ro
 
 test('window.sh: root\'s own Node.js copy first, then the runner\'s', { skip: !posix }, () => {
   const text = fs.readFileSync(path.join(DIR, 'window.sh'), 'utf8');
-  assert.match(text, /^node="\$\(dirname "\$0"\)\/node"\n\[ -x "\$node" \] \|\| node=\$\(ls -d "\$RUNNER_DIR"\/externals\/node\*\/bin\/node/m);
+  assert.match(text, /^node="\$\(dirname "\$0"\)\/node"\n\[ -x "\$node" \] \|\| \[ -z "\$\{RUNNER_DIR:-\}" \] \|\| node=\$\(ls -d "\$RUNNER_DIR"\/externals\/node\*\/bin\/node/m);
+  assert.doesNotMatch(text, /RUNNER_DIR:\?/, 'RUNNER_DIR not required: window.mjs reads it from the window\'s plist (#5606)');
+});
+
+// #5606: `sudo /Library/Silinx-runner/window.sh open` by hand has none of the settings launchd gives the tick
+test('#5606 window: a run by hand reads RUNNER_DIR, RUNNER_DAEMON and STATE_DIR from the window\'s plist; svc.sh never as root', { skip: !posix }, () => {
+  const r = installIn(['--system', 'iserunner', 'RUNNER']);
+  assert.equal(r.code, 0, r.err);
+  const dest = path.join(r.lib, 'Silinx-runner'), daemon = path.join(r.lib, 'LaunchDaemons/com.github.pmnmalo.silinx.runner.plist');
+  const plist = r.read(path.join(r.lib, `LaunchDaemons/${WINDOW}.plist`));
+  assert.deepEqual(plistEnv(plist), { RUNNER_DIR: r.dir, RUNNER_DAEMON: daemon, STATE_DIR: dest, PATH: '/usr/bin:/bin:/usr/sbin:/sbin:/usr/local/bin:/opt/homebrew/bin' });
+  assert.deepEqual(plistEnv('<dict><key>EnvironmentVariables</key><dict><key>A</key><string>x &amp; &lt;y&gt;</string></dict></dict>'), { A: 'x & <y>' });
+  assert.deepEqual(plistEnv('<dict></dict>'), {});
+  // the settings that are missing, from the plist beside the scripts' folder; the environment's own win
+  assert.deepEqual(windowEnv({ HOME: '/var/root' }, dest), { HOME: '/var/root', RUNNER_DIR: r.dir, RUNNER_DAEMON: daemon, STATE_DIR: dest });
+  assert.deepEqual(windowEnv({ STATE_DIR: '/s' }, dest), { STATE_DIR: '/s', RUNNER_DIR: r.dir, RUNNER_DAEMON: daemon });
+  const all = { RUNNER_DIR: '/r', RUNNER_DAEMON: '/d', STATE_DIR: '/s' };
+  assert.equal(windowEnv(all, dest, () => { throw new Error('not read'); }), all);
+  assert.deepEqual(windowEnv({ HOME: '/h' }, DIR), { HOME: '/h' }, 'the repository\'s scripts: no plist beside them');
+  // the install without --system: the user's agent, beside ~/Library/Silinx-runner
+  const u = installIn(['RUNNER']);
+  assert.deepEqual(windowEnv({}, path.join(u.home, 'Library/Silinx-runner')), { RUNNER_DIR: u.dir });
+  // so the opening starts the daemon, not svc.sh; and svc.sh is never run as root (it refuses: "Must not run with sudo")
+  assert.equal(serviceCommands('start', windowEnv({}, dest), 0).at(-1).args.join(' '), `bootstrap system ${daemon}`);
+  assert.throws(() => serviceCommands('start', { RUNNER_DIR: '/r' }, 0), /^Error: the runner's service is its user's svc\.sh agent \(install\.sh without --system\): run window\.sh as that user, not with sudo$/);
+  assert.equal(serviceCommands('start', { RUNNER_DIR: '/r' }, 501)[0].cmd, './svc.sh');
+});
+
+test('#5606 regression, window.sh open by hand in the --system install: the runner\'s daemon loaded, the state in the window\'s folder', { skip: !posix }, () => {
+  const r = installIn(['--system', 'iserunner', 'RUNNER']);
+  assert.equal(r.code, 0, r.err);
+  const dest = path.join(r.lib, 'Silinx-runner'), daemon = path.join(r.lib, 'LaunchDaemons/com.github.pmnmalo.silinx.runner.plist');
+  fs.rmSync(path.join(dest, 'node'));          // the scratch install's Node.js is a stand-in: the PATH's runs it
+  const bin = path.join(path.dirname(r.dir), 'bin'), log = path.join(path.dirname(r.dir), 'calls');
+  // the runner off (pgrep finds no listener); the daemon gone at once once unloaded (launchctl print fails)
+  fs.writeFileSync(path.join(bin, 'pgrep'), '#!/bin/sh\nexit 1\n', { mode: 0o755 });
+  fs.writeFileSync(path.join(bin, 'launchctl'), `#!/bin/sh\necho "launchctl $*" >> "${log}"\n[ "$1" != print ]\n`, { mode: 0o755 });
+  fs.rmSync(log, { force: true });
+  const home = fs.mkdtempSync(path.join(os.tmpdir(), 'root-home-'));
+  // window.mjs runs only as the script itself: its real path (the scratch folder's is a link on macOS)
+  const out = spawnSync('sh', [path.join(fs.realpathSync(dest), 'window.sh'), 'open'], { encoding: 'utf8',
+    env: { PATH: `${bin}:${path.dirname(process.execPath)}:/usr/bin:/bin`, HOME: home } });
+  assert.equal(out.status, 0, out.stderr);
+  assert.equal(out.stderr, '');
+  assert.match(out.stdout, /^\S+ start: opened by hand\n$/);
+  assert.deepEqual(r.calls(), [
+    'launchctl bootout system/com.github.pmnmalo.silinx.runner',
+    'launchctl print system/com.github.pmnmalo.silinx.runner',
+    `launchctl bootstrap system ${daemon}`,
+  ]);
+  assert.equal(JSON.parse(r.read(path.join(dest, 'window.json'))).needs, 'any');
+  assert.equal(fs.existsSync(path.join(home, 'Library')), false, 'no state in the caller\'s home');
 });
 
 // #2624: the installer's check ("its log says …") quotes the hook's own message, not an older name of it

@@ -205,8 +205,8 @@ docs/          the user's guide (user/en, user/pt, its images/), the developers'
     window (#482, `scripts/ise-runner/`: a job-started hook and a launchd daemon, installed on the Mac mini
     with `sudo sh scripts/ise-runner/install.sh --system <its user> <the runner's folder>`, again after
     those scripts change; `--system` is the mode to use: without it the hook and the runner's `.env`
-    belong to the user the jobs run as, #1442). A run by hand outside the window: `sudo … window.sh open`
-    there first (the command `install.sh` prints), or it waits for the evening.
+    belong to the user the jobs run as, #1442). A run by hand outside the window: `sudo /Library/Silinx-runner/window.sh open`
+    there first (it reads the runner's folder and daemon from the window's plist, #5606), or it waits for the evening.
   - After a run that looks wrong (a job that should not have run there, a design that is not ours),
     clear the runner user's `silinx-cache` folder (the quality comparison's design corpus, under that
     user's home: it persists from run to run, and the next run fetches it anew) and the runner's `_work`
