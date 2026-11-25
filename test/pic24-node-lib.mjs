@@ -50,3 +50,12 @@ export const echoHex = () => hexOf([
   'mov #0x3e, w0', 'mov w0, 0x03b2',
   'loop: btss 0x03b0, #0', 'bra loop', 'mov 0x03b4, w0', 'mov w0, 0x03b2', 'bra loop',
 ]);
+
+/** Each button lights its LED while pressed (pressed: its pin at 0): S3 (RD6) D3 (RA0), S4 (RD13) D4 (RA1), S6 (RD7) D6
+ *  (RA3), S5 (RA7, an input here: D10 is its LED too) D7 (RA4). */
+export const buttonsHex = () => hexOf([
+  'clr 0x066a', 'clr 0x06a6', 'mov #0xff80, w0', 'mov w0, 0x0662',
+  'loop: clr w1',
+  'btss 0x06a0, #6', 'bset w1, #0', 'btss 0x06a0, #13', 'bset w1, #1', 'btss 0x06a0, #7', 'bset w1, #3', 'btss 0x0664, #7', 'bset w1, #4',
+  'mov w1, 0x0666', 'bra loop',
+]);

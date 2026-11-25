@@ -128,7 +128,7 @@ export function mountSystemEmulator(host, opts) {
       if (b.kind === 'fpga') return [b.id, fpgaView(b)];
       if (b.kind === 'circuit') return [b.id, circuitView(b)];
       // (an Explorer 16/32's buttons, potentiometer and temperature sensor set through the worker, #5484)
-      const a = b.arch === 'pic24' ? explorerLayout({ h, emu: b, title: b.id, set: (part, v) => ready?.set(b.id, part, v) }) : arduinoLayout({ h, board: b.board, title: b.id });
+      const a = b.arch === 'pic24' ? explorerLayout({ h, emu: b, title: b.id, set: (part, v) => ready?.set(b.id, part, v), holds, clock }) : arduinoLayout({ h, board: b.board, title: b.id });
       return [b.id, { el: h('div', { class: 'sys-emu-board', 'data-node': b.id }, a.wrap), paint: a.paint }];
     }));
     boardsEl.replaceChildren(...[...views.values()].map(v => v.el));

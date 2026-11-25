@@ -7,7 +7,7 @@
 import { before, after } from 'node:test';
 import assert from 'node:assert/strict';
 import { setupUi, uiTest, makeProject } from './harness.js';
-import { explorerHex } from '../pic24-node-lib.mjs';
+import { explorerHex, buttonsHex } from '../pic24-node-lib.mjs';
 
 let env;
 before(async () => { env = await setupUi(); });
@@ -19,7 +19,6 @@ const SYS = JSON.stringify({ format: 'silinx-system', version: 2, name: 'pic', n
   { id: 'pic', kind: 'mcu', board: 'explorer-1632', firmware: 'pic/explorer.hex', interfaces: [], x: 0, y: 0 }], links: [] }, null, 2);
 const state = (page) => page.eval(() => window.SilinxApp.findDoc('sysemu:pic.sys.json')?.emulator?.state() ?? null);
 const press = (page, part, type) => page.eval((e, p, t) => document.querySelector(`${e} [data-node=pic] .sys-exp-btn[data-part=${p}]`).dispatchEvent(new PointerEvent(t, { bubbles: true, pointerId: 1 })), EMU, part, type);
-const pointerUp = (page) => page.eval(() => window.dispatchEvent(new PointerEvent('pointerup', { bubbles: true, pointerId: 1 })));
 
 uiTest('#5484 Emulate: the Explorer 16/32 drawn, its LCD\'s rows, S3 held lights D3, R6 and the temperature set; Portuguese', E, async (page) => {
   await makeProject(env, { name: 'PicEmu', template: 'uart', files: { 'pic.sys.json': SYS, 'pic/explorer.hex': explorerHex() } });
@@ -61,7 +60,7 @@ uiTest('#5484 Emulate: the Explorer 16/32 drawn, its LCD\'s rows, S3 held lights
   await page.waitFor(() => { const b = window.SilinxApp.findDoc('sysemu:pic.sys.json').emulator.state()?.boards.pic; return b?.held.S3 && b.leds.D3 > 0.9; }, [], { what: 'S3 lighting D3', timeout: 30000 });
   assert.equal(await page.eval((e) => document.querySelector(`${e} [data-node=pic] .sys-exp-btn[data-part=S3]`).classList.contains('on'), EMU), true);
   if (process.env.SILINX_SHOT) await page.screenshot(process.env.SILINX_SHOT);
-  await pointerUp(page);
+  await press(page, 'S3', 'pointerup');
   await page.waitFor(() => { const b = window.SilinxApp.findDoc('sysemu:pic.sys.json').emulator.state()?.boards.pic; return b && !b.held.S3 && b.leds.D3 < 0.1; }, [], { what: 'D3 off', timeout: 30000 });
   // R6's slider and the temperature: on the board's model
   await page.eval((e) => { const p = document.querySelector(`${e} [data-node=pic] .sys-exp-pot`); p.value = '20'; p.dispatchEvent(new Event('input', { bubbles: true })); const t = document.querySelector(`${e} [data-node=pic] .sys-exp-temp`); t.value = '40'; t.dispatchEvent(new Event('change', { bubbles: true })); }, EMU);
@@ -100,5 +99,51 @@ uiTest('#5484 the uart-pic24 example emulated: the PIC24\'s hello echoed by the 
   const lines = await page.eval(() => [...document.querySelectorAll('#console-log .ln')].map((l) => l.textContent.trim()));
   assert.ok(lines.includes('Emulate System: pic, fpga ready, 2 board(s).'), lines.join('\n'));
   assert.deepEqual(lines.filter((l) => /^(ERROR|WARNING)/.test(l)), []);
+  assert.deepEqual(page.console.filter((c) => c.type === 'warning' || c.type === 'warn' || c.type === 'error').map((c) => c.text), []);
+});
+
+// (#5618) each button pressed with the mouse where it is drawn (a real press: whatever is on top of it gets it), held, then
+// let go: the PIC24 reads it (its firmware lights the button's LED while its pin is 0), in the light and the dark theme
+uiTest('#5618 regression: the Explorer 16/32\'s buttons S3 to S6 clicked, then held and let go, with the mouse where they are drawn: the PIC24 reads each; light and dark', E, async (page) => {
+  await makeProject(env, { name: 'PicBtn', template: 'uart', files: { 'pic.sys.json': SYS.replace('pic/explorer.hex', 'pic/buttons.hex'), 'pic/buttons.hex': buttonsHex() } });
+  const pj = await env.server.api('GET', '/api/projects/PicBtn');
+  delete pj.fileTree;
+  await env.server.api('PUT', '/api/projects/PicBtn', { ...pj, kind: 'system', board: null, constraints: null, top: null });
+  await page.openProject('PicBtn');
+  await page.eval(() => window.SilinxApp.openFile('pic.sys.json'));
+  await page.waitFor((ed) => document.querySelector(ed), [ED], { what: 'the System editor' });
+  await page.click(`${ED} .sys-emu-btn`);
+  await page.waitFor((e) => document.querySelector(`${e} [data-node=pic] .sys-exp-btn`), [EMU], { what: 'the board', timeout: 60000 });
+  await page.click(`${EMU} .sysemu-run`);
+  await page.waitFor(() => window.SilinxApp.findDoc('sysemu:pic.sys.json').emulator.state()?.now > 20e9, [], { what: 'running', timeout: 60000 });
+  const LED = { S3: 'D3', S4: 'D4', S6: 'D6', S5: 'D7' };
+  // (none of them lit; D10 is S5's pin, RA7, an input here: its pull-up)
+  assert.deepEqual(await page.eval((ds) => ds.filter((d) => window.SilinxApp.findDoc('sysemu:pic.sys.json').emulator.state().boards.pic.leds[d] > 0.5), Object.values(LED)), [], 'no button\'s LED lit');
+  for (const theme of ['light', 'dark']) {
+    await page.eval(async (x) => (await import('/js/silinx.js')).setTheme(x), theme);
+    for (const [s, d] of Object.entries(LED)) {
+      // (its centre, and what the page has there: the button itself)
+      const at = await page.eval((e, p) => { const r = document.querySelector(`${e} [data-node=pic] .sys-exp-btn[data-part=${p}]`).getBoundingClientRect(); return { x: r.x + r.width / 2, y: r.y + r.height / 2 }; }, EMU, s);
+      assert.equal(await page.eval((x, y) => document.elementFromPoint(x, y)?.closest('.sys-exp-btn')?.dataset.part ?? null, at.x, at.y), s, `${theme}: ${s} on top at its place`);
+      await page.mouse('mouseMoved', at.x, at.y);
+      // a click (pressed and let go at once): held down until the PIC24 had it, its LED lit a while, then off (on the old
+      // code both reached the worker before its next run: the PIC24 never saw it, #5618); its LED sampled every 5 ms
+      await page.eval((x) => { window.__lit = 0; window.__sample = setInterval(() => { const b = window.SilinxApp.findDoc('sysemu:pic.sys.json').emulator.state()?.boards.pic; window.__lit = Math.max(window.__lit, b?.leds[x] ?? 0); }, 5); }, d);
+      await page.mouse('mousePressed', at.x, at.y);
+      await page.mouse('mouseReleased', at.x, at.y);
+      await page.waitFor(() => window.__lit > 0.5, [], { what: `${theme}: ${s} clicked, ${d} lit`, timeout: 10000 });
+      await page.waitFor((x) => { const b = window.SilinxApp.findDoc('sysemu:pic.sys.json').emulator.state()?.boards.pic; return b && !b.held[x[0]] && b.leds[x[1]] < 0.1; }, [[s, d]], { what: `${theme}: ${s} clicked, ${d} off again`, timeout: 30000 });
+      await page.eval(() => clearInterval(window.__sample));
+      // held down, then let go
+      await page.mouse('mousePressed', at.x, at.y);
+      await page.waitFor((x) => { const b = window.SilinxApp.findDoc('sysemu:pic.sys.json').emulator.state()?.boards.pic; return b?.held[x[0]] && b.leds[x[1]] > 0.9; }, [[s, d]], { what: `${theme}: ${s} held, ${d} lit`, timeout: 30000 });
+      assert.equal(await page.eval((e, p) => document.querySelector(`${e} [data-node=pic] .sys-exp-btn[data-part=${p}]`).classList.contains('on'), EMU, s), true, `${s} drawn down`);
+      await page.mouse('mouseReleased', at.x, at.y);
+      await page.waitFor((x) => { const b = window.SilinxApp.findDoc('sysemu:pic.sys.json').emulator.state()?.boards.pic; return b && !b.held[x[0]] && b.leds[x[1]] < 0.1; }, [[s, d]], { what: `${theme}: ${s} let go, ${d} off`, timeout: 30000 });
+    }
+  }
+  await page.eval(async () => (await import('/js/silinx.js')).setTheme('light'));
+  const st = await page.eval(() => window.SilinxApp.findDoc('sysemu:pic.sys.json').emulator.state());
+  assert.deepEqual([st.warnings, st.errors], [[], []]);
   assert.deepEqual(page.console.filter((c) => c.type === 'warning' || c.type === 'warn' || c.type === 'error').map((c) => c.text), []);
 });
