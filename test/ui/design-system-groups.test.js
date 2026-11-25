@@ -44,12 +44,12 @@ uiTest('#5488 the Design pane grouped by node: each node\'s folder\'s rows under
   await page.leftTab('design');
   await page.waitFor(() => [...document.querySelectorAll('#hier .row .lbl')].some((l) => l.textContent.trim() === 'misc'), [], { what: 'the rows' });
   assert.deepEqual(await groups(page), [['uno', ['lock', 'hello.hex', 'hello.asm']], ['fpga', ['uart', 'extra', 'consts']], 'misc']);
-  // (the Arduino's drawing: its badge first, then its node's language, C, no schematic of it; the FPGA node's module: its HDL's)
+  // (the Arduino's drawing: its badge first, then its node's language, C, its generated C (#5486), no schematic of it; the FPGA node's module: its HDL's)
   const badges = (label) => page.eval((l) => [...[...document.querySelectorAll('#hier .row')].find((r) => r.querySelector('.lbl')?.textContent.trim() === l).querySelectorAll('.badge')].map((b) => [b.textContent, b.title]), label);
-  assert.deepEqual(await badges('lock'), [['FSM', 'Open'], ['C', 'The node\'s base language: C']]);
+  assert.deepEqual(await badges('lock'), [['FSM', 'Open'], ['C', 'Generated from the state diagram']]);
   assert.deepEqual((await badges('extra')).map(([t]) => t), ['VHDL']);
   await page.eval(async () => { (await import('/js/i18n.js')).setLanguage('pt'); });
-  await page.waitFor(() => [...document.querySelectorAll('#hier .badge')].some((b) => b.title === 'A linguagem de base do nó: C'), [], { what: 'the badge in Portuguese' });
+  await page.waitFor(() => [...document.querySelectorAll('#hier .badge')].some((b) => b.title === 'Gerado a partir do diagrama de estados'), [], { what: 'the badge in Portuguese' });
   await page.eval(async () => { (await import('/js/i18n.js')).setLanguage('en'); });
   // New Source: the first FPGA node's folder by default (nothing of a node selected), then the selected node's in its language
   await page.treeRow('#hier', 'misc', { exact: true });

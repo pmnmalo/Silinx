@@ -66,10 +66,13 @@ export const SYSTEM_PT = {
   'a .circ.json of the project: its boards are the nodes their labels name': 'um .circ.json do projeto: as suas placas são os nós que as suas etiquetas nomeiam', 'no module': 'sem módulo', 'no firmware': 'sem firmware', 'no board': 'sem placa',
   // (a removed node's folder, #5488: web/js/system-folders-ui.js)
   'Remove Node': 'Remover Nó',
+  'Its MicroPython is not made yet': 'O seu MicroPython ainda não é gerado', 'Not made: its file is not in the project folder': 'Não gerado: o seu ficheiro não está na pasta do projeto',
 };
 export const SYSTEM_PT_PATTERNS = [
   // (a CPU node's drawing's last badge, #5488: web/js/design.js)
   [/^The node's base language: (.+)$/, 'A linguagem de base do nó: $1'],
+  // (a CPU node's drawing's [C], #5486: web/js/design-cpu.js)
+  [/^Not made: it has errors: (.+)$/, 'Não gerado: tem erros: $1'], [/^Not updated: (.+)$/, 'Não atualizado: $1'],
   [/^Delete the folder '(.+)' of the removed node ([A-Za-z]\w*) and the (\d+) file\(s\) in it from the project\?(\n\(They are moved to the workspace's \.trash folder, from where you can move them back\.\))?\n\n([\s\S]*)$/,
     (m, dir, id, n, trash, list) => `Apagar a pasta '${dir}' do nó removido ${id} e o(s) ${n} ficheiro(s) que contém do projeto?${trash ? '\n(São movidos para a pasta .trash da área de trabalho, de onde os pode repor.)' : ''}\n\n${list}`],
   [/^(FPGA|Microcontroller|Serial terminal|Circuit) ([A-Za-z]\w*)$/, (m, k, id) => `${{ FPGA: 'FPGA', Microcontroller: 'Microcontrolador', 'Serial terminal': 'Terminal série', Circuit: 'Circuito' }[k]} ${id}`],
