@@ -88,7 +88,8 @@ export function mountSystemEmulator(host, opts) {
       setInputBit: (x, level) => ready?.set(b.id, pinOf(x), level !== !!x.res.extra?.activeLow ? 1 : 0),
       // (what the System Emulator does not have: the LCD, the rotary encoder, the power switch, a manual clock)
       holds, sim: clock, compiled: () => false, running: () => running,
-      refresh() {}, after() {}, runCycles() {}, speed: () => 'real', hasLcd: false, lcdView: () => null, setLcdView() {}, knobEnd: () => 0,
+      // (its speed for a press's length, #5619: real time, else its rate's cycles a second, as the Board Emulator's set speeds)
+      refresh() {}, after() {}, runCycles() {}, speed: () => (factor === 1 ? 'real' : factor * 1e12 / period), hasLcd: false, lcdView: () => null, setLcdView() {}, knobEnd: () => 0,
       setKnobEnd() {}, inVal: new Map(), manual: [], powered: () => true, setPower() {},
     });
     return { el: main, paint(s) {
@@ -186,8 +187,10 @@ export function mountSystemEmulator(host, opts) {
     const target = sim0 + (performance.now() - wall0) * 1e9 * factor;
     if (target - report.now > BEHIND) { sim0 = report.now; wall0 = performance.now(); }   // (too slow: the backlog dropped)
     busy = true; clock.busy = true;
+    const was = ready;
     let st;
-    try { st = await ready.run(Math.min(Math.max(target, report.now), report.now + MAX_STEP)); } catch (e) { say(`ERROR: Emulate System: ${e.message}`, 'error'); busy = false; pause(); return; }
+    try { st = await was.run(Math.min(Math.max(target, report.now), report.now + MAX_STEP)); } catch (e) { if (ready !== was) return; say(`ERROR: Emulate System: ${e.message}`, 'error'); busy = false; pause(); return; }
+    if (ready !== was) return;   // (power-cycled meanwhile: the old run's answer dropped)
     busy = false; clock.busy = false;
     if (destroyed || !running) return;
     report = st.report; shown = st.boards || shown; clock.now = report.now;
@@ -229,11 +232,16 @@ export function mountSystemEmulator(host, opts) {
     holds.tick(clock.now, { settled: true });
     paint();
   }
+  // (Power cycle: running again if it was, as the Board Emulator's)
   async function restart() {
-    pause(); holds.flush(); ready?.close(); ready = null; report = null; shown = {}; boardsEl.replaceChildren(); terms.replaceChildren();
-    await prepare();
+    const was = running;
+    // (a run in flight on the old worker never answers: not busy with it any more)
+    pause(); holds.flush(); ready?.close(); ready = null; report = null; shown = {}; busy = false; clock.busy = false; boardsEl.replaceChildren(); terms.replaceChildren();
+    if (await prepare() && was && !destroyed) run();
   }
-  prepare();
+  // (running once ready, as the Board Emulator: a button let go is held until the design saw a real press, and paused it
+  // stayed pressed, #5619)
+  prepare().then(r => { if (r && !destroyed && !running) run(); });
 
   return {
     run, pause, step, restart, rate: f => { speedSel.value = String(f); setFactor(f); },

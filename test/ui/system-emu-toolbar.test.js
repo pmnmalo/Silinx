@@ -23,7 +23,11 @@ uiTest('#5613 the System Emulator\'s toolbar: Run, Step (one FPGA clock), Power 
   await page.waitFor(() => window.SilinxApp.S.project?.name === 'SysEmuBar' && window.SilinxApp.S.modules?.length, [], { what: 'the project' });
   await page.eval(async () => (await import('/js/system-emulate-ui.js')).emulateSystem());
   await page.waitFor((e) => document.querySelector(`${e} [data-node=fpga] .emu-pcb`), [EMU], { what: 'the boards', timeout: 60000 });
-  await page.waitFor((e) => document.querySelector(`${e} .doc-status`)?.textContent.includes('t = 0 ms'), [EMU], { what: 'ready' });
+  // (running once ready, #5619: paused and power-cycled, from time 0)
+  await page.waitFor((e) => document.querySelector(`${e} .sysemu-run`)?.textContent === '⏸ Pause', [EMU], { what: 'running once ready', timeout: 60000 });
+  await page.click(`${EMU} .sysemu-run`);
+  await page.click(`${EMU} .sysemu-restart`);
+  await page.waitFor(() => { const s = window.SilinxApp.findDoc('sysemu:uart_avr.sys.json').emulator.state(); return s?.now === 0 && !s.running; }, [], { what: 'paused at 0', timeout: 60000 });
   // its layout: the toolbar its first line, the status line its last; the ⋮ menu at its right end; no Undo, Redo, Print
   assert.deepEqual(await page.eval((e) => { const r = document.querySelector(e); return [r.firstElementChild.classList.contains('asm-toolbar'), r.lastElementChild.classList.contains('doc-status')]; }, EMU), [true, true]);
   assert.deepEqual(await page.eval((e) => [...document.querySelectorAll(`${e} .asm-toolbar button`)].filter((b) => b.getClientRects().length).map((b) => b.textContent.trim() || b.getAttribute('aria-label')), EMU),

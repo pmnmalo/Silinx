@@ -53,7 +53,7 @@ uiTest('#5484 Emulate: the Explorer 16/32 drawn, its LCD\'s rows, S3 held lights
   }
   await page.eval(async () => (await import('/js/silinx.js')).setTheme('light'));
   // Run: the LCD's rows; D4 (RD13 pulled up by S4) and D5 (RD8 floating, read 0) lit
-  await page.click(`${EMU} .sysemu-run`);
+  await page.waitFor((e) => document.querySelector(`${e} .sysemu-run`)?.textContent === '⏸ Pause', [EMU], { what: 'running once ready (#5619)', timeout: 60000 });
   await page.waitFor((e) => [...document.querySelectorAll(`${e} [data-node=pic] .sys-exp-lcd-row`)].map((r) => r.textContent).join('|') === 'Silinx PIC24    |Explorer 16/32  ', [EMU], { what: 'the LCD\'s rows', timeout: 60000 });
   await page.waitFor(() => { const b = window.SilinxApp.findDoc('sysemu:pic.sys.json').emulator.state()?.boards.pic; return b && b.leds.D4 > 0.9 && b.leds.D5 > 0.9 && b.leds.D3 < 0.1; }, [], { what: 'D4 and D5 lit', timeout: 30000 });
   // S3 held down: D3 lit, the button drawn down; let go: off
@@ -88,7 +88,7 @@ uiTest('#5484 the uart-pic24 example emulated: the PIC24\'s hello echoed by the 
   await page.waitFor((ed) => document.querySelector(ed), [ED], { what: 'the System editor' });
   await page.click(`${ED} .sys-emu-btn`);
   await page.waitFor((e) => document.querySelector(`${e} [data-node=pic] .emu-pcb`) && document.querySelector(`${e} [data-node=fpga] .emu-pcb`), [EMU], { what: 'the boards', timeout: 60000 });
-  await page.click(`${EMU} .sysemu-run`);
+  await page.waitFor((e) => document.querySelector(`${e} .sysemu-run`)?.textContent === '⏸ Pause', [EMU], { what: 'running once ready (#5619)', timeout: 60000 });
   await page.waitFor((e, t) => [...document.querySelectorAll(`${e} [data-node=pic] .sys-exp-lcd-row`)].map((r) => r.textContent).join('|') === t, [EMU, 'PIC24 + FPGA    |Hi from PIC24!  '], { what: 'the echo on the LCD', timeout: 60000 });
   // BTN0 on the FPGA's board: its message on the LCD's second row (its first 16 characters), LF on the LEDs (D4, D6)
   await page.eval((e) => { const b = [...document.querySelectorAll(`${e} [data-node=fpga] .emu-btn`)].find((x) => /^BTN0:/.test(x.title)); b.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true, pointerId: 1 })); b.dispatchEvent(new PointerEvent('pointerup', { bubbles: true, pointerId: 1 })); }, EMU);

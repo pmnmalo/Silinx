@@ -64,7 +64,7 @@ uiTest('#5347 Emulate System: an Arduino\'s Timer1 PWM moving a circuit node\'s 
   await page.waitFor(() => document.querySelector('.doc:not([hidden]) .system-editor .sys-emu-btn'), [], { what: 'the System editor' });
   await page.click('.doc:not([hidden]) .system-editor .sys-emu-btn');
   await page.waitFor((e) => document.querySelector(`${e} [data-node=bench] [data-id=M1] .circ-servo-arm`), [EMU], { what: 'the circuit', timeout: 60000 });
-  await page.click(`${EMU} .sysemu-run`);
+  await page.waitFor((e) => document.querySelector(`${e} .sysemu-run`)?.textContent === '⏸ Pause', [EMU], { what: 'running once ready (#5619)', timeout: 60000 });
   await page.waitFor((e) => document.querySelector(`${e} [data-node=bench] [data-id=M1] .circ-servo-arm`)?.dataset.angle === '135', [EMU], { what: 'the arm at 135°', timeout: 60000 });
   await page.click(`${EMU} .sysemu-run`);
   const s = await page.eval(() => window.SilinxApp.findDoc('sysemu:emu.sys.json').emulator.state());

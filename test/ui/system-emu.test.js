@@ -43,7 +43,7 @@ uiTest('#5212 Emulate: the System\'s boards side by side, the terminal\'s line o
   // (in the Emulate task, as the Board Emulator, #5337; the ISE style has no tasks)
   assert.equal(await page.eval(() => document.documentElement.dataset.task ?? null), process.env.SILINX_UI_INTERFACE === 'ise' ? null : 'emu');
   assert.deepEqual(await page.eval((e) => [document.querySelectorAll(`${e} [data-node=fpga] .emu-led`).length, document.querySelectorAll(`${e} [data-node=uno] .sys-pin`).length], EMU), [8, 20]);
-  await page.click(`${EMU} .sysemu-run`);
+  await page.waitFor((e) => document.querySelector(`${e} .sysemu-run`)?.textContent === '⏸ Pause', [EMU], { what: 'running once ready (#5619)', timeout: 60000 });
   await page.click(`${EMU} .sys-term-in`);
   await page.type('A');
   await page.key('Enter');
@@ -101,7 +101,7 @@ uiTest('#5276 Emulate: held behind another document tab and while the page is hi
     assert.equal(await now(), t, what);
     return t;
   };
-  await page.click(`${EMU} .sysemu-run`);
+  await page.waitFor((e) => document.querySelector(`${e} .sysemu-run`)?.textContent === '⏸ Pause', [EMU], { what: 'running once ready (#5619)', timeout: 60000 });
   await advances('running');
   // behind the System editor's tab: held; its own tab again: on from where it was, in real time
   await activate(page, sysDoc);
