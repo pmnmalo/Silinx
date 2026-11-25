@@ -29,8 +29,11 @@ uiTest('#5619 the System Emulator\'s BTN0: running once ready; clicked, let go o
   await page.setViewport(1680, 1050);
   await page.openProject('SysButtons');
   await page.waitFor(() => window.SilinxApp.S.project?.name === 'SysButtons' && window.SilinxApp.S.modules?.length, [], { what: 'the project' });
+  // (in the Emulate task, as from its tree: a document of another task is not shown, and held, #5276)
+  if (process.env.SILINX_UI_INTERFACE !== 'ise') await page.click('#task-switch .task-btn[data-task="emu"]');
   // (the FPGA alone, its UART's other end a terminal: BTN0's message there)
   await page.eval(async () => (await import('/js/system-emu-open.js')).openSystemEmulator('uart_avr.sys.json', null, { nodes: ['fpga'] }));
+  await page.waitFor((e) => document.querySelector(e)?.getClientRects().length > 0, [EMU], { what: 'the System Emulator shown', timeout: 60000 });
   // running once ready, as the Board Emulator (before #5619: paused, until ▶ Run)
   await page.waitFor(() => window.SilinxApp.findDoc('sysemu:uart_avr.sys.json')?.emulator?.state()?.running === true, [], { what: 'running once ready', timeout: 60000 });
   assert.equal(await page.eval((e) => document.querySelector(`${e} .sysemu-run`).textContent, EMU), '⏸ Pause');
