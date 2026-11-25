@@ -30,7 +30,7 @@ import { api } from './api.js';
 import { icons } from './icons.js';
 import { layoutToggled } from './layout-fit.js';
 import { messagesTask, initMessages } from './messages.js';
-import { mountSimPanel } from './tasks-sim-panel.js';
+import { mountSimPanel, systemTree } from './tasks-sim-panel.js';
 import { mountSimSplit } from './tasks-sim-split.js';
 import { fitSimTabs, placeSimSide, placeSimToolbar, refreshBench, simChoices, simTarget, simulate } from './tasks-sim.js';
 import { initEmulate } from './tasks-emu.js';
@@ -56,6 +56,8 @@ const TASKS_KEY = prefKey('silinx.tasks');
 const STEP = taskField('step');
 const ACTION = taskField('action');
 const NO_BENCH = 'The project has no test bench yet: create one with the wizard, or choose a module to simulate with stimuli drawn in SSim.';
+// (a System project's, #5581: its tree's Simulate System and Simulate Node)
+const SYSTEM_SIM = 'Simulate the System: Simulate System runs its nodes together, a node\'s Simulate Node that node alone; the run opens here.';
 const HINT = taskField('hint');
 const L = body => `<svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${body}</svg>`;
 const ICON = {
@@ -87,7 +89,7 @@ export function taskOfDoc(id) {
   if (/^isim(:|$)/.test(s)) return 'sim';   // (one per module and model, #1161)
   if (s === 'emulator') return 'emu';
   // (a System's waves and its emulator, #5337: as a module's waves and the Board Emulator)
-  if (s.startsWith('syswaves:')) return 'sim';
+  if (s.startsWith('syswaves:') || s.startsWith('syssim:')) return 'sim';   // (a System simulated, #5581)
   if (s.startsWith('sysemu:')) return 'emu';
   // (a build file: a report, #802; the RTL Schematic, Synthesize's view, as the Technology one, #1063; iMPACT, #1172; the
   // logic analyzer's capture, Configure Target Device's, #3327)
@@ -307,8 +309,9 @@ function tagDocs() {
     empty.querySelector('h2').textContent = TASK_LABEL[current()];
     empty.querySelector('h2').dataset.i18nTask = 'Design';   // ("Projetar", not "Projeto": the Design pane's, #1046, #4953)
     // (Simulate with no test bench yet: one to create, or a module simulated with stimuli drawn in SSim: #917, #1291)
-    const noBench = current() === 'sim' && !!app.S.project && !simChoices(app.S.project, app.S.modules).benches.length;
-    empty.querySelector('p').textContent = noBench ? NO_BENCH : HINT[current()];
+    const sysSim = current() === 'sim' && systemTree(app.S.project);
+    const noBench = current() === 'sim' && !!app.S.project && !sysSim && !simChoices(app.S.project, app.S.modules).benches.length;
+    empty.querySelector('p').textContent = sysSim ? SYSTEM_SIM : noBench ? NO_BENCH : HINT[current()];
     // (Simulate's side panel: the wizard's row whenever there is a design module to test, a bench or not, #1312, #1376)
     // (whenever no simulation is open: a test bench's HDL left open in Simulate beside it, #1396)
     simPanel?.refresh(on() && current() === 'sim' && !!app.S.project && !app.S.docs.some(d => /^isim:/.test(d.id)));

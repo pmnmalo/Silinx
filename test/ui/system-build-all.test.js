@@ -32,7 +32,7 @@ uiTest('#5489 the System\'s Build Plan and Build All from its row: the FPGA node
   await page.waitFor(() => [...document.querySelectorAll('#hier .row .lbl')].some((l) => l.textContent.trim() === 'uart_avr'), [], { what: 'the System' });
   await page.treeRow('#hier', 'uart_avr', { exact: true });
   await page.waitFor(() => [...document.querySelectorAll('#procs .row .lbl')].some((l) => l.textContent.trim() === 'Build All'), [], { what: 'the System\'s processes' });
-  assert.deepEqual(await procs(page), ['View/Edit System', 'Check System', 'Emulate System', 'Emulation Properties…', 'Implement System', 'Build Plan', 'Build All', 'Connected Boards', 'Program All']);
+  assert.deepEqual(await procs(page), ['View/Edit System', 'Check System', 'Simulate System', 'Simulation Properties…', 'Emulate System', 'Emulation Properties…', 'Implement System', 'Build Plan', 'Build All', 'Connected Boards', 'Program All']);
   // Build Plan: one line a node
   await page.treeRow('#procs', 'Build Plan', { exact: true, dbl: true });
   await page.waitConsole(/^Process "Build Plan" completed successfully$/m);

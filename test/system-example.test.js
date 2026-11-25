@@ -251,3 +251,34 @@ test('#5581 an FPGA node\'s constraints file with the MCP server: check_constrai
   const r = await call('check_constraints', { project: 'uk' });
   assert.deepEqual([r.isError, r.text], [true, 'check_constraints: the project \'uk\' has no constraints file: give file']);
 });
+
+test('#5581 Simulate System with the MCP server: the Simulation Properties (the FPGA alone, 60 ms, a stimulus file: a line typed, BTN0 pressed) set by set_process_properties and run by simulate; refusals', async () => {
+  await ok('new_project_from_example', { name: 'us', example: 'uart-avr' });
+  const stim = { format: 'silinx-stimulus', version: 1, type: [{ terminal: 'serial', text: 'A\n', at_ns: 2e6 }],
+    controls: [{ node: 'fpga', control: 'btn0', on: true, at_ns: 10e6 }, { node: 'fpga', control: 'btn0', on: false, at_ns: 30e6 }] };
+  await ok('write_file', { project: 'us', path: 'us.stim.json', text: JSON.stringify(stim, null, 2) });
+  const p = await ok('set_process_properties', { project: 'us', simulation: { nodes: ['fpga'], ms: 60, stimulus: 'us.stim.json' } });
+  assert.deepEqual([p.text, p.data], ['us: Simulate System runs fpga for 60 ms, its stimulus us.stim.json.',
+    { project: 'us', simulation: { nodes: ['fpga'], ms: 60, stimulus: 'us.stim.json' } }]);
+  assert.deepEqual(JSON.parse(fs.readFileSync(path.join(tmp, 'ws', 'us', 'silinx.json'), 'utf8')).system, { simulate: { nodes: ['fpga'], ms: 60, stimulus: 'us.stim.json' } });
+  // simulate: the FPGA alone for 60 ms, the line echoed, BTN0's message
+  const warn = 'WARNING: Simulate Node fpga: link serial: uno is not run, its end fpga.uart is the terminal serial here (9600 baud, 8N1)';
+  const s = await ok('simulate', { project: 'us' });
+  assert.deepEqual([s.data.nodes, s.data.time, s.data.stimulus, s.data.terminals, s.data.warnings], [['fpga', 'serial'], '60 ms', 'us.stim.json', { serial: 'A\nHello from Silinx!\r\n' }, [warn]]);
+  // (time_ns given: its time; controls: Emulate System's, no stimulus)
+  assert.equal((await ok('simulate', { project: 'us', time_ns: 5e6 })).data.time, '5 ms');
+  assert.equal((await ok('simulate', { project: 'us', time_ns: 5e6, controls: [] })).data.stimulus, undefined);
+  // refusals: a step that cannot be; a file that is not one; the properties' own
+  await ok('write_file', { project: 'us', path: 'us.stim.json', text: JSON.stringify({ ...stim, type: [{ terminal: 'nope', text: 'x' }] }) });
+  const r = await call('simulate', { project: 'us' });
+  assert.deepEqual([r.isError, r.text], [true, 'simulate: us.stim.json: type[0]: no terminal \'nope\' in the System (serial)']);
+  await ok('write_file', { project: 'us', path: 'us.stim.json', text: '{}' });
+  assert.deepEqual((await call('simulate', { project: 'us' })).text, 'simulate: us.stim.json: not a stimulus file (its format is not \'silinx-stimulus\')');
+  const no = async (simulation, text) => { const x = await call('set_process_properties', { project: 'us', simulation }); assert.deepEqual([x.isError, x.text], [true, `set_process_properties: ${text}`]); };
+  await no({ ms: 0 }, 'simulation: its run\'s time: from 0 to 10000 ms (10 s)');
+  await no({ stimulus: 'none.stim.json' }, 'simulation: none.stim.json: no such file in the project');
+  await no({ time: 5 }, 'simulation: { nodes, ms, stimulus }');
+  // (every node, its default time, no stimulus: the setting left out)
+  await ok('set_process_properties', { project: 'us', simulation: { nodes: [], ms: 100, stimulus: '' } });
+  assert.equal(JSON.parse(fs.readFileSync(path.join(tmp, 'ws', 'us', 'silinx.json'), 'utf8')).system, undefined);
+});

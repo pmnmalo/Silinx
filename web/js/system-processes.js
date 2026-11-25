@@ -36,6 +36,9 @@ export function systemProcesses(sel, view, { check, rtl }) {
   if (sel.type === 'file' && sel.system) return [
     editSystem(sel.file),
     { id: 'sys-check', label: 'Check System', ico: 'process', run: async () => { await openSystem(sel.file); findDoc(`sys:${sel.file}`)?.checkSystem?.(); } },
+    // (the nodes its Simulation Properties tick, for their time, their stimulus file applied, #5581: web/js/system-simulate-ui.js)
+    { id: 'sys-simulate', label: 'Simulate System', ico: 'sim', run: async () => (await import('./system-simulate-ui.js')).simulateSystem() },
+    { id: 'sys-sim-props', label: 'Simulation Properties…', ico: 'process', run: async () => (await import('./system-simulate-ui.js')).simulationProperties() },
     // (the nodes its Emulation Properties tick, #5581: web/js/system-emulate-ui.js)
     { id: 'sys-emulate', label: 'Emulate System', ico: 'emulate', run: async () => (await import('./system-emulate-ui.js')).emulateSystem() },
     { id: 'sys-emu-props', label: 'Emulation Properties…', ico: 'process', run: async () => (await import('./system-emulate-ui.js')).emulationProperties() },
@@ -66,6 +69,8 @@ export function systemProcesses(sel, view, { check, rtl }) {
       { id: 'node-program', label: 'Program Node', ico: 'board', run: program(sel.node) },
     ] : []),
     // (the node alone in the System Emulator, #5581; a terminal runs with what it is linked to)
+    // (the node alone in the System editor's Try it panel, #5581)
+    ...(RUN_KINDS.includes(sel.kind) ? [{ id: 'node-simulate', label: 'Simulate Node', ico: 'sim', run: async () => (await import('./system-simulate-ui.js')).simulateNode(sel.file, sel.node) }] : []),
     ...(RUN_KINDS.includes(sel.kind) ? [{ id: 'node-emulate', label: 'Emulate Node', ico: 'emulate', run: async () => (await import('./system-emu-open.js')).openSystemEmulator(sel.file, null, { nodes: [sel.node] }) }] : []),
   ];
 }

@@ -34,6 +34,7 @@ import { cState } from './state-c.js';
 import { runState } from './state-run.js';
 import { systemProcesses } from './system-processes.js';
 import { systemEmulateProcesses } from './system-emulate-ui.js';
+import { systemSimulateProcesses } from './system-simulate-ui.js';
 import { systemTop } from './design-system.js';
 import { panes } from './state-panes.js';
 import { filesState } from './state-files.js';
@@ -181,6 +182,9 @@ function drawProcesses() {
   // (a System project's: its System's and its nodes' tree, #5581: web/js/system-emulate-ui.js)
   const sys = systemTop() ? systemEmulateProcesses() : null;
   for (const el of document.querySelectorAll('.task-emu-tree')) { renderProcessTree(el, sys || emulateProcesses()); if (!sys && S.project && !S.project.top) el.append(noTopNote()); }
+  // (Simulate's, a System project's, #5581: web/js/system-simulate-ui.js)
+  const simSys = systemTop() ? systemSimulateProcesses() : null;
+  for (const el of document.querySelectorAll('.task-sim-system')) { if (simSys) renderProcessTree(el, simSys); else el.replaceChildren(); }
   // (its bar: Emulate System; I/O Pin Planning a node's, its User Constraints, #5581's part 2)
   const bar = document.getElementById('task-emu-bar');
   if (bar) {

@@ -21,7 +21,7 @@ uiTest('#5446 a System\'s FPGA node synthesized on its own board from its row; t
   await page.waitFor(() => [...document.querySelectorAll('#hier .row .lbl')].some((l) => l.textContent.trim() === 'fpga'), [], { what: 'the nodes' });
   await page.treeRow('#hier', 'fpga', { exact: true });
   await page.waitFor(() => [...document.querySelectorAll('#procs .row .lbl')].some((l) => l.textContent.trim() === 'Synthesize'), [], { what: 'the node\'s processes' });
-  assert.deepEqual(await procs(page), ['View/Edit System', 'User Constraints', 'I/O Pin Planning', 'Edit Constraints (Text)', 'Check Constraints', 'Check Syntax', 'View RTL Schematic', 'Synthesize', 'Implement Design', 'Generate Programming File', 'Program Node', 'Emulate Node']);
+  assert.deepEqual(await procs(page), ['View/Edit System', 'User Constraints', 'I/O Pin Planning', 'Edit Constraints (Text)', 'Check Constraints', 'Check Syntax', 'View RTL Schematic', 'Synthesize', 'Implement Design', 'Generate Programming File', 'Program Node', 'Simulate Node', 'Emulate Node']);
   await page.treeRow('#procs', 'Synthesize', { exact: true, dbl: true });
   await page.waitConsole(/^Process "Synthesize \(System node fpga\)" completed successfully$/m, { timeout: 120000 });
   const all = await lines(page);
@@ -30,7 +30,7 @@ uiTest('#5446 a System\'s FPGA node synthesized on its own board from its row; t
   // the System's row: Implement System
   await page.treeRow('#hier', 'uart_avr', { exact: true });
   await page.waitFor(() => [...document.querySelectorAll('#procs .row .lbl')].some((l) => l.textContent.trim() === 'Implement System'), [], { what: 'the System\'s processes' });
-  assert.deepEqual(await procs(page), ['View/Edit System', 'Check System', 'Emulate System', 'Emulation Properties…', 'Implement System', 'Build Plan', 'Build All', 'Connected Boards', 'Program All']);
+  assert.deepEqual(await procs(page), ['View/Edit System', 'Check System', 'Simulate System', 'Simulation Properties…', 'Emulate System', 'Emulation Properties…', 'Implement System', 'Build Plan', 'Build All', 'Connected Boards', 'Program All']);
   await page.eval(async () => { (await import('/js/i18n.js')).setLanguage('pt'); });
   await page.waitFor(() => [...document.querySelectorAll('#procs .row .lbl')].some((l) => l.textContent.trim() === 'Implementar Sistema'), [], { what: 'Portuguese' });
   await page.eval(async () => { (await import('/js/i18n.js')).setLanguage('en'); });

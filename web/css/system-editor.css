@@ -91,3 +91,7 @@
 .system-editor .sys-wire-row.hot .sys-wire-line { stroke: var(--sys-hot); }
 .system-editor .sys-wire-row.hot .sys-wire-dot, .system-editor .sys-wire-head.hot { fill: var(--sys-hot); }
 .system-editor .sys-wire-row.hot .sys-wire-signal { fill: var(--sys-hot); }
+/* a System simulated in a document of its own (#5581: Simulate System, Simulate Node): the Try it panel's view, the whole
+   document, its status line last */
+.sys-sim-doc { display: flex; flex-direction: column; height: 100%; }
+.sys-sim-doc .sys-sim-host { flex: 1; }

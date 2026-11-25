@@ -5,7 +5,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
-import { RUN_KINDS, runnableNodes, runRefusal, runningSystem, emulateNodesOf, withEmulateNodes, runName } from '../core/system-alone.js';
+import { RUN_KINDS, runnableNodes, runRefusal, runningSystem, emulateNodesOf, withEmulateNodes, runName, simulateSettingsOf, withSimulateSettings, SIMULATE_MS } from '../core/system-alone.js';
 import { readSystem } from '../core/system-doc.js';
 import { checkSystem } from '../core/system-check.js';
 import { ROOT } from './examples-lib.mjs';
@@ -152,4 +152,27 @@ test('#5581 a GPIO input held at 0, its link cut: in the engine, the Uno\'s D4 (
   assert.deepEqual(await d13(cut.system), { idle: [{ node: 'uno', pin: 'D4', value: 0, held: true }], d13: 0 });
   // (the same Uno with no link and nothing held: its pull-up's 1)
   assert.deepEqual(await d13({ ...sys, nodes: [sys.nodes[0]], links: [] }), { idle: [], d13: 1 });
+});
+
+test('#5581 the Simulation Properties in silinx.json: the nodes, the run\'s time, the stimulus file; left out at their defaults; refusals', () => {
+  const sys = uartAvr(), pj = { name: 'ua' };
+  assert.deepEqual(simulateSettingsOf(pj, sys), { nodes: null, ms: SIMULATE_MS, stimulus: null });
+  assert.equal(SIMULATE_MS, 100);
+  const set = withSimulateSettings(pj, sys, { nodes: ['fpga'], ms: 20, stimulus: 'ua.stim.json' }, ['ua.stim.json']);
+  assert.deepEqual(set, { name: 'ua', system: { simulate: { nodes: ['fpga'], ms: 20, stimulus: 'ua.stim.json' } } });
+  assert.deepEqual(simulateSettingsOf(set, sys), { nodes: ['fpga'], ms: 20, stimulus: 'ua.stim.json' });
+  // (the Emulation Properties kept; only what is given changed; the defaults left out)
+  const both = withEmulateNodes(set, sys, ['uno']);
+  assert.deepEqual(withSimulateSettings(both, sys, { ms: 100 }).system, { simulate: { nodes: ['fpga'], stimulus: 'ua.stim.json' }, emulate: { nodes: ['uno'] } });
+  assert.deepEqual(withSimulateSettings(set, sys, { nodes: null, ms: SIMULATE_MS, stimulus: '' }), { name: 'ua' });
+  assert.deepEqual(withSimulateSettings(set, sys, { nodes: ['uno', 'fpga'] }).system.simulate, { ms: 20, stimulus: 'ua.stim.json' });
+  const no = (s, error, files = ['ua.stim.json']) => assert.deepEqual(withSimulateSettings(pj, sys, s, files), { error });
+  no({ nodes: ['x'] }, 'x: no such node to run in uart_avr (its nodes: uno, fpga)');
+  no({ nodes: [] }, 'no node of uart_avr is chosen to run');
+  no({ ms: 0 }, 'its run\'s time: from 0 to 10000 ms (10 s)');
+  no({ ms: 20000 }, 'its run\'s time: from 0 to 10000 ms (10 s)');
+  no({ stimulus: 'a.json' }, 'a.json: a stimulus file is a .stim.json');
+  no({ stimulus: 'b.stim.json' }, 'b.stim.json: no such file in the project');
+  // (a node removed since: not run; a time not a number: the default's)
+  assert.deepEqual(simulateSettingsOf({ system: { simulate: { nodes: ['old', 'fpga'], ms: 'x' } } }, sys), { nodes: ['fpga'], ms: 100, stimulus: null });
 });

@@ -24,7 +24,7 @@ const fails = async (name, args, message) => { const r = await call(name, args);
 
 test('set_process_properties: s6_map in its schema, nextpnr or silinx', () => {
   const t = TOOLS.find(x => x.name === 'set_process_properties');
-  assert.deepEqual(Object.keys(t.inputSchema.properties), ['project', 'optimization', 'startup_clock', 's6_map', 'xc7_seeds', 'emulate_nodes']);
+  assert.deepEqual(Object.keys(t.inputSchema.properties), ['project', 'optimization', 'startup_clock', 's6_map', 'xc7_seeds', 'emulate_nodes', 'simulation']);
   assert.deepEqual(t.inputSchema.properties.s6_map.enum, ['nextpnr', 'silinx']);
 });
 

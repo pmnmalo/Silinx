@@ -107,3 +107,40 @@ export function withEmulateNodes(pj, sys, ids) {
 /** What a run of the nodes `ids` (null: every node) is called, as the console says it: `<verb> System`, or `<verb> Node
  *  <id>` for one node alone (`verb`: Emulate, Simulate). */
 export const runName = (verb, ids) => (ids?.length === 1 ? `${verb} Node ${ids[0]}` : `${verb} System`);
+
+/** A System's run time by default (ms): Simulate System's, the MCP simulate's. */
+export const SIMULATE_MS = 100;
+
+/** The project `pj`'s Simulation Properties (silinx.json's `system.simulate`, #5581's part 3) for `sys`: { nodes (the ids
+ *  Simulate System runs, null: every node), ms (its run's time), stimulus (its stimulus file, or null) }. */
+export function simulateSettingsOf(pj, sys) {
+  const s = pj?.system?.simulate || {};
+  const can = runnableNodes(sys);
+  const ids = Array.isArray(s.nodes) ? can.filter(id => s.nodes.includes(id)) : null;
+  return { nodes: ids && ids.length !== can.length ? ids : null, ms: Number.isFinite(s.ms) && s.ms > 0 ? s.ms : SIMULATE_MS, stimulus: s.stimulus || null };
+}
+
+/** Why the Simulation Properties `{ nodes, ms, stimulus }` cannot be (`files` the project's paths), or null. */
+function simulateRefusal(sys, { nodes, ms, stimulus }, files) {
+  if (nodes != null && !runnableNodes(sys).every(id => nodes.includes(id))) { const why = runRefusal(sys, nodes); if (why) return why; }
+  if (ms != null && !(Number(ms) > 0 && Number(ms) <= 10000)) return 'its run\'s time: from 0 to 10000 ms (10 s)';
+  if (stimulus && !/\.stim\.json$/i.test(stimulus)) return `${stimulus}: a stimulus file is a .stim.json`;
+  if (stimulus && files && !files.includes(stimulus)) return `${stimulus}: no such file in the project`;
+  return null;
+}
+
+/** The project `pj` with the Simulation Properties `set` ({ nodes, ms, stimulus }: those given; nodes null or all, ms
+ *  SIMULATE_MS, stimulus '' or null: left out) for `sys` (`files` the project's paths), or { error }. */
+export function withSimulateSettings(pj, sys, set, files = null) {
+  const error = simulateRefusal(sys, set, files);
+  if (error) return { error };
+  const { simulate = {}, ...rest } = pj.system || {};
+  const next = { ...simulate };
+  if ('nodes' in set) { if (set.nodes == null || runnableNodes(sys).every(id => set.nodes.includes(id))) delete next.nodes; else next.nodes = runnableNodes(sys).filter(id => set.nodes.includes(id)); }
+  if ('ms' in set) { if (set.ms == null || Number(set.ms) === SIMULATE_MS) delete next.ms; else next.ms = Number(set.ms); }
+  if ('stimulus' in set) { if (!set.stimulus) delete next.stimulus; else next.stimulus = set.stimulus; }
+  const system = Object.keys(next).length ? { ...rest, simulate: next } : rest;
+  const out = { ...pj, system };
+  if (!Object.keys(system).length) delete out.system;
+  return out;
+}

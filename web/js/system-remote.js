@@ -13,7 +13,7 @@ function spawn() {
 }
 
 /** The run of `system` from its inputs (core/system-run.js systemInputs'), started in its worker. */
-export function startSystemRun(system, inputs, { emulate = false } = {}) {
+export function startSystemRun(system, inputs, { emulate = false, stimulus = null } = {}) {
   let w;
   try { w = spawn(); } catch (e) { return Promise.resolve({ error: `no Web Worker to run it in: ${e.message}` }); }
   let n = 0;
@@ -38,6 +38,6 @@ export function startSystemRun(system, inputs, { emulate = false } = {}) {
       waiting.delete(m.id);
       if (m.type === 'error') x.fail(new Error(m.message)); else x.ok(m);
     };
-    w.postMessage({ type: 'init', system, inputs, emulate });
+    w.postMessage({ type: 'init', system, inputs, emulate, stimulus });
   });
 }
