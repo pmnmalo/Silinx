@@ -42,6 +42,20 @@ export function drawingNode(pj, path, { files = [], texts = {} } = {}) {
   return node ? { node, lang: baseLang(node, pj?.preferredLanguage) } : null;
 }
 
+/**
+ * Whether a path of the project is in one of its System's CPU nodes' folders: a predicate (none in an FPGA or a design
+ * project). Such a node's C sources and drawings are its board's program, never the FPGA's: neither Silinx HLS's nor a
+ * module of the FPGA's design (the flows' sources leave them out).
+ */
+export function inCpuNode(pj, { files = [], texts = {} } = {}) {
+  const { model, implicit } = projectSystem(pj, { files, texts });
+  if (implicit || !model) return () => false;
+  const ids = model.nodes.filter((n) => isCpuLang(baseLang(n, pj?.preferredLanguage))).map((n) => n.id);
+  return ids.length ? (path) => nodeOfPath(path, ids) != null : () => false;
+}
+/** Why a C source cannot be compiled by Silinx HLS (it is a CPU node's), or null. */
+export const hlsRefusal = (path, inCpu) => (inCpu(path) ? `${path} is a microcontroller node's C: it is built for its board, not by Silinx HLS` : null);
+
 /** The pins a node gives its drawings' ports: { port: [pins] }, from its GPIO interfaces named as the ports. */
 export function nodePins(node) {
   const out = {};

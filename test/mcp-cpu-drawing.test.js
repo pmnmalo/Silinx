@@ -97,3 +97,20 @@ test('a schematic, a circuit, a register map refused in a CPU node (write_file, 
   assert.match((await ok('new_source', { project: 'r', type: 'fsm', name: 'machine', location: 'uno' })).text, /^Created /);
   assert.match((await ok('new_source', { project: 'r', type: 'schematic', name: 'adder', location: 'fpga' })).text, /^Created /);
 });
+
+test('a CPU node\'s C and drawings are its board\'s: not Silinx HLS\'s (its tools refuse them), nor modules of the FPGA\'s design (#5486)', async () => {
+  await ok('write_file', { project: 'r', path: 'uart_avr.sys.json', text: JSON.stringify(SYS, null, 2) });
+  const C = 'int add(int a, int b) { return a + b; }\n';
+  await ok('write_file', { project: 'r', path: 'uno/add.c', text: C });
+  await ok('write_file', { project: 'r', path: 'src/add2.c', text: C.replace('add(', 'add2(') });
+  const g = await call('c_generated', { project: 'r', path: 'uno/add.c', what: 'hdl' });
+  assert.deepEqual([g.isError, g.text], [true, "c_generated: uno/add.c is a microcontroller node's C: it is built for its board, not by Silinx HLS"]);
+  const s = await call('c_synthesis_report', { project: 'r', path: 'uno/add.c' });
+  assert.deepEqual([s.isError, s.text], [true, "c_synthesis_report: uno/add.c is a microcontroller node's C: it is built for its board, not by Silinx HLS"]);
+  assert.equal((await call('c_generated', { project: 'r', path: 'src/add2.c', what: 'hdl' })).isError, false);
+  // (the FPGA's design: the C of src/, not the CPU node's C nor its drawings)
+  const P = await import('../server/projects.js');
+  const { viewSources } = await import('../server/ise.js');
+  const views = await viewSources(await P.readProject('r'), P.projectDir('r'));
+  assert.deepEqual(views.map((v) => v.path).filter((p) => !p.startsWith('fpga/')).sort(), ['src/add2.c']);
+});

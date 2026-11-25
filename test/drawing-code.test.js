@@ -7,7 +7,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
-import { CPU_LANGS, cpuDrawingRefusal, drawingC, drawingCode, drawingNode, drawnCodePath, isCodeFile, isCpuLang, nodePins } from '../core/drawing-code.js';
+import { CPU_LANGS, hlsRefusal, inCpuNode, cpuDrawingRefusal, drawingC, drawingCode, drawingNode, drawnCodePath, isCodeFile, isCpuLang, nodePins } from '../core/drawing-code.js';
 import { reactiveFromFile } from '../core/reactive-from.js';
 import { generateArduino } from '../core/reactive-c.js';
 import { viewHdl } from '../core/view-hdl.js';
@@ -63,4 +63,14 @@ test('a drawing\'s C refused: the hardware drawings in a CPU node, its errors, i
   const delay = TRAFFIC.replace(/\bdone\b/g, 'delay');
   assert.deepEqual(drawingC('uno/t.fsm.json', delay).warnings, ["uno/t.fsm.json: 'delay' is a word of C or of the Arduino API, or a name of the sketch's: it is delay_v in the sketch"]);
   assert.deepEqual(drawingC('uno/t.fsm.json', TRAFFIC, { pins: { req: 'D0' } }).warnings, ["uno/t.fsm.json: D0 is the USB serial port's: 'req' on it disturbs the upload of the program"]);
+});
+
+test('a path in a CPU node\'s folder: its board\'s program, not Silinx HLS\'s nor the FPGA\'s design (#5486); none in an FPGA project', () => {
+  const cpu = inCpuNode(PJ, { files, texts });
+  assert.deepEqual(['uno/f.c', 'UNO/t.fsm.json', 'fpga/f.c', 'src/f.c', 'f.c'].map(cpu), [true, true, false, false, false]);
+  assert.equal(hlsRefusal('uno/f.c', cpu), "uno/f.c is a microcontroller node's C: it is built for its board, not by Silinx HLS");
+  assert.equal(hlsRefusal('src/f.c', cpu), null);
+  const fpga = JSON.parse(fs.readFileSync(path.join(ROOT, 'examples/traffic/silinx.json'), 'utf8'));
+  assert.equal(inCpuNode(fpga, { files: ['uno/f.c'] })('uno/f.c'), false);
+  assert.equal(inCpuNode(PJ, { files, texts: {} })('uno/f.c'), false);   // (its System document unread: no node)
 });
