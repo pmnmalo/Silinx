@@ -69,6 +69,7 @@ export class Timers {
     mcu.register(T1.PR, { reset: 0xffff, write: (v) => { this.t1.count0 = this.t1.value(); this.t1.t0 = mcu.time; this.t1.pr = v; this.t1.schedule(); } });
     mcu.register(T1.CON, { reset: 0, mask: 0xa376, write: () => this.configure1() });
     this.pairs = PAIRS.map((p) => this.pair(p));
+    this.changeListeners = [];
     mcu.attach(this);
   }
 
@@ -80,7 +81,20 @@ export class Timers {
     c.async = (con & 2) !== 0 && ((con >> 8) & 3) === 0 && !(con & 4);
     c.running = (con & 0x8000) !== 0;
     c.origin(was);
+    this.changed();
   }
+
+  /** A timer's clock, its prescaler's output: { running, tickPs } ('T1'-'T5'; Timer2 / 3's, 4 / 5's the pair's in its
+   *  32-bit mode). */
+  clock(name) {
+    if (name === 'T1') return { running: this.t1.running && !this.t1.paused, tickPs: this.t1.tickPs };
+    const s = this.pairs[name === 'T2' || name === 'T3' ? 0 : 1];
+    const c = s.t32() ? s.wide : name === 'T2' || name === 'T4' ? s.lo : s.hi;
+    return { running: c.running && !c.paused, tickPs: c.tickPs };
+  }
+  /** fn() after a timer's TxCON (its clock, its TON) changed. */
+  onChange(fn) { this.changeListeners.push(fn); }
+  changed() { for (const fn of this.changeListeners) fn(); }
 
   clockOf(con) {
     if (!(con & 2)) return this.mcu.fpb;
@@ -137,6 +151,7 @@ export class Timers {
       set(s.lo, lo); set(s.hi, hi);
     }
     s.wasWide = (lo & 8) !== 0;
+    this.changed();
   }
 
   counters() { return [this.t1, ...this.pairs.flatMap((s) => [s.lo, s.hi, s.wide])]; }
