@@ -4,6 +4,15 @@ What changed in each version of silinx-pic24, the Silinx PIC24 emulator. The new
 are its own (semver, 0.x until its API is stable), apart from Silinx's. What changed since the last release is in
 [changes/](changes/).
 
+## 0.3.1
+
+In detail:
+
+- **The release of 0.3.0's code (#5575):** 0.3.1 is 0.3.0's package, unchanged. 0.3.0's tag was never published on
+  npm: its CI run failed on a test outside the package (the Explorer 16/32 drawing's hex colours in Silinx's
+  `web/js/emulator-explorer.js`, fixed by #5575), and a tag's CI runs on its own commit. 0.2.0's tag was not
+  published either, for the same kind of reason (#5564, #5569).
+
 ## 0.3.0
 
 In short:
