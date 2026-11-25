@@ -124,7 +124,8 @@ const yosys = (${verifiedYosysUrl})(${JSON.stringify(String(bundleUrl))}, self).
 const lineStream = ${lineStream};
 const asText = ${asText};
 const yosysError = ${yosysError};
-const runYosysOnce = (${yosysRunner})(lineStream, asText, yosysError);
+const quietLines = ${quietLines};
+const runYosysOnce = (${yosysRunner})(lineStream, asText, yosysError, quietLines);
 self.onmessage = async ({ data: { id, args, files } }) => {
   try { const { runYosys } = await yosys; self.postMessage({ id, files: await runYosysOnce(runYosys, args, files, line => self.postMessage({ id, line })) }); }
   catch (e) { self.postMessage({ id, error: e.message, code: e.code, crash: e.crash }); }
@@ -139,20 +140,67 @@ self.onmessage = async ({ data: { id, args, files } }) => {
  * says ({ message, code, crash }: the pools run a crashed one again). opts: more options of runYosys
  * (fetchProgress).
  */
-export const runYosysOnce = yosysRunner(lineStream, asText, yosysError);
+export const runYosysOnce = yosysRunner(lineStream, asText, yosysError, quietLines);
 
-/** runYosysOnce made from its three helpers, given as arguments: yosysWorkerSource writes this
+/**
+ * A run's warnings as its console said them, from its log (#5604), where `logger -nowarn .` made each one a line
+ * "Suppressed <warning>": a quiet run's (-q) each the first time its message is said (Yosys says it again only in
+ * the log; a warning of several lines: its first ends with ':', the others are indented), another's every one. Not
+ * ABC's own lines ("ABC: Warning: …"), which a quiet run's console does not get either.
+ */
+export function quietLines(log, quiet = true) {
+  const lines = log.split('\n');
+  if (lines.at(-1) === '') lines.pop();
+  const out = [], said = new Set();
+  for (let i = 0; i < lines.length; i++) {
+    const m = /^Suppressed ((?:\S.*?:\d+: )?Warning: (.*))$/.exec(lines[i]);
+    if (!m) continue;
+    const msg = [m[1]];
+    if (m[1].endsWith(':')) while (i + 1 < lines.length && /^\s/.test(lines[i + 1])) msg.push(lines[++i]);
+    const key = [m[2], ...msg.slice(1)].join('\n');
+    if (!quiet || !said.has(key)) { said.add(key); out.push(...msg); }
+  }
+  return out;
+}
+
+/** runYosysOnce made from its four helpers, given as arguments: yosysWorkerSource writes this
  *  function's text into a Blob worker's code, where only what it is given exists (a bundler renames
- *  the module's own names, #403). */
-function yosysRunner(lineStream, asText, yosysError) {
+ *  the module's own names, #403).
+ *  A run of a script (['-q', '-p', script], or ['-p', script]) writes no warning to the console (#5604): Yosys
+ *  0.71's WebAssembly build throws at its first write to the console after an ABC run (YoWASP's ABC runs in Yosys
+ *  and moves its standard output and error), a warning's in a quiet run. So it runs quiet with its log in a file
+ *  (-q -l <log>), its warnings made log lines (`logger -nowarn .`), and its lines are read from the log at the end,
+ *  of a failed run too: a quiet run's warnings as its console said them (quietLines), then its console's lines (its
+ *  error); another's whole log. The script still runs at the top (not inside `tee` or `script`, which hold off
+ *  Yosys's garbage collection of names, and so change its netlists). Every quiet run (any of them may map with ABC:
+ *  `abc`, `synth_*`); another one only when it runs ABC or a synth pass, so that the others' lines still come as
+ *  they are said (a check with a time limit stopped: the lines so far). An error after an ABC run still goes to the
+ *  console: Yosys 0.71 crashes there. */
+function yosysRunner(lineStream, asText, yosysError, quietLines) {
+  const LOG = 'silinx_yosys.log';
   return async (runYosys, args, files, onLine = () => {}, opts = {}) => {
-    const out = lineStream(onLine);
+    const quiet = args[0] === '-q';
+    const script = args.length === (quiet ? 3 : 2) && args.at(-2) === '-p' ? args.at(-1) : null;
+    const viaLog = script !== null && (quiet || /\babc|\bsynth/.test(script));
+    const held = [];
+    const out = lineStream(viaLog ? l => held.push(l) : onLine);
+    const said = res => {
+      if (!viaLog) return;
+      // (plain text, as lineStream's lines)
+      const log = asText(res?.[LOG] ?? '').replace(/\x1b\[[0-9;]*[A-Za-z]/g, '').split(/\r?\n/);
+      if (log.at(-1) === '') log.pop();
+      if (quiet) for (const l of [...quietLines(log.join('\n')), ...held]) onLine(l);
+      else for (const l of log) onLine(l.replace(/^Suppressed ((?:\S.*?:\d+: )?Warning: )/, '$1'));
+    };
     try {
-      const res = await runYosys(args, files, { stdout: out, stderr: out, ...opts });
+      const res = viaLog ? await runYosys(['-q', '-l', LOG, '-p', `logger -nowarn .; ${script}`], files, { stdout: out, stderr: out, ...opts })
+        : await runYosys(args, files, { stdout: out, stderr: out, ...opts });
       out.end();
-      return Object.fromEntries(Object.entries(res).map(([k, v]) => [k, asText(v)]));
+      said(res);
+      return Object.fromEntries(Object.entries(res).filter(([k]) => !viaLog || k !== LOG).map(([k, v]) => [k, asText(v)]));
     } catch (e) {
       out.end();
+      said(e?.files ?? { [LOG]: '' });
       const { message, code, crash } = yosysError(e);
       throw Object.assign(new Error(message), { code, crash });
     }

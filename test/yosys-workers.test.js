@@ -15,9 +15,10 @@ import { DEPTH_ABC2, DEPTH_ABC2_LUT4 } from '../packages/silinx-fpga/src/synth-o
 import { compile, elaborate } from '../core/compile.js';
 
 const ROOT = path.join(path.dirname(fileURLToPath(import.meta.url)), '..');
-// a run of a second or so that prints as it goes (a 16-bit multiplier made of gates)
+// a run of a second or so that prints as it goes (a 16-bit multiplier made of gates; no ABC nor synth pass, whose run's
+// lines come at its end, #5604)
 const MUL = { 'm.v': 'module m(input [15:0] a, b, output [31:0] p); assign p = a * b; endmodule\n' };
-const ARGS = ['-p', 'read_verilog m.v; synth -top m; abc -g AND; stat; write_json m.json'];
+const ARGS = ['-p', 'read_verilog m.v; hierarchy -top m; proc; opt; wreduce; alumacc; opt; techmap; opt; stat; write_json m.json'];
 
 // each run: when its first line came and when it ended (an event counter, not the clock)
 async function timeline(run, k) {
