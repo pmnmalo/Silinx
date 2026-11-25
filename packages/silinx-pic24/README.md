@@ -26,7 +26,7 @@ The device and its peripherals (since 0.2.0, [#5481](https://github.com/pmnmalo/
 - the I/O ports with the interrupt-on-change, PPS (the remappable pins), the external interrupts INT0–INT4;
 - Timer1 to Timer5 (Timer2 / 3 and Timer4 / 5 as 32-bit timers, the SOSC and LPRC clocks, Timer3's A/D trigger);
 - the UARTs, the SPI and I²C masters, the PMP (master modes), the 10/12-bit A/D converter with its scan;
-- the MCCP and SCCP modules (after 0.2.0, [#5529](https://github.com/pmnmalo/Silinx/issues/5529)): their timers, output compare,
+- the MCCP and SCCP modules (since 0.3.0, [#5529](https://github.com/pmnmalo/Silinx/issues/5529)): their timers, output compare,
   PWM on the pins (dual edge, buffered) and input capture; the input capture and output compare modules with
   dedicated timers, IC1–6 and OC1–6 (compare, edge-aligned PWM, synchronised to a timer).
 
