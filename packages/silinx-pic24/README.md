@@ -1,11 +1,11 @@
 # silinx-pic24
 
-A PIC24F core emulator in JavaScript: the core of Microchip's PIC24FJ1024GB610 (the Explorer 16/32's), with no
-dependency, the same in Node and in the browser. No open emulator of the 16-bit PIC24 or dsPIC existed (gpsim and
-picsim are 8-bit only), so Silinx, the IDE that uses it, has its own, as avr8js is the AVR's
+A PIC24F emulator in JavaScript: Microchip's PIC24FJ1024GB610, its core and its peripherals, on the Explorer 16/32
+board, with no dependency, the same in Node and in the browser. No open emulator of the 16-bit PIC24 or dsPIC
+existed (gpsim and picsim are 8-bit only), so Silinx, the IDE that uses it, has its own, as avr8js is the AVR's
 ([#5480](https://github.com/pmnmalo/Silinx/issues/5480), part of the roadmap
-[#5479](https://github.com/pmnmalo/Silinx/issues/5479): the design is in
-[docs/SYSTEMS.md](../../docs/SYSTEMS.md), "The PIC24").
+[#5479](https://github.com/pmnmalo/Silinx/issues/5479): the design is in [docs/SYSTEMS.md](../../docs/SYSTEMS.md),
+"The PIC24").
 
 The core:
 
@@ -20,10 +20,31 @@ The core:
 - the interrupt controller: the vector table, the priorities and the CPU's IPL, nesting, RETFIE, the traps;
 - the resets an illegal instruction or an uninitialized W register as a pointer cause.
 
+The device and its peripherals (since 0.2.0, [#5481](https://github.com/pmnmalo/Silinx/issues/5481)):
+
+- the oscillator (FRC, the 8 MHz primary, SOSC, LPRC, the PLL, the clock switch), the watchdog, RCON's resets;
+- the I/O ports with the interrupt-on-change, PPS (the remappable pins), the external interrupts INT0–INT4;
+- Timer1 to Timer5 (Timer2 / 3 and Timer4 / 5 as 32-bit timers, the SOSC and LPRC clocks, Timer3's A/D trigger);
+- the UARTs, the SPI and I²C masters, the PMP (master modes), the 10/12-bit A/D converter with its scan.
+
+The Explorer 16/32 board around it (`Explorer1632`): the LEDs D3–D10, the buttons S3–S6, the potentiometer R6 and
+the TC1047A temperature sensor, the USB-UART, the 16x2 character LCD on the PMP, the 25LC256 EEPROM on SPI.
+
+Left out: the MCCP / SCCP modules and so the input capture, output compare and PWM
+([#5529](https://github.com/pmnmalo/Silinx/issues/5529)); the pins' waveforms of SPI, I²C and the PMP (a word, an
+event, a transaction); their slave modes; USB, the RTCC, the CRC, the comparators, the CTMU, DMA and the
+cryptographic engine; the timers' external clocks and gated mode.
+
+Two things that surprise a first program, as on the real device:
+
+- RD6 and RD7 (the buttons S3 and S6) and RA6 and RA7 (the LEDs D9 and D10, S5) are analog at reset: they read 0
+  until the program clears their bits in ANSD and ANSA (`ANSD = 0; ANSA = 0;` or `_ANSD6 = 0`…);
+- the watchdog is on when the configuration words are erased (FWDT's FWDTEN 11): a program without
+  `#pragma config FWDTEN = OFF` (or `CLRWDT` in its loop) resets after about two minutes (the erased FWPSA and
+  WDTPS: 128 x 32,768 periods of the 31 kHz LPRC).
+
 Its references are Microchip's "16-bit MCU and DSC Programmer's Reference Manual" (DS70000157) and the
-PIC24FJ1024GA610/GB610 family's data sheet (DS30010074). The peripherals (the ports, the timers, the UART, SPI,
-I²C, the ADC, the PMP and the LCD, PPS) are the next phase
-([#5481](https://github.com/pmnmalo/Silinx/issues/5481)), MPLAB X's simulator its oracle
+PIC24FJ1024GA610/GB610 family's data sheet (DS30010074), MPLAB X's simulator its oracle
 ([#5483](https://github.com/pmnmalo/Silinx/issues/5483)).
 
 ```js
