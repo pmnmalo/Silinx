@@ -104,7 +104,10 @@ node's test bench; the fidelity notes, `[{ kind, text }]`, the hook of #5499). E
 with its notes: `compiledContract`, `eventContract`, `avrContract`, `circuitContract`, `terminalContract` (the PIC24's
 `Pic24Node` has the contract's `run` of its own); the scheduler puts a node of the contract only behind an adapter
 (`NodeEngine`), and a node's lookahead bounds its windows as a link's latency does. One conformance test runs every
-engine against it (`test/system-contract-engines.test.js`).
+engine against it (`test/system-contract-engines.test.js`). The System's check (`core/system-check.js`) makes each node's
+resolved pins its typed ports, each with its level (a board's I/O voltage, an FPGA bank's standard), and checks each
+wire's ends against its link's kind (`endsProblem`); the MCP's `check_system` gives the ports (`ports`), the levels
+#5498's 3.3 V / 5 V check reads.
 
 **Alone or together.** A node alone is a System of one node: an FPGA project is one already (#5437). A node can be
 replaced by a stimulus, its test bench, through the same contract. Hardware in the loop (a real board in a simulated

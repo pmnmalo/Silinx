@@ -39,19 +39,24 @@ test('check_system: a valid System, no warnings; an Arduino at 5 V, its warning;
     'node term: Serial terminal', '  serial: UART 9600 baud 8N1', 'link console: UART term.serial ↔ fpga.uart',
     'console TX: term serial.tx → fpga rx (pin J3)', 'console TX: fpga tx (pin A3) → term serial.rx',   // (its wiring, #5216)
     'Process "Check System" of uart_avr.sys.json completed successfully.'].join('\n')]);
-  const { wires: w0, ...rest0 } = data0;
+  const { wires: w0, ports: p0, ...rest0 } = data0;
   assert.deepEqual(rest0, { project: 'u', file: 'uart_avr.sys.json', ok: true, errors: [], warnings: [] });
   // (its wires, the Wiring view's, #5216: each end's pin, package pin, levels and what the board says the pin is)
   assert.deepEqual(w0[0], { link: 'console', kind: 'uart', signal: 'TX', warnings: [],
-    from: { node: 'term', pin: 'serial.tx', loc: null, dir: 'out', volts: null, std: null, place: null },
-    to: { node: 'fpga', pin: 'rx', loc: 'J3', dir: 'in', volts: 3.3, std: 'LVCMOS33', place: 'UART RX on a PmodUSBUART in JA (its TXD, JA3)' } });
+    from: { node: 'term', pin: 'serial.tx', loc: null, dir: 'out', kind: 'transaction', volts: null, std: null, place: null },
+    to: { node: 'fpga', pin: 'rx', loc: 'J3', dir: 'in', kind: 'pin', volts: 3.3, std: 'LVCMOS33', place: 'UART RX on a PmodUSBUART in JA (its TXD, JA3)' } });
+  // (each node's typed ports, #5485: a direction, a kind, a level; the terminal's UART a transaction bus's, its level not known)
+  assert.deepEqual(p0, {
+    fpga: [{ name: 'tx', dir: 'out', kind: 'pin', volts: 3.3, width: 1, protocol: null, role: null }, { name: 'rx', dir: 'in', kind: 'pin', volts: 3.3, width: 1, protocol: null, role: null }],
+    term: [{ name: 'serial.tx', dir: 'out', kind: 'transaction', volts: null, width: 1, protocol: 'uart', role: null }, { name: 'serial.rx', dir: 'in', kind: 'transaction', volts: null, width: 1, protocol: 'uart', role: null }] });
   // the Arduino on the FPGA's UART: its 5 V TX on the FPGA's input; the terminal then joins nothing
   await write('fw/echo.hex', ':00000001FF\n');
   const uno = { id: 'uno', kind: 'mcu', board: 'arduino-uno', firmware: 'fw/echo.hex', interfaces: [{ name: 'Serial', kind: 'uart', baud: 9600, frame: '8N1' }] };
   const m = system({ nodes: [uno] }); m.links[0].a = 'uno.Serial';
   await write('uart_avr.sys.json', m);
   const r = await ok('check_system', { project: 'u', file: 'uart_avr.sys.json' });
-  const { untrusted, system: _s, wires, ...data } = r.data;
+  const { untrusted, system: _s, wires, ports, ...data } = r.data;
+  assert.deepEqual(ports.uno.map(p => [p.name, p.dir, p.volts]), [['D1', 'out', 5], ['D0', 'in', 5]], 'the Arduino\'s pins at 5 V');
   assert.deepEqual(wires.map(w => [w.from.node, w.to.node, w.warnings.length]), [['uno', 'fpga', 1], ['fpga', 'uno', 0]]);
   assert.match(untrusted.content, /the System's names/, 'the names quoted: untrusted');
   assert.deepEqual(data, { project: 'u', file: 'uart_avr.sys.json', ok: true, errors: [], warnings: [

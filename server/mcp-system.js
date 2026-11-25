@@ -34,15 +34,16 @@ async function projectModules(name, sys) {
   return out;
 }
 
-// a System's Check (its text, `file` its path in the project `name`): { lines, errors, warnings: { message, item }, wires }
+// a System's Check (its text, `file` its path in the project `name`): { lines, errors, warnings: { message, item }, wires,
+// ports (each node's typed ports, #5485) }
 async function checkSystemFile(name, file, text) {
   const r = readSystem(text);
   if (r.error) throw toolError(`${file}: ${r.error}`);
   await readProject(name);
   const files = await P.fileTree(name);
-  const { diags, wires } = analyzeSystem(r.system, { modules: await projectModules(name, r.system), files, circuits: await projectCircuits(name, r.system, files) });
+  const { diags, wires, ports } = analyzeSystem(r.system, { modules: await projectModules(name, r.system), files, circuits: await projectCircuits(name, r.system, files) });
   const json = d => ({ message: d.message, item: d.ref?.id ?? null });
-  return { lines: systemCheckLines(file, diags), errors: diags.filter(d => d.severity === 'error').map(json), warnings: diags.filter(d => d.severity === 'warning').map(json), wires };
+  return { lines: systemCheckLines(file, diags), errors: diags.filter(d => d.severity === 'error').map(json), warnings: diags.filter(d => d.severity === 'warning').map(json), wires, ports };
 }
 
 // a System document of the project read: { text, system }, or the tool's error (not a System, unreadable)
@@ -92,10 +93,10 @@ export const SYSTEM_TOOLS = [
     annotations: { readOnlyHint: true },
     async run({ project: name, file }) {
       const { text, system } = await readSystemFile(name, file);
-      const { lines, errors, warnings, wires } = await checkSystemFile(name, file, text);
+      const { lines, errors, warnings, wires, ports } = await checkSystemFile(name, file, text);
       // (its wires: the editor's Wiring view, a line each, after the System described, #5216)
       return { text: [...describeSystem(system), ...wiringLines(wires), ...lines].join('\n'),
-        data: { project: name, file, system, ok: !errors.length, errors, warnings, wires }, isError: false,
+        data: { project: name, file, system, ok: !errors.length, errors, warnings, wires, ports }, isError: false,
         untrusted: 'the System\'s names and its problems, which quote them' };
     },
   },
