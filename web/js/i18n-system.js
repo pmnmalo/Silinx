@@ -14,6 +14,7 @@ export const SYSTEM_PT = {
   'System': 'Sistema', 'Check System': 'Verificar Sistema', 'View/Edit System': 'Ver/Editar Sistema',   // (the Processes pane, #5414)
   'View/Edit Drawing': 'Ver/Editar Desenho',   // (a System's FPGA module's, #5443)
   'Implement System': 'Implementar Sistema', 'Synthesize': 'Sintetizar',   // (every FPGA node on its own board; a node's, #5446)
+  'Compile Firmware': 'Compilar Firmware', 'A process is already running (use Stop to cancel it)': 'Já está um processo em curso (use Parar para o cancelar)',   // (an Arduino node's sketch to its .hex, #5503)
   'Id': 'Identificador', 'Module': 'Módulo', 'Board': 'Placa', 'Variant': 'Variante', "(the board's)": '(a da placa)',
   'Firmware': 'Programa (firmware)', 'a .hex or an .elf of the project': 'um .hex ou um .elf do projeto', "a .hex of the project (XC16's)": 'um .hex do projeto (do XC16)', '(none)': '(nenhum)',
   'Pins of the board': 'Pinos da placa', '+ UART': '+ UART', '+ GPIO': '+ GPIO',

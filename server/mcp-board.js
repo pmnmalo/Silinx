@@ -122,7 +122,7 @@ export const BOARD_TOOLS = [
   },
   {
     name: 'toolchain_info', title: 'What Toolchain Settings found',
-    description: 'Toolchain Settings\' state, read only: the ISE mode (silinx: the Silinx toolchain, no ISE; local, docker, ssh), whether Xilinx ISE 14.7 and AMD Vivado can run, and why not. No host, user or path is shown, and the settings are changed only in the interface (Toolchain Settings, the gear in the toolbar): they are this computer\'s, the user\'s.',
+    description: 'Toolchain Settings\' state, read only: the ISE mode (silinx: the Silinx toolchain, no ISE; local, docker, ssh), whether Xilinx ISE 14.7, AMD Vivado and arduino-cli can run, and why not. No host, user or path is shown; the settings are changed only in the interface (Toolchain Settings, the gear in the toolbar): this computer\'s.',
     inputSchema: { type: 'object', properties: {}, additionalProperties: false },
     annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false },
     async run() {
@@ -132,8 +132,12 @@ export const BOARD_TOOLS = [
         // (ssh's reason names its host and user: said without them)
         reason: st?.mode === 'ssh' && st.available ? 'a remote host over ssh' : pathless(redact(st?.reason || '')) });
       const ise = clean(t.ise), vivado = clean(t.vivado);
+      // (an Arduino node's compiler, #5503: its version and its AVR core's)
+      const a = await (await import('./avr-compile.js')).detectAvrCompiler();
+      const arduino = { available: a.available, version: a.version, core: a.core, reason: pathless(redact(a.reason)) };
       return { text: [`ISE: mode ${ise.mode}, ${ise.available ? 'available' : 'not available'}: ${ise.reason}.`,
-        `AMD Vivado: ${vivado.available ? 'available' : 'not available'}${vivado.reason ? `: ${vivado.reason}` : ''}.`].join('\n'), data: { ise, vivado } };
+        `AMD Vivado: ${vivado.available ? 'available' : 'not available'}${vivado.reason ? `: ${vivado.reason}` : ''}.`,
+        `Arduino (Compile Firmware): ${arduino.available ? 'available' : 'not available'}: ${arduino.reason}.`].join('\n'), data: { ise, vivado, arduino } };
     },
   },
 ];

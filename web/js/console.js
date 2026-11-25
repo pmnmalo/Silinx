@@ -14,6 +14,7 @@ import { lineMessage, entryOf } from '/core/message.js';
 import { lineSource, isShown, shownSourcesNow, showCommandLines } from './messages.js';
 import { docsState } from './state-docs.js';
 import { designState } from './state-design.js';
+import { filesState } from './state-files.js';
 import { procState } from './state-proc.js';
 
 const $ = id => document.getElementById(id);
@@ -60,7 +61,8 @@ export function log(text, cls = '', { diag = true, action = null, src = null, go
   const msgAction = refused ? trustAction(refused) : winUsb ? winUsbAction() : [action].flat().find(Boolean) ?? null;
   if ((refused && !shared) || winUsb) action = msgAction;
   const lines = String(text).split('\n'), divs = [];
-  const paths = (designState.sources || []).map(s => s.path);
+  // (the design's sources, and a CPU node's sketch files, which are none of its sources: an Arduino node's, #5503)
+  const paths = [...(designState.sources || []).map(s => s.path), ...(filesState.fileTree || []).filter(f => /\.(ino|c|cc|cpp|h|hpp)$/.test(f))];
   const drawn = draw || (src === 'app' ? appText : null);
   lines.forEach((line, i) => {
     if (run === undefined) startsRun(line);

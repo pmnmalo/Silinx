@@ -3,8 +3,8 @@
 // Vivado's `[/…/src/f.vhd:12]`, NgdBuild's `[top.ucf(3)]`, a compiler's `f.vhd:12:5: …` (GHDL, Icarus, Yosys,
 // SilinxC's `f.c:4: …`).
 
-// (the files a project holds: HDL, constraints, C / C++; a time "12:30" or an address "host:22" is none)
-const EXT = '(?:vhdl?|v|sv|vh|svh|ucf|xdc|pcf|lpf|cst|sdc|c|cc|cpp|h|hpp)';
+// (the files a project holds: HDL, constraints, C / C++, an Arduino sketch's .ino (#5503); a time "12:30" or an address "host:22" is none)
+const EXT = '(?:vhdl?|v|sv|vh|svh|ucf|xdc|pcf|lpf|cst|sdc|c|cc|cpp|h|hpp|ino)';
 const FORMS = [
   new RegExp(`"([^"]+)"\\s*,?\\s*[Ll]ine\\s+(\\d+)`),                         // ISE
   new RegExp(`\\[([^\\[\\]\\s]+\\.${EXT}):(\\d+)\\]`),                       // Vivado
