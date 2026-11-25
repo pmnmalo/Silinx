@@ -39,7 +39,7 @@ export const GATE_LIMITS = Object.freeze({
   maxFiles: 5000,           // files in one import
   maxFile: 64 << 20,        // one file (an opaque one: a bitstream, an image)
   maxText: 16 << 20,        // one text file (a source, a drawing, a memory's data)
-  maxLine: 1 << 20,         // one line of a source (HDL, C, constraints)
+  maxLine: 1 << 20,         // one line of a source (HDL, C, assembly, constraints)
   maxDepth: 256,            // brackets, XML elements, JSON arrays and objects
   maxBranches: 1000,        // elsif / else if of one HDL file (#2577: a long chain overflows the simulators' stack)
   maxPath: 1024,            // a path
@@ -54,15 +54,16 @@ export class GateError extends Error {
 const KINDS = [
   ['hdl', /\.(v|vh|vhd|vhdl|sv|svh)$/i],
   ['c', /\.(c|h|cc|cpp|cxx|hpp|hh)$/i],
+  ['asm', /\.(asm|s)$/i],   // (a microcontroller's assembly: the AVR examples' firmware, core/system-layout.js sourceLang, #5535)
   ['constraints', /\.(ucf|pcf|lpf|cst|ccf|xdc|sdc)$/i],
   ['xml', /\.(xise|sch|sym|pnml|wcfg|xml|svg)$/i],
   ['json', /\.json$/i],
   ['data', /\.(mem|hex|coe|txt|dat|csv|md|vcd|do|tcl|ini|log)$/i],
 ];
-const TEXT_KINDS = new Set(['hdl', 'c', 'constraints', 'xml', 'json', 'data']);
-const LINE_KINDS = new Set(['hdl', 'c', 'constraints']);
+const TEXT_KINDS = new Set(['hdl', 'c', 'asm', 'constraints', 'xml', 'json', 'data']);
+const LINE_KINDS = new Set(['hdl', 'c', 'asm', 'constraints']);
 
-/** The kind of a file by its name: hdl, c, constraints, xml, json, data (a text kind), or opaque. */
+/** The kind of a file by its name: hdl, c, asm, constraints, xml, json, data (a text kind), or opaque. */
 export function kindOf(path) {
   for (const [k, re] of KINDS) if (re.test(path)) return k;
   return 'opaque';

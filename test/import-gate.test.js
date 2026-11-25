@@ -235,6 +235,30 @@ test('types by content: a text file that is binary or a web page refused, other 
   assert.throws(() => gateFile('x.vhd', 'x'.repeat(65), { limits: { maxFile: 64 } }), { message: 'x.vhd: file larger than 64 bytes' });
 });
 
+test('#5535 a microcontroller\'s assembly (.asm, .s): a text file, checked as a source; an ASM chart (.asm.json) a drawing', () => {
+  const PROG = '; blink\n    ldi r16, 0x3f\n    out 0x04, r16\n';
+  for (const p of ['uno/hello.asm', 'fw/start.s', 'fw/START.S', 'firmware/a.ASM']) {
+    assert.equal(kindOf(p), 'asm', p);
+    assert.deepEqual([gateFile(p, PROG).kind, gateFile(p, PROG).text], ['asm', PROG], p);
+  }
+  assert.equal(kindOf('src/ctl.asm.json'), 'json');
+  assert.equal(kindOf('uno/hello.asmx'), 'opaque');
+  // (its text's checks, a source's: a NUL byte, a web page, a long line refused; invalid UTF-8 replaced)
+  const r = gateEntries([
+    { path: 'uno/zero.asm', data: new Uint8Array([0x3b, 0, 0x0a]) },
+    { path: 'uno/page.asm', data: '<!DOCTYPE html><html><script>alert(1)</script></html>' },
+    { path: 'uno/long.s', data: `; ${'x'.repeat(101)}\n` },
+    { path: 'uno/latin.asm', data: new Uint8Array([0x3b, 0x20, 0xe9, 0x0a]) },
+  ], { limits: { maxLine: 100 } });
+  assert.deepEqual(gateMessages(r), [
+    'uno/zero.asm: not imported: binary content (a NUL byte) in a text file',
+    'uno/page.asm: not imported: a web page (HTML), not the file its name says',
+    'uno/long.s: not imported: line longer than 100 bytes',
+    'uno/latin.asm: not valid UTF-8 (the invalid bytes replaced)',
+  ]);
+  assert.deepEqual(r.files.map(f => [f.path, f.kind, f.text]), [['uno/latin.asm', 'asm', '; \uFFFD\n']]);
+});
+
 // every file of the repository's designs: the examples, the ISE projects and schematics of the tests
 function corpus() {
   const out = [];
