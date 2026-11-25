@@ -171,9 +171,10 @@ export function buildSystem(sys, plan, { fpga = {}, firmware = {} } = {}) {
   }
   for (const w of plan.wires) {
     // (an SPI or I²C wire: a sixteenth of its clock's period, the peripheral's answer in time for the master's next edge;
-    // SS and I²C's lines pulled up, #5214)
+    // SS and I²C's lines pulled up, #5214; a UART's line too, at rest while its transmitter is not enabled yet: an AVR's D1
+    // an input before Serial.begin, #5561)
     const latency = lookahead({ protocol: w.kind, baud: w.baud, hz: w.hz });
-    sim.link({ name: w.name, from: w.from, to: w.to, kind: w.kind === 'uart' ? 'uart' : 'wire', baud: w.baud, latency, pull: w.line === 'ss' || w.kind === 'i2c' ? 1 : null });
+    sim.link({ name: w.name, from: w.from, to: w.to, kind: w.kind === 'uart' ? 'uart' : 'wire', baud: w.baud, latency, pull: w.line === 'ss' || w.kind === 'i2c' || w.kind === 'uart' ? 1 : null });
   }
   for (const { node, pin, value } of plan.idle) sim.nodes.get(node).setPin(pin, value);
   return { sim, terminals, wires: plan.wires };

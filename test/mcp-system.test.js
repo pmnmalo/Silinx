@@ -173,6 +173,22 @@ test('#4701 simulate of a System (Simulate System): an AVR and the uart example\
   await bad({ project: 'u', type: { term: 'x' } }, 'type: a System\'s terminals (top: a .sys.json)');
 });
 
+test('#5561 a UART line rests high while its transmitter is not enabled yet: the FPGA echoes an AVR that enables its USART late, byte for byte', async () => {
+  const { intelHex, echoProgram } = await import('./avr-asm.mjs');
+  // (its USART enabled after about 0.5 ms: D1 an input with no pull-up until then, the link's source floating)
+  await write('fw/late.hex', intelHex(echoProgram({ wait: 10 })));
+  const uno = { id: 'uno', kind: 'mcu', board: 'arduino-uno', firmware: 'fw/late.hex', interfaces: [{ name: 'Serial', kind: 'uart', baud: 9600, frame: '8N1' }] };
+  const m = system({ nodes: [uno] }); m.links[0].a = 'uno.Serial';
+  m.nodes = m.nodes.filter(n => n.id !== 'term');
+  await write('late.sys.json', m);
+  const r = await ok('simulate', { project: 'u', top: 'late.sys.json', time_ns: 8e6 });
+  const text = w => String.fromCharCode(...r.data.traffic.find(t => t.wire === w).bytes.map(b => b.byte));
+  assert.equal(text('console_uno').slice(0, 6), 'HiIjJk');
+  assert.equal(text('console_fpga').slice(0, 5), 'HiIjJ', 'each byte echoed: no false start bit while D1 floated');
+  assert.deepEqual([r.data.warnings, r.data.errors], [[], []]);
+  assert.ok(r.data.traffic[0].bytes[0].t > 4e8, `its first byte after the wait (${r.data.traffic[0].bytes[0].t} ps)`);
+});
+
 test('#5212 simulate of a System with controls (Emulate System): BTN0 pressed on the FPGA\'s board, its message in the terminal, what the boards show; the wrong controls refused', async () => {
   // the FPGA node's pins its UCF's: BTN0, LD7..LD0, the display
   const ucf = fs.readFileSync(new URL('../examples/uart/constraints/top.ucf', import.meta.url), 'utf8');
