@@ -24,16 +24,21 @@ export const EXPLORER_1632 = {
 };
 
 import { SerialTerminal } from './serial.js';
+import { CharacterLcd } from './lcd.js';
 
 export class Explorer1632 {
   /** The board around a device (gb610.js's): its buttons released (their pull-ups on the pins), the potentiometer at
-   *  its middle, the room at 25 °C. */
+   *  its middle, the room at 25 °C, its LCD (lcd) on the PMP. */
   constructor(dev) {
     this.dev = dev;
     this.pressed = new Set();
     for (const b of Object.keys(EXPLORER_1632.buttons)) this.release(b);
     this.setPotentiometer(0.5);
     this.setTemperature(25);
+    // the LCD on the PMP: no chip select (its E the write strobe of any cycle), RS on PMA0
+    const { mcu } = dev;
+    this.lcd = new CharacterLcd({ now: () => mcu.time, say: (t) => mcu.cpu.say('warning', t, 'lcd-busy') });
+    dev.pmp.attach('any', { write: (a, v) => this.lcd.write(a & 1, v), read: (a) => this.lcd.read(a & 1) });
   }
 
   get ports() { return this.dev.ports; }
