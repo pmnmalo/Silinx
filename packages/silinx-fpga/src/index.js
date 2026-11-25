@@ -47,6 +47,7 @@ export { LPF } from './lpf.js';
 export { CST } from './cst.js';
 export { CCF } from './ccf.js';
 export { XDC, readXdc, writeXdc } from './xdc.js';
+export { QSF, readQsf, writeQsf, writeSdc } from './qsf.js';
 export { gateAssignments, rewriteCarryChains } from './carry-chain.js';
 
 // the netlist in (the constraints: ./parts.js)

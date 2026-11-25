@@ -19,6 +19,7 @@ import { kindStep } from './project-kind-step.js';
 import { HDL_TOP_TYPES, TOP_TYPES, offeredTopTypes, projectTopType } from '/core/top-types.js';
 import { SYSTEM_TOP } from '/core/system-top.js';
 import { topSourceFiles } from '/core/top-source.js';
+import { deviceLabel } from '/packages/silinx-fpga/src/parts.js';
 import { SYSTEM_KIND, DESIGN_KIND, DESIGN_ONLY_LABEL, asFpgaProject, isDesignOnly, isSystemProject, newSystemKind } from '/core/project-kind.js';
 import { placeLines, placeText } from '/core/project-place.js';
 import { designOnly, refusedHere } from './design-only.js';
@@ -568,7 +569,7 @@ export async function projectProperties() {
     appLog(`Preferred Language: ${lang.value === 'verilog' ? 'Verilog' : 'VHDL'}${n ? ` (${n} drawing(s) now in it, their HDL made again in it)` : ''}.`, 'info');
   }
   await app.reloadProject();
-  appLog(`Device set to ${pj.device.part}${pj.device.speed}-${pj.device.package}${pj.board ? ` (board ${pj.board})` : ''}.`, 'info');
+  appLog(`Device set to ${deviceLabel(pj.device)}${pj.board ? ` (board ${pj.board})` : ''}.`, 'info');
   if (noFlowWarning(pj.device)) appLog(noFlowWarning(pj.device), 'warn');
   const changed = pj.board !== oldBoard || `${pj.device.part}-${pj.device.package}` !== oldDev;
   const board = app.projectBoard();
