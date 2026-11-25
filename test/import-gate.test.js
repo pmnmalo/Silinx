@@ -259,6 +259,30 @@ test('#5535 a microcontroller\'s assembly (.asm, .s): a text file, checked as a 
   assert.deepEqual(r.files.map(f => [f.path, f.kind, f.text]), [['uno/latin.asm', 'asm', '; \uFFFD\n']]);
 });
 
+test('#5551 a MicroPython program (.py): a text file, checked as a source', () => {
+  const PROG = '# blink\nfrom machine import Pin\nled = Pin(2, Pin.OUT)\n';
+  for (const p of ['esp/main.py', 'pico/BLINK.PY', 'esp/lib/tick.Py']) {
+    assert.equal(kindOf(p), 'python', p);
+    assert.deepEqual([gateFile(p, PROG).kind, gateFile(p, PROG).text], ['python', PROG], p);
+  }
+  assert.equal(kindOf('esp/main.pyc'), 'opaque');
+  assert.equal(kindOf('esp/main.pyw'), 'opaque');
+  // (its text's checks, a source's: a NUL byte, a web page, a long line refused; invalid UTF-8 replaced)
+  const r = gateEntries([
+    { path: 'esp/zero.py', data: new Uint8Array([0x23, 0, 0x0a]) },
+    { path: 'esp/page.py', data: '<!DOCTYPE html><html><script>alert(1)</script></html>' },
+    { path: 'esp/long.py', data: `# ${'x'.repeat(101)}\n` },
+    { path: 'esp/latin.py', data: new Uint8Array([0x23, 0x20, 0xe9, 0x0a]) },
+  ], { limits: { maxLine: 100 } });
+  assert.deepEqual(gateMessages(r), [
+    'esp/zero.py: not imported: binary content (a NUL byte) in a text file',
+    'esp/page.py: not imported: a web page (HTML), not the file its name says',
+    'esp/long.py: not imported: line longer than 100 bytes',
+    'esp/latin.py: not valid UTF-8 (the invalid bytes replaced)',
+  ]);
+  assert.deepEqual(r.files.map(f => [f.path, f.kind, f.text]), [['esp/latin.py', 'python', '# \uFFFD\n']]);
+});
+
 // every file of the repository's designs: the examples, the ISE projects and schematics of the tests
 function corpus() {
   const out = [];
