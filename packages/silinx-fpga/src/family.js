@@ -1,4 +1,4 @@
-// Xilinx device families known to ISE 14.7, and the open toolchains' others (the iCE40, #2295; the ECP5, #2302; the Gowin, #2303; the GateMate, #2431) (isomorphic:
+// Xilinx device families known to ISE 14.7, and the open toolchains' others (the iCE40, #2295; the ECP5, #2302; the Gowin, #2303; the GateMate, #2431; the Intel FPGAs, #5376) (isomorphic:
 // used by the server and the browser). An open family's constraints format (constraints) and its bitstream's extension (bitstream).
 // Detection works from the part name alone, so it also covers parts missing from the device DB.
 
@@ -30,6 +30,12 @@ export const FAMILY_INFO = {
   gowin:        { name: 'Gowin GW1N', constraints: 'cst', bitstream: '.fs' },
   // (#2431: Project Peppercorn's, nextpnr-himbaechel-gatemate and gmpack; its constraints Cologne Chip's CCF, its bitstream gmpack's .bit)
   gatemate:     { name: 'GateMate', constraints: 'ccf', bitstream: '.bit' },
+  // (#5376: the Intel (Altera) FPGAs of Terasic's DE boards, experimental families: their boards and their constraints, QSF
+  // (qsf.js, its clocks in an SDC), no flow that runs yet: the Silinx toolchain's Cyclone V (#5377), Quartus Prime (#5378); next,
+  // what comes)
+  max10:        { name: 'MAX 10', experimental: true, constraints: 'qsf', vendor: 'intel', next: 'Quartus Prime comes next' },
+  cyclone4e:    { name: 'Cyclone IV E', experimental: true, constraints: 'qsf', vendor: 'intel', next: 'Quartus Prime comes next' },
+  cyclone5:     { name: 'Cyclone V', experimental: true, constraints: 'qsf', vendor: 'intel', next: 'the Silinx toolchain\'s flow and Quartus Prime come next' },
 };
 
 /** Family id of a part name such as xc3s250e, xc6slx9, xc3s700an, xc7a100t, ice40up5k. */
@@ -52,6 +58,9 @@ export function familyOfPart(part) {
   if (/^lfe5u/.test(p)) return 'ecp5';   // (LFE5U, LFE5UM, LFE5UM5G)
   if (/^gw1n/.test(p)) return 'gowin';   // (GW1N, GW1NR, GW1NS…)
   if (/^ccgm1a\d+$/.test(p)) return 'gatemate';   // (Cologne Chip's CCGM1A1, A2, A4…)
+  if (/^10m\d+[sd][acf]$/.test(p)) return 'max10';   // (10M50DA: single or dual supply, analog / compact / flash, #5376)
+  if (/^ep4ce\d+$/.test(p)) return 'cyclone4e';
+  if (/^5c(e|g[xt]|s[ext])[a-z]{2}\d+$/.test(p)) return 'cyclone5';   // (5CEBA4, 5CSEMA5, 5CSEBA6, 5CGXFC5…)
   return null;
 }
 
@@ -82,14 +91,21 @@ export const openFlowDevice = device => {
 export const openFamilyOf = family => FAMILY_INFO[family]?.openFamily || family;
 /** Why the Silinx toolchain does not implement a device of a Vivado-only family (#3895): the interface offers Vivado alone. */
 export const noOpenFlowMessage = device => `the Silinx toolchain has no back end for the ${String(device?.part || '').toUpperCase()} (${familyName(deviceFamily(device))}): AMD Vivado implements it (Synthesis Tool: Vivado, on the local server)`;
-/** Why an experimental family's device has no implementation (the interface offers none; a request gets this error). */
-export const noFlowMessage = device => `the ${String(device?.part || '').toUpperCase()} (${familyName(deviceFamily(device))}, an experimental family) has no implementation flow yet: its boards and its XDC constraints only`;
-/** The format of a project device's constraints: 'pcf' (the iCE40's), 'lpf' (the ECP5's, #2302), 'cst' (the Gowin's, #2303), 'ccf' (the GateMate's, #2431), 'xdc' (the 7-series', #3142) or 'ucf'. */
+/** Why an experimental family's device has no implementation (the interface offers none; a request gets this error): its
+ *  constraints' format, and what comes next (the Intel families', #5376). */
+export const noFlowMessage = device => {
+  const info = FAMILY_INFO[deviceFamily(device)];
+  return `the ${String(device?.part || '').toUpperCase()} (${familyName(deviceFamily(device))}, an experimental family) has no implementation flow yet: its boards and its ${(info?.constraints || 'xdc').toUpperCase()} constraints only${info?.next ? ` (${info.next})` : ''}`;
+};
+/** The format of a project device's constraints: 'pcf' (the iCE40's), 'lpf' (the ECP5's, #2302), 'cst' (the Gowin's, #2303), 'ccf' (the GateMate's, #2431), 'xdc' (the 7-series', #3142), 'qsf' (the Intel families', #5376) or 'ucf'. */
 export const constraintsFormatOf = device => FAMILY_INFO[deviceFamily(device)]?.constraints || 'ucf';
-/** The extension of a project device's constraints file: '.ucf', '.pcf', '.lpf', '.cst', '.ccf' or '.xdc'. */
+/** The extension of a project device's constraints file: '.ucf', '.pcf', '.lpf', '.cst', '.ccf', '.xdc' or '.qsf'. */
 export const constraintsExtOf = device => `.${constraintsFormatOf(device)}`;
 /** The extension of a project device's bitstream (build/<top><ext>): '.bit' (Xilinx's, ecppack's, gmpack's), '.bin' (icepack's), '.fs' (gowin_pack's). */
 export const bitstreamExtOf = device => FAMILY_INFO[deviceFamily(device)]?.bitstream || '.bit';
+/** A project device as its vendor's tools name it: xc3s250e-4-cp132 (part, speed, package: ISE's); an Intel one Quartus's,
+ *  5CEBA4F23C7 (#5376). */
+export const deviceLabel = d => (FAMILY_INFO[deviceFamily(d)]?.vendor === 'intel' ? `${d.part}${d.package}${d.speed}`.toUpperCase() : `${d?.part}${d?.speed}-${d?.package}`);
 export const familyName = f => FAMILY_INFO[f]?.name || f || 'unknown family';
 export const isSpartan3Like = f => /^spartan3/.test(f || '');
 export const familyFromXise = text => {

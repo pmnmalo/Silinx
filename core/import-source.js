@@ -6,10 +6,10 @@ import { gateFile, GateError } from './import-gate.js';
 import { reservedError } from './reserved.js';
 
 /** The files Import Source takes (the dialog's `accept`). */
-export const IMPORT_SOURCE_ACCEPT = '.v,.vhd,.vhdl,.ucf,.pcf,.lpf,.cst,.ccf,.mem,.hex,.asm.json,.json';
+export const IMPORT_SOURCE_ACCEPT = '.v,.vhd,.vhdl,.ucf,.pcf,.lpf,.cst,.ccf,.qsf,.mem,.hex,.asm.json,.json';
 /** The associations of a copy: All, Implementation only, Simulation only (Import Test Bench's). */
 export const IMPORT_SOURCE_ROLES = [['design', 'All (Implementation + Simulation)'], ['impl', 'Implementation only'], ['sim', 'Simulation only']];
-const CONSTRAINTS = ['ucf', 'pcf', 'lpf', 'cst', 'ccf', 'xdc'];
+const CONSTRAINTS = ['ucf', 'pcf', 'lpf', 'cst', 'ccf', 'xdc', 'qsf'];
 
 const extOf = name => String(name).split('.').pop().toLowerCase();
 /** A constraints file (it goes to constraints/, and may become the project's constraints). */

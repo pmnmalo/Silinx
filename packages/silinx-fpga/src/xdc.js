@@ -15,8 +15,8 @@ const toModel = net => net.replace(/\[(\d+)\]$/, '<$1>');
 const toXdc = net => net.replace(/<(\d+)>$/, '[$1]');
 const num = x => (+x).toFixed(3);
 
-// a command's words, Tcl's way enough for XDC: {…} and […] one word each (nested), "…" a string
-function words(text) {
+// a command's words, Tcl's way enough for XDC (and the QSF, qsf.js): {…} and […] one word each (nested), "…" a string
+export function words(text) {
   const out = [];
   let i = 0;
   while (i < text.length) {

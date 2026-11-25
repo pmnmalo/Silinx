@@ -214,7 +214,7 @@ async function reloadProjectNow(render = true, depth = 0) {
 }
 
 // a constraints file, in any family's format (#5581: a System's FPGA nodes')
-const CONSTRAINTS_RE = /\.(ucf|pcf|lpf|cst|ccf|xdc)$/i;
+const CONSTRAINTS_RE = /\.(ucf|pcf|lpf|cst|ccf|xdc|qsf)$/i;
 
 // the project's RTL blackboxes (core/c-blackbox.js, #1903): its descriptions, with the files they name and its headers
 async function readBlackboxes(name) {
