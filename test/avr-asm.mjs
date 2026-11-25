@@ -76,10 +76,12 @@ export function avrElf(words, { machine = 83 } = {}) {
 export const REG = { DDRB: 0x04, PORTB: 0x05, PIND: 0x09, DDRD: 0x0a, PORTD: 0x0b, UCSR0A: 0xc0, UCSR0B: 0xc1, UCSR0C: 0xc2, UBRR0L: 0xc4, UBRR0H: 0xc5, UDR0: 0xc6 };
 
 /** The reference program: the USART at `ubrr` (103: 9600 baud at 16 MHz), 8N1; sends `text`; then each byte received
- *  is shown on port B (D8..D13) and sent back plus one; D2 (an input with its pull-up) copied on D7. */
-export function echoProgram({ ubrr = 103, text = 'Hi' } = {}) {
+ *  is shown on port B (D8..D13) and sent back plus one; D2 (an input with its pull-up) copied on D7. `wait`: about
+ *  that many times 48 µs first, its USART not enabled yet (an Arduino core's start-up before Serial.begin, #5561). */
+export function echoProgram({ ubrr = 103, text = 'Hi', wait = 0 } = {}) {
   const R = REG;
   return avrAssemble([
+    ...(wait ? [`ldi r21, ${wait}`, 'outer:', 'ldi r20, 255', 'inner:', 'dec r20', 'brne inner', 'dec r21', 'brne outer'] : []),
     'ldi r16, 0', `sts ${R.UBRR0H}, r16`, `ldi r16, ${ubrr}`, `sts ${R.UBRR0L}, r16`,
     'ldi r16, 0x06', `sts ${R.UCSR0C}, r16`, 'ldi r16, 0x18', `sts ${R.UCSR0B}, r16`,
     'ldi r16, 0x3f', `out ${R.DDRB}, r16`, 'ldi r16, 0x80', `out ${R.DDRD}, r16`, 'ldi r16, 0x04', `out ${R.PORTD}, r16`,

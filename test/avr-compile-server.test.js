@@ -154,3 +154,19 @@ test('#5503 the real arduino-cli: a sketch compiled, its .hex read as the Board 
     assert.ok(!readFirmware('uno/hello.hex', hexOf(d, 'uno/hello.hex')).error);
   } finally { await writeConfig({ mode: 'silinx', paths: { 'arduino-cli': STUB } }); }
 });
+
+test('#5561 the real arduino-cli: uart-avr\'s hello.ino compiled, its Serial read by the FPGA and echoed byte for byte; no warning', { skip: !real.available && `no arduino-cli with its AVR core here (${real.reason})`, timeout: 300000 }, async () => {
+  await writeConfig({ mode: 'silinx' });
+  try {
+    // (the Arduino core's start-up before Serial.begin: D1 an input for about 100 µs, the line at rest high)
+    const name = await project({ 'uno/hello.ino': 'int count = 0;\n\nvoid setup() {\n  Serial.begin(9600);\n}\n\nvoid loop() {\n  Serial.print("hello ");\n  Serial.println(count++);\n  delay(1000);\n}\n' });
+    const j = await waitJob(jobs, (await startFirmwareCompile(name, { node: 'uno' })).id, { timeoutMs: 280000 });
+    assert.equal(j.status, 'ok', j.lines.join('\n'));
+    assert.deepEqual(j.lines.filter(l => /^(ERROR|WARNING)/.test(l)), [], 'no warning');
+    const r = await tool('simulate').run({ project: name, time_ns: 20e6 });
+    const text = w => String.fromCharCode(...r.data.traffic.find(t => t.wire === w).bytes.map(b => b.byte));
+    assert.equal(text('serial_uno'), 'hello 0\r\n');
+    assert.equal(text('serial_fpga'), 'hello 0\r\n', 'the FPGA\'s echo: no byte misread while D1 was an input');
+    assert.deepEqual([r.data.warnings, r.data.errors], [[], []]);
+  } finally { await writeConfig({ mode: 'silinx', paths: { 'arduino-cli': STUB } }); }
+});
