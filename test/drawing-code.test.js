@@ -17,7 +17,7 @@ import { ROOT } from './reactive-lib.mjs';
 const TRAFFIC = fs.readFileSync(path.join(ROOT, 'examples/traffic/src/traffic.fsm.json'), 'utf8');
 const SYS = fs.readFileSync(path.join(ROOT, 'examples/uart-avr/uart_avr.sys.json'), 'utf8');
 const PJ = JSON.parse(fs.readFileSync(path.join(ROOT, 'examples/uart-avr/silinx.json'), 'utf8'));
-const files = ['uart_avr.sys.json', 'uno/traffic.fsm.json', 'fpga/traffic.fsm.json', 'src/uart.vhd'];
+const files = ['uart_avr.sys.json', 'uno/traffic.fsm.json', 'fpga/traffic.fsm.json', 'fpga/uart.vhd'];
 const texts = { 'uart_avr.sys.json': SYS };
 
 test('a drawing\'s node: its folder\'s, its base language; none at the root, nor in an FPGA project', () => {

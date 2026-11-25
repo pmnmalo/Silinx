@@ -159,9 +159,7 @@ export function compileProject() {
   // of the project, which can be the top, be simulated and implemented, with no file)
   designState.viewSources = [];
   designState.viewElsewhere = {};
-  // (not a System's CPU node's C sources and drawings: its board's program, #5486)
-  const cpu = inCpuNode(S.project, { files: filesState.fileTree || [], texts: designState.viewTexts || {} });
-  const views = Object.entries(designState.viewTexts || {}).filter(([f]) => !designState.schOwners?.[f] && !cpu(f));
+  const cpu = inCpuNode(S.project, { files: filesState.fileTree || [], texts: designState.viewTexts || {} }), views = Object.entries(designState.viewTexts || {}).filter(([f]) => !designState.schOwners?.[f] && !cpu(f));   // (not a System's CPU node's C nor drawings: its board's, #5486)
   // the modules of the HDL files, compiled once for the drawings below (#402)
   let hdlModules = null;
   const failedC = [];   // (a C source whose HDL cannot be made: its row and its errors, #2995)
