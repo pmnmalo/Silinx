@@ -98,6 +98,10 @@ export const SYSTEM_PT_PATTERNS = [
   [/^the System project '(.+)' has no System document \(\.sys\.json\)$/, "o projeto System '$1' não tem documento System (.sys.json)"],
   // (the System Emulator's panel, web/js/system-emulate-ui.js)
   [/^Emulation Properties: ([\s\S]+)$/, 'Propriedades da emulação: $1'],
+  // (an FPGA node's constraints, #5601: web/js/system-constraints-ui.js)
+  [/^([A-Za-z]\w*): an FPGA node with no module$/, '$1: um nó FPGA sem módulo'],
+  [/^([A-Za-z]\w*): no FPGA board '(.*)'$/, "$1: não há a placa FPGA '$2'"],
+  [/^no FPGA node '(.+)' in the System$/, "não há o nó FPGA '$1' no System"],
   // (a CPU node's drawing's last badge, #5488: web/js/design.js)
   [/^The node's base language: (.+)$/, 'A linguagem de base do nó: $1'],
   // (a CPU node's drawing's [C], #5486: web/js/design-cpu.js)
