@@ -15,6 +15,7 @@ import { projectNodes } from '/core/project-nodes.js';
 import { nodeOfPath, nodeFilesOf, sourcePlace, LANG_NAMES } from '/core/system-layout.js';
 import { panes } from './state-panes.js';
 import { openSystem, systemContextMenu } from './system-open.js';
+import { cpuCode, isCpuDrawing } from './design-cpu.js';
 
 /** Whether the project open is a System project (and Systems are on in this build, #5202). */
 export const systemProject = () => isSystemProject(S.project) && systemsOn();
@@ -79,8 +80,9 @@ function systemRow(treeItem, select) {
   const ids = nodes.map(n => n.id), branches = new Map();   // node id -> its branch's item
   // (a microcontroller's folder's sources, its firmware's first: its .asm, .c, .py, #5488; an FPGA node's are modules)
   const tree = filesState.fileTree || [];
-  const sources = n => (n.kind === 'mcu' ? nodeFilesOf(tree, n.id).filter(p => !n.files.includes(p) && !designState.hdlToSch?.[p]) : []);
-  const fill = (addModule, fileRow, moduleOf, roots = []) => {
+  // (a drawing's C, #5486: its drawing's row's, not one of its own)
+  const sources = n => { if (n.kind !== 'mcu') return []; const ps = nodeFilesOf(tree, n.id), code = new Set(ps.map(cpuCode).filter(Boolean)); return ps.filter(p => !n.files.includes(p) && !designState.hdlToSch?.[p] && !code.has(p)); };
+  const fill = (addModule, fileRow, moduleOf, roots = [], drawingRow = null) => {
     for (const n of nodes) {
       const board = n.board ? boardName(n) : null;
       const it = treeItem({ label: n.id, meta: board ? `(${board})` : '', ico: NODE_ICON[n.kind] || 'system', open: true, key: `node:${f}:${n.id}`,
@@ -93,7 +95,11 @@ function systemRow(treeItem, select) {
       const mine = roots.filter(r => r !== n.module && nodeOfPath(moduleFile(r), ids) === n.id);
       for (const m of mine) addModule(it.ul, m, null, 0, m, cpu);
       // (a circuit that is a module, its HDL generated from it: its module's row, #4069; a module's file once)
-      for (const p of [...n.files, ...sources(n)]) {
+      // (its drawings first, as an FPGA node's modules, then its firmware and its other files)
+      const files = [...n.files, ...sources(n)], drawn = p => !!(cpu && drawingRow && isCpuDrawing(p));
+      for (const p of [...files.filter(drawn), ...files.filter(p => !drawn(p))]) {
+        // (a drawing in a CPU node: its board's program, its C generated from it, its row: #5486, design-cpu.js)
+        if (drawn(p)) { it.ul.append(drawingRow(p, cpu, sys?.nodes?.find(x => x.id === n.id) ?? n).li); continue; }
         const m = moduleOf(p) ?? (cpu ? designState.viewModule?.[p] : null);   // (a CPU node's drawing: its module's row)
         if (!m) it.ul.append(fileRow(p).li);
         else if (!mine.includes(m) && m !== n.module) addModule(it.ul, m, null, 0, m, cpu);

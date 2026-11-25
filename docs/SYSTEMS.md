@@ -212,6 +212,10 @@ was made before its node's language was C gets its sketch instead, its HDL file 
 node's GPIO interfaces named as the ports (their pins, bit 0 first), the others the board's next free ones; its ports are
 the node contract's typed ports (`core/system-ports.js`, at the board's 5 V). A schematic, a circuit and a register map
 are refused in a CPU node, with their messages. A drawing in a MicroPython node is said not made yet (#5487).
+On the Design pane (`web/js/design-cpu.js`) such a drawing's row, under its node, is named after its module: its
+drawing's badge first (the base), its node's language's last, `[C]` (or `[C++]`), its sketch, opened from it; marked when
+its sketch is not made (the drawing has errors: its tip says them) or not made again since. A drawing with no sketch gets
+it when the project is opened, as the MCP's tools give it (`adoptDrawing`); the sketch has no row of its own.
 
 ### The PIC24
 

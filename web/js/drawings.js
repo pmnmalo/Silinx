@@ -5,6 +5,7 @@ import { api } from './api.js';
 import { h, confirmDlg, popupMenu } from './ui.js';
 import { elaborate } from '/core/compile.js';
 import { viewHdl, drawnHdlPath, drawnHdlClash } from '/core/view-hdl.js';
+import { inCpuNode } from '/core/drawing-code.js';
 import { modulesFromLibrary } from '/core/schdoc.js';
 import { modelRunners } from '/core/circuit-live-model.js';
 import { S, activateDoc, closeDocByPath, compileProject, findDoc, flushDoc, hdlInProject, moduleInfo, openDoc,
@@ -569,6 +570,13 @@ export async function adoptDrawnHdl() {
     // (#231: its HDL file was deleted, or removed from the project and another name is free)
     if (!designOnly()) appLog(`${target} generated from ${v.path} (${!v.lost ? 'every source has its HDL' : `its HDL file ${v.lost} ${(filesState.diskTree || []).includes(v.lost) ? 'was removed from the project' : 'is no longer in the project folder'}`})`, 'info');
     n++;
+  }
+  // (a System's CPU node's drawing with no C: its C, core/drawing-sync.js adoptDrawing's, as the MCP's; #5486)
+  const cpu = inCpuNode(S.project, { files: filesState.fileTree || [], texts: designState.viewTexts || {} });
+  for (const f of Object.keys(designState.viewTexts || {}).filter(f => cpu(f) && !/"generatedFile"/.test(designState.viewTexts[f]))) {
+    const r = await (await import('/core/drawing-sync.js')).adoptDrawing(pageStore(), S.project.name, f);
+    for (const m of r?.messages ?? []) log(m, /^WARNING: /.test(m) ? 'warn' : 'info');
+    if (r?.written) n++;
   }
   return n;
 }

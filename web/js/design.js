@@ -40,6 +40,7 @@ import { docsState } from './state-docs.js';
 import { openFocused } from './doc-focus.js';
 
 import { systemProject, topRow } from './design-system.js';
+import { cpuBadges, cpuModule } from './design-cpu.js';
 import { isSystemFile } from '/core/system-doc.js';
 import { systemsOn } from '/core/build-channel.js';
 const $ = id => document.getElementById(id);
@@ -140,7 +141,7 @@ export function renderHierarchy() {
   for (const r of roots) addModule(devItem.ul, r, null, 0, r);
   // (a System project's nodes, each its branch: its module's rows, its files', #5414)
   // (grouped by node, #5488: each node's folder's root modules under it, the others' under the System)
-  sysRow?.fill(addModule, fileRow, f => designState.modules.find(m => m.file === f)?.name, sysRow ? hierarchyOrder(viewRoots(sim), null) : []);
+  sysRow?.fill(addModule, fileRow, f => designState.modules.find(m => m.file === f)?.name, sysRow ? hierarchyOrder(viewRoots(sim), null) : [], cpuRow);
   // (a row under its file's node in a System project, #5488, else under the top row)
   const under = f => sysRow?.ulOf(f) ?? devItem.ul;
   // (no top module in the view: the files under the device, #4591)
@@ -158,19 +159,19 @@ export function renderHierarchy() {
     const it = treeItem({ label: f.split('/').pop(), meta: owned ? `(→ ${owned.split('/').pop()})` : '', ico: 'schematic', key: `sch:${f}`, badges: [clashBadge(f)].filter(Boolean), mark: gitMark([f]), onSelect: () => select({ type: 'sch', file: f }), onOpen: () => openSch(f), onContext: e => schContextMenu(e, f) });
     it.setLeaf(); under(f).append(it.li);
   }
-  for (const f of (filesState.fileTree || []).filter(f => /\.asm\.json$/.test(f) && !designState.schOwners?.[f] && !designState.modules.some(m => m.file === f))) {
+  for (const f of (filesState.fileTree || []).filter(f => /\.asm\.json$/.test(f) && !designState.schOwners?.[f] && !designState.modules.some(m => m.file === f) && !sysRow?.owned.includes(f))) {
     const it = treeItem({ label: f.split('/').pop(), ico: 'asm', key: `asm:${f}`, badges: [clashBadge(f)].filter(Boolean), mark: gitMark([f]), onSelect: () => select({ type: 'asm', file: f }), onOpen: () => openAsm(f), onContext: e => asmContextMenu(e, f) });
     it.setLeaf(); under(f).append(it.li);
   }
-  for (const f of (filesState.fileTree || []).filter(f => /\.(tt|bool)\.json$/.test(f) && !designState.schOwners?.[f] && !designState.modules.some(m => m.file === f))) {
+  for (const f of (filesState.fileTree || []).filter(f => /\.(tt|bool)\.json$/.test(f) && !designState.schOwners?.[f] && !designState.modules.some(m => m.file === f) && !sysRow?.owned.includes(f))) {
     const it = treeItem({ label: f.split('/').pop(), ico: 'algebra', key: `tt:${f}`, badges: [clashBadge(f)].filter(Boolean), mark: gitMark([f]), onSelect: () => select({ type: 'tt', file: f }), onOpen: () => openTt(f), onContext: e => ttContextMenu(e, f) });
     it.setLeaf(); under(f).append(it.li);
   }
-  for (const f of (filesState.fileTree || []).filter(f => /\.fsm\.json$/.test(f) && !designState.schOwners?.[f] && !designState.modules.some(m => m.file === f))) {
+  for (const f of (filesState.fileTree || []).filter(f => /\.fsm\.json$/.test(f) && !designState.schOwners?.[f] && !designState.modules.some(m => m.file === f) && !sysRow?.owned.includes(f))) {
     const it = treeItem({ label: f.split('/').pop(), ico: 'fsm', key: `fsm:${f}`, badges: [clashBadge(f)].filter(Boolean), mark: gitMark([f]), onSelect: () => select({ type: 'fsm', file: f }), onOpen: () => openFsm(f), onContext: e => fsmContextMenu(e, f) });
     it.setLeaf(); under(f).append(it.li);
   }
-  for (const f of (filesState.fileTree || []).filter(f => /\.pn\.json$/.test(f) && !designState.schOwners?.[f] && !designState.modules.some(m => m.file === f))) {
+  for (const f of (filesState.fileTree || []).filter(f => /\.pn\.json$/.test(f) && !designState.schOwners?.[f] && !designState.modules.some(m => m.file === f) && !sysRow?.owned.includes(f))) {
     const it = treeItem({ label: f.split('/').pop(), ico: 'petri', key: `pn:${f}`, badges: [clashBadge(f)].filter(Boolean), mark: gitMark([f]), onSelect: () => select({ type: 'pn', file: f }), onOpen: () => openPetri(f), onContext: e => petriContextMenu(e, f) });
     it.setLeaf(); under(f).append(it.li);
   }
@@ -225,6 +226,15 @@ function fileRow(f) {
   const it = isCirc(f)
     ? treeItem({ label: f.split('/').pop(), ico: 'circuit', key: `circ:${f}`, badges: [clashBadge(f)].filter(Boolean), mark: gitMark([f]), onSelect: () => select({ type: 'circ', file: f }), onOpen: () => openCircuit(f), onContext: e => circuitContextMenu(e, f) })
     : treeItem({ label: f.split('/').pop(), ico: 'file', key: `nf:${f}`, mark: gitMark([f]), onSelect: () => select({ type: 'file', file: f }), onContext: e => fileContextMenu(e, f) });
+  it.setLeaf();
+  return it;
+}
+
+// a drawing in a System's CPU node (#5486, design-cpu.js): its module's name, its drawing's badge, its node's language's
+function cpuRow(f, lang, node) {
+  const menu = e => viewContextMenu(e, f);
+  const badges = cpuBadges(f, { lang, node, badge: viewBadge(f), noun: viewNoun(f), open: () => openView(f), openCode: c => openFile(c), menu });
+  const it = treeItem({ label: cpuModule(f), meta: `(${f.split('/').pop()})`, ico: viewIcon(f), key: `cpu:${f}`, badges, mark: gitMark([f]), onSelect: () => select({ type: viewKind(f), file: f }), onOpen: () => openView(f), onContext: menu });
   it.setLeaf();
   return it;
 }
