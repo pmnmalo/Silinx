@@ -31,7 +31,7 @@ export const THIRD_PARTY = [
   },
   {
     "name": "@codemirror/lint",
-    "version": "6.9.7",
+    "version": "6.9.8",
     "license": "MIT",
     "url": "https://code.haverbeke.berlin/codemirror/lint",
     "standalone": true
@@ -115,16 +115,16 @@ export const THIRD_PARTY = [
   },
   {
     "name": "@trystero-p2p/core",
-    "version": "0.26.0",
+    "version": "0.27.0",
     "license": "MIT",
-    "url": "https://www.npmjs.com/package/@trystero-p2p/core",
+    "url": "https://github.com/dmotz/trystero",
     "standalone": true
   },
   {
     "name": "@trystero-p2p/torrent",
-    "version": "0.26.0",
+    "version": "0.27.0",
     "license": "MIT",
-    "url": "https://www.npmjs.com/package/@trystero-p2p/torrent",
+    "url": "https://github.com/dmotz/trystero",
     "standalone": true
   },
   {
@@ -716,7 +716,7 @@ export const THIRD_PARTY = [
   },
   {
     "name": "ws",
-    "version": "8.22.2",
+    "version": "8.23.0",
     "license": "MIT",
     "url": "https://github.com/websockets/ws",
     "standalone": false
