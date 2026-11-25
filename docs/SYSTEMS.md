@@ -96,6 +96,12 @@ spirit of SystemC/TLM's loosely-timed models and FMI's co-simulation:
 - **the state saved and restored**, so that a run is deterministic and can be repeated from any point: grading needs
   it.
 
+Where it is in the code: the typed ports are `core/system-ports.js` (`port`: a direction, a kind of `PORT_KINDS`, a level
+in volts, a width, a bus's protocol and role), the link kinds `core/system-links.js` (`LINK_TYPES`: each kind's protocols
+and the port kinds it joins, `lookahead`, `endsProblem`), the contract `core/system-contract.js` (`contractProblems`;
+`ContractNode`, an engine behind it, its state its inputs, restored by replaying them on a new engine; `StimulusNode`, a
+node's test bench; the fidelity notes, `[{ kind, text }]`, the hook of #5499).
+
 **Alone or together.** A node alone is a System of one node: an FPGA project is one already (#5437). A node can be
 replaced by a stimulus, its test bench, through the same contract. Hardware in the loop (a real board in a simulated
 System) comes later and needs real time; for now the simulation is behavioural.
