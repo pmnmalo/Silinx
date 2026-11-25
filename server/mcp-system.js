@@ -59,7 +59,7 @@ const SYS_FILE = STR('The System document (.sys.json).');
 const EDIT = { type: 'object', properties: {
   action: { type: 'string', enum: EDIT_ACTIONS },
   node: { type: 'string' }, interface: { type: 'string' }, link: { type: 'string' },
-  fields: { type: 'object', description: 'kind id board module variant pins firmware circuit x y; name, its kind\'s fields; a b (node.interface)' },
+  fields: { type: 'object', description: 'kind id board module variant pins firmware circuit lang (its base language: vhdl verilog; c cpp micropython) x y; name, its kind\'s fields; a b (node.interface)' },
 }, required: ['action'], additionalProperties: false };
 
 export const SYSTEM_TOOLS = [

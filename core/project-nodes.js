@@ -12,9 +12,9 @@ const nodeFiles = n => (n.kind === 'mcu' ? [n.firmware] : n.kind === 'circuit' ?
 
 // a node as the Design pane and project_info give it
 const shown = n => (n.implicit
-  ? { id: n.id, kind: n.kind, implicit: true, board: n.board, device: n.device, module: n.module, files: nodeFiles(n) }
+  ? { id: n.id, kind: n.kind, implicit: true, board: n.board, device: n.device, module: n.module, lang: n.lang, files: nodeFiles(n) }
   : { id: n.id, kind: n.kind, board: n.board ?? null, ...(n.variant != null ? { variant: n.variant } : {}),
-    module: n.kind === 'fpga' ? n.module ?? null : null, files: nodeFiles(n) });
+    module: n.kind === 'fpga' ? n.module ?? null : null, ...(n.lang != null ? { lang: n.lang } : {}), files: nodeFiles(n) });
 
 /** A project's nodes: { system (its System document's path, or null), nodes: [{ id, kind, implicit?, board, variant?,
  *  device?, module, files }], owned (the files a node uses, shown under it, not among the project's other rows), error

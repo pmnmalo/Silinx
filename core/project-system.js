@@ -8,6 +8,7 @@
 import { isDesignOnly, isSystemProject } from './project-kind.js';
 import { SYSTEM_FORMAT, SYSTEM_VERSION, isSystemFile, readSystem } from './system-doc.js';
 import { resolveBoard } from './devices.js';
+import { baseLang } from './system-layout.js';
 
 // the board's variant for the project's device (the Basys2's 100 or 250), none when the board has none or is not known
 function variantOf(board, device) {
@@ -17,11 +18,12 @@ function variantOf(board, device) {
 
 /** The implicit node of a project with one (#5416): an FPGA project's or a design and simulation project's. */
 function implicitNode(pj) {
+  // (its base language the project's preferred HDL, #5488)
   const at = { pins: {}, interfaces: [], x: 0, y: 0, implicit: true };
-  if (isDesignOnly(pj)) return { id: 'design', kind: 'design', module: pj.top || null, board: null, device: null, constraints: null, ...at };
+  if (isDesignOnly(pj)) return { id: 'design', kind: 'design', module: pj.top || null, board: null, device: null, constraints: null, lang: baseLang({ kind: 'design' }, pj.preferredLanguage), ...at };
   const variant = variantOf(pj.board, pj.device);
   return { id: 'fpga', kind: 'fpga', module: pj.top || null, board: pj.board ?? null, ...(variant != null ? { variant: String(variant) } : {}),
-    device: pj.device ?? null, constraints: pj.constraints ?? null, ...at };
+    device: pj.device ?? null, constraints: pj.constraints ?? null, lang: baseLang({ kind: 'fpga' }, pj.preferredLanguage), ...at };
 }
 
 /** A project's System: { model ({ format, version, name, nodes, links }, or null when its System document is missing or

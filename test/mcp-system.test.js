@@ -35,7 +35,7 @@ test('check_system: a valid System, no warnings; an Arduino at 5 V, its warning;
   const { untrusted: u0, system: sys0, ...data0 } = v.data;
   assert.match(u0.content, /the System's names/, 'the names quoted: untrusted');
   assert.deepEqual(sys0.nodes.map(n => n.id), ['fpga', 'term']);
-  assert.deepEqual([v.isError, v.text], [false, ['System uart_avr: 2 nodes, 1 link', 'node fpga: FPGA, module uart on basys2-250', '  uart: UART 9600 baud 8N1, TX tx (A3), RX rx (J3)',
+  assert.deepEqual([v.isError, v.text], [false, ['System uart_avr: 2 nodes, 1 link', 'node fpga: FPGA, module uart on basys2-250, in VHDL', '  uart: UART 9600 baud 8N1, TX tx (A3), RX rx (J3)',
     'node term: Serial terminal', '  serial: UART 9600 baud 8N1', 'link console: UART term.serial ↔ fpga.uart',
     'console TX: term serial.tx → fpga rx (pin J3)', 'console TX: fpga tx (pin A3) → term serial.rx',   // (its wiring, #5216)
     'Process "Check System" of uart_avr.sys.json completed successfully.'].join('\n')]);
@@ -108,6 +108,22 @@ test('#4700 edit_system: edits applied in order, written, checked (its warnings)
   assert.deepEqual((await ok('check_system', { project: 'u', file: 'e.sys.json' })).data.system.links.length, 1);
   const none = await call('edit_system', { project: 'u', file: 'e.sys.json', edits: [{ action: 'spin' }] });
   assert.deepEqual([none.isError, none.text], [true, 'edit_system: edits[0].action: one of add_node, change_node, remove_node, add_interface, change_interface, remove_interface, add_link, change_link, remove_link']);
+});
+
+test('#5488 edit_system: a node\'s base language given when added and changed, said by check_system; one not its kind\'s refused', async () => {
+  await write('l.sys.json', { format: 'silinx-system', version: 1, name: 'l', nodes: [], links: [] });
+  await ok('edit_system', { project: 'u', file: 'l.sys.json', edits: [
+    { action: 'add_node', fields: { kind: 'fpga', id: 'f', module: 'uart', board: 'basys2', lang: 'verilog' } },
+    { action: 'add_node', fields: { kind: 'mcu', id: 'm' } },
+    { action: 'change_node', node: 'm', fields: { lang: 'cpp' } },
+  ] });
+  const c = await ok('check_system', { project: 'u', file: 'l.sys.json' });
+  assert.deepEqual(c.data.system.nodes.map(n => [n.id, n.lang]), [['f', 'verilog'], ['m', 'cpp']]);
+  assert.ok(c.text.split('\n').includes('node m: Arduino Uno, firmware (none), in C++'), c.text);
+  const bad = await call('edit_system', { project: 'u', file: 'l.sys.json', edits: [{ action: 'change_node', node: 'f', fields: { lang: 'c' } }] });
+  assert.deepEqual([bad.isError, bad.text], [true, "edit_system: edit 0 (change_node): f: 'c' is not an FPGA node's base language: vhdl, verilog (nothing written)"]);
+  const term = await call('edit_system', { project: 'u', file: 'l.sys.json', edits: [{ action: 'add_node', fields: { kind: 'terminal', lang: 'c' } }] });
+  assert.deepEqual([term.isError, term.text], [true, 'edit_system: edit 0 (add_node): a terminal node has no base language (nothing written)']);
 });
 
 test('#4701 simulate of a System (Simulate System): an AVR and the uart example\'s FPGA by UART, each wire\'s bytes, the waves\' VCD; what cannot be simulated', async () => {
