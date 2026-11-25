@@ -72,8 +72,9 @@ export function example(name) {
   const project = JSON.parse(fs.readFileSync(path.join(dir, 'silinx.json'), 'utf8'));
   const sources = project.files.map(f => ({ ...f, text: fs.readFileSync(path.join(dir, f.path), 'utf8') }));
   // a C function's module (isqrt): its HDL made from the C, as the application makes it (core/view-hdl.js), no file of its own
+  // (a System example has no src/: its nodes' folders, #5488; a microcontroller's C is its firmware, not HLS)
   const src = path.join(dir, 'src');
-  for (const f of fs.readdirSync(src).filter(isCSource)) {
+  for (const f of (fs.existsSync(src) ? fs.readdirSync(src) : []).filter(isCSource)) {
     const r = viewHdl(`src/${f}`, fs.readFileSync(path.join(src, f), 'utf8'), { lang: project.preferredLanguage });
     if (r.errors.length) throw new Error(r.errors.join('; '));
     sources.unshift({ path: `src/${f}.${r.lang === 'vhdl' ? 'vhd' : 'v'}`, lang: r.lang, role: 'design', text: r.text });
