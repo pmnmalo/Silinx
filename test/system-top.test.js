@@ -42,7 +42,7 @@ test('#5402 an FPGA project made a System project, its System its top: a new one
 test('#5583 a module of a System project as the top: its FPGA node\'s top module, the System still the project\'s top; refused outside an FPGA node\'s folder', () => {
   setBuildChannel('dev');
   const sys = { ...newSystem('lab'), nodes: [
-    { id: 'fpga', kind: 'fpga', module: 'Uart', board: 'basys2', variant: '100', pins: {}, lang: 'vhdl', interfaces: [] },
+    { id: 'fpga', kind: 'fpga', module: 'Uart', board: 'basys2', variant: '100', lang: 'vhdl', interfaces: [] },
     { id: 'uno', kind: 'mcu', board: 'arduino-uno', firmware: 'uno/a.hex', lang: 'c', interfaces: [] }] };
   // (another module of its folder: now its top, the document's only change)
   const a = nodeTop(sys, 'blinky', 'fpga/blinky.vhd');

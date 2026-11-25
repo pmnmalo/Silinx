@@ -236,3 +236,18 @@ test('#5581 uart-avr\'s nodes run alone with the MCP server: the FPGA with a ter
   await no('set_process_properties', { project: 'ug', emulate_nodes: ['fpga'] }, 'set_process_properties: emulate_nodes: the project \'ug\' is not a System project');
   await no('simulate', { project: 'ug', top: '#fpga', time_ns: 1e6 }, 'simulate: top: #fpga: the project \'ug\' is not a System project');
 });
+
+test('#5581 an FPGA node\'s constraints file with the MCP server: check_constraints against its module and its board; a port that is not the module\'s, its exact error', async () => {
+  await ok('new_project_from_example', { name: 'uk', example: 'uart-avr' });
+  const c = await ok('check_constraints', { project: 'uk', file: 'fpga/uart.ucf' });
+  assert.deepEqual([c.text.split('\n'), c.data.ok, c.data.errors, c.data.warnings], [['Started : "Check Constraints" of fpga/uart.ucf.', 'Process "Check Constraints" completed successfully'], true, [], []]);
+  const ucf = fs.readFileSync(path.join(tmp, 'ws', 'uk', 'fpga/uart.ucf'), 'utf8');
+  await ok('write_file', { project: 'uk', path: 'fpga/uart.ucf', text: `${ucf}NET "nope" LOC = "B2" ;\n` });
+  const w = await call('check_constraints', { project: 'uk', file: 'fpga/uart.ucf' });
+  assert.deepEqual(w.text.split('\n'), ['Started : "Check Constraints" of fpga/uart.ucf.', 'ERROR:ConstraintSystem - "fpga/uart.ucf" Line 32: NET "nope" does not exist in the top module \'uart\' (no port named \'nope\')',
+    'Process "Check Constraints" failed (1 error(s), 0 warning(s))']);
+  assert.deepEqual([w.data.ok, w.data.warnings], [false, []]);
+  // (the project has no constraints of its own: a System's are its nodes')
+  const r = await call('check_constraints', { project: 'uk' });
+  assert.deepEqual([r.isError, r.text], [true, 'check_constraints: the project \'uk\' has no constraints file: give file']);
+});

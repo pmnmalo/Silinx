@@ -35,15 +35,17 @@ test('#5489 an FPGA node: its sources (its folder\'s, not its test benches), its
   assert.equal(needsBuild(e, true), true, 'a node\'s own Build builds it up to date too');
 });
 
-test('#5489 an FPGA node out of date: a source changed, new, removed; its pins, board or module changed; its place on the canvas not', () => {
+test('#5489 an FPGA node out of date: a source changed, new, removed (its constraints file one, #5581); its constraints file, board or module changed; its place on the canvas not', () => {
   const st = (node, o) => { const [e] = plan([node], o).nodes; return [e.state, e.reason]; };
   assert.deepEqual(st(FPGA, { hashes: { ...HASHES, 'fpga/uart_tx.vhd': 'zz' } }), ['out of date', 'fpga/uart_tx.vhd changed since its last build']);
   assert.deepEqual(st(FPGA, { files: [...FILES, 'fpga/extra.v'] }), ['out of date', 'fpga/extra.v is new since its last build']);
   assert.deepEqual(st(FPGA, { files: FILES.filter(f => f !== 'fpga/uart_tx.vhd') }), ['out of date', 'fpga/uart_tx.vhd was removed since its last build']);
-  assert.deepEqual(st({ ...FPGA, pins: { ...FPGA.pins, tx: 'B4' } }), ['out of date', 'its pins changed since its last build']);
+  // (its pins its constraints file's, a source of its folder, #5581: the file named another, or changed)
+  assert.deepEqual(st({ ...FPGA, constraints: 'fpga/other.ucf' }), ['out of date', 'its constraints changed since its last build']);
+  assert.deepEqual(st(FPGA, { files: [...FILES, 'fpga/uart.ucf'] }), ['out of date', 'fpga/uart.ucf is new since its last build']);
   assert.deepEqual(st({ ...FPGA, variant: '100' }), ['out of date', 'its variant changed since its last build']);
   assert.deepEqual(st({ ...FPGA, x: 500, y: -40, interfaces: [{ name: 'u', kind: 'uart', tx: 'tx', rx: 'rx' }] }), ['up to date', null]);
-  assert.deepEqual(st({ ...FPGA, pins: { rx: 'J3', tx: 'A3' } }), ['up to date', null], 'the same pins in another order');
+  assert.deepEqual(st({ ...FPGA, pins: { rx: 'J3', tx: 'B4' } }), ['up to date', null], 'its pins as read from its file: not its description');
   assert.deepEqual(st(FPGA, { records: {} }), ['out of date', 'its last build left no record of its sources']);
   assert.deepEqual(st(FPGA, { exists: new Set(FILES) }), ['not built', `no ${BIT} yet`]);
   // (a source's test bench changed: not its build's)
@@ -54,7 +56,7 @@ test('#5489 an FPGA node that cannot be built: why, no build', () => {
   const [e] = plan([{ ...FPGA, pins: {} }]).nodes;
   assert.equal(e.state, 'not buildable');
   assert.equal(e.build, null);
-  assert.equal(planLine(e), 'fpga: not buildable (its module\'s ports are on no pin of its board (the System editor\'s Pins of the board)); programmed over JTAG');
+  assert.equal(planLine(e), 'fpga: not buildable (its module\'s ports are on no pin of its board (its User Constraints\' I/O Pin Planning)); programmed over JTAG');
   assert.equal(planLine(plan([{ ...FPGA, module: undefined }]).nodes[0]), 'fpga: not buildable (an FPGA node with no module); programmed over JTAG');
   assert.equal(planLine(plan([{ ...FPGA, board: 'nope' }]).nodes[0]), 'fpga: not buildable (no FPGA board \'nope\' (variant 250)); programmed over JTAG');
 });
@@ -98,7 +100,7 @@ test('#5489 a PIC24 node: its .hex given, programmed by a PICkit; its C not comp
 
 test('#5489 the record: the node\'s description as its build reads it, its sources\' hashes', () => {
   assert.deepEqual(buildRecord(FPGA, ['fpga/uart.vhd', 'fpga/none.vhd'], HASHES), {
-    node: { kind: 'fpga', board: 'basys2', variant: '250', module: 'uart', pins: { rx: 'J3', tx: 'A3' }, lang: 'vhdl' },
+    node: { kind: 'fpga', board: 'basys2', variant: '250', module: 'uart', lang: 'vhdl' },
     sources: { 'fpga/uart.vhd': 'a1', 'fpga/none.vhd': null } });
   assert.deepEqual(describedNode({ id: 'x', kind: 'mcu', board: 'arduino-uno', firmware: '', lang: null, x: 3 }), { kind: 'mcu', board: 'arduino-uno' });
   assert.deepEqual(planLines(plan([UNO, FPGA])), [

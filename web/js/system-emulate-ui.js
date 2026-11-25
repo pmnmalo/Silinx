@@ -8,6 +8,7 @@ import { h, dialog } from './ui.js';
 import { logError, log } from './console.js';
 import { shownSystem } from './design-system.js';
 import { saveProjectJson } from './design.js';
+import { nodeConstraintsProcs } from './system-constraints-ui.js';
 import { mcuBoard } from '/core/system-doc.js';
 import { runnableNodes, emulateNodesOf, withEmulateNodes } from '/core/system-alone.js';
 
@@ -25,7 +26,8 @@ export function emulateSystem() {
 // a node's processes in Emulate: its emulation's options and its run only (#5597: its sources, its firmware, and their
 // compiling are the Design's and Implement's)
 function nodeProcesses(file, n) {
-  const kids = [{ id: `emu-node-${n.id}`, label: 'Emulate Node', ico: 'emulate', run: () => emulate(file, [n.id]) }];
+  // (an FPGA node's User Constraints, its emulation's options: its board's pins, its constraints file, #5581)
+  const kids = [...(n.kind === 'fpga' ? [nodeConstraintsProcs(n)] : []), { id: `emu-node-${n.id}`, label: 'Emulate Node', ico: 'emulate', run: () => emulate(file, [n.id]) }];
   const board = n.board ? boardName(n) : null;
   return { id: `emu-n-${n.id}`, label: board ? `${n.id} (${board})` : n.id, ico: n.kind === 'fpga' ? 'chip' : n.kind === 'circuit' ? 'circuit' : 'board', children: kids };
 }

@@ -357,7 +357,8 @@ board, device, top module and constraints) and no link. The MCP's `project_info`
   selected node's folder (`<id>`, a test bench in `<id>/sim`), else the first FPGA node's, in the node's base language.
   A node's sub-folders (a Zynq's PL and PS, #4679) will be rows of its branch.
 - **A System project has no `board` of its own.** Each FPGA node is a module of the System project itself (HDL
-  or a drawing), names its own board and pins, and is built with the flow of that board's family.
+  or a drawing), names its own board, has its pins in its own constraints file (#5581), and is built with the flow of
+  that board's family.
 
 | Node | Holds | Board |
 |---|---|---|
@@ -420,7 +421,7 @@ The format (version 1):
 ```json
 { "format": "silinx-system", "version": 2, "name": "uart_avr",
   "nodes": [
-    { "id": "fpga", "kind": "fpga", "module": "uart", "board": "basys2", "variant": "250", "pins": { "rx": "J3", "tx": "A3" }, "lang": "vhdl",
+    { "id": "fpga", "kind": "fpga", "module": "uart", "board": "basys2", "variant": "250", "constraints": "fpga/uart.ucf", "lang": "vhdl",
       "interfaces": [{ "name": "uart", "kind": "uart", "tx": "tx", "rx": "rx", "baud": 9600, "frame": "8N1" }], "x": 0, "y": 0 },
     { "id": "uno", "kind": "mcu", "board": "arduino-uno", "firmware": "uno/echo.hex", "lang": "c",
       "interfaces": [{ "name": "Serial", "kind": "uart", "baud": 9600, "frame": "8N1" },
@@ -429,9 +430,30 @@ The format (version 1):
   "links": [{ "id": "serial", "kind": "uart", "a": "uno.Serial", "b": "fpga.uart" }] }
 ```
 
-An FPGA node's interfaces name its module's ports (`led<0>`, a bus's bit) and `pins` puts each on a pin of its board;
-a microcontroller's name its board's pins, its UART the board's (`Serial`: TX D1, RX D0). A UART link joins a's TX to
-b's RX and b's TX to a's RX; a GPIO link its ends' pins in order.
+An FPGA node's interfaces name its module's ports (`led<0>`, a bus's bit). A microcontroller's name its board's pins,
+its UART the board's (`Serial`: TX D1, RX D0). A UART link joins a's TX to b's RX and b's TX to a's RX; a GPIO link its
+ends' pins in order.
+
+**An FPGA node's pins are in its constraints file** (#5581's part 2, `core/system-constraints.js`), as an FPGA project's
+are:
+
+- The file is in the node's folder, in its board's family's format: `fpga/uart.ucf`, a 7-series' `.xdc`, an iCE40's
+  `.pcf`. The node's `constraints` names it; without one, it is `<id>/<module><ext>`. A System may have several FPGA
+  nodes, each with its own file.
+- Its **User Constraints** edit it: in the Emulate task's tree and on the node's row in the ISE style.
+  - I/O Pin Planning shows its module's ports on its board, and writes the file.
+  - Edit Constraints (Text) opens the file, made first, with no pin, when the node has none yet.
+  - Check Constraints checks the file against its module and its board.
+  - The System editor's side panel names the file and has the first two.
+- The System's check, Simulate, Emulate, Implement and Build All read each node's pins from its file. A node with no
+  file is warned: `fpga: no constraints file fpga/uart.ucf yet: its module's ports are on no pin of its board (its I/O
+  Pin Planning)`.
+- Implement uses the file as it is. It is one of the node's folder's sources, so a change to it puts the node out of
+  date.
+- A System document of before, with its FPGA nodes' `pins` in it, has them moved into the files when its project opens.
+  The console says so: `uart_avr.sys.json: fpga: its pins written to its constraints file fpga/uart.ucf (…)`.
+- The MCP's `edit_system` with a node's `pins` sets them in its file, and says so. `check_constraints` with a node's file
+  checks it against that node's module and board.
 
 **A register map** is the advanced interface. The student declares the registers once: name, address, width,
 read / write. Silinx generates both sides:

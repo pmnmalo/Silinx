@@ -189,7 +189,7 @@ function drawProcesses() {
     emu.textContent = sys ? 'Emulate System' : 'Emulate on Board';
     pins.disabled = !!sys || !S.project?.top;
     emu.disabled = !sys && !S.project?.top;
-    pins.title = sys ? 'An FPGA node\'s pins: its row in the System editor' : '';
+    pins.title = sys ? 'A node\'s: its User Constraints in the tree below' : '';
   }
 }
 

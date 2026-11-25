@@ -32,21 +32,7 @@
       "module": "spi_echo",
       "board": "basys2",
       "variant": "250",
-      "pins": {
-        "clk": "B8",
-        "sck": "B2",
-        "mosi": "A3",
-        "miso": "J3",
-        "ss": "B5",
-        "led<0>": "M5",
-        "led<1>": "M11",
-        "led<2>": "P7",
-        "led<3>": "P6",
-        "led<4>": "N5",
-        "led<5>": "N4",
-        "led<6>": "P4",
-        "led<7>": "G1"
-      },
+      "constraints": "fpga/spi_echo.ucf",
       "lang": "vhdl",
       "interfaces": [
         {

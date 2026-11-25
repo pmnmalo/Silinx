@@ -102,8 +102,9 @@ export function stepTracker(steps, out = logLine) {
 
 // Catch board/device/UCF mismatches before spending minutes in ISE.
 // ---- UCF check (nets that do not exist, bus bits, duplicate pins, I/O standards, syntax…)
-export async function ucfDiagnostics(text, file) {
-  const pj = S.project;
+// (`target`: a System's FPGA node's top, device and board, #5581; else the project's)
+export async function ucfDiagnostics(text, file, target = null) {
+  const pj = target ? { ...S.project, ...target } : S.project;
   let ports = [], lang = 'vhdl';
   if (pj.top && designState.lib) {
     try {
@@ -124,12 +125,12 @@ export async function ucfDiagnostics(text, file) {
 // no error: the process that checks the constraints before it runs prints them as its own, counted
 // in its "completed successfully with N warning(s)" (#129); their entries are added to the Warnings
 // tab's, Check Syntax's kept)
-export async function checkUcfFile(path = S.project?.constraints, { quiet = false, warnings = null } = {}) {
+export async function checkUcfFile(path = S.project?.constraints, { quiet = false, warnings = null, target = null } = {}) {
   if (!path) return true;
   if (!await saveAll()) return false;
   let text;
   try { text = await api.readFile(S.project.name, path); } catch { return true; }
-  const diags = await ucfDiagnostics(text, path);
+  const diags = await ucfDiagnostics(text, path, target);
   const ne = diags.filter(d => d.severity === 'error').length, nw = diags.length - ne;
   if (quiet && !diags.length) return true;
   const line = d => `${d.severity === 'error' ? 'ERROR' : 'WARNING'}:ConstraintSystem - "${d.file}" Line ${d.line}: ${d.message}`;

@@ -59,7 +59,8 @@ test('#5581 uart-avr\'s FPGA alone: its UART\'s far end the terminal serial, at 
   assert.deepEqual(r.system.links, [{ id: 'serial', kind: 'uart', a: 'fpga.uart', b: 'serial.uart' }]);
   // (the cut System is a System its check takes: no error, no warning (the 5 V one was the Uno's))
   const modules = { uart: ['clk', 'rx', 'btn', 'tx', 'led', 'seg', 'dp', 'an'].map(name => ({ name, dir: ['clk', 'rx', 'btn'].includes(name) ? 'in' : 'out', width: { btn: 1, led: 8, seg: 7, an: 4 }[name] ?? 1 })) };
-  assert.deepEqual(checkSystem(r.system, { modules, files: ['fpga/uart.vhd'] }).map(d => `${d.severity}: ${d.message}`), []);
+  const constraints = { 'fpga/uart.ucf': fs.readFileSync(path.join(ROOT, 'examples/uart-avr/fpga/uart.ucf'), 'utf8') };   // (its pins, #5581)
+  assert.deepEqual(checkSystem(r.system, { modules, files: ['fpga/uart.vhd'], constraints }).map(d => `${d.severity}: ${d.message}`), []);
   // (the document's own System unchanged)
   assert.deepEqual(sys.nodes.map(n => n.id), ['uno', 'fpga']);
 });

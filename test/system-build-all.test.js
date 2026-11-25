@@ -1,7 +1,7 @@
 // A System built by its plan (#5489, server/system-plan.js, server/system-build-all.js): the uart-avr example's plan (its
 // FPGA node not built, its Arduino's .hex given); Build All with a sketch in the Arduino's folder (arduino-cli's
 // stand-in, test/fixtures/arduino-cli-stub): the FPGA node first, then the Arduino, their records written; built again,
-// both up to date and skipped; a sketch changed, only its node built; the System's pins changed, only the FPGA's out of
+// both up to date and skipped; a sketch changed, only its node built; the FPGA's constraints file changed, only the FPGA's out of
 // date; the refusals and their exact messages; a build at a time; an untrusted project's Arduino not compiled; the MCP's
 // run_process build and check_system's plan.
 import { test, before, after } from 'node:test';
@@ -91,14 +91,15 @@ test('#5489 Build All: the FPGA node first, then the Arduino\'s sketch; built ag
   const forced = await run('ua', 'uno');
   assert.deepEqual(forced.result, { built: ['uno'], failed: [], skipped: ['fpga'] });
 
-  // the FPGA node's pins changed in the System: it alone out of date
+  // the FPGA node's pins changed in its constraints file (#5581): it alone out of date
   const file = path.join(P.projectDir('ua'), 'uart_avr.sys.json');
   const sys = JSON.parse(fs.readFileSync(file, 'utf8'));
-  sys.nodes.find(n => n.id === 'fpga').pins.tx = 'B4';
+  const ucf = path.join(P.projectDir('ua'), 'fpga/uart.ucf');
+  fs.writeFileSync(ucf, fs.readFileSync(ucf, 'utf8').replace('NET "tx"     LOC = "A3" ;', 'NET "tx"     LOC = "B4" ;'));
   sys.nodes.find(n => n.id === 'uno').x = 333;   // (its place on the canvas: not its build's)
   fs.writeFileSync(file, JSON.stringify(sys, null, 2));
   assert.deepEqual(await lines('ua'), [
-    'fpga: out of date (its pins changed since its last build); built by the Silinx toolchain to build/nodes/fpga/build/uart.bit, programmed over JTAG',
+    'fpga: out of date (fpga/uart.ucf changed since its last build); built by the Silinx toolchain to build/nodes/fpga/build/uart.bit, programmed over JTAG',
     `uno: up to date; ${UNO}`,
   ]);
 
@@ -106,7 +107,7 @@ test('#5489 Build All: the FPGA node first, then the Arduino\'s sketch; built ag
   const c = await tool('check_system').run({ project: 'ua', file: 'uart_avr.sys.json' });
   assert.deepEqual(c.data.plan.nodes.map(e => [e.id, e.state]), [['fpga', 'out of date'], ['uno', 'up to date']]);
   assert.deepEqual(c.data.plan.lines, ['Build plan (the FPGA nodes first, then the microcontrollers):',
-    '  fpga: out of date (its pins changed since its last build); built by the Silinx toolchain to build/nodes/fpga/build/uart.bit, programmed over JTAG',
+    '  fpga: out of date (fpga/uart.ucf changed since its last build); built by the Silinx toolchain to build/nodes/fpga/build/uart.bit, programmed over JTAG',
     `  uno: up to date; ${UNO}`]);
   assert.ok(!c.text.includes('Build plan'), 'its text Check System\'s');
 });

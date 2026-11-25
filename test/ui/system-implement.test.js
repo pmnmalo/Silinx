@@ -21,11 +21,11 @@ uiTest('#5446 a System\'s FPGA node synthesized on its own board from its row; t
   await page.waitFor(() => [...document.querySelectorAll('#hier .row .lbl')].some((l) => l.textContent.trim() === 'fpga'), [], { what: 'the nodes' });
   await page.treeRow('#hier', 'fpga', { exact: true });
   await page.waitFor(() => [...document.querySelectorAll('#procs .row .lbl')].some((l) => l.textContent.trim() === 'Synthesize'), [], { what: 'the node\'s processes' });
-  assert.deepEqual(await procs(page), ['View/Edit System', 'Check Syntax', 'View RTL Schematic', 'Synthesize', 'Implement Design', 'Generate Programming File', 'Program Node', 'Emulate Node']);
+  assert.deepEqual(await procs(page), ['View/Edit System', 'User Constraints', 'I/O Pin Planning', 'Edit Constraints (Text)', 'Check Constraints', 'Check Syntax', 'View RTL Schematic', 'Synthesize', 'Implement Design', 'Generate Programming File', 'Program Node', 'Emulate Node']);
   await page.treeRow('#procs', 'Synthesize', { exact: true, dbl: true });
   await page.waitConsole(/^Process "Synthesize \(System node fpga\)" completed successfully$/m, { timeout: 120000 });
   const all = await lines(page);
-  assert.ok(all.includes('System node fpga: its module uart on basys2 (250), its constraints fpga.ucf from its pins, built in build/nodes/fpga/.'), all.join('\n'));
+  assert.ok(all.includes('System node fpga: its module uart on basys2 (250), its constraints fpga/uart.ucf, built in build/nodes/fpga/.'), all.join('\n'));
   assert.ok(fs.existsSync(path.join(env.server.workspace, 'NodeImpl/build/nodes/fpga/build/open/uart.json')), 'its netlist in its own folder');
   // the System's row: Implement System
   await page.treeRow('#hier', 'uart_avr', { exact: true });

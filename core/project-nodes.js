@@ -6,9 +6,9 @@
 import { projectSystem } from './project-system.js';
 import { nodeFilesOf } from './system-layout.js';
 
-/** A System node's own files (the project's: its firmware, its circuit; an implicit FPGA node's constraints), none for the
- *  others. */
-const nodeFiles = n => (n.kind === 'mcu' ? [n.firmware] : n.kind === 'circuit' ? [n.circuit] : n.implicit ? [n.constraints] : [])
+/** A System node's own files (the project's: its firmware, its circuit; an FPGA node's constraints, an implicit one's
+ *  and a System's, #5581), none for the others. */
+const nodeFiles = n => (n.kind === 'mcu' ? [n.firmware] : n.kind === 'circuit' ? [n.circuit] : n.kind === 'fpga' || n.implicit ? [n.constraints] : [])
   .filter(f => typeof f === 'string' && f);
 
 // a node as the Design pane and project_info give it (a System's: its folder and the files in it, #5488)

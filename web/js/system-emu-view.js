@@ -157,7 +157,7 @@ export function mountSystemEmulator(host, opts) {
     const r = await opts.prepare(opts.system());
     if (destroyed) return null;
     if (r.error) { say(`ERROR: Emulate System: ${r.error}`, 'error'); info.set([]); return null; }
-    ready = r; boards = emulationBoards(opts.system(), r.inputs); saidLog = 0; clock.now = 0;
+    ready = r; boards = emulationBoards(r.system ?? opts.system(), r.inputs); saidLog = 0; clock.now = 0;   // (its nodes' pins read, #5581)
     say(`Emulate System: ${r.nodes.join(', ')} ready, ${boards.length} board(s).`);
     const st = await r.run(0);
     report = st.report; shown = st.boards || {};
