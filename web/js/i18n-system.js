@@ -57,10 +57,15 @@ export const SYSTEM_PT = {
   'Its module\'s ports on its board\'s pins, written to its constraints file': 'As portas do seu módulo nos pinos da sua placa, escritas no seu ficheiro de restrições',
   'Its constraints file, as text': 'O seu ficheiro de restrições, como texto',
   'A node\'s: its User Constraints in the tree below': 'De um nó: as suas Restrições do Utilizador na árvore abaixo',
+  // (the System Emulator's toolbar, #5613: web/js/system-emu-view.js)
+  'Run the System at its rate until Pause': 'Correr o Sistema ao seu ritmo até Pausa', 'Rate:': 'Ritmo:',
+  'Advance one clock cycle of its FPGA node (a System of several: one step of its scheduler, 100 µs)': 'Avançar um ciclo de relógio do seu nó FPGA (num Sistema de vários: um passo do seu escalonador, 100 µs)',
+  'Power-cycle the boards: restart the System from time 0 (its modules compiled again)': 'Desligar e ligar as placas: recomeçar o Sistema do tempo 0 (os seus módulos compilados de novo)',
+  'The emulation\'s rate against real time': 'O ritmo da emulação face ao tempo real',
   // (the Emulate task's tree of a System, #5581: web/js/system-emulate-ui.js)
   'Emulate Node': 'Emular o Nó', 'Emulation Properties…': 'Propriedades da Emulação…', 'Emulation Properties': 'Propriedades da Emulação',
   'The nodes Emulate System runs:': 'Os nós que Emular o Sistema corre:', 'Tick at least one node': 'Marque pelo menos um nó',
-  'Emulate System': 'Emular o Sistema', 'Run the System in real time until Pause': 'Correr o Sistema em tempo real até Pausa',
+  'Emulate System': 'Emular o Sistema',
   'Terminals': 'Terminais', '☰ Terminals': '☰ Terminais', 'Show / hide the terminals panel': 'Mostrar / ocultar o painel dos terminais',
   'Collapse the terminals panel': 'Recolher o painel dos terminais', 'Expand the terminals panel': 'Expandir o painel dos terminais',
   'LED L (D13)': 'LED L (pino D13)', 'Power': 'Alimentação',
@@ -106,7 +111,8 @@ export const SYSTEM_PT_PATTERNS = [
     (m, dir, id, n, trash, list) => `Apagar a pasta '${dir}' do nó removido ${id} e o(s) ${n} ficheiro(s) que contém do projeto?${trash ? '\n(São movidos para a pasta .trash da área de trabalho, de onde os pode repor.)' : ''}\n\n${list}`],
   [/^(FPGA|Microcontroller|Serial terminal|Circuit) ([A-Za-z]\w*)$/, (m, k, id) => `${{ FPGA: 'FPGA', Microcontroller: 'Microcontrolador', 'Serial terminal': 'Terminal série', Circuit: 'Circuito' }[k]} ${id}`],
   [/^Link ([A-Za-z]\w*)$/, 'Ligação $1'], [/^Waves \((.+)\)$/, 'Ondas ($1)'],
-  [/^Emulate \((.+)\)$/, 'Emular ($1)'],
+  [/^Emulate \((.+)\)$/, 'Emular ($1)'], [/^1\/(\d+) of real time$/, '1/$1 do tempo real'],
+  [/^(\S+): (Behavioral \(RTL\)|Post-Synthesis|Post-Translate|Post-Map|Post-Place & Route)$/, (m, n, x) => `${n}: ${{ 'Behavioral (RTL)': 'Comportamental (RTL)', 'Post-Synthesis': 'Pós-Síntese', 'Post-Translate': 'Pós-Translate', 'Post-Map': 'Pós-Map', 'Post-Place & Route': 'Pós-Place & Route' }[x]}`], [/^Simulate \((.+)\)$/, 'Simular ($1)'],
   // (an FPGA node's constraints file, #5581)
   [/^I\/O Pin Planning \((\S+)\)$/, 'Planeamento de Pinos de E/S ($1)'],
   [/^(\S+): no constraints file (\S+) yet: its module's ports are on no pin of its board \(its I\/O Pin Planning\)$/,

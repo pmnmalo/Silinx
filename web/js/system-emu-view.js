@@ -4,11 +4,12 @@
 // mountBoardParts: its switches and buttons set the node's pins, its LEDs and digits painted from what the worker says
 // they showed); an Arduino's is Silinx's own (web/js/emulator-arduino.js), an Explorer 16/32's too (web/js/emulator-explorer.js, #5484); a serial terminal per terminal node in the
 // side panel; a circuit node's circuit as the Circuit editor draws it (#5322: its LEDs lit from the run, a click on a
-// switch or a DIP switch's lever turning it, a button held down while pressed). Run / Pause and Restart in its toolbar; its status line the time and the rate against real time; the
+// switch or a DIP switch's lever turning it, a button held down while pressed). its toolbar the Board Emulator's controls a System has (#5613: Run / Pause, Step, Power cycle, its rate against real time;
+// its ⋮ menu what it does while hidden); its status line the time, the rate against real time and each FPGA node's model; the
 // nodes' and the decoders' messages in the console (`onMessage`), never in the view (docs/UI-GUIDELINES.md).
 //
-//   const v = mountSystemEmulator(host, { system, prepare(system) -> { run, inputs } | { error }, onMessage(text, level) });
-//   v.run(); v.pause(); v.restart(); v.press(node, res, idx, on); v.state(); v.held(); v.destroy();
+//   const v = mountSystemEmulator(host, { system, prepare(system) -> { run, inputs } | { error }, onMessage(text, level), models() });
+//   v.run(); v.pause(); v.step(); v.restart(); v.rate(f); v.press(node, res, idx, on); v.state(); v.held(); v.destroy();
 // While it is not seen (another browser tab, another document tab) it is held, as the Board Emulator (#5276:
 // web/js/when-hidden.js, its When hidden setting), and on in real time when seen again, the time held not caught up.
 import { h } from './ui.js';
@@ -23,32 +24,46 @@ import { panelToggle, PROPS_KEY } from './narrow.js';
 import { emulationBoards, pinOf } from '/core/system-emu.js';
 import { pressHolds } from '/core/emulate-press.js';
 import { runTimeText } from '/core/system-run.js';
-import { nextFrame, watchSeen } from './when-hidden.js';
+import { nextFrame, watchSeen, hiddenPref, setHiddenPref } from './when-hidden.js';
+import { menuChoice, toolbarMenu } from './toolbar-menu.js';
 import { sv } from './dom.js';
 import { drawCircuit } from './circuit-draw.js';
 import { encoderTurn } from '/core/circuit-encoder.js';
 import { partDef, nudged, sensePin } from '/core/circuit-parts.js';
 
 const MAX_STEP = 50e9;     // the most one run goes ahead (ps): 50 ms
+const STEP_PS = 100e6;     // Step in a System of several FPGA nodes or none: one step of its scheduler (ps), 100 µs
+// its rates against real time (#5613)
+const RATES = [[1, 'Real time'], [0.1, '1/10 of real time'], [0.01, '1/100 of real time'], [0.001, '1/1000 of real time']];
 const BEHIND = 200e9;      // behind real time by more (ps): the backlog dropped
 
 export function mountSystemEmulator(host, opts) {
   injectStyle();
   let ready = null, boards = [], views = new Map(), shown = {}, report = null, running = false, busy = false, destroyed = false;
-  let wall0 = 0, sim0 = 0, rate = null, rateAt = { wall: 0, sim: 0 }, saidLog = 0;
+  let wall0 = 0, sim0 = 0, rate = null, rateAt = { wall: 0, sim: 0 }, saidLog = 0, factor = 1;   // (factor: the run's rate against real time, #5613)
   const say = (text, level = 'info') => opts.onMessage?.(text, level);
   // (a button let go held down until the design saw a real press, as the Board Emulator's, #3109; the boards' time)
   const holds = pressHolds(), clock = { now: 0, busy: false };
   const btn = (label, title, onclick, cls = '') => h('button', { type: 'button', class: `asm-btn ${cls}`, title, onclick }, label);
-  const runBtn = btn('▶ Run', 'Run the System in real time until Pause', () => (running ? pause() : run()), 'sysemu-run');
-  const resetBtn = btn('Restart', 'Restart the System from time 0 (its modules compiled again)', () => restart(), 'sysemu-restart');
+  // (its toolbar, the Board Emulator's controls that a System has, #5613: Run / Pause, Step, Power cycle, its rate against
+  // real time; its menu: what it does while hidden; each FPGA node's model in its status line)
+  const runBtn = btn('▶ Run', 'Run the System at its rate until Pause', () => (running ? pause() : run()), 'sysemu-run');
+  const stepBtn = btn('⏭ Step', 'Advance one clock cycle of its FPGA node (a System of several: one step of its scheduler, 100 µs)', () => step(), 'sysemu-step');
+  const resetBtn = btn('⟲ Power cycle', 'Power-cycle the boards: restart the System from time 0 (its modules compiled again)', () => restart(), 'sysemu-restart');
+  const speedSel = h('select', { class: 'sysemu-speed', title: 'The emulation\'s rate against real time', onchange: e => setFactor(Number(e.target.value)) },
+    ...RATES.map(([v, l]) => h('option', { value: String(v), selected: v === 1 }, l)));
+  const more = toolbarMenu(menuChoice('When hidden', [{ value: 'pause', label: 'Pause' }, { value: 'run', label: 'Keep running' }], {
+    value: hiddenPref(), title: 'What the emulator and every Try it do while not seen (another browser tab, a minimised window, another document tab): pause, and go on where they were when shown again, or keep running',
+    onChange: v => setHiddenPref(v) }), { title: 'When hidden', btnClass: 'asm-btn' });
+  // an FPGA node's model, as its status line names it (#5612: its Emulation Properties'; the RTL by default)
+  const modelName = id => opts.models?.()?.[id] ?? 'Behavioral (RTL)';
   const root = h('div', { class: 'asm-editor sys-emu' });
   const boardsEl = h('div', { class: 'sys-emu-boards' });
   const terms = h('div', { class: 'sys-terms' });
   const side = h('aside', { class: 'asm-side' }, h('div', { class: 'asm-cap' }, 'Terminals'), terms);
   const info = statusLine();
-  root.append(h('div', { class: 'asm-toolbar' }, h('div', { class: 'asm-group' }, runBtn, resetBtn), h('div', { class: 'asm-spacer' }),
-    h('div', { class: 'asm-group' }, panelToggle(root, btn('☰ Terminals', 'Show / hide the terminals panel'), { key: PROPS_KEY }))),
+  root.append(h('div', { class: 'asm-toolbar' }, h('div', { class: 'asm-group' }, runBtn, stepBtn, resetBtn), h('div', { class: 'asm-group' }, 'Rate:', speedSel),
+    h('div', { class: 'asm-spacer' }), h('div', { class: 'asm-group' }, panelToggle(root, btn('☰ Terminals', 'Show / hide the terminals panel'), { key: PROPS_KEY }), more.el)),
   h('div', { class: 'asm-body' }, h('div', { class: 'asm-main sys-emu-main' }, boardsEl), side), info.el);
   host.replaceChildren(root);
   mountSideFold({ root, side, key: 'silinx.sysemu.side.folded', titles: { fold: 'Collapse the terminals panel', unfold: 'Expand the terminals panel' } });
@@ -144,7 +159,8 @@ export function mountSystemEmulator(host, opts) {
   function paint() {
     for (const [id, v] of views) v.paint(shown[id]);
     for (const [id, text] of Object.entries(report?.terminals || {})) { const el = terms.querySelector(`[data-term="${CSS.escape(id)}"]`); if (el && el.textContent !== text) { el.textContent = text; el.scrollTop = el.scrollHeight; } }
-    info.set([report && `t = ${runTimeText(report.now)}`, rate != null && running && { text: `${Math.round(rate * 100)}% of real time`, cls: 'sysemu-rate' }]);
+    info.set([report && `t = ${runTimeText(report.now)}`, rate != null && running && { text: `${Math.round(rate * 100)}% of real time`, cls: 'sysemu-rate' },
+      ...boards.filter(b => b.kind === 'fpga').map(b => ({ text: `${b.id}: ${modelName(b.id)}`, cls: 'sysemu-model' }))]);
     const said = [...(report?.errors || []).map(e => ['ERROR', e, 'error']), ...(report?.warnings || []).map(w => ['WARNING', w, 'warn'])];
     for (const [tag, text, level] of said.slice(saidLog)) say(`${tag}: Emulate System: ${text}`, level);
     saidLog = said.length;
@@ -167,7 +183,7 @@ export function mountSystemEmulator(host, opts) {
   // a frame: the run ahead to real time (at most MAX_STEP a run, one at a time), what the boards showed painted
   async function frame() {
     if (!running || busy || destroyed || seen.held()) return;
-    const target = sim0 + (performance.now() - wall0) * 1e9;
+    const target = sim0 + (performance.now() - wall0) * 1e9 * factor;
     if (target - report.now > BEHIND) { sim0 = report.now; wall0 = performance.now(); }   // (too slow: the backlog dropped)
     busy = true; clock.busy = true;
     let st;
@@ -195,6 +211,24 @@ export function mountSystemEmulator(host, opts) {
     if (report) say(`Emulate System: paused at ${runTimeText(report.now)}.`);
     paint();
   }
+  // its rate against real time changed: from now on
+  function setFactor(f) {
+    factor = f > 0 ? f : 1;
+    if (running && report) { wall0 = performance.now(); sim0 = report.now; rateAt = { wall: wall0, sim: sim0 }; rate = null; }
+  }
+  // Step: one clock cycle of its one FPGA node, else one step of the scheduler (Pedro's, #5613); paused first
+  async function step() {
+    pause();
+    if (busy || !(await prepare())) return;
+    const fpga = ready.inputs.plan.fpga;
+    const dt = fpga.length === 1 ? fpga[0].clock.period : STEP_PS;
+    busy = true;
+    let st;
+    try { st = await ready.run(report.now + dt); } catch (e) { say(`ERROR: Emulate System: ${e.message}`, 'error'); return; } finally { busy = false; }
+    report = st.report; shown = st.boards || shown; clock.now = report.now;
+    holds.tick(clock.now, { settled: true });
+    paint();
+  }
   async function restart() {
     pause(); holds.flush(); ready?.close(); ready = null; report = null; shown = {}; boardsEl.replaceChildren(); terms.replaceChildren();
     await prepare();
@@ -202,7 +236,7 @@ export function mountSystemEmulator(host, opts) {
   prepare();
 
   return {
-    run, pause, restart,
+    run, pause, step, restart, rate: f => { speedSel.value = String(f); setFactor(f); },
     /** A board's switch or button set as its click does (res, idx: its resource and index; on: pressed or on). */
     press(node, res, idx, on) {
       const b = boards.find(x => x.id === node && x.kind === 'fpga'), x = b?.wiring.bits.find(y => y.res.name === res && y.idx === idx);

@@ -64,7 +64,7 @@ uiTest('#5212 Emulate: the System\'s boards side by side, the terminal\'s line o
   assert.ok(lines.some((l) => /^Emulate System: paused at \d/.test(l)), lines.join('\n'));
   // in Portuguese
   await page.eval(async () => (await import('/js/i18n.js')).setLanguage('pt'));
-  await page.waitFor((e) => document.querySelector(`${e} .sysemu-run`)?.textContent === '▶ Executar' && document.querySelector(`${e} .sysemu-restart`)?.textContent === 'Reiniciar', [EMU], { what: 'Portuguese' });
+  await page.waitFor((e) => document.querySelector(`${e} .sysemu-run`)?.textContent === '▶ Executar' && document.querySelector(`${e} .sysemu-restart`)?.textContent === '⟲ Desligar/ligar', [EMU], { what: 'Portuguese' });
   assert.deepEqual(await page.eval((e) => [document.querySelector(`${e} .asm-side .asm-cap`).textContent.replace(/\s+$/, ''), [...document.querySelectorAll('.tlabel')].map((t) => t.textContent).find((t) => /^Emul/.test(t))], EMU), ['Terminais', 'Emular (emu)']);
   await page.eval(async () => (await import('/js/i18n.js')).setLanguage('en'));
   assert.deepEqual(page.console.filter((c) => c.type === 'warning' || c.type === 'warn' || c.type === 'error').map((c) => c.text), []);
