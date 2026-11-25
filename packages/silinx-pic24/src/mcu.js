@@ -88,10 +88,15 @@ export class Pic24Mcu {
   /** The peripherals' clock (Hz): Fosc / 2 (the CPU's but for DOZE). */
   get fpb() { return this.periphHz ?? this.fcy; }
 
-  /** fn() at time t (ps), at the instruction boundary that reaches it: its handle, for cancel(). */
+  /** fn() at time t (ps), at the instruction boundary that reaches it (eventTime its t meanwhile): its handle, for
+   *  cancel(). */
   schedule(t, fn) {
-    return this.cpu.addClockEvent(fn, Math.max(0, Math.ceil((t - this.time) / this.cyclePs - 1e-9)));
+    const run = () => { const was = this.eventAt; this.eventAt = t; try { fn(); } finally { this.eventAt = was; } };
+    return this.cpu.addClockEvent(run, Math.max(0, Math.ceil((t - this.time) / this.cyclePs - 1e-9)));
   }
+  /** The time (ps) of the clock event being run, its own (the instruction that reaches it may end later), else now:
+   *  an edge's time, for a capture. */
+  get eventTime() { return this.eventAt ?? this.time; }
   cancel(handle) { if (handle) this.cpu.clearClockEvent(handle); }
 
   /** The cycles in a duration (s) at the current Fcy. */

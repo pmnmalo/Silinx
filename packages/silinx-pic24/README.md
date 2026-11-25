@@ -25,13 +25,15 @@ The device and its peripherals (since 0.2.0, [#5481](https://github.com/pmnmalo/
 - the oscillator (FRC, the 8 MHz primary, SOSC, LPRC, the PLL, the clock switch), the watchdog, RCON's resets;
 - the I/O ports with the interrupt-on-change, PPS (the remappable pins), the external interrupts INT0–INT4;
 - Timer1 to Timer5 (Timer2 / 3 and Timer4 / 5 as 32-bit timers, the SOSC and LPRC clocks, Timer3's A/D trigger);
-- the UARTs, the SPI and I²C masters, the PMP (master modes), the 10/12-bit A/D converter with its scan.
+- the UARTs, the SPI and I²C masters, the PMP (master modes), the 10/12-bit A/D converter with its scan;
+- the MCCP and SCCP modules (after 0.2.0, [#5529](https://github.com/pmnmalo/Silinx/issues/5529)): their timers, output compare,
+  PWM on the pins (dual edge, buffered) and input capture.
 
 The Explorer 16/32 board around it (`Explorer1632`): the LEDs D3–D10, the buttons S3–S6, the potentiometer R6 and
 the TC1047A temperature sensor, the USB-UART, the 16x2 character LCD on the PMP, the 25LC256 EEPROM on SPI.
 
-Left out: the MCCP / SCCP modules and so the input capture, output compare and PWM
-([#5529](https://github.com/pmnmalo/Silinx/issues/5529)); the pins' waveforms of SPI, I²C and the PMP (a word, an
+Left out: the legacy input capture and output compare modules (IC1–6, OC1–6, #5529's next part); MCCP's
+center-aligned PWM, dead time and auto-shutdown; the pins' waveforms of SPI, I²C and the PMP (a word, an
 event, a transaction); their slave modes; USB, the RTCC, the CRC, the comparators, the CTMU, DMA and the
 cryptographic engine; the timers' external clocks and gated mode.
 
