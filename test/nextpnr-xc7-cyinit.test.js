@@ -2,19 +2,11 @@
 // on its CYINIT (#3746): its O5 leaves its site by the AMUX..DMUX output, the one the 5FF beside it would take, so that
 // flip-flop is refused there (before the fork's fix, xc7-v0.2.0, the 5LUT counted as feeding its own carry chain inside
 // the site: the placement was taken and router 1 never finished, ripping up the two nets that need the same output); a
-// design that has one routed by router 1 (the browser's, when router 2 runs out of its memory); and micro80, where it
-// was found, routed by router 1 on the Basys 3 (seed 3, one of the issue's).
+// design that has one routed by router 1 (the browser's, when router 2 runs out of its memory). micro80, where it was
+// found, routed by router 1 on the Basys 3: test/nextpnr-xc7-micro80.test.js (#5565).
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import fs from 'node:fs';
-import os from 'node:os';
-import path from 'node:path';
-import { runOpenImplementation } from '../server/open-flow.js';
 import { nextpnrXc7Node } from '../packages/silinx-fpga/src/nextpnr-xc7-node.js';
-import { nextpnrXdc, xc7BscanCells } from '../packages/silinx-fpga/src/open-flow-xc7.js';
-import { portBits } from '../packages/silinx-fpga/src/nextpnr-ports.js';
-import { readXdc } from '../packages/silinx-fpga/src/xdc.js';
-import { exampleProject } from './examples-lib.mjs';
 
 const PART = 'xc7a35tcpg236-1';
 const np = nextpnrXc7Node();
@@ -78,22 +70,4 @@ test('the same design placed by nextpnr: routed by router 1, no warning; the 5FF
   const [, slice, letter] = /^(.+)\.([A-D])6LUT$/.exec(bels.lut6);
   assert.equal(bels.lut5, `${slice}.${letter}5LUT`);
   assert.notEqual(bels.ff, `${slice}.${letter}5FF`);
-});
-
-test('micro80 on the Basys 3 (Yosys\'s netlist, its XDC): placed and routed by router 1, no warning, 100 MHz met by nextpnr\'s estimate', { timeout: 900_000 }, async () => {
-  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'silinx-xc7-cyinit-'));
-  try {
-    const { dir, project } = exampleProject('micro80', { board: 'basys3' }, tmp);
-    const job = { log: () => {}, result: null, cancelled: false, procs: new Set() };
-    await runOpenImplementation(job, { project, projectDir: dir, steps: ['synth'] });
-    const text = fs.readFileSync(path.join(dir, `build/open/${project.top}.json`), 'utf8');
-    const xdc = nextpnrXdc(readXdc(fs.readFileSync(path.join(dir, project.constraints), 'utf8')), portBits(text, project.top));
-    // (seed 3, one of the issue's; seed 1 routes too, but router 1 takes far longer on it)
-    const { lines, error } = await place(xc7BscanCells(text).text, xdc.text, 'router1', 3);
-    assert.equal(error, undefined, error?.message);
-    assert.deepEqual(said(lines), []);
-    assert.ok(lines.includes('Info: Routing complete.'));
-    const fmax = lines.filter(l => /^Info: Max frequency for clock/.test(l)).at(-1);
-    assert.match(fmax, /MHz \(PASS at 100\.00 MHz\)$/);
-  } finally { fs.rmSync(tmp, { recursive: true, force: true }); }
 });
