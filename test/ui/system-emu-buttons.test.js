@@ -1,7 +1,7 @@
 // UI (#5619): the System Emulator's Basys2 push-buttons as the Board Emulator's. It runs once ready, as the Board Emulator
 // (it opened paused, and a button let go, held until the design saw a real press, stayed pressed); BTN0 clicked: lit, then
 // let go (its input back to 0) once the design saw it, its message sent once; at 1/100 of real time the press lasts 100 ms
-// of the user's time, not 100 ms of the board's (100 s). Both interfaces.
+// of the user's time, 1 ms of the board's, not 100 ms of the board's (10 s): measured in the board's time. Both interfaces.
 import { before, after } from 'node:test';
 import assert from 'node:assert/strict';
 import { setupUi, uiTest, makeProject } from './harness.js';
@@ -42,12 +42,19 @@ uiTest('#5619 the System Emulator\'s BTN0: running once ready; clicked, let go o
   await new Promise((r) => setTimeout(r, 1500));
   assert.equal(await term(page), 'Hello from Silinx!\r\n', 'its message once: the button not held');
   assert.ok((await state(page)).now > t, 'still running');
-  // at 1/100 of real time: let go after 100 ms of the user's time (not 100 ms of the board's: 10 s)
+  // at 1/100 of real time: let go after 100 ms of the user's time, 1 ms of the board's (50,000 cycles at 50 MHz), not
+  // 100 ms of the board's (10 s of the user's); measured in the board's time, whatever the machine's speed
   await page.eval((e) => { const s = document.querySelector(`${e} .sysemu-speed`); s.value = '0.01'; s.dispatchEvent(new Event('change')); }, EMU);
+  // (two runs at its new rate first: a run in flight at real time goes ahead up to 50 ms, a release seen after it)
+  for (let k = 0; k < 2; k++) {
+    const t1 = (await state(page)).now;
+    await page.waitFor((t) => window.SilinxApp.findDoc('sysemu:uart_avr.sys.json').emulator.state().now > t, [t1], { what: 'a run at 1/100', timeout: 30000 });
+  }
+  const pressed = (await state(page)).now;
   assert.equal(await click(page), true);
-  const t0 = Date.now();
-  await page.waitFor(() => false === [...document.querySelectorAll('.doc:not([hidden]) .sys-emu [data-node=fpga] .emu-btn')].find((x) => /^BTN0:/.test(x.title)).classList.contains('on'), [], { what: 'let go at 1/100', timeout: 5000 });
-  assert.ok(Date.now() - t0 < 4000, `let go in ${Date.now() - t0} ms`);
+  await page.waitFor((e) => ![...document.querySelectorAll(`${e} [data-node=fpga] .emu-btn`)].find((x) => /^BTN0:/.test(x.title)).classList.contains('on'), [EMU], { what: 'let go at 1/100', timeout: 60000 });
+  const held = (await state(page)).now - pressed;
+  assert.ok(held >= 1e9 && held < 20e9, `held for ${held / 1e9} ms of the board's time (1 ms and a run's slice; 100 ms before #5619)`);
   assert.equal(await lit(page), false);
   assert.deepEqual(page.console.filter((c) => c.type === 'error' || c.type === 'warning' || c.type === 'warn').map((c) => c.text), []);
 }, { build: DEV, timeout: 240000 });
