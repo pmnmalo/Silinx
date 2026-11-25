@@ -1,6 +1,6 @@
 // The System editor's side panel (#4700, web/js/system-editor.js): the selection's properties, each change an edit of
-// core/system-edit.js (the MCP server's edit_system's): a node's id, an FPGA node's module, board, variant and its ports'
-// pins, a microcontroller's board and firmware (a .hex / .elf of the project), either's USB id and serial number (#5489); an interface's name, a UART's TX and RX
+// core/system-edit.js (the MCP server's edit_system's): a node's id, an FPGA node's module, board, variant and its
+// constraints file (its pins: its I/O Pin Planning and Edit Constraints (Text), #5581), a microcontroller's board and firmware (a .hex / .elf of the project), either's USB id and serial number (#5489); an interface's name, a UART's TX and RX
 // ports, baud and frame, GPIO's pins and direction; a link's id and ends; and the System's name. An edit refused says
 // why in the console (opts.onMessage).
 import { h } from './ui.js';
@@ -9,6 +9,7 @@ import { MCU_BOARDS, mcuBoard } from '/core/system-doc.js';
 import { BAUDS } from '/core/uart.js';
 import { readUsbId, usbIdText } from '/core/usb-id.js';
 import { changeNode, changeInterface, addInterface, removeInterface, changeLink, NODE_KIND_NAMES } from '/core/system-edit.js';
+import { nodeConstraintsPath } from '/core/system-constraints.js';
 
 /** { renderSide } of mountSystemEditor (M(), sel(): its values; apply(r): an edit's result taken, or its error said). */
 export function mountSystemSide(ctx) {
@@ -52,9 +53,11 @@ export function mountSystemSide(ctx) {
         field('Board', choose(n.board, BOARDS.map(b => [b.id, b.name]), v => take(changeNode(M(), n.id, { board: v, variant: null }), 'node'), 'sys-board')));
       if (board?.variants?.length) out.push(field('Variant', choose(n.variant || '', [['', '(the board\'s)'], ...board.variants.map(v => [v.id, v.id])], v => take(changeNode(M(), n.id, { variant: v }), 'node'), 'sys-variant')));
       out.push(...usbFields(n));
-      // the pins of the ports its interfaces name
-      const ports = [...new Set(n.interfaces.flatMap(f => (f.kind === 'uart' ? [f.tx, f.rx] : f.kind === 'spi' ? [f.sck, f.mosi, f.miso, f.ss] : f.kind === 'i2c' ? [f.scl, f.sda] : f.pins)).filter(Boolean))];
-      if (ports.length) out.push(h('div', { class: 'asm-label' }, 'Pins of the board'), ...ports.map(p => field(p, text(n.pins[p], v => take(changeNode(M(), n.id, { pins: { [p]: v } }), 'node'), 'mono sys-pin'))));
+      // its pins: its constraints file's, edited by its User Constraints (#5581: web/js/system-constraints-ui.js)
+      const ui = f => async () => (await import('./system-constraints-ui.js'))[f](n.id);
+      out.push(field('Constraints', h('span', { class: 'mono sys-constraints', 'data-no-i18n': '' }, nodeConstraintsPath(n))),
+        h('div', { class: 'asm-row' }, btn('I/O Pin Planning', 'Its module\'s ports on its board\'s pins, written to its constraints file', ui('openNodePins'), 'asm-small sys-pins'),
+          btn('Edit Constraints (Text)', 'Its constraints file, as text', ui('openNodeConstraints'), 'asm-small sys-edit-constraints')));
       out.push(h('div', { class: 'asm-row' },
         btn('+ UART', 'Add a UART interface: its TX and RX ports', () => take(addInterface(M(), n.id, { kind: 'uart' }), 'iface'), 'asm-small sys-add-uart'),
         btn('+ GPIO', 'Add GPIO wires: their ports and direction', () => take(addInterface(M(), n.id, { kind: 'gpio' }), 'iface'), 'asm-small sys-add-gpio'),

@@ -91,7 +91,8 @@ export function taskOfDoc(id) {
   if (s.startsWith('sysemu:')) return 'emu';
   // (a build file: a report, #802; the RTL Schematic, Synthesize's view, as the Technology one, #1063; iMPACT, #1172; the
   // logic analyzer's capture, Configure Target Device's, #3327)
-  if (/^(summary|pins|fpgaview|impact|capture)$/.test(s) || /^(text|tech|rtl):/.test(s) || s.startsWith('file:build/')) return 'impl';
+  // (a System's FPGA node's I/O Pin Planning, pins:<node>, #5581)
+  if (/^(summary|pins|fpgaview|impact|capture)$/.test(s) || /^(text|tech|rtl|pins):/.test(s) || s.startsWith('file:build/')) return 'impl';
   // (the constraints file: Edit Constraints (Text), as I/O Pin Planning, #1265)
   if (/^file:.+\.(ucf|pcf|lpf|cst|ccf|xdc)$/i.test(s)) return 'impl';
   return 'edit';

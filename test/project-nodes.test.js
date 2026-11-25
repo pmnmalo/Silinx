@@ -66,9 +66,9 @@ test('#5414 the examples: every FPGA example one implicit node on its board; the
     if (r.system) continue;
     assert.deepEqual(r.nodes.map(n => [n.kind, n.implicit, n.board]), [['fpga', true, 'basys2']], name);
   }
-  assert.deepEqual(short(example('uart-avr')), [['uno', 'mcu', 'arduino-uno', null, ['uno/hello.hex']], ['fpga', 'fpga', 'basys2', 'uart', []]]);
-  assert.deepEqual(short(example('spi-avr')), [['uno', 'mcu', 'arduino-uno', null, ['uno/spi.hex']], ['fpga', 'fpga', 'basys2', 'spi_echo', []]]);
-  assert.deepEqual(short(example('i2c-avr')), [['uno', 'mcu', 'arduino-uno', null, ['uno/i2c.hex']], ['fpga', 'fpga', 'basys2', 'i2c_leds', []]]);
-  assert.deepEqual(short(example('regs-avr')), [['uno', 'mcu', 'arduino-uno', null, ['uno/regs.hex']], ['fpga', 'fpga', 'basys2', 'pwm_top', []]]);
+  assert.deepEqual(short(example('uart-avr')), [['uno', 'mcu', 'arduino-uno', null, ['uno/hello.hex']], ['fpga', 'fpga', 'basys2', 'uart', ['fpga/uart.ucf']]]);
+  assert.deepEqual(short(example('spi-avr')), [['uno', 'mcu', 'arduino-uno', null, ['uno/spi.hex']], ['fpga', 'fpga', 'basys2', 'spi_echo', ['fpga/spi_echo.ucf']]]);
+  assert.deepEqual(short(example('i2c-avr')), [['uno', 'mcu', 'arduino-uno', null, ['uno/i2c.hex']], ['fpga', 'fpga', 'basys2', 'i2c_leds', ['fpga/i2c_leds.ucf']]]);
+  assert.deepEqual(short(example('regs-avr')), [['uno', 'mcu', 'arduino-uno', null, ['uno/regs.hex']], ['fpga', 'fpga', 'basys2', 'pwm_top', ['fpga/pwm_top.ucf']]]);
   assert.deepEqual(short(example('blinky')), [['fpga', 'fpga', 'basys2', 'top', ['constraints/top.ucf']]]);
 });

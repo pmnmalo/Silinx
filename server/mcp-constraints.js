@@ -7,6 +7,10 @@ import * as P from './projects.js';
 import { toolError, readProject, STR, PROJECT, diagLine, diagJson } from './mcp-util.js';
 import { boardOfProject, ucfPort } from '../core/board-constraints.js';
 import { constraintsFileDiagnostics } from '../core/constraints-diagnostics.js';
+import { isSystemProject } from '../core/project-kind.js';
+import { isSystemFile, readSystem } from '../core/system-doc.js';
+import { nodeBoard } from '../core/system-node.js';
+import { nodeConstraintsPath } from '../core/system-constraints.js';
 
 // the top's ports as the interface's check reads them (core/board-constraints.js ucfPort), its language; none when it
 // does not elaborate
@@ -14,11 +18,22 @@ async function topPorts(name, pj) {
   if (!pj.top) return { ports: [], lang: 'vhdl' };
   try {
     const { elaborateView } = await import('./mcp-util.js');
-    const { design, srcs, lib } = await elaborateView(name);
+    const { design, srcs, lib } = await elaborateView(name, { top: pj.top });
     const ports = (design?.top?.ports || []).map(ucfPort);
     const file = [...(lib?.modules?.values() || [])].find(m => m.name === pj.top)?.file;
     return { ports, lang: srcs?.find(s => s.path === file)?.lang || 'vhdl' };
   } catch { return { ports: [], lang: 'vhdl' }; }
+}
+
+// the project as a System's FPGA node checks its constraints file `path` (its module the top, its board and device), or
+// null (not a System project, not a node's file)
+async function nodeTarget(name, pj, path) {
+  if (!path || !isSystemProject(pj)) return null;
+  const f = (await P.fileTree(name)).find(isSystemFile);
+  const sys = f ? readSystem(await P.readFile(name, f).catch(() => '')).system : null;
+  const n = sys?.nodes.find(x => x.kind === 'fpga' && nodeConstraintsPath(x) === path);
+  const board = n && nodeBoard(n);
+  return board ? { ...pj, top: n.module, board: n.board, device: board.device } : null;
 }
 
 export const CONSTRAINTS_TOOLS = [
@@ -28,8 +43,10 @@ export const CONSTRAINTS_TOOLS = [
     inputSchema: { type: 'object', properties: { project: PROJECT, file: STR('The constraints file (default: the project\'s).') }, required: ['project'], additionalProperties: false },
     annotations: { readOnlyHint: true },
     async run({ project: name, file }) {
-      const pj = await readProject(name);
-      const path = file || pj.constraints;
+      const project = await readProject(name);
+      const path = file || project.constraints;
+      // (a System's FPGA node's constraints file, #5581: its module, its board and device)
+      const pj = await nodeTarget(name, project, path) ?? project;
       if (!path) throw toolError(`the project '${name}' has no constraints file: give file`);
       if (!/\.(ucf|pcf|lpf|cst|ccf|xdc)$/i.test(path)) throw toolError(`${path} is not a constraints file (.ucf, .pcf, .lpf, .cst, .ccf, .xdc)`);
       let text;

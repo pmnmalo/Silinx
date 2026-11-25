@@ -49,7 +49,7 @@ export function addNode(sys, { kind, id = null, board = null, module = null, cir
   const bad = idError(out, nid);
   if (bad) return { error: bad };
   let n;
-  if (kind === 'fpga') n = { id: nid, kind, module, board: board ?? 'basys2', pins: {}, interfaces: [] };
+  if (kind === 'fpga') n = { id: nid, kind, module, board: board ?? 'basys2', interfaces: [] };   // (its pins in its constraints file, #5581)
   else if (kind === 'mcu') {
     const b = mcuBoard(board ?? 'arduino-uno');
     if (!b) return { error: `no microcontroller board '${board}': ${MCU_BOARDS.map(m => m.id).join(', ')}` };
@@ -81,7 +81,7 @@ function renameEnds(sys, { node, to, iface = null, toIface = null }) {
 export function changeNode(sys, id, fields = {}) {
   const out = copy(sys), n = nodeOf(out, id);
   if (!n) return { error: `no node '${id}' in the System` };
-  const allowed = [...({ fpga: ['id', 'module', 'board', 'variant', 'pins', 'usb', 'x', 'y'], mcu: ['id', 'board', 'firmware', 'usb', 'x', 'y'], terminal: ['id', 'x', 'y'], circuit: ['id', 'circuit', 'x', 'y'] }[n.kind] || ['id', 'x', 'y']),
+  const allowed = [...({ fpga: ['id', 'module', 'board', 'variant', 'pins', 'constraints', 'usb', 'x', 'y'], mcu: ['id', 'board', 'firmware', 'usb', 'x', 'y'], terminal: ['id', 'x', 'y'], circuit: ['id', 'circuit', 'x', 'y'] }[n.kind] || ['id', 'x', 'y']),
     ...(nodeLangs(n.kind).length ? ['lang'] : [])];
   for (const k of Object.keys(fields)) if (!allowed.includes(k)) return { error: `${id}: a ${NODE_KIND_NAMES[n.kind] || n.kind} node has no field '${k}' (${allowed.join(', ')})` };
   if (fields.id != null && fields.id !== n.id) {
@@ -89,7 +89,7 @@ export function changeNode(sys, id, fields = {}) {
     if (bad) return { error: bad };
     renameEnds(out, { node: n.id, to: fields.id });
     // (its files with its folder, #5488)
-    for (const k of ['firmware', 'circuit']) if (n[k]) n[k] = renamedPath(n[k], n.id, fields.id);
+    for (const k of ['firmware', 'circuit', 'constraints']) if (n[k]) n[k] = renamedPath(n[k], n.id, fields.id);
     n.id = fields.id;
   }
   if (n.kind === 'mcu' && fields.board != null) {
@@ -111,14 +111,15 @@ export function changeNode(sys, id, fields = {}) {
     if (why) return { error: `${id}: ${why}` };
     n.lang = fields.lang;
   }
-  for (const k of ['firmware', 'circuit']) {
+  for (const k of ['firmware', 'circuit', 'constraints']) {
     if (fields[k] === undefined) continue;
     const why = outside(n.id, k, fields[k]);
     if (why) return { error: why };
     n[k] = fields[k] || null;
   }
   if (fields.variant !== undefined) { if (fields.variant == null || fields.variant === '') delete n.variant; else n.variant = String(fields.variant); }
-  if (fields.pins) for (const [port, pin] of Object.entries(fields.pins)) { if (pin == null || pin === '') delete n.pins[port]; else n.pins[port] = String(pin).trim().toUpperCase(); }
+  // (pins: set in its constraints file when the System is saved, #5581: core/system-constraints.js pinsToConstraints)
+  if (fields.pins) { n.pins = { ...(n.pins || {}) }; for (const [port, pin] of Object.entries(fields.pins)) n.pins[port] = pin == null || pin === '' ? '' : String(pin).trim().toUpperCase(); }
   // (its board's USB id and serial number, #5489: the fields given merged, one null or '' removing it)
   if (fields.usb !== undefined) {
     const usb = fields.usb === null ? {} : { ...(n.usb || {}) };
@@ -299,15 +300,15 @@ function ifaceText(n, f) {
   if (f.kind === 'gpio') return `${f.name}: GPIO ${f.dir}, ${f.pins.length ? f.pins.join(' ') : 'no pins'}`;
   if (f.kind === 'spi') {
     const s = n.kind === 'mcu' ? mcuBoard(n.board)?.spis?.[f.name] : f;
-    const at = k => `${k.toUpperCase()} ${s?.[k] ?? '?'}${n.kind === 'fpga' && n.pins[s?.[k]] ? ` (${n.pins[s[k]]})` : ''}`;
+    const at = k => `${k.toUpperCase()} ${s?.[k] ?? '?'}${n.kind === 'fpga' && n.pins?.[s?.[k]] ? ` (${n.pins[s[k]]})` : ''}`;
     return `${f.name}: SPI ${f.hz} Hz mode ${f.mode}, ${['sck', 'mosi', 'miso', 'ss'].map(at).join(', ')}`;
   }
   if (f.kind === 'i2c') {
     const s = n.kind === 'mcu' ? mcuBoard(n.board)?.i2cs?.[f.name] : f;
-    const at = k => `${k.toUpperCase()} ${s?.[k] ?? '?'}${n.kind === 'fpga' && n.pins[s?.[k]] ? ` (${n.pins[s[k]]})` : ''}`;
+    const at = k => `${k.toUpperCase()} ${s?.[k] ?? '?'}${n.kind === 'fpga' && n.pins?.[s?.[k]] ? ` (${n.pins[s[k]]})` : ''}`;
     return `${f.name}: I²C ${f.hz} Hz, ${['scl', 'sda'].map(at).join(', ')}`;
   }
-  const pins = n.kind === 'fpga' ? `, TX ${f.tx ?? '?'}${n.pins[f.tx] ? ` (${n.pins[f.tx]})` : ''}, RX ${f.rx ?? '?'}${n.pins[f.rx] ? ` (${n.pins[f.rx]})` : ''}`
+  const pins = n.kind === 'fpga' ? `, TX ${f.tx ?? '?'}${n.pins?.[f.tx] ? ` (${n.pins[f.tx]})` : ''}, RX ${f.rx ?? '?'}${n.pins?.[f.rx] ? ` (${n.pins[f.rx]})` : ''}`
     : n.kind === 'mcu' ? (b => (b?.uarts[f.name] ? `, TX ${b.uarts[f.name].tx}, RX ${b.uarts[f.name].rx}` : ''))(mcuBoard(n.board)) : '';
   return `${f.name}: UART ${f.baud} baud ${f.frame}${pins}`;
 }

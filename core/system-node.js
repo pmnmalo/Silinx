@@ -26,7 +26,7 @@ export function nodeRefusal(node) {
   if (!node.module) return `${node.id}: an FPGA node with no module`;
   if (!node.board) return `${node.id}: an FPGA node with no board`;
   if (!nodeBoard(node)) return `${node.id}: no FPGA board '${node.board}'${node.variant ? ` (variant ${node.variant})` : ''}`;
-  if (!Object.keys(node.pins || {}).length) return `${node.id}: its module's ports are on no pin of its board (the System editor's Pins of the board)`;
+  if (!Object.keys(node.pins || {}).length) return `${node.id}: its module's ports are on no pin of its board (its User Constraints' I/O Pin Planning)`;
   return null;
 }
 

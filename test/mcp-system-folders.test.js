@@ -29,7 +29,7 @@ const WARN = "serial: uno's D1, a 5 V output, drives fpga's rx (pin J3), a 3.3 V
 
 test('#5488 the uart-avr example: its System at the root, each node\'s files in its folder', async () => {
   await P.createProject({ name: 'ua', template: 'uart-avr' });
-  assert.deepEqual(await tree('ua'), ['fpga/debounce.vhd', 'fpga/sevenseg.vhd', 'fpga/uart.vhd', 'fpga/uart_rx.vhd', 'fpga/uart_tx.vhd', 'uart_avr.sys.json', 'uno/hello.asm', 'uno/hello.hex']);
+  assert.deepEqual(await tree('ua'), ['fpga/debounce.vhd', 'fpga/sevenseg.vhd', 'fpga/uart.ucf', 'fpga/uart.vhd', 'fpga/uart_rx.vhd', 'fpga/uart_tx.vhd', 'uart_avr.sys.json', 'uno/hello.asm', 'uno/hello.hex']);
   const s = await doc('ua');
   assert.deepEqual([s.version, s.nodes.map(n => [n.id, n.lang, n.firmware ?? n.module])], [2, [['uno', 'c', 'uno/hello.hex'], ['fpga', 'vhdl', 'uart']]]);
 });
@@ -40,8 +40,9 @@ test('#5488 a node renamed: its folder renamed, its firmware\'s path and silinx.
   const warn = WARN.replace("uno's", "avr's").replace("fpga's", "board's");
   assert.deepEqual(r.text.split('\n'), ['change_node avr', 'change_node board', 'folder uno/ renamed avr/', 'folder fpga/ renamed board/',
     `WARNING: ${warn}`, 'Process "Check System" of uart_avr.sys.json completed successfully with 1 warning(s).']);
-  assert.deepEqual(await tree('ua'), ['avr/hello.asm', 'avr/hello.hex', 'board/debounce.vhd', 'board/sevenseg.vhd', 'board/uart.vhd', 'board/uart_rx.vhd', 'board/uart_tx.vhd', 'uart_avr.sys.json']);
-  assert.deepEqual((await doc('ua')).nodes.map(n => [n.id, n.firmware ?? n.module]), [['avr', 'avr/hello.hex'], ['board', 'uart']]);
+  assert.deepEqual(await tree('ua'), ['avr/hello.asm', 'avr/hello.hex', 'board/debounce.vhd', 'board/sevenseg.vhd', 'board/uart.ucf', 'board/uart.vhd', 'board/uart_rx.vhd', 'board/uart_tx.vhd', 'uart_avr.sys.json']);
+  // (its constraints file's path too, #5581)
+  assert.deepEqual((await doc('ua')).nodes.map(n => [n.id, n.firmware ?? n.module, n.constraints ?? null]), [['avr', 'avr/hello.hex', null], ['board', 'uart', 'board/uart.ucf']]);
   assert.deepEqual((await P.readProject('ua')).files.map(f => f.path).sort(), ['board/debounce.vhd', 'board/sevenseg.vhd', 'board/uart.vhd', 'board/uart_rx.vhd', 'board/uart_tx.vhd']);
   // (renamed back and forth in one call: nothing moved)
   const same = await edit('ua', [{ action: 'change_node', node: 'avr', fields: { id: 'x' } }, { action: 'change_node', node: 'x', fields: { id: 'avr' } }]);

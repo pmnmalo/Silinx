@@ -18,7 +18,7 @@ import { watchProject, stopWatching } from './project-watch.js';
 import { gitAvailable } from './git.js';
 import { refreshSteps } from './menus.js';
 import { setKindFlag } from './project-kind-flag.js';
-import { isDesignOnly } from '/core/project-kind.js';
+import { isDesignOnly, isSystemProject } from '/core/project-kind.js';
 import { reopenWaiting, forgetWaiting } from './storage-late.js';
 import { afterOpening } from './prefetch-schedule.js';
 import { resetSync } from './state-sync.js';
@@ -181,6 +181,9 @@ async function reloadProjectNow(render = true, depth = 0) {
       if (d.generatedFile && filesState.fileTree.includes(d.generatedFile) && !hdlToSch[d.generatedFile]) { schOwners[f] = d.generatedFile; hdlToSch[d.generatedFile] = f; viewModule[f] = d.name; }
     } catch { /* unreadable */ }
   }
+  // (a System's FPGA nodes' constraints files, #5581: each node's pins read from its own, web/js/system-constraints-ui.js)
+  // (every one in a node's folder: an editor's node not saved yet has its file read too)
+  for (const f of isSystemProject(pj) ? filesState.fileTree.filter(f => f.includes('/') && CONSTRAINTS_RE.test(f)) : []) { try { viewTexts[f] = await api.readFile(pj.name, f); } catch { /* unreadable */ } }
   // (the modules' symbols of their own, <module>.sym.json, #3755: the schematics' module symbols drawn from them)
   const symbolFiles = {};
   for (const f of filesState.fileTree.filter(f => /\.sym\.json$/i.test(f))) { try { symbolFiles[f] = await api.readFile(pj.name, f); } catch { /* unreadable */ } }
@@ -192,6 +195,8 @@ async function reloadProjectNow(render = true, depth = 0) {
   // a drawing whose base was its HDL (before #220) is made the base; a drawn source without its HDL
   // file gets it (#207): read the project again with them
   if (depth < 2 && (await drawingsAsBase() || await adoptDrawnHdl())) return reloadProjectNow(render, depth + 1);
+  // (a System document of before: its FPGA nodes' pins moved into their constraints files, #5581)
+  if (depth < 2 && isSystemProject(S.project) && await (await import('./system-constraints-ui.js')).movePinsOnOpen()) return reloadProjectNow(render, depth + 1);
   await drawnHdlClashes();
   // the open drawings show their links as they are now (one linked meanwhile, #245)
   for (const d of docsState.docs) (d.ttEditor || d.fsmEditor || d.petriEditor)?.refreshLink?.();
@@ -207,6 +212,9 @@ async function reloadProjectNow(render = true, depth = 0) {
   refreshSteps();   // (a design and simulation project's toolbar: no Implement, Emulate or Program, #3780)
   if (!render) return;
 }
+
+// a constraints file, in any family's format (#5581: a System's FPGA nodes')
+const CONSTRAINTS_RE = /\.(ucf|pcf|lpf|cst|ccf|xdc)$/i;
 
 // the project's RTL blackboxes (core/c-blackbox.js, #1903): its descriptions, with the files they name and its headers
 async function readBlackboxes(name) {

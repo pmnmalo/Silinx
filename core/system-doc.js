@@ -3,7 +3,7 @@
 // check is core/system-check.js. Isomorphic module (browser + Node).
 //
 //   { format: 'silinx-system', version: 1, name,
-//     nodes: [ { id, kind: 'fpga', module, board, variant?, pins: { <port>: <pin of the board> }, lang, interfaces, x, y }
+//     nodes: [ { id, kind: 'fpga', module, board, variant?, constraints?: <its constraints file, in its folder>, lang, interfaces, x, y }
 //              { id, kind: 'mcu', board: 'arduino-uno' | 'arduino-nano' | 'explorer-1632', firmware: <a .hex / .elf of the project>, lang, usb, interfaces, x, y }
 //              { id, kind: 'terminal', interfaces, x, y }
 //              { id, kind: 'circuit', circuit: <a .circ.json of the project>, interfaces: [], x, y } ],
@@ -97,7 +97,10 @@ function normalNode(n) {
   if (out.kind === 'fpga') {
     out.module = n.module ?? null; out.board = n.board ?? null;
     if (n.variant != null) out.variant = String(n.variant);
-    out.pins = n.pins && typeof n.pins === 'object' ? { ...n.pins } : {};
+    // (its pins in its constraints file, #5581: `constraints` its path, else <id>/<module><ext>; a document's `pins`, one
+    // of before or an edit's, kept until it is saved: core/system-constraints.js pinsToConstraints)
+    if (n.constraints) out.constraints = String(n.constraints);
+    if (n.pins && typeof n.pins === 'object' && Object.keys(n.pins).length) out.pins = { ...n.pins };
   } else if (out.kind === 'mcu') {
     out.board = n.board ?? null; out.firmware = n.firmware ?? null;
   } else if (out.kind === 'circuit') out.circuit = n.circuit ?? null;

@@ -22,7 +22,7 @@ export const SYSTEM_PT = {
   'Compile Firmware': 'Compilar Firmware', 'A process is already running (use Stop to cancel it)': 'Já está um processo em curso (use Parar para o cancelar)',   // (an Arduino node's sketch to its .hex, #5503)
   'Id': 'Identificador', 'Module': 'Módulo', 'Board': 'Placa', 'Variant': 'Variante', "(the board's)": '(a da placa)',
   'Firmware': 'Programa (firmware)', 'a .hex or an .elf of the project': 'um .hex ou um .elf do projeto', "a .hex of the project (XC16's)": 'um .hex do projeto (do XC16)', '(none)': '(nenhum)',
-  'Pins of the board': 'Pinos da placa', '+ UART': '+ UART', '+ GPIO': '+ GPIO',
+  '+ UART': '+ UART', '+ GPIO': '+ GPIO',
   'Add a UART interface: its TX and RX ports': 'Acrescentar uma interface UART: os portos TX e RX',
   'Add GPIO wires: their ports and direction': 'Acrescentar fios GPIO: os portos e a direção',
   "Add GPIO wires: the board's pins and their direction": 'Acrescentar fios GPIO: os pinos da placa e a direção',
@@ -53,10 +53,13 @@ export const SYSTEM_PT = {
   'No wires: no link joins two resolved interfaces': 'Sem fios: nenhuma ligação junta duas interfaces resolvidas',
   // the System Emulator (#5212)
   'Emulate': 'Emular', 'Emulate the System: its boards side by side, interactive, in real time': 'Emular o Sistema: as suas placas lado a lado, interativas, em tempo real',
+  // (an FPGA node's constraints file, #5581: web/js/system-constraints-ui.js, web/js/system-side.js)
+  'Its module\'s ports on its board\'s pins, written to its constraints file': 'As portas do seu módulo nos pinos da sua placa, escritas no seu ficheiro de restrições',
+  'Its constraints file, as text': 'O seu ficheiro de restrições, como texto',
+  'A node\'s: its User Constraints in the tree below': 'De um nó: as suas Restrições do Utilizador na árvore abaixo',
   // (the Emulate task's tree of a System, #5581: web/js/system-emulate-ui.js)
   'Emulate Node': 'Emular o Nó', 'Emulation Properties…': 'Propriedades da Emulação…', 'Emulation Properties': 'Propriedades da Emulação',
   'The nodes Emulate System runs:': 'Os nós que Emular o Sistema corre:', 'Tick at least one node': 'Marque pelo menos um nó',
-  'An FPGA node\'s pins: its row in the System editor': 'Os pinos de um nó FPGA: a sua linha no editor do Sistema',
   'Emulate System': 'Emular o Sistema', 'Run the System in real time until Pause': 'Correr o Sistema em tempo real até Pausa',
   'Terminals': 'Terminais', '☰ Terminals': '☰ Terminais', 'Show / hide the terminals panel': 'Mostrar / ocultar o painel dos terminais',
   'Collapse the terminals panel': 'Recolher o painel dos terminais', 'Expand the terminals panel': 'Expandir o painel dos terminais',
@@ -104,6 +107,17 @@ export const SYSTEM_PT_PATTERNS = [
   [/^(FPGA|Microcontroller|Serial terminal|Circuit) ([A-Za-z]\w*)$/, (m, k, id) => `${{ FPGA: 'FPGA', Microcontroller: 'Microcontrolador', 'Serial terminal': 'Terminal série', Circuit: 'Circuito' }[k]} ${id}`],
   [/^Link ([A-Za-z]\w*)$/, 'Ligação $1'], [/^Waves \((.+)\)$/, 'Ondas ($1)'],
   [/^Emulate \((.+)\)$/, 'Emular ($1)'],
+  // (an FPGA node's constraints file, #5581)
+  [/^I\/O Pin Planning \((\S+)\)$/, 'Planeamento de Pinos de E/S ($1)'],
+  [/^(\S+): no constraints file (\S+) yet: its module's ports are on no pin of its board \(its I\/O Pin Planning\)$/,
+    '$1: ainda sem ficheiro de restrições $2: as portas do seu módulo não estão em nenhum pino da sua placa (o seu Planeamento de Pinos de E/S)'],
+  [/^(\S+): its constraints file (\S+) cannot be read: (.+)$/, '$1: o seu ficheiro de restrições $2 não pode ser lido: $3'],
+  [/^(\S+): its pins (written to|set in) its constraints file (\S+)$/, (m, n, how, f) => `${n}: os seus pinos ${how === 'written to' ? 'escritos no' : 'definidos no'} seu ficheiro de restrições ${f}`],
+  [/^(\S+): (\S+): its pins (written to|set in) its constraints file (\S+) \(a System's pins are in its FPGA nodes' constraints files now\)\.$/,
+    (m, d, n, how, f) => `${d}: ${n}: os seus pinos ${how === 'written to' ? 'escritos no' : 'definidos no'} seu ficheiro de restrições ${f} (os pinos de um Sistema estão agora nos ficheiros de restrições dos seus nós FPGA).`],
+  [/^Edit Constraints \(Text\): (\S+) made, (\S+)'s constraints file\.$/, 'Editar Restrições (Texto): $1 criado, o ficheiro de restrições de $2.'],
+  [/^(\S+): no constraints file (\S+) yet \(its I\/O Pin Planning or Edit Constraints \(Text\) makes it\)$/, '$1: ainda sem ficheiro de restrições $2 (o seu Planeamento de Pinos de E/S ou Editar Restrições (Texto) cria-o)'],
+  [/^(\S+): its module's ports are on no pin of its board \(its User Constraints' I\/O Pin Planning\)$/, "$1: as portas do seu módulo não estão em nenhum pino da sua placa (o Planeamento de Pinos de E/S das suas Restrições do Utilizador)"],
   // (the Emulate task's tree, #5581: a node's firmware and circuit, the System's row, a terminal's; what runs)
   [/^(\S+) \(System\)$/, '$1 (Sistema)'], [/^(\S+) \(terminal\)$/, '$1 (terminal)'],
   [/^(\S+) runs with the nodes it is linked to$/, '$1 corre com os nós a que está ligado'],

@@ -21,10 +21,10 @@ export const PLAN_KINDS = ['fpga', 'mcu'];
 const PROGRAMMERS = { jtag: 'over JTAG', avrdude: 'by avrdude (arduino-cli upload)', pickit: 'by a PICkit (MPLAB IPE)', repl: 'over its raw REPL (mpremote)' };
 
 // what of a node's description its build depends on (its place on the canvas, its interfaces' names do not)
-const DESCRIBED = ['kind', 'board', 'variant', 'module', 'pins', 'firmware', 'lang'];
+const DESCRIBED = ['kind', 'board', 'variant', 'module', 'constraints', 'firmware', 'lang'];   // (its pins: its constraints file's, a source of its folder, #5581)
 const sorted = v => (v && typeof v === 'object' && !Array.isArray(v) ? Object.fromEntries(Object.keys(v).sort().map(k => [k, sorted(v[k])])) : v);
 
-/** The node's description as its build reads it: its kind, board, variant, module, pins, firmware and language. */
+/** The node's description as its build reads it: its kind, board, variant, module, constraints file, firmware and language. */
 export function describedNode(node) {
   const out = {};
   for (const k of DESCRIBED) if (node?.[k] !== undefined && node[k] !== null && node[k] !== '') out[k] = sorted(node[k]);

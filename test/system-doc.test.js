@@ -31,11 +31,11 @@ test('normalized: the missing fields given, a kind\'s fields only, in their orde
     { id: 't', kind: 'terminal', module: 'x' },
   ], links: [{ b: 'm.Serial', a: 't.serial', kind: 'uart', id: 'l', baud: 9600 }] });
   assert.deepEqual(m, { format: SYSTEM_FORMAT, version: SYSTEM_VERSION, name: 's', nodes: [
-    { id: 'f', kind: 'fpga', module: null, board: null, pins: {}, lang: 'vhdl', interfaces: [{ name: 'g', kind: 'gpio', pins: ['a'], dir: 'in' }], x: 0, y: 0 },
+    { id: 'f', kind: 'fpga', module: null, board: null, lang: 'vhdl', interfaces: [{ name: 'g', kind: 'gpio', pins: ['a'], dir: 'in' }], x: 0, y: 0 },
     { id: 'm', kind: 'mcu', board: 'arduino-nano', firmware: null, lang: 'c', interfaces: [], x: 0, y: 0 },
     { id: 't', kind: 'terminal', interfaces: [], x: 0, y: 0 },
   ], links: [{ id: 'l', kind: 'uart', a: 't.serial', b: 'm.Serial' }] });
-  assert.deepEqual(Object.keys(m.nodes[0]), ['id', 'kind', 'module', 'board', 'pins', 'lang', 'interfaces', 'x', 'y']);
+  assert.deepEqual(Object.keys(m.nodes[0]), ['id', 'kind', 'module', 'board', 'lang', 'interfaces', 'x', 'y']);
   // an interface of a kind not known: kept as it is (the check says it)
   assert.deepEqual(normalizeSystem({ nodes: [{ id: 'f', kind: 'fpga', interfaces: [{ name: 's', kind: 'can', mode: 0 }] }] }).nodes[0].interfaces, [{ name: 's', kind: 'can', mode: 0 }]);
   // (an SPI bus's: its ports, its rate and mode, 125 kHz and 0 by default, #5214)

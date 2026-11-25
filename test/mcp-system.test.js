@@ -6,6 +6,7 @@
 import { test, before, after } from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
+import path from 'node:path';
 import { scratchEnv } from './server-helpers.js';
 import { unlabelled } from './mcp-label.js';
 
@@ -78,10 +79,12 @@ test('check_system: a valid System, no warnings; an Arduino at 5 V, its warning;
     { message: 'fpga.uart: its RX tx is an output of uart: TX and RX crossed?', item: 'fpga' },
     { message: 'uno: no firmware fw/none.hex in the project', item: 'uno' },
     { message: 'f2: no module \'nothing\' in the project', item: 'f2' }]);
-  assert.deepEqual(e.data.warnings, [{ message: 'uno joins nothing: no link reaches it', item: 'uno' }, { message: 'f2 joins nothing: no link reaches it', item: 'f2' }]);
+  // (a node with no constraints file yet: no pin, #5581)
+  assert.deepEqual(e.data.warnings, [{ message: 'uno joins nothing: no link reaches it', item: 'uno' }, { message: 'f2 joins nothing: no link reaches it', item: 'f2' },
+    { message: 'f2: no constraints file f2/nothing.ucf yet: its module\'s ports are on no pin of its board (its I/O Pin Planning)', item: 'f2' }]);
   assert.equal(e.data.ok, false);
   assert.equal(e.text, [...desc(e.text), ...e.data.errors.map(w => `ERROR: ${w.message}`), ...e.data.warnings.map(w => `WARNING: ${w.message}`),
-    'Process "Check System" of bad.sys.json failed (4 error(s), 2 warning(s)).'].join('\n'));
+    'Process "Check System" of bad.sys.json failed (4 error(s), 3 warning(s)).'].join('\n'));
 });
 
 test('check_system: not a System document, not in the project, not a System\'s text', async () => {
@@ -105,11 +108,20 @@ test('#4700 edit_system: edits applied in order, written, checked (its warnings)
     { action: 'add_link', fields: { a: 'mcu.Serial', b: 'fpga.uart' } },
   ] });
   const warn = "serial: mcu's D1, a 5 V output, drives fpga's rx (pin J3), a 3.3 V input of the FPGA (LVCMOS33): a level shifter or a divider on the real boards";
+  // (its pins written to its constraints file, the node told it, #5581)
   assert.deepEqual(r.text.split('\n'), ['add_node fpga', 'change_node fpga', 'add_interface fpga.uart', 'add_node mcu', 'add_link serial',
-    `WARNING: ${warn}`, 'Process "Check System" of e.sys.json completed successfully with 1 warning(s).']);
+    'fpga: its pins written to its constraints file fpga/uart.ucf', `WARNING: ${warn}`, 'Process "Check System" of e.sys.json completed successfully with 1 warning(s).']);
   assert.deepEqual(r.data.warnings, [{ message: warn, item: 'serial' }]);
   const saved = await ok('check_system', { project: 'u', file: 'e.sys.json' });
   assert.deepEqual(saved.data.system.links, [{ id: 'serial', kind: 'uart', a: 'mcu.Serial', b: 'fpga.uart' }]);
+  const doc = JSON.parse(fs.readFileSync(path.join(tmp, 'ws', 'u', 'e.sys.json'), 'utf8')).nodes[0];
+  assert.deepEqual([doc.constraints, doc.pins, saved.data.system.nodes[0].pins], ['fpga/uart.ucf', undefined, { rx: 'J3', tx: 'A3' }]);
+  assert.match(fs.readFileSync(path.join(tmp, 'ws', 'u', 'fpga/uart.ucf'), 'utf8'), /^NET "rx" +LOC = "J3" ;\nNET "tx" +LOC = "A3" ;$/m);
+  // (a pin changed, one removed: set in the file, the others kept)
+  const p2 = await ok('edit_system', { project: 'u', file: 'e.sys.json', edits: [{ action: 'change_node', node: 'fpga', fields: { pins: { tx: 'B4', rx: null } } }] });
+  assert.equal(p2.text.split('\n')[1], 'fpga: its pins set in its constraints file fpga/uart.ucf');
+  assert.deepEqual((await ok('check_system', { project: 'u', file: 'e.sys.json' })).data.system.nodes[0].pins, { tx: 'B4' });
+  await ok('edit_system', { project: 'u', file: 'e.sys.json', edits: [{ action: 'change_node', node: 'fpga', fields: { pins: { rx: 'J3', tx: 'A3' } } }] });
   // one refused: nothing written, and why
   const bad = await call('edit_system', { project: 'u', file: 'e.sys.json', edits: [{ action: 'remove_link', link: 'serial' }, { action: 'add_link', fields: { a: 'mcu.Serial', b: 'nope.x' } }] });
   assert.deepEqual([bad.isError, bad.text], [true, "edit_system: edit 1 (add_link): no node 'nope' in the System (nothing written)"]);
@@ -227,7 +239,8 @@ test('#5215 a circuit node by edit_system, checked and simulated: the Uno\'s D2 
   await write('bench.sys.json', m);
   const e = await ok('edit_system', { project: 'u', file: 'bench.sys.json', edits: [{ action: 'add_node', fields: { kind: 'circuit', id: 'bench', circuit: 'bench/bench.circ.json', x: 300, y: 0 } }] });
   const HOT = 'bench: A1 D2 (uno\'s, 5 V) and F1 JB1 (fpga\'s btn<0>, pin C6, a 3.3 V input) are on one net: a level shifter or a divider on the real boards';
-  assert.deepEqual(e.text.split('\n'), ['add_node bench', `WARNING: ${HOT}`, 'Process "Check System" of bench.sys.json completed successfully with 1 warning(s).']);
+  // (a document of before, its pins in it: moved into the FPGA node's constraints file when it is written, #5581)
+  assert.deepEqual(e.text.split('\n'), ['add_node bench', 'fpga: its pins set in its constraints file fpga/uart.ucf', `WARNING: ${HOT}`, 'Process "Check System" of bench.sys.json completed successfully with 1 warning(s).']);
   // checked: described (the circuit node), its 5 V pin on the FPGA's 3.3 V input; the Uno, reached by the circuit, joins something
   const c = await ok('check_system', { project: 'u', file: 'bench.sys.json' });
   assert.ok(c.text.split('\n').includes('node bench: circuit bench/bench.circ.json'));

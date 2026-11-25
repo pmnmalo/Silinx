@@ -33,7 +33,7 @@ uiTest('#5488 a node renamed: its folder renamed with it; a node removed: its fo
   await page.eval((ed) => { const el = document.querySelector(`${ed} .sys-selection input`); el.value = 'avr'; el.dispatchEvent(new Event('change', { bubbles: true })); }, ED);
   await page.waitFor(async () => (await (await fetch('/api/projects/Folders')).json()).fileTree.includes('avr/hello.hex'), [], { what: 'the folder renamed' });
   await page.waitConsole(/^Folder uno renamed to avr\.$/m);
-  assert.deepEqual(await tree('Folders'), ['avr/hello.asm', 'avr/hello.hex', 'fpga/debounce.vhd', 'fpga/sevenseg.vhd', 'fpga/uart.vhd', 'fpga/uart_rx.vhd', 'fpga/uart_tx.vhd', 'uart_avr.sys.json']);
+  assert.deepEqual(await tree('Folders'), ['avr/hello.asm', 'avr/hello.hex', 'fpga/debounce.vhd', 'fpga/sevenseg.vhd', 'fpga/uart.ucf', 'fpga/uart.vhd', 'fpga/uart_rx.vhd', 'fpga/uart_tx.vhd', 'uart_avr.sys.json']);
   await page.waitFor(async () => /"firmware": "avr\/hello\.hex"/.test(await (await fetch('/api/projects/Folders/file?path=uart_avr.sys.json')).text()), [], { what: 'the System saved' });
   // removed: asked; No keeps its folder
   await selectNode(page, 'avr');

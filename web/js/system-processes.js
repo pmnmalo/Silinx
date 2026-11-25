@@ -12,6 +12,7 @@ import { systemTop } from './design-system.js';
 import { openView } from './drawings.js';
 import { firmwareRefusal } from '/core/avr-compile.js';
 import { RUN_KINDS } from '/core/system-alone.js';
+import { nodeConstraintsProcs } from './system-constraints-ui.js';
 
 // a node's (or the System's, '*') implementation on its own board, #5446: web/js/system-implement-ui.js
 const impl = (node, steps, label) => async () => (await import('./system-implement-ui.js')).runNodeImpl(node, steps, label);
@@ -50,6 +51,8 @@ export function systemProcesses(sel, view, { check, rtl }) {
   if (sel.type !== 'node') return null;
   return [
     editSystem(sel.file),
+    // (its User Constraints: its constraints file, #5581)
+    ...(sel.kind === 'fpga' ? [nodeConstraintsProcs({ id: sel.node })] : []),
     ...(sel.kind === 'fpga' && sel.module ? [
       { id: 'check', label: 'Check Syntax', ico: 'process', run: () => check(sel.module) },
       { id: 'rtl', label: 'View RTL Schematic', ico: 'schematic', run: () => rtl(sel.module) },

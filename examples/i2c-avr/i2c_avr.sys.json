@@ -25,27 +25,7 @@
       "module": "i2c_leds",
       "board": "basys2",
       "variant": "250",
-      "pins": {
-        "clk": "B8",
-        "scl": "B2",
-        "sda": "A3",
-        "sw<0>": "P11",
-        "sw<1>": "L3",
-        "sw<2>": "K3",
-        "sw<3>": "B4",
-        "sw<4>": "G3",
-        "sw<5>": "F3",
-        "sw<6>": "E2",
-        "sw<7>": "N3",
-        "led<0>": "M5",
-        "led<1>": "M11",
-        "led<2>": "P7",
-        "led<3>": "P6",
-        "led<4>": "N5",
-        "led<5>": "N4",
-        "led<6>": "P4",
-        "led<7>": "G1"
-      },
+      "constraints": "fpga/i2c_leds.ucf",
       "lang": "vhdl",
       "interfaces": [
         {

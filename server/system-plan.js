@@ -9,6 +9,8 @@ import * as P from './projects.js';
 import { projectSystem } from '../core/project-system.js';
 import { isSystemFile } from '../core/system-doc.js';
 import { buildRecord, systemBuildPlan } from '../core/system-plan.js';
+import { withNodePins } from '../core/system-constraints.js';
+import { constraintsTexts } from './system-constraints.js';
 
 const RECORD = 'built-from.json';
 /** Where a node's record is: its build's folder (an FPGA node's build/nodes/<id>/, a microcontroller's firmware/ in it). */
@@ -48,7 +50,9 @@ export async function projectSystemOf(name) {
   const r = projectSystem(pj, { files, texts: file ? { [file]: text } : {} });
   if (r.error) throw new P.HttpError(400, `${r.system}: ${r.error}`);
   if (!r.model || r.implicit) throw new P.HttpError(400, `the project '${name}' has no System as its top: a build plan is a System's`);
-  return { pj, files, file, text, model: r.model };
+  // (each FPGA node's pins its constraints file's, #5581)
+  const model = withNodePins(r.model, await constraintsTexts(name, r.model, files)).system;
+  return { pj, files, file, text, model };
 }
 
 /** The plan of the System `model` of the project `name` (its files `files`): core/system-plan.js systemBuildPlan's. */

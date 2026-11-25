@@ -26,6 +26,7 @@ import { regmapFor, hierModules } from '/core/regmap.js';
 import { mountSystemSim } from './system-sim-view.js';
 import { openSystemWaves } from './system-waves-view.js';
 import { saveNodeFolders } from './system-folders-ui.js';
+import { nodePinsHere, constraintsHere } from './system-constraints-ui.js';
 
 // the project's modules ({ name: ports, null when not elaborated }): every module, the FPGA nodes' elaborated
 function projectModules(sys) {
@@ -41,6 +42,7 @@ function projectModules(sys) {
 // Emulator's: the page's workers, the browser edition's own), its firmware read (a .hex's text, an .elf's bytes, #5198:
 // as the MCP's simulate of a System); then run in its Web Worker (system-remote.js), where the compiled engine may make its code
 export async function prepareHere(sys, { emulate = false } = {}) {
+  sys = nodePinsHere(sys).system;   // (each FPGA node's pins its constraints file's, #5581)
   const lib = designState.lib;
   if (!lib) return { error: 'the project does not compile: Check Syntax says why' };
   const designs = {}, ports = {};
@@ -60,11 +62,11 @@ export async function prepareHere(sys, { emulate = false } = {}) {
   if (inputs.error) return inputs;
   // (the System Emulator's: its boards too, and the inputs it draws them from, #5212)
   const r = await (await import('./system-remote.js')).startSystemRun(sys, inputs, { emulate });
-  return r.error ? r : Object.assign(r, { inputs });
+  return r.error ? r : Object.assign(r, { inputs, system: sys });   // (the System run: its nodes' pins read, #5581)
 }
 
 /** A System's problems, as Check System says them (the MCP server's check_system's). */
-const checkProjectSystem = sys => checkSystem(sys, { modules: projectModules(sys), files: filesState.fileTree || [], circuits: projectCircuits(sys) });
+const checkProjectSystem = sys => checkSystem(sys, { modules: projectModules(sys), files: filesState.fileTree || [], circuits: projectCircuits(sys), constraints: constraintsHere(sys) });
 // the circuit nodes' circuits, as the project has them (#5215: their boards and pins checked; one not read left out)
 function projectCircuits(sys) {
   const out = {};
@@ -74,7 +76,7 @@ function projectCircuits(sys) {
   return out;
 }
 /** Its wires, pin by pin (the Wiring view's, #5216: the MCP's check_system wiring). */
-const projectWires = sys => analyzeSystem(sys, { modules: projectModules(sys), files: filesState.fileTree || [], circuits: projectCircuits(sys) }).wires;
+const projectWires = sys => analyzeSystem(sys, { modules: projectModules(sys), files: filesState.fileTree || [], circuits: projectCircuits(sys), constraints: constraintsHere(sys) }).wires;
 // the editor's lists: the project's design modules (the roots of its hierarchy first: a new FPGA node's), a module's
 // ports, the project's firmware files
 const modules = () => [...new Set([...viewRoots(false), ...(designState.modules || []).filter(m => m.role !== 'sim').map(m => m.name)])];

@@ -30,9 +30,9 @@ test('#5414 project_info of a System project: its nodes, each with its board, mo
   await P.createProject({ name: 'ua', template: 'uart-avr' });
   const r = await call('project_info', { project: 'ua' });
   assert.deepEqual(r.data.nodes, [{ id: 'uno', kind: 'mcu', board: 'arduino-uno', module: null, lang: 'c', files: ['uno/hello.hex'], folder: 'uno', inFolder: ['uno/hello.asm', 'uno/hello.hex'] },
-    { id: 'fpga', kind: 'fpga', board: 'basys2', variant: '250', module: 'uart', lang: 'vhdl', files: [],
-    folder: 'fpga', inFolder: ['fpga/debounce.vhd', 'fpga/sevenseg.vhd', 'fpga/uart.vhd', 'fpga/uart_rx.vhd', 'fpga/uart_tx.vhd'] }]);
-  assert.ok(r.text.split('\n').includes('  nodes: uno (mcu, arduino-uno: uno/hello.hex; uno/: 2 file(s)); fpga (fpga, basys2: module uart; fpga/: 5 file(s))'), r.text);
+    { id: 'fpga', kind: 'fpga', board: 'basys2', variant: '250', module: 'uart', lang: 'vhdl', files: ['fpga/uart.ucf'],
+    folder: 'fpga', inFolder: ['fpga/debounce.vhd', 'fpga/sevenseg.vhd', 'fpga/uart.ucf', 'fpga/uart.vhd', 'fpga/uart_rx.vhd', 'fpga/uart_tx.vhd'] }]);
+  assert.ok(r.text.split('\n').includes('  nodes: uno (mcu, arduino-uno: uno/hello.hex; uno/: 2 file(s)); fpga (fpga, basys2: module uart: fpga/uart.ucf; fpga/: 6 file(s))'), r.text);
 });
 
 test('#5414 project_info of an FPGA project and of a design project: its one implicit node; no nodes line', async () => {

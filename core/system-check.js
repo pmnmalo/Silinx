@@ -21,6 +21,7 @@ import { checkCircuitFields, checkCircuitNodes } from './system-check-circuit.js
 import { port } from './system-ports.js';
 import { endsProblem } from './system-links.js';
 import { usbError } from './usb-id.js';
+import { withNodePins } from './system-constraints.js';
 
 const node = id => ({ kind: 'node', id });
 const link = id => ({ kind: 'link', id });
@@ -63,16 +64,22 @@ export const checkSystem = (sys, ctx = {}) => analyzeSystem(sys, ctx).diags;
  * a pin of a microcontroller's board), loc (an FPGA's package pin), dir, volts, std, place (what the FPGA board's
  * pin is: its resource's label) }), warnings (its level's) } of each
  * link whose ends resolve, in the links' order. `circuits`: the circuit nodes' circuits read ({ path: circuit }; null: their
- * boards and pins not checked, #5215).
+ * boards and pins not checked, #5215). `constraints`: the project's FPGA nodes' constraints files ({ path: text }, #5581:
+ * their pins read from them, core/system-constraints.js; null: the nodes' pins as the model has them).
  */
-export function analyzeSystem(sys, { modules = null, files = null, circuits = null } = {}) {
+export function analyzeSystem(sys, { modules = null, files = null, circuits = null, constraints = null } = {}) {
   const out = [], wires = [];
   // (the nodes' typed ports: { node: [port] }, each resolved pin of their interfaces once)
   const say = { err: (message, ref) => out.push({ severity: 'error', message, ref }), warn: (message, ref) => out.push({ severity: 'warning', message, ref }) };
+  // (each FPGA node's pins its constraints file's, `constraints` the project's: { path: text }, #5581)
+  const pinned = constraints ? withNodePins(sys, constraints) : null;
+  if (pinned) sys = pinned.system;
   const nodes = checkNodes(sys, { modules, files }, say);
   const used = checkLinks(sys, nodes, say, wires);
   for (const id of checkCircuitNodes(sys, { circuits, modules }, wires, say)) used.add(id);
   for (const n of sys.nodes) if (n.id && nodes.has(lc(n.id)) && !used.has(lc(n.id))) say.warn(`${n.id} joins nothing: no link reaches it`, node(n.id));
+  // (its constraints files' problems, after the System's own)
+  for (const p of pinned?.problems ?? []) (p.severity === 'error' ? say.err : say.warn)(p.message, node(p.node));
   return { diags: out, wires, ports: nodePorts(nodes) };
 }
 
@@ -162,7 +169,7 @@ function checkFpga(n, at, { modules }, { err, warn }) {
   else if (!board) err(`${n.id}: no FPGA board '${n.board}'${n.variant ? ` (variant ${n.variant})` : ''}`, ref);
   // its pins: each on its board, one port each
   const onPin = new Map();
-  for (const [port, pin] of Object.entries(n.pins)) {
+  for (const [port, pin] of Object.entries(n.pins || {})) {
     const P = String(pin).toUpperCase();
     if (board && !board.pins.has(P)) err(`${n.id}: ${port}'s pin ${pin} is not a pin of the ${board.name}`, ref);
     if (onPin.has(P)) err(`${n.id}: ${onPin.get(P)} and ${port} are both on pin ${pin}`, ref);
@@ -181,7 +188,7 @@ function checkFpga(n, at, { modules }, { err, warn }) {
     // (a 1-bit port's pin by either spelling, x or x<0>, as a UCF may have it and the Board Emulator reads it, #5213)
     const alt = /<0>$/.test(name) ? name.slice(0, -3) : `${name}<0>`;
     const one = (p?.width ?? 1) === 1;
-    const key = Object.keys(n.pins).find(k => lc(k) === lc(name)) ?? (one ? Object.keys(n.pins).find(k => lc(k) === lc(alt)) : undefined);
+    const key = Object.keys(n.pins || {}).find(k => lc(k) === lc(name)) ?? (one ? Object.keys(n.pins || {}).find(k => lc(k) === lc(alt)) : undefined);
     if (key == null) { err(`${n.id}.${f.name}: ${name} has no pin of the board`, ref); return null; }
     const P = String(n.pins[key]).toUpperCase();
     return { pin: name, dir, loc: n.pins[key], volts: board?.pins.has(P) ? ioVolts(board.pins.get(P)) : null, std: board?.pins.get(P) || null, place: board?.labels.get(P) || null };

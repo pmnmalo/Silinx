@@ -47,11 +47,11 @@ async function call(name, args = {}) {
 }
 const ok = async (name, args) => { const r = await call(name, args); assert.equal(r.isError, false, r.text); return r; };
 const tree = async p => (await P.fileTree(p)).filter(f => f !== 'silinx.json' && f !== '.gitignore').sort();
-const UA = ['fpga/debounce.vhd', 'fpga/sevenseg.vhd', 'fpga/uart.vhd', 'fpga/uart_rx.vhd', 'fpga/uart_tx.vhd', 'uart_avr.sys.json', 'uno/hello.asm', 'uno/hello.hex'];
+const UA = ['fpga/debounce.vhd', 'fpga/sevenseg.vhd', 'fpga/uart.ucf', 'fpga/uart.vhd', 'fpga/uart_rx.vhd', 'fpga/uart_tx.vhd', 'uart_avr.sys.json', 'uno/hello.asm', 'uno/hello.hex'];
 const WARN = "WARNING: serial: uno's D1, a 5 V output, drives fpga's rx (pin J3), a 3.3 V input of the FPGA (LVCMOS33): a level shifter or a divider on the real boards";
 const checked = async (project) => (await ok('check_system', { project, file: 'uart_avr.sys.json' })).text.split('\n').filter(l => /^(WARNING|ERROR)/.test(l));
 const nodes = async (project) => (await ok('project_info', { project })).data.nodes.map(n => [n.id, n.folder, n.inFolder]);
-const NODES = [['uno', 'uno', ['uno/hello.asm', 'uno/hello.hex']], ['fpga', 'fpga', ['fpga/debounce.vhd', 'fpga/sevenseg.vhd', 'fpga/uart.vhd', 'fpga/uart_rx.vhd', 'fpga/uart_tx.vhd']]];
+const NODES = [['uno', 'uno', ['uno/hello.asm', 'uno/hello.hex']], ['fpga', 'fpga', ['fpga/debounce.vhd', 'fpga/sevenseg.vhd', 'fpga/uart.ucf', 'fpga/uart.vhd', 'fpga/uart_rx.vhd', 'fpga/uart_tx.vhd']]];
 
 test('#5488 a System project exported as a zip and imported: its files in the same node folders, its System the same, checked as before', async () => {
   await ok('new_project_from_example', { name: 'ua', example: 'uart-avr' });

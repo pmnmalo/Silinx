@@ -71,14 +71,15 @@ test('#4700 ids: free ones made, renamed in the links\' ends, refused when used 
 test('#4700 a node\'s fields: by its kind, its pins merged and removed, a variant and a firmware removed', () => {
   let s = built();
   s = ok(changeNode(s, 'fpga', { pins: { tx: null, rx: 'K3' }, variant: null, x: 13.4, y: '-7' })).system;
-  assert.deepEqual([s.nodes[0].pins, s.nodes[0].variant, s.nodes[0].x, s.nodes[0].y], [{ rx: 'K3' }, undefined, 13, -7]);
+  // (a pin removed: '' until the System is saved, which sets its constraints file, #5581)
+  assert.deepEqual([s.nodes[0].pins, s.nodes[0].variant, s.nodes[0].x, s.nodes[0].y], [{ rx: 'K3', tx: '' }, undefined, 13, -7]);
   s = ok(changeNode(s, 'mcu', { firmware: 'mcu/echo.hex', board: 'arduino-nano' })).system;
   assert.deepEqual([s.nodes[1].firmware, s.nodes[1].board], ['mcu/echo.hex', 'arduino-nano']);
   assert.equal(ok(changeNode(s, 'mcu', { firmware: '' })).system.nodes[1].firmware, null);
   assert.deepEqual(changeNode(s, 'mcu', { board: 'pico' }), { error: "no microcontroller board 'pico': arduino-uno, arduino-nano, explorer-1632" });
   assert.deepEqual(changeNode(s, 'mcu', { module: 'uart' }), { error: "mcu: a Microcontroller node has no field 'module' (id, board, firmware, usb, x, y, lang)" });
   assert.deepEqual(changeNode(s, 'term', { board: 'basys2' }), { error: "term: a Serial terminal node has no field 'board' (id, x, y)" });
-  assert.deepEqual(changeNode(s, 'fpga', { firmware: 'a.hex' }), { error: "fpga: a FPGA node has no field 'firmware' (id, module, board, variant, pins, usb, x, y, lang)" });
+  assert.deepEqual(changeNode(s, 'fpga', { firmware: 'a.hex' }), { error: "fpga: a FPGA node has no field 'firmware' (id, module, board, variant, pins, constraints, usb, x, y, lang)" });
   assert.deepEqual(changeNode(s, 'nope', {}), { error: "no node 'nope' in the System" });
 });
 
@@ -87,7 +88,7 @@ test('#4700 nodes added: every kind, an unknown kind or board refused', () => {
   assert.deepEqual(addNode(s, { kind: 'pico' }), { error: "no node kind 'pico': fpga, mcu, terminal, circuit, design" });
   assert.deepEqual(addNode(s, { kind: 'mcu', board: 'esp32' }), { error: "no microcontroller board 'esp32': arduino-uno, arduino-nano, explorer-1632" });
   const f = ok(addNode(s, { kind: 'fpga' }));
-  assert.deepEqual(f.system.nodes[0], { id: 'fpga', kind: 'fpga', module: null, board: 'basys2', pins: {}, lang: 'vhdl', interfaces: [], x: 0, y: 0 });
+  assert.deepEqual(f.system.nodes[0], { id: 'fpga', kind: 'fpga', module: null, board: 'basys2', lang: 'vhdl', interfaces: [], x: 0, y: 0 });
   assert.deepEqual(Object.keys(NODE_KIND_NAMES), ['fpga', 'mcu', 'terminal', 'circuit']);
   assert.deepEqual(UART_DEFAULTS, { baud: 9600, frame: '8N1' });
 });

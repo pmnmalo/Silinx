@@ -1,7 +1,7 @@
 // Silinx - a System's FPGA nodes implemented, each on its own board (#5446, roadmap #4695's phase 3, docs/SYSTEMS.md):
 // a node's Implement and Implement System (every FPGA node, one after another), for the interface (POST
 // /projects/:p/implement with { node }) and the MCP's run_process (node). Each node is built as a project of its own
-// (core/system-node.js nodeProject: its module the top, its board's device, its constraints made from its pins) in a
+// (core/system-node.js nodeProject: its module the top, its board's device, its constraints file, #5581: its folder's) in a
 // folder of its own, build/nodes/<id>/ (the node's folder, <id>/, copied there, #5488; its own build/ inside), by the Silinx toolchain;
 // the project's build/ and silinx.json are not touched.
 import fs from 'node:fs/promises';
@@ -16,6 +16,8 @@ import { nodeConstraints, nodeProject, nodeRefusal } from '../core/system-node.j
 import { ucfPort } from '../core/board-constraints.js';
 import { relInNode } from '../core/system-layout.js';
 import { fpgaSources } from '../core/system-plan.js';
+import { withNodePins, nodeConstraintsPath } from '../core/system-constraints.js';
+import { constraintsTexts } from './system-constraints.js';
 import { takeBuildRecord, writeBuildRecord } from './system-plan.js';
 
 const running = new Map();   // project -> job id
@@ -39,7 +41,9 @@ async function systemOf(name) {
   const r = projectSystem(pj, { files, texts });
   if (r.error) throw new P.HttpError(400, `${r.system}: ${r.error}`);
   if (!r.model || r.implicit) throw new P.HttpError(400, `the project '${name}' has no System as its top: implement it as an FPGA project`);
-  return { pj, nodes: r.model.nodes.filter(n => n.kind === 'fpga') };
+  // (each FPGA node's pins its constraints file's, #5581)
+  const model = withNodePins(r.model, await constraintsTexts(name, r.model, files)).system;
+  return { pj, nodes: model.nodes.filter(n => n.kind === 'fpga') };
 }
 
 // the node's module's ports, as the constraints read them (its folder's sources only, #5488)
@@ -58,8 +62,9 @@ async function portsOf(name, pj, node) {
 export async function implementOne(job, name, pj, node, steps) {
   const why = nodeRefusal(node);
   if (why) throw new Error(why);
-  const ports = await portsOf(name, pj, node);
-  const c = nodeConstraints(node, ports);
+  // (its constraints file as it is, #5581; a document of before, its pins in it: a file made from them, as before)
+  const file = nodeConstraintsPath(node), has = await fs.stat(P.safeJoin(P.projectDir(name), file)).then(st => st.isFile(), () => false);
+  const c = has ? { path: file, own: true } : nodeConstraints(node, await portsOf(name, pj, node));
   // (what its bitstream is built from, for the System's build plan, #5489: its sources as they are now)
   const record = !steps?.length || steps.includes('bitgen') ? await takeBuildRecord(name, node, fpgaSources(await P.fileTree(name), node.id)) : null;
   const dir = nodeDir(name, node.id), src = P.projectDir(name);
@@ -68,9 +73,9 @@ export async function implementOne(job, name, pj, node, steps) {
   // (the node's folder alone, #5488: its files at their paths, another node's not built with it)
   const own = P.safeJoin(src, node.id);
   if (await fs.stat(own).then(st => st.isDirectory(), () => false)) await fs.cp(own, P.safeJoin(dir, node.id), { recursive: true });
-  await fs.writeFile(P.safeJoin(dir, c.path), c.text);
+  if (!c.own) await fs.writeFile(P.safeJoin(dir, c.path), c.text);
   const project = nodeProject(pj, node, c.path);
-  job.log(`System node ${node.id}: its module ${node.module} on ${node.board}${node.variant ? ` (${node.variant})` : ''}, its constraints ${c.path} from its pins, built in build/nodes/${node.id}/.`);
+  job.log(`System node ${node.id}: its module ${node.module} on ${node.board}${node.variant ? ` (${node.variant})` : ''}, its constraints ${c.path}${c.own ? '' : ' from its pins'}, built in build/nodes/${node.id}/.`);
   const out = await runOpenImplementation(job, { project, projectDir: dir, steps: openSteps(steps, { family: openFamilyOf(deviceFamily(project.device)) }) });
   if (record) await writeBuildRecord(name, node, record);
   return out;

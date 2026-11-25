@@ -13,6 +13,8 @@ import { systemVcd } from '../core/system-waves.js';
 import { ucfPort } from '../core/board-constraints.js';
 import { normalizeCircuit } from '../core/circuit.js';
 import { runningSystem, emulateNodesOf, runName } from '../core/system-alone.js';
+import { withNodePins } from '../core/system-constraints.js';
+import { constraintsTexts } from './system-constraints.js';
 import { isRegmapFile, regmapFor, hierModules } from '../core/regmap.js';
 import { controlSteps } from '../core/system-controls.js';
 
@@ -59,9 +61,11 @@ export async function simulateSystem(name, top, { ms = 100, type = {}, controls 
   const r = readSystem(await projectText(name, file, `no System '${file}' in the project '${name}'`));
   if (r.error) throw toolError(`${file}: ${r.error}`);
   const ids = only != null ? only.split(',').map(x => x.trim()).filter(Boolean) : controls ? emulateNodesOf(await P.readProject(name), r.system) : null;
-  const cut = runningSystem(r.system, ids, { circuits: await circuitsOf(name, r.system) });
+  // (each FPGA node's pins its constraints file's, #5581; its problems the run's warnings)
+  const pinned = withNodePins(r.system, await constraintsTexts(name, r.system, await P.fileTree(name)));
+  const cut = runningSystem(pinned.system, ids, { circuits: await circuitsOf(name, r.system) });
   if (cut.error) throw toolError(`top: ${cut.error}`);
-  const said = cut.warnings.map(w => `WARNING: ${runName(controls ? 'Emulate' : 'Simulate', ids)}: ${w}`);
+  const said = [...pinned.problems.map(p => p.message), ...cut.warnings].map(w => `WARNING: ${runName(controls ? 'Emulate' : 'Simulate', ids)}: ${w}`);
   const sys = cut.system;
   const { ports, designs } = await modulesOf(name, sys);
   const { netlistOf } = await import('../core/compiled-sim.js');
