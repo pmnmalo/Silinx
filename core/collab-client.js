@@ -510,7 +510,7 @@ export async function followRoom({ url, room, key: keyText, sign = null, owner: 
   const ready = new Promise((resolve, reject) => { synced = () => { arrived = true; resolve(); }; failed = reject; });
   ready.catch(() => {});
   let warned = false, left = false;
-  let cur = null, owner = null, away = false, backs = 0;   // (the connection now; the owner's client id; the owner away, back how often, #4850)
+  let cur = null, owner = null, away = false, backs = 0, askAgain = false;   // (the connection now; the owner's client id; the owner away, back how often, #4850; its request to be listed made again, #5570)
   let ended = null, stopped = false, lostAt = null, timer = null;   // (why it ended; close() called; since when lost)
   // (the document past what a follower takes: left, said once; #3527: its bytes, whatever they hold, the updates and
   // the edits received counted; an editor's edit the owner refuses, refused here too, not applied)
@@ -565,11 +565,13 @@ export async function followRoom({ url, room, key: keyText, sign = null, owner: 
   };
   // (the whole document, as the owner sends it at a join: every client's from its start, the owner's first; again
   // once it has arrived, the owner's room resumed (#3835): this participant's state sent again, its clock past the one
-  // the owner knew, which may have timed out meanwhile)
-  const catchUp = (bytes, again) => {
+  // the owner knew, which may have timed out meanwhile; #5570: told the owner was away, its request to be listed made
+  // again when the owner's list does not have it, the room having dropped the one made while the owner was away)
+  const catchUp = (c, bytes, again) => {
     const { from, to } = Y.parseUpdateMeta(bytes);
     if (from.get(owner) !== 0) return;
     if (again && lostAt === null) awareness.setLocalState({ ...awareness.getLocalState() });
+    if (askAgain) { askAgain = false; amListed().then(l => { if (!l && cur === c) enrol(c); }).catch(() => {}); }
     if (!signer || !mine.length) return;
     const theirs = Y.encodeStateVector(new Map([[doc.clientID, to.get(doc.clientID) ?? 0]]));
     sendEdit(Y.diffUpdate(Y.mergeUpdates(mine), theirs));
@@ -583,6 +585,7 @@ export async function followRoom({ url, room, key: keyText, sign = null, owner: 
     // its clock too (taken again as it comes back); back, the whole document comes again)
     else if (msg.type === 'away' && !away) {
       away = true;
+      askAgain = true;
       if (owner !== null) { removeAwarenessStates(awareness, [owner], 'relay'); awareness.meta.delete(owner); }
       onEvent({ type: 'away', grace: Number.isSafeInteger(msg.grace) && msg.grace > 0 ? msg.grace : null });
     } else if (msg.type === 'back' && away) { away = false; backs++; onEvent({ type: 'back' }); }
@@ -603,7 +606,7 @@ export async function followRoom({ url, room, key: keyText, sign = null, owner: 
       const outside = updateOutside(doc, m.bytes);
       if (!outside) Y.applyUpdate(doc, m.bytes, 'remote');
       const again = arrived;
-      if (!capped(c, m.bytes.length, outside)) { synced(); if (!outside) catchUp(m.bytes, again); }
+      if (!capped(c, m.bytes.length, outside)) { synced(); if (!outside) catchUp(c, m.bytes, again); }
     }
     else if (m.kind === KIND.awareness) applyAwarenessFrom(awareness, m.bytes);   // (the owner's: who is in)
     else if (m.kind === KIND.role) await roleIn(m.bytes);
