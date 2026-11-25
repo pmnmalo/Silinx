@@ -4,6 +4,44 @@ What changed in each version of silinx-pic24, the Silinx PIC24 emulator. The new
 are its own (semver, 0.x until its API is stable), apart from Silinx's. What changed since the last release is in
 [changes/](changes/).
 
+## 0.3.0
+
+In short:
+
+- The input capture and output compare modules IC1-6 and OC1-6: compare, PWM on the pins and capture.
+- The MCCP and SCCP modules: timers, output compare, PWM on the pins and input capture.
+
+In detail:
+
+- **IC1-6 and OC1-6 (#5529):** icoc.js, the input capture and output compare modules with dedicated timers, each a
+  16-bit time base (timebase.js) on the system clock or Timer1-5's prescaled clock while that timer runs; SYNCSEL its
+  period: its own (an OC's OCxRS + 1), Timer1-3's match, another OC's or a CCP module's period, else free-running. OC:
+  single shot high and low, a toggle at each match, a pulse once and every period, edge-aligned PWM (high for OCxR
+  counts from the period's start, OCxR and OCxRS latched at each period), OCxIF, OCINV, OCTRIS; OC1-3 through PPS,
+  OC4-6 on RD6, RD7, RF0. IC: every edge, falling, rising, every 4th and 16th rising, the FIFO of four, ICBNE, ICOV,
+  ICxIF every ICI + 1 captures, ICM 111 an interrupt while the device sleeps; IC1-3 through PPS, IC4-6 on RE5-RE7.
+  timers.js: clock(name), a timer's prescaled clock, and onChange; Timer1-3's matches the IC / OC sync as well as the
+  A/D's triggers. Not modelled, said when used: the cascaded 32-bit modes, Trigger mode (taken as Sync), center-aligned
+  PWM, the other sync sources; not modelled: the Faults, DCB. Tests: pic24-icoc (the registers, PWM on its own period
+  and on Timer2's, the duty latched, the compare modes, OCINV and OCTRIS, the captures on the system clock and on
+  Timer3's, ICM 111 asleep, the warnings; a program measuring OC1's PWM with IC1 on the same pin).
+- **MCCP1-3 and SCCP4-7 (part 1 of #5529):** ccp.js, each module's time base (timebase.js: counted lazily, its
+  periods' starts clock events) on the system clock, the SOSC or twice the peripheral clock, through TMRPS (1, 4, 16,
+  64); the timer modes (two 16-bit timers, CCTxIF and CCPxIF, a period register 0 holding its timer; one 32-bit
+  timer); single edge compare (high, low, toggle one clock after CCPxRA's match, SCEVT, CCPxIF); dual edge compare and
+  the buffered PWM (high one clock after CCPxRA's match, low after CCPxRB's, CCPxIF at the fall, the buffered values at
+  the next period), steered to the OCMxA-F enabled in CCPxCON2H with POLACE / POLBDF's polarity; OPS's postscale; a
+  module synchronised to another's period (SYNC 00010-01000); input capture (the free-running timer's value at the
+  ICMx pin's edges: every edge, rising, falling, both, every 4th and 16th rising; the FIFO of four, two in 32 bits;
+  ICBNE, ICOV; CCPxIF every OPS + 1 captures); Sleep (CCPSLP on the SOSC) and Idle (CCPSIDL). MCCP1-3's outputs and
+  every module's ICMx input on their fixed pins (MCCP3's OCM3D on RA0, the Explorer's LED D3), SCCP4-7's outputs
+  through PPS (OCM4-7). Not modelled, and said when used: center-aligned PWM, variable frequency, the external input
+  mode, the output modes but the steerable single output, the clocks and sync sources other than those above; not
+  modelled: dead time, auto-shutdown, triggered operation, gating, the special event trigger. Tests: pic24-ccp (the
+  registers, the timers, the compare modes' edges at their times, PWM's period and duty on RA0 and through PPS, the
+  sync, the captures' timestamps, the FIFO and ICOV, Sleep, the warnings; LED D3 dimmed by PWM on the Explorer 16/32,
+  an input's period measured by a program).
+
 ## 0.2.0
 
 The first version on npm: 0.1.0, the core below, was tagged but not published (its release did not find its tag's CI
