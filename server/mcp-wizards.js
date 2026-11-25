@@ -198,8 +198,8 @@ export const WIZARD_TOOLS = [
     },
   },
   {
-    name: 'constraints_wizard', title: 'Constraints Wizard (UCF, PCF, LPF, CST, CCF, XDC)',
-    description: 'Write a constraints file for a module\'s ports in the device\'s format, as the UCF Wizard does (its PCF, LPF, CST, CCF, XDC Wizard on other families): each port bit on a pin of the board, by its name (clk, led, sw, btn, seg, an…) and direction, the clock\'s period from the board; pins given override them (x, or x<3> for a bit), and with no board all are given. A PCF, LPF or CST takes its format\'s attributes and is refused with a pin not of the package or an I/O standard at another voltage than its bank\'s. It becomes the project\'s constraints file when it has none. An existing file is not replaced (set_top with update_constraints writes the project\'s again).',
+    name: 'constraints_wizard', title: 'Constraints Wizard (UCF, PCF, LPF, CST, CCF, XDC, QSF)',
+    description: 'Write a constraints file for a module\'s ports in the device\'s format, as the UCF Wizard does (its PCF, LPF, CST, CCF, XDC, QSF Wizard on other families): each port bit on a pin of the board, by its name (clk, led, sw, btn, seg, an…) and direction, the clock\'s period from the board; pins given override them (x, or x<3> for a bit), and with no board all are given. A PCF, LPF or CST takes its format\'s attributes and is refused with a pin not of the package or an I/O standard at another voltage than its bank\'s. It becomes the project\'s constraints file when it has none. An existing file is not replaced (set_top with update_constraints writes the project\'s again).',
     inputSchema: { type: 'object', properties: {
       project: PROJECT, module: STR('The module (default: the project\'s top).'), name: STR('The file\'s name (default: the module\'s).'), location: STR('Its folder (default constraints).'),
       pins: { type: 'object', additionalProperties: { type: 'string' }, description: 'Pins given: { net: pin }, e.g. { "led<0>": "M5", "clk": "B8" }.' },
@@ -213,7 +213,7 @@ export const WIZARD_TOOLS = [
       const { wizardTitle, wizardText, wizardError, applyAttributes, article } = await import('../core/constraints-wizard.js');
       // (the device's format, #2296: the interface's wizard's title, text and checks)
       const format = constraintsFormatOf(pj.device), ext = constraintsExtOf(pj.device), title = wizardTitle(pj.device);
-      if (attributes && ['ucf', 'xdc'].includes(format)) throw toolError(`attributes: ${article(format.toUpperCase())} ${format.toUpperCase()}'s are I/O Pin Planning's (write_file), not the wizard's`);
+      if (attributes && ['ucf', 'xdc', 'qsf'].includes(format)) throw toolError(`attributes: ${article(format.toUpperCase())} ${format.toUpperCase()}'s are I/O Pin Planning's (write_file), not the wizard's`);
       const { compile, elaborate } = await import('../core/compile.js');
       const { primitiveSources } = await import('../core/unisim.js');
       const { viewSourcesOf } = await import('./mcp-util.js');

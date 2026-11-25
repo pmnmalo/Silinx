@@ -1,0 +1,487 @@
+{
+ "board": "Terasic DE2-115",
+ "part": "EP4CE115F29C7N",
+ "package": "F29: 780-pin FineLine BGA (FBGA-780)",
+ "manual": {
+  "title": "DE2-115 User Manual",
+  "revision": "V2.3 (last entry of its revision history: Update by internal review)",
+  "date": "Copyright 2017; PDF created 2017-08-14",
+  "url": "https://www.terasic.com.tw/attachment/archive/502/DE2_115_User_manual.pdf"
+ },
+ "tables": {
+  "CLOCK_50": {
+   "table": "Table 4-5",
+   "iostandard": "3.3V",
+   "pins": [
+    "PIN_Y2"
+   ]
+  },
+  "CLOCK2_50": {
+   "table": "Table 4-5",
+   "iostandard": "3.3V",
+   "pins": [
+    "PIN_AG14"
+   ]
+  },
+  "CLOCK3_50": {
+   "table": "Table 4-5",
+   "iostandard": "Depending on JP6",
+   "pins": [
+    "PIN_AG15"
+   ]
+  },
+  "SMA_CLKIN": {
+   "table": "Table 4-5",
+   "iostandard": "3.3V",
+   "pins": [
+    "PIN_AH14"
+   ]
+  },
+  "SMA_CLKOUT": {
+   "table": "Table 4-5",
+   "iostandard": "Depending on JP6",
+   "pins": [
+    "PIN_AE23"
+   ]
+  },
+  "LEDR": {
+   "table": "Table 4-3",
+   "iostandard": "2.5V",
+   "pins": [
+    "PIN_G19",
+    "PIN_F19",
+    "PIN_E19",
+    "PIN_F21",
+    "PIN_F18",
+    "PIN_E18",
+    "PIN_J19",
+    "PIN_H19",
+    "PIN_J17",
+    "PIN_G17",
+    "PIN_J15",
+    "PIN_H16",
+    "PIN_J16",
+    "PIN_H17",
+    "PIN_F15",
+    "PIN_G15",
+    "PIN_G16",
+    "PIN_H15"
+   ]
+  },
+  "LEDG": {
+   "table": "Table 4-3",
+   "iostandard": "2.5V",
+   "pins": [
+    "PIN_E21",
+    "PIN_E22",
+    "PIN_E25",
+    "PIN_E24",
+    "PIN_H21",
+    "PIN_G20",
+    "PIN_G22",
+    "PIN_G21",
+    "PIN_F17"
+   ]
+  },
+  "SW": {
+   "table": "Table 4-1",
+   "iostandard": "Depending on JP7",
+   "pins": [
+    "PIN_AB28",
+    "PIN_AC28",
+    "PIN_AC27",
+    "PIN_AD27",
+    "PIN_AB27",
+    "PIN_AC26",
+    "PIN_AD26",
+    "PIN_AB26",
+    "PIN_AC25",
+    "PIN_AB25",
+    "PIN_AC24",
+    "PIN_AB24",
+    "PIN_AB23",
+    "PIN_AA24",
+    "PIN_AA23",
+    "PIN_AA22",
+    "PIN_Y24",
+    "PIN_Y23"
+   ]
+  },
+  "KEY": {
+   "table": "Table 4-2",
+   "iostandard": "Depending on JP7",
+   "pins": [
+    "PIN_M23",
+    "PIN_M21",
+    "PIN_N21",
+    "PIN_R24"
+   ]
+  },
+  "HEX0": {
+   "table": "Table 4-4",
+   "iostandard": "2.5V / Depending on JP7",
+   "pins": [
+    "PIN_G18",
+    "PIN_F22",
+    "PIN_E17",
+    "PIN_L26",
+    "PIN_L25",
+    "PIN_J22",
+    "PIN_H22"
+   ]
+  },
+  "HEX1": {
+   "table": "Table 4-4",
+   "iostandard": "Depending on JP7",
+   "pins": [
+    "PIN_M24",
+    "PIN_Y22",
+    "PIN_W21",
+    "PIN_W22",
+    "PIN_W25",
+    "PIN_U23",
+    "PIN_U24"
+   ]
+  },
+  "HEX2": {
+   "table": "Table 4-4",
+   "iostandard": "Depending on JP7",
+   "pins": [
+    "PIN_AA25",
+    "PIN_AA26",
+    "PIN_Y25",
+    "PIN_W26",
+    "PIN_Y26",
+    "PIN_W27",
+    "PIN_W28"
+   ]
+  },
+  "HEX3": {
+   "table": "Table 4-4",
+   "iostandard": "Depending on JP6 / Depending on JP7",
+   "pins": [
+    "PIN_V21",
+    "PIN_U21",
+    "PIN_AB20",
+    "PIN_AA21",
+    "PIN_AD24",
+    "PIN_AF23",
+    "PIN_Y19"
+   ]
+  },
+  "HEX4": {
+   "table": "Table 4-4",
+   "iostandard": "Depending on JP6",
+   "pins": [
+    "PIN_AB19",
+    "PIN_AA19",
+    "PIN_AG21",
+    "PIN_AH21",
+    "PIN_AE19",
+    "PIN_AF19",
+    "PIN_AE18"
+   ]
+  },
+  "HEX5": {
+   "table": "Table 4-4",
+   "iostandard": "Depending on JP6",
+   "pins": [
+    "PIN_AD18",
+    "PIN_AC18",
+    "PIN_AB18",
+    "PIN_AH19",
+    "PIN_AG19",
+    "PIN_AF18",
+    "PIN_AH18"
+   ]
+  },
+  "HEX6": {
+   "table": "Table 4-4",
+   "iostandard": "Depending on JP6",
+   "pins": [
+    "PIN_AA17",
+    "PIN_AB16",
+    "PIN_AA16",
+    "PIN_AB17",
+    "PIN_AB15",
+    "PIN_AA15",
+    "PIN_AC17"
+   ]
+  },
+  "HEX7": {
+   "table": "Table 4-4",
+   "iostandard": "3.3V / Depending on JP6",
+   "pins": [
+    "PIN_AD17",
+    "PIN_AE17",
+    "PIN_AG17",
+    "PIN_AH17",
+    "PIN_AF17",
+    "PIN_AG18",
+    "PIN_AA14"
+   ]
+  },
+  "VGA_R": {
+   "table": "Table 4-16",
+   "iostandard": "3.3V",
+   "pins": [
+    "PIN_E12",
+    "PIN_E11",
+    "PIN_D10",
+    "PIN_F12",
+    "PIN_G10",
+    "PIN_J12",
+    "PIN_H8",
+    "PIN_H10"
+   ]
+  },
+  "VGA_G": {
+   "table": "Table 4-16",
+   "iostandard": "3.3V",
+   "pins": [
+    "PIN_G8",
+    "PIN_G11",
+    "PIN_F8",
+    "PIN_H12",
+    "PIN_C8",
+    "PIN_B8",
+    "PIN_F10",
+    "PIN_C9"
+   ]
+  },
+  "VGA_B": {
+   "table": "Table 4-16",
+   "iostandard": "3.3V",
+   "pins": [
+    "PIN_B10",
+    "PIN_A10",
+    "PIN_C11",
+    "PIN_B11",
+    "PIN_A11",
+    "PIN_C12",
+    "PIN_D11",
+    "PIN_D12"
+   ]
+  },
+  "VGA_HS": {
+   "table": "Table 4-16",
+   "iostandard": "3.3V",
+   "pins": [
+    "PIN_G13"
+   ]
+  },
+  "VGA_VS": {
+   "table": "Table 4-16",
+   "iostandard": "3.3V",
+   "pins": [
+    "PIN_C13"
+   ]
+  },
+  "VGA_BLANK_N": {
+   "table": "Table 4-16",
+   "iostandard": "3.3V",
+   "pins": [
+    "PIN_F11"
+   ]
+  },
+  "VGA_SYNC_N": {
+   "table": "Table 4-16",
+   "iostandard": "3.3V",
+   "pins": [
+    "PIN_C10"
+   ]
+  },
+  "VGA_CLK": {
+   "table": "Table 4-16",
+   "iostandard": "3.3V",
+   "pins": [
+    "PIN_A12"
+   ]
+  },
+  "LCD_DATA": {
+   "table": "Table 4-6",
+   "iostandard": "3.3V",
+   "pins": [
+    "PIN_L3",
+    "PIN_L1",
+    "PIN_L2",
+    "PIN_K7",
+    "PIN_K1",
+    "PIN_K2",
+    "PIN_M3",
+    "PIN_M5"
+   ]
+  },
+  "LCD_EN": {
+   "table": "Table 4-6",
+   "iostandard": "3.3V",
+   "pins": [
+    "PIN_L4"
+   ]
+  },
+  "LCD_RW": {
+   "table": "Table 4-6",
+   "iostandard": "3.3V",
+   "pins": [
+    "PIN_M1"
+   ]
+  },
+  "LCD_RS": {
+   "table": "Table 4-6",
+   "iostandard": "LCD Command/Data Select, 0 = Command, 1 = Data 3.3V",
+   "pins": [
+    "PIN_M2"
+   ]
+  },
+  "LCD_ON": {
+   "table": "Table 4-6",
+   "iostandard": "3.3V",
+   "pins": [
+    "PIN_L5"
+   ]
+  },
+  "LCD_BLON": {
+   "table": "Table 4-6",
+   "iostandard": "3.3V",
+   "pins": [
+    "PIN_L6"
+   ]
+  },
+  "UART_RXD": {
+   "table": "Table 4-18",
+   "iostandard": "3.3V",
+   "pins": [
+    "PIN_G12"
+   ]
+  },
+  "UART_TXD": {
+   "table": "Table 4-18",
+   "iostandard": "3.3V",
+   "pins": [
+    "PIN_G9"
+   ]
+  },
+  "UART_CTS": {
+   "table": "Table 4-18",
+   "iostandard": "3.3V",
+   "pins": [
+    "PIN_G14"
+   ]
+  },
+  "UART_RTS": {
+   "table": "Table 4-18",
+   "iostandard": "3.3V",
+   "pins": [
+    "PIN_J13"
+   ]
+  },
+  "PS2_CLK": {
+   "table": "Table 4-19",
+   "iostandard": "3.3V",
+   "pins": [
+    "PIN_G6"
+   ]
+  },
+  "PS2_DAT": {
+   "table": "Table 4-19",
+   "iostandard": "3.3V",
+   "pins": [
+    "PIN_H5"
+   ]
+  },
+  "PS2_CLK2": {
+   "table": "Table 4-19",
+   "iostandard": "3.3V",
+   "pins": [
+    "PIN_G5"
+   ]
+  },
+  "PS2_DAT2": {
+   "table": "Table 4-19",
+   "iostandard": "3.3V",
+   "pins": [
+    "PIN_F5"
+   ]
+  },
+  "GPIO": {
+   "table": "Table 4-12",
+   "iostandard": "Depending on JP6",
+   "pins": [
+    "PIN_AB22",
+    "PIN_AC15",
+    "PIN_AB21",
+    "PIN_Y17",
+    "PIN_AC21",
+    "PIN_Y16",
+    "PIN_AD21",
+    "PIN_AE16",
+    "PIN_AD15",
+    "PIN_AE15",
+    "PIN_AC19",
+    "PIN_AF16",
+    "PIN_AD19",
+    "PIN_AF15",
+    "PIN_AF24",
+    "PIN_AE21",
+    "PIN_AF25",
+    "PIN_AC22",
+    "PIN_AE22",
+    "PIN_AF21",
+    "PIN_AF22",
+    "PIN_AD22",
+    "PIN_AG25",
+    "PIN_AD25",
+    "PIN_AH25",
+    "PIN_AE25",
+    "PIN_AG22",
+    "PIN_AE24",
+    "PIN_AH22",
+    "PIN_AF26",
+    "PIN_AE20",
+    "PIN_AG23",
+    "PIN_AF20",
+    "PIN_AH26",
+    "PIN_AH23",
+    "PIN_AG26"
+   ],
+   "headerPins": [
+    1,
+    2,
+    3,
+    4,
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    13,
+    14,
+    15,
+    16,
+    17,
+    18,
+    19,
+    20,
+    21,
+    22,
+    23,
+    24,
+    25,
+    26,
+    27,
+    28,
+    31,
+    32,
+    33,
+    34,
+    35,
+    36,
+    37,
+    38,
+    39,
+    40
+   ]
+  }
+ }
+}

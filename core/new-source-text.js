@@ -7,14 +7,14 @@ import { constraintsFormatOf } from '../packages/silinx-fpga/src/parts.js';
 
 /** The kinds of source (the MCP's new_source's types). */
 export const SOURCE_KINDS = ['module', 'package', 'test_bench', 'constraints', 'mem', 'c', 'cpp', 'schematic', 'asm', 'fsm', 'petri', 'circuit', 'boolean', 'regmap', 'lab'];
-const CONSTRAINTS = { ucf: T.ucfTemplate, pcf: T.pcfTemplate, lpf: T.lpfTemplate, cst: T.cstTemplate, ccf: T.ccfTemplate, xdc: T.xdcTemplate };
+const CONSTRAINTS = { ucf: T.ucfTemplate, pcf: T.pcfTemplate, lpf: T.lpfTemplate, cst: T.cstTemplate, ccf: T.ccfTemplate, xdc: T.xdcTemplate, qsf: T.qsfTemplate };
 // a drawing's or a C function's name from the file's
 const ident = n => String(n).replace(/[^A-Za-z0-9_]/g, '_');
 
 /**
  * The text of a new source of kind `kind` (SOURCE_KINDS) named `file` (no extension) in project `pj`. lang: 'vhdl' |
  * 'verilog'; a module's entity, arch (VHDL) and ports; a test bench's uut (core/uut-info.js uutInfo); a constraints file's
- * format (ucf, pcf, lpf, cst, ccf, xdc; the device's when not given); a circuit's template ({ id, params }: the Digital
+ * format (ucf, pcf, lpf, cst, ccf, xdc, qsf; the device's when not given); a circuit's template ({ id, params }: the Digital
  * Electronic Circuit Wizard's assembly; none, a half breadboard and its supply), a state diagram's (the FSM Wizard's;
  * none, an empty diagram). Throws for an unknown kind.
  */
@@ -24,7 +24,7 @@ export async function sourceText(kind, { file, lang = 'vhdl', pj = {}, entity, a
     case 'module': return lang === 'vhdl' ? T.vhdlModule(entity, arch, ports, pj) : T.vlogModule(entity, ports, pj);
     case 'package': return T.vhdlPackage(file, pj);
     case 'test_bench': return lang === 'vhdl' ? T.vhdlTestbench(file, uut, pj) : T.vlogTestbench(file, uut, pj);
-    // (the device's format: UCF, the iCE40's PCF, the ECP5's LPF, the Gowin's CST, the GateMate's CCF, the 7-series' XDC)
+    // (the device's format: UCF, the iCE40's PCF, the ECP5's LPF, the Gowin's CST, the GateMate's CCF, the 7-series' XDC, the Intel families' QSF)
     case 'constraints': return (CONSTRAINTS[format || constraintsFormatOf(pj.device)] || T.ucfTemplate)(pj);
     case 'mem': return '// memory initialization file ($readmemh format)\n00\n01\n02\n03\n';
     case 'c': return cTemplate(n);

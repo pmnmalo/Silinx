@@ -4,7 +4,7 @@
 // ./index.js gives all of it too.
 
 // the parts: their families and resources
-export { FAMILY_INFO, familyOfPart, deviceFamily, isIseFamily, openOnlyDevice, experimentalDevice, vivadoDevice, openFlowDevice, openFamilyOf, noOpenFlowMessage, noFlowMessage, constraintsFormatOf, constraintsExtOf, bitstreamExtOf, familyName, familyFromXise, splitBitPart } from './family.js';
+export { FAMILY_INFO, familyOfPart, deviceFamily, isIseFamily, openOnlyDevice, experimentalDevice, vivadoDevice, openFlowDevice, openFamilyOf, noOpenFlowMessage, noFlowMessage, deviceLabel, constraintsFormatOf, constraintsExtOf, bitstreamExtOf, familyName, familyFromXise, splitBitPart } from './family.js';
 export { resourcesOf, resourceCount, resourceOfPrimitive } from './resources.js';
 export { usedOfReport, primitiveInstances, deviceChangeIssues } from './resource-check.js';
 
@@ -18,6 +18,7 @@ export { LPF } from './lpf.js';
 export { CST } from './cst.js';
 export { CCF } from './ccf.js';
 export { XDC, readXdc, writeXdc } from './xdc.js';
+export { QSF, readQsf, writeQsf, writeSdc } from './qsf.js';
 
 // the flow's steps
 export { OPEN_STEPS, OPEN_CHAIN, XILINX_STEPS, orderOpenSteps, orderSteps, engineOf, s6MapOf, xc7SeedsOf } from './open-steps.js';

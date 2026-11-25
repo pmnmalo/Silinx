@@ -39,7 +39,7 @@ async function nodeTarget(name, pj, path) {
 export const CONSTRAINTS_TOOLS = [
   {
     name: 'check_constraints', title: 'Check Constraints',
-    description: 'Check a constraints file as Check Constraints does, in the device\'s format (UCF, PCF, LPF, CST, CCF or XDC): its errors and warnings with their line: the syntax, names that are no port of the top, ports with no pin, and the pins (not in the package, given to two ports, on no resource of the board, an I/O standard at another voltage than its bank\'s).',
+    description: 'Check a constraints file as Check Constraints does, in the device\'s format (UCF, PCF, LPF, CST, CCF, XDC or QSF): its errors and warnings with their line: the syntax, names that are no port of the top, ports with no pin, and the pins (not in the package, given to two ports, on no resource of the board, an I/O standard at another voltage than its bank\'s).',
     inputSchema: { type: 'object', properties: { project: PROJECT, file: STR('The constraints file (default: the project\'s).') }, required: ['project'], additionalProperties: false },
     annotations: { readOnlyHint: true },
     async run({ project: name, file }) {
@@ -48,7 +48,7 @@ export const CONSTRAINTS_TOOLS = [
       // (a System's FPGA node's constraints file, #5581: its module, its board and device)
       const pj = await nodeTarget(name, project, path) ?? project;
       if (!path) throw toolError(`the project '${name}' has no constraints file: give file`);
-      if (!/\.(ucf|pcf|lpf|cst|ccf|xdc)$/i.test(path)) throw toolError(`${path} is not a constraints file (.ucf, .pcf, .lpf, .cst, .ccf, .xdc)`);
+      if (!/\.(ucf|pcf|lpf|cst|ccf|xdc|qsf)$/i.test(path)) throw toolError(`${path} is not a constraints file (.ucf, .pcf, .lpf, .cst, .ccf, .xdc, .qsf)`);
       let text;
       try { text = await P.readFile(name, path); } catch { throw toolError(`${path} cannot be read.`); }
       const { ports, lang } = await topPorts(name, pj);

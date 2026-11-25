@@ -96,7 +96,7 @@ export function taskOfDoc(id) {
   // (a System's FPGA node's I/O Pin Planning, pins:<node>, #5581)
   if (/^(summary|pins|fpgaview|impact|capture)$/.test(s) || /^(text|tech|rtl|pins):/.test(s) || s.startsWith('file:build/')) return 'impl';
   // (the constraints file: Edit Constraints (Text), as I/O Pin Planning, #1265)
-  if (/^file:.+\.(ucf|pcf|lpf|cst|ccf|xdc)$/i.test(s)) return 'impl';
+  if (/^file:.+\.(ucf|pcf|lpf|cst|ccf|xdc|qsf)$/i.test(s)) return 'impl';
   return 'edit';
 }
 
