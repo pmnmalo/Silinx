@@ -60,6 +60,8 @@ uiTest('#5488 a node renamed: its folder renamed with it; a node removed: its fo
   // (each save's Check System: the 5 V warning with the Arduino, the FPGA alone without it)
   const HOT = "WARNING: serial: avr's D1, a 5 V output, drives fpga's rx (pin J3), a 3.3 V input of the FPGA (LVCMOS33): a level shifter or a divider on the real boards";
   const ALONE = 'WARNING: fpga joins nothing: no link reaches it';
+  // (#5591: the last save's Check System, after the folder's deletion, may come after its message: waited for)
+  await page.waitFor(() => [...document.querySelectorAll('#console-log .ln')].filter((l) => /^(WARNING|ERROR)/.test(l.textContent)).length >= 4, [], { what: 'the last save\'s Check System' });
   assert.deepEqual(await errors(page), [HOT, ALONE, HOT, ALONE]);
   assert.deepEqual(page.console.filter((c) => c.type === 'error' || c.type === 'warning' || c.type === 'warn').map((c) => c.text), []);
 });
