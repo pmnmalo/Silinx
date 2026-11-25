@@ -356,8 +356,17 @@ const DEFAULT_SETTINGS_SH = '/opt/Xilinx/14.7/ISE_DS/settings64.sh';
 export { unconstrainedPorts } from '../core/auto-pins.js';
 import { unconstrainedPorts, pinsTaken } from '../core/auto-pins.js';
 import { isGeneratedSource, viewHdl } from '../core/view-hdl.js';
+import { inCpuNode } from '../core/drawing-code.js';
 import { blackboxesIn, blackboxModels } from '../core/c-blackbox.js';
 import { modulesFromLibrary } from '../core/schdoc.js';
+
+// whether a path is in the project's System's CPU nodes' folders (core/drawing-code.js inCpuNode), its System document
+// read from the disk
+async function cpuNodeOf(project, projectDir, disk) {
+  const texts = {};
+  for (const f of disk.filter(f => /\.sys\.json$/i.test(f))) { try { texts[f] = await fs.readFile(path.join(projectDir, f), 'utf8'); } catch { /* unreadable */ } }
+  return inCpuNode(project, { files: disk, texts });
+}
 
 /**
  * The project's drawn sources without an HDL file (schematics, ASM charts, state diagrams, truth
@@ -367,7 +376,9 @@ import { modulesFromLibrary } from '../core/schdoc.js';
 export async function viewSources(project, projectDir, hdl = []) {
   const out = (project.excluded || []);
   const disk = await walkFiles(projectDir);
-  const views = disk.filter(f => isGeneratedSource(f) && !out.includes(f) && !/^build\//.test(f));   // (.c too: #1531)
+  // (.c too: #1531; not a System's CPU node's C sources and drawings: its board's program, #5486)
+  const cpu = await cpuNodeOf(project, projectDir, disk);
+  const views = disk.filter(f => isGeneratedSource(f) && !out.includes(f) && !/^build\//.test(f) && !cpu(f));
   if (!views.length) return [];
   // (a drawing whose HDL file is gone, deleted or removed from the project, is one without it: #231)
   const inProject = new Set((project.files || []).map(f => f.path).filter(f => disk.includes(f)));

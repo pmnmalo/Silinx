@@ -13,6 +13,7 @@ import { VIEW_RE, definesModule, drawingInLanguage, drawnHdlClash, drawnHdlPath,
 import { isDesignOnly } from './project-kind.js';
 import { useProjectParts } from './circuit-kicad.js';
 import { modelRunners } from './circuit-live-model.js';
+import { cpuDrawingRefusal, drawingC, drawingNode, isCodeFile, isCpuLang, nodePins } from './drawing-code.js';
 
 const kindOf = path => VIEW_RE.exec(path)?.[1].toLowerCase();
 const indent = path => (kindOf(path) === 'sch' ? 1 : 2);
@@ -58,17 +59,28 @@ async function linkOf(P, name, path) {
   const pj = await P.readProject(name);
   const tree = await P.fileTree(name);
   const target = m.generatedFile;
-  if (!tree.includes(target) || !(pj.files || []).some(f => f.path === target) || (pj.excluded || []).includes(path)) return null;
+  // (a drawing's C, #5486: a file of the project folder, not an HDL source of its list)
+  if (!tree.includes(target) || !(isCodeFile(target) || (pj.files || []).some(f => f.path === target)) || (pj.excluded || []).includes(path)) return null;
   // (a circuit's parts: the project's KiCad parts too, #4280)
   if (kindOf(path) === 'circ') await useProjectParts(P, name);
   return { m, target, tree };
 }
 
-/** A drawing's HDL file made again from it: { target, written, removed, stale: its errors' text or null, messages }
- *  (null: a drawing with no HDL file in the project, or not a drawing). */
+/** A drawing's node in its project's System (core/drawing-code.js drawingNode: { node, lang }), or null. */
+export async function nodeOfDrawing(P, name, path) {
+  const tree = await P.fileTree(name);
+  const texts = {};
+  for (const f of tree.filter(f => /\.sys\.json$/i.test(f))) { try { texts[f] = await P.readFile(name, f); } catch { /* unreadable: no System */ } }
+  return drawingNode(await P.readProject(name), path, { files: tree, texts });
+}
+
+/** A drawing's HDL file made again from it (its C in a CPU node, #5486): { target, written, removed, stale: its errors'
+ *  text or null, messages } (null: a drawing with no HDL file in the project, or not a drawing). */
 export async function syncDrawing(P, name, path, modules = null) {
   const link = await linkOf(P, name, path);
   if (!link) return null;
+  const at = await nodeOfDrawing(P, name, path);
+  if (isCpuLang(at?.lang)) return syncCode(P, name, path, link, at);
   const { m, target, tree } = link;
   const mods = modules || (kindOf(path) === 'sch' ? await projectModules(P, name) : {});
   // in another language than its file's: its HDL file in that language, the other one removed
@@ -92,6 +104,40 @@ export async function syncDrawing(P, name, path, modules = null) {
   return { target, written: target, removed: null, stale: null, messages: await designProject(P, name) ? [] : [`${target} updated from ${path}`] };
 }
 
+// a drawing's C made again (its file the C, or its HDL from before its node's language was C: the C instead)
+async function syncCode(P, name, path, { m, target, tree }, at) {
+  const r = drawingC(path, JSON.stringify(m), { lang: at.lang, pins: nodePins(at.node) });
+  const warn = r.warnings.map(w => `WARNING: ${w}`);
+  if (r.errors.length) {
+    const why = r.errors.map(e => e.replace(`${path}: `, '')).join('; ');
+    return { target, written: null, removed: null, stale: why, messages: [`WARNING: ${target} not updated: ${path} has errors: ${why}`] };
+  }
+  if (!isCodeFile(target)) {
+    if (tree.includes(r.target)) return { target, written: null, removed: null, stale: null, messages: [`WARNING: the C of ${path} is not made: ${r.target} exists already`] };
+    await P.writeFile(name, r.target, r.text);
+    await P.deleteFile(name, target);
+    await P.writeFile(name, path, JSON.stringify({ ...m, generatedFile: r.target }, null, indent(path)));
+    return { target: r.target, written: r.target, removed: target, stale: null, messages: [`${path}: its node's language is C: its file is now ${r.target} (${target} removed)`, ...warn] };
+  }
+  if (await P.readFile(name, target) === r.text) return { target, written: null, removed: null, stale: null, messages: warn };
+  await P.writeFile(name, target, r.text);
+  return { target, written: target, removed: null, stale: null, messages: [`${target} updated from ${path}`, ...warn] };
+}
+
+// a drawing with no file in a CPU node gets its C (adoptDrawing's): a schematic, a circuit, a register map refused, said
+async function adoptCode(P, name, path, m, at) {
+  const none = messages => ({ target: null, written: null, removed: null, stale: null, messages });
+  const refusal = cpuDrawingRefusal(path, at.lang);
+  if (refusal) return none([`WARNING: ${refusal}`]);
+  const r = drawingC(path, JSON.stringify(m), { lang: at.lang, pins: nodePins(at.node) });
+  if (at.lang === 'micropython') return none(r.errors.map(e => `WARNING: ${e}`));
+  if (r.errors.length || !r.text) return null;
+  if ((await P.fileTree(name)).includes(r.target)) return none([`WARNING: ${path} has no C file: ${r.target} exists already`]);
+  await P.writeFile(name, r.target, r.text);
+  await P.writeFile(name, path, JSON.stringify({ ...m, generatedFile: r.target }, null, indent(path)));
+  return { target: r.target, written: r.target, removed: null, stale: null, messages: [`${r.target} generated from ${path}`, ...r.warnings.map(w => `WARNING: ${w}`)] };
+}
+
 /** A drawing with no HDL file gets it (#207, #3184), as the interface's adoptDrawnHdl gives it when the project is
  *  loaded: the HDL made from it written next to it (drawnHdlPath, which registers the module in the project) and the
  *  drawing linked to it (generatedFile). Not when it has errors (a module by itself until it has none), nor for a
@@ -103,6 +149,8 @@ export async function adoptDrawing(P, name, path) {
   let m;
   try { m = JSON.parse(await P.readFile(name, path)); } catch { return null; }
   if (!m || typeof m !== 'object' || m.base === 'hdl' || m.generatedFile) return null;
+  const at = await nodeOfDrawing(P, name, path);
+  if (isCpuLang(at?.lang)) return adoptCode(P, name, path, m, at);   // (in a CPU node: its C, #5486)
   const r = viewHdl(path, JSON.stringify(m), { modules: kindOf(path) === 'sch' ? await projectModules(P, name) : {}, linked: () => false });
   if (!r || r.errors.length || !r.module || !r.text) return null;
   const target = drawnHdlPath(path, r.module, r.lang);
@@ -157,7 +205,8 @@ export async function staleDrawings(P, name) {
     if (!link) continue;
     if (kindOf(f) === 'sch') mods ||= await projectModules(P, name);
     let r = null;
-    try { r = viewHdl(f, JSON.stringify(link.m), { modules: kindOf(f) === 'sch' ? mods : {}, linked: () => false }); } catch { /* not a drawing */ }
+    const at = await nodeOfDrawing(P, name, f);
+    try { r = isCpuLang(at?.lang) ? drawingC(f, JSON.stringify(link.m), { lang: at.lang, pins: nodePins(at.node) }) : viewHdl(f, JSON.stringify(link.m), { modules: kindOf(f) === 'sch' ? mods : {}, linked: () => false }); } catch { /* not a drawing */ }
     if (r?.errors?.length) out.push({ target: link.target, from: f, why: `it has errors: ${r.errors.map(e => e.replace(`${f}: `, '')).join('; ')}` });
   }
   return out;

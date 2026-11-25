@@ -8,7 +8,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import * as P from './projects.js';
-import { toolError, readProject, STR, PROJECT } from './mcp-util.js';
+import { toolError, readProject, STR, PROJECT, cpuRefusal } from './mcp-util.js';
 import { NAME_RE, FILE_RE, sourceBase } from '../core/ident.js';
 import { CIRCUIT_TEMPLATES } from '../core/circuit-templates.js';
 import { FSM_TEMPLATES } from '../core/chart-templates.js';
@@ -87,6 +87,9 @@ export const NEW_SOURCE_TOOLS = [
       const rel = `${loc}/${file}${ext}`;
       const tree = await P.fileTree(name);
       if (fs.existsSync(path.join(P.projectDir(name), rel))) throw toolError(`${rel} already exists: choose another name.`);
+      // (a schematic, a circuit, a register map: hardware, refused in a CPU node, #5486)
+      const refusal = DRAWN.includes(type) ? await cpuRefusal(name, rel) : null;
+      if (refusal) throw toolError(refusal);
       // the project's modules (its HDL files')
       const { compile } = await import('../core/compile.js');
       const hdl = (await P.readSources(name)).filter(s => !s.missing && (s.lang === 'vhdl' || s.lang === 'verilog'));

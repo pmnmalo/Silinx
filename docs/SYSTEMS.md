@@ -203,6 +203,16 @@ API (`delay`, `int`) is renamed (`delay_v`) with a warning. The tests compile ea
 C compiler, as C and as C++, against a mock of the Arduino API (`test/fixtures/arduino-mock`), and run it tick by tick
 against the model; the AVR run comes with #5503 (avr-gcc on the local server).
 
+**A drawing in a CPU node** (`core/drawing-code.js`, #5486): in a microcontroller node whose base language is C or C++
+(its `lang`, #5488), a state diagram's, an ASM chart's, a Petri net's or a truth table's file is its sketch,
+`<node>/<module>.ino`, next to it, as an FPGA node's drawing has its HDL file. It is made when the drawing is made, and
+made again when the drawing changes (`core/drawing-sync.js`, as for the HDL: the interface and the MCP's `write_file`,
+`new_source` and the drawings' tools). A drawing with errors leaves its sketch as it was, said. A drawing whose HDL file
+was made before its node's language was C gets its sketch instead, its HDL file removed. The pins of its ports are its
+node's GPIO interfaces named as the ports (their pins, bit 0 first), the others the board's next free ones; its ports are
+the node contract's typed ports (`core/system-ports.js`, at the board's 5 V). A schematic, a circuit and a register map
+are refused in a CPU node, with their messages. A drawing in a MicroPython node is said not made yet (#5487).
+
 ### The PIC24
 
 The PIC24 comes first (#5479's phase 1): a course uses the Explorer 16/32 with the PIC24FJ1024GB610 next semester, and

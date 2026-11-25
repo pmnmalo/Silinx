@@ -20,6 +20,7 @@ import { initTasks, restoreStartTask } from './tasks.js';
 import { registerServiceWorker } from './pwa.js';
 import { createHistory } from './history.js';
 import { viewHdl } from '/core/view-hdl.js';
+import { inCpuNode } from '/core/drawing-code.js';
 import { modulesFromLibrary } from '/core/schdoc.js';
 import { circuitPartModules } from '/core/circuit-modules.js';
 import { isLabFile } from '/core/labs.js';
@@ -158,7 +159,9 @@ export function compileProject() {
   // of the project, which can be the top, be simulated and implemented, with no file)
   designState.viewSources = [];
   designState.viewElsewhere = {};
-  const views = Object.entries(designState.viewTexts || {}).filter(([f]) => !designState.schOwners?.[f]);
+  // (not a System's CPU node's C sources and drawings: its board's program, #5486)
+  const cpu = inCpuNode(S.project, { files: filesState.fileTree || [], texts: designState.viewTexts || {} });
+  const views = Object.entries(designState.viewTexts || {}).filter(([f]) => !designState.schOwners?.[f] && !cpu(f));
   // the modules of the HDL files, compiled once for the drawings below (#402)
   let hdlModules = null;
   const failedC = [];   // (a C source whose HDL cannot be made: its row and its errors, #2995)
