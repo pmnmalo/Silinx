@@ -126,7 +126,7 @@ const EXAMPLES = {  '${doc.path || doc.title} could not be saved. Close it and l
   'Time offsets are relative to the current simulation time (${fmtTime(sim.now)}); default unit is ns.': 'Time offsets are relative to the current simulation time (1.5 us); default unit is ns.',
 };
 // the same in both languages (a name, a number, a unit)
-const SAME = new Set(['${b} baud', 'LED ${d} (${pin})', 'Cursor: ${fmtTime(st.cursor)}', 'FPGA (${top})', '${filename}.png: ${p.width} × ${p.height} px',
+const SAME = new Set(['Firmware: ${n.firmware.split(\'/\').pop()}', '${n.id} (terminal)', '${b} baud', 'LED ${d} (${pin})', 'Cursor: ${fmtTime(st.cursor)}', 'FPGA (${top})', '${filename}.png: ${p.width} × ${p.height} px',
   // (Print's summary and the Design Summary's bitstream: a file and its size; the rest of Print's line is translated with it)
   "${n} page${n > 1 ? 's' : ''} (${L.cols} across × ${L.rows} down), ${paper.value} ${L.land ? 'landscape' : 'portrait'}; ",
   'build/${pj.top}${bitstreamExtOf(pj.device)} (${Math.round(rep.bit.size / 1024)} KB)', 'build/${pj.top}.bit (${Math.round(rep.bit.size / 1024)} KB)']);
