@@ -4,6 +4,103 @@ What changed in each version of silinx-pic24, the Silinx PIC24 emulator. The new
 are its own (semver, 0.x until its API is stable), apart from Silinx's. What changed since the last release is in
 [changes/](changes/).
 
+## 0.2.0
+
+The first version on npm: 0.1.0, the core below, was tagged but not published (its release did not find its tag's CI
+run, #5514). 0.2.0 adds the PIC24FJ1024GB610's peripherals and the Explorer 16/32 board (#5481).
+
+In short:
+
+- **The PIC24 emulator's Explorer 16/32 board:** its LEDs and buttons, its potentiometer and temperature sensor, its
+  USB-UART, and its character LCD, driven by a program as on the board.
+
+In detail:
+
+- **The A/D converter, the potentiometer and the temperature sensor (#5481):** adc.js, ADC1 with 10 or 12 bits
+  (MODE12) on AN0–AN23 against AVDD (3.3 V) or VREF+; FORM's four formats; the sampling by the program (SAMP), the
+  auto-convert (SSRC 0111, SAMC), Timer3's and Timer1's triggers, ASAM; CSCNA's scan of AD1CSSH:L, ALTS's MUX B,
+  BUFREGEN, BUFM, SMPI's interrupt (ADC1, IRQ 13); the conversion's 12 or 14 TADs (TAD = TCY · (ADCS + 1)). An
+  input's voltage is set from outside (`setAnalog`), else its pin's digital level. The Explorer 16/32's R6
+  (`setPotentiometer`, AN5) and TC1047A (`setTemperature`, AN4: 500 mV + 10 mV/°C). Not modelled: the
+  sample-and-hold's charging, the threshold detect and its compares, DMA, the band gap's and the CTMU's channels,
+  noise; the internal RC's TAD is taken as 250 ns. Tests: pic24-adc (the codes in 10 and 12 bits and their times,
+  the formats, the auto-convert with the scan and SMPI, Timer3's trigger, a program showing the potentiometer on
+  the LEDs).
+- **The device, its oscillator and its watchdog (#5481):** `Pic24Mcu` (mcu.js), the core with its peripherals' SFRs
+  (their reset values, their writable bits, their hooks), its time in ps as its clock changes, RCON's reset flags
+  (POR, BOR, SWR, WDTO, IOPUWR, SLEEP, IDLE, kept through the resets but a power-on's); `createGb610` (gb610.js), the
+  PIC24FJ1024GB610 assembled; `Pic24Node` on it. The oscillator (osc.js): the FRC, the primary oscillator (the
+  Explorer 16/32's 8 MHz crystal, FOSC's POSCMD), the SOSC, the LPRC, the DCO (DCOCON), the 96 MHz USB PLL's 32 MHz
+  branch through CLKDIV's CPDIV and the 4x / 6x / 8x PLL, the divided FRC (OSCDIV), DOZE, OSCCON's unlock sequences
+  (NOSC, OSWEN, IOLOCK with FOSC's IOL1WAY, CLKLOCK), the clock switch as FOSC's FCKSM allows it. The watchdog (wdt.js):
+  FWDTEN (always, software by RCON's SWDTEN, active only), its period from the 31 kHz LPRC (FWPSA, WDTPS), CLRWDT, its
+  window (WINDIS, WDTWIN), its time-out's reset or its wake-up from Sleep and Idle. Not modelled: the oscillators'
+  start-up and the PLL's lock times, OSCTUN and the FRC's self-tune, the Fail-Safe Clock Monitor, REFO, two-speed
+  start-up, the watchdog's clock sources other than the LPRC. readConfig no longer says the watchdog is not
+  emulated. Tests: pic24-osc (the clock at reset, CPDIV, OSCDIV, DOZE, the switch and its refusals, IOLOCK, the time
+  across a change of clock, the watchdog's period, reset, CLRWDT, software enable, window, wake-up, RCON's flags).
+- **The EPMP and the Explorer 16/32's character LCD (#5481):** pmp.js, the EPMP's master mode: the CPU's accesses of
+  the EDS above the RAM become bus cycles on its chip selects' regions (PMCS1BS, PMCS2BS, RADDR), a byte a cycle (a
+  word two), the PMP interrupt (IRQ 45) with IRQM 01; a device on the bus answers its cycles. lcd.js, an
+  HD44780-compatible 16x2 LCD of the package's own: its instructions, the DDRAM's two lines and the display's shift,
+  the CGRAM, the busy flag and the instructions' times (37 µs, 1.52 ms), a write while busy ignored and said, the
+  4-bit mode. The board's LCD on the PMP (RS on PMA0, no chip select). Not modelled: the strobes' waveforms on the
+  pins, the wait states' timing, PMACK, the 4- and 16-bit ports, the multiplexed addresses, the slave modes; the LCD's
+  power-on delay and its ROM's codes above 0x7F. Tests: pic24-lcd (the LCD's instructions, busy flag, 4-bit mode and
+  CGRAM; the EPMP off, its word cycles and interrupt; a program printing two lines polling the busy flag).
+- **The I/O ports and the Explorer 16/32's LEDs and buttons (#5481):** gpio.js, PORTA to PORTG of the 100-pin
+  device (its 84 port pins): TRIS, PORT (its reads the pins' levels, its writes the latch's), LAT, ODC (an open drain),
+  ANS (an analog pin reads 0: RD6 and RD7, S3's and S6's, and RA6 and RA7 are analog at reset), the weak pull-ups and
+  pull-downs (IOCPU, IOCPD), the interrupt-on-change (IOCP, IOCN, IOCF, IOCSTAT, PADCON's IOCON, IRQ 19); a pin's level
+  from a peripheral's output, its latch, outside, its pull-up, or floating; the outputs' changes are `Pic24Node`'s
+  outputs, an input event a pin's level. explorer1632.js, the board with the PIC24FJ1024GB610 PIM (from its schematic
+  and the PIM's information sheet): the LEDs D3–D10 on RA0–RA7, the buttons S3 (RD6), S4 (RD13), S5 (RA7, with D10)
+  and S6 (RD7) with their pull-ups, and the pins of the potentiometer, the TC1047A, the USB-UART, the LCD and the
+  EEPROM for the next peripherals. Not modelled: the pins' electrical levels, the input synchronisation's delay, the
+  PMP's TTL buffers. Tests: pic24-gpio (the reset values, outputs and inputs, ODC, ANS, the pull-ups, the IOC, the
+  board, a program lighting D3 while S3 is held through a `Pic24Node`).
+- **The peripheral pin select, the UARTs on their pins, the USB-UART (#5481):** pps.js, RPINRx (the input functions
+  INT1–4, the timers' clocks, IC, OCFA/B, U1–4RX and CTS, SDI, SCK and SS of SPI1–3, CLC… on RP0–RP31 and RPI32–RPI43,
+  63 none) and RPORx (the output functions' numbers on RP0–RP31), locked by OSCCON's IOLOCK (a write unchanged, said);
+  a mapped output overrides its pin's latch while its peripheral drives it, an input function hears its pin's changes.
+  UART1–4's TX bits on their pins through it, their RX pins sampled at each bit's middle (FERR, PERR); UART5 and 6 on
+  their fixed pins (RD1 / RD6, RB7 / RB12). serial.js, a terminal on two pins (8N1), the Explorer 16/32's USB-UART
+  (`board.usbUart(baud)`: the device's TX on RF5, its RX on RF4). extint.js, the external interrupts INT0 (RD0) and
+  INT1–4 (through PPS) on the edge INTCON2's INTxEP selects. Not modelled: the registers' Configuration Mismatch
+  Reset. Tests: pic24-pps (the reset values, an input and an output mapped, IOLOCK, UART2's frames decoded by the
+  terminal, a program echoing what the terminal types, UART5's fixed pin, INT0 and INT1's edges).
+- **SPI, I²C and the Explorer 16/32's EEPROM (#5481):** spi.js, SPI1–3 in master mode: 8, 16 or 32 bits, Fsck =
+  Fpb / (2 · (BRG + 1)), a word's time, SPIRBF, SPITBF, SPIBUSY, SPIROV, the receive, transmit and general
+  interrupts; a device answers each word (`onTransfer`). eeprom25lc.js, the board's 25LC256: READ, WRITE (a 64-byte
+  page, wrapping), WREN, WRDI, RDSR, WRSR, the 5 ms write cycle begun at CS's rise; on the board it hears an SPI
+  module the program maps by PPS to its pins (SCK RG6, SDO RG8, SDI RG7) while CS (RD12) is low. i2c.js, I2C1–3 in
+  master mode: the start, repeated start, stop, receive and acknowledge events with their times (Fscl = Fcy /
+  (BRG + 2)), the address and data bytes acknowledged or not (ACKSTAT), RBF, TBF, TRSTAT, R_W, S, P, the master
+  interrupts; devices answer at their addresses (`attach`). Not modelled: the slave modes, the framed and audio
+  modes, the enhanced buffers beyond a word, the pins' waveforms (a word, an event, one transaction), 10-bit
+  addresses, bus collisions, clock stretching; the EEPROM's block protection. Tests: pic24-spi-i2c (SPI's timing,
+  reply, overflow and 16 bits; the EEPROM's instructions; a program writing and reading it through SPI2 and PPS; I²C's
+  writes with their times and acknowledges, an unanswered address, a read with its NACK).
+- **Timer1 to Timer5 (#5481):** timers.js, TMRx counting the peripheral clock (Fosc / 2), or Timer1 and the others
+  with TCS the SOSC's 32.768 kHz or the LPRC's 31 kHz, through the prescalers (1, 8, 64, 256); at TMRx = PRx the next
+  count resets it and sets its flag (T1 IRQ 3, T2 7, T3 8, T4 27, T5 28); a value past PRx runs to the end and wraps;
+  Timer2 / 3 and Timer4 / 5 as 32-bit timers with T32 (TMR3:TMR2 against PR3:PR2, Timer3's interrupt, TMR3HLD
+  latched by a read of TMR2 and taken by its write); asleep only Timer1 on the SOSC unsynchronised counts (and its
+  interrupt wakes the device), in Idle TSIDL stops a timer. A timer counts lazily, its period's end a clock event.
+  An interrupt below or at the IPL (or with GIE clear) now wakes the device from Sleep too, as the data sheet says.
+  Not modelled: the external clock inputs (T1CK, TxCK), TGATE, TSYNC's delay. Tests: pic24-timers (the periods and
+  prescalers, the SOSC and LPRC clocks, the wrap past PR, the 32-bit pair and TMR3HLD, Timer4 and 5 apart, Sleep,
+  an interrupt-driven program counting Timer1's periods).
+- **The UARTs (#5481):** uart.js, UART1 to UART6: UxMODE (UARTEN, LPBACK, BRGH, PDSEL, STSEL), UxSTA (UTXISEL, URXEN,
+  UTXEN, UTXBF, TRMT, URXISEL, FERR, OERR, URXDA), the 4-deep transmit and receive buffers, the baud from UxBRG
+  (Fcy / 16 or / 4 · (UxBRG + 1)), each frame's time (8N1, 8E1, 8O1, 9N1, two stops), the receive, transmit and error
+  interrupts (U1 IRQ 11, 12, 65; U2 30, 31, 66; …); a character sent leaves by `onTransmit(byte, t)` at its frame's
+  end and its bits by `onTxBits`, one received arrives by `receive(byte)`; a character written with the buffer full
+  is lost, said. Not modelled: IrDA, the flow control pins, auto-baud, the break, the address detect, the pins'
+  polarity inversions. Tests: pic24-uart (the baud and the frames, a program sending a line, the buffers and
+  their limits, OERR and its interrupt, UTXISEL and URXISEL, the loopback, a program echoing a terminal's
+  characters).
+
 ## 0.1.0
 
 In short:
