@@ -107,7 +107,8 @@ export async function runProcess(name, proc, { toolchain, node, timeoutS = 1800,
   if (!steps) throw toolError(`process: one of ${[...Object.keys(PROCESSES), 'firmware', 'build'].join(', ')}`);
   // (a System's FPGA node, or every one, on its own board, #5446: server/system-implement.js; else its top's)
   if (node === undefined && !pj.top) throw toolError(isSystemProject(pj) ? systemFlowRefusal(name) : `the project '${name}' has no top module`);   // (a System its top, #5443)
-  if (node !== undefined && !['synthesize', 'implement', 'bitstream'].includes(proc)) throw toolError(`node: a System node runs synthesize, implement or bitstream (not ${proc})`);
+  // (a node's simulation models too, its emulation's, #5612)
+  if (node !== undefined && ![...['synthesize', 'implement', 'bitstream'], ...Object.values(MODEL_PROCESS)].includes(proc)) throw toolError(`node: a System node runs synthesize, implement, bitstream or a simulation model (not ${proc})`);
   // (a model the flow does not make: refused, as simulate refuses it, #3707)
   const model = Object.keys(MODEL_PROCESS).find(m => MODEL_PROCESS[m] === proc);
   const silinx = silinxFlowOf(pj, toolchain);

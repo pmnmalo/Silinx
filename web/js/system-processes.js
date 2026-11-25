@@ -13,6 +13,7 @@ import { openView } from './drawings.js';
 import { firmwareRefusal } from '/core/avr-compile.js';
 import { RUN_KINDS } from '/core/system-alone.js';
 import { nodeConstraintsProcs } from './system-constraints-ui.js';
+import { nodeModelProcs } from './system-emulate-ui.js';
 
 // a node's (or the System's, '*') implementation on its own board, #5446: web/js/system-implement-ui.js
 const impl = (node, steps, label) => async () => (await import('./system-implement-ui.js')).runNodeImpl(node, steps, label);
@@ -71,6 +72,7 @@ export function systemProcesses(sel, view, { check, rtl }) {
     // (the node alone in the System Emulator, #5581; a terminal runs with what it is linked to)
     // (the node alone in the System editor's Try it panel, #5581)
     ...(RUN_KINDS.includes(sel.kind) ? [{ id: 'node-simulate', label: 'Simulate Node', ico: 'sim', run: async () => (await import('./system-simulate-ui.js')).simulateNode(sel.file, sel.node) }] : []),
-    ...(RUN_KINDS.includes(sel.kind) ? [{ id: 'node-emulate', label: 'Emulate Node', ico: 'emulate', run: async () => (await import('./system-emu-open.js')).openSystemEmulator(sel.file, null, { nodes: [sel.node] }) }] : []),
+    // (an FPGA node's models under it, #5612: web/js/system-emulate-ui.js nodeModelProcs)
+    ...(RUN_KINDS.includes(sel.kind) ? [{ ...(sel.kind === 'fpga' ? { children: nodeModelProcs(sel.file, { id: sel.node, kind: sel.kind, board: sel.board, variant: sel.variant }) } : {}), id: 'node-emulate', label: 'Emulate Node', ico: 'emulate', run: async () => (await import('./system-emu-open.js')).openSystemEmulator(sel.file, null, { nodes: [sel.node] }) }] : []),
   ];
 }

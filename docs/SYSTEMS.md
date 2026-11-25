@@ -767,6 +767,27 @@ boards show since the last.
 The ISE style's Processes panel has the same on the System's and the nodes' rows. Simulate and Implement get the same
 kind of tree (#5581's parts 3 and 4). An FPGA node's User Constraints (a `.ucf` in its folder) are part 2.
 
+**Its toolbar** (#5613) has the Board Emulator's controls that a System has, laid out as [UI-GUIDELINES.md](UI-GUIDELINES.md)
+says:
+
+- Run / Pause;
+- Step: one clock cycle of its one FPGA node; with several, or none, one step of its scheduler, 100 µs (Pedro's);
+- Power cycle;
+- its rate against real time: real time, 1/10, 1/100, 1/1000;
+- its ⋮ menu: what it does while hidden;
+- its status line: the time, the rate and each FPGA node's model.
+
+**An FPGA node's models** (#5612, `core/system-models.js`): an FPGA node is emulated on its RTL or on one of the models
+its board's toolchain makes (Post-Synthesis, Post-Translate, Post-Map, Post-Place & Route), as an FPGA project's Emulate on
+Board is.
+
+- Its Emulate Node has them under it, in the Emulate tree and on the ISE style's row.
+- The Emulation Properties choose each FPGA node's model for Emulate System (`silinx.json`'s `system.emulate.models`).
+- A model is read from its node's build (`build/nodes/<id>/build/reports.json`), made first by the node's flow when it is
+  not there. Its netlist runs with the device's primitives in place of the node's RTL.
+- The MCP: `set_process_properties`' `emulate_nodes` takes `fpga@postsynth`; `simulate` with `controls` runs the
+  models; `run_process`' models take a `node`.
+
 **Its view** (#5212, `web/js/system-emu-view.js`): a document of its own, `sysemu:<file>`, opened from the System
 editor's Emulate or the System row's Emulate System. An FPGA board is mounted with the Board Emulator's parts
 (`mountBoardParts`), a button held down until the design saw a real press (`pressHolds`). An Arduino is drawn by

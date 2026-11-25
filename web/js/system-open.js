@@ -13,7 +13,8 @@ import { designState } from './state-design.js';
 import { following, followNotice } from './collab-state.js';
 import { phoneOnly } from './phone-readonly.js';
 import { filesState } from './state-files.js';
-import { elaborate } from '/core/compile.js';
+import { compile, elaborate } from '/core/compile.js';
+import { primitiveSources } from '/core/unisim.js';
 import { ucfPort } from '/core/board-constraints.js';
 import { normalizeCircuit } from '/core/circuit.js';
 import { readSystem, writeSystem } from '/core/system-doc.js';
@@ -43,7 +44,7 @@ function projectModules(sys) {
 // the System made ready to run (core/system-run.js systemInputs): its FPGA nodes' modules compiled by Yosys (the Board
 // Emulator's: the page's workers, the browser edition's own), its firmware read (a .hex's text, an .elf's bytes, #5198:
 // as the MCP's simulate of a System); then run in its Web Worker (system-remote.js), where the compiled engine may make its code
-export async function prepareHere(sys, { emulate = false, stimulus = null } = {}) {
+export async function prepareHere(sys, { emulate = false, stimulus = null, models = null } = {}) {
   sys = nodePinsHere(sys).system;   // (each FPGA node's pins its constraints file's, #5581)
   const lib = designState.lib;
   if (!lib) return { error: 'the project does not compile: Check Syntax says why' };
@@ -56,7 +57,8 @@ export async function prepareHere(sys, { emulate = false, stimulus = null } = {}
   const run = await emulatorYosys(api.standalone);
   const inputs = await systemInputs(sys, {
     ports,
-    netlist: m => { if (!designs[m]) throw new Error(`no module '${m}' that elaborates (Check Syntax says why)`); return netlistOf(designs[m], { run }); },
+    // (an FPGA node's model, #5612: its netlist compiled with the device's primitives, in place of its module's RTL)
+    netlist: (m, id) => { if (models?.[id]) return netlistOf(modelDesign(models[id], m), { run }); if (!designs[m]) throw new Error(`no module '${m}' that elaborates (Check Syntax says why)`); return netlistOf(designs[m], { run }); },
     firmware: async p => (/\.elf$/i.test(p) ? api.readFileBytes(S.project.name, p) : api.readFile(S.project.name, p)),   // (an .elf's bytes, #5198)
     circuit: p => designState.viewTexts?.[p] ?? api.readFile(S.project.name, p),   // (a circuit node's, #5215)
     regmap: m => regmapFor(designState.viewTexts, designs[m] ? hierModules(designs[m].top) : [m]),   // (a module made from a register map, or one instancing it: its accesses, #5288)
@@ -93,6 +95,13 @@ async function stimulusHere(path) {
   try { text = await api.readFile(S.project.name, path); } catch (e) { return { error: `${path}: ${e.message}` }; }
   const r = readStimulus(text);
   return r.error ? { error: `${path}: ${r.error}` } : r;
+}
+
+// a model's netlist ({ path, lang, text }, #5612) elaborated, its top the node's module
+function modelDesign(net, mod) {
+  const d = elaborate(compile([...primitiveSources([net]), net]), mod);
+  if (!d.top) throw new Error(`its model ${net.path} does not elaborate: ${(d.diags || []).find(x => x.severity === 'error')?.message || 'it has errors'}`);
+  return d;
 }
 
 /** A System's problems, as Check System says them (the MCP server's check_system's). */

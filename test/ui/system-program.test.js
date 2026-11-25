@@ -43,7 +43,7 @@ uiTest('#5489 Program All and Program Node: the FPGA, then the Uno on the board 
   await page.leftTab('design');
   await page.waitFor(() => [...document.querySelectorAll('#hier .row .lbl')].some((l) => l.textContent.trim() === 'uart_avr'), [], { what: 'the System' });
   // (a node's Program Node before its Emulate Node, #5581)
-  for (const [row, last, tail] of [['fpga', 'Program Node', ['Program Node', 'Simulate Node', 'Emulate Node']], ['uno', 'Program Node', ['Program Node', 'Simulate Node', 'Emulate Node']], ['uart_avr', 'Program All', ['Program All']]]) {
+  for (const [row, last, tail] of [['fpga', 'Program Node', ['Program Node', 'Simulate Node', 'Emulate Node', 'Emulate Behavioral Model (RTL)', 'Emulate Post-Synthesis Model', 'Emulate Post-Translate Model', 'Emulate Post-Map Model', 'Emulate Post-Place & Route Model']], ['uno', 'Program Node', ['Program Node', 'Simulate Node', 'Emulate Node']], ['uart_avr', 'Program All', ['Program All']]]) {
     await page.treeRow('#hier', row, { exact: true });
     await page.waitFor((last) => [...document.querySelectorAll('#procs .row .lbl')].some((l) => l.textContent.trim() === last), [last], { what: `${row}'s processes` });
     assert.deepEqual((await procs(page)).slice(-tail.length), tail, row);

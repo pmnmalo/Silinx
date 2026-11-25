@@ -218,14 +218,14 @@ test('#5581 uart-avr\'s nodes run alone with the MCP server: the FPGA with a ter
   assert.deepEqual([b.data.nodes, b.data.terminals, b.data.warnings], [['uno', 'fpga'], {}, []]);
   // the Emulation Properties: the FPGA alone, in silinx.json; the emulation (controls) runs it, the simulation every node
   const p = await ok('set_process_properties', { project: 'un', emulate_nodes: ['fpga'] });
-  assert.deepEqual([p.text, p.data], ['un: Emulate System runs fpga.', { project: 'un', emulateNodes: ['fpga'] }]);
+  assert.deepEqual([p.text, p.data], ['un: Emulate System runs fpga.', { project: 'un', emulateNodes: ['fpga'], emulateModels: {} }]);
   assert.deepEqual(JSON.parse(fs.readFileSync(path.join(tmp, 'ws', 'un', 'silinx.json'), 'utf8')).system, { emulate: { nodes: ['fpga'] } });
   const e = await ok('simulate', { project: 'un', time_ns: 20e6, controls: [] });
   assert.deepEqual([e.data.nodes, Object.keys(e.data.boards), e.data.warnings], [['fpga', 'serial'], ['fpga'], [`WARNING: Emulate Node fpga: ${warnF}`]]);
   const s = await ok('simulate', { project: 'un', time_ns: 1e6 });
   assert.deepEqual([s.data.nodes, s.data.warnings], [undefined, []]);
   const all = await ok('set_process_properties', { project: 'un', emulate_nodes: [] });
-  assert.deepEqual([all.text, all.data], ['un: Emulate System runs every node.', { project: 'un', emulateNodes: ['uno', 'fpga'] }]);
+  assert.deepEqual([all.text, all.data], ['un: Emulate System runs every node.', { project: 'un', emulateNodes: ['uno', 'fpga'], emulateModels: {} }]);
   assert.equal(JSON.parse(fs.readFileSync(path.join(tmp, 'ws', 'un', 'silinx.json'), 'utf8')).system, undefined);
   // refused
   const no = async (name, args, text) => { const r = await call(name, args); assert.deepEqual([r.isError, r.text], [true, text]); };
@@ -281,4 +281,25 @@ test('#5581 Simulate System with the MCP server: the Simulation Properties (the 
   // (every node, its default time, no stimulus: the setting left out)
   await ok('set_process_properties', { project: 'us', simulation: { nodes: [], ms: 100, stimulus: '' } });
   assert.equal(JSON.parse(fs.readFileSync(path.join(tmp, 'ws', 'us', 'silinx.json'), 'utf8')).system, undefined);
+});
+
+test('#5612 an FPGA node emulated on its Post-Synthesis model with the MCP server: refused before it is made (said how), made by run_process with its node, then its LEDs the byte typed as the RTL\'s; refusals', async () => {
+  await ok('new_project_from_example', { name: 'um', example: 'uart-avr' });
+  const p = await ok('set_process_properties', { project: 'um', emulate_nodes: ['fpga@postsynth'] });
+  assert.deepEqual([p.text, p.data.emulateNodes, p.data.emulateModels], ['um: Emulate System runs fpga, fpga on its Post-Synthesis model.', ['fpga'], { fpga: 'postsynth' }]);
+  assert.deepEqual(JSON.parse(fs.readFileSync(path.join(tmp, 'ws', 'um', 'silinx.json'), 'utf8')).system, { emulate: { nodes: ['fpga'], models: { fpga: 'postsynth' } } });
+  // (not made yet: refused, said how)
+  const no = await call('simulate', { project: 'um', time_ns: 20e6, type: { serial: 'A\n' }, controls: [] });
+  assert.deepEqual([no.isError, no.text], [true, 'simulate: fpga\'s post-synthesis model is not made yet: run_process post_synthesis_model with node fpga first']);
+  const m = await ok('run_process', { project: 'um', process: 'post_synthesis_model', node: 'fpga', toolchain: 'silinx' });
+  assert.ok(m.text.includes('build/netgen/synthesis/uart_synthesis.vhd'), m.text);
+  // (its LEDs the last byte it received, LF, as the RTL's)
+  const e = await ok('simulate', { project: 'um', time_ns: 20e6, type: { serial: 'A\n' }, controls: [] });
+  assert.deepEqual([e.data.nodes, e.data.terminals, e.data.boards.fpga.leds, e.data.errors], [['fpga', 'serial'], { serial: 'A\n' }, [0, 1, 0, 1, 0, 0, 0, 0], []]);
+  const bad = async (emulate_nodes, text) => { const x = await call('set_process_properties', { project: 'um', emulate_nodes }); assert.deepEqual([x.isError, x.text], [true, `set_process_properties: ${text}`]); };
+  await bad(['fpga@nope'], 'emulate_nodes: fpga: no model \'nope\' (its board\'s toolchain makes rtl, postsynth, posttrans, postmap, postpar)');
+  await bad(['uno@postsynth'], 'emulate_nodes: uno: only an FPGA node has models');
+  // (the node named alone: its RTL again)
+  const r = await ok('set_process_properties', { project: 'um', emulate_nodes: ['fpga'] });
+  assert.deepEqual(r.data.emulateModels, {});
 });

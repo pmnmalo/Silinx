@@ -34,7 +34,7 @@ const lines = (page) => page.eval(() => [...document.querySelectorAll('#console-
 const nodes = (page) => page.eval((e) => [...document.querySelectorAll(`${e} [data-node]`)].map((n) => n.dataset.node), EMU);
 const title = (page) => page.eval(() => window.SilinxApp.findDoc('sysemu:uart_avr.sys.json')?.title ?? null);
 const EN = ['uart_avr (System)', '  Emulation Properties…', '  Emulate System', '  uno (Arduino Uno)', '    Emulate Node',
-  '  fpga (Digilent Basys2)', '    User Constraints', '      I/O Pin Planning', '      Edit Constraints (Text)', '      Check Constraints', '    Emulate Node'];
+  '  fpga (Digilent Basys2)', '    User Constraints', '      I/O Pin Planning', '      Edit Constraints (Text)', '      Check Constraints', '    Emulate Node', '      Emulate Behavioral Model (RTL)', '      Emulate Post-Synthesis Model', '      Emulate Post-Translate Model', '      Emulate Post-Map Model', '      Emulate Post-Place & Route Model'];
 
 uiTest('#5581 a System\'s Emulate: its tree, a node emulated alone (its link\'s other end a terminal, said), the System, the Emulation Properties\' nodes; Portuguese; the ISE style\'s Emulate Node', E, async (page) => {
   await makeProject(env, { name: 'SysEmuTree', template: 'uart-avr' });
@@ -58,7 +58,7 @@ uiTest('#5581 a System\'s Emulate: its tree, a node emulated alone (its link\'s 
     assert.deepEqual(await rows(page), EN);
     // (the Emulate rows' icon its own, #5597: not the Uno's board's)
     assert.deepEqual(await page.eval((b) => [...document.querySelectorAll(`${b} .task-emu-tree .row`)].map((r) => `${r.querySelector('.lbl').textContent}:${r.querySelector('.ico')?.dataset.ico}`)
-      .filter((t) => /^(Emulate|uno)/.test(t)), BOX), ['Emulate System:emulate', 'uno (Arduino Uno):board', 'Emulate Node:emulate', 'Emulate Node:emulate']);
+      .filter((t) => /^(Emulate|uno)/.test(t)), BOX), ['Emulate System:emulate', 'uno (Arduino Uno):board', 'Emulate Node:emulate', 'Emulate Node:emulate', ...['Behavioral Model (RTL)', 'Post-Synthesis Model', 'Post-Translate Model', 'Post-Map Model', 'Post-Place & Route Model'].map((m) => `Emulate ${m}:emulate`)]);
     assert.equal(await page.eval((b) => document.querySelector(`${b} .task-no-top`), BOX), null, 'no "No top module is set"');
     await page.waitFor(() => !document.querySelector('#task-emu-bar [data-act=emulate]').disabled, [], { what: 'Emulate System on' });
     assert.deepEqual(await page.eval(() => [...document.querySelectorAll('#task-emu-bar .btn')].map((x) => [x.textContent, x.disabled])), [['I/O Pin Planning', true], ['Emulate System', false]]);
@@ -111,7 +111,7 @@ uiTest('#5581 a System\'s Emulate: its tree, a node emulated alone (its link\'s 
     await page.click('#task-switch .task-btn[data-task="emu"]');
     await page.waitFor((b) => document.querySelector(`${b} .task-emu-tree .lbl`)?.textContent === 'uart_avr (Sistema)', [BOX], { what: 'Portuguese' });
     assert.deepEqual(await rows(page), ['uart_avr (Sistema)', '  Propriedades da Emulação…', '  Emular o Sistema', '  uno (Arduino Uno)', '    Emular o Nó',
-      '  fpga (Digilent Basys2)', '    Restrições do Utilizador', '      Planeamento de Pinos de E/S', '      Editar Restrições (Texto)', '      Verificar Restrições', '    Emular o Nó']);
+      '  fpga (Digilent Basys2)', '    Restrições do Utilizador', '      Planeamento de Pinos de E/S', '      Editar Restrições (Texto)', '      Verificar Restrições', '    Emular o Nó', '      Emular Modelo Comportamental (RTL)', '      Emular Modelo Pós-Síntese', '      Emular Modelo Pós-Translate', '      Emular Modelo Pós-Map', '      Emular Modelo Pós-Place & Route']);
     assert.equal(await page.eval(() => document.querySelector('#task-emu-bar [data-act=emulate]').textContent), 'Emular o Sistema');
   }
   await page.eval(async () => (await import('/js/i18n.js')).setLanguage('en'));
