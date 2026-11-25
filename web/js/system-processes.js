@@ -36,7 +36,7 @@ export function systemProcesses(sel, view, { check, rtl }) {
     editSystem(sel.file),
     { id: 'sys-check', label: 'Check System', ico: 'process', run: async () => { await openSystem(sel.file); findDoc(`sys:${sel.file}`)?.checkSystem?.(); } },
     // (the nodes its Emulation Properties tick, #5581: web/js/system-emulate-ui.js)
-    { id: 'sys-emulate', label: 'Emulate System', ico: 'board', run: async () => (await import('./system-emulate-ui.js')).emulateSystem() },
+    { id: 'sys-emulate', label: 'Emulate System', ico: 'emulate', run: async () => (await import('./system-emulate-ui.js')).emulateSystem() },
     { id: 'sys-emu-props', label: 'Emulation Properties…', ico: 'process', run: async () => (await import('./system-emulate-ui.js')).emulationProperties() },
     { id: 'sys-impl', label: 'Implement System', ico: 'process', run: impl('*', FLOW[2][2], 'Implement System') },
     // (its build plan and Build All, the FPGA nodes first, #5489: web/js/system-build-ui.js)
@@ -63,6 +63,6 @@ export function systemProcesses(sel, view, { check, rtl }) {
       { id: 'node-program', label: 'Program Node', ico: 'board', run: program(sel.node) },
     ] : []),
     // (the node alone in the System Emulator, #5581; a terminal runs with what it is linked to)
-    ...(RUN_KINDS.includes(sel.kind) ? [{ id: 'node-emulate', label: 'Emulate Node', ico: 'board', run: async () => (await import('./system-emu-open.js')).openSystemEmulator(sel.file, null, { nodes: [sel.node] }) }] : []),
+    ...(RUN_KINDS.includes(sel.kind) ? [{ id: 'node-emulate', label: 'Emulate Node', ico: 'emulate', run: async () => (await import('./system-emu-open.js')).openSystemEmulator(sel.file, null, { nodes: [sel.node] }) }] : []),
   ];
 }

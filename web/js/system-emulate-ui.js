@@ -1,15 +1,13 @@
 // The Emulate task of a System project (#5581, docs/SYSTEMS.md, Emulation): its panel's tree (web/js/processes.js draws
 // it, as an FPGA project's User Constraints and Emulate on Board): the System's row, its Emulation Properties (the nodes
 // that run: silinx.json's system.emulate.nodes, core/system-alone.js) and Emulate System (the ticked nodes); then a row
-// per node, its processes by its kind: an Arduino's or a PIC24's firmware and Compile Firmware, a circuit's circuit, and
+// per node, its emulation's options and runs only (#5597: no source file, no compiling, the Design's and Implement's):
 // each node's Emulate Node (that node alone, in the same System Emulator); a terminal runs with what it is linked to.
-import { S, openFile } from './app.js';
+import { S } from './app.js';
 import { h, dialog } from './ui.js';
 import { logError, log } from './console.js';
 import { shownSystem } from './design-system.js';
 import { saveProjectJson } from './design.js';
-import { openView } from './drawings.js';
-import { firmwareRefusal } from '/core/avr-compile.js';
 import { mcuBoard } from '/core/system-doc.js';
 import { runnableNodes, emulateNodesOf, withEmulateNodes } from '/core/system-alone.js';
 
@@ -24,13 +22,10 @@ export function emulateSystem() {
   return emulate(s.file, emulateNodesOf(S.project, s.system));
 }
 
-// a node's processes in Emulate
+// a node's processes in Emulate: its emulation's options and its run only (#5597: its sources, its firmware, and their
+// compiling are the Design's and Implement's)
 function nodeProcesses(file, n) {
-  const kids = [];
-  if (n.kind === 'mcu' && n.firmware) kids.push({ id: `emu-fw-${n.id}`, label: `Firmware: ${n.firmware.split('/').pop()}`, ico: 'file', run: () => openFile(n.firmware) });
-  if (n.kind === 'mcu' && !firmwareRefusal({ id: n.id, kind: n.kind, board: n.board, lang: n.lang })) kids.push({ id: `emu-compile-${n.id}`, label: 'Compile Firmware', ico: 'process', run: async () => (await import('./system-firmware-ui.js')).runNodeFirmware(n.id, file) });
-  if (n.kind === 'circuit' && n.circuit) kids.push({ id: `emu-circ-${n.id}`, label: `Circuit: ${n.circuit.split('/').pop()}`, ico: 'circuit', run: () => openView(n.circuit) });
-  kids.push({ id: `emu-node-${n.id}`, label: 'Emulate Node', ico: 'board', run: () => emulate(file, [n.id]) });
+  const kids = [{ id: `emu-node-${n.id}`, label: 'Emulate Node', ico: 'emulate', run: () => emulate(file, [n.id]) }];
   const board = n.board ? boardName(n) : null;
   return { id: `emu-n-${n.id}`, label: board ? `${n.id} (${board})` : n.id, ico: n.kind === 'fpga' ? 'chip' : n.kind === 'circuit' ? 'circuit' : 'board', children: kids };
 }
@@ -42,7 +37,7 @@ export function systemEmulateProcesses() {
   const sys = s.system, run = runnableNodes(sys);
   return [{ id: 'emu-system', label: `${sys.name} (System)`, ico: 'system', children: [
     { id: 'emu-props', label: 'Emulation Properties…', ico: 'process', run: () => emulationProperties() },
-    { id: 'emu-system-run', label: 'Emulate System', ico: 'board', run: () => emulateSystem() },
+    { id: 'emu-system-run', label: 'Emulate System', ico: 'emulate', run: () => emulateSystem() },
     ...sys.nodes.filter(n => run.includes(n.id)).map(n => nodeProcesses(s.file, n)),
     ...sys.nodes.filter(n => n.kind === 'terminal').map(n => ({ id: `emu-n-${n.id}`, label: `${n.id} (terminal)`, ico: 'system', disabled: true, title: `${n.id} runs with the nodes it is linked to` })),
   ] }];

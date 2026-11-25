@@ -105,7 +105,7 @@ export const SYSTEM_PT_PATTERNS = [
   [/^Link ([A-Za-z]\w*)$/, 'Ligação $1'], [/^Waves \((.+)\)$/, 'Ondas ($1)'],
   [/^Emulate \((.+)\)$/, 'Emular ($1)'],
   // (the Emulate task's tree, #5581: a node's firmware and circuit, the System's row, a terminal's; what runs)
-  [/^Firmware: (.+)$/, 'Firmware: $1'], [/^Circuit: (.+)$/, 'Circuito: $1'], [/^(\S+) \(System\)$/, '$1 (Sistema)'], [/^(\S+) \(terminal\)$/, '$1 (terminal)'],
+  [/^(\S+) \(System\)$/, '$1 (Sistema)'], [/^(\S+) \(terminal\)$/, '$1 (terminal)'],
   [/^(\S+) runs with the nodes it is linked to$/, '$1 corre com os nós a que está ligado'],
   [/^Emulation Properties: Emulate System runs (every node|.+)$/, (m, w) => `Propriedades da Emulação: Emular o Sistema corre ${w === 'every node' ? 'todos os nós' : w}`], [/^(\d+)% of real time$/, '$1% do tempo real'],
   // (a node's Implement in the browser edition: web/js/system-implement-ui.js, #5446)

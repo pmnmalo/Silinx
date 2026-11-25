@@ -1,5 +1,6 @@
 // UI (#5581): a System project's Emulate. The Silinx interface's Emulate task shows the System's tree (its row:
-// Emulation Properties… and Emulate System; a row per node: the Uno's firmware, Compile Firmware and Emulate Node, the
+// Emulation Properties… and Emulate System; a row per node, its emulation's options and runs only (#5597: no source
+// file, no Compile Firmware; the Emulate rows' icon not an Arduino's board): the Uno's Emulate Node, the
 // FPGA's Emulate Node), Emulate System above it (I/O Pin Planning off: a node's), where it said "No top module is set";
 // the FPGA's Emulate Node runs it alone in the System Emulator, the Uno's end of their link a terminal (its warning
 // exact, a byte typed echoed); Emulate System runs both again, no warning; Emulation Properties… ticks the FPGA alone
@@ -32,7 +33,7 @@ const run = (page, label, k = 0) => page.eval((b, l, i) => {
 const lines = (page) => page.eval(() => [...document.querySelectorAll('#console-log .ln')].map((l) => l.textContent));
 const nodes = (page) => page.eval((e) => [...document.querySelectorAll(`${e} [data-node]`)].map((n) => n.dataset.node), EMU);
 const title = (page) => page.eval(() => window.SilinxApp.findDoc('sysemu:uart_avr.sys.json')?.title ?? null);
-const EN = ['uart_avr (System)', '  Emulation Properties…', '  Emulate System', '  uno (Arduino Uno)', '    Firmware: hello.hex', '    Compile Firmware', '    Emulate Node',
+const EN = ['uart_avr (System)', '  Emulation Properties…', '  Emulate System', '  uno (Arduino Uno)', '    Emulate Node',
   '  fpga (Digilent Basys2)', '    Emulate Node'];
 
 uiTest('#5581 a System\'s Emulate: its tree, a node emulated alone (its link\'s other end a terminal, said), the System, the Emulation Properties\' nodes; Portuguese; the ISE style\'s Emulate Node', E, async (page) => {
@@ -48,11 +49,16 @@ uiTest('#5581 a System\'s Emulate: its tree, a node emulated alone (its link\'s 
     // the ISE style: the FPGA node's row in the Design pane, its Emulate Node
     await page.waitFor(() => [...document.querySelectorAll('#hier .row .lbl')].some((l) => l.textContent.trim() === 'fpga'), [], { what: 'the node' });
     await page.treeRow('#hier', 'fpga', { exact: true });
+    await page.waitFor(() => [...document.querySelectorAll('#procs .row .lbl')].some((l) => l.textContent.trim() === 'Emulate Node'), [], { what: 'its Emulate Node' });
+    assert.equal(await page.eval(() => [...document.querySelectorAll('#procs .row')].find((r) => r.querySelector('.lbl').textContent.trim() === 'Emulate Node').querySelector('.ico').dataset.ico), 'emulate', 'its icon its own (#5597)');
     await page.treeRow('#procs', 'Emulate Node', { exact: true, dbl: true });
   } else {
     await page.click('#task-switch .task-btn[data-task="emu"]');
     await page.waitFor((b) => document.querySelectorAll(`${b} .task-emu-tree li`).length > 0, [BOX], { what: 'the tree' });
     assert.deepEqual(await rows(page), EN);
+    // (the Emulate rows' icon its own, #5597: not the Uno's board's)
+    assert.deepEqual(await page.eval((b) => [...document.querySelectorAll(`${b} .task-emu-tree .row`)].map((r) => `${r.querySelector('.lbl').textContent}:${r.querySelector('.ico')?.dataset.ico}`)
+      .filter((t) => /^(Emulate|uno)/.test(t)), BOX), ['Emulate System:emulate', 'uno (Arduino Uno):board', 'Emulate Node:emulate', 'Emulate Node:emulate']);
     assert.equal(await page.eval((b) => document.querySelector(`${b} .task-no-top`), BOX), null, 'no "No top module is set"');
     await page.waitFor(() => !document.querySelector('#task-emu-bar [data-act=emulate]').disabled, [], { what: 'Emulate System on' });
     assert.deepEqual(await page.eval(() => [...document.querySelectorAll('#task-emu-bar .btn')].map((x) => [x.textContent, x.disabled])), [['I/O Pin Planning', true], ['Emulate System', false]]);
@@ -104,7 +110,7 @@ uiTest('#5581 a System\'s Emulate: its tree, a node emulated alone (its link\'s 
   } else {
     await page.click('#task-switch .task-btn[data-task="emu"]');
     await page.waitFor((b) => document.querySelector(`${b} .task-emu-tree .lbl`)?.textContent === 'uart_avr (Sistema)', [BOX], { what: 'Portuguese' });
-    assert.deepEqual(await rows(page), ['uart_avr (Sistema)', '  Propriedades da Emulação…', '  Emular o Sistema', '  uno (Arduino Uno)', '    Firmware: hello.hex', '    Compilar Firmware', '    Emular o Nó',
+    assert.deepEqual(await rows(page), ['uart_avr (Sistema)', '  Propriedades da Emulação…', '  Emular o Sistema', '  uno (Arduino Uno)', '    Emular o Nó',
       '  fpga (Digilent Basys2)', '    Emular o Nó']);
     assert.equal(await page.eval(() => document.querySelector('#task-emu-bar [data-act=emulate]').textContent), 'Emular o Sistema');
   }
