@@ -1,12 +1,14 @@
 // Silinx - the System Emulator's Explorer 16/32 (#5484): Silinx's own drawing of the board, as the Arduino's
-// (web/js/emulator-arduino.js): its PIM with the PIC24FJ1024GB610, its 16x2 LCD showing its rows, its LEDs D3 to D10
+// (web/js/emulator-arduino.js), its colours the stylesheet's: its PIM with the PIC24FJ1024GB610, its 16x2 LCD showing its rows, its LEDs D3 to D10
 // (lit as the PIC24 drives RA0 to RA7), its buttons S3 to S6 (held down while pressed), its potentiometer R6 (a slider)
 // and its temperature sensor (°C), its connectors (the USB ports, two mikroBUS sockets, the PICtail edge). Its parts'
 // names are data (core/system-emu-explorer.js, silinx-pic24's EXPLORER_1632); what they do is the worker's.
 import { boardFrame, svgText, ic } from './emulator-pcb.js';
 import { ledLook } from './emulator-paint.js';
 
-const C = { pcb: '#1f4f8f', edge: '#123563', metal: '#b9bec2', metalEdge: '#7d8286', black: '#151515', gold: '#c9a54a', silk: '#eef3fb', lcd: '#9fc23a', lcdText: '#1c2a08' };
+// the board's colours: the stylesheet's (web/css/system-editor.css, .sys-emu's --exp-*: the board's own, the same in every
+// theme), none written here (#5575, test/hex-colours.test.js)
+const C = Object.fromEntries(['pcb', 'edge', 'metal', 'metal-edge', 'black', 'gold', 'silk', 'lcd', 'pim'].map((k) => [k.replace(/-(\w)/g, (_, c) => c.toUpperCase()), `var(--exp-${k})`]));
 const W = 640, H = 420;
 // the parts' places on the board
 const LCD = { x: 30, y: 28, w: 300, h: 92 }, PIM = { x: 440, y: 28, w: 150, h: 150 };
@@ -26,7 +28,7 @@ function explorerArt() {
     + `<rect x="${LCD.x}" y="${LCD.y}" width="${LCD.w}" height="${LCD.h}" rx="4" fill="${C.black}"/>`
     + `<rect x="${LCD.x + 14}" y="${LCD.y + 18}" width="${LCD.w - 28}" height="${LCD.h - 36}" rx="2" fill="${C.lcd}"/>`
     // the PIM (MA240023): the device on its plug-in module
-    + `<rect x="${PIM.x}" y="${PIM.y}" width="${PIM.w}" height="${PIM.h}" rx="4" fill="#0f2f12" stroke="${C.metalEdge}"/>`
+    + `<rect x="${PIM.x}" y="${PIM.y}" width="${PIM.w}" height="${PIM.h}" rx="4" fill="${C.pim}" stroke="${C.metalEdge}"/>`
     + ic(PIM.x + 25, PIM.y + 25, PIM.w - 50, PIM.h - 50, ['PIC24FJ', '1024GB610'], 9)
     + svgText(PIM.x + PIM.w / 2, PIM.y + PIM.h + 14, 'PIM', { size: 9, fill: C.silk })
     // the USB ports (the MCP2221A's USB-UART, the PIC24's USB, the PICkit On Board), the mikroBUS sockets, the PICtail

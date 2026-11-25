@@ -57,7 +57,10 @@
 .sys-emu .sys-pin.low { background: var(--asm-muted); }
 .sys-emu .sys-pin.high { background: var(--sys-hot); border-color: var(--sys-hot); }
 .sys-emu .asm-side { width: 300px; }
-/* an Explorer 16/32 (#5484): its LCD's rows, its buttons, its potentiometer and temperature sensor */
+/* an Explorer 16/32 (#5484): its board's colours (its own, the same in every theme, #5575: web/js/emulator-explorer.js reads
+   them), its LCD's rows, its buttons, its potentiometer and temperature sensor */
+.sys-emu { --exp-pcb: #1f4f8f; --exp-edge: #123563; --exp-metal: #b9bec2; --exp-metal-edge: #7d8286; --exp-black: #151515;
+  --exp-gold: #c9a54a; --exp-silk: #eef3fb; --exp-lcd: #9fc23a; --exp-pim: #0f2f12; }
 .sys-emu .sys-exp-lcd { width: 260px; color: #1c2a08; font: bold 19px/24px var(--asm-mono, monospace); white-space: pre; letter-spacing: 1px; }
 .sys-emu .sys-exp-btn.nc { opacity: .45; cursor: default; }
 .sys-emu .sys-exp-pot { width: 110px; }
