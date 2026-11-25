@@ -6,7 +6,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
-import { verdict, next, RELEASE_TAG } from '../scripts/wait-for-ci.mjs';
+import { verdict, next, RELEASE_TAG, waitForCi, backoff, TRANSIENT_RETRIES } from '../scripts/wait-for-ci.mjs';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const run = (id, status, conclusion = null, event = 'push', head_branch = 'v15.12.0') =>
@@ -137,6 +137,65 @@ test('wait for CI: v15.26.0\'s release, which gave up while CI\'s second attempt
       assert.equal(action, 'wait', `${file}, minute ${m}`);
     }
   }
+});
+
+/**
+ * A fake GitHub API (#5574): `answers` in order, each a list of runs (200), a status (an error) or 'network' (fetch
+ * throws as on a dropped connection); a fake clock that the waits advance. Returns the wait's outcome and its log.
+ */
+async function fakeWait(answers, limits = {}) {
+  let t = 0, calls = 0;
+  const log = [];
+  const fetch = async url => {
+    assert.match(url, /^https:\/\/api\.github\.com\/repos\/o\/r\/actions\/workflows\/ci\.yml\/runs\?head_sha=abcdef1234&/);
+    const a = answers[Math.min(calls++, answers.length - 1)];
+    if (a === 'network') throw new TypeError('fetch failed');
+    if (typeof a === 'number') return { ok: false, status: a, statusText: a === 500 ? 'Internal Server Error' : a === 502 ? 'Bad Gateway' : 'Not Found' };
+    return { ok: true, status: 200, json: async () => ({ workflow_runs: a }) };
+  };
+  const sleep = async ms => { t += ms; };
+  try {
+    await waitForCi('abcdef1234', { repo: 'o/r', token: 't', limits, fetch, sleep, now: () => t, log: m => log.push(m) });
+    return { ok: true, log, minutes: t / 60000, calls };
+  } catch (e) {
+    return { ok: false, error: e.message, log, minutes: t / 60000, calls };
+  }
+}
+
+test('#5574 regression, wait for CI: one 500 of the API while CI runs is retried, and the wait ends in CI\'s success', async () => {
+  const going = [run(7, 'in_progress')], passed = [run(7, 'completed', 'success')];
+  const r = await fakeWait([going, 500, going, passed], { timeout: 600 });
+  assert.deepEqual(r, { ok: true, minutes: 3, calls: 4, log: [
+    'abcdef1: CI (v15.12.0) is in progress: https://github.com/o/r/actions/runs/7',
+    'abcdef1: GitHub API: 500 Internal Server Error: trying again in 1 minute (1 of 5)',
+    'abcdef1: CI (v15.12.0) is in progress: https://github.com/o/r/actions/runs/7',
+    'abcdef1: CI passed (v15.12.0): https://github.com/o/r/actions/runs/7',
+  ] });
+});
+
+test('#5574 wait for CI: a network error and a 502 retried with a backoff; the count starts again after an answer', async () => {
+  const going = [run(7, 'in_progress')], passed = [run(7, 'completed', 'success')];
+  const r = await fakeWait(['network', 502, going, 500, passed]);
+  assert.equal(r.ok, true);
+  assert.deepEqual(r.log.filter(m => /trying again/.test(m)), [
+    'abcdef1: fetch failed: trying again in 1 minute (1 of 5)',
+    'abcdef1: GitHub API: 502 Bad Gateway: trying again in 2 minutes (2 of 5)',
+    'abcdef1: GitHub API: 500 Internal Server Error: trying again in 1 minute (1 of 5)',
+  ]);
+  assert.equal(r.minutes, 1 + 2 + 1 + 1);
+  assert.deepEqual([1, 2, 3, 4, 5, 6].map(backoff), [1, 2, 4, 8, 8, 8]);
+});
+
+test('#5574 wait for CI: a 4xx ends the wait at once; transient errors end it after their retries or at --timeout', async () => {
+  assert.deepEqual(await fakeWait([404]), { ok: false, error: 'GitHub API: 404 Not Found', log: [], minutes: 0, calls: 1 });
+  const many = await fakeWait([500]);
+  assert.equal(many.error, `GitHub API: 500 Internal Server Error (${TRANSIENT_RETRIES} retries failed)`);
+  assert.equal(many.calls, TRANSIENT_RETRIES + 1);
+  assert.equal(many.minutes, 1 + 2 + 4 + 8 + 8);
+  const late = await fakeWait([[run(7, 'in_progress')], 500], { timeout: 3 });
+  assert.equal(late.error, 'GitHub API: 500 Internal Server Error, and the --timeout of 3 minutes reached');
+  assert.equal(late.minutes, 1 + 1); // a poll's minute and the first retry's: the second retry's 2 would pass 3
+  assert.deepEqual(late.log.filter(m => /trying again/.test(m)), ['abcdef1: GitHub API: 500 Internal Server Error: trying again in 1 minute (1 of 5)']);
 });
 
 test('wait for CI: the command line without its arguments', () => {
