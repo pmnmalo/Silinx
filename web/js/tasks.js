@@ -471,9 +471,14 @@ function build() {
   // Files page after them (#4609)
   $('procs').after(h('ul', { id: 'task-impl-files', class: 'tree task-flow-files', 'aria-label': 'Files' }));
   $('procs').before(h('div', { id: 'task-impl-bar' },
-    h('button', { class: 'btn', type: 'button', 'data-act': 'pins', onclick: () => app.S.project?.top && app.openPinPlanner() }, 'I/O Pin Planning'),
+    // (a System project's: Build All and Program All, #5581's part 4; web/js/processes.js names the buttons)
+    h('button', { class: 'btn', type: 'button', 'data-act': 'pins', onclick: async () => {
+      if (sysImpl()) return (await import('./system-implement-tree.js')).buildAll();
+      if (app.S.project?.top) app.openPinPlanner();
+    } }, 'I/O Pin Planning'),
     h('button', { class: 'btn', type: 'button', 'data-act': 'program', onclick: async () => {
       if (!app.S.project) return;
+      if (sysImpl()) return (await import('./system-implement-tree.js')).programAll();
       // (an iMPACT opened before, without its Program FPGA to run from here: opened again, #1421)
       const old = app.findDoc('impact');
       if (old && !old.program) await app.closeDoc(old);
@@ -488,6 +493,8 @@ function build() {
   app.renderProcesses();   // (and Emulate's Processes, #1399)
   refreshDots();
 }
+// a System project's Implement bar (#5581's part 4: web/js/processes.js marks it)
+const sysImpl = () => document.getElementById('task-impl-bar')?.dataset.system === '1';
 // The header's room (#839): every label of the switcher if they fit, else the current task's only, else none,
 // else a shorter project name too (#topbar data-fit; the window's width, the language and a development
 // build's Development menu decide it, not a fixed width).
@@ -582,8 +589,8 @@ export function initTasks(a) {
   // the bars' buttons as the project is: at once when it opens, is drawn again or its design changes (its top set or
   // unset), and once a second (#1423)
   // (a System project's Emulate: Emulate System, its I/O Pin Planning a node's, #5581: web/js/processes.js marks the bar)
-  const sysEmu = b => b.closest('#task-emu-bar')?.dataset.system === '1';
-  const barsNow = () => { for (const b of document.querySelectorAll('#task-src-bar button, #task-files-bar button, #task-close-bar button, #task-impl-bar button, #task-emu-bar button')) b.disabled = !app.S.project || (sysEmu(b) ? b.dataset.act === 'pins' : ['check-design', 'pins', 'emulate'].includes(b.dataset.act) && !app.S.project.top); };
+  const sysEmu = b => b.closest('#task-emu-bar, #task-impl-bar')?.dataset.system === '1';
+  const barsNow = () => { for (const b of document.querySelectorAll('#task-src-bar button, #task-files-bar button, #task-close-bar button, #task-impl-bar button, #task-emu-bar button')) b.disabled = !app.S.project || (sysEmu(b) ? b.dataset.act === 'pins' && !b.closest('#task-impl-bar') : ['check-design', 'pins', 'emulate'].includes(b.dataset.act) && !app.S.project.top); };
   for (const ev of ['silinx:project-opened', 'silinx:design-changed']) addEventListener(ev, () => { if (on()) barsNow(); });
   new MutationObserver(() => { if (on()) barsNow(); }).observe($('procs'), { childList: true });
   setInterval(() => { if (on()) { refreshDots(); if (current() === 'sim') { if (simPanel) simPanel.refresh(); else refreshBench(app); tagDocs(); } const g = document.querySelector('#task-empty button'); if (g) g.disabled = !mainEnabled();

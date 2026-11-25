@@ -30,5 +30,9 @@ export async function runNodeImpl(node, steps, name) {
   } catch (e) {
     R.log(`Process "${what}" failed: ${e.message}`, 'err');
     return false;
-  } finally { procState.busy = false; runState.currentJob = null; }
+  } finally {
+    procState.busy = false; runState.currentJob = null;
+    // (its node's build plan changed: the Implement tree's marks, #5581)
+    (await import('./system-implement-tree.js')).planChanged({ draw: true });
+  }
 }

@@ -14,8 +14,8 @@ import { deviceText } from './system-usb.js';
 /** The connected board `key` names (a serial number, or a serial port's address) among `devices`, or null. */
 export const deviceByKey = (devices, key) => devices.find(d => d.serial === key) || devices.find(d => d.port === key) || null;
 
-// why a plan's entry is not programmed, or null
-function refusal(e) {
+/** Why a plan's entry is not programmed, or null (Program Node's, the Implement tree's tip of a node Silinx does not program). */
+export function programRefusal(e) {
   if (e.programmer === 'pickit') return `a PIC24 is not programmed by Silinx yet: load its ${e.image || '.hex'} with MPLAB IPE`;
   if (e.programmer === 'repl') return 'a MicroPython node is not programmed by Silinx yet: copy its .py files with mpremote';
   if (!e.programmer) return `it has nothing to program (${e.reason || e.state})`;
@@ -34,7 +34,7 @@ export function programSteps(plan, match, devices = [], { node = '*', chosen = {
   const out = [];
   for (const e of plan.nodes) {
     if (node !== '*' && e.id !== node) continue;
-    const s = { id: e.id, kind: e.kind, programmer: e.programmer, image: e.image, device: null, warning: null, refused: refusal(e) };
+    const s = { id: e.id, kind: e.kind, programmer: e.programmer, image: e.image, device: null, warning: null, refused: programRefusal(e) };
     out.push(s);
     if (s.refused) continue;
     const m = match.nodes.find(x => x.id === e.id);
