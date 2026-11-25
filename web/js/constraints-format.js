@@ -1,34 +1,13 @@
 // Silinx - a project's constraints in its family's format: UCF, the iCE40's PCF (#2296), the ECP5's LPF (#2302), the Gowin's CST
 // (#2303), the GateMate's CCF (#2431) or the 7-series' XDC (#3142). The interface's model is parseUcf's: a bus's bit written x<1>, as PCF, LPF and XDC write x[1]; PCF's and LPF's
 // own text stays nextpnr's.
-import { PCF, LPF, CST, CCF, XDC, constraintsExtOf, constraintsFormatOf, generateUcf, parseUcf } from '/packages/silinx-fpga/src/parts.js';
+import { constraintsExtOf } from '/packages/silinx-fpga/src/parts.js';
 import { constraintsDiagnostics } from '/core/constraints-check.js';
 
 export const constraintsExt = device => constraintsExtOf(device);
 
-const toModel = net => net.replace(/\[(\d+)\]$/, '<$1>');
-const toPcf = net => net.replace(/<(\d+)>$/, '[$1]');
-// the formats nextpnr reads, its names (x[1])
-const NEXTPNR = { pcf: PCF, lpf: LPF, cst: CST, ccf: CCF };
-const renamed = (o, f) => Object.fromEntries(Object.entries(o).map(([k, v]) => [f(k), v]));
-
-/** The pins of a constraints text: { assignments, clocks, other }. */
-export function readPins(device, text, opts) {
-  const format = constraintsFormatOf(device);
-  if (format === 'ucf') return parseUcf(text, opts);
-  if (format === 'xdc') return XDC.read(text);   // (its reader writes the model's names, x<1>)
-  const m = NEXTPNR[format].read(text);
-  return { ...m, assignments: renamed(m.assignments, toModel), clocks: m.clocks.map(c => ({ ...c, net: toModel(c.net) })) };
-}
-
-/** The text of the pins, generateUcf's arguments. */
-export function writePins(device, { assignments = {}, clocks = [], header, ...rest }) {
-  const format = constraintsFormatOf(device);
-  if (format === 'ucf') return generateUcf({ assignments, clocks, header, ...rest });
-  if (format === 'xdc') return `${header ? `# ${header}\n` : ''}${XDC.write({ assignments, clocks, ...rest })}`;
-  const body = NEXTPNR[format].write({ assignments: renamed(assignments, toPcf), clocks: clocks.map(c => ({ ...c, net: toPcf(c.net) })), ...rest });
-  return `${header ? `${NEXTPNR[format].comment || '#'} ${header}\n` : ''}${body}`;
-}
+// (readPins and writePins: core/constraints-format.js, #5588)
+export { readPins, writePins } from '/core/constraints-format.js';
 
 // (the checks: core/constraints-check.js, the MCP server's too; opts: { top, device, board }, #2296)
 /** A PCF's errors (the line nextpnr would stop at, its pins: of the package, once each), its nets that are no port of the top, its pins on no resource of the board. */
