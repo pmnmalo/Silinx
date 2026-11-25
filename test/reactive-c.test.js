@@ -25,6 +25,8 @@ const pinNo = (pin) => (pin[0] === 'D' ? Number(pin.slice(1)) : 14 + Number(pin.
 /** The sketch run on the host over the vectors: its outputs at each tick, as runModel's rows. */
 function runSketch(model, sketch, vectors, lang) {
   const { pins } = sketch;
+  // (GCC's -Wparentheses, which clang's -Wall does not give: a logical not bare beside a bitwise operator or a comparison)
+  assert.doesNotMatch(sketch.code, /!\w+ (\||\^|&(?!&)|==|!=|<=?|>=?) /, `${model.name}: a not in parentheses beside | & ^ or a comparison (GCC)`);
   const L = ['#include <Arduino.h>', 'int mock_level[20], mock_mode[20], mock_errors; unsigned long mock_ms;', `#include "sketch.ino"`, 'int main(void) {', '  setup();'];
   for (const v of vectors) {
     for (const i of model.inputs) pins[i.name].forEach((p, b) => L.push(`  mock_level[${pinNo(p)}] = ${(v[i.name] >> b) & 1};`));
@@ -173,6 +175,11 @@ test('the expressions\' C: masks and casts only where the widths need them, pare
   assert.equal(c(ast('<<', ast('id', 'b'), ast('id', 'a')), 12), 'a >= 12 ? 0 : ((uint32_t)b << a) & 0xFFF');
   assert.equal(c(ast('un', '~', ast('id', 'a')), 4), '~a & 0xF');
   assert.equal(c(ast('un', '!', ast('id', 'b')), 1), '!b');
+  // (#5522 regression: GCC's -Wparentheses, a not beside a bitwise operator or a comparison in parentheses; beside && bare)
+  assert.equal(c(ast('|', ast('un', '!', ast('id', 'x')), ast('id', 'y')), 1), '(!x) | y');
+  assert.equal(c(ast('^', ast('id', 'y'), ast('un', '!', ast('id', 'x'))), 1), 'y ^ (!x)');
+  assert.equal(c(ast('==', ast('un', '!', ast('id', 'x')), ast('id', 'y')), 1), '(!x) == y');
+  assert.equal(c(ast('&&', ast('un', '!', ast('id', 'x')), ast('un', '!', ast('un', '!', ast('id', 'y')))), 1), '!x && !!y');
   assert.equal(cValue(lower(ast('+', ast('id', 'b'), ast('lit', 1)), 8, width), 8, sym), 'b + 1');   // (an 8-bit target: the assignment masks it)
   assert.equal(cValue(lower(ast('>>', ast('id', 'c'), ast('lit', 2)), 20, width), 8, sym), '(c >> 2) & 0xFF');
   assert.deepEqual([cConst(5n), cConst(10n), cConst(0x7FFFn), cConst(0x8000n)], ['5', '0xA', '0x7FFF', 'UINT32_C(0x8000)']);
