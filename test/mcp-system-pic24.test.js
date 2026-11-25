@@ -1,13 +1,14 @@
 // The MCP server with a System's PIC24 node (#5484, #2674: as the System editor and Simulate System): edit_system adds
 // an Explorer 16/32 (its UART), links it to a terminal and gives it its .hex; check_system describes and checks it (its
 // typed ports at 3.3 V; an .elf refused); simulate runs its firmware (made by the tests' assembler) with the terminal
-// typing to it, each wire's bytes; with no firmware, said; a drawing written in its folder, its C not made, said.
+// typing to it, each wire's bytes; with no firmware, said; a drawing written in its folder, its C not made, said; with
+// controls (Emulate System), its Explorer 16/32's buttons, R6 and temperature set, what it shows (its LEDs, its LCD).
 import { test, before, after } from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import { scratchEnv } from './server-helpers.js';
 import { unlabelled } from './mcp-label.js';
-import { echoHex } from './pic24-node-lib.mjs';
+import { echoHex, explorerHex } from './pic24-node-lib.mjs';
 
 let tmp;
 before(async () => { tmp = await scratchEnv('silinx-mcp-system-pic24-'); });
@@ -59,4 +60,21 @@ test('#5484 a PIC24 node with no firmware, or an .elf: said by simulate and chec
   delete fsm.generatedFile;
   const w = await ok('write_file', { project: 'p', path: 'pic/traffic.fsm.json', text: JSON.stringify(fsm, null, 2) });
   assert.equal(w.text.split('\n').slice(1).join('\n'), "WARNING: pic/traffic.fsm.json: a drawing's C for the Explorer 16/32's PIC24FJ1024GB610 is not made yet (#5552): only an Arduino's sketch is");
+});
+
+test('#5484 simulate with controls on an Explorer 16/32: S3 pressed, R6 and the temperature set; its LEDs, buttons and LCD said; wrong controls refused', async () => {
+  await ok('write_file', { project: 'p', path: 'pic/explorer.hex', text: explorerHex() });
+  await ok('write_file', { project: 'p', path: SYS, text: JSON.stringify({ format: 'silinx-system', version: 2, name: 'pic_board', nodes: [
+    { id: 'pic', kind: 'mcu', board: 'explorer-1632', firmware: 'pic/explorer.hex', interfaces: [], x: 0, y: 0 }], links: [] }, null, 2) });
+  const s = await ok('simulate', { project: 'p', top: SYS, time_ns: 30e6, controls: [
+    { node: 'pic', control: 'S3', on: true, at_ns: 5e6 }, { node: 'pic', control: 'R6', value: 0.25, at_ns: 5e6 }, { node: 'pic', control: 'TC1047A', value: 30, at_ns: 6e6 }] });
+  assert.deepEqual(s.data.boards.pic.lcd, ['Silinx PIC24    ', 'Explorer 16/32  ']);
+  assert.deepEqual([Object.entries(s.data.boards.pic.leds).filter(([, v]) => v > 0.5).map(([d]) => d), s.data.boards.pic.held, s.data.boards.pic.analog], [['D3', 'D4', 'D5'], { S3: true }, { R6: 0.25, TC1047A: 30 }]);
+  assert.deepEqual([s.data.warnings, s.data.errors], [[], []]);
+  assert.ok(s.text.split('\n').includes('pic\'s Explorer 16/32: LEDs D3 D4 D5; held S3; R6 at 25 %, 30 °C; LCD "Silinx PIC24" / "Explorer 16/32".'), s.text);
+  const bad = async (controls, message) => { const x = await call('simulate', { project: 'p', top: SYS, time_ns: 1e6, controls }); assert.deepEqual([x.isError, x.text], [true, `simulate: ${message}`]); };
+  await bad([{ node: 'pic', control: 'S9', on: true }], 'controls[0]: no button, potentiometer nor temperature sensor \'S9\' on pic\'s Explorer 16/32 (S3, S4, S5, S6, R6, TC1047A)');
+  await bad([{ node: 'pic', control: 'R6', value: 2 }], 'controls[0]: R6\'s value: its travel from 0 to 1');
+  await bad([{ node: 'pic', control: 'TC1047A', value: 200 }], 'controls[0]: TC1047A\'s value: a temperature (°C) from -40 to 125');
+  await bad([{ node: 'nope', control: 'S3', on: true }], 'controls[0]: no FPGA node \'nope\' with a board, a circuit nor an Explorer 16/32, in the System');
 });

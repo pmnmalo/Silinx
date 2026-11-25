@@ -32,12 +32,20 @@ import { SYSTEM_EXAMPLES } from '../../core/project-kind.js';
 import { systemPlan } from '../../core/system-build.js';
 import { normalizeSystem } from '../../core/system-doc.js';
 import { intelHex, echoProgram } from '../avr-asm.mjs';
+import { echoHex } from '../pic24-node-lib.mjs';
 // (an AVR and a terminal linked by UART, as the System's worker takes them, #4701)
 const SYSTEM_RUN = (() => {
   const system = normalizeSystem({ format: 'silinx-system', version: 2, name: 'hi', links: [{ id: 'serial', kind: 'uart', a: 'uno.Serial', b: 'term.serial' }], nodes: [
     { id: 'uno', kind: 'mcu', board: 'arduino-uno', firmware: 'fw/echo.hex', interfaces: [{ name: 'Serial', kind: 'uart', baud: 9600, frame: '8N1' }] },
     { id: 'term', kind: 'terminal', interfaces: [{ name: 'serial', kind: 'uart', baud: 9600, frame: '8N1' }] }] });
   return { system, inputs: { plan: systemPlan(system), netlists: {}, firmware: { uno: { name: 'fw/echo.hex', data: intelHex(echoProgram()) } } } };
+})();
+// (a PIC24 and a terminal: silinx-pic24 bundled in the System's worker, the PIC24's prompt, #5484)
+const PIC24_RUN = (() => {
+  const system = normalizeSystem({ format: 'silinx-system', version: 2, name: 'pic', links: [{ id: 'usb', kind: 'uart', a: 'pic.UART', b: 'term.serial' }], nodes: [
+    { id: 'pic', kind: 'mcu', board: 'explorer-1632', firmware: 'pic/echo.hex', interfaces: [{ name: 'UART', kind: 'uart', baud: 9600, frame: '8N1' }] },
+    { id: 'term', kind: 'terminal', interfaces: [{ name: 'serial', kind: 'uart', baud: 9600, frame: '8N1' }] }] });
+  return { system, inputs: { plan: systemPlan(system), netlists: {}, firmware: { pic: { name: 'pic/echo.hex', data: echoHex() } } } };
 })();
 
 let env, plain, html, site, server, siteUrl, build, skip = null;
@@ -228,6 +236,16 @@ uiTest('standalone edition (dist build): loads from file://, creates a project f
     };
     w.postMessage({ type: 'init', system, inputs });
   }), SYSTEM_RUN.system, SYSTEM_RUN.inputs), 'Hi', 'the embedded System worker, from file://');
+  // (a PIC24 too, #5484: silinx-pic24 in the worker's bundle, no server)
+  assert.equal(await page.eval((system, inputs) => new Promise((resolve) => {
+    const w = new Worker(URL.createObjectURL(new Blob([window.SILINX_SYSTEM_WORKER_SRC], { type: 'text/javascript' })));
+    w.onerror = (e) => resolve(`failed: ${e.message}`);
+    w.onmessage = ({ data }) => {
+      if (data.type === 'ready') w.postMessage({ type: 'run', id: 1, until: 5e9 });
+      else { w.terminate(); resolve(data.type === 'state' ? data.report.terminals.term : `${data.type}: ${data.error || data.message}`); }
+    };
+    w.postMessage({ type: 'init', system, inputs });
+  }), PIC24_RUN.system, PIC24_RUN.inputs), '>', 'the PIC24 in the embedded System worker, from file://');
   const kept = await page.eval(() => window.Silinx.active.editor.getValue());
   await page.eval((t) => window.Silinx.active.editor.setValue(t.replace('\nbegin\n', "\nbegin\n  nope_x <= '0';\n")), kept);
   await page.waitFor(() => document.querySelectorAll('.doc:not([hidden]) .cm-lint-marker-error').length === 1, [], { what: 'live check (embedded worker)' });

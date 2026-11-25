@@ -189,7 +189,7 @@ test('#5212 simulate of a System with controls (Emulate System): BTN0 pressed on
   // (with no controls: no board emulated, as before)
   assert.equal((await ok('simulate', { project: 'u', top: 'emu.sys.json', time_ns: 2e6 })).data.boards, undefined);
   const bad = async (controls, message) => { const x = await call('simulate', { project: 'u', top: 'emu.sys.json', time_ns: 2e6, controls }); assert.deepEqual([x.isError, x.text], [true, `simulate: ${message}`]); };
-  await bad([{ node: 'term', control: 'btn0', on: true }], 'controls[0]: no FPGA node \'term\' with a board, nor a circuit, in the System');
+  await bad([{ node: 'term', control: 'btn0', on: true }], 'controls[0]: no FPGA node \'term\' with a board, a circuit nor an Explorer 16/32, in the System');
   await bad([{ node: 'fpga', control: 'sw3', on: true }], 'controls[0]: no switch or button \'sw3\' of fpga\'s board linked to its module (btn0)');
   await bad([{ node: 'fpga', control: 'btn0', on: true, at_ns: 5e6 }], 'controls[0]: at_ns from 0 to the run\'s time');
 });
@@ -246,7 +246,7 @@ test('#5322 simulate with controls on a circuit node: its switch S1 set at 5 ms 
   const x = await call('simulate', { project: 'u', top: 'emuc.sys.json', time_ns: 2e6, controls: [{ node: 'bench', control: 'S9', on: true }] });
   assert.deepEqual([x.isError, x.text], [true, 'simulate: controls[0]: no switch or button \'S9\' in the circuit bench (S1)']);
   const y = await call('simulate', { project: 'u', top: 'emuc.sys.json', time_ns: 2e6, controls: [{ node: 'term', control: 'S1', on: true }] });
-  assert.deepEqual([y.isError, y.text], [true, 'simulate: controls[0]: no FPGA node \'term\' with a board, nor a circuit, in the System']);
+  assert.deepEqual([y.isError, y.text], [true, 'simulate: controls[0]: no FPGA node \'term\' with a board, a circuit nor an Explorer 16/32, in the System']);
 });
 
 test('#5342 simulate with a control on a circuit\'s temperature sensor: its value (°C) at its time, its OS; a value that is no temperature refused', async () => {

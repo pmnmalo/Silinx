@@ -268,9 +268,13 @@ it needs the emulation.
   temperature sensor, the LCD, the EEPROM), behind the node contract (`pic24Contract`, its fidelity notes); its firmware
   is a `.hex` (no `.elf`). The System editor's **Explorer 16/32** places one; the check warns of a 5 V output on its 3.3 V
   inputs as on an FPGA's; a System's UART link takes the USB-UART's place (a terminal node is the computer on its USB).
-  A drawing in its folder has no C yet (#5552: the generated C is an Arduino's sketch). Its parts still to come (the
-  plan in #5484): the board drawn (the System Emulator, the circuit's part: its LEDs, buttons, potentiometer and LCD),
-  SPI and I²C as links, an example System for the course.
+  A drawing in its folder has no C yet (#5552: the generated C is an Arduino's sketch). The System Emulator draws the
+  board (Silinx's own drawing, `web/js/emulator-explorer.js`; `core/system-emu-explorer.js`): its LCD's two rows, its
+  LEDs D3 to D10 (RA0 to RA7), its buttons S3 to S6 held down while pressed (their pins the node's inputs; a button
+  whose pin a link drives is not one), its potentiometer R6 and its temperature sensor set on the board's model; the
+  MCP's `simulate` with `controls` sets them (`S3` on, `R6` a value from 0 to 1, `TC1047A` in °C) and says what the
+  board shows. The static editions bundle silinx-pic24 in the System's worker. Its parts still to come (the plan in
+  #5484): the board as a circuit's part, SPI and I²C as links, an example System for the course.
 - **XC16 in the browser, an experiment** (#5491). XC16 is GCC 4.5.1 with Microchip's pic30 back end and binutils,
   whose GPL source Microchip publishes ("MPLAB XC16 C-Compiler Source"); the native build from it already needs
   patches. The experiment builds `cc1`, `as` and `ld` with Emscripten, chained by a driver of Silinx's own (as the
@@ -587,13 +591,13 @@ The Board Emulator gets a **system** mode.
 ports on its board's pins, the node's `pins`), each node its own engine in the scheduler. Its switches and buttons are
 the inputs no link drives (`setBoardInput`). Its LEDs and display are watched outputs, kept by the scheduler's `watch`
 and shown as the Board Emulator shows them (`boardOutputs`). An Arduino's board shows its pins' levels and its LED L
-(D13). The System's worker (`core/system-host.js`) gets `init { emulate }`, `set`, and each `state` with what the
+(D13); an Explorer 16/32's its LEDs, buttons, R6, temperature and LCD (`core/system-emu-explorer.js`, #5484). The System's worker (`core/system-host.js`) gets `init { emulate }`, `set`, and each `state` with what the
 boards show since the last.
 
 **Its view** (#5212, `web/js/system-emu-view.js`): a document of its own, `sysemu:<file>`, opened from the System
 editor's Emulate or the System row's Emulate System. An FPGA board is mounted with the Board Emulator's parts
 (`mountBoardParts`), a button held down until the design saw a real press (`pressHolds`). An Arduino is drawn by
-`web/js/emulator-arduino.js`, Silinx's own. The terminals are in the side panel. The run follows real time, at most 50
+`web/js/emulator-arduino.js`, Silinx's own, an Explorer 16/32 by `web/js/emulator-explorer.js`. The terminals are in the side panel. The run follows real time, at most 50
 ms a run, the backlog dropped when it falls behind; the status line has the time and the rate. The MCP server's
 `simulate` of a System takes `controls` (`[{ node, control: btn0, on, at_ns }]`) and says what the boards show at the
 end, through the same functions.
