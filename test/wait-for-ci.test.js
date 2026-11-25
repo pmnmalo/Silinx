@@ -6,7 +6,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
-import { verdict, next } from '../scripts/wait-for-ci.mjs';
+import { verdict, next, RELEASE_TAG } from '../scripts/wait-for-ci.mjs';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const run = (id, status, conclusion = null, event = 'push', head_branch = 'v15.12.0') =>
@@ -37,6 +37,22 @@ test('wait for CI: the verdict from the runs of the commit', () => {
   assert.equal(verdict([run(17, 'in_progress', null, 'push', 'silinx-fpga-v0.1.0')]).state, 'pending');
   assert.equal(verdict([run(18, 'completed', 'success', 'push', 'silinx-fpga-next')]).state, 'none');
   assert.equal(verdict([run(19, 'completed', 'success', 'push', 'other-v1.0.0')]).state, 'none');
+});
+
+test('#5514 regression, wait for CI: the PIC24 emulator package\'s tag silinx-pic24-v* counts too; every tag of ci.yml does', () => {
+  // silinx-pic24 0.1.0's release found no run of its tag ("no CI run of the tag or of main for this commit")
+  assert.equal(verdict([run(20, 'completed', 'success', 'push', 'silinx-pic24-v0.1.0')]).reason, 'CI passed (silinx-pic24-v0.1.0): https://github.com/o/r/actions/runs/20');
+  assert.equal(verdict([run(21, 'queued', null, 'push', 'silinx-pic24-v0.1.0')]).state, 'pending');
+  assert.equal(verdict([run(22, 'completed', 'failure', 'push', 'silinx-pic24-v0.2.0')]).state, 'failure');
+  assert.equal(verdict([run(23, 'completed', 'success', 'push', 'silinx-pic24-next')]).state, 'none');
+  assert.equal(verdict([run(24, 'completed', 'success', 'push', 'silinx-other-v1.0.0')]).state, 'none');
+  // each tag ci.yml runs on is one whose run a release takes: a package's tag added there and not here fails
+  const tags = /\n {4}tags: \[([^\]]*)\]\n/.exec(fs.readFileSync(path.join(ROOT, '.github/workflows/ci.yml'), 'utf8'))[1].split(',').map(t => t.trim().replace(/^'|'$/g, ''));
+  assert.ok(tags.includes('silinx-pic24-v*'), tags.join(', '));
+  for (const t of tags) {
+    assert.match(t, /^[a-z0-9-]*v\*$/, t);
+    assert.ok(RELEASE_TAG.test(t.replace('*', '0.1.0')), `${t}: wait-for-ci.mjs takes its runs`);
+  }
 });
 
 test('wait for CI: a scheduled run of main is not a release\'s (#3423)', () => {
