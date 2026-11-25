@@ -3,7 +3,7 @@
 // subprograms (functions, procedures, parameter modes, overloading), blocks and use clauses.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { diags, out, outW, sim, vhd } from './lang-util.js';
+import { diags, out, outW, sim, vhd, warningsOf } from './lang-util.js';
 
 const ADDER = `library ieee; use ieee.std_logic_1164.all; use ieee.numeric_std.all;
 entity adder is
@@ -413,4 +413,31 @@ test('mixed language: a VHDL testbench instantiating a Verilog module with param
   process begin a <= x"05"; wait for 1 ns; report integer'image(to_integer(unsigned(y))); wait; end process;`,
     `signal a, y : std_logic_vector(7 downto 0);`) });
   assert.deepEqual(r, ['15']);
+});
+
+// Regression (#5465): the port is the Verilog reg itself (aliased), whose blocking assignment wakes the process in the
+// same delta; that wait counted as none, and the process was said to loop forever at 0 ns
+test('mixed language: a VHDL process waits on its port driven by a Verilog reg, one and two levels down (#5465)', () => {
+  const w = `library ieee; use ieee.std_logic_1164.all;
+entity w is port ( m : in std_logic; q : out std_logic ); end;
+architecture a of w is begin
+  process variable k : integer := 0; begin
+    q <= m; k := k + 1; report "woke " & integer'image(k) & " " & time'image(now);
+    if k > 5 then wait; end if;
+    wait on m;
+  end process;
+end;`;
+  const stim = 'initial begin P = 0; #10 P = 1; #10 P = 0; #5 $display("q=%b", q); #5 $finish; end';
+  const one = sim({ 'w.vhd': w, 't.v': `module tb; reg P; wire q; w dut (.m(P), .q(q));\n  ${stim}\nendmodule\n` });
+  const two = sim({ 'w.vhd': w, 'w2.vhd': `library ieee; use ieee.std_logic_1164.all;
+entity w2 is port ( m : in std_logic; q : out std_logic ); end;
+architecture a of w2 is begin u : entity work.w port map (m => m, q => q); end;`,
+  't.v': `module mid(input P, output q); w2 u (.m(P), .q(q)); endmodule
+module tb; reg P; wire q; mid dut (.P(P), .q(q));\n  ${stim}\nendmodule\n` });
+  // as under a VHDL test bench: at 0 ns (its first run, then P from X to 0), 10 and 20 ns
+  const expected = ['0 note woke 1 0 ns', '0 note woke 2 0 ns', '10000 note woke 3 10 ns', '20000 note woke 4 20 ns', '25000 print q=0',
+    '30000 note simulation finished ($finish) at 30 ns'];
+  assert.deepEqual(one.lines, expected);
+  assert.deepEqual(two.lines, expected);
+  assert.deepEqual([...warningsOf(one), ...warningsOf(two)], []);
 });
