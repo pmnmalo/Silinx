@@ -36,7 +36,7 @@ uiTest('#5322 Emulate: a circuit node drawn beside the board, its switch clicked
   await page.waitFor((e) => document.querySelector(`${e} [data-node=fpga] .emu-pcb`) && document.querySelector(`${e} [data-node=bench] .sys-emu-circ [data-id=S1]`), [EMU], { what: 'the boards', timeout: 60000 });
   assert.deepEqual(await page.eval((e) => { const c = document.querySelector(`${e} [data-node=bench]`); return [c.querySelector('.sys-emu-cap').textContent, c.classList.contains('circuit-editor'), [...c.querySelectorAll('[data-kind=part]')].map((g) => g.dataset.id), !!c.querySelector('[data-id=D2] .circ-led.lit')]; }, EMU),
     ['bench', true, ['F1', 'S1', 'D2'], false]);
-  await page.click(`${EMU} .sysemu-run`);
+  await page.waitFor((e) => document.querySelector(`${e} .sysemu-run`)?.textContent === '⏸ Pause', [EMU], { what: 'running once ready (#5619)', timeout: 60000 });
   await page.click(`${EMU} .sys-term-in`);
   await page.type('A');
   await page.key('Enter');
