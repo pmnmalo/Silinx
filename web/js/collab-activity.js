@@ -116,6 +116,9 @@ const TREE_KEYS = ['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Enter'];
 /** Calls onOwn() at the follower's own action on what the owner's activity drives. */
 export function watchOwnActions(onOwn) {
   document.addEventListener('click', e => { if (e.isTrusted && e.target.closest?.(OWN)) onOwn(); }, true);
+  // (#5541: a mouse's or a pen's button pressed there too: the owner's activity arriving before its release drew the
+  // Design pane again under it, and no click came; a finger's touch may be a scroll, its tap's click is the action)
+  document.addEventListener('pointerdown', e => { if (e.isTrusted && e.button === 0 && e.pointerType !== 'touch' && e.target.closest?.(OWN)) onOwn(); }, true);
   document.addEventListener('keydown', e => { if (e.isTrusted && ((TREE_KEYS.includes(e.key) && e.target.closest?.('#hier')) || e.target.closest?.(`.isim, ${TRY}`))) onOwn(); }, true);
   document.addEventListener('wheel', e => { if (e.isTrusted && e.target.closest?.('.isim')) onOwn(); }, { capture: true, passive: true });
 }
