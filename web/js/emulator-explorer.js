@@ -1,8 +1,9 @@
 // Silinx - the System Emulator's Explorer 16/32 (#5484): Silinx's own drawing of the board, as the Arduino's
-// (web/js/emulator-arduino.js), after the real DM240001-2 (#5579: its photo, top view; its parts where they are, its green
-// solder mask), its colours the stylesheet's: its 16x2 LCD showing its rows at the top left beside the ICSP jack, the
+// (web/js/emulator-arduino.js), after the real DM240001-2 (#5579: its photo, top view, its silkscreen read on it; its parts
+// where they are, its green solder mask), its colours the stylesheet's: its 16x2 LCD showing its rows at the top left beside the ICSP jack, the
 // slide potentiometer R6 under it, the PIM socket with the PIC24FJ1024GB610 in the middle, its LEDs D3 to D10 (lit as the
-// PIC24 drives RA0 to RA7) above its buttons S3 to S6 (held down while pressed) along the bottom edge, its temperature
+// PIC24 drives RA0 to RA7; D10 at the left, D3 at the right) above its buttons S3, S6, S5 and S4 (held down while pressed)
+// along the bottom edge, S7 (Power) at its left, MCLR by the USB connectors, its temperature
 // sensor (°C), the USB connectors and the power jack on the left edge, the mikroBUS sockets A and B with their Pmod
 // headers at the top right, the PICtail Plus headers and edge connector on the right. Its parts' names are data
 // (core/system-emu-explorer.js, silinx-pic24's EXPLORER_1632); what they do is the worker's.
@@ -12,12 +13,13 @@ import { ledLook } from './emulator-paint.js';
 // the board's colours: the stylesheet's (web/css/system-editor.css, .sys-emu's --exp-*: the board's own, the same in every
 // theme), none written here (#5575, test/hex-colours.test.js)
 const C = Object.fromEntries(['pcb', 'edge', 'trace', 'metal', 'metal-edge', 'black', 'gold', 'silk', 'lcd', 'lcd-frame', 'pim', 'slider'].map((k) => [k.replace(/-(\w)/g, (_, c) => c.toUpperCase()), `var(--exp-${k})`]));
-// (the photo's board, 590 x 425 pixels, at 1.2: its parts' places measured on it)
+// (the photo's board, 1420 x 1020 pixels, at 0.5: its parts' places measured on it)
 const W = 708, H = 510;
 const LCD = { x: 88, y: 28, w: 294, h: 112 }, GLASS = { x: 96, y: 55, w: 278, h: 78 }, PIM = { x: 214, y: 232, w: 170, h: 165 };
 const POT = { x: 144, y: 154, w: 198, h: 36 };
-const LED_Y = 445, LED_X0 = 230, LED_DX = 19;
-const BTN_Y = 487, BTN_XS = [234, 294, 350, 408];
+const LED_Y = 442, LED_X0 = 252, LED_DX = 17;   // (D10 at LED_X0, D3 the last)
+const ledX = (k) => LED_X0 + (7 - k) * LED_DX;   // (D3 + k's)
+const BTN_Y = 487, BTN_XS = [238, 298, 357, 415];
 const TEMP = { x: 440, y: 432 };
 const MIKRO = [{ x: 394, name: 'A' }, { x: 522, name: 'B' }];
 // (each part put by its centre's x and its top's y: emulator-pcb.js boardFrame's put)
@@ -36,11 +38,12 @@ function explorerArt() {
     // (a few of its traces)
     + [60, 200, 330, 420].map((y) => `<path d="M70 ${y} H ${W - 60}" stroke="${C.trace}" stroke-width="3" fill="none"/>`).join('')
     // the ICSP jack (RJ11) and the LCD's module, its glass where its rows are shown
-    + rect(0, 43, 60, 57, C.black, ' rx="2"') + rect(195, 4, 110, 14, C.black)
+    + rect(0, 37, 82, 65, C.black, ' rx="2"') + rect(152, 1, 70, 9, C.black)
+    + rect(12, 10, 75, 13, C.black) + svgText(18, 34, 'PICkit', { size: 7, fill: C.silk, anchor: 'start' })
     + rect(LCD.x, LCD.y, LCD.w, LCD.h, C.lcdFrame, ' rx="3"') + rect(GLASS.x, GLASS.y, GLASS.w, GLASS.h, C.lcd, ' rx="2"')
     // the slide potentiometer R6
     + rect(POT.x, POT.y, POT.w, POT.h, C.metal, ` rx="3" stroke="${C.metalEdge}"`) + rect(POT.x + 20, POT.y + 14, POT.w - 40, 8, C.slider, ' rx="2"')
-    + svgText(POT.x - 10, POT.y + 22, 'R6', { size: 9, fill: C.silk, anchor: 'end' })
+    + svgText(POT.x + 4, POT.y + POT.h + 10, 'R6', { size: 8, fill: C.silk, anchor: 'start' })
     // the USB connectors (micro, C, A, micro) and the power jack on the left edge
     + rect(0, 127, 26, 29, C.metal, ` rx="3" stroke="${C.metalEdge}"`) + rect(0, 202, 42, 33, C.metal, ` rx="6" stroke="${C.metalEdge}"`)
     + rect(0, 259, 60, 57, C.metal, ` rx="2" stroke="${C.metalEdge}"`) + rect(0, 352, 26, 36, C.metal, ` rx="3" stroke="${C.metalEdge}"`)
@@ -50,15 +53,17 @@ function explorerArt() {
     + ic(PIM.x + 50, PIM.y + 52, PIM.w - 100, PIM.h - 104, ['PIC24FJ', '1024GB610'], 7)
     // the mikroBUS sockets, the board's name, the PICtail Plus headers and edge connector, the crystal
     + MIKRO.map(mikro).join('')
-    + svgText(556, 164, 'EXPLORER 16/32', { size: 17, fill: C.silk })
-    + header(480, 178, 23) + header(570, 178, 23)
-    + fingers(184, 11) + fingers(270, 11) + fingers(352, 16) + svgText(W - 40, 330, 'PICtail Plus', { size: 8, fill: C.silk, rotate: true })
-    + rect(408, 300, 18, 52, C.metal, ` rx="8" stroke="${C.metalEdge}"`)
-    // the LEDs' and the buttons' names, the temperature sensor's, the reset button (MCLR)
-    + Array.from({ length: 8 }, (_, k) => svgText(LED_X0 + k * LED_DX, LED_Y + 21, `D${k + 3}`, { size: 7, fill: C.silk })).join('')
-    + ['S3', 'S6', 'S5', 'S4'].map((s, k) => svgText(BTN_XS[k] + 24, BTN_Y + 4, s, { size: 9, fill: C.silk, anchor: 'start' })).join('')
-    + rect(28, BTN_Y - 14, 28, 28, C.black, ' rx="3"') + svgText(42, BTN_Y - 18, 'MCLR', { size: 7, fill: C.silk })
-    + svgText(288, 424, 'Temp Sensor TC1047A', { size: 7, fill: C.silk });
+    + svgText(588, 164, 'EXPLORER 16/32', { size: 17, fill: C.silk })
+    + header(486, 177, 24) + header(576, 177, 24)
+    + rect(484, 476, 80, 18, C.black, ' rx="1"') + svgText(524, 506, 'JTAG', { size: 8, fill: C.silk })
+    + fingers(187, 9) + fingers(260, 9) + fingers(332, 21) + svgText(W - 40, 330, 'PICtail Plus', { size: 8, fill: C.silk, rotate: true })
+    + rect(401, 290, 25, 57, C.metal, ` rx="8" stroke="${C.metalEdge}"`)
+    // the LEDs' and the buttons' names, the temperature sensor's, the reset button MCLR and the power button S7
+    + Array.from({ length: 8 }, (_, k) => svgText(ledX(k), LED_Y + 21, `D${k + 3}`, { size: 7, fill: C.silk })).join('')
+    + ['S3', 'S6', 'S5', 'S4'].map((s, k) => svgText(BTN_XS[k] + 22, BTN_Y + 20, s, { size: 9, fill: C.silk, anchor: 'start' })).join('')
+    + rect(97, 182, 28, 28, C.black, ' rx="3"') + svgText(111, 178, 'MCLR', { size: 7, fill: C.silk })
+    + rect(30, BTN_Y - 14, 28, 28, C.black, ' rx="3"') + svgText(44, BTN_Y + 22, 'S7 Power', { size: 7, fill: C.silk })
+    + svgText(306, 422, 'Temp Sensor TC1047A', { size: 7, fill: C.silk });
 }
 
 /** The board drawn: { wrap, paint(shown) } (emu: core/system-emu-explorer.js explorerBoard's, shown: its explorerState's);
@@ -69,12 +74,12 @@ export function explorerLayout({ h, emu, title, set }) {
   // the LCD's rows
   const rows = [0, 1].map((r) => h('div', { class: 'sys-exp-lcd-row', 'data-row': String(r), 'data-no-i18n': 'true' }, ''));
   put(h('div', { class: 'sys-exp-lcd', title: 'LCD 16x2 (the PMP: PMD0-7 RE0-RE7, RS RB15, E RD4)' }, ...rows), GLASS.x + GLASS.w / 2, GLASS.y + 14);
-  // the LEDs, D3 to D10
+  // the LEDs, D3 to D10 (D10 at the left)
   const leds = new Map();
   Object.entries(emu.leds).forEach(([d, pin], k) => {
     const el = h('div', { class: 'emu-led sys-exp-led', 'data-part': d, title: `LED ${d} (${pin})` });
     leds.set(d, el);
-    put(el, LED_X0 + k * LED_DX, LED_Y - 8);
+    put(el, ledX(k), LED_Y - 8);
   });
   // the buttons, S3 S6 S5 S4 as on the board, each held down while pressed
   const buttons = new Map();
