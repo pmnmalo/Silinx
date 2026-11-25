@@ -12,6 +12,22 @@ import { toolError, readProject, STR, PROJECT } from './mcp-util.js';
 import { NAME_RE, FILE_RE, sourceBase } from '../core/ident.js';
 import { CIRCUIT_TEMPLATES } from '../core/circuit-templates.js';
 import { FSM_TEMPLATES } from '../core/chart-templates.js';
+import { projectSystem } from '../core/project-system.js';
+import { isSystemFile } from '../core/system-doc.js';
+import { sourcePlace, nodeOfPath } from '../core/system-layout.js';
+
+// a System project's new source's place (#5488, core/system-layout.js sourcePlace, as New Source's): the node's folder
+// `location` is in, else (no location) the first FPGA node's, with its base language; null: not a System project's, or
+// a location in no node's folder
+async function systemPlace(name, pj, dir, location) {
+  const files = await P.fileTree(name), doc = files.find(isSystemFile);
+  const texts = doc ? { [doc]: await P.readFile(name, doc).catch(() => '') } : {};
+  const { model, implicit } = projectSystem(pj, { files, texts });
+  if (!model || implicit) return null;
+  const id = location != null ? nodeOfPath(`${String(location).replace(/\/+$/, '')}/x`, model.nodes.map(n => n.id)) : null;
+  if (location != null && !id) return null;
+  return sourcePlace(model, { id, dir, preferred: pj.preferredLanguage });
+}
 
 const TYPES = {
   module: { label: 'Module (HDL)', ext: null, dir: 'src' },
@@ -77,12 +93,13 @@ export const NEW_SOURCE_TOOLS = [
       const { constraintsExtOf } = await import('../packages/silinx-fpga/src/parts.js');
       file = sourceBase(file);
       if (!FILE_RE.test(file)) throw toolError('Enter a valid file name (letters, digits, _ and -).');
-      const loc = String(location ?? t.dir).trim().replace(/\/+$/, '');
+      const place = await systemPlace(name, pj, t.dir, location);
+      const loc = String(location ?? place?.location ?? t.dir).trim().replace(/\/+$/, '');
       if (!/^[A-Za-z0-9_/-]+$/.test(loc) || loc.split('/').some(s => !s || s.startsWith('.'))) throw toolError('Invalid location.');
       if (/^build(\/|$)/i.test(loc)) throw toolError('build/ is written by Silinx itself');
       if (type === 'lab' && loc !== 'labs') throw toolError('A guided lab is in the labs folder: Location labs.');
       if (type === 'package' && language === 'verilog') throw toolError('a package is VHDL\'s');
-      const lang = type === 'package' ? 'vhdl' : language || (pj.preferredLanguage === 'verilog' ? 'verilog' : 'vhdl');
+      const lang = type === 'package' ? 'vhdl' : language || (['vhdl', 'verilog'].includes(place?.lang) ? place.lang : null) || (pj.preferredLanguage === 'verilog' ? 'verilog' : 'vhdl');
       const ext = type === 'constraints' ? constraintsExtOf(pj.device) : t.ext ?? (lang === 'verilog' ? '.v' : '.vhd');
       const rel = `${loc}/${file}${ext}`;
       const tree = await P.fileTree(name);

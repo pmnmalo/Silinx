@@ -17,6 +17,7 @@ import { panes } from './state-panes.js';
 import { filesState } from './state-files.js';
 import { designState } from './state-design.js';
 import { systemsOn } from '/core/build-channel.js';
+import { newSourcePlace } from './design-system.js';
 export { cTemplate, cppTemplate } from './c-templates.js';
 
 const SOURCE_TYPES = [
@@ -72,11 +73,15 @@ export async function newSourceWizard({ type, name = '', location = null, lang =
   let st = SOURCE_TYPES.filter(ofKind).find(t => t.id === consType(LEGACY[type]?.[0] || type)) || SOURCE_TYPES.find(t => t.id === (design ? 'sch' : 'hdl'));   // default: Module (HDL)
   const shown = () => SOURCE_TYPES.filter(t => ofKind(t) && (CONSTRAINTS.includes(t.id) ? t.id === cons : !t.hidden || t === st));
   // language of HDL modules and test benches (Define Module / Associate Source pages)
-  const langSel = select([['vhdl', 'VHDL'], ['verilog', 'Verilog']], lang || LEGACY[type]?.[1] || (S.project.preferredLanguage === 'verilog' ? 'verilog' : 'vhdl'));
+  // (a System project's: in the selected node's folder, in its base language, #5488)
+  const placeOf = t => newSourcePlace(t.dir);
+  const hdl = l => (l === 'vhdl' || l === 'verilog' ? l : null);
+  const langSel = select([['vhdl', 'VHDL'], ['verilog', 'Verilog']], lang || LEGACY[type]?.[1] || hdl(placeOf(st)?.lang) || (S.project.preferredLanguage === 'verilog' ? 'verilog' : 'vhdl'));
   const extOf = t => t.ext ?? (langSel.value === 'verilog' ? '.v' : '.vhd');
   const guard = replaceGuard('New Source');
   const fname = h('input', { type: 'text', placeholder: 'file name', value: name });
-  const loc = h('input', { type: 'text', value: location ?? st.dir });
+  const dirOf = t => placeOf(t)?.location ?? t.dir;
+  const loc = h('input', { type: 'text', value: location ?? dirOf(st) });
   const list = h('div', { class: 'src-types' });
   let refresh = () => {};   // the wizard's steps and buttons for the type now (bound by the wizard)
   const renderList = () => {
@@ -84,7 +89,7 @@ export async function newSourceWizard({ type, name = '', location = null, lang =
     for (const t of shown()) {
       const row = h('div', { class: `st${t === st ? ' sel' : ''}` }, icon(t.ico), t.label);
       // the pages, the steps and the buttons follow the type (their number depends on it)
-      row.addEventListener('click', () => { st = t; loc.value = t.dir; renderList(); refresh(); });
+      row.addEventListener('click', () => { st = t; loc.value = dirOf(t); renderList(); refresh(); });
       row.addEventListener('dblclick', () => { st = t; refresh(); list.closest('.dlg')?.querySelector('.dlg-buttons .btn.primary')?.click(); });
       list.append(row);
     }

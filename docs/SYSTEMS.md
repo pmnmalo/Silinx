@@ -276,6 +276,13 @@ board, device, top module and constraints) and no link. The MCP's `project_info`
   (git's and a zip's too): a new node has none until its first file. An FPGA node is built from its folder alone
   (`build/nodes/<id>/`). A System document of version 1 (its files in `src/` and `firmware/`) is not read: no backward
   compatibility (roadmap #5479); opening its project says so in the console.
+- **The Design pane groups by node** (#5488): under the System's row, one branch per node with its folder's rows (an
+  FPGA node's module and its hierarchy, its folder's other modules, drawings and packages; a microcontroller's
+  drawings, their last badge its base language's (`[C]`, no schematic: hardware), its firmware, then its folder's
+  sources), each module's row as anywhere (its drawing's badge first, its HDL's last); the
+  rows of no node's folder under the System itself. New Source (and the MCP's `new_source`) puts a source in the
+  selected node's folder (`<id>`, a test bench in `<id>/sim`), else the first FPGA node's, in the node's base language.
+  A node's sub-folders (a Zynq's PL and PS, #4679) will be rows of its branch.
 - **A System project has no `board` of its own.** Each FPGA node is a module of the System project itself (HDL
   or a drawing), names its own board and pins, and is built with the flow of that board's family.
 
