@@ -6,8 +6,9 @@ import * as P from './projects.js';
 import { toolError, projectText, elaborateView } from './mcp-util.js';
 import { readSystem, isSystemFile } from '../core/system-doc.js';
 import { systemsOn, SYSTEMS_OFF } from '../core/build-channel.js';
-import { prepareSystem, systemReport, runTimeText, systemInputs, systemFromInputs, loadEngines } from '../core/system-run.js';
+import { prepareSystem, systemReport, runTimeText, systemInputs, systemFromInputs, loadEngines, disposeSystem } from '../core/system-run.js';
 import './rp2040-firmware.js';   // (a Pico's firmware read from the local server's copy, #5494)
+import './esp32-spawn.js';   // (an ESP32's MicroPython in a Node Worker, #5495)
 import { emulationBoards, withBoards, watchBoards, boardStates, setBoardInput } from '../core/system-emu.js';
 import { systemVcd } from '../core/system-waves.js';
 import { ucfPort } from '../core/board-constraints.js';
@@ -119,6 +120,11 @@ export async function simulateSystem(name, top, { ms, type = {}, controls = null
   const emu = controls || setsControls(stimulus) ? await emulated(sys, how) : null;
   const ready = emu ? emu.ready : await prepareSystem(sys, how);
   if (ready.error) throw toolError(`${file}: ${ready.error}`);
+  try { return await runReady(name, file, sys, { ready, emu, stimulus, set, type, controls, ms, said, ids }); } finally { disposeSystem(ready); }   // (an ESP32's Worker ended, #5495)
+}
+
+// the System built, run and said
+async function runReady(name, file, sys, { ready, emu, stimulus, set, type, controls, ms, said, ids }) {
   let steps = [];   // (a step after the run's end: not reached)
   try { steps = stimulus ? stimulusSteps(stimulus, { boards: emu?.boards ?? [], terminals: [...ready.terminals.keys()] }) : []; }
   catch (e) { throw toolError(`${set.stimulus}: ${e.message}`); }

@@ -8,6 +8,7 @@ export const SYSTEM_PT = {
   'Arduino Uno': 'Arduino Uno', 'Arduino Nano': 'Arduino Nano', 'Terminal': 'Terminal', 'Link': 'Ligação',
   'Click the canvas to add an FPGA node: a module of the project on a board': 'Clique na tela para acrescentar um nó FPGA: um módulo do projeto numa placa',
   'Click the canvas to add an Arduino Uno': 'Clique na tela para acrescentar um Arduino Uno', 'Click the canvas to add an Arduino Nano': 'Clique na tela para acrescentar um Arduino Nano',
+  'ESP32': 'ESP32', 'Click the canvas to add an ESP32 DevKitC: MicroPython, behavioural, its program a .py': 'Clique na tela para acrescentar uma ESP32 DevKitC: MicroPython, comportamental, o seu programa um .py',   // (#5495)
   'Pico': 'Pico', 'Click the canvas to add a Raspberry Pi Pico: an RP2040 running MicroPython, its program a .py': 'Clique na tela para acrescentar um Raspberry Pi Pico: um RP2040 com MicroPython, o seu programa um .py',   // (#5494)
   'Program (.py)': 'Programa (.py)', 'a .py of the project, run by MicroPython': 'um .py do projeto, corrido pelo MicroPython',
   'MQTT Broker': 'Broker MQTT', 'MQTT broker': 'broker MQTT', "Click the canvas to add an MQTT broker: the Pico Ws' messages, published and subscribed": 'Clique na tela para acrescentar um broker MQTT: as mensagens dos Pico W, publicadas e subscritas',   // (#5500)

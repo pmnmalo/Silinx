@@ -3,7 +3,7 @@
 The design of roadmap #4695. Modules on FPGAs and on microcontrollers (an Arduino's AVR, a Raspberry Pi Pico's
 RP2040, an ESP32), wired to each other in one drawing, then simulated, emulated and tried on the real boards
 together. Its phases 1 and 2 are built (the scheduler, the System document, the AVR node, the links, the System
-Emulator); of phase 4, the RP2040 node is built (#5494, below), the ESP32 node not yet (#5495). Each phase becomes issues of its own
+Emulator); of phase 4, the RP2040 node (#5494) and the ESP32 node's Worker + Atomics back end (#5495) are built, below. Each phase becomes issues of its own
 when it starts.
 
 **What a System holds** (#5411): nodes of every kind, linked as the design wants (GPIO, UART, SPI, I²C, buses, a
@@ -281,6 +281,30 @@ A Raspberry Pi Pico (`board: 'pico'`, #5494, `core/system-sim-rp2040.js`) is a m
   as it is cleared, which hangs MicroPython's interrupt-driven write: the adapter raises it when a byte leaves, as the PL011 does.
 - **What it does not model yet:** the second core (`_thread`), the ADC's inputs, SPI and I²C links, and the file system kept
   between runs. Its drawing in the System Emulator and an example come next.
+### The ESP32
+
+An ESP32 DevKitC (`board: 'esp32-devkitc'`, #5495, `core/system-sim-esp32.js`) is a microcontroller node in MicroPython,
+**behavioural and said so**: no Xtensa instruction is emulated.
+
+- **Its engine** is MicroPython's WebAssembly port (MIT, npm's `@micropython/micropython-webassembly-pyscript`, its
+  `settrace` build), with a `machine` (Pin, UART) and a `time` of Silinx's (`core/esp32-python.js`) put into its
+  `sys.modules`. Each line of the program takes 1 µs, charged at its start (`sys.settrace`, the program's own frames
+  only), and a sleep takes its time: the node's time is the program's, never the wall clock.
+- **One contract, two back ends** (Pedro's decision): the node is in lockstep with the scheduler, `advanceTo(t)` running
+  the program until its time reaches t. The **Worker + Atomics** back end is built: the engine (`core/esp32-engine.js`)
+  runs in a Worker of its own and blocks on a SharedArrayBuffer (`core/esp32-link.js`) between windows; the node blocks
+  until the engine reached t. A browser starts a Worker only while its creator is free, so the Workers are made before
+  the run (`prepareEsp32`). It needs the page cross-origin isolated (#5648); a page that is not says why in the console.
+  In Node (the MCP server, the tests) a `worker_threads` Worker (`server/esp32-spawn.js`). The **JSPI** back end (our own
+  MicroPython build, on the page's thread, Chrome and Edge, no isolation needed) comes next, picked by feature
+  detection, and a test runs one design on both and compares their traces.
+- **Its program** is a `.py` of its folder; what it prints is its console, a terminal of its own (`<id>.repl`); once the
+  program ended, a line typed there runs. A traceback is its error, with the program's own lines.
+- **Its pins** are the DevKitC's GPIOs at 3.3 V (34 to 39 inputs only); a UART's TX is its frames at the program's baud,
+  its RX sampled back into bytes (UART(2) on GPIO17 / GPIO16 by default).
+- **Not modelled:** interrupts (Pin.irq, Timer), PWM, ADC, SPI and I²C, Wi-Fi but through the System's network links
+  (#5500, next), the real firmware (Espressif's QEMU on the server, phase 5). Its drawing in the System Emulator and the
+  browser edition (no local server, no `/core` for its Worker) come later.
 
 ### Network links and the MQTT broker
 

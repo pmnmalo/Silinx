@@ -329,7 +329,7 @@ export function describeSystem(sys) {
   const lines = [`System ${sys.name}: ${sys.nodes.length} node${sys.nodes.length === 1 ? '' : 's'}, ${sys.links.length} link${sys.links.length === 1 ? '' : 's'}`];
   for (const n of sys.nodes) {
     const what = n.kind === 'fpga' ? `FPGA, module ${n.module ?? '(none)'} on ${n.board ?? '(no board)'}${n.variant ? `-${n.variant}` : ''}`
-      : n.kind === 'mcu' ? `${mcuBoard(n.board)?.name ?? n.board}, ${mcuBoard(n.board)?.arch === 'rp2040' ? 'program' : 'firmware'} ${n.firmware ?? '(none)'}` : n.kind === 'circuit' ? `circuit ${n.circuit ?? '(none)'}` : NODE_KIND_NAMES[n.kind] || n.kind;
+      : n.kind === 'mcu' ? `${mcuBoard(n.board)?.name ?? n.board}, ${['rp2040', 'esp32'].includes(mcuBoard(n.board)?.arch) ? 'program' : 'firmware'} ${n.firmware ?? '(none)'}` : n.kind === 'circuit' ? `circuit ${n.circuit ?? '(none)'}` : NODE_KIND_NAMES[n.kind] || n.kind;
     lines.push(`node ${n.id}: ${what}${n.lang ? `, in ${LANG_NAMES[n.lang] ?? n.lang}` : ''}`);
     for (const f of n.interfaces) lines.push(`  ${ifaceText(n, f)}`);
   }

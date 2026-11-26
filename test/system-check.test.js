@@ -96,7 +96,7 @@ test('the nodes: ids, kinds, modules, boards, firmware', () => {
     'error: Two nodes are named uno [node:uno]', 'error: A node (terminal) has no id [node:]', 'error: x: no node kind \'robot\' (the kinds: fpga, mcu, terminal, circuit, design, broker) [node:x]']);
   assert.deepEqual(run(s => { Object.assign(N(s, 'fpga'), { module: 'nomod', board: 'zedboard' }); Object.assign(N(s, 'uno'), { board: 'esp32', firmware: 'fw/echo.bin' }); }), [
     'error: fpga: no module \'nomod\' in the project [node:fpga]', 'error: fpga: no FPGA board \'zedboard\' (variant 250) [node:fpga]',
-    'error: uno: no microcontroller board \'esp32\' (the boards: arduino-uno, arduino-nano, explorer-1632, pico, pico-w) [node:uno]', 'error: uno: its firmware fw/echo.bin is not a .hex or an .elf [node:uno]']);
+    'error: uno: no microcontroller board \'esp32\' (the boards: arduino-uno, arduino-nano, explorer-1632, pico, pico-w, esp32-devkitc) [node:uno]', 'error: uno: its firmware fw/echo.bin is not a .hex or an .elf [node:uno]']);
   assert.deepEqual(run(s => { Object.assign(N(s, 'fpga'), { module: null, board: null }); N(s, 'uno').board = null; }), [
     'error: fpga: an FPGA node with no module [node:fpga]', 'error: fpga: an FPGA node with no board [node:fpga]', 'error: uno: a microcontroller with no board [node:uno]']);
   assert.deepEqual(run(s => { N(s, 'uno').firmware = 'fw/other.hex'; }), ['error: uno: no firmware fw/other.hex in the project [node:uno]']);

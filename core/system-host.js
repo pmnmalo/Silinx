@@ -11,7 +11,7 @@
 // #5212): `ready`'s boards, each state's what they show since the last.
 //
 // Isomorphic ES module, no DOM.
-import { systemFromInputs, systemReport, loadEngines } from './system-run.js';
+import { systemFromInputs, systemReport, loadEngines, disposeSystem } from './system-run.js';
 import { systemWaves } from './system-waves.js';
 import { emulationBoards, withBoards, watchBoards, boardStates, setBoardInput } from './system-emu.js';
 import { setsControls, stimulusSteps, runSteps } from './system-stimulus.js';
@@ -22,6 +22,7 @@ export function hostSystemRun(port) {
   const post = m => port.postMessage(m);
   const handle = {
     init({ system, inputs, emulate = false, stimulus = null }) {
+      disposeSystem(run);   // (the last run's resources: an ESP32's Worker, #5495)
       // (a stimulus that sets a board's controls: the boards emulated, #5581)
       boards = emulate || setsControls(stimulus) ? emulationBoards(system, inputs) : null;
       const r = systemFromInputs(system, boards ? withBoards(inputs, boards) : inputs);

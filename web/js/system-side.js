@@ -64,7 +64,7 @@ export function mountSystemSide(ctx) {
         btn('+ SPI', 'Add an SPI bus, the peripheral: its SCK, MOSI, MISO and SS ports', () => take(addInterface(M(), n.id, { kind: 'spi', ...spiPorts(n) }), 'iface'), 'asm-small sys-add-spi'),
         btn('+ I²C', 'Add an I²C bus, the peripheral: its SCL port and its SDA, an inout port', () => take(addInterface(M(), n.id, { kind: 'i2c', ...i2cPorts(n) }), 'iface'), 'asm-small sys-add-i2c')));
     } else if (n.kind === 'mcu') {
-      const arch = mcuBoard(n.board)?.arch, pic = arch === 'pic24', py = arch === 'rp2040';
+      const arch = mcuBoard(n.board)?.arch, pic = arch === 'pic24', py = arch === 'rp2040' || arch === 'esp32';
       // (its folder's, #5488; a PIC24's .hex only, #5484; a Pico's program, its .py, #5494)
       const fw = (opts.firmwares?.(n.id) || []).filter(f => (py ? /\.py$/i.test(f) : pic ? /\.hex$/i.test(f) : /\.(hex|elf)$/i.test(f)));
       out.push(field('Board', choose(n.board, MCU_BOARDS.map(b => [b.id, b.name]), v => take(changeNode(M(), n.id, { board: v }), 'node'), 'sys-board')),
