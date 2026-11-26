@@ -48,7 +48,7 @@ const PARTS = {
     'sourcesFingerprint', 'synthFingerprint', 'loadUcfText', 'saveImplStatus', 'restoreImplStatus'],
   'design.js': ['renderHierarchy', 'clashBadge', 'viewOfModule', 'treeItem', 'selectRow', 'markSelRow', 'treeKeys',
     'select', 'testBench', 'inView', 'moduleContextMenu', 'fileContextMenu', 'projectContextMenu', 'setTop',
-    'projectSaves', 'saveProjectJson', 'serialOp', 'removeFile', 'removeModule', 'removeNow'],
+    'projectSaves', 'saveProjectJson', 'serialOp', 'removeFile', 'removeModule'],
   'menus.js': ['setupMenus', 'setupToolbar', 'refreshSteps', 'showPalette', 'printActive', 'exportProjectZip'],
   'viewers.js': ['netlistSources', 'SIM_MODEL_THEN', 'offerSimModel', 'isPrimitive', 'openTechSchematic',
     'openSilinxTechSchematic', 'openSchematic', 'readDataFiles', 'runSimulation', 'runSimulationInner',

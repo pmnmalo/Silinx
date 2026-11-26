@@ -31,7 +31,7 @@ uiTest('#4733 Add to Project: a PCF, an XDC is the project\'s constraints when i
   assert.equal(await constraints(page), 'pins.pcf');
   await fileMenu(page, 'pins.pcf', 'Remove from Project');
   await page.waitDialog('Remove Source');
-  await page.dialogButton('Yes');
+  await page.dialogButton('Remove from Project');
   await page.waitFor(() => !window.Silinx.project.constraints, [], { what: 'no constraints' });
   await page.waitFor(() => document.querySelector('#files-page tr[data-file="pins.pcf"] td:nth-child(2)')?.textContent === 'Not in project', [], { what: 'not in the project' });
   await fileMenu(page, 'pins.pcf', 'Add to Project');
@@ -41,12 +41,12 @@ uiTest('#4733 Add to Project: a PCF, an XDC is the project\'s constraints when i
   // (an XDC, the project with none)
   await fileMenu(page, 'pins.pcf', 'Remove from Project');
   await page.waitDialog('Remove Source');
-  await page.dialogButton('Yes');
+  await page.dialogButton('Remove from Project');
   await page.waitFor(() => !window.Silinx.project.constraints, [], { what: 'no constraints' });
   await association(page, 'pins.pcf', true);
   await fileMenu(page, 'other.xdc', 'Remove from Project');
   await page.waitDialog('Remove Source');
-  await page.dialogButton('Yes');
+  await page.dialogButton('Remove from Project');
   await page.waitFor(() => document.querySelector('#files-page tr[data-file="other.xdc"] td:nth-child(2)')?.textContent === 'Not in project', [], { what: 'the XDC not in the project' });
   await fileMenu(page, 'other.xdc', 'Add to Project');
   await page.waitFor(() => window.Silinx.project.constraints === 'other.xdc', [], { what: 'the XDC the constraints' });

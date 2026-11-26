@@ -4,7 +4,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { hdlLangOf, langOfPath, isConstraintsFile, roleOfPath, HDL_RE, C_RE } from '../core/file-kinds.js';
-import { fileEntry, addToProject, addsToProject, removeFromProject, registerWritten, declares, missingTops, topRefusal } from '../core/project-entries.js';
+import { fileEntry, addToProject, addsToProject, removeFromProject, removedMessage, registerWritten, declares, missingTops, topRefusal } from '../core/project-entries.js';
 import { editablePath } from '../core/collab-doc.js';
 
 const FORMATS = ['ucf', 'pcf', 'lpf', 'cst', 'ccf', 'xdc'];
@@ -51,6 +51,16 @@ test('Remove from Project: an HDL source leaves the list, another file is exclud
   // (and back: Add to Project undoes it)
   addToProject(pj, 'pins.lpf'); addToProject(pj, 'a.vhd');
   assert.deepEqual([pj.constraints, pj.excluded, pj.files.map(f => f.path)], ['pins.lpf', ['a.sch.json'], ['b.vhd', 'a.vhd']]);
+});
+
+test('#5720 removedMessage: a file or a drawing with its HDL file, kept in the project folder or deleted (into the .trash, or not)', () => {
+  assert.equal(removedMessage({ file: 'src/a.vhd' }), 'Removed src/a.vhd from the project (the file is kept in the project folder).');
+  assert.equal(removedMessage({ file: 'src/f.fsm.json', hdl: 'src/f.vhd' }), 'Removed src/f.fsm.json and its HDL file src/f.vhd from the project (the files are kept in the project folder).');
+  assert.equal(removedMessage({ file: 'src/a.vhd', deleted: true }), 'Removed src/a.vhd from the project and deleted it (moved to the workspace\'s .trash folder).');
+  assert.equal(removedMessage({ file: 'src/f.fsm.json', hdl: 'src/f.vhd', deleted: true }), 'Removed src/f.fsm.json and its HDL file src/f.vhd from the project and deleted them (moved to the workspace\'s .trash folder).');
+  assert.equal(removedMessage({ file: 'src/a.vhd', deleted: true, trash: false }), 'Removed src/a.vhd from the project and deleted it.');
+  // (deleted false: the trash says nothing)
+  assert.equal(removedMessage({ file: 'pins.ucf', trash: false }), 'Removed pins.ucf from the project (the file is kept in the project folder).');
 });
 
 test('a file written: back in the project if excluded, an HDL source listed (not build/\'s); false when nothing changes', () => {

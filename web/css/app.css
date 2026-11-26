@@ -177,8 +177,8 @@ body.resizing-v, body.resizing-v * { cursor: row-resize !important; user-select:
    scrolls sideways, #207) */
 .tree .row .meta { flex: 0 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
 #hier .tree .row .lbl { flex: none; }
-.tree .row.sel .meta { color: #dde; }
-html:not([data-ui="silinx"]) .tree .row.sel .twisty { color: #dde; }   /* (readable on the selection, #2678) */
+.tree :is(.row.sel, .row.msel) .meta { color: #dde; }
+html:not([data-ui="silinx"]) .tree :is(.row.sel, .row.msel) .twisty { color: #dde; }   /* (readable on the selection, #2678) */
 .tree .row.top-mod .lbl { font-weight: bold; }
 .tree .row.disabled { color: #999; }
 .tree .row .status { width: 16px; height: 16px; display: inline-flex; flex: none; }

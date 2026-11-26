@@ -1,6 +1,6 @@
 // The MCP server's tools of a project's sources (server/mcp.js, #2674), as the Design pane's menus do them:
-// Unset as Top Module (web/js/design.js unsetTop), Remove from Project and Add to Project (the file kept in the
-// project folder: design.js removeNow, app.js addNow), Rename of a file or a folder (the drawings' links to it
+// Unset as Top Module (web/js/design.js unsetTop), Remove from Project (the files kept in the project folder, or deleted:
+// design-remove.js, #5720) and Add to Project (app.js addNow), Rename of a file or a folder (the drawings' links to it
 // updated: web/js/rename.js renameSource) and of a module (its references with it: server/rename-module.js), Delete File / Delete Folder and the deletion of a project (moved to
 // the workspace's .trash). A top module the project no longer has becomes the one root left of its view, else
 // none (web/js/app.js fixMissingTops).
@@ -8,7 +8,7 @@ import * as P from './projects.js';
 import { toolError, projectPath, readProject, viewSourcesOf, STR, PROJECT } from './mcp-util.js';
 import { hdlSideFile, isDesignOnly, isSystemProject } from '../core/project-kind.js';
 import { NODE_UNSET_REFUSAL } from '../core/system-top.js';
-import { addToProject, addsToProject, declares, missingTops, removeFromProject } from '../core/project-entries.js';
+import { addToProject, addsToProject, declares, missingTops, removeFromProject, removedMessage } from '../core/project-entries.js';
 
 const VIEW_RE = /\.(sch|asm|tt|bool|fsm|pn|circ|regs)\.json$/i;
 
@@ -66,27 +66,46 @@ export const SOURCE_TOOLS = [
   },
   {
     name: 'remove_from_project', title: 'Remove from Project',
-    description: 'Remove a source from the project, as Remove from Project does: the file stays in the project folder (add_to_project brings it back); a drawing\'s generated HDL file leaves with it. A top module no longer in the project becomes the one root of its view, else none.',
-    inputSchema: { type: 'object', properties: { project: PROJECT, path: STR('The file\'s path in the project (project_info).'), with_hdl: { type: 'boolean', description: 'A drawing: its HDL file removed too (default true).' } }, required: ['project', 'path'], additionalProperties: false },
-    annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true },
-    async run({ project: name, path: rel, with_hdl: withHdl = true }) {
+    description: 'Remove sources from the project, as Remove from Project does (one, or several selected in the Design pane): the files stay in the project folder (add_to_project brings them back), or, with delete, they are deleted too, as delete_file does (moved to the workspace\'s .trash); a drawing\'s generated HDL file goes with it. A top module no longer in the project becomes the one root of its view, else none.',
+    inputSchema: { type: 'object', properties: { project: PROJECT, path: STR('The file\'s path in the project (project_info).'), paths: { type: 'array', items: { type: 'string' }, description: 'Several files\' paths in the project (instead of path).' }, with_hdl: { type: 'boolean', description: 'A drawing: its HDL file removed too (default true).' }, delete: { type: 'boolean', description: 'The files deleted too, into the workspace\'s .trash (default false: kept in the project folder).' } }, required: ['project'], additionalProperties: false },
+    annotations: { readOnlyHint: false, destructiveHint: true },
+    async run({ project: name, path: rel, paths: rels, with_hdl: withHdl = true, delete: del = false }) {
       await readProject(name);
-      const file = await sourcePath(name, rel, 'removed');
+      if (rel !== undefined && rels !== undefined) throw toolError('path or paths, not both');
+      const asked = rels !== undefined ? rels : [rel];
+      if (!Array.isArray(asked) || !asked.length) throw toolError('paths: the files\' paths in the project (project_info)');
       const tree = await P.fileTree(name);
-      if (!tree.includes(file)) throw toolError(`no file '${file}' in the project '${name}'`);
       const pj0 = await P.readProject(name);
-      if (!pj0.files.some(f => f.path === file) && (pj0.excluded || []).includes(file)) throw toolError(`'${file}' is not in the project (add_to_project brings it back)`);
-      // a drawing's own HDL file (its generatedFile, in the project)
-      let hdl = null;
-      if (withHdl && VIEW_RE.test(file)) {
-        try { const g = JSON.parse(await P.readFile(name, file)).generatedFile; if (g && tree.includes(g) && pj0.files.some(f => f.path === g)) hdl = g; } catch { /* not a drawing's JSON */ }
+      // every file checked before any is removed (#5720)
+      const files = [];
+      for (const r of asked) {
+        const file = await sourcePath(name, r, 'removed');
+        if (!tree.includes(file)) throw toolError(`no file '${file}' in the project '${name}'`);
+        if (!pj0.files.some(f => f.path === file) && (pj0.excluded || []).includes(file)) throw toolError(`'${file}' is not in the project (add_to_project brings it back)`);
+        if (!files.includes(file)) files.push(file);
       }
-      await P.updateProject(name, pj => removeFromProject(pj, [file, hdl]));
+      // a drawing's own HDL file (its generatedFile, in the project); one asked too goes with its drawing
+      const entries = files.map(file => ({ file, hdl: null }));
+      if (withHdl) {
+        for (const e of entries.filter(x => VIEW_RE.test(x.file))) {
+          try { const g = JSON.parse(await P.readFile(name, e.file)).generatedFile; if (g && tree.includes(g) && pj0.files.some(f => f.path === g)) e.hdl = g; } catch { /* not a drawing's JSON */ }
+        }
+      }
+      const owned = new Set(entries.map(e => e.hdl).filter(Boolean));
+      const list = entries.filter(e => !owned.has(e.file));
+      const all = list.flatMap(e => [e.file, e.hdl]).filter(Boolean);
+      await P.updateProject(name, pj => removeFromProject(pj, all));
+      const trashed = [];
+      if (del) {
+        for (const f of all) {
+          try { trashed.push((await P.deleteFile(name, f, { trash: true, mustExist: true })).trashed); } catch (e) { throw toolError(e.message); }
+        }
+      }
       const lines = await fixMissingTops(name);
       // (a design project's: the drawing alone named, its HDL never shown, as the interface's, #3891)
-      if (isDesignOnly(pj0)) return { text: [...lines, `Removed ${file} from the project (the file is kept in the project folder).`].join('\n'), data: { project: name, removed: [file], ...await tops(name), messages: lines } };
-      const text = [...lines, hdl ? `Removed ${file} and its HDL file ${hdl} from the project (the files are kept in the project folder).` : `Removed ${file} from the project (the file is kept in the project folder).`];
-      return { text: text.join('\n'), data: { project: name, removed: [file, hdl].filter(Boolean), ...await tops(name), messages: lines } };
+      const hidden = isDesignOnly(pj0);
+      const text = [...lines, ...list.map(e => removedMessage({ file: e.file, hdl: hidden ? null : e.hdl, deleted: del }))];
+      return { text: text.join('\n'), data: { project: name, removed: hidden ? list.map(e => e.file) : all, deleted: del ? (hidden ? list.map(e => e.file) : all) : [], ...(del ? { trashed } : {}), ...await tops(name), messages: lines } };
     },
   },
   {

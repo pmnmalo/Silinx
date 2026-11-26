@@ -3,12 +3,12 @@
 // source, and saving the project's settings (silinx.json) one save at a time.
 import { api } from './api.js';
 import { icon } from './icons.js';
-import { h, confirmDlg, dialog, popupMenu, toast, longPressMenu } from './ui.js';
+import { h, confirmDlg, dialog, popupMenu, longPressMenu } from './ui.js';
 import * as wiz from './wizards.js';
 import { drawnModule } from '/core/view-hdl.js';
 import { hierarchyOrder, instanceOrder } from '/core/hier-order.js';
 import { isUnisimPrimitive } from '/core/unisim.js';
-import { S, addToProject, closeDoc, fixMissingTops, instancesOf, moduleInfo, openFile, projectUndo, syncFpgaView,
+import { S, addToProject, closeDoc, fixMissingTops, instancesOf, moduleInfo, openFile, syncFpgaView,
   viewRoots } from './app.js';
 import { appLog, commandInfo, log } from './console.js';
 import { closeProject, reloadProject } from './project.js';
@@ -26,8 +26,7 @@ import { gitMark, gitMenuItems, gitStartItems, hasGit } from './git.js';
 import { checkLabel, designOnly, shownFiles, withoutHdlBadges } from './design-only.js';
 import { editorItem, projectEditorItem } from './open-editor.js';
 import { hdlSideFile } from '/core/project-kind.js';
-import { removeFromProject as removeEntries, topRefusal } from '/core/project-entries.js';
-import { HDL_RE } from '/core/file-kinds.js';
+import { topRefusal } from '/core/project-entries.js';
 import { flowFileRows } from './flow-files-tree.js';
 import { renderFlowFiles } from './tasks-flow-files.js';
 import { compositionOf, compositionRows } from './design-comp.js';
@@ -38,6 +37,8 @@ import { filesState } from './state-files.js';
 import { designState } from './state-design.js';
 import { docsState } from './state-docs.js';
 import { openFocused } from './doc-focus.js';
+import { inSelection, multiClick, paint, selectionKeys, selectionMenu, selectOne } from './design-select.js';
+import { removal, removeSources } from './design-remove.js';
 
 import { systemProject, topRow } from './design-system.js';
 import { cpuBadges, cpuModule } from './design-cpu.js';
@@ -121,7 +122,7 @@ export function renderHierarchy() {
     badges.splice(0, badges.length, ...withoutHdlBadges(badges));   // (no HDL in a design project, #3780)
     const it = treeItem({
       label, meta: info ? `(${(sch || file).split('/').pop()})` : prim ? '(primitive)' : '(missing)', ico: isTop ? 'moduleTop' : sch ? viewIcon(sch) : cSrc ? 'file' : info ? (info.lang === 'vhdl' ? 'vhdl' : 'verilog') : prim ? 'chip' : 'err',
-      cls: isTop ? 'top-mod' : '', key: `m:${path}`, open: depth < 2, badges, module: modName, mark: info ? gitMark([sch, file]) : null,
+      cls: isTop ? 'top-mod' : '', key: `m:${path}`, open: depth < 2, badges, module: modName, mark: info ? gitMark([sch, file]) : null, source: info ? { file: drawn || file, pair: true } : null,
       onSelect: () => select(drawn ? { type: viewKind(drawn), file: drawn, module: modName, path, instName } : { type: 'module', module: modName, file, path, instName, sch, wizard: wz }),
       // (a design project's test bench, its HDL hidden: simulated, #3780)
       onOpen: () => info && (sch ? openView(sch) : wz ? openWizardModule(file) : designOnly() ? runSimulation(modName) : openFile(file, info.line)),
@@ -152,28 +153,28 @@ export function renderHierarchy() {
   for (const p of lib.packages.values()) {
     const fi = S.project.files.find(f => f.path === p.file);
     if (!inView(fi?.role, sim)) continue;
-    const it = treeItem({ label: p.name, meta: `(${p.file.split('/').pop()})`, ico: 'vhdl', key: `pkg:${p.name}`, onSelect: () => select({ type: 'file', file: p.file }), onOpen: () => openFile(p.file, p.loc?.line), onContext: e => fileContextMenu(e, p.file) });
+    const it = treeItem({ label: p.name, meta: `(${p.file.split('/').pop()})`, ico: 'vhdl', key: `pkg:${p.name}`, source: { file: p.file, pair: false }, onSelect: () => select({ type: 'file', file: p.file }), onOpen: () => openFile(p.file, p.loc?.line), onContext: e => fileContextMenu(e, p.file) });
     it.setLeaf(); under(p.file).append(it.li);
   }
   for (const f of (filesState.fileTree || []).filter(f => /\.sch\.json$/.test(f) && !designState.schOwners?.[f] && !designState.modules.some(m => m.file === f))) {
     const owned = null;
-    const it = treeItem({ label: f.split('/').pop(), meta: owned ? `(→ ${owned.split('/').pop()})` : '', ico: 'schematic', key: `sch:${f}`, badges: [clashBadge(f)].filter(Boolean), mark: gitMark([f]), onSelect: () => select({ type: 'sch', file: f }), onOpen: () => openSch(f), onContext: e => schContextMenu(e, f) });
+    const it = treeItem({ label: f.split('/').pop(), meta: owned ? `(→ ${owned.split('/').pop()})` : '', ico: 'schematic', key: `sch:${f}`, source: { file: f, pair: true }, badges: [clashBadge(f)].filter(Boolean), mark: gitMark([f]), onSelect: () => select({ type: 'sch', file: f }), onOpen: () => openSch(f), onContext: e => schContextMenu(e, f) });
     it.setLeaf(); under(f).append(it.li);
   }
   for (const f of (filesState.fileTree || []).filter(f => /\.asm\.json$/.test(f) && !designState.schOwners?.[f] && !designState.modules.some(m => m.file === f) && !sysRow?.owned.includes(f))) {
-    const it = treeItem({ label: f.split('/').pop(), ico: 'asm', key: `asm:${f}`, badges: [clashBadge(f)].filter(Boolean), mark: gitMark([f]), onSelect: () => select({ type: 'asm', file: f }), onOpen: () => openAsm(f), onContext: e => asmContextMenu(e, f) });
+    const it = treeItem({ label: f.split('/').pop(), ico: 'asm', key: `asm:${f}`, source: { file: f, pair: true }, badges: [clashBadge(f)].filter(Boolean), mark: gitMark([f]), onSelect: () => select({ type: 'asm', file: f }), onOpen: () => openAsm(f), onContext: e => asmContextMenu(e, f) });
     it.setLeaf(); under(f).append(it.li);
   }
   for (const f of (filesState.fileTree || []).filter(f => /\.(tt|bool)\.json$/.test(f) && !designState.schOwners?.[f] && !designState.modules.some(m => m.file === f) && !sysRow?.owned.includes(f))) {
-    const it = treeItem({ label: f.split('/').pop(), ico: 'algebra', key: `tt:${f}`, badges: [clashBadge(f)].filter(Boolean), mark: gitMark([f]), onSelect: () => select({ type: 'tt', file: f }), onOpen: () => openTt(f), onContext: e => ttContextMenu(e, f) });
+    const it = treeItem({ label: f.split('/').pop(), ico: 'algebra', key: `tt:${f}`, source: { file: f, pair: true }, badges: [clashBadge(f)].filter(Boolean), mark: gitMark([f]), onSelect: () => select({ type: 'tt', file: f }), onOpen: () => openTt(f), onContext: e => ttContextMenu(e, f) });
     it.setLeaf(); under(f).append(it.li);
   }
   for (const f of (filesState.fileTree || []).filter(f => /\.fsm\.json$/.test(f) && !designState.schOwners?.[f] && !designState.modules.some(m => m.file === f) && !sysRow?.owned.includes(f))) {
-    const it = treeItem({ label: f.split('/').pop(), ico: 'fsm', key: `fsm:${f}`, badges: [clashBadge(f)].filter(Boolean), mark: gitMark([f]), onSelect: () => select({ type: 'fsm', file: f }), onOpen: () => openFsm(f), onContext: e => fsmContextMenu(e, f) });
+    const it = treeItem({ label: f.split('/').pop(), ico: 'fsm', key: `fsm:${f}`, source: { file: f, pair: true }, badges: [clashBadge(f)].filter(Boolean), mark: gitMark([f]), onSelect: () => select({ type: 'fsm', file: f }), onOpen: () => openFsm(f), onContext: e => fsmContextMenu(e, f) });
     it.setLeaf(); under(f).append(it.li);
   }
   for (const f of (filesState.fileTree || []).filter(f => /\.pn\.json$/.test(f) && !designState.schOwners?.[f] && !designState.modules.some(m => m.file === f) && !sysRow?.owned.includes(f))) {
-    const it = treeItem({ label: f.split('/').pop(), ico: 'petri', key: `pn:${f}`, badges: [clashBadge(f)].filter(Boolean), mark: gitMark([f]), onSelect: () => select({ type: 'pn', file: f }), onOpen: () => openPetri(f), onContext: e => petriContextMenu(e, f) });
+    const it = treeItem({ label: f.split('/').pop(), ico: 'petri', key: `pn:${f}`, source: { file: f, pair: true }, badges: [clashBadge(f)].filter(Boolean), mark: gitMark([f]), onSelect: () => select({ type: 'pn', file: f }), onOpen: () => openPetri(f), onContext: e => petriContextMenu(e, f) });
     it.setLeaf(); under(f).append(it.li);
   }
   for (const f of (filesState.fileTree || []).filter(f => isCirc(f) && !designState.schOwners?.[f] && !designState.modules.some(m => m.file === f) && !sysRow?.owned.includes(f))) under(f).append(fileRow(f).li);   // (a circuit, #3897)
@@ -182,7 +183,7 @@ export function renderHierarchy() {
   for (const [f, c] of Object.entries(cState.cFailed || {})) {
     if (designState.modules.some(m => m.file === f)) continue;
     const at = c.diagnostics[0], menu = e => fileContextMenu(e, f);
-    const it = treeItem({ label: c.module || f.split('/').pop(), meta: `(${f.split('/').pop()})`, ico: 'err', cls: c.module && isTopName(c.module) ? 'top-mod' : '', key: `c:${f}`, mark: gitMark([f]),
+    const it = treeItem({ label: c.module || f.split('/').pop(), meta: `(${f.split('/').pop()})`, ico: 'err', cls: c.module && isTopName(c.module) ? 'top-mod' : '', key: `c:${f}`, source: { file: f, pair: false }, mark: gitMark([f]),
       badges: [{ text: cBadge(f), base: true, title: 'Open', open: () => openFile(f), context: menu },
         { text: 'No HDL', warn: true, title: 'Its HDL cannot be made: its errors are in the Console', open: () => openFile(at?.file || f, at?.line), context: menu }],
       onSelect: () => select({ type: 'file', file: f }), onOpen: () => openFile(f), onContext: menu });
@@ -191,7 +192,7 @@ export function renderHierarchy() {
   // files that failed to parse into any unit
   const withUnits = new Set(lib.parsed.filter(p => p.units.length).map(p => p.file));
   for (const f of S.project.files.filter(f => !withUnits.has(f.path) && (one || inView(f.role, sim)))) {
-    const it = treeItem({ label: f.path.split('/').pop(), meta: '(no units)', ico: f.lang === 'vhdl' ? 'vhdl' : 'verilog', key: `f:${f.path}`, mark: gitMark([f.path]), onSelect: () => select({ type: 'file', file: f.path }), onOpen: () => openFile(f.path), onContext: e => fileContextMenu(e, f.path) });
+    const it = treeItem({ label: f.path.split('/').pop(), meta: '(no units)', ico: f.lang === 'vhdl' ? 'vhdl' : 'verilog', key: `f:${f.path}`, source: { file: f.path, pair: false }, mark: gitMark([f.path]), onSelect: () => select({ type: 'file', file: f.path }), onOpen: () => openFile(f.path), onContext: e => fileContextMenu(e, f.path) });
     it.setLeaf(); under(f.path).append(it.li);
   }
   // a module defined again in another file (#1303): the library uses the last one ("module … redefined", a warning); the
@@ -202,7 +203,7 @@ export function renderHierarchy() {
     const f = S.project.files.find(x => x.path === p.file);
     if (!f || !(one || inView(f.role, sim))) continue;
     const drawn = designState.hdlToSch?.[p.file];
-    const it = treeItem({ label: u.name, meta: `(${(drawn || p.file).split('/').pop()}, redefined in ${used.file.split('/').pop()})`, ico: 'warn', key: `dup:${p.file}:${u.name}`,
+    const it = treeItem({ label: u.name, meta: `(${(drawn || p.file).split('/').pop()}, redefined in ${used.file.split('/').pop()})`, ico: 'warn', key: `dup:${p.file}:${u.name}`, source: { file: p.file, pair: false },
       onSelect: () => select({ type: 'file', file: p.file }), onOpen: () => (drawn ? openView(drawn) : openFile(p.file, u.loc?.line)), onContext: e => fileContextMenu(e, p.file) });
     it.setLeaf(); under(p.file).append(it.li);
   }
@@ -225,8 +226,8 @@ export function renderHierarchy() {
 // a file's row of its own: a circuit's drawing (#3897), or a System node's file (a firmware, #5414): a plain file's
 function fileRow(f) {
   const it = isCirc(f)
-    ? treeItem({ label: f.split('/').pop(), ico: 'circuit', key: `circ:${f}`, badges: [clashBadge(f)].filter(Boolean), mark: gitMark([f]), onSelect: () => select({ type: 'circ', file: f }), onOpen: () => openCircuit(f), onContext: e => circuitContextMenu(e, f) })
-    : treeItem({ label: f.split('/').pop(), ico: 'file', key: `nf:${f}`, mark: gitMark([f]), onSelect: () => select({ type: 'file', file: f }), onContext: e => fileContextMenu(e, f) });
+    ? treeItem({ label: f.split('/').pop(), ico: 'circuit', key: `circ:${f}`, source: { file: f, pair: true }, badges: [clashBadge(f)].filter(Boolean), mark: gitMark([f]), onSelect: () => select({ type: 'circ', file: f }), onOpen: () => openCircuit(f), onContext: e => circuitContextMenu(e, f) })
+    : treeItem({ label: f.split('/').pop(), ico: 'file', key: `nf:${f}`, source: { file: f, pair: false }, mark: gitMark([f]), onSelect: () => select({ type: 'file', file: f }), onContext: e => fileContextMenu(e, f) });
   it.setLeaf();
   return it;
 }
@@ -235,7 +236,7 @@ function fileRow(f) {
 function cpuRow(f, lang, node) {
   const menu = e => viewContextMenu(e, f);
   const badges = cpuBadges(f, { lang, node, badge: viewBadge(f), noun: viewNoun(f), open: () => openView(f), openCode: c => openFile(c), menu });
-  const it = treeItem({ label: cpuModule(f), meta: `(${f.split('/').pop()})`, ico: viewIcon(f), key: `cpu:${f}`, badges, mark: gitMark([f]), onSelect: () => select({ type: viewKind(f), file: f }), onOpen: () => openView(f), onContext: menu });
+  const it = treeItem({ label: cpuModule(f), meta: `(${f.split('/').pop()})`, ico: viewIcon(f), key: `cpu:${f}`, source: { file: f, pair: true }, badges, mark: gitMark([f]), onSelect: () => select({ type: viewKind(f), file: f }), onOpen: () => openView(f), onContext: menu });
   it.setLeaf();
   return it;
 }
@@ -279,7 +280,9 @@ function viewOfModule(name, file) {
 // badges: the views of a module ({ text, base, title, open, context }), after its name: a click opens
 // that view, a right-click shows its commands; the base's is marked. Tab reaches the selected row's badges.
 // mark: git's (#3195, web/js/git.js gitMark): M changed, N new, C in conflict since the last commit, at the row's end
-export function treeItem({ label, meta, ico, open = false, onSelect, onOpen, onContext, cls = '', key, badges = [], module = null, mark = null }) {
+// source: the file a row stands for ({ file, pair }: Remove from Project's, a module's drawing with its HDL file when pair),
+// in a selection of several rows (#5720, design-select.js)
+export function treeItem({ label, meta, ico, open = false, onSelect, onOpen, onContext, cls = '', key, badges = [], module = null, mark = null, source = null }) {
   // (a tree's item, #4761: its row the selection, said by the tree's aria-activedescendant; expanded or not, when it has
   // items under it)
   const li = h('li', { role: 'treeitem', id: `tree-item-${++treeIds}`, 'aria-selected': 'false' });
@@ -290,7 +293,7 @@ export function treeItem({ label, meta, ico, open = false, onSelect, onOpen, onC
     const el = h('button', { type: 'button', class: `badge${b.base ? ' base' : ''}${b.warn ? ' warn' : ''}`, tabindex: '-1', title: b.title }, b.text);
     el.addEventListener('click', e => { e.stopPropagation(); selectRow(row, key, onSelect); b.open(); });
     el.addEventListener('dblclick', e => e.stopPropagation());
-    el.addEventListener('contextmenu', e => { e.preventDefault(); e.stopPropagation(); selectRow(row, key, onSelect); b.context(e); });
+    el.addEventListener('contextmenu', e => { e.preventDefault(); e.stopPropagation(); if (inSelection(row)) return selectionMenu(e, row); selectRow(row, key, onSelect); b.context(e); });
     return el;
   });
   // (the badges next to the name, the file in brackets last: in a narrow pane it gives way first)
@@ -311,15 +314,21 @@ export function treeItem({ label, meta, ico, open = false, onSelect, onOpen, onC
     if (key) panes.treeOpen.set(key, !ul.hidden);
   });
   tw.addEventListener('dblclick', e => e.stopPropagation());
-  row.addEventListener('click', () => selectRow(row, key, onSelect));
+  row.source = source;
+  row.openIt = onOpen;
+  row.selectKept = () => selectRow(row, key, onSelect, true);
+  // (Ctrl / Cmd, Shift: the selection of several rows, #5720)
+  row.addEventListener('click', e => { if (!multiClick(e, row, r => r.selectKept())) selectRow(row, key, onSelect); });
   // (what it opens kept, for Enter's document to take the keyboard, #5300)
   row.addEventListener('dblclick', () => { row.opening = onOpen ? onOpen() : null; if (!onOpen && ul.childElementCount) tw.click(); });
-  row.addEventListener('contextmenu', e => { e.preventDefault(); row.click(); onContext?.(e); });
+  row.addEventListener('contextmenu', e => { e.preventDefault(); if (inSelection(row)) return selectionMenu(e, row); row.click(); onContext?.(e); });
   longPressMenu(row);   // (its badges' menus too: a touch's long press, #263)
   return { li, ul, row, setLeaf() { tw.textContent = ''; } };
 }
 let treeIds = 0;
-function selectRow(row, key, onSelect) {
+// (keep: the selection of several rows kept, the row its current one, #5720)
+function selectRow(row, key, onSelect, keep = false) {
+  if (!keep) selectOne(row);
   markSelRow(row);
   if (row.closest('#hier')) panes.selKey = key;
   onSelect?.();
@@ -332,14 +341,18 @@ function markSelRow(row) {
   row.parentElement.setAttribute('aria-selected', 'true');
   if (tree && row.parentElement.id) tree.setAttribute('aria-activedescendant', row.parentElement.id);
   row.querySelectorAll('.badge').forEach(b => b.setAttribute('tabindex', '0'));
+  paint(tree);
 }
 
 // The Design tree from the keyboard (it takes the focus): ↑ / ↓ select, → / ← expand / collapse (←
 // on a collapsed or leaf row: its parent), Enter opens (as a double-click; its document takes the keyboard, #5300), the context-menu key or
-// Shift+F10 shows the row's menu, Tab reaches the selected row's badges (Enter opens that view).
+// Shift+F10 shows the row's menu, Tab reaches the selected row's badges (Enter opens that view); Esc takes a selection of
+// several rows back to one, Delete removes the selection, or the row, from the project (#5720).
 function treeKeys(e) {
   if (e.target.closest?.('.badge') || e.altKey || e.ctrlKey || e.metaKey) return;
   const tree = e.currentTarget;
+  // (Esc: the selection back to one row; Delete: Remove from Project of the selection, #5720)
+  if (selectionKeys(e, tree, tree.querySelector('.row.sel'))) { e.preventDefault(); return; }
   const rows = [...tree.querySelectorAll('.row')].filter(r => r.getClientRects().length);
   const cur = tree.querySelector('.row.sel');
   const i = rows.indexOf(cur);
@@ -557,8 +570,8 @@ export function saveProjectJson() {
 /** The saves asked so far done (a reload reads the project after them, #2281). */
 export const projectSaved = () => projectSaves;
 
-// Remove from Project: the file stays in the project folder (as in ISE); Undo / Add to Project
-// bring it back. HDL files leave the file list; other files (diagrams, tables, UCF) are listed in
+// Remove from Project (design-remove.js): the file stays in the project folder (as in ISE), or is deleted too (#5720);
+// Undo / Add to Project bring it back. HDL files leave the file list; other files (diagrams, tables, UCF) are listed in
 // project.excluded so that the project ignores them.
 // project-list changes (remove / undo / add) run one at a time: an Undo clicked while the removal
 // is still being saved waits for it
@@ -568,39 +581,11 @@ export function serialOp(fn) {
   return filesState.opChain;
 }
 
-// (a design project's hidden HDL file, a test bench's: its module named, #3891)
-const shownName = file => (designOnly() && HDL_RE.test(file) && designState.modules?.find(m => m.file === file)?.name) || file;
-export async function removeFile(file) {
-  if (!await confirmDlg('Remove Source', `Remove '${shownName(file)}' from the project?\n(The file stays in the project folder: Undo or Add to Project in the Files view brings it back.)`)) return;
-  if (!await saveAll()) return;
-  for (const d of [...docsState.docs]) if (d.path === file || String(d.id || '').endsWith(`:${file}`)) await closeDoc(d);
-  return serialOp(() => removeNow(file));
-}
+/** Remove from Project of one file (the Files view's: a drawing's HDL file alone leaves the drawing a module by itself,
+ *  [No HDL], #231; a drawing alone leaves its HDL file a plain HDL module): asked first, kept or deleted (#5720,
+ *  design-remove.js). */
+export const removeFile = file => removeSources([removal(file, false)]);
 // Remove from Project of a module in the Design pane (its row, its badges): a drawing and its HDL file,
 // generated from it (#207, #220), leave the project together, one command (one Undo brings both back,
-// linked as before, #234). The Files view removes the one file: a drawing's HDL file alone leaves the
-// drawing a module by itself ([No HDL], #231); a drawing alone leaves its HDL file a plain HDL module.
-export async function removeModule(file) {
-  const drawing = designState.hdlToSch?.[file] || (designState.schOwners?.[file] ? file : null);
-  const hdl = drawing ? designState.schOwners?.[drawing] : null;
-  if (!hdl) return removeFile(file);
-  if (!await confirmDlg('Remove Source', designOnly() ? `Remove '${drawing}' from the project?\n(The file stays in the project folder: Undo or Add to Project in the Files view brings it back.)`
-    : `Remove '${drawing}' and its HDL file '${hdl}' from the project?\n(The files stay in the project folder: Undo or Add to Project in the Files view brings them back.)`)) return;
-  if (!await saveAll()) return;
-  for (const d of [...docsState.docs]) if ([drawing, hdl].some(f => d.path === f || String(d.id || '').endsWith(`:${f}`))) await closeDoc(d);
-  return serialOp(() => removeNow(drawing, hdl));
-}
-// (hdl: the drawing's HDL file, removed with it)
-async function removeNow(file, hdl = null) {
-  removeEntries(S.project, [file, hdl]);   // (core/project-entries.js, as the MCP's remove_from_project, #4733)
-  await saveProjectJson();
-  await reloadProject();
-  await fixMissingTops();   // (the top module removed, #253)
-  if (hdl && !designOnly()) {
-    appLog(`Removed ${file} and its HDL file ${hdl} from the project (the files are kept in the project folder).`, 'info');
-    toast(`Removed ${file.split('/').pop()} and ${hdl.split('/').pop()} from the project`, 'info', 10000, { label: 'Undo', run: () => projectUndo() });
-    return;
-  }
-  appLog(`Removed ${shownName(file)} from the project (the file is kept in the project folder).`, 'info');
-  toast(`Removed ${shownName(file).split('/').pop()} from the project`, 'info', 10000, { label: 'Undo', run: () => projectUndo() });
-}
+// linked as before, #234).
+export const removeModule = file => removeSources([removal(file)]);

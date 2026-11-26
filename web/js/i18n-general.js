@@ -164,7 +164,7 @@ export const PT = {
   'Remote build dir:': 'Pasta remota de build:', 'Remote settings64.sh:': 'settings64.sh remoto:', 'Docker image on the remote host:': 'Imagem Docker na máquina remota:', 'none: ISE installed on the host': 'nenhuma: ISE instalado na máquina', 'Programmer tool:': 'Ferramenta de programação:',
   'Cable:': 'Cabo:', 'Detecting the toolchain (Xilinx ISE, the device programmers)…': 'A detetar a toolchain (Xilinx ISE, os programadores de dispositivos)…', 'Device programmers': 'Programadores de dispositivos', 'Tool': 'Ferramenta', 'Location': 'Localização',
   'Board default': 'Predefinição da placa', 'board default': 'predefinição da placa', 'Set Top Module': 'Definir Módulo de Topo',
-  'Remove Source': 'Remover Fonte', 'Update Constraints': 'Atualizar Restrições', 'Constraints do not match the board': 'As restrições não correspondem à placa',
+  'Remove Source': 'Remover Fonte', 'Remove and Delete File': 'Remover e Apagar Ficheiro', 'Remove and Delete Files': 'Remover e Apagar Ficheiros', 'Update Constraints': 'Atualizar Restrições', 'Constraints do not match the board': 'As restrições não correspondem à placa',
   // design summary
   'Project File:': 'Ficheiro do Projeto:', 'Module Name:': 'Nome do Módulo:', 'Target Device:': 'Dispositivo Alvo:', 'Board:': 'Placa:',
   'Product Version:': 'Versão do Produto:', 'Design Goal:': 'Objetivo do Projeto:', 'Parser Errors:': 'Erros de Análise:',

@@ -18,7 +18,7 @@ export function flowFileRows({ skip = [] } = {}) {
   return flowFiles(S.project, filesState.fileTree || []).filter(({ path }) => !skip.includes(path)).map(({ path, kind }) => {
     const cons = kind === 'constraints';
     const it = treeItem({
-      label: path.split('/').pop(), ico: cons ? 'ucf' : 'file', key: cons ? 'ucf' : `mem:${path}`, mark: gitMark([path]),
+      label: path.split('/').pop(), ico: cons ? 'ucf' : 'file', key: cons ? 'ucf' : `mem:${path}`, mark: gitMark([path]), source: { file: path, pair: false },
       onSelect: () => select(cons ? { type: 'ucf', file: path } : { type: 'file', file: path }),
       onOpen: () => openFile(path), onContext: e => fileContextMenu(e, path),
     });

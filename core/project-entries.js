@@ -40,6 +40,15 @@ export function removeFromProject(pj, paths) {
   return pj;
 }
 
+/** The line a Remove from Project says of one source (#5720, the interface's and the MCP's remove_from_project): `file`,
+ *  with `hdl` its drawing's HDL file removed with it (null: none, or not named: a design project's); `deleted`: the files
+ *  deleted too (`trash`: moved to the workspace's .trash folder), else kept in the project folder. */
+export function removedMessage({ file, hdl = null, deleted = false, trash = true }) {
+  const what = hdl ? `${file} and its HDL file ${hdl}` : file;
+  if (!deleted) return `Removed ${what} from the project (${hdl ? 'the files are' : 'the file is'} kept in the project folder).`;
+  return `Removed ${what} from the project and deleted ${hdl ? 'them' : 'it'}${trash ? ' (moved to the workspace\'s .trash folder)' : ''}.`;
+}
+
 /** A file written (`path`) on `pj` (changed): back in the project if it was excluded, an HDL source listed (not build/'s
  *  generated files). True when `pj` changed. */
 export function registerWritten(pj, path) {

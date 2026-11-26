@@ -57,6 +57,41 @@ test('remove_from_project / add_to_project: a drawing with its HDL file, Check S
   assert.ok((await files('r')).includes('src/lamps.vhd'));
 });
 
+// (#5720: several sources at once, as a selection of the Design pane; the files deleted too, into the .trash)
+test('remove_from_project of several files (paths): each checked first, a drawing with its HDL file; delete: the files into the .trash', async () => {
+  await ok('new_project_from_example', { name: 'mkeep', example: 'traffic' });
+  const dir = P.projectDir('mkeep'), there = f => fs.existsSync(path.join(dir, f));
+  // one path wrong: nothing removed
+  await fails('remove_from_project', { project: 'mkeep', paths: ['src/lamps.bool.json', 'src/nope.vhd'] }, 'no file \'src/nope.vhd\' in the project \'mkeep\'');
+  await fails('remove_from_project', { project: 'mkeep', path: 'src/top.vhd', paths: ['src/top.vhd'] }, 'path or paths, not both');
+  await fails('remove_from_project', { project: 'mkeep', paths: [] }, 'paths: the files\' paths in the project (project_info)');
+  assert.ok((await files('mkeep')).includes('src/lamps.vhd'));
+  // kept in the folder: the drawing with its HDL file (named too: once), a plain HDL file
+  const k = await ok('remove_from_project', { project: 'mkeep', paths: ['src/lamps.bool.json', 'src/lamps.vhd', 'src/top.vhd'] });
+  assert.equal(k.text, ['WARNING: The top-level module \'top\' is no longer in the project: set the top module (set_top).',
+    'Removed src/lamps.bool.json and its HDL file src/lamps.vhd from the project (the files are kept in the project folder).',
+    'Removed src/top.vhd from the project (the file is kept in the project folder).'].join('\n'));
+  assert.deepEqual([k.data.removed, k.data.deleted, k.data.trashed], [['src/lamps.bool.json', 'src/lamps.vhd', 'src/top.vhd'], [], undefined]);
+  assert.ok(['src/lamps.bool.json', 'src/lamps.vhd', 'src/top.vhd'].every(there));
+  assert.deepEqual((await P.readProject('mkeep')).excluded, ['src/lamps.bool.json']);
+  // deleted: the state diagram with its HDL file, and a constraints file; out of the folder, into the .trash
+  await ok('new_project_from_example', { name: 'mdel', example: 'traffic' });
+  const pj = await P.readProject('mdel');
+  const fsm = (await P.fileTree('mdel')).find(f => /\.fsm\.json$/.test(f)), fsmHdl = drawingLink('mdel', fsm);
+  const d = await ok('remove_from_project', { project: 'mdel', paths: [fsm, pj.constraints], delete: true });
+  assert.equal(d.text, [`Removed ${fsm} and its HDL file ${fsmHdl} from the project and deleted them (moved to the workspace's .trash folder).`,
+    `Removed ${pj.constraints} from the project and deleted it (moved to the workspace's .trash folder).`].join('\n'));
+  assert.deepEqual([d.data.removed, d.data.deleted], [[fsm, fsmHdl, pj.constraints], [fsm, fsmHdl, pj.constraints]]);
+  assert.equal(d.data.trashed.length, 3);
+  for (const t of d.data.trashed) assert.ok(fs.existsSync(path.join(P.workspaceDir(), t)), t);
+  const dir2 = P.projectDir('mdel');
+  assert.ok(![fsm, fsmHdl, pj.constraints].some(f => fs.existsSync(path.join(dir2, f))));
+  const after2 = await P.readProject('mdel');
+  assert.ok(!after2.files.some(f => f.path === fsmHdl));
+  assert.deepEqual([after2.excluded || [], after2.constraints || null], [[], null]);
+  assert.ok(!(await P.fileTree('mdel')).includes(fsm));
+});
+
 test('remove_from_project: the top\'s file, the tops it leaves (none, or the one root of the view)', async () => {
   await ok('new_project_from_example', { name: 'g', example: 'gates' });
   const r = await ok('remove_from_project', { project: 'g', path: 'src/gates.sch.json' });

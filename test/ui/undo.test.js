@@ -159,7 +159,7 @@ uiTest('#5263 Edit ▸ Undo right after Remove from Project\'s question, the com
   await page.treeRow('#hier', 'top', { right: true, exact: true });
   await page.click('body > .menu-popup .mi', { text: 'Remove from Project' });
   await page.waitDialog('Remove Source');
-  await page.dialogButton('Yes');
+  await page.dialogButton('Remove from Project');
   await page.waitNoDialog();
   await heldReads(page, 2);
   // Set as Top Module's end let go (its step made), the removal still running: Edit ▸ Undo waits for it

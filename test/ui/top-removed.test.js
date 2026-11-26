@@ -18,7 +18,7 @@ const project = (name) => env.server.api('GET', `/api/projects/${encodeURICompon
 const savedTop = (page, name, top) => page.waitFor(async (n, t) => (await (await fetch(`/api/projects/${encodeURIComponent(n)}`)).json()).top === t, [name, top], { what: `${name}'s top saved as '${top}'` });
 const consoleLines = async (page, re) => (await page.consoleText()).split('\n').filter((l) => re.test(l));
 const ppRows = (page) => page.eval(() => [...document.querySelectorAll('.pin-planner .pp-table tr')].slice(1).map((r) => r.cells[0].textContent));
-const answer = async (page, button = 'Yes', title = 'Remove Source') => {
+const answer = async (page, button = 'Remove from Project', title = 'Remove Source') => {
   await page.waitDialog(title);
   await page.dialogButton(button);
   await page.waitNoDialog();

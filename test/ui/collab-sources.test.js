@@ -83,7 +83,7 @@ uiTest('#4418 an editor adds, renames, removes and deletes sources: the owner\'s
     await ep.leftTab('files');
     await fileMenu(ep, 'src/pass2.vhd', 'Remove from Project');
     await ep.waitDialog('Remove Source');
-    await ep.dialogButton('Yes');
+    await ep.dialogButton('Remove from Project');
     await until(async () => !(await listed('src/pass2.vhd')), 'removed from the owner\'s project');
     assert.ok(await onDisk('src/pass2.vhd'), 'the file kept');
     // the owner's Add to Project: at the editor's
