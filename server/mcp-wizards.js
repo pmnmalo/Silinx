@@ -3,7 +3,7 @@
 // frequencies asked (core/clocking.js), a block RAM or ROM (core/blockram.js), its settings kept in the module's header
 // (`-- silinx-wizard: {...}`) so that a module made by a wizard is made again from them with the settings changed, as
 // editing it reopens the wizard; the UCF Wizard's constraints file, a module's ports on the board's pins
-// (web/js/ucf-wizard.js). The wizards' checks and their messages.
+// (web/js/ucf-wizard.js); the XADC Wizard's module (core/xadc-wizard.js, #5385). The wizards' checks and their messages.
 import * as P from './projects.js';
 import { toolError, readProject, STR, PROJECT, projectText } from './mcp-util.js';
 import { FILE_RE } from '../core/ident.js';
@@ -111,6 +111,42 @@ export const WIZARD_TOOLS = [
       const lines = [`Clocking Wizard: ${did} ${t.path}, the module ${spec.name}: ${plan.outputs.map(o => `${o.port} ${mhzText(o.mhz)}`).join(', ')}.`,
         ...plan.outputs.filter(o => o.asked !== null && o.asked !== undefined && Math.abs(o.asked - o.mhz) > 1e-6).map(o => `${o.port}: ${mhzText(o.mhz)}, the nearest to the ${mhzText(o.asked)} asked (${o.note})`), ...plan.notes];
       return { text: lines.join('\n'), data: { project: name, path: t.path, module: spec.name, primitive: plan.primitive, outputs: plan.outputs.map(o => ({ pin: o.pin, port: o.port, mhz: o.mhz, asked: o.asked ?? null })), notes: plan.notes } };
+    },
+  },
+  {
+    name: 'xadc_wizard', title: 'XADC Wizard (analog inputs)',
+    description: 'Make an XADC module as the XADC Wizard does (#5385): the 7-series XADC (Artix-7, Spartan-7, Kintex-7, Zynq-7000) converting the channels asked in turn, each one\'s last 12-bit code on an output (die temperature, VCCINT, VCCAUX, VCCBRAM, VP/VN, VAUX0..15: a VAUX\'s pins <port>_p and <port>_n). Its settings in its header: edit makes it again with them changed.',
+    inputSchema: { type: 'object', properties: {
+      project: PROJECT, name: STR('The module\'s name (default xadc_read).'), location: STR('Its folder (default src).'), language: { type: 'string', enum: ['vhdl', 'verilog'], description: 'Its language (default the project\'s).' },
+      edit: STR('A module the wizard made (its file).'),
+      dclk_mhz: { type: 'number', description: 'DCLK\'s frequency, 8 to 250 MHz (default the board\'s oscillator).' },
+      dclk: STR('The DCLK port (default clk).'), reset: STR('The reset port, or "" for none (default rst).'), eos: STR('The EOS output, or "" for none (default eos).'),
+      channels: { type: 'array', items: { type: 'object', properties: { id: { type: 'string' }, port: { type: 'string' } }, required: ['id'] }, description: 'The channels: id temp, vccint, vccaux, vccbram, vpvn or vaux0..vaux15; port its output (default its id).' },
+    }, required: ['project'], additionalProperties: false },
+    annotations: { readOnlyHint: false, destructiveHint: true },
+    async run({ project: name, name: modName, location, language, edit, dclk_mhz: mhz, dclk, reset, eos, channels }) {
+      const pj = await readProject(name);
+      const { xadcModule, XADC_CHANNELS } = await import('../core/xadc-wizard.js');
+      if (!/^(artix7|kintex7|spartan7|zynq)/.test(pj.device?.family || '')) throw toolError('The XADC Wizard makes a module for the XADC of the 7-series devices (Artix-7, Spartan-7, Kintex-7, Zynq-7000): choose one as the target device (set_design_properties).');
+      const lang0 = language || (pj.preferredLanguage === 'verilog' ? 'verilog' : 'vhdl');
+      const t = await target(name, { edit, file: modName || 'xadc_read', location, lang: lang0, kind: 'xadc', wizardName: 'XADC Wizard' });
+      if (edit && (modName !== undefined || language !== undefined || location !== undefined)) throw toolError('edit: the module\'s name, language and location stay its own');
+      const base = t.old || { wizard: 'xadc', version: 1, name: modName || 'xadc_read', lang: lang0, family: pj.device.family, dclkMHz: await boardMHz(pj), dclk: 'clk', reset: 'rst', eos: 'eos', channels: [{ id: 'temp', port: 'temp' }] };
+      if (channels && channels.some((c) => !XADC_CHANNELS.some((x) => x.id === c.id))) throw toolError(`channels: each id one of ${XADC_CHANNELS.map((x) => x.id).join(', ')}`);
+      const spec = { ...base, ...(mhz !== undefined ? { dclkMHz: mhz } : {}), ...(dclk !== undefined ? { dclk } : {}), ...(reset !== undefined ? { reset } : {}), ...(eos !== undefined ? { eos } : {}),
+        ...(channels ? { channels: channels.map((c) => ({ id: c.id, port: c.port ?? c.id })) } : {}) };
+      await checkName(name, spec.name, spec.lang, t.path);
+      const { identError } = await import('../core/modgen.js');
+      const err = (label, n) => { const e = identError(n, spec.lang); return e ? `${label}: ${e}.` : null; };
+      const e = err('DCLK port', spec.dclk) || (spec.reset && err('Reset input', spec.reset)) || (spec.eos && err('EOS output', spec.eos)) || spec.channels.map((c) => err(`Output of ${c.id}`, c.port)).find(Boolean);
+      if (e) throw toolError(e);
+      const names = [spec.dclk, spec.reset, spec.eos, ...spec.channels.flatMap((c) => (/^vaux/.test(c.id) ? [c.port, `${c.port}_p`, `${c.port}_n`] : c.id === 'vpvn' ? [c.port, 'vp', 'vn'] : [c.port]))].filter(Boolean);
+      if (new Set(names.map(n => n.toLowerCase())).size !== names.length) throw toolError('Two ports have the same name.');
+      const { code, plan } = xadcModule(spec);
+      if (!code) throw toolError(plan.errors.join('\n'));
+      const did = await write(name, t.path, code, !t.old);
+      return { text: [`XADC Wizard: ${did} ${t.path}, the module ${spec.name}: ${spec.channels.map((c) => c.port).join(', ')}.`, ...plan.notes].join('\n'),
+        data: { project: name, path: t.path, module: spec.name, clkdiv: plan.clkdiv, channels: spec.channels, init: Object.fromEntries(Object.entries(plan.init).map(([k, v]) => [`INIT_${k}`, v])) } };
     },
   },
   {

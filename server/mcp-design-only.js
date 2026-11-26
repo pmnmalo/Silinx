@@ -10,7 +10,7 @@ import { toolError } from './mcp-util.js';
 
 // the tools of the flow: none runs in a design project
 const FLOW_TOOLS = new Set(['run_process', 'get_report', 'timing_paths', 'program_board', 'capture_settings', 'capture', 'check_constraints',
-  'constraints_wizard', 'clock_manager', 'block_memory', 'set_process_properties', 'c_simulation', 'c_cosimulation', 'c_synthesis_report', 'c_generated']);
+  'constraints_wizard', 'clock_manager', 'block_memory', 'xadc_wizard', 'set_process_properties', 'c_simulation', 'c_cosimulation', 'c_synthesis_report', 'c_generated']);
 // new_source's types of the HDL side (the drawings, the labs are the design project's)
 const HDL_TYPES = new Set(['module', 'test_bench', 'package', 'constraints', 'mem', 'c', 'cpp']);
 

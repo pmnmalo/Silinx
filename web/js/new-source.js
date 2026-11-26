@@ -35,6 +35,8 @@ const SOURCE_TYPES = [
   { id: 'regmap', label: 'Register Map', ico: 'regmap', ext: '.regs.json', dir: 'src', drawn: true, get hidden() { return !systemsOn(); } },
   { id: 'clkwiz', label: 'Clock Manager (DCM / PLL)', ico: 'template', ext: null, dir: 'src', wiz: 'clock', only: true },
   { id: 'bramwiz', label: 'Block Memory', ico: 'template', ext: null, dir: 'src', wiz: 'memory', only: true },
+  // (the 7-series' XADC, #5385: shown for a device that has one)
+  { id: 'xadcwiz', label: 'XADC (analog inputs)', ico: 'template', ext: null, dir: 'src', wiz: 'xadc', only: true, get hidden() { return !/^(artix7|kintex7|spartan7|zynq)/.test(S.project?.device?.family || ''); } },
   { id: 'tb', label: 'Test Bench', ico: 'vhdl', ext: null, dir: 'sim', wiz: 'testbench' },
   { id: 'ucf', label: 'Implementation Constraints File', ico: 'ucf', ext: '.ucf', dir: 'constraints', wiz: 'ucf' },
   // (the Constraints Wizard in the device's format, #2296: the PCF, LPF, CST, CCF and XDC Wizards)
@@ -296,5 +298,6 @@ async function openWizard(wiz, { name, location, lang, ext, back }) {
     case 'testbench': return (await import('./tbwizard.js')).testBenchWizard({ module: panes.sel?.module, name: name || null, location, lang, back });
     case 'clock': return (await import('./clock-wizard.js')).clockWizard(o);
     case 'memory': return (await import('./bram-wizard.js')).blockMemoryWizard(o);
+    case 'xadc': return (await import('./xadc-wizard.js')).xadcWizard(o);
   }
 }
