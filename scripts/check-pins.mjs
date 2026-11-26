@@ -19,6 +19,8 @@
 //                 (paths of a GitHub repository), behind only when one of them changed since; with `remote` ({ url,
 //                 match }), the commit read from another repository's file (nextpnr-spartan's SILINX_REF)
 //       sha256    a file downloaded from `url`, its SHA-256 pinned (`sha256`), against the file served today
+//       npm       a package of npm's registry downloaded on first use, not a dependency (`package`, `version`: ngspice's
+//                 eecircuit-engine, #5386), against its latest version
 //       reported  what cannot be checked (`current`, `note`: an installer that is not public, a base image), listed
 //     each with `name`, and `update` (how to update it) when it says more than its kind's way. A module declares
 //     them as `export const PINNED = [ … ]` (core/, server/, scripts/, packages/; built from the constants its
@@ -29,7 +31,8 @@
 //     prjxray, prjxray-db, Apicula), Digilent's master XDCs (core/boards.js), adepttool
 //     (scripts/install-adepttool.sh), the Silinx commit nextpnr-spartan's chip databases are built from
 //     (scripts/nextpnr-update-report.mjs), the Docker images' bases and tools (docker/ise/Dockerfile,
-//     scripts/vitis-hls-image/Dockerfile, scripts/hls-vitis.mjs, core/xc16-compile.js: reported only)
+//     scripts/vitis-hls-image/Dockerfile, scripts/hls-vitis.mjs, core/xc16-compile.js: reported only), ngspice's
+//     eecircuit-engine (server/ngspice.js: its version on npm, its tarball's SHA-256)
 // What is behind becomes one issue, "Pinned sources: newer versions available" (labels enhancement and
 // tests & CI), opened or updated (its text replaced); none when all are current, and the issue is closed
 // when they become so. As scripts/report-failure.mjs (#251), the issue is written by the workflow.
@@ -232,6 +235,12 @@ export function checkSha256(pin, sha256) {
     notes: changed ? [`the file served at ${pin.url} changed: not the SHA-256 pinned`] : [] };
 }
 
+/** An npm package's version pinned against its latest (#5386). */
+export function checkNpm(pin, latest) {
+  const behind = !!latest && compareVersions(latest, pin.version) > 0;
+  return { pin, current: pin.version, latest: latest || '?', behind, notes: latest ? [] : [`no latest version of ${pin.package} on npm`] };
+}
+
 /** A pin that cannot be checked: listed as it is. */
 export const checkReported = pin => ({ pin, current: pin.current, latest: '—', behind: false, reported: true, notes: pin.note ? [pin.note] : [] });
 
@@ -240,6 +249,7 @@ const KINDS = {
   commit: p => typeof p.repo === 'string' && (/^[0-9a-f]{7,40}$/.test(p.commit || '') || (!!p.remote?.url && !!p.remote?.match))
     && (p.watch === undefined || (Array.isArray(p.watch) && p.watch.length > 0 && /^[\w.-]+\/[\w.-]+$/.test(p.repo))),
   sha256: p => /^https:\/\//.test(p.url || '') && /^[0-9a-f]{64}$/i.test(p.sha256 || ''),
+  npm: p => /^(@[\w.-]+\/)?[\w.-]+$/.test(p.package || '') && /^\d+(\.\d+)*$/.test(p.version || ''),
   reported: p => typeof p.current === 'string' && !!p.current,
 };
 
@@ -316,6 +326,7 @@ const DECLARED_HOW = {
   tag: 'the tag (and its commit) where it is declared, then the tests of the code that reads it',
   commit: 'the commit where it is declared, then the tests of the code that reads it',
   sha256: 'the file looked at, its new SHA-256 where it is declared, then the tests of the code that reads it',
+  npm: 'the version and its tarball\'s SHA-256 where it is declared, then the tests of the code that runs it',
 };
 const KIND_NAMES = { commit: 'the design corpus', mcc: 'the MCC models', 'yosys-tests': 'Yosys\'s test designs', release: 'the packages pinned by a release' };
 
@@ -374,7 +385,7 @@ async function checkDeclaredCommit(declared, net) {
 }
 
 /**
- * Every pin checked; net: { lsRemote(url, …refs), compare(repo, base, head), exists(url), text(url), sha256(url),
+ * Every pin checked; net: { lsRemote(url, …refs), compare(repo, base, head), exists(url), text(url), sha256(url), npmLatest(package),
  * lastCommit(repo, branch, path) } (injected in the tests).
  */
 export async function checkAll(pins, net) {
@@ -385,6 +396,7 @@ export async function checkAll(pins, net) {
         if (pin.kind === 'tag') out.push(checkTag(pin, await net.lsRemote(gitUrl(pin.repo), 'refs/tags/*')));
         else if (pin.kind === 'commit') out.push(await checkDeclaredCommit(pin, net));
         else if (pin.kind === 'sha256') out.push(checkSha256(pin, await net.sha256(pin.url)));
+        else if (pin.kind === 'npm') out.push(checkNpm(pin, await net.npmLatest(pin.package)));
         else if (pin.kind === 'reported') out.push(checkReported(pin));
       } else if (pin.kind === 'yosys-tests') out.push(checkYosysTests(pin, await net.lsRemote(`https://github.com/${pin.repo}.git`, 'refs/tags/v*')));
       else if (pin.kind === 'commit') {
@@ -419,6 +431,7 @@ async function main() {
     exists: async url => { try { return (await fetch(url, { method: 'HEAD', redirect: 'manual' })).status === 200; } catch { return false; } },
     text: async url => { const r = await fetch(url); if (!r.ok) throw new Error(`${url}: HTTP ${r.status}`); return r.text(); },
     sha256: async url => { const r = await fetch(url); if (!r.ok) throw new Error(`${url}: HTTP ${r.status}`); return createHash('sha256').update(Buffer.from(await r.arrayBuffer())).digest('hex'); },
+    npmLatest: async name => { const r = await fetch(`https://registry.npmjs.org/${name}/latest`); if (!r.ok) throw new Error(`${name}: HTTP ${r.status}`); return (await r.json()).version; },
     lastCommit: async (r, branch, p) => (await gh(`repos/${r}/commits?sha=${encodeURIComponent(branch)}&path=${encodeURIComponent(p)}&per_page=1`))[0]?.sha ?? null,
   };
   const declared = await collectDeclared();
