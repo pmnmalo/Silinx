@@ -17,5 +17,5 @@ export const PROGRAM_PT_PATTERNS = [
   [/^No (\.\w+) yet — run "Generate Programming File" first\.$/, 'Ainda não há $1 — execute primeiro "Generate Programming File".'],
   [/^Writes the (\.\w+) into the board's SPI flash: the FPGA loads it, and again at every power-up\.$/, 'Escreve o $1 na flash SPI da placa: a FPGA carrega-o, e de novo sempre que é ligada.'],
   [/^Loads the (\.\w+) into the FPGA's SRAM: the design runs until the board is powered off\.$/, 'Carrega o $1 na SRAM da FPGA: o projeto corre até a placa ser desligada.'],
-  [/^The on-board (\S+) \(JTAG\): the (\.\w+) loaded into the FPGA's SRAM, until the board is powered off\.$/, 'O $1 da placa (JTAG): o $2 carregado na SRAM da FPGA, até a placa ser desligada.'],
+  [/^The on-board (.+?) \(JTAG\): the (\.\w+) loaded into the FPGA's SRAM, until the board is powered off\.$/, 'O $1 da placa (JTAG): o $2 carregado na SRAM da FPGA, até a placa ser desligada.'],
 ];

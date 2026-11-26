@@ -22,7 +22,7 @@ browser, with nothing installed.
 | GateMate | Cologne Chip GateMate FPGA Evaluation Board (not programmed from Silinx) | the Silinx toolchain |
 | 7-series (an experimental family) | Basys 3, Nexys A7 | the Silinx toolchain, or AMD Vivado |
 | 7-series | Arty S7, Zybo Z7 | AMD Vivado |
-| MAX 10, Cyclone IV E, Cyclone V (each an experimental family) | Terasic DE10-Lite; DE0-Nano, DE2-115; DE0-CV, DE1-SoC, DE10-Nano | not yet: their pins and constraints (QSF) only |
+| MAX 10, Cyclone IV E, Cyclone V (each an experimental family) | Terasic DE10-Lite; DE0-Nano, DE2-115; DE0-CV, DE1-SoC, DE10-Nano | Intel Quartus Prime Lite, which you install yourself (the local server); programmed with openFPGALoader through the on-board USB-Blaster |
 | every family ISE 14.7 implements | the other Digilent, Xilinx and Numato boards, or a device alone | Xilinx ISE |
 
 *Design Properties* chooses the board. A **design and simulation project** has no board: it designs and simulates

@@ -213,7 +213,7 @@ test('an Intel project is implemented by Quartus (POST implement, run_process): 
   assert.match(r.text, /Process "synthesize" of <top> failed \(1 error\(s\), 0 warning\(s\)\) \(Intel Quartus Prime\)\.$/);
 });
 
-test('the whole flow with Quartus\'s tools faked: the steps\' markers, reports.json (utilization, timing, the .sof), get_report, the Design Summary\'s rows', { skip: process.platform === 'win32' }, async () => {
+test('the whole flow with Quartus\'s tools faked: the steps\' markers, reports.json (utilization, timing, the .sof made a .rbf), get_report, the Design Summary\'s rows', { skip: process.platform === 'win32' }, async () => {
   const { startImplementation, projectReports } = await import('../server/impl-routes.js');
   const bin = fs.mkdtempSync(path.join(tmp, 'fake-quartus-'));
   const out = (ext, text) => `mkdir -p output_files; printf '%s' '${text.replace(/'/g, "'\\''")}' > output_files/top.${ext}`;
@@ -223,6 +223,8 @@ test('the whole flow with Quartus\'s tools faked: the steps\' markers, reports.j
     quartus_fit: [out('fit.summary', FIT), out('fit.rpt', RPT('Fitter'))].join('\n'),
     quartus_sta: [out('sta.summary', STA), out('sta.rpt', RPT('Timing Analyzer'))].join('\n'),
     quartus_asm: [out('asm.rpt', RPT('Assembler')), "printf 'SOF' > output_files/top.sof"].join('\n'),
+    // (#5379: the .sof made the DE0-CV's .rbf, its arguments kept)
+    quartus_cpf: 'echo "$@" > cpf.args; printf \'RBF!\' > top.rbf',
   };
   for (const [t, body] of Object.entries(tools)) fs.writeFileSync(path.join(bin, t), `#!/bin/sh\n${body}\n`, { mode: 0o755 });
   // (quartus.path: the file's, written as the user does)
@@ -232,14 +234,15 @@ test('the whole flow with Quartus\'s tools faked: the steps\' markers, reports.j
   assert.equal(job.status, 'ok', job.error);
   assert.deepEqual(job.result.completedSteps, ['synth', 'par', 'trce', 'bitgen']);
   assert.ok(job.lines.includes('Warning (10230): Verilog HDL assignment warning at top.v(3): truncated value'));
-  assert.ok(job.lines.includes('Programming file: build/output_files/top.sof'));
+  assert.ok(job.lines.includes('Programming file: build/top.rbf'));
+  assert.equal(fs.readFileSync(path.join(P.projectDir('QFlow'), 'build', 'cpf.args'), 'utf8'), '-c output_files/top.sof top.rbf\n');
   const rep = await projectReports('QFlow');
   assert.equal(rep.source, 'quartus');
   assert.deepEqual(rep.summary, { synthesized: true, mapped: true, routed: true, timingMet: true, maxFreqMHz: 217.486, drc: null, bitstream: true,
     utilization: { slices: { used: 61, total: 18480, percent: 0.33 }, luts: { used: 61, total: 18480, percent: 0.33 }, ffs: { used: 92, total: null, percent: null }, iobs: { used: 27, total: 224, percent: 12.05 },
       bram: { used: 0, total: 308, percent: 0 }, dsp: { used: 0, total: 66, percent: 0 }, pll: { used: 0, total: 4, percent: 0 } } });
   assert.deepEqual(rep.messages, { errors: 0, criticalWarnings: 0, warnings: 8 });
-  assert.deepEqual(rep.bit, { path: 'build/output_files/top.sof', size: 3 });
+  assert.deepEqual(rep.bit, { path: 'build/top.rbf', size: 4, sof: 'build/output_files/top.sof' });
   // the MCP's get_report: the summary with the Design Summary's rows, the Fitter's report by its file
   const sum = await call('get_report', { project: 'QFlow' });
   assert.equal(sum.data.summary.source, 'quartus');

@@ -13,7 +13,7 @@ import { runVivado, isVivadoDevice, vivadoSteps, collectVivadoReports } from './
 import { runQuartus, isQuartusDevice, quartusSteps } from './quartus.js';
 import { collectQuartusReports } from './quartus-reports.js';
 import { DESIGN_ONLY_MESSAGES, isDesignOnly } from '../core/project-kind.js';
-import { deviceFamily, experimentalDevice, familyName, noFlowMessage, noOpenFlowMessage, openFlowDevice, openFamilyOf, openOnlyDevice, bitstreamExtOf } from '../packages/silinx-fpga/src/parts.js';
+import { deviceFamily, experimentalDevice, familyName, noFlowMessage, noOpenFlowMessage, openFlowDevice, openFamilyOf, openOnlyDevice, bitstreamExtOf, quartusDevice } from '../packages/silinx-fpga/src/parts.js';
 import { runOpenImplementation, openStatus, openSteps, buildDeviceJob, reportPart } from './open-flow.js';
 import { programJob, scanJob, promJob, readBitInfo, checkBitPart, expectedDevice, parseBitHeader } from './programmer.js';
 import { importXise, importIseSchematics, iseModuleSymbols } from './xise.js';
@@ -81,13 +81,13 @@ export async function startProgramming(b = {}) {
     if (b.bitfile) bitfile = path.isAbsolute(b.bitfile) ? b.bitfile : P.safeJoin(dir, b.bitfile);
     else {
       if (!topOf(project)) throw bad('project has no top module; cannot locate build/<top>.bit');
-      bitfile = path.join(dir, 'build', `${project.top}${bitstreamExtOf(project.device)}`);   // (the iCE40's .bin, the Gowin's .fs, #2298)
+      bitfile = path.join(dir, 'build', `${project.top}${bitstreamExtOf(project.device)}`);   // (the iCE40's .bin, the Gowin's .fs, #2298; an Intel FPGA's .svf or .rbf, #5379)
     }
   } else if (b.bitfile) {
     if (!path.isAbsolute(b.bitfile)) throw bad('bitfile must be an absolute path when no project is given');
     bitfile = b.bitfile;
   } else throw bad('give a project or a bitfile');
-  if (!/\.bit$/i.test(bitfile) && !(/\.(bin|fs)$/i.test(bitfile) && !path.isAbsolute(b.bitfile || ''))) throw bad('only .bit files, or a project\'s .bin (the iCE40) or .fs (the Gowin), can be programmed');
+  if (!/\.bit$/i.test(bitfile) && !(/\.(bin|fs|svf|rbf)$/i.test(bitfile) && !path.isAbsolute(b.bitfile || ''))) throw bad('only .bit files, or a project\'s .bin (the iCE40), .fs (the Gowin) or .svf or .rbf (an Intel FPGA), can be programmed');
   // (an absolute one as the system resolves it, its links and then its '..' followed in that order, once: the path
   // checked is the one opened, #3039)
   if (path.isAbsolute(b.bitfile || '')) {
@@ -124,7 +124,7 @@ export async function bitInfo(name) {
   const project = await P.readProject(name);
   if (!topOf(project)) return { available: false, reason: 'no top module' };
   // (an open family's bitstream, the iCE40's .bin, the ECP5's .bit: no Xilinx header, its size, #2298, #2302; its family's flag)
-  if (openOnlyDevice(project.device)) {
+  if (openOnlyDevice(project.device) || quartusDevice(project.device)) {
     const rel = `build/${project.top}${bitstreamExtOf(project.device)}`, own = { [deviceFamily(project.device)]: true };
     const st = await fs.stat(path.join(P.projectDir(name), rel)).catch(() => null);
     return st ? { available: true, path: rel, size: st.size, ...own } : { available: false, path: rel, ...own };
