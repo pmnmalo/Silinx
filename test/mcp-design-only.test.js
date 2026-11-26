@@ -41,7 +41,7 @@ test('new_project design_only: no board, no device, no constraints; refused with
   const r = await ok('new_project', { name: 'd0', design_only: true });
   // (design_only, kind's deprecated name: kind design, said, #4752)
   assert.equal(r.text, 'WARNING: design_only is deprecated (#4103): give profile (true is profile logic).\nEmpty Digital Logic project \'d0\' made (a design and simulation project). Add its drawings with new_source, then set_top.');
-  assert.deepEqual(r.data, { project: 'd0', kind: 'design', board: null, device: null, trusted: false });
+  assert.deepEqual(r.data, { project: 'd0', kind: 'design', mode: 'circuit', board: null, device: null, trusted: false });
   const pj = await P.readProject('d0');
   assert.deepEqual([pj.kind, pj.board, pj.constraints], ['design', null, null]);
   assert.equal(fs.existsSync(path.join(P.projectDir('d0'), 'constraints')), false, 'no constraints folder');
@@ -66,7 +66,7 @@ test('a design project: its drawings, Check Syntax, the Test Bench Wizard and th
   const info = await ok('project_info', { project: 'd1' });
   // (where it is stored and its last back-up, #4971)
   assert.equal(info.text, 'd1: a design and simulation project (no FPGA), top traffic, test bench tb_traffic\n  src/traffic.fsm.json\n  stored in the folder <workspace>/d1 on the disk; last back-up: none recorded');
-  assert.deepEqual(info.data, { project: 'd1', kind: 'design', top: 'traffic', simTop: 'tb_traffic', device: null, board: null, constraints: null, files: ['src/traffic.fsm.json'], untrusted: info.data.untrusted,
+  assert.deepEqual(info.data, { project: 'd1', kind: 'design', top: 'traffic', simTop: 'tb_traffic', device: null, board: null, constraints: null, files: ['src/traffic.fsm.json'], untrusted: info.data.untrusted, mode: 'circuit',   // (its mode, #5754)
     nodes: [{ id: 'design', kind: 'design', implicit: true, board: null, device: null, module: 'traffic', lang: 'vhdl', files: [] }],   // (its one node, implicit, #5414)
     system: { format: 'silinx-system', version: 2, name: 'd1', links: [], nodes: [{ id: 'design', kind: 'design', module: 'traffic', board: null, device: null, constraints: null, lang: 'vhdl', pins: {}, interfaces: [], x: 0, y: 0, implicit: true }] },   // (its System, implicit, #5416)
     stored: { kind: 'folder', folder: '<workspace>/d1' }, lastBackup: null });

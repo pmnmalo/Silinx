@@ -1,5 +1,6 @@
-// UI: New Project asks the project's kind first (#5041, web/js/project-kind-step.js, core/project-kind.js): Digital Logic
-// (the design and simulation project, #3780, #3891; no FPGA or HDL in its card, #5133), FPGA (the default) or System (#4702:
+// UI: New Project asks the project's mode first (#5041, #5754: web/js/project-kind-step.js, core/project-mode.js), three cards
+// with a drawing each: Circuit (the design and simulation project, #3780, #3891; no FPGA or HDL in its card, #5133), Board (the
+// default: an FPGA project) or System (#4702:
 // test/ui/system-new-project.test.js); with no FPGA, no example to start from. A project with no
 // FPGA made there shows nothing of HDL or FPGA: no VHDL / Verilog badges, no synthesis, implementation or bitstream
 // process, task, menu item or toolbar button, no board, device or constraints. In English and in Portuguese, no
@@ -26,7 +27,7 @@ const shownLabels = page => page.eval(() => [...document.querySelectorAll('.dlg-
 const kindPage = page => page.eval(() => ({
   title: document.querySelector('.dlg-overlay .wiz-main h3').textContent,
   hint: document.querySelector('.dlg-overlay .wiz-main .hint').textContent,
-  cards: [...document.querySelectorAll('.dlg-overlay .kind-card')].map(c => [c.dataset.kind, c.querySelector('.kind-name').textContent,
+  cards: [...document.querySelectorAll('.dlg-overlay .kind-card')].map(c => [c.dataset.kind, c.dataset.mode, !!c.querySelector('.kind-art svg path, .kind-art svg rect'), c.querySelector('.kind-name').textContent,
     c.querySelector('.kind-about').textContent, c.querySelector('.kind-not-yet')?.textContent ?? null, c.querySelector('input').checked, c.querySelector('input').disabled]),
   steps: [...document.querySelectorAll('.dlg-overlay .wiz-side .step')].map(s => s.textContent),
 }));
@@ -37,17 +38,16 @@ const openWizard = async (page, l) => {
   await page.waitFor(() => !!document.querySelector('.dlg-overlay .kind-cards'), [], { what: 'New Project\'s kind' });
 };
 
+// (the three modes, #5754: Circuit, Board, System, each the kind it makes, its mode, its drawing)
 const EN_CARDS = [
-  ['design', 'Digital Logic', 'Digital logic for the introductory courses: schematics, truth tables, state machines and circuits on a breadboard, drawn and simulated.', null, false, false],
-  ['fpga', 'FPGA', 'A design that runs on a board: HDL sources and drawings, simulated, synthesized, implemented and programmed on the FPGA, or emulated.', null, true, false],
-  ['embedded', 'Embedded / SoC', 'FPGA boards and microcontrollers linked in one System, designed and simulated as one.', null, false, false],
-  ['system', 'System', 'A system of FPGA and microcontroller nodes linked together, designed and simulated as one.', null, false, false],
+  ['design', 'circuit', true, 'Circuit', 'Elementary components with no board: gates, flip-flops, circuits on a breadboard, schematics, truth tables and state machines, drawn and simulated.', null, false, false],
+  ['fpga', 'board', true, 'Board', 'One board, with its flow, its emulator and its programming: HDL sources and drawings synthesized, implemented and programmed on the FPGA, or emulated.', null, true, false],
+  ['system', 'system', true, 'System', 'Several devices linked (UART, SPI, Pmods): FPGA boards and microcontrollers in one System document, simulated as one.', null, false, false],
 ];
 const PT_CARDS = [
-  ['design', 'Lógica Digital', 'Lógica digital para as disciplinas introdutórias: esquemáticos, tabelas de verdade, máquinas de estados e circuitos numa breadboard, desenhados e simulados.', null, false, false],
-  ['fpga', 'FPGA', 'Um projeto que corre numa placa: fontes HDL e desenhos, simulados, sintetizados, implementados e programados na FPGA, ou emulados.', null, true, false],
-  ['embedded', 'Embebido / SoC', 'Placas FPGA e microcontroladores ligados num Sistema, desenhados e simulados como um todo.', null, false, false],
-  ['system', 'Sistema', 'Um sistema de nós de FPGA e de microcontrolador ligados entre si, desenhado e simulado como um todo.', null, false, false],
+  ['design', 'circuit', true, 'Circuito', 'Componentes elementares sem placa: portas, flip-flops, circuitos numa breadboard, esquemáticos, tabelas de verdade e máquinas de estados, desenhados e simulados.', null, false, false],
+  ['fpga', 'board', true, 'Placa', 'Uma placa, com o seu fluxo, o seu emulador e a sua programação: fontes HDL e desenhos sintetizados, implementados e programados na FPGA, ou emulados.', null, true, false],
+  ['system', 'system', true, 'Sistema', 'Vários dispositivos ligados (UART, SPI, Pmods): placas FPGA e microcontroladores num documento de Sistema, simulados como um todo.', null, false, false],
 ];
 
 // what of HDL or FPGA the interface shows of the open project (none in a project with no FPGA): the Design pane's badges,
@@ -81,6 +81,8 @@ async function makeNoFpga(page, name, l) {
   await page.waitFor(() => document.querySelectorAll('.dlg-overlay .wiz-main select').length > 6, [], { what: 'Project Settings' });
   await page.fill('.dlg-overlay .wiz-main select', 'fsm', { index: 6 });
   await page.dialogButton(l.next);
+  // (the summary says its mode, #5754)
+  assert.match(await page.eval(() => document.querySelector('.dlg-overlay .wiz-main pre').textContent), /\n {2}Mode: {9}Circuit\n/);
   await page.dialogButton(l.finish);
   await page.waitNoDialog();
   await page.waitFor((n) => window.Silinx.project?.name === n && window.Silinx.hdlToSch?.['src/top.vhd'] === 'src/top.fsm.json' && document.querySelector('#hier .row.top-mod'),
@@ -96,10 +98,10 @@ async function showProcesses(page) {
   await page.waitFor(() => document.querySelectorAll('#procs .row .lbl').length > 0, [], { what: 'the processes' });
 }
 
-uiTest('#5041 #5133 #4702 New Project: the kind first, three cards (Digital Logic, FPGA, System); Digital Logic: no example; Back keeps it', E, async (page) => {
+uiTest('#5041 #5133 #4702 #5754 New Project: the mode first, three cards with a drawing each (Circuit, Board, System); Circuit: no example; Back keeps it', E, async (page) => {
   await openWizard(page, L.en);
-  assert.deepEqual(await kindPage(page), { title: 'Project Kind', hint: 'Choose the kind of project to create.', cards: EN_CARDS,
-    steps: ['Project Kind', 'Create New Project', 'Project Settings', 'Project Summary'] });
+  assert.deepEqual(await kindPage(page), { title: 'Project Mode', hint: 'Choose the mode of the project.', cards: EN_CARDS,
+    steps: ['Project Mode', 'Create New Project', 'Project Settings', 'Project Summary'] });
   assert.doesNotMatch(await designCardText(page), /FPGA|HDL/);
   // (System: chosen by its card, #4702; the FPGA chosen back)
   await page.click('.dlg-overlay .kind-card[data-kind=system]');
@@ -139,12 +141,12 @@ uiTest('#5041 a project with no FPGA made by New Project shows nothing of HDL or
   assert.ok(fpga.badges.includes('VHDL') && fpga.files.includes('src/traffic.vhd') && fpga.menus.length && (fpga.procs.length || fpga.tasks.length) && fpga.device, JSON.stringify(fpga));
 });
 
-uiTest('#5041 #5133 in Portuguese: New Project\'s kind, its cards (Lógica Digital, FPGA); a project with no FPGA shows nothing of HDL or FPGA', E, async (page) => {
+uiTest('#5041 #5133 #5754 in Portuguese: New Project\'s mode, its cards (Circuito, Placa, Sistema); a project with no FPGA shows nothing of HDL or FPGA', E, async (page) => {
   await page.eval(async () => (await import('/js/i18n.js')).setLanguage('pt'));
   try {
     await openWizard(page, L.pt);
-    assert.deepEqual(await kindPage(page), { title: 'Tipo de Projeto', hint: 'Escolha o tipo de projeto a criar.', cards: PT_CARDS,
-      steps: ['Tipo de Projeto', 'Criar Novo Projeto', 'Definições do Projeto', 'Resumo do Projeto'] });
+    assert.deepEqual(await kindPage(page), { title: 'Modo do Projeto', hint: 'Escolha o modo do projeto.', cards: PT_CARDS,
+      steps: ['Modo do Projeto', 'Criar Novo Projeto', 'Definições do Projeto', 'Resumo do Projeto'] });
     assert.doesNotMatch(await designCardText(page), /FPGA|HDL/);
     await page.dialogButton(L.pt.cancel);
     await page.waitNoDialog();

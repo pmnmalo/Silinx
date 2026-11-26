@@ -30,21 +30,6 @@ export const offeredExamples = names => names.filter(n => systemsOn() || !SYSTEM
 export const newSystemKind = k => k === SYSTEM_KIND || k === 'embedded';
 /** Whether a project (its silinx.json) is a System project: its profile Embedded / SoC or System (#5440). */
 export const isSystemProject = pj => systemProfile(profileOf(pj));
-/** New Project's first page (#5041): the three kinds, each with what it is for and what it shows (#5133: Digital Logic's
- *  says nothing of FPGA, HDL or a board); `short`, the MCP server's
- *  new_project's words for its kind (its arguments' size limits, #4752, #5097). */
-export const PROJECT_KINDS = [
-  { id: DESIGN_KIND, name: DESIGN_ONLY_LABEL, about: 'Digital logic for the introductory courses: schematics, truth tables, state machines and circuits on a breadboard, drawn and simulated.',
-    short: 'drawings and simulation, no board, no HDL shown' },
-  { id: 'fpga', name: 'FPGA', about: 'A design that runs on a board: HDL sources and drawings, simulated, synthesized, implemented and programmed on the FPGA, or emulated.',
-    short: 'the default' },
-  // (Embedded / SoC, #5440: a System project of that profile; a SoC's processor beside its logic, #5412, its node later)
-  { id: 'embedded', name: 'Embedded / SoC', about: 'FPGA boards and microcontrollers linked in one System, designed and simulated as one.',
-    short: 'FPGA and microcontroller nodes in a System' },
-  { id: SYSTEM_KIND, name: 'System', about: 'A system of FPGA and microcontroller nodes linked together, designed and simulated as one.',
-    short: 'FPGA and microcontroller nodes in a System' },
-];
-
 /** Why a project of `kind` cannot start from `template`, or why `kind` is no kind (New Project, the server's and the
  *  browser edition's stores, the MCP's new_project: one rule, one message), or null. */
 export function createRefusal(given, template = 'empty') {

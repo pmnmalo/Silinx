@@ -51,8 +51,7 @@ test('new_project profile: logic, fpga (its default); kind and design_only its d
   assert.ok(k8.text.split('\n').includes('WARNING: kind is deprecated (#5440): give profile (design is profile logic, fpga and system the same).'), k8.text);
 });
 
-test('#4702 #5440 new_project profile system or embedded: an empty System project, its System document, no board; refused with a board; its description says the three kinds as the dialog', async () => {
-  const { PROJECT_KINDS } = await import('../core/project-kind.js');
+test('#4702 #5440 new_project profile system or embedded: an empty System project, its System document, no board; refused with a board; its description says the profiles', async () => {
   const r = await call('new_project', { name: 'c1', profile: 'system' });
   assert.equal(r.isError, false, r.text);
   assert.match(r.text, /^Empty System project 'c1' made: its System c1\.sys\.json \(no node yet\)\. Write its modules with write_file, its firmware \(\.hex, \.elf\), then edit_system\./);
@@ -68,11 +67,9 @@ test('#4702 #5440 new_project profile system or embedded: an empty System projec
   // (Embedded / SoC: a System project of that profile, its System document made)
   const e = await ok('new_project', { name: 'e1', profile: 'embedded' });
   assert.deepEqual([e.data.profile, (await P.readProject('e1')).profile, fs.existsSync(path.join(P.projectDir('e1'), 'e1.sys.json'))], ['embedded', 'embedded', true]);
-  // (each kind's name and words, the dialog's cards')
-  assert.deepEqual(PROJECT_KINDS.map(k => [k.id, k.name]), [['design', 'Digital Logic'], ['fpga', 'FPGA'], ['embedded', 'Embedded / SoC'], ['system', 'System']]);
-  // (the dialog's names, in few words: the MCP's size limits, #4752, #5097)
-  assert.equal(np.inputSchema.properties.profile.description, 'Its profile, New Project\'s first page: logic (Digital Logic: drawings, no board, no HDL), fpga (FPGA: the default), embedded (Embedded / SoC: FPGA and MCU nodes), system (System: and terminals).');
-  assert.match(np.description, / profile logic \(Digital Logic\): /);
+  // (the profiles in few words, finer than the modes, #5754: the MCP's size limits, #4752, #5097)
+  assert.equal(np.inputSchema.properties.profile.description, 'Its profile, finer than its mode: logic (Digital Logic: drawings, no board, no HDL), fpga (FPGA: the default), embedded (Embedded / SoC: FPGA and MCU nodes), system (System: and terminals).');
+  assert.match(np.description, / mode circuit \(profile logic, Digital Logic\): /);
 });
 
 test('set_design_properties kind design: a design project made, as Design Properties\' Project Kind; again, or with a board, refused', async () => {
@@ -128,4 +125,36 @@ test('#5440 set_design_properties profile: an FPGA project widened to Embedded /
   await ok('set_design_properties', { project: 'w2', profile: 'embedded' });
   assert.equal((await P.readProject('w2')).profile, 'embedded');
   await fails('set_design_properties', { project: 'w2', profile: 'system', board: 'basys2' }, 'profile system: give it alone (a System\'s nodes name their boards)');
+});
+
+test('#5754 new_project mode: circuit, board, system, each its profile and its kind as New Project\'s cards; a finer profile of the mode; another refused; project_info and list_projects say each mode', async () => {
+  const tools = (await handle({ jsonrpc: '2.0', id: ++id, method: 'tools/list', params: {} })).result.tools;
+  const np = tools.find(t => t.name === 'new_project');
+  assert.deepEqual(np.inputSchema.properties.mode, { type: 'string', enum: ['circuit', 'board', 'system'], description: 'Its mode, New Project\'s first page: circuit (drawings and circuits, no board), board (one board, the default), system (devices linked in a System).' });
+  const c = await ok('new_project', { name: 'm1', mode: 'circuit' });
+  assert.equal(c.text, 'Empty Digital Logic project \'m1\' made (a design and simulation project). Add its drawings with new_source, then set_top.');
+  assert.deepEqual([c.data.mode, c.data.kind, (await P.readProject('m1')).kind, (await P.readProject('m1')).board], ['circuit', 'design', 'design', null]);
+  const b = await ok('new_project', { name: 'm2', mode: 'board', board: 'nexys2' });
+  assert.deepEqual([b.data.mode, (await P.readProject('m2')).kind, (await P.readProject('m2')).profile, (await P.readProject('m2')).board], ['board', undefined, undefined, 'nexys2']);
+  const s = await ok('new_project', { name: 'm3', mode: 'system' });
+  assert.deepEqual([s.data.mode, s.data.profile, (await P.readProject('m3')).profile, fs.existsSync(path.join(P.projectDir('m3'), 'm3.sys.json'))], ['system', 'system', 'system', true]);
+  const e = await ok('new_project', { name: 'm4', mode: 'system', profile: 'embedded' });
+  assert.deepEqual([e.data.mode, (await P.readProject('m4')).profile], ['system', 'embedded']);
+  // (refused: a profile of another mode, a mode not of the three, a board in Circuit, a System top in Board; nothing made)
+  await fails('new_project', { name: 'm5', mode: 'circuit', profile: 'fpga' }, 'profile fpga (FPGA) is not of the mode circuit (Circuit: logic)');
+  await fails('new_project', { name: 'm6', mode: 'fpga' }, 'mode: one of circuit, board, system');
+  await fails('new_project', { name: 'm7', mode: 'circuit', board: 'basys2' }, 'a Digital Logic project (profile logic) has no board: give profile logic or a board, not both');
+  await fails('new_project', { name: 'm8', mode: 'board', top_source_type: 'system' }, 'top_source_type system makes a System project: give mode system, not board');
+  await fails('new_project', { name: 'm9', mode: 'system', board: 'basys2' }, 'a System project (profile system or embedded) has no board nor top document: its System (edit_system) names each FPGA node\'s board');
+  const names = (await P.listProjects()).map(p => p.name);
+  for (const n of ['m5', 'm6', 'm7', 'm8', 'm9']) assert.ok(!names.includes(n), `${n} not made`);
+  // (each project's mode, read from what it is: its old kind, its profile; its silinx.json as it was)
+  const list = (await ok('list_projects', {})).data.projects;
+  assert.deepEqual(['m1', 'm2', 'm3', 'm4'].map(n => list.find(p => p.name === n).mode), ['circuit', 'board', 'system', 'system']);
+  assert.deepEqual(await Promise.all(['m1', 'm2', 'm3'].map(async n => (await ok('project_info', { project: n })).data.mode)), ['circuit', 'board', 'system']);
+  // (a project of before #5754: a design project's silinx.json as #3891 wrote it, read in Circuit mode, not rewritten)
+  const file = path.join(P.projectDir('m1'), 'silinx.json');
+  const bytes = fs.readFileSync(file, 'utf8');
+  assert.equal((await ok('project_info', { project: 'm1' })).data.mode, 'circuit');
+  assert.equal(fs.readFileSync(file, 'utf8'), bytes);
 });

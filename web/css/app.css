@@ -233,10 +233,14 @@ html:root .dlg-overlay .wiz-main .hint.storage-browser, html:root #start-page .s
 html:root #statusbar #status-storage.storage-browser { color: var(--error-fg); }
 /* New Project's first page, the project's kind (#5041): one card per kind, the Systems' not chosen yet */
 .kind-cards { display: flex; flex-direction: column; gap: 8px; }
-.kind-card { display: flex; gap: 8px; align-items: flex-start; padding: 8px 10px; border: 1px solid #abadb3; background: #fff; cursor: pointer; }
+/* (its radio, its drawing and its words in a row: a dialog's label is a block otherwise, #5754) */
+.kind-cards > .kind-card { display: flex; gap: 10px; align-items: center; margin: 0; padding: 8px 10px; border: 1px solid #abadb3; background: #fff; cursor: pointer; }
 .kind-card:has(input:checked) { border-color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent); }
-.kind-card input { margin-top: 2px; }
+.kind-card input { margin: 0; }
 .kind-card.off { cursor: default; opacity: .7; }
+/* each mode's drawing (#5754): in the accent's colour, its card's text beside it */
+.kind-art { flex: none; display: flex; color: var(--accent); }
+.kind-art svg { display: block; }
 html:root .dlg-overlay .hint.kind-refused { color: var(--danger); }
 .kind-name { font-weight: 600; margin-bottom: 2px; }
 .kind-about { color: #555; }

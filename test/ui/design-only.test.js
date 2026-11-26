@@ -56,7 +56,7 @@ uiTest('#3780 New Project: Design and simulation only, no board, no device, no H
   await page.dialogButton('Next >');
   await page.waitFor(() => document.querySelector('.dlg-overlay .wiz-main h3')?.textContent === 'Project Summary');
   const summary = await page.eval(() => document.querySelector('.dlg-overlay .wiz-main pre').textContent);
-  assert.match(summary, /\n {2}Kind: {9}Digital Logic\n/);
+  assert.match(summary, /\n {2}Mode: {9}Circuit\n/);   // (its mode, #5754)
   assert.doesNotMatch(summary, /Device|Board|Language|Synthesis/);
   await page.dialogButton('Finish');
   await page.waitNoDialog();

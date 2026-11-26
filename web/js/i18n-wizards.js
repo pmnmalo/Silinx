@@ -14,19 +14,18 @@ export const WIZARDS_PT = {
   // a design and simulation project (#3780: New Project's Project Kind, Design Properties' board list)
   'Project Kind:': 'Tipo de Projeto:',
   'Design and simulation only (no FPGA)': 'Só desenho e simulação (sem FPGA)', 'Digital Logic': 'Lógica Digital', 'Check Design of the selected module': 'Verificar Projeto do módulo selecionado',
-  // New Project's first page, the project's kind (#5041, web/js/project-kind-step.js, core/project-kind.js)
-  'Project Kind': 'Tipo de Projeto', 'Choose the kind of project to create.': 'Escolha o tipo de projeto a criar.',
-  'FPGA': 'FPGA', 'System': 'Sistema',   // (Digital Logic: above, #5133)
-  'Digital logic for the introductory courses: schematics, truth tables, state machines and circuits on a breadboard, drawn and simulated.':
-    'Lógica digital para as disciplinas introdutórias: esquemáticos, tabelas de verdade, máquinas de estados e circuitos numa breadboard, desenhados e simulados.',
-  'A design that runs on a board: HDL sources and drawings, simulated, synthesized, implemented and programmed on the FPGA, or emulated.':
-    'Um projeto que corre numa placa: fontes HDL e desenhos, simulados, sintetizados, implementados e programados na FPGA, ou emulados.',
-  'A system of FPGA and microcontroller nodes linked together, designed and simulated as one.':
-    'Um sistema de nós de FPGA e de microcontrolador ligados entre si, desenhado e simulado como um todo.',
+  // New Project's first page, the project's mode (#5041, #5754: web/js/project-kind-step.js, core/project-mode.js)
+  'Project Mode': 'Modo do Projeto', 'Choose the mode of the project.': 'Escolha o modo do projeto.',
+  'FPGA': 'FPGA', 'System': 'Sistema',   // (Digital Logic: above, #5133; Circuit and Board: i18n-circuit.js, i18n.js)
+  'Elementary components with no board: gates, flip-flops, circuits on a breadboard, schematics, truth tables and state machines, drawn and simulated.':
+    'Componentes elementares sem placa: portas, flip-flops, circuitos numa breadboard, esquemáticos, tabelas de verdade e máquinas de estados, desenhados e simulados.',
+  'One board, with its flow, its emulator and its programming: HDL sources and drawings synthesized, implemented and programmed on the FPGA, or emulated.':
+    'Uma placa, com o seu fluxo, o seu emulador e a sua programação: fontes HDL e desenhos sintetizados, implementados e programados na FPGA, ou emulados.',
+  'Several devices linked (UART, SPI, Pmods): FPGA boards and microcontrollers in one System document, simulated as one.':
+    'Vários dispositivos ligados (UART, SPI, Pmods): placas FPGA e microcontroladores num documento de Sistema, simulados como um todo.',
   // Design Properties' Project Kind, what a change of kind does (#5041, core/project-kind.js DESIGN_ONLY_MESSAGES)
-  // (the profiles, #5440: core/project-profile.js; Embedded / SoC's card)
+  // (the profiles, #5440: core/project-profile.js)
   'Embedded / SoC': 'Embebido / SoC',
-  'FPGA boards and microcontrollers linked in one System, designed and simulated as one.': 'Placas FPGA e microcontroladores ligados num Sistema, desenhados e simulados como um todo.',
   // (Systems not in a release yet, #5202: core/build-channel.js)
   "Systems are not in this release yet: it is in the development build (the site's dev/) until it is stable.": 'Os Sistemas ainda não estão nesta versão: está na versão de desenvolvimento (a dev/ do site) até estar estável.',
   'Its board and its constraints file leave the project (the file stays on the disk); its drawings stay, their HDL and the test benches hidden, none deleted.':

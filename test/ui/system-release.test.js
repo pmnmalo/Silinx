@@ -23,7 +23,7 @@ uiTest('#5202 a release: New Project\'s System card disabled with its reason, no
   await page.menu('File', 'New Project…');
   await page.waitFor(() => !!document.querySelector('.dlg-overlay .kind-cards'), [], { what: 'New Project\'s kind' });
   assert.deepEqual(await card(page), { off: true, disabled: true, why: OFF });
-  assert.deepEqual(await page.eval(() => [...document.querySelectorAll('.dlg-overlay .kind-card')].map(c => [c.dataset.kind, c.querySelector('input').disabled])), [['design', false], ['fpga', false], ['embedded', true], ['system', true]]);   // (Embedded / SoC, #5440, off as System is)
+  assert.deepEqual(await page.eval(() => [...document.querySelectorAll('.dlg-overlay .kind-card')].map(c => [c.dataset.kind, c.querySelector('input').disabled])), [['design', false], ['fpga', false], ['system', true]]);   // (the three modes, #5754: Embedded / SoC a System's profile)
   await page.dialogButton('Next >');
   await page.waitFor(() => !!document.querySelector('.dlg-overlay .wiz-main select'), [], { what: 'Start from' });
   assert.deepEqual(await page.eval(() => [...document.querySelectorAll('.dlg-overlay .wiz-main select option')].map(o => o.value)), ['empty', ...EXAMPLE_ORDER]);

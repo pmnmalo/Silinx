@@ -24,9 +24,9 @@ const processProperties = async (page, title) => {
 uiTest('#4828 New Project: an empty project\'s Optimization Fast (Speed, Normal), as Process Properties shows; Portuguese; no warnings', E, async (page) => {
   await page.menu('File', 'New Project…');
   await page.waitDialog('New Project Wizard');
-  // its four pages, each waited for by its heading: Project Kind (#5041), Create New Project, Project Settings, Project Summary
+  // its four pages, each waited for by its heading: Project Mode (#5041, #5754), Create New Project, Project Settings, Project Summary
   const heading = (t) => page.waitFor((x) => document.querySelector('.dlg-overlay .wiz-main h3')?.textContent === x, [t], { what: `the page ${t}` });
-  await heading('Project Kind');
+  await heading('Project Mode');
   await page.dialogButton('Next >');
   await heading('Create New Project');
   await page.fill('.dlg-overlay .wiz-main input[type=text]', 'NewFast');
