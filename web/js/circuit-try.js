@@ -138,11 +138,11 @@ export function mountCircuitTry({ M, opts, root, status, render, destroyed }) {
     let n;
     try { n = spiceNetlist(at.spiceRecord(), { title: base }); } catch (e) { status(`ngspice: ${e.message}`, true); return; }
     spicing = true;
-    status(`ngspice: running ${base}'s ${(n.tstop * 1e3).toPrecision(3)} ms…`);
+    status(`ngspice: running ${base}'s ${n.tstop >= 1 ? `${+n.tstop.toPrecision(3)} s` : `${+(n.tstop * 1e3).toPrecision(3)} ms`}…`);
     try {
       const r = await opts.ngspice(n.text);
       for (const l of r.said ?? []) status(l);
-      for (const w of [...n.warnings, ...(r.errors ?? []).map((e) => `ngspice: ${e}`)]) status(w, true);
+      for (const w of [...n.warnings, ...[...new Set(r.errors ?? [])].map((e) => `ngspice: ${e}`)]) status(w, true);
       for (const l of spiceReadings(M(), at, readSpiceResult(r.result, n.nodes)).lines) status(l);
     } catch (e) { status(`ngspice: ${e.message}`, true); } finally { spicing = false; }
   }

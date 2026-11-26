@@ -121,7 +121,7 @@ export async function simulateCircuitFile(m0, steps, base, hdl = {}, { ngspice =
     const { runNgspice } = await import('./ngspice.js');
     const n = spiceNetlist(sim.spiceRecord(), { title: base });
     const r = await runNgspice(n.text, { log: (l) => lines.push(l) });
-    const said = [...n.warnings, ...r.errors.map((e) => `ngspice: ${e}`)];
+    const said = [...n.warnings, ...[...new Set(r.errors)].map((e) => `ngspice: ${e}`)];
     for (const x of said) lines.push(`WARNING: ${x}`);
     warnings.push(...said);
     const read = spiceReadings(m, sim, readSpiceResult(r.result, n.nodes));

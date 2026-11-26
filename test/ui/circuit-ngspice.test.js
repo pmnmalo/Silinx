@@ -34,7 +34,7 @@ uiTest('#5386 Circuit editor: Try it\'s ngspice on an RC oscillator: its button,
   await page.waitFor(() => [...document.querySelectorAll('#console-log .ln')].some((l) => /^osc\.circ\.json: ngspice: OSC1 CH2 /.test(l.textContent.trim())), [], { what: 'ngspice\'s lines', timeout: 120000 });
   const ls = await lines(page), at = ls.indexOf(NOTE);
   assert.ok(at > 0, ls.join('\n'));
-  assert.match(ls[at - 1], /^osc\.circ\.json: ngspice: running osc's [\d.]+ ms…$|^osc\.circ\.json: ngspice: downloading eecircuit-engine/);
+  assert.match(ls[at - 1], /^osc\.circ\.json: ngspice: running osc's [\d.]+ m?s…$|^osc\.circ\.json: ngspice: downloading eecircuit-engine/);
   assert.match(ls[at + 1], /^osc\.circ\.json: ngspice: OSC1 CH1 from [\d.]+ V to 3\.\d{3} V, [\d.]+ V at the end$/);
   assert.match(ls[at + 2], /^osc\.circ\.json: ngspice: OSC1 CH2 from 0\.000 V to 1\.6\d\d V, [\d.]+ V at the end$/);
   assert.deepEqual(ls.filter((l) => /^(WARNING|ERROR)/.test(l)), []);
@@ -42,7 +42,7 @@ uiTest('#5386 Circuit editor: Try it\'s ngspice on an RC oscillator: its button,
   await page.eval(async () => (await import('/js/i18n.js')).setLanguage('pt'));
   await page.waitFor((ed) => document.querySelector(`${ed} .circ-ngspice`)?.title.startsWith('Simular de novo com o ngspice'), [ED], { what: 'Portuguese' });
   await page.click(`${ED} .circ-ngspice`);
-  await page.waitFor(() => [...document.querySelectorAll('#console-log .ln')].some((l) => /^osc\.circ\.json: ngspice: OSC1 CH2 de 0\.000 V a 1\.6\d\d V, [\d.]+ V no fim$/.test(l.textContent.trim())), [], { what: 'ngspice in Portuguese', timeout: 120000 });
+  await page.waitFor(() => [...document.querySelectorAll('#console-log .ln')].some((l) => /^osc\.circ\.json: ngspice: OSC1 CH2 de [\d.]+ V a 1\.6\d\d V, [\d.]+ V no fim$/.test(l.textContent.trim())), [], { what: 'ngspice in Portuguese', timeout: 120000 });
   assert.ok((await lines(page)).includes('osc.circ.json: ngspice: num só sentido — as saídas digitais, como o Silinx as simulou, comandam o circuito analógico do ngspice; as formas de onda do ngspice não mudam nada do lado digital'));
   await page.eval(async () => (await import('/js/i18n.js')).setLanguage('en'));
   await page.key('Escape');

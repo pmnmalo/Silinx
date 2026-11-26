@@ -101,3 +101,15 @@ test('the netlist\'s refusals: nothing recorded, no time run, a run too long for
   assert.deepEqual(spiceNetlist(r).warnings, ['the circuit\'s connections changed at 500 ms (a switch, a wire): ngspice ran on them as they are now']);
   assert.match(spiceNetlist(r).text, /^R0 n0 0 10$/m);
 });
+
+test('#5386 a long run\'s PWL sources: their times to the picosecond, strictly increasing however far from the start', () => {
+  // (a driver changing twice a nanosecond apart at 2.5 s, then 2 ns later: 9 significant digits would merge them)
+  const e = { kind: 'VR', a: 0, b: -1, volts: 0, ohms: 50 };
+  const series = new Map([[e, [{ t: 0, v: [0, 50] }, { t: 2.5, v: [3.3, 50] }, { t: 2.5 + 1e-9, v: [0, 50] }, { t: 2.5 + 3e-9, v: [3.3, 50] }]]]);
+  const n = spiceNetlist({ nodes: [[1]], inner: [], els: [e], series, gens: [], t0: 0, t: 3, regrouped: null });
+  for (const name of ['VS0', 'VC0']) {
+    const ts = /PWL\(([^)]*)\)/.exec(n.text.split('\n').find((l) => l.startsWith(`${name} `)))[1].split(' ').filter((_, i) => i % 2 === 0).map(Number);
+    assert.ok(ts.every((t, i) => i === 0 || t > ts[i - 1]), `${name}: ${ts.join(' ')}`);
+    assert.ok(ts.includes(2.500000001), `${name}: the change at 2.5 s + 1 ns kept`);
+  }
+});
