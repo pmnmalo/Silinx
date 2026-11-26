@@ -9,7 +9,7 @@
 import { api } from './api.js';
 import { readFirmware } from '/core/avr-firmware.js';
 import { BOOTLOADERS, imageBytes, serialTransport, stk500Upload } from '/core/stk500.js';
-import { portFilters, portText, webSerialMissing } from '/core/serial-line.js';
+import { portFilters, serialPortText, webSerialMissing } from '/core/serial-line.js';
 
 /** Whether this browser has Web Serial (the Choose the Board dialog's Web Serial…). */
 export const hasWebSerial = (nav = globalThis.navigator) => !webSerialMissing(nav);
@@ -32,9 +32,9 @@ export async function programOverWebSerial({ project, node, image, log, nav = gl
   try { port = await nav.serial.requestPort({ filters: portFilters(node) }); } catch (e) {
     return fail(e?.name === 'NotFoundError' ? 'no serial port chosen' : e.message);
   }
-  log(`System node ${node.id}: loading ${image} (${fw.size} bytes) on ${portText(port.getInfo?.())} through its bootloader (STK500, ${boot.baud} baud, Web Serial).`);
+  log(`System node ${node.id}: loading ${image} (${fw.size} bytes) on ${serialPortText(port.getInfo?.())} through its bootloader (STK500, ${boot.baud} baud, Web Serial).`);
   let t;
-  try { t = await serialTransport(port, boot.baud); } catch (e) { return fail(`${portText(port.getInfo?.())} did not open: ${e.message}`); }
+  try { t = await serialTransport(port, boot.baud); } catch (e) { return fail(`${serialPortText(port.getInfo?.())} did not open: ${e.message}`); }
   try {
     let said = '';
     const r = await stk500Upload(t, imageBytes(fw), { signature: boot.signature, page: boot.page, flash: boot.flash, onProgress: p => {

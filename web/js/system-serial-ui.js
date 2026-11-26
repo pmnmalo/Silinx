@@ -7,7 +7,7 @@
 //
 //   const rb = realBoardControl({ id, system, out, say });   // rb.el: its button; rb.connected(); rb.send(bytes); rb.close()
 import { h } from './ui.js';
-import { SerialLine, portFilters, portText, terminalPeer, webSerialMissing } from '/core/serial-line.js';
+import { SerialLine, portFilters, serialPortText, terminalPeer, webSerialMissing } from '/core/serial-line.js';
 
 const LABEL = 'Real Board…', TITLE = 'Join this terminal to a real board\'s USB serial port (Web Serial), at its link\'s baud and frame';
 
@@ -37,12 +37,12 @@ export function realBoardControl({ id, system, out, say, nav = globalThis.naviga
       onBytes: () => { if (line === l) show(); },
       onClose: (e) => { if (line !== l) return; line = null; settle(); if (e) say(`ERROR: Serial terminal ${id}: the real board's serial port was lost (${e.message}): the terminal shows the emulation again.`, 'error'); },
     });
-    try { await l.open(); } catch (e) { busy = false; say(`ERROR: Serial terminal ${id}: ${portText(port.getInfo?.())} did not open: ${e.message}`, 'error'); return; }
+    try { await l.open(); } catch (e) { busy = false; say(`ERROR: Serial terminal ${id}: ${serialPortText(port.getInfo?.())} did not open: ${e.message}`, 'error'); return; }
     busy = false;
     line = l;
     out.textContent = '';
     settle();
-    say(`Serial terminal ${id}: joined to the real board${node ? ` of ${node.id}` : ''} (${portText(port.getInfo?.())}, link ${link?.id ?? '?'}) at ${at.baud} baud, ${at.frame}, through Web Serial.`);
+    say(`Serial terminal ${id}: joined to the real board${node ? ` of ${node.id}` : ''} (${serialPortText(port.getInfo?.())}, link ${link?.id ?? '?'}) at ${at.baud} baud, ${at.frame}, through Web Serial.`);
   }
 
   async function close() {

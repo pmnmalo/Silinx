@@ -45,7 +45,7 @@ export function portFilters(node) {
 }
 
 /** A port's USB id as the console says it (`USB 2341:0043`), from its getInfo(); 'a serial port' when it has none. */
-export function portText(info) {
+export function serialPortText(info) {
   const h4 = v => Number(v).toString(16).padStart(4, '0');
   return info?.usbVendorId != null ? `USB ${h4(info.usbVendorId)}:${info.usbProductId != null ? h4(info.usbProductId) : '????'}` : 'a serial port';
 }
