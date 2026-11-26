@@ -26,11 +26,12 @@ let ticks = 0;
 const timer = setInterval(() => ticks++, 0);
 let n = 0;
 const wait = () => new Promise(r => setTimeout(() => r(++n), 2));
-assert.equal(await a.run('import silinx_jspi\nprint([silinx_jspi.wait() for i in range(3)])\n6 * 7', wait), 42);
+assert.equal(await a.run('import silinx_jspi\nprint([silinx_jspi.wait() for i in range(3)])\nr = 6 * 7', wait), null);
+assert.equal(a.mp.globals.get('r'), 42);
 clearInterval(timer);
 assert.equal(a.text(), '[1, 2, 3]\n');
 assert.ok(ticks > 0, 'the event loop ran while the program waited');
-ok('silinx_jspi.wait() suspends, its promise\'s number returned, the result as runPython\'s');
+ok('silinx_jspi.wait() suspends, its promise\'s number returned, the result as runPython\'s (None)');
 
 // settrace: each line of the program traced, a wait in the trace function itself
 await a.run(`import sys, silinx_jspi
@@ -70,5 +71,6 @@ ok('two instances suspended at once, each resumed on its own');
 
 // the plain API still works (runPython, a JavaScript module)
 a.mp.registerJsModule('_js', { twice: x => 2 * x });
-assert.equal(a.mp.runPython('import _js\n_js.twice(21)'), 42);
+a.mp.runPython('import _js\ny = _js.twice(21)');
+assert.equal(a.mp.globals.get('y'), 42);
 ok('runPython and registerJsModule as before');

@@ -23,6 +23,9 @@ const LEFT = {
   // declared with MIN_ZOOM (`export const MAX_ZOOM = …, MIN_ZOOM = …`), which test/tasks.test.js reads: the check
   // takes a declaration's first name only
   'web/js/tasks-emu.js': 'MAX_ZOOM',
+  // not a module of its own: appended to the MicroPython build's micropython.mjs (scripts/micropython-wasm/build.sh,
+  // #5658), imported from that file
+  'scripts/micropython-wasm/silinx-api.js': 'runPythonSuspending',
 };
 
 const PUBLIC = ['packages/silinx-fpga/src/index.js', 'packages/silinx-fpga/src/parts.js', 'packages/silinx-fpga/src/node.js'];
