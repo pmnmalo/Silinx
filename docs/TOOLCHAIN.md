@@ -327,6 +327,33 @@ tiles used, so it grows with the design. The run time is Yosys, nextpnr, gmpack 
 Slower than the MachXO2 on the same designs (pong 46–49 MHz against 67–77): a first measure, on nextpnr's own timing model,
 not Cologne Chip's.
 
+The Cyclone V (#5377), Intel's, is measured as far as the open tools reach in WebAssembly: its synthesis. Its boards are
+Silinx's since #5376 (an experimental family, no flow yet). `scripts/cyclonev-measure.mjs` takes the same flat Verilog (the
+ULX3S's) through Yosys's `synth_intel_alm -family cyclonev`, in the Silinx toolchain's own `@yowasp/yosys`, onto the Cyclone
+V's cells: the ALMs' adaptive LUTs (`MISTRAL_ALUT*`, their carry chains `MISTRAL_ALUT_ARITH`), the flip-flops, the MLABs and
+M10Ks, the DSPs (`test/cyclonev-measure.test.js`: gates and blinky). Every example maps with no warning:
+
+| Example | ALUTs / carry / FFs | MLAB / M10K / DSP | I/O |
+|---|---|---|---|
+| gates | 1 / 0 / 0 | 0 / 0 / 0 | 6 |
+| breadboard | 6 / 4 / 8 | 0 / 0 / 0 | 11 |
+| traffic | 134 / 40 / 56 | 0 / 0 / 0 | 24 |
+| blinky | 173 / 77 / 92 | 0 / 0 / 0 | 27 |
+| pong | 478 / 229 / 246 | 0 / 0 / 0 | 27 |
+| stopwatch | 333 / 161 / 209 | 0 / 2 / 3 | 26 |
+| clock | 311 / 176 / 152 | 0 / 0 / 0 | 27 |
+| vga | 315 / 248 / 61 | 0 / 0 / 0 | 16 |
+| isqrt | 96 / 38 / 85 | 0 / 0 / 0 | 23 |
+| uart | 192 / 70 / 134 | 0 / 0 / 0 | 24 |
+| micro80 | 259 / 59 / 185 | 8 / 3 / 0 | 29 |
+| lock | 246 / 100 / 171 | 0 / 0 / 0 | 28 |
+
+The place and route and the bitstream are not measured: nextpnr's Mistral back end (nextpnr-mistral, which links Mistral's
+library: its chip database and its .rbf) has no WebAssembly build (YoWASP publishes none, unlike nextpnr-ice40, -ecp5 and
+himbaechel's gowin and gatemate) and none is installed here. That build is the next step: nextpnr-mistral built for
+WebAssembly as the Spartan-3E's, Spartan-6's and 7-series' are (`@silinx/nextpnr-…`), Mistral's database of the 5CEBA4,
+5CSEMA5 and 5CSEBA6 in it; then the family's back end, as the GateMate's.
+
 And around the flow, one issue each: the boards and examples (#2297), the primitives' simulation models
 (#2299), the reports (#2300). In the interface: the device profile (#2310), the tool descriptor (#2311), personalities (#2312).
 
