@@ -34,7 +34,7 @@ async function newSystemProject(page, name, template) {
     fields: [...document.querySelector('.dlg-overlay .system-note').parentElement.querySelectorAll('.form-grid > label')].filter(l => l.style.display !== 'none').map(l => l.textContent) }));
   assert.deepEqual(settings, { note: NOTE, fields: [] });
   await page.dialogButton('Next >');
-  await page.waitFor(() => /Kind: {9}System/.test(document.querySelector('.dlg-overlay pre.code-box')?.textContent || ''), [], { what: 'the summary' });
+  await page.waitFor(() => /Mode: {9}System/.test(document.querySelector('.dlg-overlay pre.code-box')?.textContent || ''), [], { what: 'the summary' });
   await page.dialogButton('Finish');
   await page.waitNoDialog();
   await page.waitFor((ed) => window.Silinx.active?.id?.startsWith('sys:') && document.querySelector(ed), [ED], { what: 'the System open' });

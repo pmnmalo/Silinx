@@ -16,6 +16,7 @@ import { confirmDeviceChange } from './device-change.js';
 import { boardTop } from './board-top.js';
 import { SYSTEM_NOTE, KIND_OPTIONS, applyProfile, kindFields, kindNote, kindOf, makeDesignProject, openNewSystem, syncTemplates } from './project-kind-ui.js';
 import { kindStep } from './project-kind-step.js';
+import { addProcessorBoards, processorFields, processorSummary, createProcessorProject } from './processor-new.js';
 import { HDL_TOP_TYPES, TOP_TYPES, offeredTopTypes, projectTopType } from '/core/top-types.js';
 import { SYSTEM_TOP } from '/core/system-top.js';
 import { topSourceFiles } from '/core/top-source.js';
@@ -203,8 +204,12 @@ export async function newProjectWizard({ template = 'empty' } = {}) {
     },
   };
   const boardSel = select(boardOptions(db), '');
+  // (the processor boards, a Board project's alone, #5756: web/js/processor-new.js)
+  addProcessorBoards(boardSel);
+  const proc = processorFields(boardSel);
   const dp = devicePicker(db, st.device);
   boardSel.addEventListener('change', () => {
+    syncKind();
     const b = db.boards.find(x => x.id === boardSel.value);
     st.device = b ? { ...b.device } : { ...DEFAULT_DEVICE };
     dp.set(st.device);
@@ -229,13 +234,17 @@ export async function newProjectWizard({ template = 'empty' } = {}) {
   topType.addEventListener('change', syncTop);
   const catSel = select(['All'], 'All'), simSel = select(['SSim (VHDL/Verilog; Silinx Simulator)'], ''), stdSel = select(['VHDL-93', 'VHDL-2008'], 'VHDL-93');
   const isDesign = () => kinds.design() && tplSel.value === 'empty';
-  const fpgaFields = kindFields(() => isDesign() || kinds.system(), [boardSel, catSel, dp.famSel, dp.partSel, dp.pkgSel, dp.spdSel, synthSel, simSel, langSel, stdSel], topType);
+  const fpgaList = [boardSel, catSel, dp.famSel, dp.partSel, dp.pkgSel, dp.spdSel, synthSel, simSel, langSel, stdSel];
+  const fpgaFields = kindFields(() => isDesign() || kinds.system(), fpgaList, topType);
   const syncKind = () => {
     if (kinds.design()) tplSel.value = 'empty';
     for (const x of tplField) x.style.display = kinds.design() ? 'none' : '';
     syncTemplates(tplSel, kinds.system());   // (a System project's examples its own, #4702)
+    // (a processor's Board Type: no example, #5756)
+    if (kinds.boardType() !== 'fpga') { for (const o of tplSel.options) o.hidden = o.disabled = o.value !== 'empty'; tplSel.value = 'empty'; }
     fpgaFields();
     for (const x of [topType, topType.previousElementSibling, topNote, systemNote]) if (x) x.style.display = kinds.system() === (x === systemNote) ? '' : 'none';
+    proc.sync([...fpgaList, topType, topNote], kinds.boardType());
   };
   const systemNote = h('div', { class: 'hint system-note', style: { display: 'none' } }, SYSTEM_NOTE);
   const p2 = {
@@ -254,6 +263,7 @@ export async function newProjectWizard({ template = 'empty' } = {}) {
         ...field('Simulator:', simSel),
         ...field('Preferred Language:', langSel),
         ...field('VHDL Source Analysis Standard:', stdSel),
+        ...proc.rows,   // (a Pico's Python firmware, #5756: last, the other fields' order kept)
       )),
     onShow: () => { syncTop(); syncKind(); },
   };
@@ -264,6 +274,7 @@ export async function newProjectWizard({ template = 'empty' } = {}) {
     onShow: () => {
       summary.innerHTML = '';
       const b = db.boards.find(x => x.id === boardSel.value);
+      if (proc.chosen()) { summary.append(h('pre', { class: 'code-box' }, processorSummary(name.value.trim(), proc.chosen(), proc.runtimeSel.value))); return; }
       if (kinds.system()) {
         summary.append(h('pre', { class: 'code-box' }, `Project Navigator will create a new project with the following specifications.\n\n` +
           `Project:\n  Project Name: ${name.value.trim()}\n  Template:     ${tplSel.value}\n  Mode:         System\n\n` +
@@ -288,6 +299,7 @@ export async function newProjectWizard({ template = 'empty' } = {}) {
   if (!ok) return;
   try {
     if (st.replace) await removeExistingProject(name.value.trim());
+    if (proc.chosen()) { await createProcessorProject(name.value.trim(), proc.chosen(), proc.runtimeSel.value); countEvent('new-project'); app.showLeftPage('design'); toast(`Project ${name.value.trim()} created`, 'ok'); return; }
     const design = isDesign(), asSystem = kinds.system() || topType.value === SYSTEM_TOP;   // (a System's top: a System project, #5402)
     const pj = await api.createProject(asSystem ? { name: name.value.trim(), template: tplSel.value, kind: kinds.system() ? kinds.kind() : SYSTEM_KIND } : design ? { name: name.value.trim(), template: 'empty', kind: DESIGN_KIND } : {
       name: name.value.trim(), template: tplSel.value,

@@ -16,6 +16,7 @@ import { nodeOfPath, nodeFilesOf, sourcePlace, LANG_NAMES } from '/core/system-l
 import { panes } from './state-panes.js';
 import { openSystem, systemContextMenu } from './system-open.js';
 import { cpuCode, isCpuDrawing } from './design-cpu.js';
+import { processorBoardOf } from '/core/processor-board.js';
 
 /** Whether the project open is a System project (and Systems are on in this build, #5202). */
 export const systemProject = () => isSystemProject(S.project) && systemsOn();
@@ -81,7 +82,11 @@ function systemRow(treeItem, select) {
   if (!f) return null;
   const sys = readSystem(designState.viewTexts?.[f] || '').system;
   const menu = e => systemContextMenu(e, f);
-  const item = treeItem({ label: sys?.name || f.split('/').pop(), ico: 'system', open: true, key: `sys:${f}`, cls: 'top-mod',
+  // (a processor board's Board project, #5756: its one node the top row, its board's; no System row)
+  const single = processorBoardOf(S.project) && nodes.length === 1 ? nodes[0] : null;
+  const nodeRow = (n, cls) => treeItem({ label: n.id, meta: n.board ? `(${boardName(n)})` : '', ico: NODE_ICON[n.kind] || 'system', open: true, key: `node:${f}:${n.id}`, cls,
+    onSelect: () => select({ type: 'node', file: f, node: n.id, kind: n.kind, module: n.module, board: n.board, lang: n.lang }), onOpen: () => openSystem(f), onContext: menu });
+  const item = single ? nodeRow(single, 'top-mod') : treeItem({ label: sys?.name || f.split('/').pop(), ico: 'system', open: true, key: `sys:${f}`, cls: 'top-mod',
     badges: [{ text: 'System', base: true, title: 'Open', open: () => openSystem(f), context: menu }],
     onSelect: () => select({ type: 'file', file: f, system: true }), onOpen: () => openSystem(f), onContext: menu });
   const ids = nodes.map(n => n.id), branches = new Map();   // node id -> its branch's item
@@ -91,10 +96,8 @@ function systemRow(treeItem, select) {
   const sources = n => { if (n.kind !== 'mcu') return []; const ps = nodeFilesOf(tree, n.id), code = new Set(ps.map(cpuCode).filter(Boolean)); return ps.filter(p => !n.files.includes(p) && !designState.hdlToSch?.[p] && !code.has(p)); };
   const fill = (addModule, fileRow, moduleOf, roots = [], drawingRow = null) => {
     for (const n of nodes) {
-      const board = n.board ? boardName(n) : null;
-      const it = treeItem({ label: n.id, meta: board ? `(${board})` : '', ico: NODE_ICON[n.kind] || 'system', open: true, key: `node:${f}:${n.id}`,
-        onSelect: () => select({ type: 'node', file: f, node: n.id, kind: n.kind, module: n.module, board: n.board, lang: n.lang }), onOpen: () => openSystem(f), onContext: menu });
-      item.ul.append(it.li);
+      const it = single ? item : nodeRow(n);
+      if (!single) item.ul.append(it.li);
       branches.set(n.id, it);
       // (a CPU node's drawings: rows as an FPGA node's, their last badge its base language's, #5488: [Py] MicroPython's,
       // #5487)
@@ -118,7 +121,7 @@ function systemRow(treeItem, select) {
     for (const m of roots.filter(r => !theirs.has(r) && nodeOfPath(moduleFile(r), ids) == null)) addModule(item.ul, m, null, 0, m);
   };
   const ulOf = path => branches.get(nodeOfPath(path, ids))?.ul ?? null;
-  const finish = () => { for (const it of branches.values()) if (!it.ul.children.length) it.setLeaf(); };
+  const finish = () => { for (const it of branches.values()) if (!it.ul.children.length && it !== item) it.setLeaf(); };
   // (each FPGA node's top module, marked as an FPGA project's top, #5583)
   const tops = new Set(nodes.filter(n => n.kind === 'fpga' && n.module).map(n => String(n.module).toLowerCase()));
   return { item, owned: [...owned, ...nodes.flatMap(sources)], fill, ulOf, finish, tops };

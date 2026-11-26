@@ -241,6 +241,8 @@ html:root #statusbar #status-storage.storage-browser { color: var(--error-fg); }
 /* each mode's drawing (#5754): in the accent's colour, its card's text beside it */
 .kind-art { flex: none; display: flex; color: var(--accent); }
 .kind-art svg { display: block; }
+/* the Board card's Board Type (#5756): its label and its list, under its words while the card is chosen */
+.board-type-row { display: flex; gap: 8px; align-items: center; margin-top: 6px; }
 /* Change Mode… (#5755): its board or its node kept under the cards; what the change does, a loss in the warning's colour */
 .mode-board, .mode-keep { margin-top: 10px; }
 .mode-note { margin-top: 10px; }

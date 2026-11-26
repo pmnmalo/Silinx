@@ -19,6 +19,7 @@ export const PROJECT_PT_PATTERNS = [
   // a project opened (web/js/project.js)
   [/^Project "(.+)" opened \(a design and simulation project, no FPGA\)\.$/, 'Projeto "$1" aberto (um projeto de desenho e simulação, sem FPGA).'],
   [/^Project "(.+)" opened \((\S+)\)\.$/, 'Projeto "$1" aberto ($2).'],
+  [/^Project "(.+)" opened \(the (.+) board\)\.$/, 'Projeto "$1" aberto (a placa $2).'],   // (a processor board's, #5756)
   // New Source… (web/js/new-source.js): its type, its language
   [/^Created (.+?)(?: \((VHDL|Verilog)\))? '(\S+)'\.$/, (m, type, lang, p) => `Nova fonte criada: ${t(type)}${lang ? ` (${lang})` : ''} '${p}'.`],
   // a drawing's HDL made (web/js/drawings.js, core/drawing-sync.js)

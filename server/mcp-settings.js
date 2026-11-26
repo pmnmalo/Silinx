@@ -131,7 +131,11 @@ export const SETTINGS_TOOLS = [
         parts: D.partsOfFamily(f.id).map(p => ({ part: p.part, packages: Object.fromEntries(Object.entries(p.packages).map(([k, v]) => [k, v.speeds || p.speeds])) })) }));
       const text = [...(family ? [] : ['Boards:', ...boards.map(b => `  ${b.id}: ${b.name} (${b.variants.length ? b.variants.map(v => `${v.id} ${v.device}${v.default ? ', the default' : ''}`).join('; ') : b.device})${mark(b, D.resolveBoard(b.id).device)}`), '']),
         'Devices:', ...families.flatMap(f => [`  ${f.name} (${f.id})${mark(f, { family: f.id })}:`, ...f.parts.map(p => `    ${p.part}: ${Object.entries(p.packages).map(([k, s]) => `${k}${s.length ? ` ${s.join(' ')}` : ''}`).join(', ')}`)])];
-      return { text: text.join('\n'), data: { ...(family ? {} : { boards }), families } };
+      // (the processor boards, #5756: a Board project's alone, new_project's board; listed last, no family)
+      const { PROCESSOR_BOARDS } = await import('../core/processor-board.js');
+      const processorBoards = family ? [] : PROCESSOR_BOARDS.map(b => ({ id: b.id, name: b.name, mcu: b.mcu, type: b.arch }));   // (its Board Type, New Project's)
+      if (processorBoards.length) text.push('Processor boards (a Board project of one: new_project board):', ...processorBoards.map(b => `  ${b.id}: ${b.name} (${b.mcu})`));
+      return { text: text.join('\n'), data: { ...(family ? {} : { boards, processorBoards }), families } };
     },
   },
   {

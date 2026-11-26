@@ -19,8 +19,8 @@ export const WIZARDS_PT = {
   'FPGA': 'FPGA', 'System': 'Sistema',   // (Digital Logic: above, #5133; Circuit and Board: i18n-circuit.js, i18n.js)
   'Elementary components with no board: gates, flip-flops, circuits on a breadboard, schematics, truth tables and state machines, drawn and simulated.':
     'Componentes elementares sem placa: portas, flip-flops, circuitos numa breadboard, esquemáticos, tabelas de verdade e máquinas de estados, desenhados e simulados.',
-  'One board, with its flow, its emulator and its programming: HDL sources and drawings synthesized, implemented and programmed on the FPGA, or emulated.':
-    'Uma placa, com o seu fluxo, o seu emulador e a sua programação: fontes HDL e desenhos sintetizados, implementados e programados na FPGA, ou emulados.',
+  "One board, with its flow, its emulator and its programming: an FPGA's HDL and drawings synthesized and programmed, or a processor board's firmware built and run; or emulated.":
+    'Uma placa, com o seu fluxo, o seu emulador e a sua programação: o HDL e os desenhos de uma FPGA sintetizados e programados, ou o firmware de uma placa de processador compilado e executado; ou emulados.',
   'Several devices linked (UART, SPI, Pmods): FPGA boards and microcontrollers in one System document, simulated as one.':
     'Vários dispositivos ligados (UART, SPI, Pmods): placas FPGA e microcontroladores num documento de Sistema, simulados como um todo.',
   // Design Properties' Project Kind, what a change of kind does (#5041, core/project-kind.js DESIGN_ONLY_MESSAGES)
@@ -29,6 +29,8 @@ export const WIZARDS_PT = {
   // Project ▸ Change Mode… (#5755, web/js/mode-change-ui.js, core/mode-change.js)
   'Change Mode…': 'Mudar o Modo…', 'Change Mode': 'Mudar o Modo', "Choose the project's mode.": 'Escolha o modo do projeto.', 'Node Kept:': 'Nó Mantido:',
   'Going down loses (nothing is deleted from the disk):': 'Descer perde (nada é apagado do disco):', 'Nothing is lost:': 'Nada se perde:',
+  // New Project's processor boards (#5756, web/js/processor-new.js)
+  'Board Type:': 'Tipo de Placa:', 'Python Firmware:': 'Firmware Python:',
   // (Systems not in a release yet, #5202: core/build-channel.js)
   "Systems are not in this release yet: it is in the development build (the site's dev/) until it is stable.": 'Os Sistemas ainda não estão nesta versão: está na versão de desenvolvimento (a dev/ do site) até estar estável.',
   'Its board and its constraints file leave the project (the file stays on the disk); its drawings stay, their HDL and the test benches hidden, none deleted.':
@@ -159,6 +161,8 @@ const MODE_LINES = [
   [/^its board, (\S+)$/, 'a sua placa, $1'], [/^its constraints file (\S+) \(it stays on the disk\)$/, 'o seu ficheiro de restrições $1 (fica no disco)'],
   [/^its HDL and C sources no drawing makes leave the project \(they stay on the disk\): (.+)$/, 'as suas fontes HDL e C que nenhum desenho faz saem do projeto (ficam no disco): $1'],
   [/^its implementation, emulation and programming$/, 'a sua implementação, emulação e programação'],
+  [/^its board the System's first node, (\S+) \((\S+)\), its files in its folder already$/, 'a sua placa o primeiro nó do Sistema, $1 ($2), os seus ficheiros já na sua pasta'],
+  [/^its System document (\S+) rewritten with the node alone$/, 'o seu documento de Sistema $1 reescrito só com o nó'],
 ];
 const modeLine = l => { const m = MODE_LINES.find(([re]) => re.test(l)); return m ? l.replace(m[0], m[1]) : l; };
 export const WIZARDS_PT_PATTERNS = [
@@ -244,4 +248,8 @@ export const WIZARDS_PT_PATTERNS = [
   [/^WARNING: lost: (.+)$/, (_, l) => `AVISO: perdido: ${modeLine(l)}`],
   [/^lost: (.+)$/, (_, l) => `perdido: ${modeLine(l)}`],
   [/^the project '(.+)' is a (Circuit|Board|System) project already$/, (_, n, m) => `o projeto '${n}' já é um projeto ${MODE_PT[m]}`],
+  // (a processor board's project, #5756: core/processor-board.js processorProjectText)
+  [/^Board project '(.+)' made for the (.+): its firmware (\S+), which blinks its LED\.$/, "Projeto Placa '$1' criado para a $2: o seu firmware $3, que faz piscar o seu LED."],
+  [/^Board project '(.+)' made for the (.+): no firmware yet: put its \.hex \(MPLAB X's\) in its folder (\S+) and make it the node's firmware \(its row ▸ Open, or the MCP's edit_system\)\.$/,
+    "Projeto Placa '$1' criado para a $2: ainda sem firmware: ponha o seu .hex (do MPLAB X) na sua pasta $3 e faça dele o firmware do nó (a sua linha ▸ Abrir, ou o edit_system do MCP)."],
 ];

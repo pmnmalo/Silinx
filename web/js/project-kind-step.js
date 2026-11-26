@@ -5,7 +5,8 @@
 // fpga, system); a System's finer profile (Embedded / SoC, #5440) is Design Properties'.
 import { DESIGN_KIND, newSystemKind } from '/core/project-kind.js';
 import { MODES, modeOn } from '/core/project-mode.js';
-import { SYSTEMS_OFF } from '/core/build-channel.js';
+import { SYSTEMS_OFF, systemsOn } from '/core/build-channel.js';
+import { BOARD_TYPES } from '/core/processor-board.js';
 import { h } from './ui.js';
 import { sv } from './dom.js';
 
@@ -25,23 +26,32 @@ export const art = id => h('span', { class: 'kind-art', 'aria-hidden': 'true' },
     ...ART[id].map(([tag, a]) => sv(tag, a))));
 
 /**
- * The page (`value`: the kind first chosen, 'fpga' or 'design'). Returns { page, kind() }: the wizard's page and the kind
- * chosen now; `onChange(kind)` is called when the choice changes.
+ * The page (`value`: the kind first chosen, 'fpga' or 'design'). Returns { page, kind(), boardType() }: the wizard's page,
+ * the kind chosen now and the Board card's Board Type (#5756: FPGA, Arduino, PIC24, Raspberry Pi Pico, ESP32: the
+ * settings page's boards; FPGA for another card); `onChange(kind)` is called when either changes.
  */
 export function kindStep(value = 'fpga', onChange = () => {}) {
   let kind = value;
+  // (the Board card's Board Type, shown while it is chosen; the processors' where Systems are on, #5202)
+  const typeSel = h('select', { class: 'board-type' }, ...(systemsOn() ? BOARD_TYPES : BOARD_TYPES.slice(0, 1)).map(x => h('option', { value: x.id, ...(x.id === 'fpga' ? {} : { 'data-no-i18n': true }) }, x.label)));
+  const typeRow = h('div', { class: 'board-type-row' }, h('span', {}, 'Board Type:'), typeSel);
+  // (a release: FPGA alone, no type to choose)
+  const showType = () => { typeRow.style.display = kind === 'fpga' && systemsOn() ? '' : 'none'; };
+  typeSel.addEventListener('change', () => onChange(kind));
+  showType();
   const card = m => {
     // (Systems not in a release yet: its card disabled, the reason said, #5202)
     const off = !modeOn(m.id);
     const input = h('input', { type: 'radio', name: 'project-kind', value: m.kind, disabled: off });
     input.checked = m.kind === kind;
-    input.addEventListener('change', () => { if (input.checked) { kind = m.kind; onChange(kind); } });
+    input.addEventListener('change', () => { if (input.checked) { kind = m.kind; showType(); onChange(kind); } });
     return h('label', { class: `kind-card${off ? ' off' : ''}`, 'data-kind': m.kind, 'data-mode': m.id },
       input, art(m.id),
       h('div', { class: 'kind-text' },
         h('div', { class: 'kind-name' }, m.label),
         h('div', { class: 'kind-about' }, m.about),
-        off ? h('div', { class: 'kind-not-yet' }, SYSTEMS_OFF) : null));
+        off ? h('div', { class: 'kind-not-yet' }, SYSTEMS_OFF) : null,
+        m.id === 'board' ? typeRow : null));
   };
   const page = {
     title: 'Project Mode',
@@ -49,5 +59,5 @@ export function kindStep(value = 'fpga', onChange = () => {}) {
       h('div', { class: 'hint' }, 'Choose the mode of the project.'),
       h('div', { class: 'kind-cards', role: 'radiogroup' }, ...MODES.map(card))),
   };
-  return { page, kind: () => kind, design: () => kind === DESIGN_KIND, system: () => newSystemKind(kind) };
+  return { page, kind: () => kind, design: () => kind === DESIGN_KIND, system: () => newSystemKind(kind), boardType: () => (kind === 'fpga' ? typeSel.value : 'fpga') };
 }
