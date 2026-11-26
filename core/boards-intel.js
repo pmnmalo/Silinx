@@ -2,7 +2,7 @@
 // DE10-Lite (MAX 10), the DE0-CV, DE1-SoC and DE10-Nano (Cyclone V), the DE0-Nano and DE2-115 (Cyclone IV E). Their pins from
 // Terasic's user manuals' tables (each board's source below), cross-checked against Terasic's golden-top / System Builder .qsf
 // files: the same pins (the DE2-115's UART_CTS / UART_RTS swapped in its golden top: the manual's kept). Each pin's I/O standard
-// as Quartus names it ("3.3-V LVTTL", "2.5 V", "3.3 V SCHMITT TRIGGER"): the manual's, else the golden top's where the manual
+// as Quartus names it ("3.3-V LVTTL", "2.5 V", "3.3 V Schmitt Trigger"; Quartus's names, the manuals' in any case): the manual's, else the golden top's where the manual
 // gives none (the DE0-CV's). The keys are active low (Schmitt-trigger debounced), the seven-segment displays common anode
 // (active low), each display a port of its own (hex0..hex5: no multiplexing). Experimental families: their constraints QSF, no
 // flow yet (the Silinx toolchain's Cyclone V #5377, Quartus Prime #5378), not programmed from Silinx yet (#5379).
@@ -13,7 +13,7 @@ const DE10_LITE = [
   { name: 'clk', label: '50 MHz oscillator (MAX10_CLK1_50)', pins: ['PIN_P11'], dir: 'in', iostandard: '3.3-V LVTTL', group: 'Clock', extra: { period: '20 ns' } },
   { name: 'max10_clk2_50', label: '50 MHz oscillator (MAX10_CLK2_50)', pins: ['PIN_N14'], dir: 'in', iostandard: '3.3-V LVTTL', group: 'Clock', extra: { period: '20 ns' } },
   { name: 'adc_clk_10', label: '10 MHz oscillator (ADC_CLK_10)', pins: ['PIN_N5'], dir: 'in', iostandard: '3.3-V LVTTL', group: 'Clock', extra: { period: '100 ns' } },
-  { name: 'btn', label: 'Push buttons KEY[0..1] (active low)', pins: ['PIN_B8', 'PIN_A7'], dir: 'in', iostandard: '3.3 V SCHMITT TRIGGER', group: 'Buttons', extra: { activeLow: true } },
+  { name: 'btn', label: 'Push buttons KEY[0..1] (active low)', pins: ['PIN_B8', 'PIN_A7'], dir: 'in', iostandard: '3.3 V Schmitt Trigger', group: 'Buttons', extra: { activeLow: true } },
   { name: 'sw', label: 'Slide switches SW[0..9]', pins: ['PIN_C10', 'PIN_C11', 'PIN_D12', 'PIN_C12', 'PIN_A12', 'PIN_B12', 'PIN_A13', 'PIN_A14', 'PIN_B14', 'PIN_F15'], dir: 'in', iostandard: '3.3-V LVTTL', group: 'Switches' },
   { name: 'led', label: 'LEDs LEDR[0..9]', pins: ['PIN_A8', 'PIN_A9', 'PIN_A10', 'PIN_B10', 'PIN_D13', 'PIN_C13', 'PIN_E14', 'PIN_D14', 'PIN_A11', 'PIN_B11'], dir: 'out', iostandard: '3.3-V LVTTL', group: 'LEDs', extra: { activeHigh: true } },
   { name: 'hex0', label: 'Seven-segment display HEX0: segments HEX0[0..6], decimal point HEX0[7] (active low)', pins: ['PIN_C14', 'PIN_E15', 'PIN_C15', 'PIN_C16', 'PIN_E16', 'PIN_D17', 'PIN_C17', 'PIN_D15'], dir: 'out', iostandard: '3.3-V LVTTL', group: '7-segment', extra: { activeLow: true } },
@@ -29,7 +29,7 @@ const DE10_LITE = [
   { name: 'vga_vsync', label: 'VGA VGA_VS', pins: ['PIN_N1'], dir: 'out', iostandard: '3.3-V LVTTL', group: 'VGA' },
   { name: 'gpio', label: 'GPIO header GPIO[0..35]', pins: ['PIN_V10', 'PIN_W10', 'PIN_V9', 'PIN_W9', 'PIN_V8', 'PIN_W8', 'PIN_V7', 'PIN_W7', 'PIN_W6', 'PIN_V5', 'PIN_W5', 'PIN_AA15', 'PIN_AA14', 'PIN_W13', 'PIN_W12', 'PIN_AB13', 'PIN_AB12', 'PIN_Y11', 'PIN_AB11', 'PIN_W11', 'PIN_AB10', 'PIN_AA10', 'PIN_AA9', 'PIN_Y8', 'PIN_AA8', 'PIN_Y7', 'PIN_AA7', 'PIN_Y6', 'PIN_AA6', 'PIN_Y5', 'PIN_AA5', 'PIN_Y4', 'PIN_AB3', 'PIN_Y3', 'PIN_AB2', 'PIN_AA2'], dir: 'inout', iostandard: '3.3-V LVTTL', group: 'Headers' },
   { name: 'arduino_io', label: 'Arduino header ARDUINO_IO[0..15]', pins: ['PIN_AB5', 'PIN_AB6', 'PIN_AB7', 'PIN_AB8', 'PIN_AB9', 'PIN_Y10', 'PIN_AA11', 'PIN_AA12', 'PIN_AB17', 'PIN_AA17', 'PIN_AB19', 'PIN_AA19', 'PIN_Y19', 'PIN_AB20', 'PIN_AB21', 'PIN_AA20'], dir: 'inout', iostandard: '3.3-V LVTTL', group: 'Arduino' },
-  { name: 'arduino_reset_n', label: 'Arduino header reset ARDUINO_RESET_N (active low)', pins: ['PIN_F16'], dir: 'in', iostandard: '3.3 V SCHMITT TRIGGER', group: 'Arduino' },
+  { name: 'arduino_reset_n', label: 'Arduino header reset ARDUINO_RESET_N (active low)', pins: ['PIN_F16'], dir: 'in', iostandard: '3.3 V Schmitt Trigger', group: 'Arduino' },
 ];
 
 // Terasic DE0-CV: DE0-CV User Manual V1.1.2, May 4, 2015

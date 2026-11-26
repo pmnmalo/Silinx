@@ -3,14 +3,16 @@ import assert from 'node:assert/strict';
 
 const dev = await import('../server/devices.js');
 
-const FAMILY_IDS = ['spartan3', 'spartan3e', 'spartan3a', 'spartan3adsp', 'spartan6', 'virtex4', 'virtex5', 'virtex6', 'artix7', 'spartan7', 'kintex7', 'zynq', 'ice40', 'ecp5', 'gowin', 'gatemate'];
+const FAMILY_IDS = ['spartan3', 'spartan3e', 'spartan3a', 'spartan3adsp', 'spartan6', 'virtex4', 'virtex5', 'virtex6', 'artix7', 'spartan7', 'kintex7', 'zynq', 'ice40', 'ecp5', 'gowin', 'gatemate', 'max10', 'cyclone4e', 'cyclone5'];
 // the open toolchain's own families (#2295, #2302, #2303): not ISE's; AMD Vivado's own (#3895): the Spartan-7
 const OPEN_ONLY = ['ice40', 'ecp5', 'gowin', 'gatemate'];
 const VIVADO_ONLY = ['spartan7'];
+// the Intel families (#5376): no ISE, no flow yet; their speed grades Quartus's (c7, i7, c7g)
+const INTEL = ['max10', 'cyclone4e', 'cyclone5'];
 
 test('families: the ISE 14.7 WebPACK families, with ISE names and I/O standards', () => {
   assert.deepEqual(dev.FAMILIES.map(f => f.id).sort(), [...FAMILY_IDS].sort());
-  for (const f of dev.FAMILIES.filter(x => !OPEN_ONLY.includes(x.id) && !VIVADO_ONLY.includes(x.id))) {
+  for (const f of dev.FAMILIES.filter(x => !OPEN_ONLY.includes(x.id) && !VIVADO_ONLY.includes(x.id) && !INTEL.includes(x.id))) {
     assert.equal(f.webpack, true, f.id);
     assert.ok(f.name && f.xiseFamily && f.displayName, f.id);
     assert.ok(Array.isArray(f.ioStandards) && f.ioStandards.length > 5, f.id);
@@ -36,7 +38,7 @@ test('parts: every part has a known family, packages with user I/O and speed gra
       assert.ok(pk.userIo > 0 && pk.userIo <= p.maxUserIo, `${p.part}-${k} userIo ${pk.userIo} vs max ${p.maxUserIo}`);
       assert.ok(dev.PACKAGES[k], `no description for package ${k}`);
     }
-    assert.ok((['ice40', 'gatemate'].includes(p.family) ? p.speeds.length === 0 : p.speeds.length > 0) && p.speeds.every(s => /^-\d+[LN]?$/.test(s)), `${p.part} speeds ${p.speeds}`);
+    assert.ok((['ice40', 'gatemate'].includes(p.family) ? p.speeds.length === 0 : p.speeds.length > 0) && p.speeds.every(s => (INTEL.includes(p.family) ? /^[ci]\d+g?$/ : /^-\d+[LN]?$/).test(s)), `${p.part} speeds ${p.speeds}`);
     assert.ok(p.slices > 0 && p.luts > 0 && p.ffs > 0 && (p.brams > 0 || p.part === 'ice40lp384'), p.part);
   }
   // WebPACK limits (UG631 Table 2-1): parts outside WebPACK must not be offered.
@@ -158,7 +160,7 @@ test('boards: devices exist with that package and speed, pins are unique, progra
     assert.ok(b.resources.some(r => r.group === 'Clock' && r.extra?.period), `${b.id} has no clock with a period`);
     assert.ok(b.programmer?.preferred && b.programmer.tools[b.programmer.preferred], `${b.id} programmer`);
     for (const t of Object.keys(b.programmer.tools)) assert.ok(['openFPGALoader', 'xc3sprog', 'djtgcfg', 'impact', 'adepttool'].includes(t), `${b.id}: unknown tool ${t}`);
-    assert.ok(b.flash && ['xcf', 'spi', 'bpi'].includes(b.flash.type), `${b.id} flash`);
+    assert.ok(b.flash && ['xcf', 'spi', 'bpi', 'internal'].includes(b.flash.type), `${b.id} flash`);   // (internal: the MAX 10's own flash, #5376)
     assert.equal(b.flash.xcf, b.flash.type === 'xcf', `${b.id} flash.xcf`);
     if (b.device.family === 'ice40') { assert.equal(b.jtagChain, undefined, `${b.id}: the iCE40 is configured over SPI, no JTAG chain`); continue; }
     assert.ok(b.jtagChain.some(c => c.role === 'fpga'), `${b.id} jtag chain`);

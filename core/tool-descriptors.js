@@ -330,7 +330,7 @@ export const NO_FLOW = {
   tasks: LAB_TASKS.filter(t => t.id !== 'impl'),
 };
 /** The Intel families' (#5376): NO_FLOW's, their constraints QSF. */
-export const NO_FLOW_QSF = { ...NO_FLOW, constraints: QSF };
+const NO_FLOW_QSF = { ...NO_FLOW, constraints: QSF };
 
 /** A design and simulation project's (#3780, core/project-kind.js: no FPGA): no flow, no constraints, no board, no programming;
  *  its tree Check Design alone, its tasks Design and Simulate. */

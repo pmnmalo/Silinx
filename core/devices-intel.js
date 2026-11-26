@@ -19,7 +19,7 @@ const part = (name, family, o) => ({
 
 // (the single-ended standards, then the differential ones Silinx's boards may name)
 const IO_33 = ['3.3-V LVTTL', '3.3-V LVCMOS', '3.0-V LVTTL', '3.0-V LVCMOS', '2.5 V', '1.8 V', '1.5 V', '1.2 V', '3.0-V PCI'];
-export const INTEL_IO_STANDARDS = {
+const INTEL_IO_STANDARDS = {
   max10: [...IO_33, '1.0 V', '3.3 V Schmitt Trigger', '2.5 V Schmitt Trigger', '1.8 V Schmitt Trigger', '1.5 V Schmitt Trigger', 'LVDS'],
   cyclone4e: [...IO_33, '3.0-V PCI-X', 'LVDS'],
   cyclone5: [...IO_33, '3.0-V PCI-X', 'LVDS'],
