@@ -7,8 +7,9 @@
 import { h } from './dom.js';
 import { vgaPixels } from '/core/vga.js';
 import { mountSideFold } from './side-fold.js';
+import { mountEmuXadc } from './emulator-xadc.js';
 
-/** { logEl, side, watched } of mountEmulator (compiled(), engineNote(), powered(), running(), vgaView(): its current values). */
+/** { logEl, side, watched, xadc } of mountEmulator (compiled(), engineNote(), powered(), running(), vgaView(): its current values). */
 export function mountEmuSide(ctx) {
   const {
     board, design, engine, timing, title, after, clockSigs, compiled, engineNote, main, note, powered, refresh, root, running, sim,
@@ -103,5 +104,7 @@ export function mountEmuSide(ctx) {
   const unm = wiring.unmapped.filter((u) => !clockSigs.has(design.top.ports.find((p) => p.name === u.port)?.sig));
   if (unm.length) note(`${unm.length} port bit(s) have no LOC on a ${board.name} resource (inputs are held at 0): ${unm.map((u) => `${u.bit}${u.loc ? ` (${u.loc})` : ''}`).join(', ')}.`, 'warn');
 
-  return { logEl, side, watched };
+  // (a design's XADC: its analog inputs, #5385, emulator-xadc.js)
+  const xadc = mountEmuXadc({ design, sim, side, compiled, refresh });
+  return { logEl, side, watched, xadc };
 }

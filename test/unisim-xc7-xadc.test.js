@@ -61,7 +61,7 @@ test('the XADC: its default mode\'s sequence (temperature, VCCINT, VCCAUX), each
 
 test('the XADC: a continuous sequence of INIT_48 and INIT_49\'s channels (the temperature, VP/VN, VAUX6), EOS at each pass\'s end; a forced input converted', () => {
   const x = xadc({ i41: 0x2000, i48: 0x0900, i49: 0x0040, i42: 0x0200 });
-  x.force('vaux_mv', 500, 6);
+  x.force('vaux6_mv', 500);
   x.force('vp_mv', 250);
   x.force('temp_mc', 60000);
   const seq = Array.from({ length: 4 }, () => x.next());
@@ -76,11 +76,11 @@ test('the XADC: a single channel set over the DRP (41h, then 40h: VAUX2), its co
   const x = xadc();
   x.drp(0x40, 0x0012);
   x.drp(0x41, 0x3000);
-  x.force('vaux_mv', 1200, 2);   // (over full scale: 4095)
+  x.force('vaux2_mv', 1200);   // (over full scale: 4095)
   const a = [x.next(), x.next()];
   assert.deepEqual(a.map((r) => r.ch), [18, 18]);
   assert.equal(x.drp(0x12).do, 4095 << 4);
-  x.force('vaux_mv', 100, 2);
+  x.force('vaux2_mv', 100);
   x.next();
   assert.equal(x.drp(0x12).do, inputCode(100) << 4);
   // a single pass (0001) over VCCINT and VCCAUX: two conversions, EOS, then none, not busy
