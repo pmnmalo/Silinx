@@ -69,9 +69,9 @@ uiTest('#405 Board Emulator parts: the toolbar, the board, a watched signal, the
   await page.eval(() => document.querySelectorAll('.emu-sw')[0].click());
   await page.click('.emu-bar button', { text: '⏭ Step' });
   await page.waitFor((b) => document.querySelectorAll('.emu-led')[0].style.background !== b, [before0], { what: 'LED0 flipped by SW0' });
-  // ---- the side panel: q watched, its value shown
-  assert.deepEqual(await page.eval(() => [...document.querySelectorAll('.emu-side select option')].map((o) => o.textContent)), ['Add a signal to watch…', 'cnt.clk', 'cnt.sw', 'cnt.led', 'cnt.q']);
-  await page.eval(() => { const s = document.querySelector('.emu-side select'); s.value = [...s.options].find((o) => o.textContent === 'cnt.q').value; s.dispatchEvent(new Event('change')); });
+  // ---- the side panel: q watched, its value shown (the Watch's list: the oscilloscope's channels have their own, #5383)
+  assert.deepEqual(await page.eval(() => [...document.querySelectorAll('.emu-watch select option')].map((o) => o.textContent)), ['Add a signal to watch…', 'cnt.clk', 'cnt.sw', 'cnt.led', 'cnt.q']);
+  await page.eval(() => { const s = document.querySelector('.emu-watch select'); s.value = [...s.options].find((o) => o.textContent === 'cnt.q').value; s.dispatchEvent(new Event('change')); });
   await page.click('.emu-bar button', { text: '⏭ Step' });
   await page.waitFor(() => /^[01]{28} \([0-9A-F]+h\)$/.test(document.querySelector('.emu-side tbody tr:last-child td:nth-child(2)')?.textContent || ''), [], { what: 'q watched' });
   // ---- the power switch: off, the status line says so

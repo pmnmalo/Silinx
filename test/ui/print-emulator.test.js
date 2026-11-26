@@ -19,7 +19,7 @@ uiTest('#1512 the Board Emulator prints the board in its current state, the Watc
   // a switch up, a signal watched, then paused (its state still)
   await page.eval(() => {
     document.querySelector('.doc:not([hidden]) .emu-sw').click();
-    const sel = document.querySelector('.doc:not([hidden]) .emu-side select');
+    const sel = document.querySelector('.doc:not([hidden]) .emu-watch select');
     sel.value = [...sel.options].find((o) => /\bsw$/.test(o.textContent)).value;
     sel.dispatchEvent(new Event('change'));
     window.Silinx.active.view.pause();

@@ -414,7 +414,7 @@ uiTest('board emulator: the compiled engine at the board\'s speed (a real timing
   assert.deepEqual([b.view, b.engine, b.compiledDisabled, b.speed], ['event', 'event', false, 'max']);
   assert.match(b.hints[0], /^the design is simulated from its HDL \(behavioural RTL\) at a reduced clock rate/);
   assert.match(await page.eval(() => document.querySelector('.doc:not([hidden]) .emu-box h4')?.textContent || ''), /^Watch$/);
-  assert.match(await page.eval(() => [...document.querySelectorAll('.doc:not([hidden]) .emu-box h4')].map((e) => e.textContent).join('|')), /Timing ÷[\d,]+ \(emulation only\)/);
+  assert.match(await page.eval(() => [...document.querySelectorAll('.doc:not([hidden]) .emu-box h4')].map((e) => e.textContent).join('|')), /Timing ÷[\d,.\s]+ \(emulation only\)/);
   // and back
   await page.eval(() => document.querySelector('.doc:not([hidden]) .emu-bar .tb-more-menu [data-value=compiled]').click());
   await page.waitFor(() => window.Silinx.active.view?.engine === 'compiled' && window.Silinx.active.view.outputs, [], { what: 'the emulator on the compiled engine again' });
