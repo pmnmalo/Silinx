@@ -1,5 +1,5 @@
 // Silinx - the device picker of the New Project and Design Properties dialogs (#405: out of web/js/wizards.js).
-import { experimentalDevice, noFlowMessage, noOpenFlowMessage, openFlowDevice, openOnlyDevice, vivadoDevice } from '/packages/silinx-fpga/src/parts.js';
+import { experimentalDevice, noFlowMessage, noOpenFlowMessage, openFlowDevice, openOnlyDevice, quartusDevice, vivadoDevice } from '/packages/silinx-fpga/src/parts.js';
 import { api } from './api.js';
 import { h } from './ui.js';
 
@@ -11,11 +11,13 @@ export const boardOptions = db => [['', 'None Specified'], ...db.boards.map(b =>
 /** The console's warning for a device of an experimental family with no back end here (set_design_properties says the same),
  *  else null: the Artix-7's is AMD Vivado's on the local server (#1649), the Silinx toolchain's in the browser edition (#3143);
  *  the Spartan-7's and the Kintex-7's AMD Vivado's alone (#3895): none in the browser edition. */
-export const noFlowWarning = device => (experimentalDevice(device) && !vivadoDevice(device) ? `WARNING: ${noFlowMessage(device)}.`
+export const noFlowWarning = device => (experimentalDevice(device) && !vivadoDevice(device) && !(quartusDevice(device) && !api.standalone) ? `WARNING: ${noFlowMessage(device)}.`
   : vivadoDevice(device) && !openFlowDevice(device) && api.standalone ? `WARNING: ${noOpenFlowMessage(device)}.` : null);
 
 /** The synthesis tools of an Artix-7 project on the local server (#3146): AMD Vivado's flow, or the Silinx toolchain's; a
  *  Vivado-only family's (#3895) the first alone. */
+/** An Intel device's on the local server (#5378): Intel Quartus Prime alone. */
+const QUARTUS_TOOLS = [['quartus', 'Quartus (VHDL/Verilog; Intel Quartus Prime Lite)']];
 const VIVADO_TOOLS = [['vivado', 'Vivado (VHDL/Verilog; AMD Vivado 2025.2)'], ['silinx', 'Silinx (VHDL/Verilog; no Vivado needed; on trial)']];
 
 // Cascading Family -> Device -> Package -> Speed selectors over the device database.
@@ -70,6 +72,7 @@ export function devicePicker(db, device) {
       };
       (fitSynth = () => {
         const d = { part: partSel.value };
+        if (quartusDevice(d) && !api.standalone) { fill(QUARTUS_TOOLS); sel.disabled = true; return; }
         if (vivadoDevice(d) && !api.standalone) { const only = !openFlowDevice(d); fill(only ? VIVADO_TOOLS.slice(0, 1) : VIVADO_TOOLS); sel.disabled = only; return; }
         fill(own);
         const o = openOnlyDevice(d) || experimentalDevice(d);

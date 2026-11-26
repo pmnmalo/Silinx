@@ -11,7 +11,8 @@
 //            Yosys + Silinx's pack, place, route and bitgen) for the devices with a device
 //            description and a bit database. ISE is still used (open.iseMode: local / docker / ssh,
 //            with the settings of that mode) to build the description of another device.
-// AMD Vivado (the 7-series' back end, #1649, server/vivado.js) runs in a mode of its own, vivado.mode (docker, ssh or
+// AMD Vivado (the 7-series' back end, #1649, server/vivado.js) and Intel Quartus Prime (the Intel FPGAs', #5378, server/quartus.js,
+// quartus.mode / image / path) run each in a mode of its own, vivado.mode (docker, ssh or
 // local: ISE's ways, with ISE's docker command and ssh host), in its own image (vivado.image).
 // Programmers always run locally (they need the USB device).
 
@@ -86,6 +87,7 @@ export const DEFAULT_CONFIG = Object.freeze({
   ssh: { host: '', user: '', port: 22, identity: '', remoteDir: 'silinx-build', settings: DEFAULT_SETTINGS, image: '', sshArgs: [], earlierDirs: [] },   // image: docker image on the host ('' = ISE installed there); earlierDirs: remoteDir's earlier values (#3407)
   open: { iseMode: 'docker' },                  // Silinx toolchain mode: the ISE that builds device descriptions (developers) (local|docker|ssh)
   vivado: { mode: 'docker', image: '', settings: '' },   // AMD Vivado (7-series): its mode (local|docker|ssh), image, settings64.sh ('' = found)
+  quartus: { mode: 'local', image: '', path: '' },      // Intel Quartus Prime (#5378: the Intel FPGAs): its mode (local|docker|ssh), image, quartus/bin ('' = found)
   programmer: { tool: '', cable: '' },          // global defaults (board defaults take precedence when empty)
   paths: {},                                    // explicit binary paths, e.g. { djtgcfg: '/usr/local/bin/djtgcfg' }
   relay: { origins: [], key: '', relays: [] },  // shared projects (#3227): the sites whose pages use this relay, the key that opens a room; the other relays this server's pages use
@@ -143,7 +145,8 @@ function unknownSettings(partial) {
 
 /** The settings that name a program to run or its arguments: set in config.json (or with the
  *  command line) only, never through the API (Toolchain Settings does not show them). */
-export const FILE_ONLY = ['docker.command', 'docker.extraArgs', 'ssh.sshArgs', 'ssh.identity', 'ssh.earlierDirs', 'paths', 'relay', 'mcp', 'editor'];
+// (quartus.path: the folder whose quartus_* tools run, as paths' binaries: the file's only, #5378)
+export const FILE_ONLY = ['docker.command', 'docker.extraArgs', 'ssh.sshArgs', 'ssh.identity', 'ssh.earlierDirs', 'paths', 'relay', 'mcp', 'editor', 'quartus.path'];
 // the earlier build folders on the ssh host remembered (their files came from projects and stay there, #3407)
 const EARLIER_DIRS = 100;
 
@@ -297,6 +300,9 @@ export async function saveConfig(partial, { fromApi = false } = {}) {
   if (!ISE_MODES.includes(cfg.vivado?.mode)) throw bad(`invalid vivado.mode '${cfg.vivado?.mode}' (${ISE_MODES.join('|')})`);
   if (cfg.vivado.image && !IMAGE.test(cfg.vivado.image)) throw bad('vivado.image contains invalid characters');
   if (cfg.vivado.settings && (typeof cfg.vivado.settings !== 'string' || /[\x00-\x1f]/.test(cfg.vivado.settings))) throw bad('vivado.settings must be a path');
+  if (!ISE_MODES.includes(cfg.quartus?.mode)) throw bad(`invalid quartus.mode '${cfg.quartus?.mode}' (${ISE_MODES.join('|')})`);
+  if (cfg.quartus.image && !IMAGE.test(cfg.quartus.image)) throw bad('quartus.image contains invalid characters');
+  if (cfg.quartus.path && (typeof cfg.quartus.path !== 'string' || /[\x00-\x1f]/.test(cfg.quartus.path) || !cfg.quartus.path.startsWith('/') && !/^[A-Za-z]:[\\/]/.test(cfg.quartus.path))) throw bad('quartus.path must be an absolute path (Quartus\'s quartus/bin)');
   if (!ISE_MODES.includes(cfg.open.iseMode)) throw Object.assign(new Error(`invalid open.iseMode '${cfg.open.iseMode}' (${ISE_MODES.join('|')})`), { status: 400 });
   for (const k of ['extraArgs']) if (!Array.isArray(cfg.docker[k])) throw Object.assign(new Error(`docker.${k} must be an array of strings`), { status: 400 });
   if (!Array.isArray(cfg.ssh.sshArgs)) throw Object.assign(new Error('ssh.sshArgs must be an array of strings'), { status: 400 });
@@ -429,12 +435,14 @@ export async function detectToolchain() {
   // Silinx toolchain mode: can ISE still build device descriptions (with the settings of open.iseMode)?
   const builder = cfg.mode === 'silinx' ? iseStatus({ ...cfg, mode: iseModeOf(cfg) }, { ise, helpers, dockerImage }) : status;
   const { detectVivadoToolchain } = await import('./vivado.js');
+  const { detectQuartusToolchain } = await import('./quartus.js');
   return {
     platform: process.platform,
     config: cfg,
     configPath: configPath(),
     ise: { ...ise, ...status },
     vivado: await detectVivadoToolchain(cfg, helpers),
+    quartus: await detectQuartusToolchain(cfg, helpers, { capture }),
     deviceBuilder: { mode: iseModeOf(cfg), available: builder.available, reason: builder.reason },
     programmers,
     helpers,

@@ -74,7 +74,7 @@ async function systemProperties(name, pj, { nodes, simulation }, others) {
 const devices = () => import('./devices.js');
 const parts = () => import('../packages/silinx-fpga/src/parts.js');
 
-const SYNTH_TOOLS = ['silinx', 'xst', 'vivado'];   // (vivado: the Artix-7's, #3146)
+const SYNTH_TOOLS = ['silinx', 'xst', 'vivado', 'quartus'];   // (vivado: the Artix-7's, #3146; quartus: the Intel families', #5378)
 const OPTIMIZATIONS = ['fast', 'area', 'speed'];
 const STARTUP_CLOCKS = { jtag: 'JtagClk', cclk: 'CCLK', user: 'UserClk' };
 // the Spartan-6's Map (#3138): nextpnr's packer (the default since its parity, #3139, #3140), or Silinx's
@@ -122,7 +122,7 @@ export const SETTINGS_TOOLS = [
       // (an experimental family's boards and devices, #3142: listed and marked, as the dialogs show them; the 7-series' flow
       // AMD Vivado's, #1649, #3895)
       const R = await parts(), exp = o => (o ? { experimental: true } : {});
-      const mark = (o, device) => (!o.experimental ? '' : R.vivadoDevice(device) ? ' [experimental: AMD Vivado\'s flow]' : ' [experimental: no implementation flow yet]');
+      const mark = (o, device) => (!o.experimental ? '' : R.vivadoDevice(device) ? ' [experimental: AMD Vivado\'s flow]' : R.quartusDevice(device) ? ' [experimental: Intel Quartus Prime\'s flow]' : ' [experimental: no implementation flow yet]');
       const boards = D.BOARDS.map(b => ({ id: b.id, name: b.name, device: deviceName(D.resolveBoard(b.id).device), ...exp(R.experimentalDevice(b.device)),
         variants: (b.variants || []).map(v => ({ id: v.id, label: v.label, device: deviceName(v.device), ...(v.default ? { default: true } : {}) })) }));
       const families = fams.map(f => ({ id: f.id, name: f.displayName || f.name, ...exp(f.experimental),
@@ -134,7 +134,7 @@ export const SETTINGS_TOOLS = [
   },
   {
     name: 'set_design_properties', title: 'Design Properties',
-    description: 'Change a project\'s target as Design Properties does: its board (none: no board) or device (part, package, speed), synthesis tool (silinx: the Silinx toolchain; xst: Xilinx ISE; vivado: AMD Vivado, the Artix-7\'s and Zynq-7000\'s default, their Silinx toolchain on trial, the Spartan-7\'s and Kintex-7\'s only), Preferred Language (the drawings\' HDL made again in it), Project Kind (kind) and Top-Level Source Type. A new device is checked against the design (warnings). update_constraints writes a new board\'s pins for the top\'s ports into the constraints file, as Update Constraints does, replacing its pin locations.',
+    description: 'Change a project\'s target as Design Properties does: its board (none: no board) or device (part, package, speed), synthesis tool (silinx: the Silinx toolchain; xst: Xilinx ISE; vivado: AMD Vivado, the Artix-7\'s and Zynq-7000\'s default, the Spartan-7\'s and Kintex-7\'s only; quartus: Intel Quartus Prime, the Intel FPGAs\'), Preferred Language (the drawings\' HDL made again in it), Project Kind (kind) and Top-Level Source Type. A new device is checked against the design (warnings). update_constraints writes a new board\'s pins for the top\'s ports into the constraints file, as Update Constraints does.',
     inputSchema: { type: 'object', properties: {
       project: PROJECT, board: STR('The board (list_devices), or none for no board.'), variant: STR('The board\'s variant (default: the board\'s default).'),
       part: STR('The device, e.g. xc3s500e; with no board.'), package: STR('The package, e.g. fg320.'), speed: STR('The speed grade, e.g. -4.'),
@@ -214,6 +214,10 @@ export const SETTINGS_TOOLS = [
       const experimental = R.experimentalDevice(next);
       // (the Artix-7: AMD Vivado's on this server, #1649)
       const vivado = R.vivadoDevice(next);
+      // (an Intel device, #5378: Intel Quartus Prime's alone, as the dialog locks it)
+      const quartus = R.quartusDevice(next);
+      if (quartus && synthTool && synthTool !== 'quartus') throw toolError(`the ${next.part.toUpperCase()} is implemented by Intel Quartus Prime: no ${{ xst: 'XST', vivado: 'Vivado', silinx: 'Silinx synthesis tool' }[synthTool]}`);
+      if (synthTool === 'quartus' && !quartus) throw toolError(`Intel Quartus Prime implements the Intel FPGAs (the MAX 10, the Cyclone IV E, the Cyclone V), not the ${next.part.toUpperCase()}`);
       if (experimental && synthTool === 'xst') throw toolError(vivado ? `the ${next.part.toUpperCase()} is implemented by AMD Vivado: no XST` : `${R.noFlowMessage(next)}: no XST`);
       if (synthTool === 'vivado' && !vivado) throw toolError(`AMD Vivado implements the 7-series devices of Vivado ML Standard (the Artix-7, the Spartan-7, the Kintex-7, the Zynq-7000), not the ${next.part.toUpperCase()}`);
       // (#3895: the Spartan-7, the Kintex-7: AMD Vivado's alone, as the dialog locks it; the Zynq-7000's PL the Silinx toolchain's too, #4680)
@@ -221,7 +225,7 @@ export const SETTINGS_TOOLS = [
       if (vivadoOnly && synthTool === 'silinx') throw toolError(`${R.noOpenFlowMessage(next)}: no Silinx synthesis tool`);
       // (#3146) the Artix-7's synthesis tool: the one given, else the project's when it was one of the Artix-7's, else AMD Vivado;
       // a Vivado-only family's Vivado; another family's never Vivado (the project's, from an Artix-7: Silinx)
-      const synthOf = () => (vivadoOnly ? { synthTool: 'vivado' } : vivado ? { synthTool: synthTool || (R.vivadoDevice(pj.device) && R.openFlowDevice(pj.device) && ['vivado', 'silinx'].includes(pj.synthTool) ? pj.synthTool : 'vivado') }
+      const synthOf = () => (quartus ? { synthTool: 'quartus' } : vivadoOnly ? { synthTool: 'vivado' } : vivado ? { synthTool: synthTool || (R.vivadoDevice(pj.device) && R.openFlowDevice(pj.device) && ['vivado', 'silinx'].includes(pj.synthTool) ? pj.synthTool : 'vivado') }
         : R.openOnlyDevice(next) || experimental ? { synthTool: 'silinx' } : synthTool ? { synthTool } : pj.synthTool === 'vivado' ? { synthTool: 'silinx' } : {});
       const warnings = [];
       const deviceChanged = next.part !== pj.device?.part || next.package !== pj.device?.package;
@@ -255,7 +259,7 @@ export const SETTINGS_TOOLS = [
       else if (changed && !nextBoard && after.constraints && fs.existsSync(path.join(P.projectDir(name), after.constraints))) pins.push(`WARNING: check the pin locations in ${after.constraints} — they must exist on the ${next.package.toUpperCase()} package.`);
       warnings.push(...pins);
       // (after the device, as the dialog's console says it)
-      const noFlow = experimental && !vivado ? [`WARNING: ${R.noFlowMessage(next)}.`] : [];
+      const noFlow = experimental && !vivado && !quartus ? [`WARNING: ${R.noFlowMessage(next)}.`] : [];
       warnings.push(...noFlow);
       const text = [...warnings.filter(w => !pins.includes(w) && !languageLines.includes(w) && !noFlow.includes(w)), ...languageLines, ...(fromDesign ? [`${name}: an FPGA project now: its HDL and its implementation shown.`] : []), `Device set to ${R.deviceLabel(next)}${nextBoard ? ` (board ${nextBoard})` : ''}; synthesis tool ${after.synthTool || 'of Toolchain Settings'}${constraints ? `; ${after.constraints} written from the ${nextBoard}'s pins` : ''}.`, ...pins, ...noFlow];
       text.push(...topLine);

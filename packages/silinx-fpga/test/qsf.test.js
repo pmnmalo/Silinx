@@ -4,7 +4,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { QSF, readQsf, writeQsf, writeSdc } from '../src/qsf.js';
-import { boardConstraintsText, constraintsExtOf, constraintsFormatOf, experimentalDevice, familyOfPart, noFlowMessage, openFlowDevice } from '../src/parts.js';
+import { boardConstraintsText, constraintsExtOf, constraintsFormatOf, experimentalDevice, familyOfPart, noFlowMessage, openFlowDevice, quartusDevice } from '../src/parts.js';
 
 // lines as Terasic's DE10-Lite golden top writes them (DE10_LITE_Golden_Top.qsf, the System CD): the reader's reference
 const TERASIC = `#============================================================
@@ -135,10 +135,12 @@ test('the Intel families: their part names, an experimental family\'s QSF and no
   assert.equal(constraintsFormatOf(de0cv), 'qsf');
   assert.equal(constraintsExtOf(de10lite), '.qsf');
   assert.equal(experimentalDevice(de0cv), true);
-  assert.equal(openFlowDevice({ part: 'ep4ce22' }), true);   // (no openFlow: false; the experimental family's NO_FLOW decides)
-  assert.equal(noFlowMessage(de0cv), 'the 5CEBA4 (Cyclone V, an experimental family) has no implementation flow yet: its boards and its QSF constraints only (the Silinx toolchain\'s flow and Quartus Prime come next)');
-  assert.equal(noFlowMessage(de10lite), 'the 10M50DA (MAX 10, an experimental family) has no implementation flow yet: its boards and its QSF constraints only (Quartus Prime comes next)');
-  assert.equal(noFlowMessage({ part: 'ep4ce22' }), 'the EP4CE22 (Cyclone IV E, an experimental family) has no implementation flow yet: its boards and its QSF constraints only (Quartus Prime comes next)');
+  assert.equal(openFlowDevice({ part: 'ep4ce22' }), false);   // (Quartus's, #5378: no Silinx toolchain's flow)
+  assert.equal(quartusDevice(de0cv), true);
+  assert.equal(quartusDevice({ part: 'xc7s50' }), false);
+  assert.equal(noFlowMessage(de0cv), 'the 5CEBA4 (Cyclone V, an experimental family) has no implementation flow yet: its boards and its QSF constraints only (Intel Quartus Prime implements it on the local server; the Silinx toolchain\'s flow to come)');
+  assert.equal(noFlowMessage(de10lite), 'the 10M50DA (MAX 10, an experimental family) has no implementation flow yet: its boards and its QSF constraints only (Intel Quartus Prime implements it on the local server)');
+  assert.equal(noFlowMessage({ part: 'ep4ce22' }), 'the EP4CE22 (Cyclone IV E, an experimental family) has no implementation flow yet: its boards and its QSF constraints only (Intel Quartus Prime implements it on the local server)');
   // (the 7-series' message as it was)
   assert.equal(noFlowMessage({ part: 'xc7s50' }), 'the XC7S50 (Spartan-7, an experimental family) has no implementation flow yet: its boards and its XDC constraints only');
 });

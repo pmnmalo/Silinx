@@ -1,7 +1,7 @@
 // Design Summary page (ISE "Design Summary/Reports").
 import { api } from './api.js';
 import { PRODUCT, VERSION_LABEL } from '/core/version.js';
-import { bitstreamExtOf, deviceFamily } from '/packages/silinx-fpga/src/parts.js';
+import { bitstreamExtOf, deviceFamily, deviceLabel } from '/packages/silinx-fpga/src/parts.js';
 import { designUtilization } from '/core/summary-utilization.js';
 import { familyProfile } from '/core/family-profile.js';
 import { toolOf } from './tool-descriptors.js';
@@ -33,14 +33,14 @@ export function mountSummary(el) {
     // made by the Silinx toolchain (no ISE): its reports are in build/open/
     const open = rep?.source === 'open';
     // made by AMD Vivado (a 7-series device, #1649): its reports are build/<top>_*.rpt
-    const vivado = rep?.source === 'vivado';
+    const vivado = rep?.source === 'vivado', quartus = rep?.source === 'quartus';   // (Intel Quartus Prime: an Intel device, #5378)
     // (its caption the Tasks interface's only, where the tables are cards side by side: their tops in line, #1409)
     page.append(h('table', { class: 'summary-table' }, h('caption', { class: 'summary-status' }, 'Project Status'),
       row('Project File:', `${pj.name}/silinx.json`, 'Parser Errors:', h('span', { class: errs ? 'status-bad' : 'status-good' }, errs ? `${errs} Errors` : 'No Errors')),
       row('Module Name:', pj.top || '(not set)', 'Implementation State:', implState),
-      row('Target Device:', `${pj.device.part}${pj.device.speed}-${pj.device.package}`, 'Warnings:', warns ? `${warns} Warnings` : 'No Warnings'),
+      row('Target Device:', deviceLabel(pj.device), 'Warnings:', warns ? `${warns} Warnings` : 'No Warnings'),
       row('Board:', board ? board.name : 'None Specified', 'Test Benches:', String((pj.files || []).filter(f => f.role === 'sim').length)),
-      row('Product Version:', `${PRODUCT} ${VERSION_LABEL} (${open ? 'Silinx toolchain, no ISE' : vivado ? 'AMD Vivado 2025.2 flow' : 'Xilinx ISE 14.7 flow'})`, 'Constraints:', pj.constraints || '(none)'),
+      row('Product Version:', `${PRODUCT} ${VERSION_LABEL} (${open ? 'Silinx toolchain, no ISE' : vivado ? 'AMD Vivado 2025.2 flow' : quartus ? 'Intel Quartus Prime flow' : 'Xilinx ISE 14.7 flow'})`, 'Constraints:', pj.constraints || '(none)'),
       row('Design Goal:', `Balanced (${pj.impl?.optMode || 'Speed'})`, 'Sources:', `${pj.files.length} HDL files`),
     ));
     // utilization: every resource of the part used of available, the family's own rows (core/summary-utilization.js, #790, #795, #4512)
