@@ -1,8 +1,10 @@
 // The MCP server with a System's RP2040 node (#5494, #2674: as the System editor and Simulate System): edit_system adds a
 // Raspberry Pi Pico (MicroPython, its UARTs), links its UART0 to a terminal and gives it its program, a .py; check_system
 // describes and checks it (its ports at 3.3 V); simulate runs the program with the terminal typing to it: each wire's
-// bytes, its REPL's console as a terminal of its own; with no program, said. The firmware's files from the tests' shared
-// folder (SILINX_RP2040_CACHE: downloaded once).
+// bytes, its REPL's console as a terminal of its own; with no program, said. Its firmware CircuitPython's (#5697, as its
+// Properties' Firmware): edit_system's runtime, check_system's description, simulate running its code.py with a module of
+// its folder; another firmware refused. The firmware's files from the tests' shared folder (SILINX_RP2040_CACHE:
+// downloaded once).
 import { test, before, after } from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
@@ -54,5 +56,23 @@ test('#5494 edit_system adds a Pico linked to a terminal; check_system describes
 test('#5494 a Pico with no program: said by simulate', async () => {
   await ok('edit_system', { project: 'p', file: SYS, edits: [{ action: 'change_node', node: 'pico', fields: { firmware: null } }] });
   const none = await call('simulate', { project: 'p', top: SYS, time_ns: 1e6 });
-  assert.deepEqual([none.isError, none.text], [true, `simulate: ${SYS}: pico: no program: a .py of the project (MicroPython)`]);
+  assert.deepEqual([none.isError, none.text], [true, `simulate: ${SYS}: pico: no program: a .py of the project (MicroPython or CircuitPython)`]);
+});
+
+test('#5697 edit_system makes the Pico\'s firmware CircuitPython: check_system says it, simulate runs its program as code.py with its folder\'s module; another refused', async () => {
+  await ok('write_file', { project: 'p', path: 'pico/main.py', text: 'import board, busio\nfrom greet import TEXT\nu = busio.UART(board.GP0, board.GP1, baudrate=9600)\nu.write(TEXT)\nprint("ready")\nwhile True:\n    pass\n' });
+  await ok('write_file', { project: 'p', path: 'pico/greet.py', text: 'TEXT = b"CP"\n' });
+  const e = await ok('edit_system', { project: 'p', file: SYS, edits: [{ action: 'change_node', node: 'pico', fields: { firmware: 'pico/main.py', runtime: 'circuitpython' } }] });
+  assert.deepEqual([e.data.errors, e.data.warnings], [[], []]);
+  assert.match((await ok('read_file', { project: 'p', path: SYS })).text, /"firmware": "pico\/main\.py",\n {6}"runtime": "circuitpython",/);
+  const c = await ok('check_system', { project: 'p', file: SYS });
+  assert.equal(c.text.split('\n')[1], 'node pico: Raspberry Pi Pico, CircuitPython, program pico/main.py');
+  assert.deepEqual(c.data.plan.nodes.map(n => [n.id, n.programmer, n.reason]), [['pico', 'circuitpy', 'a CircuitPython program runs as it is']]);
+  const s = await ok('simulate', { project: 'p', top: SYS, time_ns: 500e6 });
+  assert.deepEqual([s.data.warnings, s.data.errors], [[], []]);
+  assert.deepEqual(s.data.terminals, { pc: 'CP', 'pico.repl': 'code.py output:\r\nready\r\n' });
+  const bad = await call('edit_system', { project: 'p', file: SYS, edits: [{ action: 'change_node', node: 'pico', fields: { runtime: 'lua' } }] });
+  assert.deepEqual([bad.isError, bad.text], [true, 'edit_system: edit 0 (change_node): pico: the Raspberry Pi Pico\'s firmware is micropython or circuitpython, not lua (nothing written)']);
+  await ok('edit_system', { project: 'p', file: SYS, edits: [{ action: 'change_node', node: 'pico', fields: { runtime: 'micropython' } }] });
+  assert.equal((await ok('check_system', { project: 'p', file: SYS })).text.split('\n')[1], 'node pico: Raspberry Pi Pico, program pico/main.py, in MicroPython');
 });

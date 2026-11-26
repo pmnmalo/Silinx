@@ -10,6 +10,8 @@ import { loadAvr8js } from './system-sim-avr.js';
 import { loadRp2040 } from './system-sim-rp2040.js';
 import { BrokerNode, messageText } from './system-mqtt.js';
 import { mcuBoard } from './system-doc.js';
+import { RUNTIME_NAMES } from './rp2040-firmware.js';
+import { relInNode } from './system-layout.js';
 import { linkTraffic, usText, decodeSpi, spiWarnings, decodeI2c, i2cWarnings, wiredAnd } from './system-decode.js';
 import { regAccesses, accessText } from './regmap-decode.js';
 import { normalizeCircuit } from './circuit.js';
@@ -23,9 +25,10 @@ export const runTimeText = ps => (ps >= 1e12 ? `${+(ps / 1e12).toFixed(3)} s` : 
  * firmware: { id: { name, data } }, regmaps: { id: map } }, or { error } (a node that cannot be simulated, a module that
  * does not compile, a firmware not read). ports: { module: [{ name, dir, width }] }; regmap(module): the register map
  * the module is made from or instances (core/regmap.js regmapFor), or null (#5288: its link's accesses said); circuit(path):
- * a circuit node's .circ.json's text (#5215).
+ * a circuit node's .circ.json's text (#5215); nodeFiles(id): the paths of a node's folder (a CircuitPython node's other
+ * files, read with `firmware` into its firmware's `files`, its drive's, #5697).
  */
-export async function systemInputs(sys, { ports = {}, netlist, firmware, regmap = null, circuit = null }) {
+export async function systemInputs(sys, { ports = {}, netlist, firmware, regmap = null, circuit = null, nodeFiles = null }) {
   const circuits = {};
   for (const n of sys.nodes.filter(x => x.kind === 'circuit' && x.circuit)) {
     try { circuits[n.id] = normalizeCircuit(JSON.parse(await circuit(n.circuit))); } catch (e) { return { error: `${n.id}: its circuit ${n.circuit} cannot be read: ${e.message}` }; }
@@ -39,6 +42,12 @@ export async function systemInputs(sys, { ports = {}, netlist, firmware, regmap 
   }
   for (const n of sys.nodes.filter(x => x.kind === 'mcu')) {
     try { fw[n.id] = { name: n.firmware, data: await firmware(n.firmware) }; } catch (e) { return { error: `${n.id}: its firmware ${n.firmware} cannot be read: ${e.message}` }; }
+    if (n.runtime === 'circuitpython' && nodeFiles) {
+      const files = fw[n.id].files = [];
+      for (const p of (await nodeFiles(n.id)).filter(p => p !== n.firmware && /\.(py|toml|txt|json|csv)$/i.test(p) && relInNode(p, n.id) != null && !/^build\//i.test(relInNode(p, n.id)))) {
+        try { files.push({ name: relInNode(p, n.id), data: await firmware(p) }); } catch (e) { return { error: `${n.id}: its file ${p} cannot be read: ${e.message}` }; }
+      }
+    }
   }
   const regmaps = {};
   for (const f of plan.fpga) { const m = regmap ? await regmap(f.module) : null; if (m) regmaps[f.id] = m; }
@@ -56,12 +65,12 @@ export function systemFromInputs(sys, { plan, netlists, firmware, regmaps = {} }
   try { return { plan, regmaps, ...buildSystem(sys, plan, { fpga, firmware }) }; } catch (e) { return { error: e.message }; }
 }
 
-/** The microcontrollers' engines of the System `sys` loaded here (avr8js for an Arduino; rp2040js and MicroPython's
- *  firmware for a Pico, #5494). */
+/** The microcontrollers' engines of the System `sys` loaded here (avr8js for an Arduino; rp2040js and MicroPython's or
+ *  CircuitPython's firmware for a Pico, #5494, #5697). */
 export async function loadEngines(sys) {
-  const arch = new Set(sys.nodes.filter(n => n.kind === 'mcu').map(n => mcuBoard(n.board)?.arch));
+  const mcus = sys.nodes.filter(n => n.kind === 'mcu'), arch = new Set(mcus.map(n => mcuBoard(n.board)?.arch));
   if (arch.has('avr')) await loadAvr8js();
-  if (arch.has('rp2040')) await loadRp2040();
+  if (arch.has('rp2040')) await loadRp2040(mcus.filter(n => mcuBoard(n.board)?.arch === 'rp2040').map(n => n.runtime || 'micropython'));
 }
 
 /** The System ready to run here: systemInputs, then systemFromInputs. */
@@ -72,8 +81,14 @@ export async function prepareSystem(sys, opts) {
   return systemFromInputs(sys, inputs);
 }
 
-/** A terminal's caption: its id and its UART's baud and frame (`u`: its interface); a Pico's REPL (`<id>.repl`) its USB's. */
-export const termCaption = (id, u) => (/\.repl$/.test(id) ? `${id.slice(0, -5)} · MicroPython REPL (USB)` : u?.kind === 'mqtt' ? `${id} · MQTT broker` : `${id} · ${u?.baud ?? 9600} ${u?.frame ?? '8N1'}`);
+/** A terminal's caption: its id and its UART's baud and frame (`u`: its interface); an MQTT broker's; a Pico's REPL
+ *  (`<id>.repl`) its USB's, its firmware's (`sys`: the System, #5697). */
+export function termCaption(id, u, sys = null) {
+  if (u?.kind === 'mqtt' && !/\.repl$/.test(id)) return `${id} · MQTT broker`;
+  if (!/\.repl$/.test(id)) return `${id} · ${u?.baud ?? 9600} ${u?.frame ?? '8N1'}`;
+  const node = id.slice(0, -5), runtime = sys?.nodes?.find(n => n.id === node)?.runtime;
+  return `${node} · ${RUNTIME_NAMES[runtime || 'micropython'] ?? runtime} REPL (USB)`;
+}
 
 /** Bytes as a terminal shows them: the printable characters, CR LF and tab as they are, the others as \xNN. */
 export const bytesText = bytes => bytes.map(({ byte: b }) => (b >= 0x20 && b < 0x7f) || b === 10 || b === 13 || b === 9 ? String.fromCharCode(b) : `\\x${b.toString(16).padStart(2, '0')}`).join('');
