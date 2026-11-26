@@ -1,0 +1,32 @@
+#!/usr/bin/env node
+// A stand-in for XC16's xc16-gcc (#5482, test/xc16-compile-server.test.js): `--version`, and a compile and link run in
+// the node's build folder: -mcpu=24FJ1024GB610, -omf=elf, -T an existing linker script and -o out/<id>.elf needed; each
+// `#error X` / `#warning X` line of a C file said as gcc says it (its path as given, line and column), each `.error "X"`
+// of an assembly file as the assembler does (file:line: Error: X), a `//stub-link-error` line as the linker's Link
+// Error; exit 1 on an error, else the .elf (a stand-in: the uart-pic24 example's .hex, for xc16-bin2hex). Its arguments
+// are written to xc16-gcc.json in its folder.
+import fs from 'node:fs';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
+const a = process.argv.slice(2);
+if (a[0] === '--version') { console.log('xc16-gcc (Microchip Technology) 4.5.1 (XC16, Microchip v2.10) Build date: Mar 27 2023'); process.exit(0); }
+fs.writeFileSync('xc16-gcc.json', JSON.stringify(a));
+const opt = k => a[a.indexOf(k) + 1];
+if (!a.includes('-mcpu=24FJ1024GB610') || !a.includes('-omf=elf')) { console.error('xc16-gcc: stub: -mcpu=24FJ1024GB610 -omf=elf expected'); process.exit(2); }
+if (!fs.existsSync(opt('-T'))) { console.error(`xc16-ld: cannot open linker script file ${opt('-T')}: No such file or directory`); process.exit(255); }
+let errors = 0, link = false;
+for (const f of a.filter(x => /^src\/.*\.(c|s|S)$/.test(x))) {
+  fs.readFileSync(f, 'utf8').split('\n').forEach((l, i) => {
+    const c = /^(\s*)#(error|warning)\s+(.*)$/.exec(l), s = /^\s*\.error\s+"(.*)"/.exec(l);
+    if (/\/\/stub-link-error/.test(l)) link = true;
+    if (c && /\.c$/.test(f)) {
+      if (c[2] === 'error') errors++;
+      console.error(`${f}: In function 'main':`);
+      console.error(`${f}:${i + 1}:${c[1].length + 2}: ${c[2]}: #${c[2]} ${c[3]}`);
+    } else if (s) { errors++; console.error(`${f}:${i + 1}: Error: ${s[1]}`); }
+  });
+}
+if (errors) process.exit(1);
+if (link) { console.error('/opt/microchip/xc16/v2.10/bin/bin/elf-ld: Link Error: Could not allocate section .nbss, size = 9000 bytes, attributes = bss near'); process.exit(255); }
+const hex = path.join(path.dirname(fileURLToPath(import.meta.url)), '../../../../../examples/uart-pic24/pic/lcd_uart.hex');
+fs.writeFileSync(opt('-o'), fs.readFileSync(hex));

@@ -141,7 +141,7 @@ export const BOARD_TOOLS = [
   },
   {
     name: 'toolchain_info', title: 'What Toolchain Settings found',
-    description: 'Toolchain Settings\' state, read only: the ISE mode (silinx: the Silinx toolchain, no ISE; local, docker, ssh), whether Xilinx ISE 14.7, AMD Vivado and arduino-cli can run, and why not. No host, user or path is shown; the settings are changed only in the interface (Toolchain Settings, the gear in the toolbar): this computer\'s.',
+    description: 'Toolchain Settings\' state, read only: the ISE mode (silinx: the Silinx toolchain, no ISE; local, docker, ssh), whether ISE 14.7, Vivado, arduino-cli and XC16 can run, and why not. No host, user or path is shown; the settings are changed only in the interface (Toolchain Settings, the gear in the toolbar): this computer\'s.',
     inputSchema: { type: 'object', properties: {}, additionalProperties: false },
     annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false },
     async run() {
@@ -154,9 +154,14 @@ export const BOARD_TOOLS = [
       // (an Arduino node's compiler, #5503: its version and its AVR core's)
       const a = await (await import('./avr-compile.js')).detectAvrCompiler();
       const arduino = { available: a.available, version: a.version, core: a.core, reason: pathless(redact(a.reason)) };
+      // (a PIC24 node's, #5482: this computer's XC16 or the ISE machine's image, which one and why not the other)
+      const x = await (await import('./xc16-compile.js')).detectXc16();
+      const said = r => pathless(redact(r));
+      const xc16 = { available: x.available, via: x.via, version: x.version, reason: said(x.reason), local: said(x.local.reason), remote: said(x.remote.reason) };
       return { text: [`ISE: mode ${ise.mode}, ${ise.available ? 'available' : 'not available'}: ${ise.reason}.`,
         `AMD Vivado: ${vivado.available ? 'available' : 'not available'}${vivado.reason ? `: ${vivado.reason}` : ''}.`,
-        `Arduino (Compile Firmware): ${arduino.available ? 'available' : 'not available'}: ${arduino.reason}.`].join('\n'), data: { ise, vivado, arduino } };
+        `Arduino (Compile Firmware): ${arduino.available ? 'available' : 'not available'}: ${arduino.reason}.`,
+        `XC16${xc16.version ? ` ${xc16.version}` : ''} (a PIC24's Compile Firmware): ${xc16.available ? `available, ${xc16.via === 'local' ? 'on this computer' : 'on the ISE machine'}` : 'not available'}: ${xc16.reason}.`].join('\n'), data: { ise, vivado, arduino, xc16 } };
     },
   },
   {

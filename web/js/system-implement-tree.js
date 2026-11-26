@@ -66,9 +66,9 @@ function nodeProcesses(file, n, e) {
   const given = e ? (e.state === 'given' ? e.image : null) : by === 'pickit' ? n.firmware || null : null;
   const kids = [
     ...(n.kind === 'fpga' ? [nodeConstraintsProcs(n), ...(n.module ? FLOW.map(([step, label, steps]) => ({ id: `impl-${step}-${id}`, label, ico: 'process', run: impl(id, steps, label) })) : [])] : []),
-    // (a firmware given, made outside Silinx: nothing to build, its file said; else an Arduino's sketch compiled)
+    // (a firmware given, made outside Silinx: nothing to build, its file said; else an Arduino's sketch compiled, a PIC24's C, #5482)
     ...(given ? [{ id: `impl-given-${id}`, label: `Firmware: ${given.split('/').pop()}`, ico: 'process', disabled: true, title: `${id}: its firmware ${given}, made outside Silinx: nothing to build` }]
-      : by === 'avrdude' && !firmwareRefusal(n) ? [{ id: `impl-firmware-${id}`, label: 'Compile Firmware', ico: 'process', run: async () => (await import('./system-firmware-ui.js')).runNodeFirmware(id, file) }] : []),
+      : ['avrdude', 'pickit'].includes(by) && !firmwareRefusal(n) ? [{ id: `impl-firmware-${id}`, label: 'Compile Firmware', ico: 'process', run: async () => (await import('./system-firmware-ui.js')).runNodeFirmware(id, file, n.board) }] : []),
     { id: `impl-program-${id}`, label: 'Program Node', ico: 'board', ...(refused ? { disabled: true, title: refused } : { run: program(id) }) },
   ];
   const board = n.board ? boardName(n) : null;

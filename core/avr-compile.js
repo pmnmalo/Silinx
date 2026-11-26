@@ -12,11 +12,11 @@ export const AVR_CORE = 'arduino:avr';
 // a sketch's files, as the Arduino IDE builds them (its .ino joined into one, the others compiled and linked with it)
 const SOURCE = /\.(ino|c|cc|cpp|cxx|h|hh|hpp|S)$/;
 
-/** Why the node `node` (a System's) has no firmware compiled by Silinx, or null. */
+/** Why the node `node` (a System's) has no firmware compiled by Silinx (an Arduino's by arduino-cli, a PIC24's by XC16), or null. */
 export function firmwareRefusal(node) {
   if (node?.kind !== 'mcu') return `${node?.id}: a firmware is compiled for a microcontroller node (this one is ${node?.kind})`;
   const b = mcuBoard(node.board);
-  if (b?.arch === 'pic24') return `${node.id}: its ${b.name}'s firmware is XC16's .hex, compiled outside Silinx for now`;
+  if (b?.arch === 'pic24') return null;   // (its C and assembly by XC16, #5482: core/xc16-compile.js)
   if (!AVR_FQBN[node.board]) return `${node.id}: no compiler for its board ${node.board}`;
   if (node.lang === 'micropython') return `${node.id}: a MicroPython node's program is not compiled (it runs as it is, #5487)`;
   return null;

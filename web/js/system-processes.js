@@ -67,10 +67,12 @@ export function systemProcesses(sel, view, { check, rtl }) {
       ...FLOW.map(([id, label, steps]) => ({ id, label, ico: 'process', run: impl(sel.node, steps, label) })),
       { id: 'node-program', label: 'Program Node', ico: 'board', run: program(sel.node) },   // (on its board over JTAG, #5447)
     ] : []),
-    // (an Arduino node's C or C++, #5503: web/js/system-firmware-ui.js)
+    // (an Arduino node's C or C++, #5503, a PIC24's C and assembly, #5482: web/js/system-firmware-ui.js)
     ...(sel.kind === 'mcu' && !firmwareRefusal({ id: sel.node, kind: sel.kind, board: sel.board, lang: sel.lang }) ? [
-      { id: 'node-firmware', label: 'Compile Firmware', ico: 'process', run: async () => (await import('./system-firmware-ui.js')).runNodeFirmware(sel.node, sel.file) },
-      // (its .hex by arduino-cli upload on its board, #5489)
+      { id: 'node-firmware', label: 'Compile Firmware', ico: 'process', run: async () => (await import('./system-firmware-ui.js')).runNodeFirmware(sel.node, sel.file, sel.board) },
+    ] : []),
+    // (an Arduino's .hex by arduino-cli upload on its board, #5489)
+    ...(sel.kind === 'mcu' && !firmwareRefusal({ id: sel.node, kind: sel.kind, board: sel.board, lang: sel.lang }) && !unprogrammed(nodeOf(sel)) ? [
       { id: 'node-program', label: 'Program Node', ico: 'board', run: program(sel.node) },
     ] : []),
     // (a PIC24's or a MicroPython node's: not programmed by Silinx yet, said why, #5581's part 4)

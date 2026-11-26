@@ -275,8 +275,8 @@ it needs the emulation.
 - **The core:** the PIC24F's 24-bit instructions, W0–W15, the addressing modes, the interrupts.
 - **The Explorer 16/32's peripherals** (#5481): GPIO (the LEDs, the buttons), the Timers, UART, SPI, I²C, the ADC (the
   potentiometer, the temperature sensor), the character LCD through the PMP, PPS.
-- **XC16** is installed by the user, like ISE, and used by the local server (#5482). In the browser alone the student
-  gives a `.hex`.
+- **XC16** is installed by the user, like ISE, and used by the local server, or runs in its Docker image on the ISE
+  machine (#5482: compiling a PIC24 node's firmware, below). In the browser alone the student gives a `.hex`.
 - **MPLAB X's simulator is the oracle** (#5483): the same `.hex` in both, compared trace by trace, as ISE is the open
   toolchain's.
 - **Its node** (#5484): the Explorer 16/32 is a microcontroller's board of the System (`explorer-1632`, `core/system-doc.js`
@@ -661,7 +661,36 @@ finds arduino-cli on the PATH, in `/opt/homebrew/bin` or `/usr/local/bin`, or at
 - A project imported from elsewhere compiles once it is trusted, as with ISE.
 - The browser edition has no compiler: it says so, and the node takes a `.hex` made elsewhere (the Arduino IDE's Export
   Compiled Binary).
-- Not compiled: the PIC24's firmware (XC16's `.hex`, made outside Silinx), and a MicroPython node's program.
+- Not compiled: a MicroPython node's program.
+
+### Compiling a PIC24 node's firmware
+
+A PIC24 node's row (the Explorer 16/32's PIC24FJ1024GB610) has **Compile Firmware** too (#5482,
+`server/xc16-compile.js`, `core/xc16-compile.js`): [MPLAB XC16](https://www.microchip.com/xc16) compiles and links the
+node's folder's C (`.c`, `.h`) and assembly (`.s`, `.S`; MPASM's `.asm` is not XC16's) to an ELF, then `xc16-bin2hex`
+writes its `.hex`. XC16 is proprietary, installed by the user and never shipped, as ISE is. It is found in one of two
+places, as ISE's ways (`detectXc16`; the MCP's `toolchain_info` says which one is used and why the other is not):
+
+- **this computer's**: config.json's `paths.xc16` (its `bin` folder), the PATH, `/Applications/microchip/xc16/<version>/bin`
+  (macOS's installer) or `/opt/microchip/xc16/<version>/bin` (Linux's), the newest; its `support/PIC24F/gld/` linker
+  script needed;
+- **the ISE machine's**: the Docker image `silinx/xc16:2.10` (config.json's `xc16.image`; its tag XC16's version), built there from Microchip's Linux
+  installer, reached over ssh as ISE's image is (`ssh.host`; the node's build folder sent to `ssh.remoteDir`, its
+  `out/` brought back, the remote folder removed).
+
+config.json's `xc16.mode` (`local` or `ssh`) chooses one; without it, this computer's when it has one.
+
+- The commands are the XC16 C Compiler User's Guide's: `xc16-gcc -mcpu=24FJ1024GB610 -omf=elf -O1 -Wall -o out/<id>.elf
+  <sources> -T <install>/support/PIC24F/gld/p24FJ1024GB610.gld -Wl,--heap=512,-Map=out/<id>.map` (the command line
+  always names the linker script; a heap, which the C library's `printf` needs), then `xc16-bin2hex out/<id>.elf -a
+  -omf=elf`, in `build/nodes/<id>/firmware/` (the sources copied into its `src/`).
+- **The free licence**: XC16's free licence optimises at `-O0`, `-O1` and `-O2` (`-O3`, `-Os` and `-mpa` are PRO's);
+  Silinx compiles at `-O1`, and the console's first line says so.
+- gcc's, the assembler's (`file:line: Error:`) and the linker's (`Link Error:`) errors and warnings go to the console
+  as `ERROR: pic/main.c:12:3: …` lines, by the project's file and line, as an Arduino's.
+- The `.hex` is written over the node's firmware when that is a `.hex`, else to `<id>/<id>.hex`, which becomes the
+  node's firmware; Emulate System runs it on silinx-pic24. The build plan's XC16 step is the same (Build All).
+- The MCP's `run_process` process `firmware` with the node's id; the browser edition says the `.hex` is MPLAB X's.
 
 ### The build and programming plan
 
@@ -673,7 +702,8 @@ first (in the document's order), then the microcontrollers, which leave reset on
 | FPGA | the Silinx toolchain, from its folder (not its `sim/`) | `build/nodes/<id>/build/<module>.bit` | over JTAG |
 | Arduino, a sketch | arduino-cli | its sketch's `.hex` (its firmware) | by avrdude (arduino-cli upload) |
 | Arduino, a `.hex` and no sketch | — (given) | its firmware | by avrdude |
-| PIC24 | — (its C: XC16, #5482) | its `.hex`, given | by a PICkit (MPLAB IPE) |
+| PIC24, C or assembly | XC16 (#5482) | its `.hex` (its firmware) | by a PICkit (MPLAB IPE) |
+| PIC24, a `.hex` and no C | — (given) | its firmware | by a PICkit (MPLAB IPE) |
 | MicroPython | — (runs as it is) | its `.py` files | over its raw REPL (mpremote) |
 
 Each node is **up to date**, **out of date** (a source changed, new or removed since its last build, or its board,
