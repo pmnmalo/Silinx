@@ -847,7 +847,7 @@ end, through the same functions.
 | Node | How it is programmed |
 |---|---|
 | FPGA | as today: the Silinx toolchain, ISE or Vivado, then WebUSB or the server |
-| AVR | over **Web Serial**, with the Arduino bootloader's STK500 protocol; from the server, through its serial port |
+| AVR | over **Web Serial**, with the Arduino bootloader's STK500 protocol (#5448: `core/stk500.js`, tested against a simulated Optiboot, `core/stk500-sim.js`; the browser edition's Program Node, and the local server's when the user chooses Web Serial for a board it does not see); from the server, arduino-cli's upload (avrdude) on its serial port |
 | ESP32 | [esptool-js](https://github.com/espressif/esptool-js) (Apache-2.0, Web Serial) for the firmware; MicroPython's raw REPL for the `.py`, with no compiler |
 | Pico | its UF2 copied once, then the `.py` over the raw REPL |
 

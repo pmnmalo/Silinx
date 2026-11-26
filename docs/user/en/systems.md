@@ -121,6 +121,18 @@ the System Emulator in a tab of its own:
 
 The status line shows the time and how fast the boards run against real time.
 
+## On the real boards
+
+In the **Implement** task, **Program All** programs every node on its board (the FPGA nodes first), and a node's
+**Program Node** that node alone. The local server finds each board by its USB id; an Arduino's firmware is loaded by
+arduino-cli's upload.
+
+An Arduino Uno's or Nano's firmware can also be loaded from the browser through **Web Serial** (Chrome and Edge; not
+Safari, nor the iPad): its `.hex` (or `.elf`) goes through the board's bootloader (STK500, as the Arduino IDE does), then
+is read back and compared. The browser edition always does so (its FPGA nodes are programmed by the local server for
+now); with the local server, **Program Node** of an Arduino whose board it does not see offers **Web Serial…** in its
+*Choose the Board* window.
+
 ## Try it: the uart-avr example
 
 1. New Project ▸ **System**, Start from **Example: uart-avr**, Finish. Its System opens: `uno` (an Arduino Uno with
