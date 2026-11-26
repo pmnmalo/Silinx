@@ -90,7 +90,7 @@ test('#3535 a wrong value refused before the tool runs, nothing written: an enum
   await refused('new_source', { project: 'g', type: 'module', name: 'm1', ports: [{ name: 'a', dir: 'up' }] }, 'new_source: ports[0].dir: one of in, out, inout');
   await refused('new_source', { project: 'g', type: 'module', name: 'm1', ports: [{ name: 'a', msb: '7' }] }, 'new_source: ports[0].msb: an integer');
   // (any synthesis tool: not written to silinx.json)
-  await refused('set_design_properties', { project: 'g', synth_tool: 'foo' }, 'set_design_properties: synth_tool: one of silinx, xst, vivado');
+  await refused('set_design_properties', { project: 'g', synth_tool: 'foo' }, 'set_design_properties: synth_tool: one of silinx, xst, vivado, quartus');
   await refused('set_design_properties', { project: 'g', update_constraints: 'yes', board: 'nexys2' }, 'set_design_properties: update_constraints: true or false');
   // (a number where a name is expected: no JavaScript error)
   await refused('read_file', { project: 'g', path: 5 }, 'read_file: path: a string');

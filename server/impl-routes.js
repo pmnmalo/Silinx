@@ -10,6 +10,8 @@ import { createJob, getJob, cancelJob, listJobs } from './jobs.js';
 import { detectToolchain, saveConfig, loadConfig } from './toolchain.js';
 import { runImplementation, collectReports, normalizeSteps } from './ise.js';
 import { runVivado, isVivadoDevice, vivadoSteps, collectVivadoReports } from './vivado.js';
+import { runQuartus, isQuartusDevice, quartusSteps } from './quartus.js';
+import { collectQuartusReports } from './quartus-reports.js';
 import { DESIGN_ONLY_MESSAGES, isDesignOnly } from '../core/project-kind.js';
 import { deviceFamily, experimentalDevice, familyName, noFlowMessage, noOpenFlowMessage, openFlowDevice, openFamilyOf, openOnlyDevice, bitstreamExtOf } from '../packages/silinx-fpga/src/parts.js';
 import { runOpenImplementation, openStatus, openSteps, buildDeviceJob, reportPart } from './open-flow.js';
@@ -166,7 +168,7 @@ export async function startScan(b = {}) {
 
 /**
  * Start an implementation of a project: POST /projects/:p/implement, and the MCP server's run_process
- * (server/mcp.js). body: { steps, toolchain ('silinx' | 'ise' | 'vivado'), synthUpToDate, generateOnly }. A 7-series device's
+ * (server/mcp.js). body: { steps, toolchain ('silinx' | 'ise' | 'vivado' | 'quartus'), synthUpToDate, generateOnly }. A 7-series device's
  * flow is AMD Vivado's (#1649, server/vivado.js). Returns the job.
  */
 export async function startImplementation(name, body = {}) {
@@ -181,7 +183,7 @@ export async function startImplementation(name, body = {}) {
   if (isDesignOnly(project)) throw bad(DESIGN_ONLY_MESSAGES.flow(project.name));   // (a design and simulation project, #3780)
   if (!topOf(project)) throw bad('set the top module of the project before implementing');
   // (an experimental family with no back end: its flows to come; the 7-series' is Vivado's, #1649, the Silinx toolchain's #3146)
-  if (experimentalDevice(project.device) && !isVivadoDevice(project.device)) throw bad(noFlowMessage(project.device));
+  if (experimentalDevice(project.device) && !isVivadoDevice(project.device) && !isQuartusDevice(project.device)) throw bad(noFlowMessage(project.device));
   // one ISE run per project: two runs would share (and wipe) the same build/ folder
   const key = name.toLowerCase();   // case-insensitive file systems: one folder
   const running = implJobs.get(key);
@@ -194,6 +196,16 @@ export async function startImplementation(name, body = {}) {
   // 7-series back end, on trial, #3146; a toolchain asked for Vivado: its)
   // (a Vivado-only family's, #3895: the Spartan-7, the Kintex-7: Vivado's whatever the project's synthesis tool;
   // the Silinx toolchain or ISE asked for: an error)
+  // (an Intel device, #5378: Intel Quartus Prime's alone; another toolchain asked for: an error)
+  if (isQuartusDevice(project.device)) {
+    if (body.toolchain && body.toolchain !== 'quartus') throw bad(`Intel Quartus Prime implements the ${String(project.device.part).toUpperCase()} (${familyName(deviceFamily(project.device))}), not ${body.toolchain} (toolchain: 'quartus')`);
+    try { steps = quartusSteps(steps); } catch (e) { throw bad(e.message); }
+    if (!isTrusted(project)) throw bad(untrustedMessage(name, 'Intel Quartus Prime', project), 403);
+    const job = createJob('implement', j => { captureLeftOut(j, project, 'Intel Quartus Prime'); return runQuartus(j, { project, projectDir, steps, generateOnly: !!body.generateOnly }); }, { meta: { project: name, steps, toolchain: 'quartus' } });
+    implJobs.set(key, job.id);
+    return job;
+  }
+  if (body.toolchain === 'quartus') throw bad(`Intel Quartus Prime implements the Intel FPGAs (the MAX 10, the Cyclone IV E, the Cyclone V), not the ${String(project.device?.part || '').toUpperCase()}`);
   const only = isVivadoDevice(project.device) && !openFlowDevice(project.device);
   if (only && ['silinx', 'open'].includes(body.toolchain)) throw bad(noOpenFlowMessage(project.device));
   if (only && body.toolchain === 'ise') throw bad(`Xilinx ISE does not implement the ${String(project.device.part).toUpperCase()} here (${familyName(deviceFamily(project.device))}): AMD Vivado does (toolchain: 'vivado')`);
@@ -237,6 +249,7 @@ export async function projectReports(name) {
   catch { /* not saved yet */ }
   if (!fss.existsSync(buildDir) || !topOf(project)) return { available: false };
   if (isVivadoDevice(project.device) && fss.existsSync(path.join(buildDir, 'run.tcl'))) return collectVivadoReports(buildDir, project.top, project.device);
+  if (isQuartusDevice(project.device) && fss.existsSync(path.join(buildDir, `${project.top}.qpf`))) return collectQuartusReports(buildDir, project.top, project.device);
   return collectReports(buildDir, project.top, project.device);
 }
 

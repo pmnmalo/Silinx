@@ -192,10 +192,11 @@ Object.assign(PT, {
   'Synthesis Report (Yosys)': 'Relatório de Síntese (Yosys)', 'Placed Design (XDL)': 'Projeto Posicionado (XDL)', 'Routed Design (XDL)': 'Projeto Encaminhado (XDL)', 'Routed Design (ASC)': 'Projeto Encaminhado (ASC)', 'Routed Design (Trellis configuration)': 'Projeto Encaminhado (configuração Trellis)', 'Routed Design (nextpnr JSON)': 'Projeto Encaminhado (JSON do nextpnr)', 'Routed Design (Peppercorn configuration)': 'Projeto Encaminhado (configuração Peppercorn)', 'Routed Design (FASM)': 'Projeto Encaminhado (FASM)',
   'Static Timing Report': 'Relatório de Temporização Estática',
   // AMD Vivado's reports (the 7-series, #1649)
-  'Synthesize - Vivado': 'Sintetizar - Vivado',
-  'Device Utilization Summary (AMD Vivado)': 'Resumo da Utilização do Dispositivo (AMD Vivado)', 'Design Rule Check': 'Verificação das Regras de Projeto',
+  'Synthesize - Vivado': 'Sintetizar - Vivado', 'Synthesize - Quartus': 'Sintetizar - Quartus',
+  'Device Utilization Summary (AMD Vivado)': 'Resumo da Utilização do Dispositivo (AMD Vivado)', 'Device Utilization Summary (Intel Quartus Prime)': 'Resumo da Utilização do Dispositivo (Intel Quartus Prime)', 'Design Rule Check': 'Verificação das Regras de Projeto',
   'No violations': 'Sem violações', 'Synthesis Utilization Report': 'Relatório de Utilização da Síntese', 'Utilization Report': 'Relatório de Utilização',
   'Route Status Report': 'Relatório do Estado do Encaminhamento', 'Timing Summary Report': 'Relatório Resumo da Temporização', 'DRC Report': 'Relatório de DRC', 'Vivado Log': 'Registo do Vivado',
+  'Analysis & Synthesis Report': 'Relatório de Análise e Síntese', 'Fitter Report': 'Relatório do Fitter', 'Timing Analyzer Report': 'Relatório do Analisador de Temporização',
   'Tip: double-click a process in the Processes panel to run it. Simulation runs entirely inside Silinx; synthesis and implementation of the 7-series use AMD Vivado 2025.2 (Toolchain Settings (the gear in the toolbar)).':
     'Dica: faça duplo clique num processo no painel Processos para o executar. A simulação corre inteiramente no Silinx; a síntese e a implementação da série 7 usam o AMD Vivado 2025.2 (Definições da Toolchain (a roda dentada da barra de ferramentas)).',
   'Tip: double-click a process in the Processes panel to run it. Simulation runs entirely inside Silinx; synthesis and implementation use the Silinx toolchain (no ISE): Toolchain Settings (the gear in the toolbar).':

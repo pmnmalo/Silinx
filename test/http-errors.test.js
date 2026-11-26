@@ -29,7 +29,7 @@ test('errorBody, pathFree: a status\'s message and details; the system\'s own er
 test('bodyError: the MCP\'s messages; the bodies of implement and capture', () => {
   assert.equal(bodyError({ steps: 'synth', toolchain: 'silinx', generateOnly: true, synthUpToDate: false }, IMPLEMENT_BODY), null);
   assert.equal(bodyError(undefined, IMPLEMENT_BODY), null);
-  assert.equal(bodyError({ toolchain: 'quartus' }, IMPLEMENT_BODY), 'toolchain: one of silinx, open, ise, vivado');
+  assert.equal(bodyError({ toolchain: 'diamond' }, IMPLEMENT_BODY), 'toolchain: one of silinx, open, ise, vivado, quartus');
   assert.equal(bodyError({ generateOnly: 'yes', steps: [1] }, IMPLEMENT_BODY), 'generateOnly: true or false; steps[0]: a string');
   assert.equal(bodyError({ toolchain: 'ise', run: true }, IMPLEMENT_BODY), 'unknown run');
   assert.equal(bodyError({ arm: false, timeoutS: 30, device: 1 }, CAPTURE_BODY), null);
@@ -53,8 +53,8 @@ test('the page\'s capture body: the server\'s options only, accepted; the browse
 
 test('the routes: implement and capture refused with the MCP\'s message, before anything runs; the one envelope', async () => {
   await app.call('POST', '/projects', { name: 'H', template: 'gates' });
-  let r = await app.call('POST', '/projects/H/implement', { toolchain: 'quartus' });
-  assert.deepEqual([r.status, r.body], [400, { error: 'toolchain: one of silinx, open, ise, vivado' }]);
+  let r = await app.call('POST', '/projects/H/implement', { toolchain: 'diamond' });
+  assert.deepEqual([r.status, r.body], [400, { error: 'toolchain: one of silinx, open, ise, vivado, quartus' }]);
   r = await app.call('POST', '/projects/H/implement', { steps: 'synth', later: 1 });
   assert.deepEqual([r.status, r.body], [400, { error: 'unknown later' }]);
   r = await app.call('POST', '/projects/H/implement', [1, 2]);

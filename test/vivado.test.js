@@ -342,10 +342,10 @@ test('reports.json of a Vivado build (GET reports, get_report): the summary, eac
   assert.equal((await call('get_report', { project: 'GatesD', report: 'netlist' })).text, 'get_report: report: one of summary, power, timing, synthesis, map, par, pins, drc');
 });
 
-test('#3158 the MCP tools\' schemas: get_report\'s reports (not the toolchains), drc among them; run_process\'s toolchains with vivado', async () => {
+test('#3158 the MCP tools\' schemas: get_report\'s reports (not the toolchains), drc among them; run_process\'s toolchains with vivado and quartus', async () => {
   const { tools } = (await handle({ jsonrpc: '2.0', id: ++id, method: 'tools/list' })).result;
   assert.deepEqual(tools.find(t => t.name === 'get_report').inputSchema.properties.report.enum, ['summary', 'power', 'timing', 'synthesis', 'map', 'par', 'pins', 'drc']);
-  assert.deepEqual(tools.find(t => t.name === 'run_process').inputSchema.properties.toolchain.enum, ['silinx', 'ise', 'vivado']);
+  assert.deepEqual(tools.find(t => t.name === 'run_process').inputSchema.properties.toolchain.enum, ['silinx', 'ise', 'vivado', 'quartus']);
 });
 
 test('#3036 the build folder of a 7-series project: a constraints file outside the project, or a hidden one, refused', async () => {

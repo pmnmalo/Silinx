@@ -3,7 +3,7 @@
 // timing's rows; merged into web/js/i18n.js.
 
 // the flows of the Product Version row
-const FLOW_PT = { 'Silinx toolchain, no ISE': 'toolchain Silinx, sem ISE', 'AMD Vivado 2025.2 flow': 'fluxo do AMD Vivado 2025.2', 'Xilinx ISE 14.7 flow': 'fluxo do Xilinx ISE 14.7' };
+const FLOW_PT = { 'Silinx toolchain, no ISE': 'toolchain Silinx, sem ISE', 'AMD Vivado 2025.2 flow': 'fluxo do AMD Vivado 2025.2', 'Intel Quartus Prime flow': 'fluxo do Intel Quartus Prime', 'Xilinx ISE 14.7 flow': 'fluxo do Xilinx ISE 14.7' };
 
 // the words of the utilization's rows (ISE's MAP report's, XST's, the Silinx toolchain's synthesis's) around the resources' names
 const NOUN_PT = {

@@ -1,7 +1,7 @@
 // The MCP server on the Intel (Altera) boards (#5376, #2674: what the interface does): list_devices marks the experimental
-// families and their boards, new_project and set_design_properties make the constraints a QSF and say no flow runs them yet,
-// new_source and constraints_wizard write QSF, check_constraints checks it, and the processes are refused with the
-// interface's message; every result's text.
+// families and their boards (Intel Quartus Prime's flow, #5378), new_project and set_design_properties make the constraints a QSF
+// and the synthesis tool Quartus, new_source and constraints_wizard write QSF, check_constraints checks it, and the processes of
+// a project made through the MCP server wait for its trust as the interface's; every result's text.
 import { test, before, after } from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
@@ -21,23 +21,23 @@ async function call(name, args = {}) {
 }
 const ok = async (name, args) => { const r = await call(name, args); assert.equal(r.isError, false, r.text); return r; };
 const fails = async (name, args, message) => { const r = await call(name, args); assert.equal(r.isError, true); assert.equal(r.text, `${name}: ${message}`); };
-const NO_FLOW = 'the 5CEBA4 (Cyclone V, an experimental family) has no implementation flow yet: its boards and its QSF constraints only (the Silinx toolchain\'s flow and Quartus Prime come next)';
+const UNTRUSTED = 'project \'c5\' was made through the MCP server (by an assistant): Intel Quartus Prime runs only once you trust it (Trust Project, in the console when the project opens)';
 
-test('list_devices: the six DE boards and the MAX 10, Cyclone IV E and Cyclone V, marked experimental', async () => {
+test('list_devices: the six DE boards and the MAX 10, Cyclone IV E and Cyclone V, marked experimental, Quartus\'s flow', async () => {
   const all = await ok('list_devices');
-  const mark = ' [experimental: no implementation flow yet]';
+  const mark = ' [experimental: Intel Quartus Prime\'s flow]';
   for (const line of ['de10-lite: Terasic DE10-Lite (10m50daf484c7g)', 'de0-cv: Terasic DE0-CV (5ceba4f23c7)', 'de1-soc: Terasic DE1-SoC (5csema5f31c6)',
     'de10-nano: Terasic DE10-Nano (5cseba6u23i7)', 'de0-nano: Terasic DE0-Nano (ep4ce22f17c6)', 'de2-115: Terasic DE2-115 (ep4ce115f29c7)']) assert.ok(all.text.includes(`\n  ${line}${mark}\n`), line);
-  assert.match(all.text, /\n {2}MAX 10 \(max10\) \[experimental: no implementation flow yet\]:\n {4}10m50da: f484 c7g\n/);
-  assert.match(all.text, /\n {2}Cyclone IV E \(cyclone4e\) \[experimental: no implementation flow yet\]:\n {4}ep4ce22: f17 c6\n {4}ep4ce115: f29 c7\n/);
-  assert.match(all.text, /\n {2}Cyclone V \(cyclone5\) \[experimental: no implementation flow yet\]:\n {4}5ceba4: f23 c7\n {4}5csema5: f31 c6\n {4}5cseba6: u23 i7(\n|$)/);
+  assert.match(all.text, /\n {2}MAX 10 \(max10\) \[experimental: Intel Quartus Prime's flow\]:\n {4}10m50da: f484 c7g\n/);
+  assert.match(all.text, /\n {2}Cyclone IV E \(cyclone4e\) \[experimental: Intel Quartus Prime's flow\]:\n {4}ep4ce22: f17 c6\n {4}ep4ce115: f29 c7\n/);
+  assert.match(all.text, /\n {2}Cyclone V \(cyclone5\) \[experimental: Intel Quartus Prime's flow\]:\n {4}5ceba4: f23 c7\n {4}5csema5: f31 c6\n {4}5cseba6: u23 i7(\n|$)/);
   assert.deepEqual(all.data.boards.find(b => b.id === 'de0-cv'), { id: 'de0-cv', name: 'Terasic DE0-CV', device: '5ceba4f23c7', experimental: true, variants: [] });
   assert.deepEqual(all.data.families.filter(f => f.experimental).map(f => f.id).slice(-3), ['max10', 'cyclone4e', 'cyclone5']);
   const c5 = await ok('list_devices', { family: 'cyclone5' });
   assert.deepEqual(c5.data.families.map(f => [f.id, f.experimental, f.parts.map(p => p.part)]), [['cyclone5', true, ['5ceba4', '5csema5', '5cseba6']]]);
 });
 
-test('new_project on the DE0-CV: its constraints top.qsf with the board\'s pins; the processes refused with the interface\'s message', async () => {
+test('new_project on the DE0-CV: its constraints top.qsf with the board\'s pins; the processes waiting for its trust, as the interface\'s', async () => {
   const r = await ok('new_project', { name: 'c5', board: 'de0-cv' });
   assert.match(r.text, /^Empty project 'c5' made: de0-cv \(5ceba4f23c7\)\. /);
   const pj = await P.readProject('c5');
@@ -45,25 +45,24 @@ test('new_project on the DE0-CV: its constraints top.qsf with the board\'s pins;
   await ok('write_file', { project: 'c5', path: 'src/top.vhd', text: 'library ieee;\nuse ieee.std_logic_1164.all;\nentity top is\n  port (clk : in std_logic; sw : in std_logic_vector(1 downto 0); led : out std_logic_vector(1 downto 0));\nend top;\narchitecture rtl of top is\nbegin\n  led <= sw;\nend rtl;\n' });
   await ok('add_to_project', { project: 'c5', path: 'src/top.vhd' });
   await ok('set_top', { project: 'c5', top: 'top' });
-  for (const process of ['synthesize', 'implement', 'bitstream']) await fails('run_process', { project: 'c5', process }, NO_FLOW);
+  for (const process of ['synthesize', 'implement', 'bitstream']) await fails('run_process', { project: 'c5', process }, UNTRUSTED);
 });
 
-test('set_design_properties: the DE10-Lite, its pins written as a QSF, the example\'s UCF not converted, no flow yet', async () => {
+test('set_design_properties: the DE10-Lite, its pins written as a QSF, the example\'s UCF not converted, Quartus its synthesis tool', async () => {
   await ok('new_project_from_example', { name: 'b1', example: 'blinky' });
   const r = await ok('set_design_properties', { project: 'b1', board: 'de10-lite', update_constraints: true });
-  const noFlow = 'WARNING: the 10M50DA (MAX 10, an experimental family) has no implementation flow yet: its boards and its QSF constraints only (Quartus Prime comes next).';
   assert.equal(r.text.split('\n')[0], 'WARNING: this device\'s constraints are QSF: constraints/top.qsf is the project\'s now, constraints/top.ucf was not converted.');
-  assert.match(r.text, /\nDevice set to 10M50DAF484C7G \(board de10-lite\); synthesis tool silinx; constraints\/top\.qsf written from the de10-lite's pins\.\n/);
-  assert.ok(r.data.warnings.includes(noFlow), r.text);
+  assert.match(r.text, /\nDevice set to 10M50DAF484C7G \(board de10-lite\); synthesis tool quartus; constraints\/top\.qsf written from the de10-lite's pins\.$/);
+  assert.deepEqual(r.data.warnings, ['WARNING: this device\'s constraints are QSF: constraints/top.qsf is the project\'s now, constraints/top.ucf was not converted.']);
   assert.equal(r.data.constraints, 'constraints/top.qsf');
   const qsf = fs.readFileSync(path.join(P.projectDir('b1'), 'constraints/top.qsf'), 'utf8');
   assert.match(qsf, /^# QSF for top 'top' on Terasic DE10-Lite \(10M50DAF484C7G\), generated by Silinx\n\nset_location_assignment PIN_P11 -to clk\nset_instance_assignment -name IO_STANDARD "3\.3-V LVTTL" -to clk\n/);
   assert.match(qsf, /\n# create_clock -name \{clk\} -period 20\.000 \[get_ports \{clk\}\]\n/);
-  await fails('set_design_properties', { project: 'b1', synth_tool: 'xst' }, 'the 10M50DA is the Silinx toolchain\'s only: no XST');
+  await fails('set_design_properties', { project: 'b1', synth_tool: 'xst' }, 'the 10M50DA is implemented by Intel Quartus Prime: no XST');
   // a device with no board: the EP4CE22, its constraints a QSF; a speed grade it has not refused
   await ok('new_project', { name: 'n1' });
   const d = await ok('set_design_properties', { project: 'n1', part: 'ep4ce22', package: 'f17', speed: 'c6' });
-  assert.equal(d.text, 'Device set to EP4CE22F17C6; synthesis tool silinx.\nWARNING: the EP4CE22 (Cyclone IV E, an experimental family) has no implementation flow yet: its boards and its QSF constraints only (Quartus Prime comes next).');
+  assert.equal(d.text, 'Device set to EP4CE22F17C6; synthesis tool quartus.');
   assert.equal((await P.readProject('n1')).constraints, 'constraints/top.qsf');
   const bad = await call('set_design_properties', { project: 'n1', part: 'ep4ce22', package: 'f17', speed: 'c8' });
   assert.equal(bad.isError, true);
