@@ -39,7 +39,7 @@ async function nodeTarget(name, pj, path) {
 export const CONSTRAINTS_TOOLS = [
   {
     name: 'check_constraints', title: 'Check Constraints',
-    description: 'Check a constraints file as Check Constraints does, in the device\'s format (UCF, PCF, LPF, CST, CCF, XDC or QSF): its errors and warnings with their line: the syntax, names that are no port of the top, ports with no pin, and the pins (not in the package, given to two ports, on no resource of the board, an I/O standard at another voltage than its bank\'s).',
+    description: 'Check a constraints file as Check Constraints does, in the device\'s format (UCF, PCF, LPF, CST, CCF, XDC or QSF): its errors and warnings by line: the syntax, names that are no port of the top, ports with no pin, and the pins (not in the package, given to two ports, on no resource of the board, an I/O standard at another voltage than its bank\'s).',
     inputSchema: { type: 'object', properties: { project: PROJECT, file: STR('The constraints file (default: the project\'s).') }, required: ['project'], additionalProperties: false },
     annotations: { readOnlyHint: true },
     async run({ project: name, file }) {
