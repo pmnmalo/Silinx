@@ -10,13 +10,19 @@ import { makeMessage } from '/core/message.js';
 const EMU_SEVERITY = { error: 'error', failure: 'error', fatal: 'error', warning: 'warning', note: 'info' };
 
 /** { paint, setStat } of mountEmulator (compiled(), dirty(), lcd(), lcdDirty(), lcdView(), logN(), paints(), powered(), prev(), rateWin(), running(), serialView(), vgaView(): its current values). */
-// an LED's colour at brightness v (0..1): green, or red (data-colour="red": the iCEBreaker's LED1 and LEDR_N, #2511)
-const ledColour = (v, red) => (red ? [58 + 197 * v, 27 + 20 * v, 27 + 20 * v] : [27 + 20 * v, 58 + 197 * v, 35 + 40 * v]).map(Math.round);
-/** An LED's style at brightness v (0..1): its colour and its glow (the board's own, not a theme's: the System
- *  Emulator's boards' too, #5212). */
-export function ledLook(v, red = false) {
-  const background = `rgb(${ledColour(v, red).join()})`;
-  return { background, boxShadow: v > 0.05 ? `0 0 ${Math.round(8 * v)}px ${red ? '#f44' : '#4f4'}` : 'none' };
+// an LED's colour at brightness v (0..1), its glow its colour fully lit: green, red (data-colour="red": the iCEBreaker's
+// LED1 and LEDR_N, #2511) or blue (an RGB LED's blue one, the Zynq boards', #4684)
+const LED_COLOURS = {
+  green: (v) => [27 + 20 * v, 58 + 197 * v, 35 + 40 * v],
+  red: (v) => [58 + 197 * v, 27 + 20 * v, 27 + 20 * v],
+  blue: (v) => [27 + 20 * v, 40 + 70 * v, 70 + 185 * v],
+};
+const rgbOf = (c) => `rgb(${c.map(Math.round).join()})`;
+/** An LED's style at brightness v (0..1): its colour (colour: 'green', 'red' or 'blue'; true for red, as before) and
+ *  its glow (the board's own, not a theme's: the System Emulator's boards' too, #5212). */
+export function ledLook(v, colour = 'green') {
+  const rgb = LED_COLOURS[colour === true ? 'red' : colour] || LED_COLOURS.green;
+  return { background: rgbOf(rgb(v)), boxShadow: v > 0.05 ? `0 0 ${Math.round(8 * v)}px ${rgbOf(rgb(1))}` : 'none' };
 }
 // (the status line's rewrites while running: twice a second at most, #1106)
 const STAT_MS = 500;
@@ -41,7 +47,7 @@ export function mountEmuPaint(ctx) {
     setPaints(paints() + 1);
     // no window run yet (start-up, power cycle): LEDs and digits dark
     leds.forEach((l, k) => {
-      const look = ledLook(prev()?.leds[k] ?? 0, l.dataset.colour === 'red');
+      const look = ledLook(prev()?.leds[k] ?? 0, l.dataset.colour);
       if (ledShown[k] === look.background) return;
       ledShown[k] = look.background;
       Object.assign(l.style, look);

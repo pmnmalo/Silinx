@@ -93,7 +93,7 @@ export function mountSystemEmulator(host, opts) {
       setKnobEnd() {}, inVal: new Map(), manual: [], powered: () => true, setPower() {},
     });
     return { el: main, paint(s) {
-      leds.forEach((l, k) => Object.assign(l.style, ledLook(s?.leds[k] ?? 0, l.dataset.colour === 'red')));
+      leds.forEach((l, k) => Object.assign(l.style, ledLook(s?.leds[k] ?? 0, l.dataset.colour)));
       digits.forEach((d, k) => d && d.set(s?.digits[k] ?? null));
     } };
   }

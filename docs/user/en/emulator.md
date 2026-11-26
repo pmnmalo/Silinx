@@ -14,8 +14,10 @@ interface) opens it on the project's top module.
 
 ## Boards
 
-The Basys2, Nexys2, Nexys3, Atlys, Basys 3, Nexys A7, Spartan-3E Starter Kit and iCEBreaker are drawn as they are;
-the other boards (the ULX3S, the Tang Nano 9K, the GateMate evaluation board, the Arty S7, the Zybo Z7…) get a generic panel.
+The Basys2, Nexys2, Nexys3, Atlys, Basys 3, Nexys A7, Spartan-3E Starter Kit, iCEBreaker, ULX3S, Tang Nano 9K, Zybo Z7
+and Arty Z7 (among others) are drawn as they are, their PCB's colour included; the other boards (the GateMate evaluation
+board, the Arty S7…) get a generic panel. On the Zybo Z7 and the Arty Z7 the processing system's parts (the MIO LED and
+buttons, PS-SRST) are drawn but not emulated.
 
 | A Nexys3 and its VGA monitor (the vga example) | An iCEBreaker and its Pmods (the clock example) |
 |---|---|
