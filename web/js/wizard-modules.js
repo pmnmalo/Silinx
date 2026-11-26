@@ -9,6 +9,7 @@ import { designState } from './state-design.js';
 const WIZARDS = {
   clock: { label: 'Clocking Wizard', process: 'View/Edit Clocking Wizard', open: async (path, spec) => (await import('./clock-wizard.js')).clockWizard({ path, spec }) },
   memory: { label: 'Block Memory', process: 'View/Edit Block Memory', open: async (path, spec) => (await import('./bram-wizard.js')).blockMemoryWizard({ path, spec }) },
+  xadc: { label: 'XADC Wizard', process: 'View/Edit XADC Wizard', open: async (path, spec) => (await import('./xadc-wizard.js')).xadcWizard({ path, spec }) },   // (#5385)
 };
 
 /** The spec of the wizard that made the HDL file `path` (from its text in the project), or null. */

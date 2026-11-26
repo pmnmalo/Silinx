@@ -130,3 +130,20 @@ test('the wizards\' refusals', async () => {
   await fails('block_memory', { project: 'ice' }, 'The Block Memory wizard makes block RAMs of the Spartan-3E and the Spartan-6: choose one of them as the target device (set_design_properties).');
   assert.ok(!fs.existsSync(path.join(P.projectDir('p'), 'src/k1.vhd')));
 });
+
+test('#5385 xadc_wizard: on a Basys 3, the temperature and VAUX6 read; Check Syntax; edited (its DCLK, a channel more); its refusals', async () => {
+  await ok('new_project', { name: 'b3' });
+  await ok('set_design_properties', { project: 'b3', board: 'basys3' });
+  const r = await ok('xadc_wizard', { project: 'b3', channels: [{ id: 'temp' }, { id: 'vaux6', port: 'pot' }] });
+  assert.equal(r.text, 'XADC Wizard: created src/xadc_read.vhd, the module xadc_read: temp, pot.\nADCCLK 25 MHz (DCLK / 4): a conversion every 26 cycles, 961.5 kSPS in all, 480.8 kSPS a channel.');
+  assert.deepEqual([r.data.clkdiv, r.data.init.INIT_48, r.data.init.INIT_49], [4, 0x0100, 0x0040]);
+  assert.match(await checks('b3', 'xadc_read'), /^Process "Check Syntax" of <xadc_read> completed successfully \(\d+ signals?, \d+ process(?:es)?\)\.$/);
+  const e = await ok('xadc_wizard', { project: 'b3', edit: 'src/xadc_read.vhd', dclk_mhz: 50, channels: [{ id: 'temp' }, { id: 'vaux6', port: 'pot' }, { id: 'vccint' }] });
+  assert.equal(e.text.split('\n')[0], 'XADC Wizard: wrote again src/xadc_read.vhd, the module xadc_read: temp, pot, vccint.');
+  assert.equal(e.data.clkdiv, 2);
+  await fails('xadc_wizard', { project: 'b3', name: 'x2', channels: [{ id: 'vaux16' }] }, 'channels: each id one of temp, vccint, vccaux, vpvn, vccbram, vaux0, vaux1, vaux2, vaux3, vaux4, vaux5, vaux6, vaux7, vaux8, vaux9, vaux10, vaux11, vaux12, vaux13, vaux14, vaux15');
+  await fails('xadc_wizard', { project: 'b3', name: 'x3', dclk_mhz: 300 }, 'DCLK: from 8 to 250 MHz (UG480).');
+  await fails('xadc_wizard', { project: 'b3', name: 'x4', channels: [{ id: 'vaux1', port: 'a' }, { id: 'vaux2', port: 'a_p' }] }, 'Two ports have the same name.');
+  await fails('xadc_wizard', { project: 'b3', edit: 'src/xadc_read.vhd', name: 'other' }, 'edit: the module\'s name, language and location stay its own');
+  await fails('xadc_wizard', { project: 'p' }, 'The XADC Wizard makes a module for the XADC of the 7-series devices (Artix-7, Spartan-7, Kintex-7, Zynq-7000): choose one as the target device (set_design_properties).');
+});
