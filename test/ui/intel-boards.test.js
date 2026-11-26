@@ -2,11 +2,14 @@
 // choosing the DE0-CV writes its pins as constraints/top.qsf, its synthesis tool Quartus, locked; the process tree Intel
 // Quartus Prime's on the local server (#5378: its synthesis, Place & Route, the programming file; Emulate), a run with no Quartus
 // says so; the QSF Wizard writes the board's pins with their I/O standards;
-// I/O Pin Planning reads the QSF, its I/O standards Quartus's; Check Constraints of the QSF, its warnings exact; in Portuguese.
+// I/O Pin Planning reads the QSF, its I/O standards Quartus's; Check Constraints of the QSF, its warnings exact; Configure Target
+// Device loads the .rbf with openFPGALoader through the board's USB-Blaster (#5379); in Portuguese.
 // Both interfaces.
 import { before, after } from 'node:test';
 import assert from 'node:assert/strict';
-import { setupUi, uiTest, makeProject, readWs } from './harness.js';
+import fs from 'node:fs/promises';
+import path from 'node:path';
+import { setupUi, uiTest, makeProject, readWs, writeWs } from './harness.js';
 import { TEXTS, untranslated } from './i18n-check.js';
 import { newSourceWizardOf } from './new-source-helpers.js';
 
@@ -56,13 +59,13 @@ uiTest('#5376 Design Properties: the DE boards, experimental; the DE0-CV\'s pins
   assert.match(qsf, /\nset_location_assignment PIN_AA1 -to led\[1\]\nset_instance_assignment -name IO_STANDARD "3\.3-V LVTTL" -to led\[1\]\n\n# Timing constraints \(Quartus reads them from the SDC Silinx writes\)\n# create_clock -name \{clk\} -period 20\.000 \[get_ports \{clk\}\]\n$/);
 
   // the processes: Intel Quartus Prime's (#5378): its synthesis, Place & Route (the Fitter) and its timing, the programming file;
-  // no Translate nor Map, no simulation model, no technology view, no FPGA view; not programmed from Silinx yet (#5379); Emulate
+  // no Translate nor Map, no simulation model, no technology view, no FPGA view; Configure Target Device (#5379); Emulate
   await page.setView('impl');
   await page.treeRow('#hier', 'top');
   const labels = await procLabels(page);
-  for (const present of ['User Constraints', 'Synthesize - Quartus', 'View RTL Schematic', 'Check Syntax', 'Implement Design', 'Place & Route', 'Generate Post-Place & Route Static Timing', 'Generate Programming File', 'Emulate on Board'])
+  for (const present of ['User Constraints', 'Synthesize - Quartus', 'View RTL Schematic', 'Check Syntax', 'Implement Design', 'Place & Route', 'Generate Post-Place & Route Static Timing', 'Generate Programming File', 'Configure Target Device', 'Emulate on Board'])
     assert.ok(labels.includes(present), `${present}: ${labels}`);
-  for (const absent of ['Synthesize - Yosys', 'Synthesize - XST', 'Translate', 'Map', 'View Technology Schematic', 'Generate Post-Synthesis Simulation Model', 'Configure Target Device'])
+  for (const absent of ['Synthesize - Yosys', 'Synthesize - XST', 'Translate', 'Map', 'View Technology Schematic', 'Generate Post-Synthesis Simulation Model'])
     assert.ok(!labels.some(l => l.startsWith(absent)), `${absent}: ${labels}`);
   // Synthesize with no Quartus here: said so, the Quartus project generated all the same
   await page.eval(async () => (await import('/js/implement.js')).runImpl('top', ['synth']));
@@ -95,6 +98,40 @@ uiTest('#5376 Design Properties: the DE boards, experimental; the DE0-CV\'s pins
   await page.eval(async () => (await import('/js/implement.js')).checkUcfFile());
   await page.waitConsole(/Process "Check Constraints" completed successfully/);
   assert.deepEqual((await page.consoleText()).split('\n').filter(l => /ConstraintSystem/.test(l)), []);
+});
+
+// #5379: Configure Target Device of a DE0-CV project, Quartus's .rbf there: the Program FPGA page (the board's USB-Blaster), the
+// file loaded into the FPGA's SRAM by openFPGALoader -c usb-blaster (a fake one); in Portuguese, the page translated
+uiTest('#5379 Configure Target Device on the DE0-CV: its .rbf loaded by openFPGALoader through the on-board USB-Blaster', E, async (page) => {
+  const conf = path.join(env.tmp, 'config', 'config.json'), saved = await fs.readFile(conf, 'utf8');
+  const fake = path.join(env.tmp, 'fake-openFPGALoader-intel'), called = path.join(env.tmp, 'openFPGALoader-intel.args');
+  await fs.writeFile(fake, `#!/bin/sh\necho "$@" > '${called}'\necho "Done"\n`, { mode: 0o755 });
+  await fs.writeFile(conf, JSON.stringify({ ...JSON.parse(saved), paths: { openFPGALoader: fake } }));
+  try {
+    await makeProject(env, { name: 'IntelProg', board: 'de0-cv', files: { 'src/top.v': TOP }, top: 'top' });
+    await writeWs(env, 'IntelProg', 'build/top.rbf', 'RBF!');
+    await page.openProject('IntelProg');
+    await page.setView('impl');
+    await page.treeRow('#hier', 'top');
+    await page.treeRow('#procs', 'Configure Target Device', { dbl: true, exact: true });
+    await page.waitFor(() => /Configuration file: build\/top\.rbf \(4 bytes\)/.test(document.querySelector('.doc:not([hidden]) .imp-file')?.textContent || ''), [], { what: 'the Program FPGA page' });
+    const shown = () => page.eval(() => [...document.querySelector('.open-program').closest('.page').querySelectorAll('h2, .imp-settings > *, .imp-file, .open-program, .note-box')].map((e) => e.textContent));
+    assert.deepEqual(await shown(), ['Program the Cyclone V — SRAM', 'Board:', 'Terasic DE0-CV', 'Programmer:', 'openFPGALoader, through the board\'s USB (USB-Blaster)',
+      'Configuration file (.rbf):', 'build/top.rbf', 'Configuration file: build/top.rbf (4 bytes)', 'Program FPGA',
+      'The on-board USB-Blaster (JTAG): the .rbf loaded into the FPGA\'s SRAM, until the board is powered off.\nNot yet tested on a real board.']);
+    await page.click('.doc:not([hidden]) .open-program');
+    await page.waitConsole(/FPGA programmed: the design runs until the board is powered off\./, { timeout: 60000 }).catch(async (e) => { throw new Error(`${e.message}\n${(await page.consoleText()).slice(-2500)}`); });
+    const log = await page.consoleText();
+    assert.match(log, /Configuration file \S+top\.rbf \(4 bytes, an Intel FPGA's \.rbf\)/);
+    assert.match(log, /Programming \(SRAM, volatile\) with openFPGALoader cable=usb-blaster/);
+    assert.ok(!/WARNING|ERROR/.test(log.slice(log.lastIndexOf('Programming the FPGA (SRAM)'))), log.slice(-1500));
+    assert.match(await fs.readFile(called, 'utf8'), /^-c usb-blaster \S+build\/top\.rbf\n$/);
+    await page.eval(async () => (await import('/js/i18n.js')).setLanguage('pt'));
+    try {
+      const pt = await shown();
+      assert.deepEqual([pt[0], pt[pt.length - 1].split('\n')[0]], ['Programar o Cyclone V — SRAM', 'O USB-Blaster da placa (JTAG): o .rbf carregado na SRAM da FPGA, até a placa ser desligada.']);
+    } finally { await page.eval(async () => (await import('/js/i18n.js')).setLanguage('en')); }
+  } finally { await fs.writeFile(conf, saved); }
 });
 
 uiTest('#5376 QSF Wizard on the DE1-SoC: the board\'s pins, their I/O standards from the board; I/O Pin Planning reads the QSF', E, async (page) => {

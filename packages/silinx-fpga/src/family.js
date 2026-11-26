@@ -33,9 +33,9 @@ export const FAMILY_INFO = {
   // (#5376: the Intel (Altera) FPGAs of Terasic's DE boards, experimental families: their boards and their constraints, QSF
   // (qsf.js, its clocks in an SDC); Intel Quartus Prime their back end on the local server (#5378), none in the browser
   // (next: what the browser edition's message adds); the Silinx toolchain's Cyclone V to come (#5377))
-  max10:        { name: 'MAX 10', experimental: true, constraints: 'qsf', vendor: 'intel', backEnd: 'quartus', openFlow: false, next: 'Intel Quartus Prime implements it on the local server' },
-  cyclone4e:    { name: 'Cyclone IV E', experimental: true, constraints: 'qsf', vendor: 'intel', backEnd: 'quartus', openFlow: false, next: 'Intel Quartus Prime implements it on the local server' },
-  cyclone5:     { name: 'Cyclone V', experimental: true, constraints: 'qsf', vendor: 'intel', backEnd: 'quartus', openFlow: false, next: 'Intel Quartus Prime implements it on the local server; the Silinx toolchain\'s flow to come' },
+  max10:        { name: 'MAX 10', experimental: true, constraints: 'qsf', bitstream: '.svf', vendor: 'intel', backEnd: 'quartus', openFlow: false, next: 'Intel Quartus Prime implements it on the local server' },
+  cyclone4e:    { name: 'Cyclone IV E', experimental: true, constraints: 'qsf', bitstream: '.rbf', vendor: 'intel', backEnd: 'quartus', openFlow: false, next: 'Intel Quartus Prime implements it on the local server' },
+  cyclone5:     { name: 'Cyclone V', experimental: true, constraints: 'qsf', bitstream: '.rbf', vendor: 'intel', backEnd: 'quartus', openFlow: false, next: 'Intel Quartus Prime implements it on the local server; the Silinx toolchain\'s flow to come' },
 };
 
 /** Family id of a part name such as xc3s250e, xc6slx9, xc3s700an, xc7a100t, ice40up5k. */
