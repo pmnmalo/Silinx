@@ -31,7 +31,7 @@ uiTest('#5215 Circuit editor: a Nano placed from the Parts panel\'s Boards power
   await page.eval(() => window.SilinxApp.openFile('src/nb.circ.json'));
   await page.waitFor((ed) => document.querySelector(`${ed} .circ-lib-part[data-part="arduino-nano"]`), [ED], { what: 'the Boards' });
   const group = (g) => page.eval((ed, t) => [...document.querySelectorAll(`${ed} .circ-lib-part[data-group="${t}"]`)].map((b) => [b.dataset.part, b.title]), ED, g);
-  assert.deepEqual(await group('Boards'), [['arduino-uno', 'Arduino Uno: click it, then the drawing (Esc: done)'], ['arduino-nano', 'Arduino Nano: click it, then the drawing (Esc: done)'],
+  assert.deepEqual(await group('Boards'), [['arduino-uno', 'Arduino Uno: click it, then the drawing (Esc: done)'], ['arduino-nano', 'Arduino Nano: click it, then the drawing (Esc: done)'], ['esp32-devkitc', 'ESP32 DevKitC: click it, then the drawing (Esc: done)'],
     ['fpga-basys2', 'Digilent Basys2: click it, then the drawing (Esc: done)'], ['fpga-nexys2', 'Digilent Nexys2: click it, then the drawing (Esc: done)']]);
   // the Nano: pin 1 (D1) in g1, its top row in c (0.6 inch, across the channel)
   await page.eval((ed) => document.querySelector(`${ed} .circ-lib-part[data-part="arduino-nano"]`).scrollIntoView({ block: 'center' }), ED);
@@ -73,7 +73,7 @@ uiTest('#5215 Circuit editor: a Nano placed from the Parts panel\'s Boards power
   await page.waitFor((ed) => /^Um DIP-30/.test(document.querySelector(`${ed} .circ-selection .circ-info .circ-note`)?.textContent), [ED], { what: 'Portuguese' });
   assert.deepEqual(await info(), ['Um DIP-30 que fica sobre o canal de uma placa de ensaio, os seus pinos os da placa (D0…D13, A0…A7; A6 e A7 só entradas): os seus 5V, 3V3 e GND alimentam a placa de ensaio; os outros pinos são do seu programa, num Sistema (sozinha, não conduzem nada).',
     '1 D1 pino da placa', '2 D0 pino da placa', '3 RST não ligado', '4 GND alimentação GND']);
-  assert.equal(await page.eval((ed) => [...document.querySelectorAll(`${ed} .circ-lib-title`)].some((t) => t.textContent === 'Placas (4)'), ED), true);
+  assert.equal(await page.eval((ed) => [...document.querySelectorAll(`${ed} .circ-lib-title`)].some((t) => t.textContent === 'Placas (5)'), ED), true);
   await page.eval(async () => { (await import('/js/i18n.js')).setLanguage('en'); });
   assert.deepEqual(page.console.filter((c) => c.type === 'error').map((c) => c.text), []);
 }, { timeout: 120000 });

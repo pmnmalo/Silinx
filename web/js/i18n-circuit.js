@@ -96,6 +96,8 @@ export const CIRCUIT_PT = {
     'Os pinos dos seus conectores, os da placa (D0…D13, A0…A5; SDA e SCL são A4 e A5): os seus 5V, 3V3 e GND alimentam a placa de ensaio; os outros pinos são do seu programa, num Sistema (sozinha, não conduzem nada).',
   "A DIP-30 that straddles a breadboard's channel, its pins the board's (D0…D13, A0…A7; A6 and A7 inputs only): its 5V, 3V3 and GND power the breadboard; its other pins are its program's, in a System (alone, they drive nothing).":
     'Um DIP-30 que fica sobre o canal de uma placa de ensaio, os seus pinos os da placa (D0…D13, A0…A7; A6 e A7 só entradas): os seus 5V, 3V3 e GND alimentam a placa de ensaio; os outros pinos são do seu programa, num Sistema (sozinha, não conduzem nada).',
+  "Its two headers' pins, 1 inch apart (one on each breadboard), the board's GPIOs (GPIO34…GPIO39 inputs only; the flash's SD0…SD3, CMD and CLK, and EN, not simulated): its 5V, 3V3 and GND power the breadboard, its I/O at 3.3 V; its other pins are its MicroPython program's, in a System (alone, they drive nothing).":
+    'Os pinos dos seus dois conectores, a 1 polegada um do outro (um em cada placa de ensaio), os GPIO da placa (GPIO34…GPIO39 só entradas; os SD0…SD3, CMD e CLK da flash, e o EN, não simulados): os seus 5V, 3V3 e GND alimentam a placa de ensaio, as suas E/S a 3,3 V; os seus outros pinos são os do seu programa MicroPython, num Sistema (sozinha, não comandam nada).',
   "Its Pmod connectors' pins (JA1…, each its FPGA's package pin): its 3V3 and GND power the breadboard; its other pins are its design's, in a System (alone, they drive nothing).":
     'Os pinos dos seus conectores Pmod (JA1…, cada um com o pino do encapsulamento da FPGA): os seus 3V3 e GND alimentam a placa de ensaio; os outros pinos são do seu projeto, num Sistema (sozinha, não conduzem nada).',
   'Plug the parts into its holes: the five holes a–e of a column are joined, and f–j; each rail along its edges is joined along the board, for +5 V and GND.':
@@ -187,7 +189,7 @@ export const CIRCUIT_PT = {
   'a wire joins two different places': 'um fio liga dois sítios diferentes',   // (#5164)
 };
 // the parts' titles (core/circuit-parts.js, core/circuit-ics.js)
-const TITLE = { 'Arduino Uno': 'Arduino Uno', 'Arduino Nano': 'Arduino Nano', 'Digilent Basys2': 'Digilent Basys2', 'Digilent Nexys2': 'Digilent Nexys2',
+const TITLE = { 'Arduino Uno': 'Arduino Uno', 'Arduino Nano': 'Arduino Nano', 'ESP32 DevKitC': 'ESP32 DevKitC', 'Digilent Basys2': 'Digilent Basys2', 'Digilent Nexys2': 'Digilent Nexys2',
   'Half breadboard': 'Meia placa de ensaio', 'Full breadboard (its rails split in the middle)': 'Placa de ensaio inteira (as linhas de alimentação cortadas ao meio)',
   'Power supply (+5 V, GND)': 'Fonte de alimentação (+5 V, GND)', 'Logic switch': 'Interruptor lógico',
   'Push button (momentary, normally open)': 'Botão de pressão (momentâneo, normalmente aberto)', 'Slide switch (SPDT)': 'Comutador deslizante (SPDT)',

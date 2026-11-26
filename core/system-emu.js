@@ -58,6 +58,8 @@ export function emulationBoards(sys, inputs) {
       // (an Arduino's; an Explorer 16/32's, its LEDs, buttons, potentiometer and LCD: core/system-emu-explorer.js, #5484)
       if (b?.arch === 'avr') out.push({ id: n.id, kind: 'mcu', board: b, outputs: b.pins.filter(p => !/^A[67]$/.test(p)), led: 'D13' });
       else if (b?.arch === 'pic24') out.push(explorerBoard(n, b, driven));
+      // (an ESP32 DevKitC's pins, #5495: no LED of its program's)
+      else if (b?.arch === 'esp32') out.push({ id: n.id, kind: 'mcu', board: b, outputs: [...b.pins], led: null });
       continue;
     }
     if (n.kind !== 'fpga' || !n.board || !inputs.netlists[n.id]) continue;
@@ -128,7 +130,7 @@ export function boardStates(sim, boards, t0, t1, prev = {}) {
       out[b.id] = explorerState(sim, b, pin => (span > 0 ? onTime(trace(pin), t0, t1) / span : trace(pin).at(-1) ?? 0));
     } else {
       const span = t1 - t0;
-      out[b.id] = { pins: Object.fromEntries(b.outputs.map(p => [p, trace(p).at(-1)])), led: span > 0 ? onTime(trace(b.led), t0, t1) / span : trace(b.led).at(-1) ?? 0 };
+      out[b.id] = { pins: Object.fromEntries(b.outputs.map(p => [p, trace(p).at(-1)])), ...(b.led ? { led: span > 0 ? onTime(trace(b.led), t0, t1) / span : trace(b.led).at(-1) ?? 0 } : {}) };
     }
     for (const p of b.outputs) { const tr = trace(p), v = tr.at(-1); tr.length = 0; tr.push(t1, v); }
   }

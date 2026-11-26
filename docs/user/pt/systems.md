@@ -61,7 +61,8 @@ ligados por UART e GPIO.
   3,3 V fica a laranja, o seu aviso na dica, tal como o lugar de um pino da FPGA na placa (`UART RX on a PmodUSBUART
   in JA…`). A vista é só de leitura: as ligações editam-se na vista do Sistema; um clique num fio seleciona a sua
   ligação. Fios outra vez volta atrás.
-- **As placas num circuito**: o painel das peças do editor de circuitos tem **Placas**, o Arduino Uno e o Nano, a
+- **As placas num circuito**: o painel das peças do editor de circuitos tem **Placas**, o Arduino Uno e o Nano, a ESP32
+  DevKitC (os seus conectores a 1 polegada um do outro: um em cada placa de ensaio), a
   Basys2 e a Nexys2, com os seus pinos reais (D0…D13, A0…; os pinos Pmod de uma placa FPGA, JA1…, cada um com o seu
   pino do encapsulamento na dica), cada uma desenhada como os emuladores a desenham, à escala do circuito, os seus pinos
   onde estão os dos seus conectores e Pmods. Um Nano fica sobre o canal de uma placa de ensaio. Os 5V, 3V3 e GND de uma placa
@@ -120,11 +121,12 @@ ondas em `build/<nome>.vcd`).
 
 **Emular**, na barra do editor de Sistema (ou **Emular o Sistema** no menu da linha do Sistema no painel Design), abre o
 emulador do Sistema num separador próprio:
-- a placa de cada nó FPGA desenhada como o Board Emulator a desenha, e uma Arduino como o Silinx a desenha, lado a lado;
+- a placa de cada nó FPGA desenhada como o Board Emulator a desenha, e uma Arduino ou uma ESP32 DevKitC como o Silinx a desenha, lado a lado;
 - **Executar** corre-as todas juntas em tempo real, e **Pausa** para-as;
 - um clique num interruptor ou num botão de uma placa FPGA: o seu módulo vê-o como na placa real;
 - os LEDs e os displays de uma placa FPGA acendem como o seu módulo os comanda;
-- os pinos de uma Arduino mostram o seu nível (aceso alto, escuro baixo, vazio flutuante) e o seu LED L acende com o D13;
+- os pinos de uma Arduino mostram o seu nível (aceso alto, escuro baixo, vazio flutuante) e o seu LED L acende com o D13; os
+  GPIO de uma ESP32 também, ao longo dos seus dois conectores, cada um com o nome da sua serigrafia (VP, VN, TX, RX, 23…);
 - cada terminal série está no painel **Terminais**: escreva uma linha, Enter envia-a.
 - a **Placa Real…** de um terminal liga-o à porta série USB de uma placa real pelo Web Serial (Chrome e Edge; não o
   Safari, nem o iPad): a de um Arduino, escolhida entre os identificadores USB da sua placa, ou o adaptador USB-UART de

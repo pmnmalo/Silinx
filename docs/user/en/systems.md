@@ -57,7 +57,8 @@ UART and GPIO links. Its design is in [SYSTEMS.md](../../SYSTEMS.md); its roadma
   Arduino's `D1`), the levels and an arrow towards the input. A wire with a 5 V output on a 3.3 V input is orange, its
   warning its tip, as are an FPGA pin's place on its board (`UART RX on a PmodUSBUART in JA…`). The view is read
   only: the links are edited in the System view; a click on a wire selects its link. Wiring again goes back.
-- **The boards in a circuit**: the Circuit editor's Parts panel has **Boards**, the Arduino Uno and Nano, the Basys2 and
+- **The boards in a circuit**: the Circuit editor's Parts panel has **Boards**, the Arduino Uno and Nano, the ESP32 DevKitC
+  (its two headers 1 inch apart: one on each breadboard), the Basys2 and
   the Nexys2, with their real pins (D0…D13, A0…; an FPGA board's Pmod pins JA1…, each with its package pin in its tip),
   each drawn as the emulators draw it, at the circuit's scale, its pins where its headers' and Pmods' are. A Nano sits across a breadboard's channel. A board's 5V, 3V3 and GND power the breadboard; its other pins are its
   program's or its design's, driven once the circuit is a node of the System (alone, in Try it, they drive nothing).
@@ -113,11 +114,12 @@ MCP server's `edit_system`, `check_system` and `simulate` (a System project's Sy
 
 **Emulate** in the System editor's toolbar (or **Emulate System** in the System row's menu in the Design pane) opens
 the System Emulator in a tab of its own:
-- each FPGA node's board is drawn as the Board Emulator draws it, and an Arduino as Silinx draws it, side by side;
+- each FPGA node's board is drawn as the Board Emulator draws it, and an Arduino or an ESP32 DevKitC as Silinx draws it, side by side;
 - **Run** runs them all together in real time, and **Pause** stops them;
 - click a switch or a button on an FPGA board: its module sees it as on the real board;
 - an FPGA board's LEDs and displays light as its module drives them;
-- an Arduino's pins show their levels (lit high, dark low, hollow floating) and its LED L lights with D13;
+- an Arduino's pins show their levels (lit high, dark low, hollow floating) and its LED L lights with D13; an ESP32's
+  GPIOs too, along its two headers, each with its silkscreen's name (VP, VN, TX, RX, 23…);
 - each serial terminal is in the **Terminals** panel: type a line, Enter sends it.
 - a terminal's **Real Board…** joins it to a real board's USB serial port through Web Serial (Chrome and Edge; not
   Safari, nor the iPad): an Arduino's, chosen among its board's USB ids, or an FPGA board's USB-UART adapter. The port

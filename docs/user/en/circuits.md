@@ -97,7 +97,7 @@ generated HDL and the MCP server.
 |---|---|---|
 | Breadboards | half (30 columns, 400 holes), full (63 columns, 830 holes); two power rails on each side | 1 (half), 2 (full) |
 | Power | supply (+5 V and GND terminals: logic 1 and 0) | 1 |
-| Boards (#5215, Systems) | Arduino Uno, Arduino Nano (a DIP-30 across the channel), Digilent Basys2, Digilent Nexys2 (their Pmod connectors, each pin with its package pin): their real pins, their 5V, 3V3 and GND powering the breadboard (logic 1 and 0); their other pins a System's ([systems.md](systems.md)) | — |
+| Boards (#5215, Systems) | Arduino Uno, Arduino Nano (a DIP-30 across the channel), ESP32 DevKitC (its headers 1 inch apart), Digilent Basys2, Digilent Nexys2 (their Pmod connectors, each pin with its package pin): their real pins, their 5V, 3V3 and GND powering the breadboard (logic 1 and 0); their other pins a System's ([systems.md](systems.md)) | — |
 | Inputs | logic switch (a slide switch giving 0 or 1, as a trainer kit's), push button (SPST, momentary) | 1 |
 | | SPDT slide switch (break before make), DIP switch (4 / 8), pull-up and pull-down (weak 1 / weak 0), clock source (its frequency, 0.1 to 50 Hz, ticking in real time) | 2 |
 | Outputs | LED (anode, cathode; its colour) | 1 |

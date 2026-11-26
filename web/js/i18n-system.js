@@ -5,7 +5,7 @@ import { t } from './i18n.js';   // (an error's own text, read only inside its p
 
 export const SYSTEM_PT = {
   // toolbar
-  'Arduino Uno': 'Arduino Uno', 'Arduino Nano': 'Arduino Nano', 'Terminal': 'Terminal', 'Link': 'Ligação',
+  'Arduino Uno': 'Arduino Uno', 'Arduino Nano': 'Arduino Nano', 'ESP32-WROOM-32, MicroPython (behavioural)': 'ESP32-WROOM-32, MicroPython (comportamental)', 'Terminal': 'Terminal', 'Link': 'Ligação',
   'Click the canvas to add an FPGA node: a module of the project on a board': 'Clique na tela para acrescentar um nó FPGA: um módulo do projeto numa placa',
   'Click the canvas to add an Arduino Uno': 'Clique na tela para acrescentar um Arduino Uno', 'Click the canvas to add an Arduino Nano': 'Clique na tela para acrescentar um Arduino Nano',
   'ESP32': 'ESP32', 'Click the canvas to add an ESP32 DevKitC: MicroPython, behavioural, its program a .py': 'Clique na tela para acrescentar uma ESP32 DevKitC: MicroPython, comportamental, o seu programa um .py',   // (#5495)

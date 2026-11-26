@@ -1,5 +1,5 @@
 // The boards as a circuit's parts (#5215, the Systems' phase 2, docs/SYSTEMS.md): the Arduino Uno and Nano and the FPGA
-// boards with their real pins, drawn where their headers are on the 0.1 inch grid, so that a circuit can show what lies
+// boards (and the ESP32 DevKitC, #5495) with their real pins, drawn where their headers are on the 0.1 inch grid, so that a circuit can show what lies
 // between the boards of a System (a level shifter, LEDs, buttons). Their pins are the System's: a microcontroller's its
 // board's (core/system-doc.js MCU_BOARDS: D0…D13, A0…), an FPGA board's its Pmod connectors' (core/boards.js: JA1…,
 // each with its package pin). A board powers the breadboard: its 5V (3V3) and GND pins drive a 1 and a 0, as the supply's
@@ -21,6 +21,7 @@ const power = (pins) => {
 export const BOARD_ART = {
   'arduino-uno': { w: 486, h: 378, pitch: 18, pin1: [151.2, 18] },     // (2.7 x 2.1 inch; SCL 0.84 inch from its left edge)
   'arduino-nano': { w: 415.2, h: 175.2, pitch: 24, pin1: [39.6, 159.6] },   // (1.73 x 0.73 inch)
+  'esp32-devkitc': { w: 514, h: 264, pitch: 24, pin1: [41, 252] },       // (54.4 x 27.9 mm; its headers 1 inch apart, #5495)
   basys2: { w: 840, h: 556, pitch: 19.4, pin1: [113, 48] },
   nexys2: { w: 860, h: 720, pitch: 15.5, pin1: [299.5, 49.5] },
 };
@@ -53,6 +54,18 @@ function nano() {
     'D13', '3V3', 'AREF', 'A0', 'A1', 'A2', 'A3', 'A4', 'A5', 'A6', 'A7', '5V', 'RST', 'GND', 'VIN'];
   const pins = names.map((s, i) => pin(i + 1, s, ...mcuPin(b, s), i < 15 ? i : 29 - i, i < 15 ? 0 : -6, mcuMore(b, s, V)));
   return { type: 'arduino-nano', title: 'Arduino Nano', kind: 'board', board: b.id, vio: b.vio, prefix: 'A', dip: 30, size: artSize('arduino-nano'),
+    pins, bridges: power(pins) };
+}
+// an ESP32 DevKitC (V4, #5495), seen from above, its module's antenna on the left and its micro-USB socket on the right:
+// J2 (3V3, EN, GPIO36…, 5V) along its bottom edge, J3 (GND, GPIO23…, CLK) along its top edge, 1 inch above, each from its
+// antenna's end (too wide for one breadboard: one header on each); the flash's pins (SD0…SD3, CMD, CLK) and EN not
+// simulated
+const ESP32_J2 = ['3V3', 'EN', 'GPIO36', 'GPIO39', 'GPIO34', 'GPIO35', 'GPIO32', 'GPIO33', 'GPIO25', 'GPIO26', 'GPIO27', 'GPIO14', 'GPIO12', 'GND', 'GPIO13', 'SD2', 'SD3', 'CMD', '5V'];
+const ESP32_J3 = ['GND', 'GPIO23', 'GPIO22', 'GPIO1', 'GPIO3', 'GPIO21', 'GND', 'GPIO19', 'GPIO18', 'GPIO5', 'GPIO17', 'GPIO16', 'GPIO4', 'GPIO0', 'GPIO2', 'GPIO15', 'SD1', 'SD0', 'CLK'];
+function esp32() {
+  const b = mcuBoard('esp32-devkitc'), V = { volts: b.vio };
+  const pins = [...ESP32_J2.map((s, i) => [s, i, 0]), ...ESP32_J3.map((s, i) => [s, i, -10])].map(([s, dx, dy], i) => pin(i + 1, s, ...mcuPin(b, s), dx, dy, mcuMore(b, s, V)));
+  return { type: 'esp32-devkitc', title: 'ESP32 DevKitC', kind: 'board', board: b.id, vio: b.vio, prefix: 'E', size: artSize('esp32-devkitc'),
     pins, bridges: power(pins) };
 }
 // a microcontroller's pin: its direction (a board's pin; a supply's terminal; one not simulated) and what it is
@@ -94,5 +107,5 @@ function fpgaBoard(f) {
     pins, bridges: power(pins) };
 }
 
-/** The boards as parts: the Arduinos, then the FPGA boards. */
-export const BOARD_PARTS = [uno(), nano(), ...FPGA_BOARDS.map(fpgaBoard)];
+/** The boards as parts: the Arduinos, the ESP32, then the FPGA boards. */
+export const BOARD_PARTS = [uno(), nano(), esp32(), ...FPGA_BOARDS.map(fpgaBoard)];
