@@ -5,7 +5,7 @@
 // quiet (every write of the server's: the page's, the MCP's, git's), and one before each risky command (versionBefore).
 import fsp from 'node:fs/promises';
 import path from 'node:path';
-import { versionStore, restoreVersion, autoVersions, isHash } from '../core/versions.js';
+import { versionStore, restoreVersion, autoVersions, versionChanges, isHash } from '../core/versions.js';
 import { mergeStorage } from './merge-projects.js';
 import { onProjectChange } from './projects.js';
 
@@ -53,6 +53,13 @@ export async function versionBefore(P, name, reason, { author = '' } = {}) {
 /** A version restored (the whole project, or `path`), as core/versions.js restoreVersion. */
 export function restoreServerVersion(P, name, id, opts = {}) {
   return restoreVersion(mergeStorage(P), serverVersions(P), name, id, opts);
+}
+
+/** What differs between a version and the project now (#5741, core/versions.js versionChanges): { version (its row),
+ *  files: [{ path, state }], json }. */
+export async function diffServerVersion(P, name, id) {
+  const target = await serverVersions(P).read(name, id);
+  return { version: target.version, ...versionChanges(target, await mergeStorage(P).read(name)) };
 }
 
 /** The automatic versions of a process's projects: a save once a project has been quiet `quiet` ms (at most one every

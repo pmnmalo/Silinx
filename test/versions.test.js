@@ -8,7 +8,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
 import crypto from 'node:crypto';
-import { versionStore, pruneVersions, restorePlan, restoreVersion, autoVersions, versionLine, VERSION_LIMITS, REASONS } from '../core/versions.js';
+import { versionStore, pruneVersions, restorePlan, restoreVersion, autoVersions, versionLine, versionChanges, VERSION_LIMITS, REASONS } from '../core/versions.js';
 
 const ROOT = path.join(import.meta.dirname, '..', 'examples', 'traffic');
 const walk = (rel = '') => fs.readdirSync(path.join(ROOT, rel), { withFileTypes: true }).flatMap(e => (e.name.startsWith('.') ? [] : e.isDirectory() ? walk(path.posix.join(rel, e.name)) : [path.posix.join(rel, e.name)]));
@@ -182,4 +182,17 @@ test('automatic versions: one save once the project is quiet, each change puttin
   changed('P'); changed.cancel();
   await new Promise(r => setTimeout(r, 60));
   assert.deepEqual(saved.length, 2);
+});
+
+test('#5741 what differs between a version and now: the files changed, added and removed since, silinx.json (its own fields aside)', () => {
+  const v = traffic();
+  assert.deepEqual(versionChanges(v, structuredClone(v)), { files: [], json: false });
+  const now = structuredClone(v);
+  now.files[T] = '-- changed\n';
+  now.files['src/a_new.vhd'] = '-- new\n';
+  delete now.files['src/sevenseg.v'];
+  assert.deepEqual(versionChanges(v, now), { files: [{ path: 'src/a_new.vhd', state: 'added' }, { path: 'src/sevenseg.v', state: 'removed' }, { path: T, state: 'changed' }], json: false });
+  // (the project's own id, name and trust are no change; its top is)
+  assert.equal(versionChanges(v, { ...v, json: { ...v.json, id: 'x', name: 'Other', trusted: false } }).json, false);
+  assert.equal(versionChanges(v, { ...v, json: { ...v.json, top: 'timer' } }).json, true);
 });

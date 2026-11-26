@@ -3,6 +3,8 @@
 import { t } from './i18n.js';
 export const VERSIONS_PT = {
   'Save Version…': 'Guardar Versão…', 'Save Version': 'Guardar Versão', 'Versions…': 'Versões…', 'Restore Project': 'Restaurar Projeto',
+  // (a version's files against now, #5741)
+  'Restore': 'Restaurar', 'changed since': 'alterado desde então', 'added since': 'acrescentado desde então', 'removed since': 'removido desde então',
   'Version name (optional):': 'Nome da versão (opcional):', 'Restore Version': 'Restaurar Versão', 'Versions': 'Versões', 'Time': 'Hora', 'Made': 'Feita',
   'No versions of this project yet: Save Version… keeps one, and one is kept as you work.': 'Ainda não há versões deste projeto: Guardar Versão… guarda uma, e é guardada uma à medida que trabalha.',
   // (what made a version: core/versions.js REASONS)
@@ -14,6 +16,11 @@ export const VERSIONS_PT = {
 export const VERSIONS_PT_PATTERNS = [
   [/^Versions of (.+)$/, 'Versões de $1'],
   [/^restored version (\d+)$/, 'versão $1 restaurada'],
+  [/^Version (\d+) against now:$/, 'A versão $1 comparada com agora:'],
+  [/^The project is as version (\d+) has it\.$/, 'O projeto está como a versão $1 o tem.'],
+  [/^Read-only, as it was in version (\d+)$/, 'Só de leitura, como estava na versão $1'],
+  [/^as it was in version (\d+)$/, 'como estava na versão $1'],
+  [/^(.+), as it was in version (\d+)$/, '$1, como estava na versão $2'],
   [/^Version (\d+) of (.+) saved(?:: (.+))?\.$/, (m, n, p, l) => `Versão ${n} de ${p} guardada${l ? `: ${l}` : ''}.`],
   [/^Version (\d+) of (.+) has it already: no version saved\.$/, 'A versão $1 de $2 já o tem: nenhuma versão guardada.'],
   [/^Restored (.+) as version (\d+) had it: (\d+) file\(s\) written, (\d+) removed; the project before it kept as version (\d+) \(restore it to undo\)\.$/,

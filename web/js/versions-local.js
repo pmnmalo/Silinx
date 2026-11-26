@@ -3,8 +3,8 @@
 // (the browser's own storage, or a workspace folder: its label), its index and its texts each a record; renamed and
 // forgotten with the project. Restored on the merge's storage (web/js/merge-local.js: the store's files, the drawings'
 // HDL made again). The automatic versions: a save once the project is quiet (changed(name) after each write).
-//   localVersions({ store, ops, snapshots }) -> { list, save, read, restore, changed, rename, forget }
-import { versionStore, restoreVersion, autoVersions } from '../../core/versions.js';
+//   localVersions({ store, ops, snapshots }) -> { list, save, read, diff, restore, changed, rename, forget }
+import { versionStore, restoreVersion, autoVersions, versionChanges } from '../../core/versions.js';
 import { localMergeStorage } from './merge-local.js';
 import { DEV_SITE } from './prefs.js';
 
@@ -57,6 +57,7 @@ export function localVersions({ store, ops, snapshots }) {
     list: name => versions.list(name),
     save: async (name, opts = {}) => versions.save(name, await storage.read(name), opts),
     read: (name, id) => versions.read(name, id),
+    async diff(name, id) { const target = await versions.read(name, id); return { version: target.version, ...versionChanges(target, await storage.read(name)) }; },
     restore: (name, id, opts = {}) => restoreVersion(storage, versions, name, id, opts),
     changed,
     rename: (from, to) => backend.rename(from, to),

@@ -17,6 +17,7 @@
 //                                                                     origin and trust kept)
 //   await restoreVersion(storage, versions, name, id, { path, author }) -> { written, removed, json, version, before }
 //   autoVersions(save, { quiet }) -> changed(name)                    a save once the project is quiet
+//   versionChanges(target, now) -> { files: [{ path, state }], json }    what differs between a version and now (#5741)
 
 export const VERSION_LIMITS = Object.freeze({ max: 200, bytes: 64 << 20, all: 3600e3, hourly: 86400e3, daily: 30 * 86400e3, saveGap: 10 * 60e3 });
 /** What made a version, as the History says it. */
@@ -192,6 +193,19 @@ export function autoVersions(save, { quiet = 20e3 } = {}) {
   };
   changed.cancel = () => { for (const t of timers.values()) clearTimeout(t); timers.clear(); };
   return changed;
+}
+
+/** What differs between a version (`target`: { json, files }) and the project now (`now`): { files: [{ path, state }]
+ *  (by path: 'changed', 'removed' since the version, 'added' since), json (silinx.json differs, its own fields aside) }. */
+export function versionChanges(target, now) {
+  const files = [];
+  for (const p of new Set([...Object.keys(target.files), ...Object.keys(now.files)])) {
+    const was = Object.hasOwn(target.files, p), is = Object.hasOwn(now.files, p);
+    if (was && is && target.files[p] !== now.files[p]) files.push({ path: p, state: 'changed' });
+    else if (was && !is) files.push({ path: p, state: 'removed' });
+    else if (!was && is) files.push({ path: p, state: 'added' });
+  }
+  return { files: files.sort((a, b) => (a.path < b.path ? -1 : a.path > b.path ? 1 : 0)), json: !!restorePlan(target, now).json };
 }
 
 /** A version's line, as the History and the MCP say it: "12  2026-11-26 17:40  Ana  saved by hand: before the lab". */

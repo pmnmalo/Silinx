@@ -1,11 +1,14 @@
 // The MCP's tools of a project's versions (#5740, phase 2 of #5743: core/versions.js on server/versions.js, as the
 // version routes and the Project menu's Save Version… / Versions… do): save_version (one by hand, with a name),
-// list_versions (the versions kept, newest first: what made each, its author, what it changed) and restore_version (the
+// list_versions (the versions kept, newest first: what made each, its author, what it changed), version_diff (what
+// differs between a version and the project now: its files; one file's change, #5741) and restore_version (the
 // whole project, or one file, as a version had it: the project kept as a version first, so that a restore can be
 // undone by restoring that one). The versions are kept in the project's hidden folder, never shared nor exported.
 import * as P from './projects.js';
 import { toolError, readProject, STR, PROJECT } from './mcp-util.js';
-import { serverVersions, saveVersion, restoreServerVersion, versionBefore } from './versions.js';
+import { serverVersions, saveVersion, restoreServerVersion, versionBefore, diffServerVersion } from './versions.js';
+import { mergeStorage } from './merge-projects.js';
+import { fileDiff } from './mcp-file-diff.js';
 import { versionLine } from '../core/versions.js';
 
 const VERSION = { type: 'string', minLength: 1, maxLength: 20, description: 'The version\'s number (list_versions).' };
@@ -51,6 +54,29 @@ export const VERSION_TOOLS = [
       const list = await serverVersions(P).list(name);
       const text = list.length ? [`${list.length} version(s) of '${name}', newest first:`, ...list.map(v => `  ${versionLine(v)}`)].join('\n') : `No versions of '${name}' yet (save_version keeps one).`;
       return { text, data: { project: name, versions: list }, untrusted: list.length ? UNTRUSTED : undefined };
+    },
+  },
+  {
+    name: 'version_diff', title: 'A version against now',
+    description: 'What differs between a version (list_versions) and the project now, as the Versions… dialog shows it: the files changed since, added since and removed since (and silinx.json); with path, that file\'s change from the version to now: a drawing by its objects (added, removed, moved, changed: each by its id), any other file as a unified diff. Changes nothing.',
+    inputSchema: { type: 'object', properties: { project: PROJECT, version: VERSION, path: STR('One file (its path): its change from the version to now.') }, required: ['project', 'version'], additionalProperties: false },
+    annotations: { readOnlyHint: true },
+    async run({ project: name, version: id, path = null }) {
+      await readProject(name);
+      if (path) {
+        let target;
+        try { target = await serverVersions(P).read(name, id); } catch (e) { throw toolError(e.message); }
+        const now = (await mergeStorage(P).read(name)).files;
+        const a = target.files[path] ?? null, b = now[path] ?? null;
+        if (a === null && b === null) throw toolError(`'${path}' is in neither version ${id} nor the project`);
+        return fileDiff(path, a, b, { fromL: `version ${id}`, toL: 'now', data: { project: name, version: id, path } });
+      }
+      let r;
+      try { r = await diffServerVersion(P, name, id); } catch (e) { throw toolError(e.message); }
+      const WORD = { changed: 'changed since', added: 'added since', removed: 'removed since' };
+      const lines = [...r.files.map(f => `  ${f.path}: ${WORD[f.state]}`), ...(r.json ? ['  silinx.json: changed since'] : [])];
+      const text = lines.length ? [`'${name}' against version ${id}: ${lines.length} file(s) differ.`, ...lines].join('\n') : `'${name}' is as version ${id} has it.`;
+      return { text, data: { project: name, ...r }, untrusted: r.files.length ? UNTRUSTED : undefined };
     },
   },
   {
