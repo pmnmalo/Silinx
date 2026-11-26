@@ -3,7 +3,7 @@
 
 const TEXT = /^(text|number|search|url|email|)$/i;
 /** Whether el is a field whose text is typed: a text area or a text-like input. */
-export const isTextField = el => el.tagName === 'TEXTAREA' || (el.tagName === 'INPUT' && TEXT.test(el.getAttribute('type') || ''));
+const isTextField = el => el.tagName === 'TEXTAREA' || (el.tagName === 'INPUT' && TEXT.test(el.getAttribute('type') || ''));
 
 /** The fields locked: the text ones read only, the others disabled (or, `hideButtons`, the buttons hidden). */
 export function lockFields(els, { hideButtons = false } = {}) {
