@@ -15,6 +15,7 @@ import { applyChanges } from './project-watch.js';
 import { prefKey } from './prefs.js';
 import { REASONS } from '/core/versions.js';
 import { riskyReason } from './versions-risky.js';
+import { following } from './collab-state.js';
 
 // (the name the user gave a shared project, as its author; none: no author)
 const author = () => { try { return localStorage.getItem(prefKey('silinx.collab.name')) || ''; } catch { return ''; } };
@@ -24,10 +25,11 @@ const when = v => new Date(v.at).toLocaleString([], { year: 'numeric', month: '2
 
 
 /** A version kept before a command of the page that replaces or removes files (`label`: its menu's): nothing for the
- *  others; a warning when it could not be kept (the command runs all the same). */
+ *  others, nor on a follower's page (#5761); a warning when it could not be kept (the command runs all the same). */
 export async function versionBefore(label) {
   const reason = riskyReason(label);
-  if (!reason || !S.project) return;
+  // (a project followed, an editor's command: the owner keeps the project's versions, never this page, #5761)
+  if (!reason || !S.project || following()) return;
   try { await api.saveVersion(S.project.name, { reason, author: author() }); } catch (e) { logWarning(`${String(label).replace(/…$/, '')}: no version of the project kept before it: ${e.message}.`); }
 }
 

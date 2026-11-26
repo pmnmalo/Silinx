@@ -113,24 +113,27 @@ test('the routes: listed, one by hand (the page\'s reasons only), read, restored
 
 test('automatic versions: one once the project is quiet, after the server\'s writes; none again before saveGap', async () => {
   await P.createProject({ name: 'au', template: 'traffic' });
-  const stop = startAutoVersions(P, { quiet: 60 });
+  // (#5768: no timing a loaded machine breaks: the writes well inside the quiet time, the version awaited, not slept for)
+  const QUIET = 400;
+  const until = async (fn, what, ms = 10000) => { for (let t = Date.now(); Date.now() - t < ms; await sleep(25)) if (await fn()) return; assert.fail(`timed out: ${what}`); };
+  const stop = startAutoVersions(P, { quiet: QUIET });
   try {
     await P.writeFile('au', T, '-- 1\n');
-    await sleep(30);
     await P.writeFile('au', T, '-- 2\n');
     // (build/'s files are not the project's changes)
     await P.writeFile('au', 'build/x.txt', 'x');
-    await sleep(150);
+    await until(async () => (await serverVersions(P).list('au')).length > 0, 'the automatic version');
+    await sleep(2 * QUIET);
     const l = await serverVersions(P).list('au');
     assert.deepEqual(l.map(v => [v.id, v.reason]), [['1', 'save']]);
     assert.equal((await serverVersions(P).read('au', '1')).files[T], '-- 2\n');
     await P.writeFile('au', T, '-- 3\n');
-    await sleep(150);
+    await sleep(3 * QUIET);
     assert.equal((await serverVersions(P).list('au')).length, 1);
   } finally { stop(); }
   // stopped: no more
   await P.writeFile('au', T, '-- 4\n');
-  await sleep(120);
+  await sleep(3 * QUIET);
   assert.equal((await serverVersions(P).list('au')).length, 1);
 });
 
