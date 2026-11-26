@@ -71,7 +71,7 @@ const saved = async (page, name) => {
 
 uiTest('#2694 #2715 I/O Pin Planning on the Basys2: the Ports panel; ports onto the switches, LEDs, digits, the clock\'s and VGA\'s rows; a bus\'s bits one by one; bits taken off; folded; the table and the UCF', E, async (page) => {
   await openBoard(page, 'PinBoardB2', 'basys2');
-  assert.deepEqual(await page.eval((p) => [...document.querySelectorAll(`${p} .pp-bar .pp-view`)].map((b) => `${b.textContent}${b.classList.contains('on') ? ' (on)' : ''}`), P), ['Table', 'Board (on)']);
+  assert.deepEqual(await page.eval((p) => [...document.querySelectorAll(`${p} .pp-bar .pp-view`)].map((b) => `${b.textContent}${b.classList.contains('on') ? ' (on)' : ''}`), P), ['Table', 'Board (on)', 'Text']);
   // the Ports panel: the editors' side panel, on the left of the board; the board alone in the middle (nothing under it)
   const look = () => page.eval((p) => {
     const pp = document.querySelector(p), side = pp.querySelector('.pp-ports-side'), board = pp.querySelector('.pp-board');
@@ -212,7 +212,7 @@ uiTest('#2694 #2715 I/O Pin Planning on the Nexys2: a bus wider than its buttons
   await page.eval(() => import('/js/i18n.js').then((m) => m.setLanguage('pt')));
   await page.waitFor(() => document.documentElement.lang === 'pt');
   await page.click(`${P} .pp-bar .pp-view`, { text: 'Placa' });
-  assert.deepEqual(await page.eval((p) => [...document.querySelectorAll(`${p} .pp-bar .pp-view`)].map((b) => b.textContent), P), ['Tabela', 'Placa']);
+  assert.deepEqual(await page.eval((p) => [...document.querySelectorAll(`${p} .pp-bar .pp-view`)].map((b) => b.textContent), P), ['Tabela', 'Placa', 'Texto']);
   assert.deepEqual(await page.eval((p) => {
     const s = document.querySelector(`${p} .pp-ports-side`);
     return [s.querySelector('.asm-cap').textContent, s.querySelector('.asm-fold').title, s.querySelector('.pp-port[data-port="led"]').title, s.querySelector('.pp-port[data-port="led"] .pp-exp').title, s.querySelector('.pp-port[data-port="go"] .pp-x').title];
