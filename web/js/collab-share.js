@@ -19,12 +19,12 @@
 // drawn again when a path changes; never a console line for it (many followers would flood it).
 import { api } from './api.js';
 import { h, dialog } from './ui.js';
-import { S, app } from './app.js';
+import { S, app, history } from './app.js';
 import { writeClip } from './clipboard.js';
 import { prefKey } from './prefs.js';
 import { collab } from './collab-state.js';
 import { renderPresence, setPresenceCommands, setPresenceRoles } from './collab-presence.js';
-import { projectDoc, publishProject, putFile, putProject, sharedPath, watchDoc, editablePath, gateEdit } from '/core/collab-doc.js';
+import { projectDoc, publishProject, putFile, docFile, putProject, sharedPath, watchDoc, editablePath, gateEdit } from '/core/collab-doc.js';
 import { applyEdits, editQueue } from '/core/collab-files.js';
 import { isTrusted, markEditedByEditor, untrustedNotice } from '/core/trust.js';
 import { trustAction } from './console.js';
@@ -366,7 +366,11 @@ function hookApi(project, doc, s) {
   api.writeFile = async (name, path, text) => {
     const r = await orig.writeFile(name, path, text);
     if (mine(name)) {
-      putFile(doc, path, text);
+      // (#5739: a bound text editor's save, its text read before an editor's change arrived: the document's text, which
+      // has both, kept and written, never the save's over it)
+      const now = [...s.bound.keys()].some(d => d.path === path && d._saving) ? docFile(doc, path) : null;
+      if (now === null) putFile(doc, path, text);
+      else if (now !== text) await orig.writeFile(name, path, now);
       // (a bound drawing's save may have been made before the others' last change: the merge written after it)
       if (liveDrawing(path)) syncDrawing(doc, path, text, s.bases);
       if (liveDrawing(path) && drawn(path)) s.drawing = s.drawing.then(() => writeMerged(s, path)).catch(e => collabLog(`ERROR: ${path}: the drawing merged with the others' changes was not written: ${e.message}.`, 'err'));   // (#4759)
@@ -385,6 +389,10 @@ const editableHere = p => editablePath(p) && !designState.hdlToSch?.[p] && files
 const drawingHere = p => liveDrawing(p) && !!filesState.fileTree?.includes(p);
 const sayLine = text => collabLog(text, /^WARNING/.test(text) ? 'warn' : 'info');
 
+// (an editor's change written here: never part of a command of the owner's running meanwhile, whose Undo would revert
+// it, #5739)
+const quietly = fn => history.unrecorded(fn);
+
 // what the editors change (the document's remote transactions, core/collab-files.js applyEdits): a text file's, written
 // to the disk (its open editor, bound, shows it already); a file created, deleted or renamed and the project's
 // description (#4418: New Source…, Remove from Project, Delete File…, Rename…, Set as Top Module…), written too, the
@@ -398,11 +406,11 @@ async function onEdits(s, ev) {
   const store = {
     read: async () => { const { fileTree, ...json } = await api.project(s.project); return { json, fileTree }; },
     write: async (path, text) => {
-      await s.orig.writeFile(s.project, path, text);
+      await quietly(() => s.orig.writeFile(s.project, path, text));
       for (const d of docsState.docs) if (d.path === path && d.editor?.getValue() === text) { d.editor.markClean?.(); app.setDirty(d, false); }
     },
-    remove: path => s.orig.deleteFile(s.project, path, { trash }),
-    saveJson: json => s.orig.saveProject(s.project, json),
+    remove: path => quietly(() => s.orig.deleteFile(s.project, path, { trash })),
+    saveJson: json => quietly(() => s.orig.saveProject(s.project, json)),
     untrust: () => untrustEdited(s),
   };
   const r = await applyEdits(s.doc, ev, store, { generated: new Set(Object.keys(designState.hdlToSch || {})), warn: text => collabLog(`WARNING: ${text}.`, 'warn') });
@@ -423,7 +431,7 @@ async function untrustEdited(s) {
   const { fileTree, ...pj } = await api.project(s.project);   // eslint-disable-line no-unused-vars
   if (!isTrusted(pj)) return;
   const next = markEditedByEditor(pj);
-  await s.orig.saveProject(s.project, next);
+  await quietly(() => s.orig.saveProject(s.project, next));
   if (S.project?.name === s.project) Object.assign(S.project, { trusted: false, madeBy: next.madeBy });
   collabLog(`WARNING: ${untrustedNotice(s.project, next)}`, 'warn', { action: trustAction(s.project) });
 }
@@ -463,7 +471,7 @@ async function writeMerged(s, path, { edited = false } = {}) {
   let gated;
   try { gated = gateEdit(path, text); } catch (e) { collabLog(`WARNING: ${path}: an editor's change not written: ${e.reason || e.message}.`, 'warn'); return false; }
   if (edited) await untrustEdited(s);
-  await s.orig.writeFile(s.project, path, gated);
+  await quietly(() => s.orig.writeFile(s.project, path, gated));
   s.bases.set(path, gated);
   putFile(s.doc, path, gated);
   const d = docsState.docs.find(x => x.path === path && editorOf(x));

@@ -37,6 +37,8 @@ export const PROJECT_PT_PATTERNS = [
   [/^Removed (\S+) and its HDL file (\S+) from the project and deleted them( \(moved to the workspace's \.trash folder\))?\.$/, (m, a, b, tr) => `Removidos do projeto ${a} e o seu ficheiro HDL ${b}, e apagados${tr ? ' (movidos para a pasta .trash da área de trabalho)' : ''}.`],
   [/^Removed (.+) from the project and deleted it( \(moved to the workspace's \.trash folder\))?\.$/, (m, a, tr) => `Removido ${a} do projeto, e apagado${tr ? ' (movido para a pasta .trash da área de trabalho)' : ''}.`],
   // Edit ▸ Undo / Redo of a project's command (web/js/app.js): the command's name
+  // (in a project shared live with editors, #5739: a command's change and a later one in the same places)
+  [/^(Undo|Redo): (.+?): not (?:undone|redone): (.+) changed since in the same places; the project kept as it is\.$/, (m, w, a, p) => `${w === 'Undo' ? 'Anular' : 'Refazer'}: ${t(a)}: não ${w === 'Undo' ? 'anulado' : 'refeito'}: ${p} alterado desde então nos mesmos sítios; o projeto mantido como está.`],
   [/^(Undo|Redo): (.+)\.$/, (m, w, a) => `${w === 'Undo' ? 'Anular' : 'Refazer'}: ${t(a)}.`],
   // Rename… (web/js/rename.js, core/rename-module.js)
   [/^Rename: (.+)\.$/, (m, parts) => `Mudar o Nome: ${parts.split('; ').map(renamed).join('; ')}.`],

@@ -202,3 +202,36 @@ test('#5263 a command started while the one before finishes: an Undo clicked dur
   assert.equal(h.undoLabel(), 'New Source');
   assert.equal(h.settled(), true);
 });
+
+// (#5739) a project shared live with editors: the step merged into the project as it is now, through the api as it is
+// then (a shared project's: into the shared document), the others' later changes kept; an overlap refused, said
+test('a shared project: Undo / Redo revert the command\'s own changes only, the others\' later ones kept; an overlap refused', async () => {
+  const { mergeStep } = await import('../core/history-merge.js');
+  const said = [], regenerated = [];
+  const { api, files, pj, h, log } = setup({ shared: () => true, merge: mergeStep, conflict: (e, side, c) => said.push([e.label, side, c.map(x => x.path)]), regenerate: async p => regenerated.push(...p) });
+  files.set('src/a.vhd', 'one\ntwo\nthree\n');
+  await h.run('Rename…', async () => {
+    await api.writeFile('P', 'src/a.vhd', 'ONE\ntwo\nthree\n');
+    await api.saveProject('P', { ...pj(), top: 'new' });
+  });
+  // what another participant writes meanwhile (the shared project's api: replaced while it is shared)
+  const shared = api.writeFile;
+  const through = [];
+  api.writeFile = async (n, p, t) => { through.push(p); return shared(n, p, t); };
+  files.set('src/a.vhd', 'ONE\ntwo\nthree, an editor\'s\n');
+  await h.undo();
+  assert.equal(files.get('src/a.vhd'), 'one\ntwo\nthree, an editor\'s\n');
+  assert.equal(pj().top, 'a');
+  assert.deepEqual([through, log, said, regenerated], [['src/a.vhd'], [['Rename', ['src/a.vhd']]], [], []]);
+  await h.redo();
+  assert.equal(files.get('src/a.vhd'), 'ONE\ntwo\nthree, an editor\'s\n');
+  assert.equal(pj().top, 'new');
+  // the same line changed since: refused, nothing written, the step still the one to undo
+  files.set('src/a.vhd', 'ONE, an editor\'s\ntwo\nthree, an editor\'s\n');
+  assert.equal(await h.undo(), null);
+  assert.deepEqual(said, [['Rename', 'before', ['src/a.vhd']]]);
+  assert.equal(files.get('src/a.vhd'), 'ONE, an editor\'s\ntwo\nthree, an editor\'s\n');
+  assert.equal(pj().top, 'new');
+  assert.ok(h.canUndo() && !h.canRedo());
+  assert.equal(h.undoLabel(), 'Rename');
+});
