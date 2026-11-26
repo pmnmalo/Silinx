@@ -237,50 +237,68 @@ test('a meeting point is per topic and password: another link\'s pages never mee
 test('Trystero\'s adapter: the package loads, its trackers are the CSP\'s; its calls wired (a joinRoom of the test\'s, no network)', async () => {
   const tr = await import('@trystero-p2p/torrent');
   assert.equal(typeof tr.joinRoom, 'function');
-  assert.match(tr.selfId, /^[A-Za-z0-9]{20}$/);
   // (Trystero's own list but the dead tracker.btorrent.xyz, #4197: its name is 127.0.0.1's)
   assert.deepEqual(TRACKERS, tr.defaultRelayUrls.filter(u => u !== 'wss://tracker.btorrent.xyz'));
   assert.equal(tr.defaultRelayUrls.length, TRACKERS.length + 1, 'Trystero\'s list has the dead tracker still');
-  // a joinRoom of the test's
-  const calls = [], sent = [];
+  // a joinRoom of the test's, shaped as 0.27's room: handlers subscribed, the peers' connections in their PeerInfo
+  const calls = [], sent = [], h = {};
   const pc = { closed: false, localDescription: { sdp: 'a=fingerprint:sha-256 aa:bb\r\n' }, remoteDescription: { sdp: 'a=fingerprint:sha-256 cc:dd\r\n' }, close() { this.closed = true; } };
-  let action;
+  const action = { onReceive: f => { h.receive = f; }, onMessage: f => { h.message = f; }, send: async (d, opt) => { sent.push([[...d], opt]); } };
   const room = {
-    makeAction(ns, cfg) { calls.push(['makeAction', ns]); action = { ...cfg, send: async (d, opt) => { sent.push([[...d], opt]); } }; return action; },
-    getPeers: () => ({ p1: pc }),
+    makeAction(...args) { calls.push(['makeAction', ...args]); return action; },
+    getPeers: () => ({ p1: { userId: 'u1', connection: pc, direct: true, hops: 0, roles: [] }, p3: { userId: 'u3', connection: null } }),
+    getSelf: async () => ({ peerId: 'me', userId: 'my-user' }),
     leave: async () => { calls.push(['leave']); },
-    onPeerJoin: null, onPeerLeave: null,
+    onPeerJoin: f => { h.join = f; }, onPeerLeave: f => { h.leave = f; },
   };
   const joinRoom = (config, topic) => { calls.push(['joinRoom', config, topic]); return room; };
-  const meet = trysteroMeeting({ joinRoom, selfId: 'me', rtcConfig: { iceServers: [] } });
+  const meet = trysteroMeeting({ joinRoom, rtcConfig: { iceServers: [] }, RTC: null });
   const accepted = [];
   const m = await meet.join({ topic: 'T', password: 'K', maxReceive: 100, accept: (id, n) => { accepted.push([id, n]); return n < 10; } });
-  assert.deepEqual(calls.slice(0, 2), [['joinRoom', { appId: APP_ID, password: 'K', relayConfig: { urls: TRACKERS }, rtcConfig: { iceServers: [] }, maxReceiveBytes: 101 }, 'T'], ['makeAction', 'frame']]);
-  assert.equal(m.self, 'me');
+  assert.deepEqual(calls.slice(0, 2), [['joinRoom', { appId: APP_ID, identity: 'none', password: 'K', relayConfig: { urls: TRACKERS }, rtcConfig: { iceServers: [] }, maxReceiveBytes: 101 }, 'T'], ['makeAction', 'frame']]);
+  assert.equal(m.self, 'me', 'the room\'s peer id, not its user id');
   const ev = [];
   m.onPeer(id => ev.push(['peer', id]));
   m.onLeave(id => ev.push(['leave', id]));
   m.onData((id, d) => ev.push(['data', id, typeof d === 'string' ? d : [...d]]));
-  room.onPeerJoin('p1');
+  h.join({ peerId: 'p1', userId: 'u1', roles: [] });
   m.send('p1', 'hi');
   m.send('p1', Uint8Array.from([7, 8]));
   assert.deepEqual(sent, [[[0, 104, 105], { target: 'p1' }], [[1, 7, 8], { target: 'p1' }]]);
-  assert.equal(action.onReceive({ peerId: 'p1', byteLength: 5 }), true);
-  assert.equal(action.onReceive({ peerId: 'p1', byteLength: 50 }), false);
-  action.onMessage(Uint8Array.from([0, 111, 107]), { peerId: 'p1' });
-  action.onMessage(Uint8Array.from([1, 5]).buffer, { peerId: 'p1' });
+  assert.equal(h.receive({ peerId: 'p1', byteLength: 5 }), true);
+  assert.equal(h.receive({ peerId: 'p1', byteLength: 50 }), false);
+  h.message(Uint8Array.from([0, 111, 107]), { peerId: 'p1' });
+  h.message(Uint8Array.from([1, 5]).buffer, { peerId: 'p1' });
   assert.deepEqual(await m.binding('p1'), { local: 'sha-256 AA:BB', remote: 'sha-256 CC:DD' });
   assert.equal(await m.binding('p2'), null);
+  assert.equal(await m.binding('p3'), null, 'a peer reached through others: no connection of its own');
   m.drop('p1');
   assert.equal(pc.closed, true);
-  assert.equal(action.onReceive({ peerId: 'p1', byteLength: 1 }), false, 'dropped');
-  action.onMessage(Uint8Array.from([0, 120]), { peerId: 'p1' });
-  room.onPeerJoin('p1');
-  room.onPeerLeave('p1');
+  assert.equal(h.receive({ peerId: 'p1', byteLength: 1 }), false, 'dropped');
+  h.message(Uint8Array.from([0, 120]), { peerId: 'p1' });
+  h.join({ peerId: 'p1', userId: 'u1', roles: [] });
+  h.leave({ peerId: 'p1', userId: 'u1' });
   await m.leave();
   assert.deepEqual(ev, [['peer', 'p1'], ['data', 'p1', 'ok'], ['data', 'p1', [5]], ['leave', 'p1']]);
   assert.deepEqual(accepted, [['p1', 4], ['p1', 49]]);
   assert.deepEqual(calls.at(-1), ['leave']);
+  // (a room whose own id cannot be made: the join fails, the room left)
+  const failing = { ...room, getSelf: async () => { throw new Error('no key'); } };
+  await assert.rejects(trysteroMeeting({ joinRoom: () => failing, RTC: null }).join({ topic: 'U' }), /^Error: no key$/);
+  assert.deepEqual(calls.at(-1), ['leave']);
+});
+
+test('#5651 Trystero 0.27\'s own joinRoom (no tracker, no network): the join\'s self is the page\'s peer id, every room\'s the same; no selfId exported any more', async () => {
+  const tr = await import('@trystero-p2p/torrent');
+  assert.equal(tr.selfId, undefined, '0.27 dropped selfId');
+  const meet = trysteroMeeting({ joinRoom: tr.joinRoom, trackers: [], rtcConfig: { iceServers: [] }, RTC: null });
+  const a = await meet.join({ topic: 'silinx-5651-a', password: 'K' });
+  const b = await meet.join({ topic: 'silinx-5651-b', password: 'K' });
+  assert.match(a.self, /^[A-Za-z0-9]{20}$/);
+  assert.equal(b.self, a.self);
+  assert.equal(await a.binding('nobody'), null);
+  await a.leave();
+  await b.leave();
 });
 
 // (a WebRTC connection of the test's: its descriptions recorded)
@@ -301,8 +319,8 @@ test('#4197 a follower\'s connections answer no offer: an offer refused, an answ
   assert.deepEqual(pc.set, [['answer', 'more'], ['rollback']], 'no offer reached the connection');
   // Trystero's joins: a follower's (answers: false) with its connections' class, the owner's with the browser's own
   const configs = [];
-  const room = { makeAction: () => ({ send: async () => {} }), getPeers: () => ({}), leave: async () => {} };
-  const meet = trysteroMeeting({ joinRoom: config => { configs.push(config); return room; }, selfId: 'me', rtcConfig: { iceServers: [] }, RTC: FakePC });
+  const room = { makeAction: () => ({ send: async () => {}, onReceive() {}, onMessage() {} }), getPeers: () => ({}), getSelf: async () => ({ peerId: 'me' }), leave: async () => {}, onPeerJoin() {}, onPeerLeave() {} };
+  const meet = trysteroMeeting({ joinRoom: config => { configs.push(config); return room; }, rtcConfig: { iceServers: [] }, RTC: FakePC });
   await meet.join({ topic: 'T', password: 'K', answers: false });
   await meet.join({ topic: 'T', password: 'K' });
   assert.equal(typeof configs[0].rtcPolyfill, 'function');

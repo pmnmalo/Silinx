@@ -18,7 +18,7 @@
 //   meetAsHost({ meeting, room, key, hostKey, attach, onVia(id, via) (a relay's meeting's path changed, #4643) }) ->
 //   { meeting, ends (id -> its room's socket), leave() }    meetOwner({ meeting, room, key, host, ms })
 //   -> a WebSocket (followRoom's) to the owner; channelMeeting(name): a meeting point of a page's own, between the
-//   pages of one browser (a BroadcastChannel: the tests', no network); trysteroMeeting({ joinRoom, selfId, … }).
+//   pages of one browser (a BroadcastChannel: the tests', no network); trysteroMeeting({ joinRoom, … }).
 import { b64url } from './collab-crypto.js';
 import { newSigner, signerOf, pubOf, PUB_RE, SIG } from './collab-sign.js';
 import { withLoopback } from './collab-loopback.js';
@@ -217,29 +217,33 @@ export function offersOnly(PC) {
   };
 }
 
-/** Trystero's meeting point (its joinRoom and selfId: @trystero-p2p/torrent's), its trackers and WebRTC's settings
- *  (`RTC`: the connections' class, the browser's RTCPeerConnection). The room's messages go as one action: a string or
- *  bytes, marked by a first byte; a join with `answers: false` (a follower's) answers no offer (offersOnly); the remote
- *  host candidates get their twins at 127.0.0.1 (core/collab-loopback.js: two browsers of one computer, #4494). */
-export function trysteroMeeting({ joinRoom, selfId, trackers = TRACKERS, rtcConfig, RTC = globalThis.RTCPeerConnection } = {}) {
+/** Trystero's meeting point (its joinRoom: @trystero-p2p/torrent's, 0.27's API, #5651), its trackers and WebRTC's settings
+ *  (`RTC`: the connections' class, the browser's RTCPeerConnection). The room's own id is its peer id (room.getSelf()),
+ *  each join's own: its identity 'none', a key made for the join and stored nowhere (not IndexedDB's, where Trystero would
+ *  keep one user for every page of the browser). The room's messages go as one action: a string or bytes, marked by a
+ *  first byte; a join with `answers: false` (a follower's) answers no offer (offersOnly); the remote host candidates get
+ *  their twins at 127.0.0.1 (core/collab-loopback.js: two browsers of one computer, #4494). */
+export function trysteroMeeting({ joinRoom, trackers = TRACKERS, rtcConfig, RTC = globalThis.RTCPeerConnection } = {}) {
   return {
     async join({ topic, password, maxReceive = 16 << 20, accept = () => true, answers = true }) {
-      const room = joinRoom({ appId: APP_ID, password, relayConfig: { urls: [...trackers] }, rtcConfig, maxReceiveBytes: maxReceive + 1, ...(RTC ? { rtcPolyfill: withLoopback(answers ? RTC : offersOnly(RTC)) } : {}) }, topic);
+      const room = joinRoom({ appId: APP_ID, identity: 'none', password, relayConfig: { urls: [...trackers] }, rtcConfig, maxReceiveBytes: maxReceive + 1, ...(RTC ? { rtcPolyfill: withLoopback(answers ? RTC : offersOnly(RTC)) } : {}) }, topic);
       const on = { peer: () => {}, leave: () => {}, data: () => {} };
       const dropped = new Set();
-      const act = room.makeAction('frame', {
-        onReceive: ctx => !dropped.has(ctx.peerId) && accept(ctx.peerId, ctx.byteLength - 1),
-        onMessage: (data, ctx) => {
-          if (dropped.has(ctx.peerId)) return;
-          const b = data instanceof Uint8Array ? data : new Uint8Array(data instanceof ArrayBuffer ? data : data.buffer);
-          if (!b.length) return;
-          on.data(ctx.peerId, b[0] === 0 ? new TextDecoder().decode(b.subarray(1)) : b.slice(1));
-        },
+      const act = room.makeAction('frame');
+      act.onReceive(ctx => !dropped.has(ctx.peerId) && accept(ctx.peerId, ctx.byteLength - 1));
+      act.onMessage((data, ctx) => {
+        if (dropped.has(ctx.peerId)) return;
+        const b = data instanceof Uint8Array ? data : new Uint8Array(data instanceof ArrayBuffer ? data : data.buffer);
+        if (!b.length) return;
+        on.data(ctx.peerId, b[0] === 0 ? new TextDecoder().decode(b.subarray(1)) : b.slice(1));
       });
-      room.onPeerJoin = id => { if (!dropped.has(id)) on.peer(id); };
-      room.onPeerLeave = id => { dropped.delete(id); on.leave(id); };
+      room.onPeerJoin(({ peerId }) => { if (!dropped.has(peerId)) on.peer(peerId); });
+      room.onPeerLeave(({ peerId }) => { dropped.delete(peerId); on.leave(peerId); });
+      const pcOf = id => room.getPeers()[id]?.connection;
+      let self;
+      try { ({ peerId: self } = await room.getSelf()); } catch (e) { room.leave().catch(() => {}); throw e; }
       return {
-        self: selfId,
+        self,
         onPeer: f => { on.peer = f; }, onLeave: f => { on.leave = f; }, onData: f => { on.data = f; },
         send: (id, d) => {
           const body = typeof d === 'string' ? new TextEncoder().encode(d) : d;
@@ -249,10 +253,10 @@ export function trysteroMeeting({ joinRoom, selfId, trackers = TRACKERS, rtcConf
           act.send(out, { target: id }).catch(() => {});
         },
         binding: async id => {
-          const pc = room.getPeers()[id];
+          const pc = pcOf(id);
           return pc ? { local: fingerprintOf(pc.localDescription?.sdp), remote: fingerprintOf(pc.remoteDescription?.sdp) } : null;
         },
-        drop: id => { dropped.add(id); try { room.getPeers()[id]?.close(); } catch { /* gone */ } },
+        drop: id => { dropped.add(id); try { pcOf(id)?.close(); } catch { /* gone */ } },
         leave: () => room.leave(),
       };
     },

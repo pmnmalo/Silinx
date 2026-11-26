@@ -32,8 +32,8 @@ async function meetingPoint(relay = null) {
   let which = '';
   try { which = localStorage.getItem(MEETING_KEY) || ''; } catch { /* the public one */ }
   if (which === 'local') return channelMeeting();
-  const { joinRoom, selfId } = await import('@trystero-p2p/torrent');
-  return trysteroMeeting({ joinRoom, selfId, rtcConfig: { iceServers: iceServers() } });
+  const { joinRoom } = await import('@trystero-p2p/torrent');
+  return trysteroMeeting({ joinRoom, rtcConfig: { iceServers: iceServers() } });
 }
 
 /** The public servers a follower's page reaches for a room its owner's page hosts (#3361), named before it joins, since
