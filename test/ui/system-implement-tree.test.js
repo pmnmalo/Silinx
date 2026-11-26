@@ -104,7 +104,7 @@ uiTest('#5581 a System\'s Implement: its tree, each node\'s plan state its mark,
     await page.waitFor(() => document.querySelector('#procs .lbl')?.textContent === 'uart_pic24 (Sistema)', [], { what: 'Portuguese' });
     const pt = await rows(page);
     assert.deepEqual(pt.slice(0, 5), ['uart_pic24 (Sistema)', '  Plano de Construção', '  Placas Ligadas', '  Construir Tudo', '  Programar Tudo']);
-    assert.deepEqual(pt.slice(pt.findIndex((r) => r.startsWith('  pic '))), ['  pic (Explorer 16/32) [ok]', '    Firmware: lcd_uart.hex (off)', '    Programar Nó (off)']);
+    assert.deepEqual(pt.slice(pt.findIndex((r) => r.startsWith('  pic '))), ['  pic (Explorer 16/32) [ok]', '    Programa (firmware): lcd_uart.hex (off)', '    Programar Nó (off)']);
     assert.equal(await page.eval(() => [...document.querySelectorAll('#procs .row')].filter((r) => r.querySelector('.lbl').textContent === 'Programar Nó')[1].title),
       'pic: um PIC24 ainda não é programado pelo Silinx: carregue o seu pic/lcd_uart.hex com o MPLAB IPE');
     assert.deepEqual(await page.eval(() => [...document.querySelectorAll('#task-impl-bar .btn')].map((x) => x.textContent)), ['Construir Tudo', 'Programar Tudo']);
