@@ -147,7 +147,8 @@ function followed(session, { hash, link, name, resumed = null }) {
   const real = { ...api };   // (its own backend, for a copy kept once following ends, #4198)
   Object.assign(api, followApi(api, session.doc, { warn: text => collabLog(`WARNING: Follow a shared project: ${text}.`, 'warn'), activity: ch => session.activity(ch) }));
   setPresenceCommands(commands);
-  watchLeave(session, real);
+  // (its project's commands recorded for this page's Undo, through the room's backend, #5760)
+  watchLeave(session, real, app.history.attach());
   // (the owner's answers to its editors' requests of the versions, #5742: in every participant's console)
   watchDone(session.doc, d => collabLog(d.line, d.ok ? 'info' : 'warn'), { owner: () => session.owner()?.client ?? null });
   watchOwnActions(() => { if (fol?.following && !fol.session.closed()) setFollowing(false); });
