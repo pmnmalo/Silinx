@@ -49,6 +49,7 @@ const PT_FF = [['synchronous set and reset (S over R)', 'set e reset síncronos 
   ['clock enable', 'habilitação do relógio'], ['asynchronous clear', 'clear assíncrono'], ['asynchronous preset', 'preset assíncrono'],
   ['synchronous reset', 'reset síncrono'], ['synchronous set', 'set síncrono']];
 const PT_PATTERNS = [
+  [/^CH(\d): none$/, 'CH$1: nenhum'],   // (the emulator's oscilloscope, #5383)
   [/^(\d+) states?(?: · (\d+) every-cycle blocks?)?$/, (m, n, b) => `${n} estado${n === '1' ? '' : 's'}${b ? ` · ${b} bloco${b === '1' ? '' : 's'} de cada ciclo` : ''}`],   // (the ASM editor's toolbar, #2730)
   // the serial terminal's rates (#2536)
   [/^(\d+) baud$/, '$1 baud'],
@@ -225,6 +226,7 @@ Object.assign(PT, {
   'Turn the knob: ⟲ / ⟳ or the mouse wheel (ROT_A / ROT_B)': 'Rode o botão: ⟲ / ⟳ ou a roda do rato (ROT_A / ROT_B)',
   'Rotary encoder: ROT_A / ROT_B not connected in the UCF': 'Codificador rotativo: ROT_A / ROT_B não ligados no UCF',
   'Turn left (counter-clockwise)': 'Rodar para a esquerda (sentido anti-horário)', 'Turn right (clockwise)': 'Rodar para a direita (sentido horário)',
+  'The oscilloscope needs the event-driven engine (Engine ▸ Event-driven (debugging)): the compiled one keeps no waveforms.': 'O osciloscópio precisa do motor por eventos (Motor ▸ Por eventos (depuração)): o compilado não guarda formas de onda.',
   'Analog inputs (XADC)': 'Entradas analógicas (XADC)', 'Die temperature (°C)': 'Temperatura do chip (°C)',   // (the emulator's XADC, #5385)
   'Watch': 'Observar', 'Add a signal to watch…': 'Adicionar um sinal a observar…', 'Timing generics': 'Genéricos de temporização',
 'Messages': 'Mensagens', 'No clock input found': 'Nenhuma entrada de relógio encontrada',

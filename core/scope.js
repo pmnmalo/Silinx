@@ -6,8 +6,8 @@
 // Try it (web/js/circuit-scope.js) and the MCP server's simulate_drawing use it.
 
 export const DIVS = 10;                                  // (divisions across its screen)
-/** Its time bases (s a division): 1-2-5 from 1 µs to 1 s. */
-export const TIMEBASES = [1e-6, 2e-6, 5e-6, 1e-5, 2e-5, 5e-5, 1e-4, 2e-4, 5e-4, 1e-3, 2e-3, 5e-3, 1e-2, 2e-2, 5e-2, 0.1, 0.2, 0.5, 1];
+/** Its time bases (s a division): 1-2-5 from 10 ns (an FPGA's signals in the Board Emulator, #5383) to 1 s. */
+export const TIMEBASES = [1e-8, 2e-8, 5e-8, 1e-7, 2e-7, 5e-7, 1e-6, 2e-6, 5e-6, 1e-5, 2e-5, 5e-5, 1e-4, 2e-4, 5e-4, 1e-3, 2e-3, 5e-3, 1e-2, 2e-2, 5e-2, 0.1, 0.2, 0.5, 1];
 /** Its vertical scales (V a division), 8 divisions high. */
 export const VSCALES = [0.01, 0.02, 0.05, 0.1, 0.2, 0.5, 1, 2, 5];
 export const TRIGGER_MODES = ['auto', 'normal', 'single'];
@@ -119,4 +119,38 @@ export function measureText(m) {
   const si = (v0, u) => { if (v0 == null) return '–'; const v = Number(v0.toPrecision(3)), a = Math.abs(v); const [p, f] = a >= 1e6 ? ['M', 1e6] : a >= 1e3 ? ['k', 1e3] : a >= 1 || a === 0 ? ['', 1] : a >= 1e-3 ? ['m', 1e-3] : a >= 1e-6 ? ['µ', 1e-6] : ['n', 1e-9]; return `${Number((v / f).toPrecision(3))} ${p}${u}`; };
   return { vpp: si(m.vpp, 'V'), min: si(m.min, 'V'), max: si(m.max, 'V'), mean: si(m.mean, 'V'), period: si(m.period, 's'), frequency: si(m.frequency, 'Hz'),
     duty: m.duty == null ? '–' : `${Number(m.duty.toPrecision(3))} %`, rise: si(m.rise, 's'), fall: si(m.fall, 's') };
+}
+
+/**
+ * A knob of a scope turned (#5383, the circuit editor's and the Board Emulator's): `st` its settings changed in place by
+ * `input` (scope-t-up / -down its time base, scope-v-up / -down its scale, scope-l-up / -down its trigger's level by
+ * 0.1 V, scope-source, scope-edge, scope-mode); true when its time base changed (its cursors then cleared).
+ */
+export function turnKnob(st, input) {
+  const step = (list, x, d) => list[Math.min(list.length - 1, Math.max(0, list.indexOf(x) + d))];
+  if (input === 'scope-t-up' || input === 'scope-t-down') { st.tdiv = step(TIMEBASES, st.tdiv, input === 'scope-t-up' ? 1 : -1); return true; }
+  if (input === 'scope-v-up' || input === 'scope-v-down') st.vdiv = step(VSCALES, st.vdiv, input === 'scope-v-up' ? 1 : -1);
+  else if (input === 'scope-l-up' || input === 'scope-l-down') st.level = Math.round((st.level + (input === 'scope-l-up' ? 0.1 : -0.1)) * 100) / 100;
+  else if (input === 'scope-source') st.source = st.source === 1 ? 2 : 1;
+  else if (input === 'scope-edge') st.edge = st.edge === 'rise' ? 'fall' : 'rise';
+  else if (input === 'scope-mode') st.mode = TRIGGER_MODES[(TRIGGER_MODES.indexOf(st.mode) + 1) % TRIGGER_MODES.length];
+  return false;
+}
+
+/**
+ * A logic signal's waveform as a trace (#5383, the Board Emulator's): its changes ({ t: [ps…], v: [values] }, a
+ * simulator's) from `from` (s) on, the one before it first, each level at `volts` (a 1: the board's I/O, 3.3 V; an
+ * unknown one: NaN).
+ */
+export function waveTrace(wave, from, volts = 3.3) {
+  const tr = createTrace({ step: true });
+  if (!wave?.t.length) return tr;
+  const ps = from * 1e12;
+  let lo = 0, hi = wave.t.length - 1;
+  while (lo < hi) { const m = (lo + hi + 1) >> 1; if (wave.t[m] <= ps) lo = m; else hi = m - 1; }
+  for (let i = lo; i < wave.t.length; i++) {
+    const v = wave.v[i];
+    tr.add(wave.t[i] * 1e-12, v == null || Array.isArray(v) || (v.x & 1n) ? NaN : (v.v & 1n) ? volts : 0);
+  }
+  return tr;
 }

@@ -9,7 +9,7 @@ import { intervalWhileSeen } from './when-hidden.js';
 import { encoderTurn, ENCODER_STEP_NS } from '/core/circuit-encoder.js';
 import { isAnalogCircuit } from '/core/circuit-analog.js';
 import { createScopeRecorder, scopeSettings } from '/core/circuit-scope.js';
-import { TIMEBASES, VSCALES, TRIGGER_MODES } from '/core/scope.js';
+import { turnKnob } from '/core/scope.js';
 
 /**
  * Its Try it: ctx { M() (the circuit), opts (the editor's: hdl), root, status(msg, err), render(), destroyed() }; returns
@@ -119,15 +119,8 @@ export function mountCircuitTry({ M, opts, root, status, render, destroyed }) {
   function scopeInput(id, input, at = 0) {
     const v = views[id];
     if (!v) return;
-    const st = v.settings, step = (list, x, d) => list[Math.min(list.length - 1, Math.max(0, list.indexOf(x) + d))];
-    if (input === 'scope-t-up' || input === 'scope-t-down') { st.tdiv = step(TIMEBASES, st.tdiv, input === 'scope-t-up' ? 1 : -1); v.cursors = []; }
-    else if (input === 'scope-v-up' || input === 'scope-v-down') st.vdiv = step(VSCALES, st.vdiv, input === 'scope-v-up' ? 1 : -1);
-    else if (input === 'scope-l-up' || input === 'scope-l-down') st.level = Math.round((st.level + (input === 'scope-l-up' ? 0.1 : -0.1)) * 100) / 100;
-    else if (input === 'scope-source') st.source = st.source === 1 ? 2 : 1;
-    else if (input === 'scope-edge') st.edge = st.edge === 'rise' ? 'fall' : 'rise';
-    else if (input === 'scope-mode') st.mode = TRIGGER_MODES[(TRIGGER_MODES.indexOf(st.mode) + 1) % TRIGGER_MODES.length];
-    else if (input === 'scope-screen') v.cursors = [...(v.cursors.length >= 2 ? [] : v.cursors), Math.min(1, Math.max(0, at)) * st.tdiv * 10];
-    if (input !== 'scope-screen') rec.rearm(id);
+    if (input === 'scope-screen') v.cursors = [...(v.cursors.length >= 2 ? [] : v.cursors), Math.min(1, Math.max(0, at)) * v.settings.tdiv * 10];
+    else { if (turnKnob(v.settings, input)) v.cursors = []; rec.rearm(id); }
     render();
   }
 

@@ -105,10 +105,31 @@ test('a scope\'s settings: normalized (the nearest time base and scale), set by 
   const { m } = oscillator();
   const r = setPartProps(m, 'OSC1', { tdiv: 5e-4, vdiv: 2, source: 2, level: 1.2, edge: 'fall', mode: 'normal' });
   assert.deepEqual(Object.fromEntries(['tdiv', 'vdiv', 'source', 'level', 'edge', 'mode'].map((k) => [k, r.model.parts.at(-1)[k]])), { tdiv: 5e-4, vdiv: 2, source: 2, level: 1.2, edge: 'fall', mode: 'normal' });
-  assert.deepEqual(setPartProps(m, 'OSC1', { tdiv: 3e-3 }), { error: 'tdiv: a time base of 0.000001, 0.000002, 0.000005, 0.00001, 0.00002, 0.00005, 0.0001, 0.0002, 0.0005, 0.001, 0.002, 0.005, 0.01, 0.02, 0.05, 0.1, 0.2, 0.5, 1 s a division' });
+  assert.deepEqual(setPartProps(m, 'OSC1', { tdiv: 3e-3 }), { error: 'tdiv: a time base of 1e-8, 2e-8, 5e-8, 1e-7, 2e-7, 5e-7, 0.000001, 0.000002, 0.000005, 0.00001, 0.00002, 0.00005, 0.0001, 0.0002, 0.0005, 0.001, 0.002, 0.005, 0.01, 0.02, 0.05, 0.1, 0.2, 0.5, 1 s a division' });
   assert.deepEqual(setPartProps(m, 'OSC1', { mode: 'once' }), { error: 'mode: auto, normal, single' });
   assert.equal(scopeSettingError('source', 3), 'source: the trigger\'s channel, 1 or 2');
   assert.equal(scopeSettingError('level', 21), 'level: the trigger\'s level from -20 to 20 V');
   assert.equal(scopeSettingError('edge', 'up'), 'edge: rise or fall');
   assert.equal(scopeSettingError('vdiv', 3), 'vdiv: a scale of 0.01, 0.02, 0.05, 0.1, 0.2, 0.5, 1, 2, 5 V a division');
+});
+
+test('#5383 the knobs (turnKnob): the time base and the scale by their lists\' steps, at their ends kept; the level, source, edge, mode; a waveform as a trace', async () => {
+  const { turnKnob, waveTrace, TIMEBASES } = await import('../core/scope.js');
+  const st = scopeSettings({ tdiv: 1e-6 });
+  assert.equal(turnKnob(st, 'scope-t-down'), true);
+  assert.equal(st.tdiv, 5e-7);
+  for (let k = 0; k < 10; k++) turnKnob(st, 'scope-t-down');
+  assert.equal(st.tdiv, TIMEBASES[0], 'its shortest kept');
+  assert.equal(turnKnob(st, 'scope-v-up'), false);
+  assert.equal(st.vdiv, 2);
+  turnKnob(st, 'scope-l-up'); turnKnob(st, 'scope-l-up');
+  assert.equal(st.level, 1.7);
+  turnKnob(st, 'scope-source'); turnKnob(st, 'scope-edge'); turnKnob(st, 'scope-mode'); turnKnob(st, 'scope-mode');
+  assert.deepEqual([st.source, st.edge, st.mode], [2, 'fall', 'single']);
+  // a waveform (ps; 1, 0, X) from 2 ns on: the change before it first, its levels at 3.3 V
+  const V = await import('../core/values.js');
+  const tr = waveTrace({ t: [0, 1000, 3000, 5000, 7000], v: [V.ZERO, V.ONE, V.ZERO, V.X1, V.ONE] }, 2e-9);
+  assert.deepEqual(tr.t.map((x) => Math.round(x * 1e12)), [1000, 3000, 5000, 7000]);
+  assert.deepEqual(tr.v.map((x) => (Number.isNaN(x) ? 'X' : x)), [3.3, 0, 'X', 3.3]);
+  assert.equal(waveTrace(null, 0).t.length, 0);
 });
