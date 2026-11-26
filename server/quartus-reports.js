@@ -6,7 +6,7 @@
 //   output_files/<top>.sta.summary   the Timing Analyzer: per clock and corner, "Type : Slow 1100mV 85C Model Setup 'clk'",
 //                                    "Slack : 16.123", "TNS : 0.000"
 //   output_files/<top>.{map,fit,sta,asm}.rpt   each tool's last message: "Quartus Prime Fitter was successful. 0 errors, 3 warnings"
-//   output_files/<top>.sof           the programming file
+//   output_files/<top>.sof           the programming file; <top>.svf or <top>.rbf, quartus_cpf's of it, the one Silinx loads (#5379)
 import fs from 'node:fs/promises';
 import path from 'node:path';
 
@@ -104,8 +104,11 @@ export async function collectQuartusReports(buildDir, top, device, clocks = []) 
     out.par = { routed: ok, done: ok, unroutedSignals: ok ? 0 : null };
   }
   if (staSum) out.timing = parseStaSummary(staSum, clocks);
-  const sof = await fs.stat(f('sof')).catch(() => null);
-  if (sof) out.bit = { path: `build/output_files/${top}.sof`, size: sof.size };
+  const st = p => fs.stat(p).catch(() => null);
+  const [sof, svf, rbf] = await Promise.all([st(f('sof')), st(path.join(buildDir, `${top}.svf`)), st(path.join(buildDir, `${top}.rbf`))]);
+  const load = svf ? ['svf', svf] : rbf ? ['rbf', rbf] : null;
+  if (load) out.bit = { path: `build/${top}.${load[0]}`, size: load[1].size, sof: sof ? `build/output_files/${top}.sof` : null };
+  else if (sof) out.bit = { path: `build/output_files/${top}.sof`, size: sof.size };
   const tools = Object.values(msg).filter(Boolean);
   out.messages = { errors: tools.reduce((a, m) => a + m.errors, 0), criticalWarnings: 0, warnings: tools.reduce((a, m) => a + m.warnings, 0) };
   out.summary = {

@@ -22,7 +22,7 @@ gerador de bitstreams do Silinx), no browser, sem nada instalado.
 | GateMate | Cologne Chip GateMate FPGA Evaluation Board (não programada a partir do Silinx) | as ferramentas do Silinx |
 | Série 7 (uma família experimental) | Basys 3, Nexys A7 | as ferramentas do Silinx, ou o AMD Vivado |
 | Série 7 | Arty S7, Zybo Z7 | o AMD Vivado |
-| MAX 10, Cyclone IV E, Cyclone V (cada qual uma família experimental) | Terasic DE10-Lite; DE0-Nano, DE2-115; DE0-CV, DE1-SoC, DE10-Nano | ainda não: só os seus pinos e restrições (QSF) |
+| MAX 10, Cyclone IV E, Cyclone V (cada qual uma família experimental) | Terasic DE10-Lite; DE0-Nano, DE2-115; DE0-CV, DE1-SoC, DE10-Nano | Intel Quartus Prime Lite, que instala à parte (o servidor local); programadas com o openFPGALoader pelo USB-Blaster da placa |
 | todas as famílias que o ISE 14.7 implementa | as outras placas da Digilent, da Xilinx e da Numato, ou só um dispositivo | o Xilinx ISE |
 
 *Propriedades do Projeto…* escolhe a placa. Um **projeto de desenho e simulação** não tem placa: só projeta e simula.

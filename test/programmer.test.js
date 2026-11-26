@@ -316,7 +316,7 @@ test('program: a Gowin project\'s .fs into the Tang Nano 9K\'s SRAM with openFPG
   assert.deepEqual((await waitJob(jobs, other.id)).result.warnings, ["a .fs is a Gowin's configuration, but the target device is 'xc3s250e'"]);
   // (a .fs by an absolute path: only a project's)
   assert.equal((await app.call('POST', '/program', { bitfile: fsFile })).status, 400);
-  assert.equal((await app.call('POST', '/program', { project: 'Gw', bitfile: 'src/top.v' })).body.error, "only .bit files, or a project's .bin (the iCE40) or .fs (the Gowin), can be programmed");
+  assert.equal((await app.call('POST', '/program', { project: 'Gw', bitfile: 'src/top.v' })).body.error, "only .bit files, or a project's .bin (the iCE40), .fs (the Gowin) or .svf or .rbf (an Intel FPGA), can be programmed");
 });
 
 // #4940: the request's position is iMPACT's (1-based, the Program view's "position N", program_board's), the tool's
@@ -415,7 +415,7 @@ test('program: request errors', async () => {
     [{}, 400, /give a project or a bitfile/],
     [{ bitfile: 'build/top.bit' }, 400, /must be an absolute path when no project is given/],
     [{ project: 'NoTop' }, 400, /project has no top module/],
-    [{ project: 'Prog', bitfile: 'build/top.ucf' }, 400, /only \.bit files, or a project's \.bin \(the iCE40\) or \.fs \(the Gowin\), can be programmed/],
+    [{ project: 'Prog', bitfile: 'build/top.ucf' }, 400, /only \.bit files, or a project's \.bin \(the iCE40\), \.fs \(the Gowin\) or \.svf or \.rbf \(an Intel FPGA\), can be programmed/],
     [{ project: 'Prog', bitfile: 'build/none.bit' }, 404, /bitstream not found/],
     [{ project: 'Prog', bitfile: '../../escape.bit' }, 400, /path escapes project/],
     [{ project: 'Prog', board: 'nope' }, 400, /unknown board 'nope'/],

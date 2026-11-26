@@ -5,6 +5,7 @@
 //                   openFPGALoader -c <cable> [--index-chain N] file.bit        (SRAM load only for Spartan-3E)
 //                   openFPGALoader -b <board> file.bin                         (the iCE40: the board's SPI flash, #2298)
 //                   openFPGALoader -b <board> -m file.bit|file.fs               (the ECP5's .bit, the Gowin's .fs: the FPGA's SRAM, #2298)
+//                   openFPGALoader [-b <board>] -c <cable> [--probe-firmware hex] file.svf|file.rbf (an Intel FPGA's SRAM, #5379)
 //   xc3sprog        xc3sprog -c <cable> -j
 //                   xc3sprog -c <cable> -v -p <pos> file.bit
 //   djtgcfg         djtgcfg enum ; djtgcfg init -d <dev>
@@ -26,7 +27,7 @@ import { fileURLToPath } from 'node:url';
 import { runCommand } from './jobs.js';
 import { loadConfig, detectIse, resolveTool, which, configDir } from './toolchain.js';
 import { findBoard, resolveBoard } from './devices.js';
-import { splitBitPart, familyOfPart, familyName, deviceFamily } from '../packages/silinx-fpga/src/parts.js';
+import { splitBitPart, familyOfPart, familyName, deviceFamily, quartusDevice } from '../packages/silinx-fpga/src/parts.js';
 import { ecp5BitInfo, gowinFsInfo, checkOpenBitstream, idHex } from '../core/open-bitstream.js';
 
 import { TOOLS, VALUE } from './programmer-values.js';
@@ -138,7 +139,7 @@ export function impactScript({ bitfile, position = 1, cable = 'auto' } = {}) {
  * Build the command(s) for a scan or program operation.
  * @returns {Array<{cmd:string,args:string[],impactScript?:string}>}
  */
-export function buildCommands(op, { tool, cable, device, position, bitfile, fpgaBoard, target, ftdiSerial }) {
+export function buildCommands(op, { tool, cable, device, position, bitfile, fpgaBoard, target, ftdiSerial, probeFirmware }) {
   const pos = position === undefined || position === null || position === '' ? null : parseInt(position, 10);
   if (pos !== null && (!Number.isInteger(pos) || pos < 0 || pos > 31)) throw new Error(`invalid chain position '${position}'`);
   const prog = op === 'program';
@@ -147,7 +148,9 @@ export function buildCommands(op, { tool, cable, device, position, bitfile, fpga
     case 'openFPGALoader': {
       // (-b: openFPGALoader's board, its cable and pins: the iCE40's ice40_generic, #2298)
       // (--ftdi-serial: the board of a System's node, by its serial number, among several, #5489)
-      const base = [...(fpgaBoard ? ['-b', fpgaBoard] : []), ...(cable ? ['-c', cable] : []), ...(ftdiSerial ? ['--ftdi-serial', ftdiSerial] : [])];
+      // (--probe-firmware: the USB-Blaster II's FX2 firmware, Quartus's blaster_6810.hex, #5379)
+      const base = [...(fpgaBoard ? ['-b', fpgaBoard] : []), ...(cable ? ['-c', cable] : []), ...(ftdiSerial ? ['--ftdi-serial', ftdiSerial] : []),
+        ...(probeFirmware ? ['--probe-firmware', probeFirmware] : [])];
       if (!prog) return [{ cmd: tool, args: [...base, '--detect'] }];
       // (an open family's file, target: an iCE40's .bin to its SPI flash; an ECP5's .bit, a Gowin's .fs to its SRAM, -m: never
       // its flash; no JTAG chain, the board's)
@@ -371,25 +374,29 @@ export function parseScanOutput(tool, lines) {
 
 // The open families' files (#2298): the iCE40's .bin (no header to read), written into the board's SPI flash, which the FPGA
 // then loads (and at every power-up); the ECP5's .bit and the Gowin's .fs, read (core/open-bitstream.js: their device checked
-// as a Xilinx header's) and loaded into the FPGA's SRAM. openFPGALoader's, with the board's -b.
+// as a Xilinx header's) and loaded into the FPGA's SRAM; an Intel FPGA's .svf (Quartus's, #5379, the MAX 10's), played over JTAG into its
+// SRAM; its .rbf (the Cyclone IV's and V's) shifted into it. openFPGALoader's, with the board's -b, and its cable's -c.
 const OPEN_FILES = {
   ice40: { what: "an iCE40's .bin", kind: "a .bin is an iCE40's configuration", target: 'flash', mode: 'SPI flash, non-volatile' },
   ecp5: { what: "an ECP5's .bit", kind: "this .bit is an ECP5's configuration", target: 'sram', mode: 'SRAM, volatile' },
   gowin: { what: "a Gowin's .fs", kind: "a .fs is a Gowin's configuration", target: 'sram', mode: 'SRAM, volatile' },
+  intel: { what: "an Intel FPGA's {ext}", kind: "a {ext} is an Intel FPGA's configuration", target: 'jtag', mode: 'SRAM, volatile' },
 };
-/** The open family a file is programmed as: by its extension (.bin, .fs), a .bit by the project's device (the ECP5's); null:
- *  a Xilinx .bit. */
+/** The open family a file is programmed as: by its extension (.bin, .fs, an Intel FPGA's .svf), a .bit by the project's device
+ *  (the ECP5's); null: a Xilinx .bit. */
 export function openFamilyOf(bitfile, device) {
   if (/\.bin$/i.test(bitfile)) return 'ice40';
   if (/\.fs$/i.test(bitfile)) return 'gowin';
+  if (/\.(svf|rbf)$/i.test(bitfile)) return 'intel';
   return deviceFamily(device) === 'ecp5' ? 'ecp5' : null;
 }
 
 async function programOpen(job, o, cfg, req, family) {
-  const bitfile = req.bitfile, size = (await ifFound(bitfile, '', () => fs.stat(bitfile))).size, F = OPEN_FILES[family];
+  const bitfile = req.bitfile, size = (await ifFound(bitfile, '', () => fs.stat(bitfile))).size, ext = path.extname(bitfile).toLowerCase();
+  const F = Object.fromEntries(Object.entries(OPEN_FILES[family]).map(([k, v]) => [k, v.replace('{ext}', ext)]));
   if (o.tool !== 'openFPGALoader') throw new Error(`${F.what} is programmed with openFPGALoader, not ${o.tool}`);
   const warnings = [], warn = w => { warnings.push(w); job.log(`WARNING: ${w}`); };
-  if (family === 'ice40') job.log(`Configuration file ${bitfile} (${size} bytes, ${F.what})`);
+  if (family === 'ice40' || family === 'intel') job.log(`Configuration file ${bitfile} (${size} bytes, ${F.what})`);
   else {
     let info;
     const text = await ifFound(bitfile, '', () => fs.readFile(bitfile, family === 'ecp5' ? null : 'latin1'));
@@ -400,7 +407,14 @@ async function programOpen(job, o, cfg, req, family) {
     if (mismatch) warn(mismatch);
   }
   // (a file of a family for a device of another: the request's own file, a .bin or a .fs; warned)
-  if (req.expectDevice?.part && deviceFamily(req.expectDevice) !== family) warn(`${F.kind}, but the target device is '${req.expectDevice.part}'`);
+  const own = family === 'intel' ? quartusDevice(req.expectDevice) : deviceFamily(req.expectDevice) === family;
+  if (req.expectDevice?.part && !own) warn(`${F.kind}, but the target device is '${req.expectDevice.part}'`);
+  // (the USB-Blaster II: its FX2's firmware, a local Quartus's, given to openFPGALoader; none found, said, #5379)
+  if (family === 'intel' && /blasterII$/i.test(o.cable || '') && !o.probeFirmware) {
+    const { blasterFirmware } = await import('./quartus.js');
+    o.probeFirmware = blasterFirmware(cfg);
+    if (!o.probeFirmware) job.log('NOTE: the USB-Blaster II\'s firmware (Quartus\'s blaster_6810.hex) was not found with a local Quartus: openFPGALoader loads it only if it was built with its folder (BLASTERII_PATH), or once Quartus\'s driver has.');
+  }
   if (o.note) job.log(`NOTE: ${o.note}`);
   if (!o.verified) job.log(`NOTE: the ${o.tool} defaults for this board are not verified on real hardware.`);
   job.log(`Programming (${F.mode}) with ${o.tool}${o.fpgaBoard ? ` board=${o.fpgaBoard}` : ''}${o.cable ? ` cable=${o.cable}` : ''}`);

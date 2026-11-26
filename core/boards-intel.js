@@ -157,15 +157,19 @@ const DE2_115 = [
   { name: 'gpio', label: 'GPIO header GPIO[0..35]', pins: ['PIN_AB22', 'PIN_AC15', 'PIN_AB21', 'PIN_Y17', 'PIN_AC21', 'PIN_Y16', 'PIN_AD21', 'PIN_AE16', 'PIN_AD15', 'PIN_AE15', 'PIN_AC19', 'PIN_AF16', 'PIN_AD19', 'PIN_AF15', 'PIN_AF24', 'PIN_AE21', 'PIN_AF25', 'PIN_AC22', 'PIN_AE22', 'PIN_AF21', 'PIN_AF22', 'PIN_AD22', 'PIN_AG25', 'PIN_AD25', 'PIN_AH25', 'PIN_AE25', 'PIN_AG22', 'PIN_AE24', 'PIN_AH22', 'PIN_AF26', 'PIN_AE20', 'PIN_AG23', 'PIN_AF20', 'PIN_AH26', 'PIN_AH23', 'PIN_AG26'], dir: 'inout', iostandard: '3.3-V LVTTL', group: 'Headers' },
 ];
 
-// (the USB-Blaster's chip and its JTAG: phase 4, #5379; Quartus Prime's programmer meanwhile)
-const programmer = usb => ({ preferred: 'openFPGALoader', tools: { openFPGALoader: { onboard: true, verified: false, usb, note: `The on-board ${usb} (JTAG): not driven from Silinx yet; Quartus Prime's programmer loads the board.` } } });
+// (#5379: the FPGA's SRAM loaded by openFPGALoader through the on-board USB-Blaster (an FT245 and a CPLD) or USB-Blaster II (an FX2
+// and a MAX II, its firmware Quartus's blaster_6810.hex), its cable usb-blaster or usb-blasterII; -b its board where openFPGALoader
+// names it (de10lite, de1Soc, de10nano, de0nano), the DE0-CV and the DE2-115 by their cable alone. The file: Quartus's .sof made a
+// .svf for the MAX 10 (its SRAM is loaded only as an SVF), a .rbf for the Cyclone IV and V. Not tried on a board yet.)
+const programmer = (usb, board, ext) => ({ preferred: 'openFPGALoader', tools: { openFPGALoader: { ...(board ? { board } : {}), cable: usb === 'USB-Blaster II' ? 'usb-blasterII' : 'usb-blaster',
+  onboard: true, verified: false, usb, note: `The on-board ${usb} (JTAG): the ${ext} loaded into the FPGA's SRAM, until the board is powered off.` } } });
 
 export const INTEL_BOARDS = [
   {
     id: 'de10-lite', name: 'Terasic DE10-Lite', vendor: 'Terasic', device: { family: 'max10', part: '10m50da', package: 'f484', speed: 'c7g' },
     jtagChain: [{ name: '10m50da', role: 'fpga' }],
     flash: { type: 'internal', part: 'MAX 10 configuration flash memory (CFM)', sizeMbit: null, xcf: false, verified: false, note: 'The MAX 10\'s own configuration flash (a .pof): written by Quartus Prime\'s programmer, not from Silinx yet.' },
-    programmer: programmer('USB-Blaster'),
+    programmer: programmer('USB-Blaster', 'de10lite', '.svf'),
     source: 'DE10-Lite User Manual V1.7, October 17, 2022 (the FPGA 10M50DAF484C7G)', sourceUrl: 'https://www.terasic.com.tw/attachment/archive/1021/DE10-Lite_User_Manual.pdf',
     resources: DE10_LITE,
   },
@@ -173,7 +177,7 @@ export const INTEL_BOARDS = [
     id: 'de0-cv', name: 'Terasic DE0-CV', vendor: 'Terasic', device: { family: 'cyclone5', part: '5ceba4', package: 'f23', speed: 'c7' },
     jtagChain: [{ name: '5ceba4', role: 'fpga' }],
     flash: { type: 'spi', part: 'EPCS64', sizeMbit: 64, xcf: false, verified: false, note: 'The serial configuration device the FPGA loads at power-up (AS mode): written by Quartus Prime\'s programmer, not from Silinx yet.' },
-    programmer: programmer('USB-Blaster'),
+    programmer: programmer('USB-Blaster', null, '.rbf'),
     source: 'DE0-CV User Manual V1.1.2, May 4, 2015 (the FPGA 5CEBA4F23C7N)', sourceUrl: 'https://www.terasic.com.tw/cgi-bin/page/archive_download.pl?Language=English&No=921&FID=f23586755af207055fa8a4c6aaac3198',
     resources: DE0_CV,
   },
@@ -182,7 +186,7 @@ export const INTEL_BOARDS = [
     deviceNotes: 'The FPGA side only: the HPS (its ARM cores) and its pins are not set up. Its JTAG chain has the HPS before the FPGA.',
     jtagChain: [{ name: '5csema5', role: 'fpga' }],
     flash: { type: 'spi', part: 'EPCS128', sizeMbit: 128, xcf: false, verified: false, note: 'The serial configuration device (EPCS128 on the rev. F/G boards, EPCQ256 on the first ones): written by Quartus Prime\'s programmer, not from Silinx yet.' },
-    programmer: programmer('USB-Blaster II'),
+    programmer: programmer('USB-Blaster II', 'de1Soc', '.rbf'),
     source: 'DE1-SoC User Manual (rev.F/rev.G Board) V2.0.4, January 28, 2019 (the FPGA 5CSEMA5F31C6N)', sourceUrl: 'https://www.terasic.com.tw/cgi-bin/page/archive_download.pl?Language=English&No=836&FID=3a3708b0790bb9c721f94909c5ac96d6',
     resources: DE1_SOC,
   },
@@ -191,7 +195,7 @@ export const INTEL_BOARDS = [
     deviceNotes: 'The FPGA side only: the HPS (its ARM cores) and its pins are not set up. Its JTAG chain has the HPS before the FPGA.',
     jtagChain: [{ name: '5cseba6', role: 'fpga' }],
     flash: { type: 'spi', part: 'EPCS64', sizeMbit: 64, xcf: false, verified: false, note: 'The serial configuration device: written by Quartus Prime\'s programmer, not from Silinx yet.' },
-    programmer: programmer('USB-Blaster II'),
+    programmer: programmer('USB-Blaster II', 'de10nano', '.rbf'),
     source: 'DE10-Nano User Manual (rev. E Hardware) V2.6, August 9, 2023 (the FPGA 5CSEBA6U23I7)', sourceUrl: 'https://www.terasic.com.tw/cgi-bin/page/archive_download.pl?Language=English&No=1046&FID=ee6469cf97af76af334e2b2f82f93268',
     resources: DE10_NANO,
   },
@@ -200,7 +204,7 @@ export const INTEL_BOARDS = [
     deviceNotes: 'The DIP switches SW[0..3] read high when down (the manual\'s Table 3-3), the other way round from the other DE boards.',
     jtagChain: [{ name: 'ep4ce22', role: 'fpga' }],
     flash: { type: 'spi', part: 'EPCS64', sizeMbit: 64, xcf: false, verified: false, note: 'The serial configuration device (AS mode, a .jic through JTAG): written by Quartus Prime\'s programmer, not from Silinx yet.' },
-    programmer: programmer('USB-Blaster'),
+    programmer: programmer('USB-Blaster', 'de0nano', '.rbf'),
     source: 'DE0-Nano User Manual V2.3 (the FPGA EP4CE22F17C6N)', sourceUrl: 'https://www.terasic.com.tw/attachment/archive/593/DE0_Nano_User_Manual.pdf',
     resources: DE0_NANO,
   },
@@ -209,7 +213,7 @@ export const INTEL_BOARDS = [
     deviceNotes: 'The I/O standards are the jumpers\' defaults, as Terasic\'s golden top: JP7 at 2.5 V (the switches, the keys, HEX0..HEX3[1]), JP6 at 3.3 V (the GPIO header, HEX3[2]..HEX7). UART_CTS and UART_RTS as the manual\'s Table 4-18 (the golden top swaps them).',
     jtagChain: [{ name: 'ep4ce115', role: 'fpga' }],
     flash: { type: 'spi', part: 'EPCS64', sizeMbit: 64, xcf: false, verified: false, note: 'The serial configuration device (AS mode): written by Quartus Prime\'s programmer, not from Silinx yet.' },
-    programmer: programmer('USB-Blaster'),
+    programmer: programmer('USB-Blaster', null, '.rbf'),
     source: 'DE2-115 User Manual V2.3, 2017 (the FPGA EP4CE115F29C7N)', sourceUrl: 'https://www.terasic.com.tw/attachment/archive/502/DE2_115_User_manual.pdf',
     resources: DE2_115,
   },

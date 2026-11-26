@@ -10,7 +10,7 @@
 // - tasks: the tasks of the Tasks interface, each with its main action and its state dot's processes.
 // What a tool does not have is not in its descriptor, and so not in the interface. No DOM here: unit tested
 // (test/tool-descriptors.test.js).
-import { constraintsFormatOf, deviceFamily, experimentalDevice, openFlowDevice, quartusDevice, vivadoDevice } from '../packages/silinx-fpga/src/parts.js';
+import { bitstreamExtOf, constraintsFormatOf, deviceFamily, experimentalDevice, openFlowDevice, quartusDevice, vivadoDevice } from '../packages/silinx-fpga/src/parts.js';
 
 export const OPEN_SYNTH = 'Synthesize - Yosys';
 export const SYNTH_OPEN = 'Synthesize - Yosys (open)';   // (ISE's tree: the open synthesis beside XST's)
@@ -371,12 +371,12 @@ export const VIVADO = {
 
 /** Intel Quartus Prime on the Intel FPGAs (#5378, server/quartus.js): ISE's step names, each a Quartus tool (quartus_map as the
  *  synthesis, quartus_fit as Place & Route, quartus_sta as the timing, quartus_asm as the programming file, the .sof); no simulation
- *  models, no technology schematic, no FPGA view; its reports Quartus's summaries; not programmed from Silinx yet (#5379); Emulate on
- *  the QSF's pins. The local server's only: the browser edition has NO_FLOW_QSF. */
+ *  models, no technology schematic, no FPGA view; its reports Quartus's summaries; the board's FPGA loaded with the .rbf quartus_cpf makes
+ *  of the .sof (the MAX 10's: an .svf, QUARTUS_SVF), by openFPGALoader over its USB-Blaster (#5379); Emulate on the QSF's pins. The local server's only: the browser edition has NO_FLOW_QSF. */
 const QUARTUS = {
   id: 'quartus', name: 'Intel Quartus Prime', open: false,
   steps: withProducts([step('synth', 'Synthesize - Quartus'), step('par', 'Place & Route', ['synth']), step('trce', EXTRA_STEPS.trce, ['par']), step('bitgen', 'Generate Programming File', ['par'])], {
-    synth: ['output_files/{top}.map.summary'], par: ['output_files/{top}.fit.summary'], trce: ['output_files/{top}.sta.summary'], bitgen: ['output_files/{top}.sof'],
+    synth: ['output_files/{top}.map.summary'], par: ['output_files/{top}.fit.summary'], trce: ['output_files/{top}.sta.summary'], bitgen: ['output_files/{top}.sof', '{top}.rbf'],
   }),
   reports: [
     { id: 'synthesis', label: 'Analysis & Synthesis Report', step: 'synth', file: 'output_files/{top}.map.rpt' },
@@ -385,11 +385,15 @@ const QUARTUS = {
   ],
   constraints: QSF,
   messages: LOG_MESSAGES,
-  program: null,
-  tree: treeOf(['synth-open', 'tech', 'postsynth', 'translate', 'map', 'xpwr', 'postpar', 'pin2ucf', 'fpgaview', 'config'],
+  program: { process: 'config', page: 'program-open', title: 'Program FPGA', target: 'sram', file: '{top}.rbf' },
+  tree: treeOf(['synth-open', 'tech', 'postsynth', 'translate', 'map', 'xpwr', 'postpar', 'pin2ucf', 'fpgaview'],
     { synth: { label: 'Synthesize - Quartus', title: 'Intel Quartus Prime' }, impl: { title: 'Intel Quartus Prime' }, bitgen: { title: 'Intel Quartus Prime' } }),
   tasks: LAB_TASKS,
 };
+
+/** The MAX 10's (#5379): its SRAM loaded only as an SVF. */
+const QUARTUS_SVF = { ...QUARTUS, steps: QUARTUS.steps.map(s => (s.id === 'bitgen' ? { ...s, produces: ['output_files/{top}.sof', '{top}.svf'] } : s)),
+  program: { ...QUARTUS.program, file: '{top}.svf' } };
 
 // (the tools that implement with every task of a lab session: NO_FLOW's, VIVADO's and SILINX_XC7's are some of theirs)
 export const TOOLS = [ISE, SILINX, SILINX_ICE40];
@@ -401,7 +405,7 @@ const OPEN_BY_FAMILY = { ice40: SILINX_ICE40, artix7: SILINX_XC7, ecp5: SILINX_E
  *  (`designOnly`, #3780) DESIGN_ONLY whatever its device. */
 export const toolOf = (device, open, { standalone = false, designOnly = false } = {}) => (designOnly ? DESIGN_ONLY
   : vivadoDevice(device) ? (!openFlowDevice(device) ? (standalone ? NO_FLOW : VIVADO) : open || standalone ? SILINX_XC7 : VIVADO)
-  : quartusDevice(device) ? (standalone ? NO_FLOW_QSF : QUARTUS)
+  : quartusDevice(device) ? (standalone ? NO_FLOW_QSF : bitstreamExtOf(device) === '.svf' ? QUARTUS_SVF : QUARTUS)
   : experimentalDevice(device) ? (constraintsFormatOf(device) === 'qsf' ? NO_FLOW_QSF : NO_FLOW) : open ? OPEN_BY_FAMILY[deviceFamily(device)] || SILINX : ISE);
 
 /** Every tool's tasks, in their order: the kept state's and the switchers'. */
