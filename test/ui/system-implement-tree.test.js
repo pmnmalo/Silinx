@@ -67,7 +67,7 @@ uiTest('#5581 a System\'s Implement: its tree, each node\'s plan state its mark,
     await page.openProject('SysImplTree');
     await page.click('#task-switch .task-btn[data-task="impl"]');
     // its tree, once its plan is read: the FPGA node first, out of date; the Uno's firmware given
-    await page.waitFor(() => [...document.querySelectorAll('#procs .row .status')].some((s) => s.innerHTML), [], { what: 'the marks' });
+    await page.waitFor(() => [...document.querySelectorAll('#procs .row .status')].some((s) => s.dataset.status), [], { what: 'the marks' });
     assert.deepEqual(await rows(page), ['uart_avr (System)', '  Build Plan', '  Connected Boards', '  Build All', '  Program All',
       ...FPGA_ROWS.map((r, i) => (i ? r : `${r} [stale]`)), '  uno (Arduino Uno) [ok]', '    Firmware: hello.hex (off)', '    Program Node']);
     assert.deepEqual([await tip(page, 'fpga (Digilent Basys2)'), await tip(page, 'uno (Arduino Uno)'), await tip(page, 'Firmware: hello.hex')],
@@ -91,7 +91,8 @@ uiTest('#5581 a System\'s Implement: its tree, each node\'s plan state its mark,
     // the PIC24's: its firmware given, its Program Node disabled, said why on a double-click
     await page.openProject('SysImplPic');
     await page.click('#task-switch .task-btn[data-task="impl"]');
-    await page.waitFor(() => [...document.querySelectorAll('#procs .row .lbl')].some((l) => l.textContent === 'Firmware: lcd_uart.hex'), [], { what: 'the PIC24\'s rows' });
+    // (its rows drawn from the System at once, its marks once its plan is read: the PIC24's given firmware)
+    await page.waitFor(() => [...document.querySelectorAll('#procs .row')].some((r) => r.querySelector('.lbl').textContent === 'pic (Explorer 16/32)' && r.querySelector('.status').dataset.status), [], { what: 'the PIC24\'s plan read' });
     const pic = await rows(page);
     assert.deepEqual(pic.slice(pic.findIndex((r) => r.startsWith('  pic '))), ['  pic (Explorer 16/32) [ok]', '    Firmware: lcd_uart.hex (off)', '    Program Node (off)']);
     assert.equal(await tip(page, 'Program Node'), '', 'the FPGA\'s Program Node first, enabled');
