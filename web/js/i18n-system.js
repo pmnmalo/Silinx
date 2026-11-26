@@ -1,6 +1,8 @@
 // Portuguese strings of the System editor (web/js/system-editor.js, system-side.js, system-draw.js, system-open.js,
 // design-system.js, system-folders-ui.js, #4700; merged into the dictionary of i18n.js). The core's edit and check messages are said in the
 // console as the MCP server says them.
+import { t } from './i18n.js';   // (an error's own text, read only inside its pattern's function: no cycle at load time)
+
 export const SYSTEM_PT = {
   // toolbar
   'Arduino Uno': 'Arduino Uno', 'Arduino Nano': 'Arduino Nano', 'Terminal': 'Terminal', 'Link': 'Ligação',
@@ -99,6 +101,7 @@ export const SYSTEM_PT = {
   // (a removed node's folder, #5488: web/js/system-folders-ui.js)
   'Remove Node': 'Remover Nó',
   'Not made: its file is not in the project folder': 'Não gerado: o seu ficheiro não está na pasta do projeto',
+  "its run's time: from 0 to 10000 ms (10 s)": 'o tempo da sua corrida: de 0 a 10000 ms (10 s)',   // (a Simulation Properties' refusal, #5652)
 };
 export const SYSTEM_PT_PATTERNS = [
   // (Program All / Program Node's board picked by hand, #5489: web/js/system-program-ui.js)
@@ -148,7 +151,7 @@ export const SYSTEM_PT_PATTERNS = [
   [/^(\S+) \(System\)$/, '$1 (Sistema)'], [/^(\S+) \(terminal\)$/, '$1 (terminal)'],
   [/^(\S+) runs with the nodes it is linked to$/, '$1 corre com os nós a que está ligado'],
   // (the Implement task's tree, #5581's part 4: a firmware given, a node Silinx does not program yet)
-  [/^Firmware: (\S+)$/, 'Firmware: $1'], [/^(\S+): its firmware (\S+), made outside Silinx: nothing to build$/, '$1: o seu firmware $2, feito fora do Silinx: nada a construir'],
+  [/^Firmware: (\S+)$/, 'Programa (firmware): $1'], [/^(\S+): its firmware (\S+), made outside Silinx: nothing to build$/, '$1: o seu firmware $2, feito fora do Silinx: nada a construir'],
   [/^(\S+): a PIC24 is not programmed by Silinx yet: load its (\S+) with MPLAB IPE$/, '$1: um PIC24 ainda não é programado pelo Silinx: carregue o seu $2 com o MPLAB IPE'],
   [/^(\S+): a MicroPython node is not programmed by Silinx yet: copy its \.py files with mpremote$/, '$1: um nó MicroPython ainda não é programado pelo Silinx: copie os seus ficheiros .py com o mpremote'],
   [/^Emulation Properties: Emulate System runs (every node|.+?)(; (.+))?$/, (m, w, x, models) => `Propriedades da Emulação: Emular o Sistema corre ${w === 'every node' ? 'todos os nós' : w}${models ? `; ${models.replace(/(\S+) on its (.+?) model/g, (y, id, mo) => `${id} no seu modelo ${{ 'Behavioral (RTL)': 'Comportamental (RTL)', 'Post-Synthesis': 'Pós-Síntese', 'Post-Translate': 'Pós-Translate', 'Post-Map': 'Pós-Map', 'Post-Place & Route': 'Pós-Place & Route' }[mo] ?? mo}`)}` : ''}`],
@@ -170,4 +173,11 @@ export const SYSTEM_PT_PATTERNS = [
   [/^(\d+) registers? · (\d+) bytes?$/, (m, n, b) => `${n} ${n === '1' ? 'registo' : 'registos'} · ${b} byte${b === '1' ? '' : 's'}`],
   [/^(\d+) wires? · (\d+) links?$/, (m, n, l) => `${n} ${n === '1' ? 'fio' : 'fios'} · ${l} ${l === '1' ? 'ligação' : 'ligações'}`],
   [/^(\d+) nodes? · (\d+) links?$/, (m, n, l) => `${n} ${n === '1' ? 'nó' : 'nós'} · ${l} ${l === '1' ? 'ligação' : 'ligações'}`],
+  // (the System's simulation refused, its Simulation Properties' refusals, #5652: after the Simulation Properties' own lines)
+  [/^cannot simulate (\S+): ([\s\S]*)$/, (m, p, e) => `não foi possível simular ${p}: ${t(e)}`],
+  [/^(\S+): a stimulus file is a \.stim\.json$/, '$1: um ficheiro de estímulos é um .stim.json'], [/^(\S+): no such file in the project$/, '$1: não existe esse ficheiro no projeto'],
+  [/^Simulation Properties: ([\s\S]+)$/, (m, e) => `Propriedades da Simulação: ${t(e)}`],
+  // (Program All / Program Node refused, web/js/system-program-ui.js)
+  [/^(Program All|Program Node): the System is not open$/, (m, n) => `${t(n)}: o Sistema não está aberto`],
+  [/^(Program All|Program Node): no node '([^']+)' to program in the System$/, (m, n, id) => `${t(n)}: nenhum nó '${id}' para programar no Sistema`],
 ];

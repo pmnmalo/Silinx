@@ -42,6 +42,12 @@ const EXAMPLES = {  '${doc.path || doc.title} could not be saved. Close it and l
   "New path of the folder '${dir}':": "New path of the folder 'src':",
   'Open ${viewTitle(sch)}': 'Open Circuit',
   'Generated from the ${noun}': 'Generated from the state machine',   // (a CPU node's drawing's badge, #5487)
+  // (the System Emulator's models of a node, #5652: its title and the model's name)
+  "${name}: ${id}'s ${MODEL_NAMES[m].toLowerCase()} model could not be made": "Emulate System: fpga1's post-synthesis model could not be made",
+  "${name}: ${id}'s flow made no ${MODEL_NAMES[m].toLowerCase()} model": "Emulate Node fpga1: fpga1's flow made no post-place & route model",
+  // (Program All / Program Node refused, #5652)
+  '${name}: the System is not open': 'Program All: the System is not open',
+  "${name}: no node '${node}' to program in the System": "Program Node: no node 'fpga1' to program in the System",
   'cannot open ${path}: ${e.message}': 'cannot open src/a.sch.json: Unexpected end of JSON input',
   '${sel().nodes.size} boxes selected': '3 boxes selected',
   "The reset (active-${M().reset.active}, ${M().reset.sync ? 'synchronous' : 'asynchronous'}): click to toggle it": 'The reset (active-high, synchronous): click to toggle it',
