@@ -8,7 +8,6 @@ import { t } from './i18n.js';
 
 export const MESSAGES_PT = {
   // toasts (web/js/app.js, viewers.js)
-  'Use Ctrl+V to paste': 'Use Ctrl+V para colar',
   'Select the top module first': 'Selecione primeiro o módulo de topo',
   // dialogs' titles (app.js, drawings.js, menus.js, wizards.js)
   'Undo / Redo': 'Anular / Refazer', 'Convert to State Machine': 'Converter para Máquina de Estados',

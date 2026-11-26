@@ -122,7 +122,7 @@ test('#3539 the label scan reaches toasts, dialogs, plain elements, textContent 
     'Replace Project': 'Substituir Projeto', '(no board / generic JTAG)': '(sem placa / JTAG genérico)', 'Open Project Bundle': 'Abrir Pacote do Projeto',
     'Enter a file path inside the project.': 'Escreva um caminho de ficheiro dentro do projeto.',
     'The module name must start with a letter and contain only letters, digits and _.': 'O nome do módulo tem de começar por uma letra e ter só letras, algarismos e _.',
-    'Use Ctrl+V to paste': 'Use Ctrl+V para colar', 'No messages.': 'Sem mensagens.',
+    'No messages.': 'Sem mensagens.',
   };
   for (const [en, pt] of Object.entries(T)) assert.equal(t(en), pt, en);
 });
