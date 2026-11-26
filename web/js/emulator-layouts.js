@@ -1,5 +1,6 @@
 // Silinx - Board Emulator: the boards drawn as the real ones, by board id (#405, #2478: out of emulator.js); a board
 // without a layout is drawn as rows of parts (emulator-board.js).
+import { artyZ7Layout } from './emulator-arty-z7.js';
 import { atlysLayout } from './emulator-atlys.js';
 import { basys2Layout } from './emulator-basys2.js';
 import { basys3Layout } from './emulator-basys3.js';
@@ -16,10 +17,11 @@ import { s3aLayout } from './emulator-s3a.js';
 import { s3eLayout } from './emulator-s3e.js';
 import { tangnano9kLayout } from './emulator-tangnano9k.js';
 import { ulx3sLayout } from './emulator-ulx3s.js';
+import { zyboZ7Layout } from './emulator-zybo-z7.js';
 
 export const BOARD_LAYOUTS = { basys2: basys2Layout, nexys2: nexys2Layout, 's3e-starter': s3eLayout, nexys3: nexys3Layout, atlys: atlysLayout, icebreaker: icebreakerLayout,
   basys3: basys3Layout, 'nexys-a7': nexysA7Layout, 's3a-starter': s3aLayout, 'mimas-v2': mimasV2Layout,
   's3-starter': s3StarterLayout, 'cmod-s6': cmodS6Layout,
   'icebreaker-vga': icebreakerLayout, ulx3s: ulx3sLayout, 'ulx3s-vga': ulx3sLayout,
   tangnano9k: tangnano9kLayout, 'tangnano9k-vga': tangnano9kLayout,
-  'papilio-one': papilioOneLayout, 'elbert-v2': elbertV2Layout };
+  'papilio-one': papilioOneLayout, 'elbert-v2': elbertV2Layout, 'zybo-z7': zyboZ7Layout, 'arty-z7': artyZ7Layout };

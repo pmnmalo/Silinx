@@ -44,8 +44,9 @@ const NUMERIC_FNS = /^(?:Math\.\w+|Number|parseInt|parseFloat|mm|r1|snap|textW|D
 
 // ---- the safe shapes of an expression, in any context
 // (and the boards drawn as the real ones, #3706 / #3745: pmodSide, unit, expTop, pins, header40, of numbers and a name
-// put through text, #3728; the ULX3S's, Tang Nano 9K's and Papilio One's headers, pins, holes, breadboards and wings, #3745)
-const BOARD = 'text|ic|microUsb|hdmiTop|audio|pmodTop|pmod12Top|dsub|dsubLeft|header6|header12|tact|modules|holes|wire|pmodSide|unit|expTop|pins|header40|header|pins2|headerRow|pinNames|holeRows|breadboard|topBreadboard|bottomBreadboard|wing';
+// put through text, #3728; the ULX3S's, Tang Nano 9K's and Papilio One's headers, pins, holes, breadboards and wings, #3745;
+// the Zybo Z7's and the Arty Z7's names on black, Pmods on the bottom edge, audio jacks and RGB LEDs, #4684)
+const BOARD = 'text|ic|microUsb|hdmiTop|audio|pmodTop|pmod12Top|dsub|dsubLeft|header6|header12|tact|modules|holes|wire|pmodSide|unit|expTop|pins|header40|header|pins2|headerRow|pinNames|holeRows|breadboard|topBreadboard|bottomBreadboard|wing|tag|pmodBottom|jack|rgbAt';
 const SAFE = [
   // escaped: esc(…) around the whole expression, or every item of a list escaped
   [/^esc\(.*\)$/s, 'esc'],
@@ -172,7 +173,7 @@ test('#1443 the scanner: the context of an interpolation and the shapes it accep
   ok("[N, S, WEST, EAST].map(tact).join('')"); ok("Array.from({ length: 8 }, (_, i) => text(i, 0, `LD${7 - i}`)).join('')");
   ok("[[a + 1, b], [c, d]].map(([x, y]) => `<circle cx=\"${x}\" cy=\"${y}\"/>`).join('')"); ok('DIG_X(1) + 33', 'attr:cx');
   // #3728: the boards drawn as the real ones (#3706, #3745): their connectors' helpers, a shift in a coordinate
-  ok("pmodSide(false, 140, 'JA')"); ok('unit(4)'); ok("expTop(76, 344, 'A1')"); ok('pins(140, 406, 1, 2)'); ok("header40(364, 228, 'J2')");
+  ok("pmodSide(false, 140, 'JA')"); ok("tag(63, 134, 'USB HOST', 8)"); ok("jack(231, '#1a1a1a', 'HPH OUT')"); ok("RGB.map(([x, y, name]) => rgbAt(x, y, name)).join('')"); ok('unit(4)'); ok("expTop(76, 344, 'A1')"); ok('pins(140, 406, 1, 2)'); ok("header40(364, 228, 'J2')");
   ok('86 + (i >> 1) * 23', 'attr:x'); ok('PIN_X(i)', 'attr:cx'); ok('dip'); ok('anWires'); ok("pinNames(J7, J7_Y + 26)"); bad('PIN_X(i)'); ok('x + 4 + (i >> 1) * 9.8', 'attr:x'); bad('i >> 1'); bad('a > b', 'attr:x'); bad('pinsOf(x)');
   bad('ICON[f(x)]'); bad('icon[name]'); bad("segs.map((s) => s.name).join('')"); bad("segs.map((s) => f(s)).join('')"); bad('DIG_X(1) + 33'); bad('textOf(x)');
   // an injection the context rule would miss if it read the attribute wrong
