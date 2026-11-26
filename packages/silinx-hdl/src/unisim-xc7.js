@@ -1,7 +1,7 @@
 // Silinx - the 7-series UNISIM primitives the open synthesis maps onto beyond the Spartan-6's (Yosys synth_xilinx -arch xc7,
 // #4362: the 7-series' Post-Synthesis model): Silinx's own functional models, written from the documented behaviour of each
 // primitive (7 Series FPGAs Libraries Guide UG953, the block RAM and DSP48E1 user guides UG473 and UG479), as unisim-s6.js's.
-// No timing; the Xilinx UNISIM sources are not used (nor redistributed). The LUTs, flip-flops, CARRY4, MUXF7 / 8, SRLs, the
+// No timing; the Xilinx UNISIM sources are not used (nor redistributed). The XADC's (#5385): below. The LUTs, flip-flops, CARRY4, MUXF7 / 8, SRLs, the
 // distributed RAMs and the buffers are unisim.js's and unisim-s6.js's.
 //   - DSP48E1: its pipeline registers (AREG / BREG 0, 1 or 2, ACASCREG, BCASCREG, CREG, DREG, ADREG, MREG, PREG, INMODEREG,
 //     OPMODEREG, ALUMODEREG, CARRYINREG, CARRYINSELREG), A_INPUT / B_INPUT (DIRECT or the cascade's ACIN / BCIN); INMODE: A1
@@ -371,4 +371,174 @@ end silinx;`;
 };
 
 /** VHDL source of the 7-series primitives (part of UNISIM_VHDL, unisim.js). */
-export const UNISIM_XC7_VHDL = [DSP48E1, ramb('RAMB18E1'), ramb('RAMB36E1')].join('\n');
+// ------------------------------------------------------------------ XADC
+// The 7-series XADC's functional model (#5385, the analog and digital roadmap #5387), written from its user guide
+// (UG480 "7 Series FPGAs and Zynq-7000 SoC XADC Dual 12-Bit 1 MSPS Analog-to-Digital Converter"), as the other primitives
+// of unisim-xc7.js; no timing beyond its conversions', the Xilinx UNISIM sources not used. Its analog inputs are values,
+// not its pins (VP, VN, VAUXP, VAUXN are its package's pins, left as they are): the die temperature (temp_mc, in
+// thousandths of °C, 25 °C at first), VCCINT, VCCAUX and VCCBRAM (vccint_mv, vccaux_mv, vccbram_mv: 1.0, 1.8 and 1.0 V)
+// and the unipolar inputs VP / VN and VAUX0..15 (vp_mv, vaux_mv(k), 0 to 1000 mV, 0 at first): signals a simulation sets
+// (force: the Board Emulator's potentiometer and temperature), SIM_MONITOR_FILE not read.
+//   - its DRP: on DCLK's rising edge with DEN, a read of DADDR (DWE low) or a write of DI (DWE high: the configuration
+//     registers 40h-42h and 48h-4Fh), DRDY one DCLK later with DO; the status registers: 00h the temperature, 01h VCCINT,
+//     02h VCCAUX, 03h VP/VN, 06h VCCBRAM, 10h-1Fh VAUX0..15, each its 12-bit code MSB-justified (DO(15 downto 4)); the
+//     others read 0;
+//   - its codes: the temperature (T + 273.15) × 4096 / 503.975, a supply V × 4096 / 3, a unipolar input V × 4096 (1 V
+//     full scale), each from 0 to 4095;
+//   - its conversions: one every 26 ADCCLK cycles, ADCCLK DCLK / CLKDIV (INIT_42(15 downto 8), 2 at least); BUSY during
+//     each, EOC one DCLK at its end with CHANNEL the channel converted; the sequencer (INIT_41(15 downto 12)): 0011 single
+//     channel (INIT_40(4 downto 0)), 0001 one pass and 0010 continuous over the channels of INIT_48 (bit 8 the temperature,
+//     9 VCCINT, 10 VCCAUX, 11 VP/VN, 14 VCCBRAM) and INIT_49 (bit k VAUXk), EOS one DCLK at each pass's end; 0000 (its
+//     default mode) the temperature, VCCINT and VCCAUX continuously. RESET restarts it. The event-driven mode (CONVST),
+//     the alarms (ALM, OT: 0), the averaging, the calibration and the bipolar inputs are not modelled.
+//
+const XADC_VHDL = `
+library IEEE; use IEEE.STD_LOGIC_1164.ALL; use IEEE.NUMERIC_STD.ALL;
+entity XADC is
+  generic (INIT_40, INIT_41, INIT_42, INIT_43, INIT_44, INIT_45, INIT_46, INIT_47, INIT_48, INIT_49, INIT_4A, INIT_4B, INIT_4C,
+           INIT_4D, INIT_4E, INIT_4F, INIT_50, INIT_51, INIT_52, INIT_53, INIT_54, INIT_55, INIT_56, INIT_57, INIT_58, INIT_59,
+           INIT_5A, INIT_5B, INIT_5C, INIT_5D, INIT_5E, INIT_5F : bit_vector(15 downto 0) := X"0000";
+           IS_CONVSTCLK_INVERTED, IS_DCLK_INVERTED : bit := '0'; SIM_DEVICE : string := "7SERIES";
+           SIM_MONITOR_FILE : string := "design.txt");
+  port (ALM : out std_logic_vector(7 downto 0); BUSY : out std_ulogic; CHANNEL : out std_logic_vector(4 downto 0);
+        DO : out std_logic_vector(15 downto 0); DRDY, EOC, EOS, JTAGBUSY, JTAGLOCKED, JTAGMODIFIED, OT : out std_ulogic;
+        MUXADDR : out std_logic_vector(4 downto 0);
+        CONVST, CONVSTCLK, DCLK, DEN, DWE, RESET, VN, VP : in std_ulogic := '0';
+        DADDR : in std_logic_vector(6 downto 0) := (others => '0'); DI : in std_logic_vector(15 downto 0) := (others => '0');
+        VAUXN, VAUXP : in std_logic_vector(15 downto 0) := (others => '0'));
+end XADC;
+architecture silinx of XADC is
+  type int_array is array (0 to 15) of integer;
+  signal temp_mc : integer := 25000;
+  signal vccint_mv : integer := 1000;
+  signal vccaux_mv : integer := 1800;
+  signal vccbram_mv : integer := 1000;
+  signal vp_mv : integer := 0;
+  signal vaux_mv : int_array := (others => 0);
+  -- (each configuration register its INIT_xx until a write sets it)
+  signal cfg40, cfg41, cfg42, cfg48, cfg49, w40, w41, w42, w48, w49 : std_logic_vector(15 downto 0) := (others => '0');
+  signal wr40, wr41, wr42, wr48, wr49 : std_ulogic := '0';
+  signal do_r, s_temp, s_vccint, s_vccaux, s_vpvn, s_vccbram : std_logic_vector(15 downto 0) := (others => '0');
+  type reg_array is array (0 to 15) of std_logic_vector(15 downto 0);
+  signal s_vaux : reg_array := (others => (others => '0'));
+  signal drdy_r, eoc_r, eos_r, busy_r : std_ulogic := '0';
+  signal chan_r : std_logic_vector(4 downto 0) := (others => '0');
+  -- a code of 12 bits, MSB-justified
+  function code(n : integer) return std_logic_vector is
+    variable c : integer;
+  begin
+    c := n;
+    if c < 0 then c := 0; elsif c > 4095 then c := 4095; end if;
+    return std_logic_vector(to_unsigned(c, 12)) & "0000";
+  end function;
+  -- the channels of a sequence (INIT_48, INIT_49): 0 to 31, a channel after k, or 32 none
+  function next_channel(k : integer; s48, s49 : std_logic_vector(15 downto 0)) return integer is
+    variable ch : integer;
+  begin
+    for i in 1 to 32 loop
+      ch := (k + i) mod 32;
+      if (ch = 0 and s48(8) = '1') or (ch = 1 and s48(9) = '1') or (ch = 2 and s48(10) = '1') or (ch = 3 and s48(11) = '1')
+         or (ch = 6 and s48(14) = '1') or (ch >= 16 and s49(ch - 16) = '1') then
+        return ch;
+      end if;
+    end loop;
+    return 32;
+  end function;
+begin
+  ALM <= (others => '0'); OT <= '0'; JTAGBUSY <= '0'; JTAGLOCKED <= '0'; JTAGMODIFIED <= '0';
+  cfg40 <= w40 when wr40 = '1' else to_stdlogicvector(INIT_40);
+  cfg41 <= w41 when wr41 = '1' else to_stdlogicvector(INIT_41);
+  cfg42 <= w42 when wr42 = '1' else to_stdlogicvector(INIT_42);
+  cfg48 <= w48 when wr48 = '1' else to_stdlogicvector(INIT_48);
+  cfg49 <= w49 when wr49 = '1' else to_stdlogicvector(INIT_49);
+  DO <= do_r; DRDY <= drdy_r; EOC <= eoc_r; EOS <= eos_r; BUSY <= busy_r; CHANNEL <= chan_r; MUXADDR <= (others => '0');
+  process (DCLK)
+    variable div, n, ch, seq : integer;
+    variable cnt : integer := 0;
+    variable cur : integer := -1;
+    variable passes : integer := 0;
+    variable a : integer;
+  begin
+    if rising_edge(DCLK) then
+      -- its DRP
+      drdy_r <= '0';
+      if DEN = '1' then
+        a := to_integer(unsigned(DADDR));
+        if DWE = '1' then
+          case a is
+            when 16#40# => w40 <= DI; wr40 <= '1';
+            when 16#41# => w41 <= DI; wr41 <= '1'; cur := -2; cnt := 0; passes := 0;   -- (restarted once it is set)
+            when 16#42# => w42 <= DI; wr42 <= '1';
+            when 16#48# => w48 <= DI; wr48 <= '1';
+            when 16#49# => w49 <= DI; wr49 <= '1';
+            when others => null;
+          end case;
+          do_r <= DI;
+        else
+          case a is
+            when 16#00# => do_r <= s_temp;
+            when 16#01# => do_r <= s_vccint;
+            when 16#02# => do_r <= s_vccaux;
+            when 16#03# => do_r <= s_vpvn;
+            when 16#06# => do_r <= s_vccbram;
+            when 16#10# to 16#1F# => do_r <= s_vaux(a - 16);
+            when 16#40# => do_r <= cfg40;
+            when 16#41# => do_r <= cfg41;
+            when 16#42# => do_r <= cfg42;
+            when 16#48# => do_r <= cfg48;
+            when 16#49# => do_r <= cfg49;
+            when others => do_r <= (others => '0');
+          end case;
+        end if;
+        drdy_r <= '1';
+      end if;
+      -- its conversions: 26 ADCCLK cycles each
+      eoc_r <= '0'; eos_r <= '0';
+      div := to_integer(unsigned(cfg42(15 downto 8)));
+      if div < 2 then div := 2; end if;
+      n := 26 * div;
+      seq := to_integer(unsigned(cfg41(15 downto 12)));
+      if RESET = '1' or cur = -2 then
+        cnt := 0; cur := -1; passes := 0; busy_r <= '0';
+      elsif seq = 1 and passes > 0 then
+        busy_r <= '0';
+      else
+        if cur < 0 then   -- (the first channel)
+          if seq = 3 then cur := to_integer(unsigned(cfg40(4 downto 0)));
+          elsif seq = 0 then cur := 0;
+          else cur := next_channel(31, cfg48, cfg49);
+          end if;
+          cnt := 0;
+        end if;
+        if cur < 32 then
+          busy_r <= '1';
+          cnt := cnt + 1;
+          if cnt >= n then   -- (its end: the channel's register, EOC; the next channel)
+            cnt := 0;
+            case cur is
+              when 0 => s_temp <= code(((temp_mc + 273150) * 4096) / 503975);
+              when 1 => s_vccint <= code((vccint_mv * 4096) / 3000);
+              when 2 => s_vccaux <= code((vccaux_mv * 4096) / 3000);
+              when 3 => s_vpvn <= code((vp_mv * 4096) / 1000);
+              when 6 => s_vccbram <= code((vccbram_mv * 4096) / 3000);
+              when 16 to 31 => s_vaux(cur - 16) <= code((vaux_mv(cur - 16) * 4096) / 1000);
+              when others => null;
+            end case;
+            eoc_r <= '1';
+            chan_r <= std_logic_vector(to_unsigned(cur, 5));
+            if seq = 3 then null;
+            elsif seq = 0 then
+              if cur = 2 then eos_r <= '1'; cur := 0; else cur := cur + 1; end if;
+            else
+              ch := next_channel(cur, cfg48, cfg49);
+              if ch <= cur then eos_r <= '1'; passes := passes + 1; end if;
+              cur := ch;
+            end if;
+          end if;
+        end if;
+      end if;
+    end if;
+  end process;
+end silinx;`;
+
+export const UNISIM_XC7_VHDL = [DSP48E1, ramb('RAMB18E1'), ramb('RAMB36E1'), XADC_VHDL].join('\n');
