@@ -1,13 +1,15 @@
 // The sources pinned outside npm against their upstream (scripts/check-pins.mjs, #352): the pins found in
 // the repository, ls-remote's output, the comparison of each kind of pin, the issue's text and what is done
-// with it; the whole check with the network replaced (no network in the tests); the monthly workflow.
+// with it; the whole check with the network replaced (no network in the tests); the monthly workflow; the pins declared
+// next to the code that uses them (#5649): their generic kinds, how they are read, each checked.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import os from 'node:os';
-import { collectPins, parseLsRemote, compareTags, latestReleaseTag, yowaspTag, checkYosysTests, checkCommit, checkMcc, issueBody, issueAction, checkAll, TITLE, LABELS, parseReleaseUrl, compareVersions, checkRelease } from '../scripts/check-pins.mjs';
+import { collectPins, parseLsRemote, compareTags, latestReleaseTag, yowaspTag, checkYosysTests, checkCommit, checkMcc, issueBody, issueAction, checkAll, TITLE, LABELS, parseReleaseUrl, compareVersions, checkRelease,
+  collectDeclared, commentPins, pinError, sameCommit, tagShape, checkTag, checkWatched, checkSha256, checkReported, gitUrl } from '../scripts/check-pins.mjs';
 import { YOSYS_TESTS_PIN } from '../scripts/fetch-yosys-tests.mjs';
 
 const ROOT = path.join(path.dirname(fileURLToPath(import.meta.url)), '..');
@@ -44,6 +46,7 @@ test('check-pins: every pin of the repository (Yosys\'s test designs, each corpu
   }
   assert.equal(pkg.dependencies['@silinx/nextpnr-himbaechel-spartan6'], fpga.dependencies['@silinx/nextpnr-himbaechel-spartan6']);
   assert.equal(pins.length, 2 + commits.length + releases.length);
+  assert.ok(pins.every(p => !p.declared), 'the declared pins are collectDeclared\'s');
 });
 
 test('check-pins: a package pinned by a release\'s URL: the tag, its prefix and version; other specs are not', () => {
@@ -211,4 +214,173 @@ test('check-pins: the monthly workflow on GitHub\'s runner, by hand too, may wri
   assert.ok(!yml.includes('self-hosted'));
   assert.match(yml, /issues: write/);
   assert.match(yml, /run: node scripts\/check-pins\.mjs\n\s+env:\n\s+GITHUB_TOKEN: \$\{\{ github\.token \}\}/);
+});
+
+test('check-pins: the pins declared in the repository, each read with what its kind needs, none in error (#5649)', async () => {
+  const { pins, errors } = await collectDeclared(ROOT);
+  assert.deepEqual(errors, []);
+  assert.ok(pins.every(p => p.declared && !pinError(p)));
+  const by = name => pins.find(p => p.name === name) || assert.fail(`no pin ${name}`);
+  // the KiCad catalogue's libraries: SparkFun's and the Arduino modules' tags, KiCad's own within its 9, its files' SHA-256
+  assert.deepEqual([by('KiCad catalogue: SparkFun\'s KiCad libraries').repo, by('KiCad catalogue: SparkFun\'s KiCad libraries').file], ['sparkfun/SparkFun-KiCad-Libraries', 'scripts/kicad-catalogue.mjs']);
+  assert.match(by('KiCad catalogue: the KiCad Library for Arduino Modules').tag, /^v\d+\.\d+\.\d+$/);
+  for (const n of ['KiCad\'s symbol libraries', 'KiCad catalogue: KiCad\'s footprints']) assert.deepEqual([by(n).kind, by(n).series], ['tag', '9.'], n);
+  const shas = pins.filter(p => p.kind === 'sha256');
+  assert.deepEqual(shas.map(p => p.url.split('/').pop()), ['74xx.kicad_sym', '4xxx.kicad_sym']);
+  // the ported code and data (light8080's is the corpus's), Digilent's XDCs (core/boards.js's comment: its constant's commit)
+  assert.deepEqual(['ported: prjxray', 'ported: prjxray-db', 'ported: apicula'].map(n => by(n).kind), ['commit', 'commit', 'tag']);
+  assert.ok(!pins.some(p => /light8080|SparkFun/.test(p.name) && p.file === 'scripts/third-party.mjs'));
+  const xdc = by('Digilent\'s master XDCs (the 7-series\' boards)');
+  assert.ok(fs.readFileSync(path.join(ROOT, 'core/boards.js'), 'utf8').includes(`digilent-xdc/blob/${xdc.commit}/`));
+  assert.ok(fs.readFileSync(path.join(ROOT, 'scripts/install-adepttool.sh'), 'utf8').includes(`COMMIT="${by('adepttool').commit}"`));
+  // nextpnr-spartan's SILINX_REF: read from the fork's workflows, behind when the files of its chip databases changed
+  const chipdbs = pins.filter(p => p.remote);
+  assert.deepEqual(chipdbs.map(p => p.remote.url.split('/').pop()), ['spartan3e.yml', 'spartan6.yml']);
+  for (const p of chipdbs) assert.deepEqual([p.repo, p.branch, p.watch[0]], ['pmnmalo/Silinx', 'main', 'packages/silinx-fpga/devices']);
+  // reported only: the Docker images' bases and the tools whose installers are not public
+  assert.deepEqual(pins.filter(p => p.kind === 'reported').map(p => p.current.split('@')[0]).sort(),
+    ['silinx/xc16:2.10', 'ubuntu:14.04', 'ubuntu:22.04', 'xilinx/vitis-hls:2025.2']);
+});
+
+test('check-pins: a declared pin\'s kinds and what each needs; a tag\'s shape; abbreviated commits', () => {
+  assert.equal(pinError({ kind: 'tag', name: 't', repo: 'o/r', tag: 'v1.2.3' }), '');
+  assert.equal(pinError({ kind: 'tag', name: 't', repo: 'https://gitlab.com/o/r.git', tag: '9.0.0', commit: 'abcdef1' }), '');
+  assert.equal(pinError({ kind: 'commit', name: 'c', repo: 'o/r', commit: A, branch: 'main', watch: ['src'] }), '');
+  assert.equal(pinError({ kind: 'commit', name: 'c', repo: 'o/r', remote: { url: 'https://x/y', match: 'R: (\\w+)' } }), '');
+  assert.equal(pinError({ kind: 'sha256', name: 's', url: 'https://x/f.bin', sha256: 'A'.repeat(64) }), '');
+  assert.equal(pinError({ kind: 'reported', name: 'r', current: 'img:1' }), '');
+  assert.equal(pinError(null), 'not an object');
+  assert.equal(pinError({ kind: 'tag', repo: 'o/r', tag: 'v1' }), 'no name');
+  assert.match(pinError({ kind: 'pypi', name: 'p' }), /^p: no kind "pypi" \(tag, commit, sha256, reported\)$/);
+  for (const bad of [{ kind: 'tag', repo: 'o/r', tag: 'latest' }, { kind: 'commit', repo: 'o/r', commit: 'main' },
+    { kind: 'commit', repo: 'https://gitlab.com/o/r.git', commit: A, watch: ['src'] }, { kind: 'commit', repo: 'o/r', commit: A, watch: [] },
+    { kind: 'sha256', url: 'http://x/f', sha256: 'a'.repeat(64) }, { kind: 'sha256', url: 'https://x/f', sha256: 'a'.repeat(63) }, { kind: 'reported', current: '' }]) {
+    assert.match(pinError({ name: 'x', ...bad }), /^x: not what a \w+ pin needs$/, JSON.stringify(bad));
+  }
+  assert.deepEqual(tagShape('v10.0.0'), { prefix: 'v', version: '10.0.0' });
+  assert.deepEqual(tagShape('0.32'), { prefix: '', version: '0.32' });
+  assert.deepEqual(tagShape('spartan6-v0.5.2'), { prefix: 'spartan6-v', version: '0.5.2' });
+  assert.equal(tagShape('latest'), null);
+  assert.ok(sameCommit('0a0adde', `0a0adde${'f'.repeat(33)}`) && sameCommit(A, A.toUpperCase()));
+  assert.ok(!sameCommit('0a0add', '0a0add') && !sameCommit(A, B) && !sameCommit(null, A));
+  assert.equal(compareVersions('0.36', '0.32.1'), 1);
+  assert.equal(gitUrl('o/r'), 'https://github.com/o/r.git');
+  assert.equal(gitUrl('https://gitlab.com/o/r.git'), 'https://gitlab.com/o/r.git');
+});
+
+test('check-pins: the declarations read: a module\'s PINNED, a comment\'s pin and its match; the errors of each', async () => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'pins-'));
+  try {
+    const write = (f, t) => { fs.mkdirSync(path.dirname(path.join(root, f)), { recursive: true }); fs.writeFileSync(path.join(root, f), t); };
+    write('scripts/a.mjs', "const TAG = 'v1.4.0';\nexport const PINNED = [{ kind: 'tag', name: 'lib a', repo: 'o/a', tag: TAG }];\n");
+    write('scripts/bad.mjs', "export const PINNED = [{ kind: 'tag', name: 'lib b', repo: 'o/b' }];\n");
+    write('scripts/throws.mjs', "export const PINNED = [];\nthrow new Error('no import');\n");
+    write('scripts/install.sh', '#!/bin/sh\n# pinned: {"kind": "commit", "name": "tool", "repo": "o/tool", "match": "^COMMIT=(?<commit>[0-9a-f]{40})$"}\nCOMMIT=' + A + '\n');
+    write('docker/x/Dockerfile', '# pinned: {"kind": "reported", "name": "base", "match": "^FROM (?<current>\\\\S+)", "note": "by hand"}\nFROM ubuntu:24.04\n');
+    write('core/notes.md', '<!-- pinned: {"kind": "sha256", "name": "rom", "url": "https://x/rom.bin", "sha256": "' + 'c'.repeat(64) + '"} -->\n');
+    write('scripts/broken.sh', '# pinned: {"kind": "commit", name: "x"}\n# pinned: {"kind": "commit", "name": "lost", "repo": "o/l", "match": "^REF=([0-9a-f]{40})"}\n');
+    write('test/skipped.mjs', "export const PINNED = [{ kind: 'reported', name: 'a test', current: 'x' }];\n");
+    write('core/data.json', '# pinned: {"kind": "reported", "name": "json", "current": "x"}\n');
+    const files = ['scripts/a.mjs', 'scripts/bad.mjs', 'scripts/throws.mjs', 'scripts/install.sh', 'docker/x/Dockerfile', 'core/notes.md', 'scripts/broken.sh', 'test/skipped.mjs', 'core/data.json', 'scripts/gone.mjs'];
+    const { pins, errors } = await collectDeclared(root, { files });
+    assert.deepEqual(pins.map(p => [p.file, p.kind, p.name, p.tag || p.commit || p.current || p.sha256.slice(0, 4)]), [
+      ['scripts/a.mjs', 'tag', 'lib a', 'v1.4.0'], ['scripts/install.sh', 'commit', 'tool', A], ['docker/x/Dockerfile', 'reported', 'base', 'ubuntu:24.04'], ['core/notes.md', 'sha256', 'rom', 'cccc']]);
+    assert.ok(pins.every(p => p.declared && !('match' in p)));
+    assert.deepEqual(errors.map(e => e.replace(/ \(.*$|: Expected .*$|: Unexpected .*$/, '')), [
+      'scripts/bad.mjs: lib b: not what a tag pin needs', 'scripts/throws.mjs: no import', 'scripts/broken.sh: a pin that is not JSON', 'scripts/broken.sh: lost: its match finds nothing']);
+    assert.deepEqual(commentPins('// pinned: {"kind": "reported", "name": "n", "current": "1"}\n  # pinned: {"kind": "reported", "name": "m", "current": "2"}\nx // pinned: {"kind": "reported", "name": "o", "current": "3"}', 'f.js').pins.map(p => p.name), ['n', 'm']);
+  } finally { fs.rmSync(root, { recursive: true, force: true }); }
+});
+
+test('check-pins: a tag pin: behind a newer tag of its shape (in its series), current, the wrong commit, a tag gone', () => {
+  const tags = (...t) => Object.fromEntries(t.map(x => [`refs/tags/${x}`, A]));
+  const pin = { kind: 'tag', name: 'lib', repo: 'o/lib', tag: 'v4.2.0', declared: true };
+  const cur = checkTag(pin, tags('v4.1.0', 'v4.2.0', 'v4.2.1-beta', 'v5.0.0-rc1', 'release-9', 'w9.0.0'));
+  assert.deepEqual([cur.behind, cur.current, cur.latest, cur.notes], [false, 'v4.2.0', 'v4.2.0', []]);
+  const newer = checkTag(pin, tags('v4.2.0', 'v4.10.0', 'v4.9.0'));
+  assert.deepEqual([newer.behind, newer.latest, newer.notes], [true, 'v4.10.0', []]);
+  // within its series: KiCad 9's, not 10's
+  const kicad = { kind: 'tag', name: 'k', repo: 'https://gitlab.com/k/s.git', tag: '9.0.0', series: '9.' };
+  assert.deepEqual([checkTag(kicad, tags('9.0.0', '10.0.8')).behind, checkTag(kicad, tags('9.0.0', '10.0.8')).latest], [false, '9.0.0']);
+  assert.deepEqual([checkTag(kicad, tags('9.0.0', '9.0.10', '10.0.8')).behind, checkTag(kicad, tags('9.0.0', '9.0.10')).latest], [true, '9.0.10']);
+  assert.deepEqual([checkTag({ ...kicad, tag: '0.32', series: undefined }, tags('0.32', '0.36', 'v1.0')).latest], ['0.36']);
+  // the tag's commit pinned too: the wrong one is behind even with no newer tag
+  const withCommit = { ...pin, commit: B.slice(0, 7) };
+  assert.equal(checkTag(withCommit, { 'refs/tags/v4.2.0': B }).behind, false);
+  const wrong = checkTag(withCommit, { 'refs/tags/v4.2.0': C });
+  assert.deepEqual([wrong.behind, wrong.notes], [true, ['the commit pinned (bbbbbbb) is not v4.2.0\'s (ccccccc)']]);
+  const gone = checkTag(pin, tags('v4.1.0'));
+  assert.deepEqual([gone.behind, gone.notes], [true, ['the tag pinned, v4.2.0, is not in o/lib']]);
+  const none = checkTag(pin, {});
+  assert.deepEqual([none.behind, none.latest, none.notes], [false, '?', ['the tag pinned, v4.2.0, is not in o/lib', 'no v* tag in o/lib']]);
+});
+
+test('check-pins: a watched commit, a file\'s SHA-256, a reported pin', () => {
+  const pin = { kind: 'commit', name: 'w', repo: 'o/w', commit: A, watch: ['src', 'data'] };
+  assert.deepEqual(checkWatched(pin, B, []), { pin, current: 'aaaaaaa', latest: 'bbbbbbb', behind: false, notes: [] });
+  assert.deepEqual(checkWatched(pin, B, ['data']).notes, ['changed since: `data`']);
+  assert.equal(checkWatched(pin, null, []).latest, '?');
+  const sha = { kind: 'sha256', name: 's', url: 'https://x/rom.bin', sha256: 'AB'.repeat(32) };
+  assert.deepEqual([checkSha256(sha, 'ab'.repeat(32)).behind, checkSha256(sha, 'ab'.repeat(32)).notes], [false, []]);
+  const changed = checkSha256(sha, 'cd'.repeat(32));
+  assert.deepEqual([changed.behind, changed.current, changed.latest, changed.notes], [true, 'ABABABABABAB', 'cdcdcdcdcdcd', ['the file served at https://x/rom.bin changed: not the SHA-256 pinned']]);
+  assert.deepEqual(checkReported({ kind: 'reported', name: 'r', current: 'img:1', note: 'by hand' }), { pin: { kind: 'reported', name: 'r', current: 'img:1', note: 'by hand' }, current: 'img:1', latest: '—', behind: false, reported: true, notes: ['by hand'] });
+});
+
+test('check-pins: the declared pins checked with the network replaced: behind, current, a remote commit, a network error; the issue', async () => {
+  const d = (p, file = 'scripts/x.mjs') => ({ ...p, file, declared: true });
+  const pins = [
+    d({ kind: 'tag', name: 'T behind', repo: 'o/t', tag: 'v1.0.0', update: 'the tag in scripts/x.mjs' }),
+    d({ kind: 'tag', name: 'T wrong', repo: 'https://gitlab.com/o/w.git', tag: '2.0', commit: A }),
+    d({ kind: 'commit', name: 'C current', repo: 'o/c', commit: A.slice(0, 7) }),
+    d({ kind: 'commit', name: 'C moved', repo: 'o/m', commit: A }),
+    d({ kind: 'commit', name: 'R', repo: 'o/silinx', branch: 'main', remote: { url: 'https://raw/fork/ci.yml', match: '^  REF: ([0-9a-f]{40})' }, watch: ['dev', 'tim', 'old'] }),
+    d({ kind: 'sha256', name: 'S changed', url: 'https://x/rom.bin', sha256: 'a'.repeat(64) }),
+    d({ kind: 'sha256', name: 'S offline', url: 'https://down/rom.bin', sha256: 'a'.repeat(64) }),
+    d({ kind: 'reported', name: 'image', current: 'img:2.10', note: 'by hand' }, 'docker/Dockerfile'),
+  ];
+  const asked = [];
+  const net = {
+    lsRemote: async (url, ...refs) => {
+      asked.push([url, ...refs].join(' '));
+      if (url.endsWith('/o/t.git')) return { 'refs/tags/v1.0.0': A, 'refs/tags/v1.1.0': B };
+      if (url.endsWith('/o/w.git')) return { 'refs/tags/2.0': C };
+      if (url.endsWith('/o/c.git')) return { HEAD: A };
+      if (url.endsWith('/o/m.git')) return { HEAD: B };
+      if (url.endsWith('/o/silinx.git')) return { 'refs/heads/main': D };
+      throw new Error('unexpected');
+    },
+    compare: async (repo, base, head) => {
+      asked.push(`compare ${repo} ${base.slice(0, 1)}...${head.slice(0, 1)}`);
+      return { ahead_by: head === C ? 0 : 7, files: ['x'] };
+    },
+    text: async url => { assert.equal(url, 'https://raw/fork/ci.yml'); return `env:\n  REF: ${B}\n`; },
+    lastCommit: async (repo, branch, p) => { assert.deepEqual([repo, branch], ['o/silinx', 'main']); return { dev: D, tim: C, old: B }[p]; },
+    sha256: async url => { if (url.includes('down')) throw new Error('fetch failed\nstack'); return 'f'.repeat(64); },
+    exists: async () => assert.fail('no MCC pin'),
+  };
+  const r = await checkAll(pins, net);
+  assert.deepEqual(r.map(c => [c.pin.name, c.behind, c.current, c.latest]), [
+    ['T behind', true, 'v1.0.0', 'v1.1.0'], ['T wrong', true, '2.0', '2.0'], ['C current', false, 'aaaaaaa', 'aaaaaaa'], ['C moved', true, 'aaaaaaa', 'bbbbbbb'],
+    ['R', true, 'bbbbbbb', 'ddddddd'], ['S changed', true, 'aaaaaaaaaaaa', 'ffffffffffff'], ['S offline', false, 'aaaaaaaaaaaa', '?'], ['image', false, 'img:2.10', '—']]);
+  assert.deepEqual(r[3].notes, ['7 commits behind']);
+  // the remote's commit read, then each watched path's last commit compared with it: tim's came before, old's is the pin
+  assert.deepEqual(r[4].notes, ['changed since: `dev`']);
+  assert.ok(asked.includes('compare o/silinx b...d') && asked.includes('compare o/silinx b...c') && !asked.some(a => a.endsWith('b...b')));
+  assert.deepEqual(r[6].notes, ['could not be checked: fetch failed']);
+  assert.deepEqual(asked.slice(0, 2), ['https://github.com/o/t.git refs/tags/*', 'https://gitlab.com/o/w.git refs/tags/*']);
+  const body = issueBody(r, '2026-12-01');
+  assert.match(body, /\| T behind \(\[o\/t\]\(https:\/\/github\.com\/o\/t\)\) \| scripts\/x\.mjs \| v1\.0\.0 \| v1\.1\.0 \|  \|/);
+  assert.match(body, /\| T wrong \(\[gitlab\.com\/o\/w\]\(https:\/\/gitlab\.com\/o\/w\)\) \| scripts\/x\.mjs \| 2\.0 \| 2\.0 \| the commit pinned \(aaaaaaa\) is not 2\.0's \(ccccccc\) \|/);
+  assert.match(body, /- T behind: the tag in scripts\/x\.mjs\n- T wrong: the tag \(and its commit\) where it is declared/);
+  assert.match(body, /- S changed: the file looked at, its new SHA-256 where it is declared/);
+  assert.match(body, /Not checked:\n\n- S offline: could not be checked: fetch failed\n/);
+  assert.match(body, /Reported only \(not checkable from here: look at them by hand\):\n\n- image \(docker\/Dockerfile\): img:2\.10: by hand\n/);
+  assert.ok(!body.includes('| C current') && !body.includes('| image'));
+  assert.ok(!/the design corpus:|the packages pinned by a release:/.test(body));
+});
+
+test('check-pins: the workflow\'s comment and CLAUDE.md name the declared pins (#5649)', () => {
+  assert.match(fs.readFileSync(path.join(ROOT, '.github/workflows/pins.yml'), 'utf8'), /# .*declared next to the code that uses them/);
+  assert.match(fs.readFileSync(path.join(ROOT, 'CLAUDE.md'), 'utf8'), /A new source pinned outside\s+npm [\s\S]*declared next to the code[\s\S]*so `pins\.yml`\s+follows it \(#5649\)/);
 });

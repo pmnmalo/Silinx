@@ -11,13 +11,22 @@ import { readZip } from './zip.js';
 export const PCM_REPOSITORY = 'https://repository.kicad.org/repository.json';
 // KiCad's own libraries (their 9.0.0 tag: one file per library, KiCad 10's split in folders), the ones whose parts
 // behave as Silinx's ICs
-const OFFICIAL = 'https://gitlab.com/kicad/libraries/kicad-symbols/-/raw/9.0.0';
+const OFFICIAL_TAG = '9.0.0';
+const OFFICIAL = `https://gitlab.com/kicad/libraries/kicad-symbols/-/raw/${OFFICIAL_TAG}`;
 export const OFFICIAL_LIBRARIES = [
   { identifier: 'org.kicad.libraries.symbols.74xx', name: 'KiCad 74xx symbols', library: '74xx.kicad_sym', size: 1270177,
     sha256: 'd229bea4164b7197952f31aa6deff19d9eaa0cf0a319190424cfad3ba1b6a727', description: 'KiCad\'s own 74 series logic symbols (TTL and CMOS): its 74LS, 74HC, 74HCT…' },
   { identifier: 'org.kicad.libraries.symbols.4xxx', name: 'KiCad 4xxx symbols', library: '4xxx.kicad_sym', size: 365382,
     sha256: '60cbb92571dd4a4b75b5a691817c309219dd88f42e070af556ba9ec973335888', description: 'KiCad\'s own 4000 series CMOS logic symbols' },
-].map((x) => ({ ...x, kind: 'file', version: '9.0.0', url: `${OFFICIAL}/${x.library}`, licence: 'CC-BY-SA-4.0', author: 'KiCad Libraries team' }));
+].map((x) => ({ ...x, kind: 'file', version: OFFICIAL_TAG, url: `${OFFICIAL}/${x.library}`, licence: 'CC-BY-SA-4.0', author: 'KiCad Libraries team' }));
+
+// The tag and the files, followed by the monthly Pins workflow (scripts/check-pins.mjs, #5649): the tag within KiCad 9
+// (KiCad 10 splits a library in a folder), each file's SHA-256 against the file served
+const UPDATE = 'the tag, the files\' sizes and SHA-256 above, then `node scripts/kicad-catalogue.mjs` and the KiCad catalogue\'s tests';
+export const PINNED = [
+  { kind: 'tag', name: 'KiCad\'s symbol libraries', repo: 'https://gitlab.com/kicad/libraries/kicad-symbols.git', tag: OFFICIAL_TAG, series: '9.', update: UPDATE },
+  ...OFFICIAL_LIBRARIES.map((l) => ({ kind: 'sha256', name: `KiCad's symbol libraries: ${l.library}`, url: l.url, sha256: l.sha256, update: UPDATE })),
+];
 
 const str = (v, max = 2000) => (typeof v === 'string' ? v.slice(0, max) : '');
 const ID_RE = /^[a-zA-Z0-9-]{1,50}(\.[a-zA-Z0-9-]{1,50})+$/;   // (the PCM's identifiers: reverse DNS)

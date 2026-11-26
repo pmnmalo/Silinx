@@ -19,6 +19,7 @@
 
 # (the base pinned by its digest, #1435: the tag of an end-of-life release could be repointed; the digest is
 # the manifest list's, which the platform above selects from)
+# pinned: {"kind": "reported", "name": "the ISE image's base (Ubuntu 14.04, what ISE 14.7 needs; by its digest)", "match": "^FROM \\S+ (?<current>ubuntu:14\\.04@sha256:[0-9a-f]{12})", "note": "kept: no newer Ubuntu runs ISE 14.7"}
 FROM --platform=linux/amd64 ubuntu:14.04@sha256:64483f3496c1373bfd55348e88694d1c4d0c9b660dee6bfef5e12f43b9933b30 AS base
 ENV DEBIAN_FRONTEND=noninteractive TERM=xterm-256color LANG=C.UTF-8
 # Ubuntu 14.04 is end-of-life: fall back to old-releases if the main archive no longer serves it.

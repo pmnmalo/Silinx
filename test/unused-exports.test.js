@@ -26,6 +26,9 @@ const LEFT = {
 };
 
 const PUBLIC = ['packages/silinx-fpga/src/index.js', 'packages/silinx-fpga/src/parts.js', 'packages/silinx-fpga/src/node.js'];
+// a module's pins, `export const PINNED` (#5649): scripts/check-pins.mjs finds and imports every module that declares
+// them (collectDeclared), without naming it
+const DECLARED = { by: 'scripts/check-pins.mjs', name: 'PINNED' };
 // (the Cloudflare relay's copies of core/'s modules, #4541: core/'s own are checked)
 const CHECKED = f => (/^(server|core|web|bin|scripts)\//.test(f) || /^packages\/[^/]+\/(src|bin)\//.test(f)) && !f.startsWith('packages/silinx-relay-cloudflare/src/core/');
 const SKIP = new Set(['node_modules', '.git', '.claude', 'devices', 'dist']);
@@ -103,6 +106,7 @@ function unusedExports(text) {
     }
   }
   for (const e of PUBLIC) if (text.has(e)) for (const n of exported(e)) mark(e, n);
+  if (text.has(DECLARED.by)) for (const [f, d] of defs) if (d.has(DECLARED.name)) mark(f, DECLARED.name);
   const out = [];
   for (const [f, d] of defs) if (CHECKED(f)) for (const n of d.keys()) if (!used.get(f).has(n)) out.push(`${f} ${n}`);
   return out;
@@ -194,4 +198,15 @@ test('the check finds an export nothing uses, and sees each kind of use (#3543)'
     'test/corpus/run.mjs': "const { fetchIt, DIRS } = await import(pathToFileURL(path.join(HERE, '..', '..', 'scripts', 'fetch.mjs')).href);",
   }));
   assert.deepEqual(unusedExports(files).sort(), ['core/a.js unused', 'core/c.js own', 'scripts/fetch.mjs unseen', 'web/js/api-local.js extra']);
+});
+
+test('#5649 a module\'s PINNED is used when check-pins, which imports every module declaring one, is there', () => {
+  const files = new Map(Object.entries({
+    'core/pinned.js': "export const PINNED = [{ kind: 'reported' }];\nexport const TAG = '1.0';",
+    'scripts/check-pins.mjs': 'export const x = 1;\nx;',
+    'test/t.test.js': "import { x } from '../scripts/check-pins.mjs';",
+  }));
+  assert.deepEqual(unusedExports(files), ['core/pinned.js TAG'], 'PINNED used, another name of the module not');
+  files.delete('scripts/check-pins.mjs');
+  assert.deepEqual(unusedExports(files).sort(), ['core/pinned.js PINNED', 'core/pinned.js TAG'], 'without check-pins, unused');
 });

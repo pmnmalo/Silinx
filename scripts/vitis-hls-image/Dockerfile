@@ -3,6 +3,7 @@
 # installer, by install.sh (README.md): the installer needs the maintainer's AMD account, so it is not a build step.
 # (the base pinned by its digest, as docker/ise's (#1435, #2645): a tag can be repointed; the digest is the manifest
 # list's, which the platform selects from; Dependabot proposes a new one, .github/dependabot.yml)
+# pinned: {"kind": "reported", "name": "the Vitis HLS image's base (Ubuntu 22.04, by its digest)", "match": "^FROM \\S+ (?<current>ubuntu:22\\.04@sha256:[0-9a-f]{12})", "note": "a newer digest (security updates) or Ubuntu taken when the image is built again for a new Vitis"}
 FROM --platform=linux/amd64 ubuntu:22.04@sha256:076e7bf82319619f28dd0aa9c02ab34b055ad37100395b4f49a2ffba04fb5e11
 ENV DEBIAN_FRONTEND=noninteractive LANG=en_US.UTF-8 LC_ALL=en_US.UTF-8
 RUN apt-get update && apt-get install -y --no-install-recommends \

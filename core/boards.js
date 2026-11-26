@@ -24,6 +24,7 @@ const ELBERTV2_UCF = 'Numato Lab Elbertv2.ucf (numato/samplecode)';
 // (#3142) the 7-series' boards: Digilent's master XDCs, github.com/Digilent/digilent-xdc (commit c8644a9, MIT)
 const BASYS3_XDC = 'Digilent Basys-3-Master.xdc (rev B board)';
 const NEXYSA7_XDC = 'Digilent Nexys-A7-100T-Master.xdc';
+// pinned: {"kind": "commit", "name": "Digilent's master XDCs (the 7-series' boards)", "repo": "Digilent/digilent-xdc", "match": "digilent-xdc/blob/(?<commit>[0-9a-f]{40})/", "update": "the commit here and in core/boards-vivado.js, each board's pins compared with its new master XDC"}
 const DIGILENT_XDC = 'https://github.com/Digilent/digilent-xdc/blob/c8644a9fe31cc803789643124545d56b3bef4600/';
 // the configuration's properties both master XDCs give "for all designs" (Vivado's DRC CFGBVS-1 without the first two)
 const DIGILENT_XDC_CONFIG = { CONFIG_VOLTAGE: '3.3', CFGBVS: 'VCCO', 'BITSTREAM.GENERAL.COMPRESS': 'TRUE', 'BITSTREAM.CONFIG.CONFIGRATE': '33', CONFIG_MODE: 'SPIx4' };
