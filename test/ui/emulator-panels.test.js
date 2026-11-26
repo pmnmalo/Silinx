@@ -47,7 +47,7 @@ uiTest('#2666 #2713 the Board Emulator: Watch and notes in a side panel at the r
   // the side panel at the board's right; the menu closed, its rows the engine, when hidden and the modules shown; the
   // toolbar keeps the model and the clock
   let L = await layout(page);
-  assert.deepEqual({ ...L, width: undefined }, { side: 'right', width: undefined, folded: false, cap: 'Properties', sections: ['Watch'],
+  assert.deepEqual({ ...L, width: undefined }, { side: 'right', width: undefined, folded: false, cap: 'Properties', sections: ['Watch', 'Oscilloscope'],   // (the Watch first, the oscilloscope after it, #5383, #5706)
     rows: ['Engine', 'When hidden', 'Show'], menuShown: false, bar: ['Model:', 'Clock:'] });
   assert.equal(L.width, 280);
   // (no hint line: the buttons' tips say how to press them, #4764; what it says of the design, in the console, #2718)
