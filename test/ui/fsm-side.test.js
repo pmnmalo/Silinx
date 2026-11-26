@@ -1,8 +1,8 @@
 // UI: the FSM editor's side panel (web/js/fsm-side.js, #405: out of mountFsmEditor), mounted alone in the page with
 // an editor of its own (the model of a new diagram) whose actions are recorded: nothing selected, a state (its name, its
 // Moore outputs, its code, made initial, its transitions, one opened), a transition (its condition, its
-// priority moved, its target, outputs given to it: the machine Mealy, #2728), a selection gone; the machine (its name, a port added
-// and removed, the reset, the description). A state's and a transition's outputs: a table of the machine's outputs (#3814:
+// priority moved, its target, outputs given to it: the machine Mealy, #2728), a selection gone; the machine (its name
+// shown, not edited, #5718; a port added and removed, the reset, the description). A state's and a transition's outputs: a table of the machine's outputs (#3814:
 // name and width read-only, a value set, cleared, refused with its message in the console, following an output renamed
 // or removed; in Portuguese).
 import { before, after } from 'node:test';
@@ -167,13 +167,14 @@ uiTest('#3814 FSM side panel: a state\'s and a transition\'s outputs, a table of
   } finally { await page.eval(async () => (await import('/js/i18n.js')).setLanguage('en')); }
 });
 
-uiTest('#405 FSM side panel: the machine (its name, a port added and removed, the reset, the description)', E, async (page) => {
+uiTest('#405 FSM side panel: the machine (its name shown, not edited, #5718; a port added and removed, the reset, the description)', E, async (page) => {
   await page.eval(MOUNT);
   const out = await page.eval(() => {
     const { side, M, commits, machineBody: B, field, set } = window.__s;
     const r = {};
     side.renderSide();
-    set(field(B, 'Module name'), ' ctl ');
+    const nameIn = field(B, 'Module name');   // (#5718: renamed by the Design pane's Rename… only)
+    r.nameField = [nameIn.disabled, nameIn.value, nameIn.closest('.asm-field').querySelector('.asm-fhint')?.textContent];
     B.querySelector('.fsm-add-in').click();
     B.querySelector('.fsm-add-out').click();
     r.ports = [M.inputs.map((p) => p.name), M.outputs.map((p) => `${p.name}=${p.default}`)];
@@ -189,9 +190,10 @@ uiTest('#405 FSM side panel: the machine (its name, a port added and removed, th
   });
   assert.deepEqual(out.ports, [['x', 'x1'], ['z=0', 'z1=0']]);
   assert.deepEqual(out.removed, ['x1']);
-  assert.deepEqual(out.machine, ['ctl', 'low', 'counts']);
+  assert.deepEqual(out.nameField, [true, 'fsm', 'renamed with Rename… in the Design pane']);
+  assert.deepEqual(out.machine, ['fsm', 'low', 'counts']);
   assert.equal(out.noDesc, false);
-  assert.deepEqual(out.commits, ['name', '', '', '', '', '', '']);
+  assert.deepEqual(out.commits, ['', '', '', '', '', '']);
 });
 
 uiTest('#3882 FSM side panel: no Delete button for a state or a transition; a state\'s transitions with their outputs one per line', E, async (page) => {
