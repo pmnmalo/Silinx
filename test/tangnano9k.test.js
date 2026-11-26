@@ -75,8 +75,9 @@ test('a project on the Tang Nano 9K: its constraints/top.cst from the board, pla
     const r = await runFlow({ top: 'top', family: 'gowin', device: 'gw1nr-9c', pkg: 'qn88', speed: '-6', steps: ['synth', 'translate', 'par', 'bitgen'] }, io);
     assert.equal(files['top.fs'].length, 2069320);
     assert.ok(r.ok, r.error);
-    // (nextpnr-himbaechel-gowin routes a net through the general routing where its dedicated routing (a global's) did not reach)
-    assert.deepEqual(log.filter(l => /^WARNING/.test(l)), ["WARNING:Place - Failed to route net 'led_n_OBUF_O_4_I_LUT2_F_I1[1]' from X28Y28/F6 to X1Y20/B0 using dedicated routing."]);
+    // (nextpnr-himbaechel-gowin routes a net through the general routing where its dedicated routing (a global's) did not reach;
+    // with Yosys 0.70 led_n_OBUF_O_4_I_LUT2_F_I1[1]'s to X1Y20/B0, #5634)
+    assert.deepEqual(log.filter(l => /^WARNING/.test(l)), ["WARNING:Place - Failed to route net 'btn_n_IBUF_I_O[1]' from X28Y28/F6 to X1Y15/B3 using dedicated routing."]);
     assert.ok(r.report.par.constraintsMet);
     assert.deepEqual(r.report.par.fmax.map(f => [f.clock, f.constraint]), [['clk', 27]]);
     assert.ok(log.includes('Netlist of <top> read; constraints: top.cst, 13 pin location(s), 1 PERIOD constraint(s).'));

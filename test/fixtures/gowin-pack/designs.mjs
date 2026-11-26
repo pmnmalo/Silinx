@@ -35,7 +35,7 @@ export const IOLOGIC = {
   oser4: { cst: `${CLK}${LEDS(1)}${PIN('q', 25)}`, cells: { OSER4: 1, CLKDIV: 1, rPLL: 1 },
     text: `module oser4(input clk, output q, output reg [0:0] led);\n${PLL}${DIV('2')}${COUNT(4)}  always @(posedge pclk) led <= c[3];\n  OSER4 u (${ds(4)}, .TX0(1'b0), .TX1(1'b0), .PCLK(pclk), .FCLK(fclk), .RESET(1'b0), .Q0(q), .Q1());\nendmodule\n` },
   oser8: { cst: `${CLK}${LEDS(1)}${PIN('q', 25)}`, cells: { OSER8: 1, IOLOGIC_DUMMY: 1, CLKDIV: 1, rPLL: 1 },
-    warnings: [fallback('fclk', 'X44Y9/F4', 'X46Y18/CLKDIV_HCLK1_SECT1_HCLKIN')],
+    // (none with Yosys 0.71's netlist; with 0.70's the fclk's to X46Y18/CLKDIV_HCLK1_SECT1_HCLKIN, #5634)
     text: `module oser8(input clk, output q, output reg [0:0] led);\n${PLL}${DIV('4')}${COUNT(8)}  always @(posedge pclk) led <= c[7];\n  OSER8 u (${ds(8)}, .TX0(1'b0), .TX1(1'b0), .TX2(1'b0), .TX3(1'b0), .PCLK(pclk), .FCLK(fclk), .RESET(1'b0), .Q0(q), .Q1());\nendmodule\n` },
   oser10: { cst: `${CLK}${LEDS(1)}${PIN('q', 25)}`, cells: { OSER10: 1, IOLOGIC_DUMMY: 1, CLKDIV: 1, rPLL: 1 },
     text: `module oser10(input clk, output q, output reg [0:0] led);\n${PLL}${DIV('5')}${COUNT(10)}  always @(posedge pclk) led <= c[9];\n  OSER10 u (${ds(10)}, .PCLK(pclk), .FCLK(fclk), .RESET(1'b0), .Q(q));\nendmodule\n` },
@@ -57,6 +57,8 @@ export const IOLOGIC = {
     text: `module iodelay(input clk, input d, output reg [0:0] led);\n  wire o;\n  IODELAY #(.C_STATIC_DLY(5)) u (.DI(d), .SDTAP(1'b0), .SETN(1'b0), .VALUE(1'b0), .DO(o), .DF());\n  always @(posedge clk) led <= o;\nendmodule\n` },
   // the HCLK stopped by a DHCEN ahead of its CLKDIV and serialiser
   dhcen: { cst: `${CLK}${LEDS(1)}${PIN('q', 25)}${PIN('e', 26)}`, cells: { OSER4: 1, CLKDIV: 1, rPLL: 1, DHCEN: 24 },
+    // (placed so with Yosys 0.71's netlist, none with 0.70's, #5634)
+    warnings: [fallback('fclk', 'X44Y9/F4', 'X0Y18/CLKDIV_HCLK1_SECT1_HCLKIN')],
     text: `module dhcen(input clk, input e, output q, output reg [0:0] led);\n${PLL}  wire g;\n  DHCEN h (.CLKIN(fclk), .CE(e), .CLKOUT(g));\n${DIV('2', 'g')}${COUNT(4)}  always @(posedge pclk) led <= c[3];\n  OSER4 u (${ds(4)}, .TX0(1'b0), .TX1(1'b0), .PCLK(pclk), .FCLK(g), .RESET(1'b0), .Q0(q), .Q1());\nendmodule\n` },
   // a DCS between the input clock and the rPLL's
   dcs: { cst: `${CLK}${LEDS(1)}${PIN('s', 25)}`, cells: { DCS: 8, rPLL: 1 },

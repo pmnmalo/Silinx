@@ -67,23 +67,23 @@
   "designs": {
     "note": "the rPLL and oscillator designs of test/gowin-pll-osc.test.js on the Tang Nano 9K: the same, their routed designs and Apicula 0.32's .fs",
     "pll": {
-      "routed": "150bd211398550ddce9a9ff95d9eb36c642191654d58a00a0f3b8bbf444baba8",
-      "fs": "f6450a65cdbe5285896128c78ab0ed42ed146c29b2368841920d92b7662dc558",
+      "routed": "0bfc78b56fa22f7c333615418fb7ec41faad9f659e1e2d67fbac55cc0a9c1874",
+      "fs": "3d65cec481cc3e9cbc4840a307bc58fc1e71fa2dda27b8f75872c6d91813144b",
       "fsBytes": 2069320
     },
     "pll2": {
-      "routed": "bcf18a5a2b42cdb0ae9d7b4a19f02f5ffafd0350149e0ec8d7c1aa22f7821a64",
-      "fs": "ee813c95eb0b420f129a03f9a0f1fb42a8ebba0e7e9365837f70af53a03504b7",
+      "routed": "4d57bf74bc23273cd77879e4ed486ae3ae10f1fa2276d94ee7969c76a93e5204",
+      "fs": "6de3e6470b38164abd7ec1a4ebada43d93d18c46bc903677be7398d94c25760d",
       "fsBytes": 2069320
     },
     "pll3": {
-      "routed": "77ad111ed8a01af3c2583cc2406c5f5e8d2a902ba41b91530a3c794690c1171e",
-      "fs": "4884758ef5313741a27beb3dae9e001170d452ba990f42ef0c70d1bb43466a85",
+      "routed": "1d57439fdc3c01ee5aa456dbd7fedc7656cdea18e49d67ffa3e942a7ac2dd87e",
+      "fs": "6216d5a109b45563ba5cfc4e7ac5ef4213b38145f7a654dd3679a0c0dcb14e81",
       "fsBytes": 2069320
     },
     "pll4": {
-      "routed": "9b8cdc41302cef115b998026f6994fb0a0f41edbbe2ffbf9a800b3ef4dc3e22b",
-      "fs": "265ef13e4a3d63e282ccbca380d372ba62812b1a0ea56ef6d1a979604d13db79",
+      "routed": "4055481f308116434d4939f0407fdf4ed7ec46ab59485083f239d9eb2bf2c35e",
+      "fs": "7d0771977327370d0aebac523ca712c82c646fbb43178bbff41bebb77e8275f9",
       "fsBytes": 2069320
     },
     "pll5": {
@@ -92,13 +92,13 @@
       "fsBytes": 2069320
     },
     "osc": {
-      "routed": "6fce9029a9bbfe07c29fb355855987d5cb9e53b40c98004da69fd3bd5f48d534",
-      "fs": "b42a49b46ab506d8be8b60f0ba9b1165e66126702172e7bced0b5370daba1c4a",
+      "routed": "f1e7eeb302547819fe89dc78210e0a467e74a3888a7f5b7bc9ae435383e675cf",
+      "fs": "76a24cbd1f6ba1d91f7cf681c8b1ebc9ce6816f9ad3259b52f115002b2fd80ca",
       "fsBytes": 2069320
     },
     "osc2": {
-      "routed": "9b78714c9d6ad250fe19d4ad5fc70aad94c5c3c7ed048b6581f690a40a482088",
-      "fs": "9cf774bec98df782b32e401cc8c540a0e4bb98192d1f6050b7daa7f19774b732",
+      "routed": "dfdc673c1225a93f1812c86a07d59a54dd1baca6b1839873b0b0916b7afae1f9",
+      "fs": "a57e82984e95e3559bae39e0ccfc2235e251a1ec6f0f17167b09f79e8f8d2795",
       "fsBytes": 2069320
     }
   },
@@ -110,12 +110,12 @@
       "fsBytes": 2069320
     },
     "oddrc": {
-      "routed": "2f77c3fa5289eb0260bd47f43412fdd9ed89bfcbdbf4ccdf594bee3b7e9de971",
+      "routed": "d36bb946a5e37df10b90b3db5c9330600da487c06c3e10ec6830b07b1b270c07",
       "fs": "cd17046e83ef4b86b35f3c28f258e2e83ff1547d12ded822a21f0a58554088a8",
       "fsBytes": 2069320
     },
     "oddrt": {
-      "routed": "d77d14e621398084c6915e70d7056cf7122d56d008133ca6112059d049b0093a",
+      "routed": "0d0bc8cbbda1c4824b7b0a055a3b4b4861160650b3fbd8e6a2a6a2f58252a5b0",
       "fs": "1a8cbd96d70eba624406513b54fbc44579d39a231583ec1d6fc914a956a4e340",
       "fsBytes": 2069320
     },
@@ -130,23 +130,23 @@
       "fsBytes": 2069320
     },
     "oser4": {
-      "routed": "e2084deb9f7c32afe49d893890cfd7fe5ff2366ad470c990e53116c24478cb46",
-      "fs": "8d717bee9297ef8a96617bba71d9021acc301c9efab6d4db576772efb02cb214",
+      "routed": "42d92e805df6b44abdc854f5fbc1c67ec94f586bf9cfc783b80e876759de89a5",
+      "fs": "7c1b8bee45aee1f8c3635a77a398753f07b5f5b849c8213831bb71a2da81e444",
       "fsBytes": 2069320
     },
     "oser8": {
-      "routed": "0f991937feb101f525bed7ba31e5d13dd3740e987a5771cb5ebb663373270152",
-      "fs": "73965f53c0500d16df8708e9fee8985fea650af8446895c43f8e08ed141e15fd",
+      "routed": "207bb3405607e34edfebaa6b136db42c9f24a41acd2fb940a0e96949e294c1a8",
+      "fs": "ad9f64277d7d970735a29ab75f0a03286360462005b0a5da6359c5d421033f8d",
       "fsBytes": 2069320
     },
     "oser10": {
-      "routed": "fbdc298acc4ef99f2847859996ecbd4e9457d24043fb2f166337acc6622f8b71",
-      "fs": "dc3b407df3cf8005ec639ef377bb819b5b29ebba2f35fc4ddd5751a436d93207",
+      "routed": "5cee9927027f4482c489526935d6d122595d0bdbafcc0e259aacfb128aed785e",
+      "fs": "1de4e54352d60b8d2fe5c281d417b0bf482ef2a44be415a7d752e64aa91a7bb4",
       "fsBytes": 2069320
     },
     "ovideo": {
-      "routed": "a76e5f7c2ef2e8a5180d2751af51e9770baa1c32a1cd873fc2418f0eb29400bc",
-      "fs": "5889cf4b3b533dfdad6ce13967ea45cec78b80439b3a491e885754c936df4525",
+      "routed": "9d73fdc27fefa1a3ecaa2a8f3a80368128cd070802bd54d2447eb64a1fc93de0",
+      "fs": "1bf7c642c670b187049a5d9e3dadbe6c75d531e020c3e74a86ca352efb07f5f6",
       "fsBytes": 2069320
     },
     "ides4": {
@@ -175,8 +175,8 @@
       "fsBytes": 2069320
     },
     "dhcen": {
-      "routed": "714cc85fee8591bfbf96c2fcdf309b495e0ba09dc479629cc423ad0e25eb7c04",
-      "fs": "1dedd5292ddcee2672702548d739aaf4928007b5c2bbc89ae8fc8fa889455b99",
+      "routed": "29c32983d4e721cf87033d9c5a164e2c1020454f1b1d7f0a74677cd5a8531a5d",
+      "fs": "42467e8dd3ff9c4124b1621dd9c22c813a5c88338e5cbf9a21741fe3b9681c45",
       "fsBytes": 2069320
     },
     "dcs": {
@@ -185,8 +185,8 @@
       "fsBytes": 2069320
     },
     "dqce": {
-      "routed": "2eeb5b0c4e598dffbcfff69b7cc903a28eec20c50b280231d6f835e47fd5ef92",
-      "fs": "5246746331bcc1765b2bc2523300a2cb945bf4a794b96586606d0524ccc17c06",
+      "routed": "cdb0fce8436003be635adf3bf1aa04fc08fb8fad3e93f657a0b17c924458685b",
+      "fs": "a92934e5e04f068afb1017f969b0abb773c8d2d8c44e53c967b5234b678c2900",
       "fsBytes": 2069320
     },
     "tlvds": {
@@ -250,38 +250,38 @@
       "fsBytes": 2069320
     },
     "multalu0": {
-      "routed": "fe952fcc2f0f8ceea91f11dc4a0bf7932fe21902d139cc6b52c660c0e790b748",
-      "fs": "24bc2b892eebf0e7f1349351609f1c3cf63af539c162204082b23ccacb7cf367",
+      "routed": "504e38b7f69ae00c5ca3f672d7f98ad253464815eab13c52e833e5f482ba2e5b",
+      "fs": "def589d2f1ddbe7ca60ced890a9d461bde61889d8b705a2dfa2ceee676eb2234",
       "fsBytes": 2069320
     },
     "multalu1": {
-      "routed": "b9f184594f6221905e805c1c47579febb31cc3c82e3326414b8c25a273e1dec6",
-      "fs": "70c082da30eb9526fc4744494ec3ed0d8daca27af26340460d98ddfcfb7e8f59",
+      "routed": "3aa2b2e915301be42b867a64b3fb214b2048f95e8b6479be6ed1a9ab74d449db",
+      "fs": "5af02b271c0300c1eba750ddf3f65a54e82f21f92063b711f6ba1392c24f7ec2",
       "fsBytes": 2069320
     },
     "multalu2": {
-      "routed": "c8d96d4d4271b3f4d9760b1441bf50366ee88417e23217fe5a6fc222eedfbb49",
-      "fs": "3772d36dc4bed5bc04d668be0b354e37c5764df8c47bc6813a498d7c0a01897d",
+      "routed": "056bef1abe7ef81f293cb6b1a3ee7c58cd9ded8998b7113f5e6d3547f8d4f3f6",
+      "fs": "38c151cf1134889c2ef14fc58d262a2c187097b7b1b870940c74b517901214e4",
       "fsBytes": 2069320
     },
     "multalu36": {
-      "routed": "a54ef16bc73c55aeb1c5237ca5201027e7a8eb3595debd1ba5c6b641a4961842",
-      "fs": "c212ee4cbb637287a81a42c32e419d08ecb0867082c64248cd00d1a587744657",
+      "routed": "a307ae8a967b66fe866e613a4dae8fda1785a71b6e0af34a2c43cf003a716842",
+      "fs": "fec918e0d0dc6689c616416eeb788c3c5d7a936bd8a1e7603f5a794e3943d059",
       "fsBytes": 2069320
     },
     "multaddalu": {
-      "routed": "4f80e86506d41f05822301410e97ae4828942ed031b4d5c6dfc9a7561ac28772",
-      "fs": "72be3953c9b8c09ff255b1396936e8bc7f6b48e94c8ce7ac0bf9facc2192ff49",
+      "routed": "d75fa3a346a259901d871e71c204f91cc5834aac243939f334ba84d2caea6df6",
+      "fs": "7cde2074dd3bf2876682312937c32f1e97433ffa80445232db1e140d18f9bc2a",
       "fsBytes": 2069320
     },
     "mult36": {
-      "routed": "c602a9dd8f210a63be5896e5547fa3f6ec818cc3d0b85455955dd7a9d2483790",
-      "fs": "dc2bd3192d0b094ff7c02eee0bc45fec021b456c33673e82515c1767c6ef7a1b",
+      "routed": "a9ab297464fe3781b901c24c6d4eed4073fc4425aeb12b5d4315805573fcf47f",
+      "fs": "7244afe414b0567ef90bbdab049779739fa6846446b7f95a1140bbdb766ab3b3",
       "fsBytes": 2069320
     },
     "alu54": {
-      "routed": "db9b03e63445d5b786374196f18e73c1ea1d09f13eed0f185957f67a0fa57ce4",
-      "fs": "3a25f5fe439d018914e8fa7a33108a0d39ff557d2f836db4ec8a4407d3ba40c8",
+      "routed": "5aa28fcc09590f431b88c4a7f3e8374ce08594c70cbe308c1fadc4cf4703d5b7",
+      "fs": "f6fb3547fe19398d98352a8b67714fd447762dc3af588360d2870fea7fd69613",
       "fsBytes": 2069320
     },
     "padd9": {
@@ -295,23 +295,23 @@
       "fsBytes": 2069320
     },
     "multaddalu1": {
-      "routed": "22062b167932a0868d4168f65c300aa44a10f3a850bf078ea56922662520c835",
-      "fs": "be23a2c5648ca27b58efb62cda231b917fbe1d07a59f7e09731a45d6a2d4b232",
+      "routed": "ec6689842e11657bb3e0a4ea364cfa5982e8f08ecaf15f8f28c0b425691d592e",
+      "fs": "c4595faf1ea1e5a4b29c12d2e3eb37054e58bc09a6cfc009b5a13c7071fb40fb",
       "fsBytes": 2069320
     },
     "mult36b": {
-      "routed": "2e275c837cf285b044aace88ffe17f8f6922d7317d8936eab840571836df98b1",
-      "fs": "e553d7a0cdc3587ff8ca13ac597265a2395c5f8cce05864f2c47a2763d1f346e",
+      "routed": "ca1d1bd53f34148dcd82f667ecc6645e5cbd2b564d47311448331772dfdbcd7e",
+      "fs": "1cc17ac70d91be5ce4d9c57e56f5e4c6f5d323eee9d6e6bcc2ffd1da4df1d769",
       "fsBytes": 2069320
     },
     "alu54b": {
-      "routed": "0614a15cf3ff7239991cc36995cf6d954988ef2b3e4c6cfc0d825a0fa061b0d6",
-      "fs": "311c8e0be12fb28443382f357f313618117f5136dfee36cad2967e719de7c4d7",
+      "routed": "8eade8406c375a95c94ea528205caa1733bfec59c31b8a8f5c3d5b354ae760b1",
+      "fs": "5503cdc357fd14f41f7814c3993dd6f4b647f21159321ddb5956227032cc35c7",
       "fsBytes": 2069320
     },
     "multalu36b": {
-      "routed": "e94b0d4b3ba80d77a13f06760c29bdbd9beb5adf352bb0a9f3735017820da627",
-      "fs": "2bcd75706f0cadea4cb18ecf994e4157f850e4be3a6b6213e5eace53517aab01",
+      "routed": "21d1707944afe4c962b2021934f3153481b4e3b04bd626856a1a774d066cd47c",
+      "fs": "a2661b2b9b3f8815ba3ec8c8e54437de0265bc9a64ad6d1d5ee980aba4501c19",
       "fsBytes": 2069320
     },
     "padd18b": {
@@ -320,8 +320,8 @@
       "fsBytes": 2069320
     },
     "multalu2clk": {
-      "routed": "b88c0b7df58609512e93a941ad88c03c1add1d2229aa50ec7aa52f5f87ccc8c0",
-      "fs": "cd1733d86e570b5b158af32d61242c183774e0194055bfe672b3624e92f0a2fb",
+      "routed": "74fd7c9a70e493fa44edb1af6e0c7117fc51225e0f11e46b639e07689483e1a6",
+      "fs": "903588e42b67699a6be6498ea2de8e22736692c463f55b3572f683f552e61316",
       "fsBytes": 2069320
     }
   }
