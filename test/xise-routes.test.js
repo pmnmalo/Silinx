@@ -20,14 +20,16 @@ test('#405 ISE project routes: mounted alone, the .xise and zip routes', () => {
   assert.deepEqual(calls, ['get /projects/:p/export.xise', 'post /import-xise /projects/import-xise', 'get /projects/:p/export.zip', 'post /import-zip /projects/import-zip', 'post /projects/:p/sync-xise']);
 });
 
-test('#405 ISE project routes: registerImplRoutes registers them after its own, then Merge Contribution\'s (#4206), then KiCad\'s libraries\' (#4285)', () => {
+test('#405 ISE project routes: registerImplRoutes registers them after its own, then Merge Contribution\'s (#4206), the versions\' (#5740), then KiCad\'s libraries\' (#4285)', () => {
   const { api, calls } = recorder();
   registerImplRoutes(api, { wrap: f => f, projects });
-  assert.equal(calls.length, 36);   // (program's and prom's with the project in the address, #4754; an Arduino node's firmware, #5503; a System's build plan and build, its connected boards, its program plan and programming, #5489)
+  assert.equal(calls.length, 40);   // (the project's versions' four, #5740; program's and prom's with the project in the address, #4754; an Arduino node's firmware, #5503; a System's build plan and build, its connected boards, its program plan and programming, #5489)
   assert.ok(calls.includes('get /projects/:p/build-plan') && calls.includes('post /projects/:p/build'), 'a System\'s build plan and Build All (#5489)');
   assert.ok(calls.includes('post /projects/:p/capture'), 'the capture of the logic analyzer (#3176)');
-  assert.deepEqual(calls.slice(-12, -7), ['get /projects/:p/export.xise', 'post /import-xise /projects/import-xise', 'get /projects/:p/export.zip', 'post /import-zip /projects/import-zip', 'post /projects/:p/sync-xise']);
-  assert.deepEqual(calls.slice(-7, -4), ['post /projects/:p/merge-preview', 'post /projects/:p/merge', 'post /projects/:p/undo-merge']);
+  assert.deepEqual(calls.slice(-16, -11), ['get /projects/:p/export.xise', 'post /import-xise /projects/import-xise', 'get /projects/:p/export.zip', 'post /import-zip /projects/import-zip', 'post /projects/:p/sync-xise']);
+  assert.deepEqual(calls.slice(-11, -8), ['post /projects/:p/merge-preview', 'post /projects/:p/merge', 'post /projects/:p/undo-merge']);
+  // the project's versions (#5740)
+  assert.deepEqual(calls.slice(-8, -4), ['get /projects/:p/versions', 'post /projects/:p/versions', 'get /projects/:p/versions/:id', 'post /projects/:p/versions/:id/restore']);
   // then Browse KiCad Libraries…'s (#4285) and the KiCad catalogue's (#4305)
   assert.deepEqual(calls.slice(-4), ['get /kicad/libraries', 'get /kicad/libraries/:id', 'post /projects/:p/kicad/catalogue', 'post /projects/:p/kicad/import']);
 });

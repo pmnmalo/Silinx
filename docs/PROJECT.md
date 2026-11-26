@@ -74,6 +74,10 @@ reload (#4754).
 | POST | /import-zip?name= | a project's zip (the body) imported as the project `name` (`/projects/import-zip`: kept) |
 | POST | /import-xise | `{ name, xise, files }` (`/projects/import-xise`: kept) |
 | POST | /projects/:p/merge | `{ zip (base64), resolve?, label? }`: Merge Contribution… (the zip as the body with `?label=` and `X-Silinx-Resolve`: kept) |
+| GET | /projects/:p/versions | `{ versions }`: the project's versions, newest first (#5740) |
+| POST | /projects/:p/versions | `{ label?, author?, reason? }` -> `{ version, saved }`: Save Version… (`reason`: `manual`, or `before-…` before one of the page's risky commands) |
+| GET | /projects/:p/versions/:id | `{ version, json, files }`: a version's project |
+| POST | /projects/:p/versions/:id/restore | `{ path?, author? }` -> `{ written, removed, json, version, before }`: the whole project or one file restored, the project before it kept as a version |
 | POST | /jtag/scan | `{ tool?, cable? }` -> `{ job }` |
 | GET | /jobs/:id?since=N | `{ id, kind, status:'running'|'ok'|'error', lines:[...since N], next, result }` |
 

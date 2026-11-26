@@ -20,6 +20,7 @@ import { initTasks, restoreStartTask } from './tasks.js';
 import { registerServiceWorker } from './pwa.js';
 import { createHistory } from './history.js';
 import { sharedUndo } from './history-shared.js';
+import { riskyReason } from './versions-risky.js';
 import { viewHdl } from '/core/view-hdl.js';
 import { inCpuNode } from '/core/drawing-code.js';
 import { modulesFromLibrary } from '/core/schdoc.js';
@@ -304,7 +305,8 @@ setMessageSink((text, level) => (level === 'error' ? logError : level === 'warni
 setActionRunner((label, fn) => {
   procState.actions++;
   let r;
-  try { r = NOT_RECORDED.test(String(label || '')) ? fn() : history.run(label, fn); } catch (e) { procState.actions--; throw e; }
+  // (a command that replaces or removes files: a version of the project kept first, #5740: web/js/versions.js)
+  try { r = NOT_RECORDED.test(String(label || '')) ? fn() : history.run(label, riskyReason(label) ? async () => { await (await import('./versions.js')).versionBefore(label); return fn(); } : fn); } catch (e) { procState.actions--; throw e; }
   Promise.resolve(r).finally(() => { procState.actions--; refreshSteps(); }).catch(() => {});
   return r;
 });

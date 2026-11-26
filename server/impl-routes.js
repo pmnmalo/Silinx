@@ -21,6 +21,7 @@ import { ownerSecrets } from './owner-secrets.js';
 import * as Projects from './projects.js';
 import { mountXiseRoutes } from './xise-routes.js';
 import { mountMergeRoutes } from './merge-routes.js';
+import { mountVersionRoutes } from './version-routes.js';
 import { mountKicadRoutes } from './kicad-routes.js';
 import { IDENT } from './ident.js';
 import { isTrusted, untrustedMessage } from '../core/trust.js';
@@ -382,6 +383,7 @@ export function registerImplRoutes(api, { wrap, projects: P }) {
   });
   // ----- Merge Contribution… (#4206) -------------------------------------------------------- (merge-routes.js)
   mountMergeRoutes({ P, api, wrap, bad, NODE_CODEC });
+  mountVersionRoutes({ P, api, wrap, bad });
   // ----- Browse KiCad Libraries… (#4285) --------------------------------------------------- (kicad-routes.js)
   mountKicadRoutes({ P, api, wrap, bad });
 

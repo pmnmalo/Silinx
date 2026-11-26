@@ -1,0 +1,21 @@
+// Portuguese of a project's versions (#5740, web/js/versions.js): Project ▸ Save Version… and Versions…, what made each
+// version, and the console's lines of a version saved or restored; merged into the dictionary of i18n.js.
+export const VERSIONS_PT = {
+  'Save Version…': 'Guardar Versão…', 'Save Version': 'Guardar Versão', 'Versions…': 'Versões…', 'Restore Project': 'Restaurar Projeto',
+  'Version name (optional):': 'Nome da versão (opcional):', 'Time': 'Hora', 'Made': 'Feita',
+  'No versions of this project yet: Save Version… keeps one, and one is kept as you work.': 'Ainda não há versões deste projeto: Guardar Versão… guarda uma, e é guardada uma à medida que trabalha.',
+  // (what made a version: core/versions.js REASONS)
+  'saved on its own': 'guardada automaticamente', 'saved by hand': 'guardada à mão', 'before Merge Contribution': 'antes de Juntar Contribuição',
+  'before Remove from Project': 'antes de Remover do Projeto', 'before Delete': 'antes de Apagar', 'before a conversion': 'antes de uma conversão',
+  'before an import': 'antes de uma importação', 'before a git pull or merge': 'antes de um pull ou merge do git', 'before a restore': 'antes de um restauro',
+};
+
+export const VERSIONS_PT_PATTERNS = [
+  [/^Versions of (.+)$/, 'Versões de $1'],
+  [/^restored version (\d+)$/, 'versão $1 restaurada'],
+  [/^Version (\d+) of (.+) saved(?:: (.+))?\.$/, (m, n, p, l) => `Versão ${n} de ${p} guardada${l ? `: ${l}` : ''}.`],
+  [/^Version (\d+) of (.+) has it already: no version saved\.$/, 'A versão $1 de $2 já o tem: nenhuma versão guardada.'],
+  [/^Restored (.+) as version (\d+) had it: (\d+) file\(s\) written, (\d+) removed; the project before it kept as version (\d+) \(restore it to undo\)\.$/,
+    'Restaurado $1 como a versão $2 o tinha: $3 ficheiro(s) escrito(s), $4 removido(s); o projeto antes disso guardado como versão $5 (restaure-a para anular).'],
+  [/^(.+) is as version (\d+) has it already: nothing restored\.$/, '$1 já está como a versão $2 o tem: nada restaurado.'],
+];

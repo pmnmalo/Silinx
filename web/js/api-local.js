@@ -62,6 +62,10 @@ async function giveCopyLocal(name, p) {
 }
 // (a new project from an example; not from a test design, not offered by New Project: #5108)
 const ops = projectOps(() => store, EXAMPLES);
+// the projects' versions (#5740: web/js/versions-local.js, loaded when first used; a write's automatic version too)
+let versionsMod = null;
+const versionsOf = async () => (versionsMod ||= (await import('./versions-local.js')).localVersions({ store: () => store, ops, snapshots: snapshotsOf }));
+const changedProject = (name, r) => { versionsOf().then(v => v.changed(name)).catch(() => {}); return r; };
 const projectJson = async name => (await store.load(name)).json;
 // the logic analyzer's captures of this session (#3176), as build/capture.json by project
 const sessionCaptures = new Map();
@@ -376,17 +380,18 @@ export const api = {
   exampleFiles: async name => (Object.hasOwn(EXAMPLES, name) ? { project: structuredClone(EXAMPLES[name].json), files: { ...EXAMPLES[name].files } } : fail(`unknown example '${name}'`)),
   createProject: p => ops.create(p),
   project: name => ops.project(name),
-  saveProject: (name, pj) => ops.saveProject(name, pj),
+  saveProject: async (name, pj) => changedProject(name, await ops.saveProject(name, pj)),
   trustProject: name => ops.trustProject(name),
-  renameFile: (name, from, to) => ops.renameFile(name, from, to),
+  renameFile: async (name, from, to) => changedProject(name, await ops.renameFile(name, from, to)),
   // (its snapshots too, #4725)
   // (its back-up record too, #4971)
-  deleteProject: async name => { const r = await ops.deleteProject(name); await git.gitForget(name); snapshotsOf(name).forget(); forgetProjectBackup(backupKey(store, name)); return r; },
+  deleteProject: async name => { const r = await ops.deleteProject(name); await git.gitForget(name); snapshotsOf(name).forget(); forgetProjectBackup(backupKey(store, name)); await (await versionsOf()).forget(name).catch(() => {}); return r; },
   // Rename Project… (#4641): its GitHub record, its build and captures of this session, its snapshots (#4725) follow it
   renameProject: async (name, to) => {
     const r = await ops.renameProject(name, to);
     await git.gitMove(name, to);
     snapshotsOf(name).moveTo(to);
+    await (await versionsOf()).rename(name, to).catch(() => {});   // (its versions, #5740)
     moveProjectBackup(backupKey(store, name), backupKey(store, to));   // (#4971)
     for (const m of [builds, sessionCaptures]) if (m.has(name)) { const v = m.get(name); m.delete(name); m.set(to, v); }
     return { ...r, message: renamedMessage(name, to) };
@@ -403,8 +408,8 @@ export const api = {
     }
   },
   readFileBytes: (name, path) => ops.readFileBytes(name, path),   // (a firmware's .elf, #5198)
-  writeFile: (name, path, text) => ops.writeFile(name, path, text),
-  deleteFile: (name, path, opts) => ops.deleteFile(name, path, opts),
+  writeFile: async (name, path, text) => (/^build\//.test(path) ? ops.writeFile(name, path, text) : changedProject(name, await ops.writeFile(name, path, text))),
+  deleteFile: async (name, path, opts) => changedProject(name, await ops.deleteFile(name, path, opts)),
   sources: name => ops.sources(name),
   devices: async () => getDeviceDb(),
   toolchain: async () => ({
@@ -601,6 +606,11 @@ export const api = {
     return { written: r.written, removed: r.removed, regenerated: r.regenerated, taken: r.taken, untrusted: r.untrusted, lines: m.apply.mergeLines(name, label || 'the contribution', r) };
   },
   undoMerge: async name => { const m = await mergeOf(); return m.apply.undoMerge(m.storage, name); },
+  // the project's versions (#5740): as the server's routes, in this browser's IndexedDB
+  listVersions: async name => { await ops.project(name); return { versions: await (await versionsOf()).list(name) }; },
+  saveVersion: async (name, { label = '', author = '', reason = 'manual' } = {}) => { await ops.project(name); return (await versionsOf()).save(name, { label, author, reason }); },
+  readVersion: async (name, id) => (await versionsOf()).read(name, id),
+  restoreVersion: async (name, id, { path = null, author = '' } = {}) => { await ops.project(name); return (await versionsOf()).restore(name, id, { path, author }); },
   importZip: async (name, file) => {
     if (file.size > GATE_LIMITS.maxArchive) fail(`the zip is larger than ${GATE_LIMITS.maxArchive >> 20} MB, the most an import takes`);
     const bytes = new Uint8Array(await file.arrayBuffer());

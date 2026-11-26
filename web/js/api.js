@@ -234,6 +234,12 @@ export const api = {
   // (the choices in the body, with the zip, not in a header: no limit of a header's size, #4754)
   mergeContribution: async (name, zip, resolve = {}, label = '') => req('POST', `/api/projects/${enc(name)}/merge`, { zip: await base64Of(zip), resolve, label }),
   undoMerge: name => req('POST', `/api/projects/${enc(name)}/undo-merge`),
+  // the project's versions (#5740): listed ({ versions }), one kept ({ label, author, reason }), read, restored ({ path,
+  // author }: its writes told to the page as another process's)
+  listVersions: name => req('GET', `/api/projects/${enc(name)}/versions`),
+  saveVersion: (name, opts = {}) => req('POST', `/api/projects/${enc(name)}/versions`, opts),
+  readVersion: (name, id) => req('GET', `/api/projects/${enc(name)}/versions/${enc(id)}`),
+  restoreVersion: (name, id, opts = {}) => req('POST', `/api/projects/${enc(name)}/versions/${enc(id)}/restore`, opts),
   // what another process changes in the project (#2843): onEvent({ project, changes: [{ path, kind }] }) for each,
   // until the stream ends or `signal` aborts (server-sent events read through fetch: the token in a header, not in the URL)
   events: async (name, onEvent, signal) => {
