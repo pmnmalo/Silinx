@@ -31,22 +31,22 @@ export const sig3 = (v) => Number(Number(v).toPrecision(3));
 
 // ------------------------------------------------------------------ the parts
 const ohms = (def) => ({ prop: 'ohms', label: 'Resistance (Ω)', unit: 'Ω', min: 1, max: 10e6, default: def });
-export const RESISTOR = { type: 'resistor', title: 'Resistor', kind: 'analog', prefix: 'R', pins: [pin(1, '1', 0, 0), pin(2, '2', 4, 0)], values: [ohms(1000)] };
-export const CAPACITOR = { type: 'capacitor', title: 'Capacitor', kind: 'analog', prefix: 'C', pins: [pin(1, '1', 0, 0), pin(2, '2', 1, 0)],
+const RESISTOR = { type: 'resistor', title: 'Resistor', kind: 'analog', prefix: 'R', pins: [pin(1, '1', 0, 0), pin(2, '2', 4, 0)], values: [ohms(1000)] };
+const CAPACITOR = { type: 'capacitor', title: 'Capacitor', kind: 'analog', prefix: 'C', pins: [pin(1, '1', 0, 0), pin(2, '2', 1, 0)],
   values: [{ prop: 'farads', label: 'Capacitance (F)', unit: 'F', min: 1e-12, max: 0.01, default: 1e-6 }] };
 // (a trimmer, 0.1 inch: its ends 1 and 3, its wiper W between them; its position from 1 (0 %) to 3 (100 %))
-export const POTENTIOMETER = { type: 'potentiometer', title: 'Potentiometer', kind: 'analog', prefix: 'RV', pins: [pin(1, '1', 0, 0), pin(2, 'W', 1, 0), pin(3, '3', 2, 0)],
+const POTENTIOMETER = { type: 'potentiometer', title: 'Potentiometer', kind: 'analog', prefix: 'RV', pins: [pin(1, '1', 0, 0), pin(2, 'W', 1, 0), pin(3, '3', 2, 0)],
   values: [ohms(10000)], sense: [{ prop: 'pos', label: 'Position (%)', unit: '%', min: 0, max: 100, step: 1, default: 50, nudge: 10 }] };
 // (a GL5528: about 10 kΩ at 10 lux, its resistance as lux^-0.7, 1 MΩ in the dark)
 export const LDR = { type: 'ldr', title: 'Light-dependent resistor (LDR)', kind: 'analog', prefix: 'LDR', pins: [pin(1, '1', 0, 0), pin(2, '2', 1, 0)],
   sense: [{ prop: 'lux', label: 'Light (lux)', unit: 'lux', min: 0, max: 1000, step: 1, default: 100, nudge: 50 }] };
 // (an NTC thermistor, 10 kΩ at 25 °C, B = 3950 K)
-export const THERMISTOR = { type: 'thermistor', title: 'Thermistor (NTC, 10 kΩ)', kind: 'analog', prefix: 'TH', pins: [pin(1, '1', 0, 0), pin(2, '2', 1, 0)],
+const THERMISTOR = { type: 'thermistor', title: 'Thermistor (NTC, 10 kΩ)', kind: 'analog', prefix: 'TH', pins: [pin(1, '1', 0, 0), pin(2, '2', 1, 0)],
   sense: [{ prop: 'temp', label: 'Temperature (°C)', unit: '°C', min: -20, max: 100, step: 1, default: 25, nudge: 5 }] };
-export const DIODE = { type: 'diode', title: 'Diode (1N4148)', kind: 'analog', prefix: 'D', pins: [pin(1, 'A', 0, 0), pin(2, 'K', 4, 0)] };
+const DIODE = { type: 'diode', title: 'Diode (1N4148)', kind: 'analog', prefix: 'D', pins: [pin(1, 'A', 0, 0), pin(2, 'K', 4, 0)] };
 // (a voltmeter, its + lead against its COM: it measures, it draws no current; on a circuit with no analog part, a net's
 // level as its driver's volts)
-export const VOLTMETER = { type: 'voltmeter', title: 'Voltmeter', kind: 'meter', prefix: 'VM', pins: [pin(1, '+', 0, 0), pin(2, 'COM', 1, 0)] };
+const VOLTMETER = { type: 'voltmeter', title: 'Voltmeter', kind: 'meter', prefix: 'VM', pins: [pin(1, '+', 0, 0), pin(2, 'COM', 1, 0)] };
 
 export const ANALOG_PARTS = [RESISTOR, CAPACITOR, POTENTIOMETER, LDR, THERMISTOR, DIODE, VOLTMETER];
 
@@ -66,7 +66,7 @@ export const DIODE_MODEL = { is: 2.52e-9, n: 1.752, rs: 0.568 };
 
 // ------------------------------------------------------------------ the digital parts' electrical side
 /** An LED's forward voltage at 20 mA by its colour, its emission coefficient and series resistance; its rated current. */
-export const LED_VF = { red: 1.9, yellow: 2.0, green: 2.1, blue: 3.1, white: 3.1 };
+const LED_VF = { red: 1.9, yellow: 2.0, green: 2.1, blue: 3.1, white: 3.1 };
 export const LED_RATED = 0.02, LED_MAX = 0.03, LED_LIT = 0.0001;
 export function ledModel(color = 'red') {
   const vf = LED_VF[color] ?? LED_VF.red, n = 2, rs = 10;
