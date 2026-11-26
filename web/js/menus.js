@@ -154,6 +154,8 @@ export function setupMenus() {
         ? { label: 'Unset as Top Module', action: () => unsetTop() }
         : { label: 'Set as Top Module', action: () => (panes.sel?.module ? setTop(panes.sel.module, false) : viewSel() && setViewAsTop(viewSel())), disabled: () => !panes.sel?.module && !viewSel() }),
       { label: 'Design Properties…', action: () => wiz.projectProperties(), disabled: hasPj },
+      // (the project's mode: Circuit, Board, System, up or down, #5755)
+      { label: 'Change Mode…', action: () => import('./mode-change-ui.js').then(m => m.changeModeDialog()), disabled: hasPj },
       '-',
       // (step-by-step tutorials on the project, each step checked on it, #3179)
       { label: 'Guided Labs…', icon: icon('help'), action: async () => (await import('./lab-view.js')).guidedLabsDialog(), disabled: hasPj },

@@ -11,7 +11,7 @@ export const VERSIONS_PT = {
   // (what made a version: core/versions.js REASONS)
   'saved on its own': 'guardada automaticamente', 'saved by hand': 'guardada à mão', 'before Merge Contribution': 'antes de Juntar Contribuição',
   'before Remove from Project': 'antes de Remover do Projeto', 'before Delete': 'antes de Apagar', 'before a conversion': 'antes de uma conversão',
-  'before an import': 'antes de uma importação', 'before a git pull or merge': 'antes de um pull ou merge do git', 'before a restore': 'antes de um restauro',
+  'before an import': 'antes de uma importação', 'before a git pull or merge': 'antes de um pull ou merge do git', 'before Change Mode': 'antes de Mudar o Modo', 'before a restore': 'antes de um restauro',
 };
 
 export const VERSIONS_PT_PATTERNS = [

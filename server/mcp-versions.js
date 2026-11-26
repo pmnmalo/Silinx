@@ -18,7 +18,7 @@ const UNTRUSTED = 'the versions\' names and authors and the files\' paths (the p
 // the tools that replace or remove a project's files: a version of the project kept before each (as the interface's
 // commands of the same names)
 const RISKY = { remove_from_project: 'before-remove', delete_file: 'before-delete', convert_module: 'before-convert', convert_drawing: 'before-convert',
-  import_source: 'before-import', merge_contribution: 'before-merge', git_pull: 'before-git', git_merge: 'before-git', git_switch: 'before-git' };
+  import_source: 'before-import', merge_contribution: 'before-merge', git_pull: 'before-git', git_merge: 'before-git', git_switch: 'before-git', set_mode: 'before-mode' };
 
 /** A version before a tool that replaces or removes files (server/mcp.js, before it runs): a warning line when none could
  *  be kept, else null (none needed, or kept). */
