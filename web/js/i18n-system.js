@@ -63,8 +63,7 @@ export const SYSTEM_PT = {
   'Emulate': 'Emular', 'Emulate the System: its boards side by side, interactive, in real time': 'Emular o Sistema: as suas placas lado a lado, interativas, em tempo real',
   // (an FPGA node's constraints file, #5581: web/js/system-constraints-ui.js, web/js/system-side.js)
   'Its module\'s ports on its board\'s pins, written to its constraints file': 'As portas do seu módulo nos pinos da sua placa, escritas no seu ficheiro de restrições',
-  'Its constraints file, as text': 'O seu ficheiro de restrições, como texto',
-  'A node\'s: its User Constraints in the tree below': 'De um nó: as suas Restrições do Utilizador na árvore abaixo',
+  'A node\'s: its I/O Pin Planning in the tree below': 'De um nó: o seu Planeamento de Pinos de E/S na árvore abaixo',
   'Each FPGA node\'s model:': 'O modelo de cada nó FPGA:',
   // (the System Emulator's toolbar, #5613: web/js/system-emu-view.js)
   'Run the System at its rate until Pause': 'Correr o Sistema ao seu ritmo até Pausa', 'Rate:': 'Ritmo:',
@@ -149,9 +148,7 @@ export const SYSTEM_PT_PATTERNS = [
   [/^(\S+): its pins (written to|set in) its constraints file (\S+)$/, (m, n, how, f) => `${n}: os seus pinos ${how === 'written to' ? 'escritos no' : 'definidos no'} seu ficheiro de restrições ${f}`],
   [/^(\S+): (\S+): its pins (written to|set in) its constraints file (\S+) \(a System's pins are in its FPGA nodes' constraints files now\)\.$/,
     (m, d, n, how, f) => `${d}: ${n}: os seus pinos ${how === 'written to' ? 'escritos no' : 'definidos no'} seu ficheiro de restrições ${f} (os pinos de um Sistema estão agora nos ficheiros de restrições dos seus nós FPGA).`],
-  [/^Edit Constraints \(Text\): (\S+) made, (\S+)'s constraints file\.$/, 'Editar Restrições (Texto): $1 criado, o ficheiro de restrições de $2.'],
-  [/^(\S+): no constraints file (\S+) yet \(its I\/O Pin Planning or Edit Constraints \(Text\) makes it\)$/, '$1: ainda sem ficheiro de restrições $2 (o seu Planeamento de Pinos de E/S ou Editar Restrições (Texto) cria-o)'],
-  [/^(\S+): its module's ports are on no pin of its board \(its User Constraints' I\/O Pin Planning\)$/, "$1: as portas do seu módulo não estão em nenhum pino da sua placa (o Planeamento de Pinos de E/S das suas Restrições do Utilizador)"],
+  [/^(\S+): its module's ports are on no pin of its board \(its I\/O Pin Planning\)$/, '$1: as portas do seu módulo não estão em nenhum pino da sua placa (o seu Planeamento de Pinos de E/S)'],
   // (the Emulate task's tree, #5581: a node's firmware and circuit, the System's row, a terminal's; what runs)
   [/^(\S+) \(System\)$/, '$1 (Sistema)'], [/^(\S+) \(terminal\)$/, '$1 (terminal)'],
   [/^(\S+) runs with the nodes it is linked to$/, '$1 corre com os nós a que está ligado'],

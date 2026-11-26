@@ -74,7 +74,8 @@ uiTest('#4700 the System editor: its Design row, a system built, saved and reope
   // here as they would write it, the project read again)
   await page.click(`${ED} .sys-node[data-id="fpga"] .sys-head`);
   await page.waitFor((ed) => document.querySelector(`${ed} .sys-constraints`)?.textContent === 'fpga/uart.ucf', [ED], { what: 'its constraints file named' });
-  assert.deepEqual(await page.eval((ed) => [...document.querySelectorAll(`${ed} .sys-pins, ${ed} .sys-edit-constraints`)].map((b) => b.textContent), ED), ['I/O Pin Planning', 'Edit Constraints (Text)']);
+  // (I/O Pin Planning alone: its Text view the file as text, no Edit Constraints (Text) button, #5642)
+  assert.deepEqual(await page.eval((ed) => [...document.querySelectorAll(`${ed} .sys-pins, ${ed} .sys-edit-constraints`)].map((b) => b.textContent), ED), ['I/O Pin Planning']);
   await env.server.api('PUT', `/api/projects/CoSys/file?path=${encodeURIComponent('fpga/uart.ucf')}`, 'NET "tx" LOC = "B5" ;\nNET "rx" LOC = "J3" ;\n');
   await page.eval(() => window.SilinxApp.reloadProject());
   // the link: the Uno's Serial, then the FPGA's UART

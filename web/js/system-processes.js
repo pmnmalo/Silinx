@@ -59,7 +59,7 @@ export function systemProcesses(sel, view, { check, rtl }) {
   if (sel.type !== 'node') return null;
   return [
     editSystem(sel.file),
-    // (its User Constraints: its constraints file, #5581)
+    // (its I/O Pin Planning: its constraints file, #5581, #5642)
     ...(sel.kind === 'fpga' ? [nodeConstraintsProcs({ id: sel.node })] : []),
     ...(sel.kind === 'fpga' && sel.module ? [
       { id: 'check', label: 'Check Syntax', ico: 'process', run: () => check(sel.module) },

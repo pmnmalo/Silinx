@@ -58,7 +58,7 @@ uiTest('#3142 #1649 Design Properties: the Basys 3, experimental; the pins as an
   await page.treeRow('#hier', 'top');
   const labels = await page.eval(() => [...document.querySelectorAll('#procs .row')].map(x => x.textContent.trim().replace(/^▾/, '')));
   for (const absent of ['Synthesize - Yosys', 'Synthesize - XST', 'View Technology Schematic', 'Generate Post-Synthesis Simulation Model', 'View Implemented Design (FPGA)']) assert.ok(!labels.some(l => l.startsWith(absent)), `${absent}: ${labels}`);
-  for (const present of ['User Constraints', 'Synthesize - Vivado', 'View RTL Schematic', 'Check Syntax', 'Implement Design', 'Map', 'Place & Route', 'Generate Post-Place & Route Static Timing', 'Generate Programming File', 'Configure Target Device'])
+  for (const present of ['I/O Pin Planning', 'Synthesize - Vivado', 'View RTL Schematic', 'Check Syntax', 'Implement Design', 'Map', 'Place & Route', 'Generate Post-Place & Route Static Timing', 'Generate Programming File', 'Configure Target Device'])
     assert.ok(labels.includes(present), `${present}: ${labels}`);
   // Emulate on Board (#3704): the HDL on the board's pins; its RTL model only (the flow makes no simulation model)
   for (const present of ['Emulate on Board', 'Emulate Behavioral Model (RTL)']) assert.ok(labels.includes(present), `${present}: ${labels}`);

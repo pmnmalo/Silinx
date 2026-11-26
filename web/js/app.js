@@ -682,17 +682,6 @@ export async function openFile(path, line, col, { task } = {}) {
   return doc;
 }
 
-export async function openUcf() {
-  const pj = S.project;
-  if (!pj.constraints) { pj.constraints = 'constraints/top.ucf'; await saveProjectJson(); }
-  if (!filesState.fileTree.includes(pj.constraints)) {
-    const { ucfTemplate } = await import('./templates.js');
-    await api.writeFile(pj.name, pj.constraints, ucfTemplate(pj));
-    await reloadProject(false);
-  }
-  openFile(pj.constraints);
-}
-
 // ------------------------------------------------------------------ viewers: schematics, SSim, Board Emulator (web/js/viewers.js)
 
 // ------------------------------------------------------------------ drawings and their HDL (web/js/drawings.js)

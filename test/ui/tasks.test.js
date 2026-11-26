@@ -1357,7 +1357,9 @@ uiTest('#1208 Tasks ▸ Implement: the top\'s processes whatever is selected in 
   const rows = () => page.eval(() => [...document.querySelectorAll('#procs .row')].filter((r) => r.getClientRects().length).map((r) => r.querySelector('.lbl').textContent));
   await page.waitFor(() => [...document.querySelectorAll('#procs .lbl')].some((e) => e.textContent.startsWith('Synthesize')), [], { what: 'the top\'s processes' });
   const full = await rows();
-  assert.deepEqual(full.slice(0, 5), ['Design Summary/Reports', 'User Constraints', 'I/O Pin Planning', 'Edit Constraints (Text)', 'Check Constraints']);
+  // (I/O Pin Planning alone, no User Constraints folder, #5642)
+  assert.deepEqual(full.slice(0, 2), ['Design Summary/Reports', 'I/O Pin Planning']);
+  assert.ok(!full.some((l) => /^(User Constraints|Edit Constraints \(Text\)|Check Constraints)$/.test(l)), full.join(', '));
   assert.ok(full.includes('Implement Design') && full.includes('Generate Programming File'), full.join(', '));
   for (const sel of [{ type: 'sch', file: 'src/gates.sch.json' }, { type: 'ucf', file: 'constraints/gates.ucf' }, { type: 'project' }, { type: 'device' }]) {
     await page.eval((s) => { window.SilinxApp.S.sel = s; window.SilinxApp.renderProcesses(); }, sel);
@@ -1619,8 +1621,9 @@ uiTest('#1289 Tasks: no tab bar while the task has no document open (Simulate wi
   await noWarnings(page);
 }, { build: DEV });
 
-// #1265: Implement's processes: no Generate Post-… Simulation Model (Simulate generates them); Edit Constraints (Text) in Implement
-uiTest('#1265 Tasks ▸ Implement: no Generate Post-… Simulation Model processes; Edit Constraints (Text) opens the UCF in Implement; ISE style keeps them', E, async (page) => {
+// #1265: Implement's processes: no Generate Post-… Simulation Model (Simulate generates them); the constraints' text in
+// Implement (I/O Pin Planning's Text view since #5642, Edit Constraints (Text) of before)
+uiTest('#1265 #5642 Tasks ▸ Implement: no Generate Post-… Simulation Model processes; I/O Pin Planning\'s Text view, the UCF, in Implement; ISE style keeps them', E, async (page) => {
   await makeProject(env, { name: 'TasksImplProcs', template: 'blinky' });
   await page.setViewport(1366, 768);
   await tasksInterface(page);
@@ -1630,15 +1633,18 @@ uiTest('#1265 Tasks ▸ Implement: no Generate Post-… Simulation Model process
   const labels = () => page.eval(() => [...document.querySelectorAll('#procs .lbl')].map((e) => e.textContent));
   let all = await labels();
   assert.deepEqual(all.filter((l) => /Simulation Model/.test(l)), [], all.join(' | '));
-  for (const l of ['Edit Constraints (Text)', 'Generate Text Power Report', 'Generate Post-Place & Route Static Timing', 'Back-annotate Pin Locations']) assert.ok(all.includes(l), l);
-  // Edit Constraints (Text): the UCF in Implement, its tab there
-  await page.treeRow('#procs', 'Edit Constraints (Text)', { dbl: true, exact: true });
-  await page.waitFor(() => window.Silinx.active?.id === 'file:constraints/top.ucf' && window.Silinx.active.editor, [], { what: 'the UCF' });
+  for (const l of ['I/O Pin Planning', 'Generate Text Power Report', 'Generate Post-Place & Route Static Timing', 'Back-annotate Pin Locations']) assert.ok(all.includes(l), l);
+  assert.deepEqual(all.filter((l) => /^(User Constraints|Edit Constraints \(Text\)|Check Constraints)$/.test(l)), [], 'no User Constraints, #5642');
+  // I/O Pin Planning's Text view: the UCF in Implement, its tab there
+  await page.treeRow('#procs', 'I/O Pin Planning', { dbl: true, exact: true });
+  await page.waitFor(() => window.Silinx.active?.id === 'pins' && document.querySelector('.doc:not([hidden]) .pp-view[data-view=text]'), [], { what: 'I/O Pin Planning' });
+  await page.click('.doc:not([hidden]) .pp-view[data-view=text]');
+  await page.waitFor(() => /NET "clk"/.test(document.querySelector('.doc:not([hidden]) .pp-text .cm-content')?.textContent || ''), [], { what: 'the UCF\'s text' });
   assert.equal(await page.eval(() => document.documentElement.dataset.task), 'impl');
-  assert.ok(await page.eval(() => [...document.querySelectorAll('#doc-tabs > .tab')].some((t) => t.getClientRects().length && /top\.ucf/.test(t.textContent))), 'its tab in Implement');
+  assert.ok(await page.eval(() => [...document.querySelectorAll('#doc-tabs > .tab')].some((t) => t.getClientRects().length && /I\/O Pin Planning/.test(t.textContent))), 'its tab in Implement');
   // in Design: not its tab
   await page.click('#task-switch .task-btn[data-task="edit"]');
-  assert.ok(!(await page.eval(() => [...document.querySelectorAll('#doc-tabs > .tab')].some((t) => t.getClientRects().length && /top\.ucf/.test(t.textContent)))));
+  assert.ok(!(await page.eval(() => [...document.querySelectorAll('#doc-tabs > .tab')].some((t) => t.getClientRects().length && /I\/O Pin Planning/.test(t.textContent)))));
   // the ISE style interface: its Processes keep the simulation models
   await page.eval(async () => (await import('/js/silinx.js')).setInterface('ise'));
   await page.waitFor(() => !document.documentElement.dataset.layout);
@@ -1965,7 +1971,8 @@ async function holdSummaryJs(page) {
 }
 const front = (page) => page.eval(() => ({ task: document.documentElement.dataset.task, active: window.Silinx.active?.id,
   shown: [...document.querySelectorAll('#workspace > .doc')].filter((d) => d.getClientRects().length).length }));
-uiTest('#4021 Tasks: the Design Summary loaded late opens behind the UCF opened meanwhile in Implement', E, async (page) => {
+// (the constraints opened by I/O Pin Planning, Edit Constraints (Text) gone from the tree, #5642)
+uiTest('#4021 Tasks: the Design Summary loaded late opens behind I/O Pin Planning opened meanwhile in Implement', E, async (page) => {
   await makeProject(env, { name: 'TasksLateSummaryUcf', template: 'blinky' });
   await page.setViewport(1366, 768);
   await tasksInterface(page);
@@ -1974,13 +1981,13 @@ uiTest('#4021 Tasks: the Design Summary loaded late opens behind the UCF opened 
   await page.click('#task-switch .task-btn[data-task="impl"]');
   await page.waitFor(() => document.documentElement.dataset.task === 'impl', [], { what: 'Implement' });
   assert.ok(hold.held() > 0, 'summary.js held');
-  await page.waitFor(() => [...document.querySelectorAll('#procs .lbl')].some((e) => e.textContent === 'Edit Constraints (Text)' && e.getClientRects().length), [], { what: 'Implement\'s Processes' });
-  await page.treeRow('#procs', 'Edit Constraints (Text)', { dbl: true, exact: true });
-  await page.waitFor(() => window.Silinx.active?.id === 'file:constraints/top.ucf' && window.Silinx.active.editor, [], { what: 'the UCF' });
+  await page.waitFor(() => [...document.querySelectorAll('#procs .lbl')].some((e) => e.textContent === 'I/O Pin Planning' && e.getClientRects().length), [], { what: 'Implement\'s Processes' });
+  await page.treeRow('#procs', 'I/O Pin Planning', { dbl: true, exact: true });
+  await page.waitFor(() => window.Silinx.active?.id === 'pins' && window.Silinx.active.pinPlanner, [], { what: 'I/O Pin Planning' });
   await hold.release();
-  assert.deepEqual(await front(page), { task: 'impl', active: 'file:constraints/top.ucf', shown: 1 });
+  assert.deepEqual(await front(page), { task: 'impl', active: 'pins', shown: 1 });
   assert.deepEqual(await page.eval(() => [...document.querySelectorAll('#doc-tabs > .tab')].filter((t) => t.getClientRects().length).map((t) => t.querySelector('.tlabel').textContent).sort()),
-    ['Design Summary', 'top.ucf'], 'the summary behind, its tab');
+    ['Design Summary', 'I/O Pin Planning'], 'the summary behind, its tab');
   await noWarnings(page);
 }, { build: DEV, skip: chromeOnly });
 uiTest('#4021 Tasks: the Design Summary loaded late takes no one back to Implement: the simulation started meanwhile stays in front', E, async (page) => {

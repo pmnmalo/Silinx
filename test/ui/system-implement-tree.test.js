@@ -1,7 +1,7 @@
 // UI (#5581's part 4): a System project's Implement. The Silinx interface's Implement task shows the System's tree where
 // it said "No top module is set": its row's Build Plan, Connected Boards, Build All and Program All; a row per node of
 // the plan, the FPGA nodes first, its plan's state its mark (✓ up to date or given, ! out of date) and its plan's line its
-// tip: the FPGA's User Constraints, Synthesize, Implement Design, Generate Programming File and Program Node, the Uno's
+// tip: the FPGA's I/O Pin Planning (alone, #5642), Synthesize, Implement Design, Generate Programming File and Program Node, the Uno's
 // firmware given (uno/hello.hex: no Compile Firmware) and Program Node; its bar's Build All and Program All the System's
 // (each run said, the server's answer stubbed in the page); Build Plan in the console, one line a node; the uart-pic24
 // example's PIC24: its firmware given and its Program Node disabled, its tip why (MPLAB IPE), said on a double-click;
@@ -33,7 +33,7 @@ const warnings = async (page) => (await lines(page)).filter((l) => /^(WARNING|ER
 const FPGA_TIP = 'fpga: out of date (its last build left no record of its sources); built by the Silinx toolchain to build/nodes/fpga/build/uart.bit, programmed over JTAG';
 const UNO_TIP = 'uno: given (its firmware uno/hello.hex, no sketch to compile); its image uno/hello.hex, programmed by avrdude (arduino-cli upload)';
 const PIC_TIP = 'pic: a PIC24 is not programmed by Silinx yet: load its pic/lcd_uart.hex with MPLAB IPE';
-const FPGA_ROWS = ['  fpga (Digilent Basys2)', '    User Constraints', '      I/O Pin Planning', '      Edit Constraints (Text)', '      Check Constraints',
+const FPGA_ROWS = ['  fpga (Digilent Basys2)', '    I/O Pin Planning',
   '    Synthesize', '    Implement Design', '    Generate Programming File', '    Program Node'];
 
 uiTest('#5581 a System\'s Implement: its tree, each node\'s plan state its mark, its bar\'s Build All and Program All, Build Plan; a PIC24\'s Program Node off, said why; Portuguese; the ISE style\'s', E, async (page) => {

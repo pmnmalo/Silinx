@@ -279,16 +279,18 @@ uiTest('processes that need no ISE: RTL schematic, constraints, pin planning, su
   await run('View RTL Schematic', () => window.Silinx.active?.id === 'rtl:top' && document.querySelectorAll('.doc:not([hidden]) .se-svg [data-kind=sym]').length >= 2);
   // the RTL schematic of top, its hierarchy's buttons in the schematic's toolbar (#2667)
   assert.equal(await page.eval(() => window.Silinx.active.viewer.getDoc().name.toLowerCase()), 'top');
-  await run('Edit Constraints (Text)', () => window.Silinx.active?.id === 'file:constraints/top.ucf');
-  await run('Check Constraints', () => /Process "Check Constraints" completed successfully/.test(window.__console()));
+  // (the constraints: I/O Pin Planning alone, its Check button Check Constraints' and its Text view the UCF, #5642)
   await run('I/O Pin Planning', () => window.Silinx.active?.id === 'pins' && document.querySelectorAll('.pin-planner tr').length > 5);
+  await page.click('.doc:not([hidden]) .pp-check');
+  await page.waitConsole(/Process "Check Constraints" completed successfully/);
   await run('Design Summary/Reports', () => window.Silinx.active?.id === 'summary' && /ProcPj Project Status/.test(document.querySelector('.doc:not([hidden])').innerText));
   await run('Manage Configuration Project (iMPACT)', () => window.Silinx.active?.id === 'impact');
   await run('Emulate Behavioral Model (RTL)', () => window.Silinx.active?.id === 'emulator' && document.querySelector('.doc:not([hidden]) .emu-pcb'));
-  // groups collapse with their twisty and stay collapsed when the panel is redrawn
-  const kids = () => page.eval(() => [...document.querySelectorAll('#procs .row')].find((r) => r.querySelector('.lbl').textContent === 'Check Constraints').getClientRects().length);
+  // groups collapse with their twisty and stay collapsed when the panel is redrawn (Emulate on Board's: no User Constraints
+  // folder since #5642)
+  const kids = () => page.eval(() => [...document.querySelectorAll('#procs .row')].find((r) => r.querySelector('.lbl').textContent === 'Emulate Behavioral Model (RTL)').getClientRects().length);
   assert.ok(await kids());
-  await page.eval(() => [...document.querySelectorAll('#procs .row')].find((r) => r.querySelector('.lbl').textContent === 'User Constraints').querySelector('.twisty').click());
+  await page.eval(() => [...document.querySelectorAll('#procs .row')].find((r) => r.querySelector('.lbl').textContent === 'Emulate on Board').querySelector('.twisty').click());
   assert.equal(await kids(), 0);
   await page.eval(() => window.SilinxApp.renderProcesses());
   assert.equal(await kids(), 0);
