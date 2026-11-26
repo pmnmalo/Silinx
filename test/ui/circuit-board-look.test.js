@@ -1,5 +1,5 @@
 // UI (#5366): the circuit's boards drawn as the emulators draw them: the Basys2 and Nexys2 the Board Emulator's (its
-// PCB, its Pmods, its LEDs, switches, buttons and digits where it puts them), the Uno and Nano the System Emulator's;
+// PCB, its Pmods, its LEDs, switches, buttons and digits where it puts them), the Uno, Nano and ESP32 DevKitC (#5495) the System Emulator's;
 // each pin of the part (where the wires join it) on a pin of the drawing (a Pmod's, a header's), the board turned too;
 // a board selected by a click on its drawing, its outline lit; Fit shows them all; the print's snapshot has the
 // drawings (all SVG); Portuguese (the boards' silkscreen is data, not translated). No warnings. Both interfaces.
@@ -13,7 +13,7 @@ before(async () => { env = await setupUi(); });
 after(async () => { await env?.teardown?.(); });
 const E = () => env;
 const ED = '.doc:not([hidden]) .circuit-editor';
-const CIRC = { ...newCircuit('boards'), parts: [{ id: 'A1', type: 'arduino-uno', x: 0, y: 0 }, { id: 'A2', type: 'arduino-nano', x: 0, y: 32 },
+const CIRC = { ...newCircuit('boards'), parts: [{ id: 'A1', type: 'arduino-uno', x: 0, y: 0 }, { id: 'A2', type: 'arduino-nano', x: 0, y: 32 }, { id: 'E1', type: 'esp32-devkitc', x: 2, y: 52 },
   { id: 'F1', type: 'fpga-basys2', x: 32, y: 0 }, { id: 'F2', type: 'fpga-nexys2', x: 98, y: 0 }], wires: [] };
 // each pin of a board's part: the drawing's pin under it (a circle or a square smaller than a pitch, its middle within a
 // pixel of the pin's); the pins with none
@@ -31,11 +31,11 @@ uiTest('#5366 Circuit editor: the boards drawn as the emulators draw them, their
   await page.setViewport(1440, 900);
   await page.openProject('CircBoards');
   await page.eval(() => window.SilinxApp.openFile('src/boards.circ.json'));
-  await page.waitFor((ed) => document.querySelectorAll(`${ed} .circ-canvas .circ-board-art`).length === 4, [ED], { what: 'the boards drawn' });
+  await page.waitFor((ed) => document.querySelectorAll(`${ed} .circ-canvas .circ-board-art`).length === 5, [ED], { what: 'the boards drawn' });
   await page.click(`${ED} [data-act=fit]`).catch(() => page.eval(() => window.Silinx.active.circuitEditor.fit()));
   await page.screenshot(`${env.shotDir}/circuit-board-look.png`);
   // (its Check: each board joins nothing)
-  const said = ['A1 (Arduino Uno)', 'A2 (Arduino Nano)', 'F1 (Digilent Basys2)', 'F2 (Digilent Nexys2)'].map((b) => `WARNING: ${b} joins nothing`);
+  const said = ['A1 (Arduino Uno)', 'A2 (Arduino Nano)', 'E1 (ESP32 DevKitC)', 'F1 (Digilent Basys2)', 'F2 (Digilent Nexys2)'].map((b) => `WARNING: ${b} joins nothing`);
   await page.click(`${ED} .circ-check`);
   await page.waitFor(() => [...document.querySelectorAll('#console-log .ln')].some((l) => /F2 \(Digilent Nexys2\) joins nothing/.test(l.textContent)), [], { what: 'the Check' });
   assert.deepEqual(await warnings(page), said);
@@ -43,11 +43,11 @@ uiTest('#5366 Circuit editor: the boards drawn as the emulators draw them, their
   const look = (id) => page.eval((ed, pid) => {
     const a = document.querySelector(`${ed} [data-id=${pid}] .circ-board-art`);
     const n = (s) => a.querySelectorAll(s).length;
-    return [[...a.querySelectorAll('text')].map((t) => t.textContent).find((t) => /^(UNO|NANO|BASYS 2|NEXYS 2)$/.test(t)), n('rect.circ-bd-led'), n('.circ-bd-sw'), n('.circ-bd-btn'), n(':scope > svg:not(.emu-pcb-art)')];
+    return [[...a.querySelectorAll('text')].map((t) => t.textContent).find((t) => /^(UNO|NANO|ESP32-DevKitC V4|BASYS 2|NEXYS 2)$/.test(t)), n('rect.circ-bd-led'), n('.circ-bd-sw'), n('.circ-bd-btn'), n(':scope > svg:not(.emu-pcb-art)')];
   }, ED, id);
-  assert.deepEqual([await look('A1'), await look('A2'), await look('F1'), await look('F2')], [['UNO', 0, 0, 0, 0], ['NANO', 0, 0, 0, 0], ['BASYS 2', 8, 9, 4, 4], ['NEXYS 2', 8, 9, 4, 4]]);
+  assert.deepEqual([await look('A1'), await look('A2'), await look('E1'), await look('F1'), await look('F2')], [['UNO', 0, 0, 0, 0], ['NANO', 0, 0, 0, 0], ['ESP32-DevKitC V4', 0, 0, 0, 0], ['BASYS 2', 8, 9, 4, 4], ['NEXYS 2', 8, 9, 4, 4]]);
   // every pin of each where the drawing has it
-  for (const id of ['A1', 'A2', 'F1', 'F2']) assert.deepEqual(await unmatched(page, id), [], `${id}: its pins on its drawing's`);
+  for (const id of ['A1', 'A2', 'E1', 'F1', 'F2']) assert.deepEqual(await unmatched(page, id), [], `${id}: its pins on its drawing's`);
   // a click on its drawing selects it, its outline lit
   const on = await page.eval((ed) => { const r = document.querySelector(`${ed} [data-id=F1] .circ-board-art`).getBoundingClientRect(); return { x: r.left + r.width * 0.5, y: r.top + r.height * 0.45 }; }, ED);
   await page.click(on);

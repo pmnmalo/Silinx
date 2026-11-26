@@ -18,6 +18,7 @@ import { injectStyle } from './emulator.js';
 import { ledLook } from './emulator-paint.js';
 import { arduinoLayout } from './emulator-arduino.js';
 import { explorerLayout } from './emulator-explorer.js';
+import { esp32Layout } from './emulator-esp32.js';
 import { statusLine } from './status-line.js';
 import { mountSideFold } from './side-fold.js';
 import { panelToggle, PROPS_KEY } from './narrow.js';
@@ -146,7 +147,8 @@ export function mountSystemEmulator(host, opts) {
       if (b.kind === 'fpga') return [b.id, fpgaView(b)];
       if (b.kind === 'circuit') return [b.id, circuitView(b)];
       // (an Explorer 16/32's buttons, potentiometer and temperature sensor set through the worker, #5484)
-      const a = b.arch === 'pic24' ? explorerLayout({ h, emu: b, title: b.id, set: (part, v) => ready?.set(b.id, part, v), holds, clock }) : arduinoLayout({ h, board: b.board, title: b.id });
+      const a = b.arch === 'pic24' ? explorerLayout({ h, emu: b, title: b.id, set: (part, v) => ready?.set(b.id, part, v), holds, clock })
+        : b.board.arch === 'esp32' ? esp32Layout({ h, board: b.board, title: b.id }) : arduinoLayout({ h, board: b.board, title: b.id });
       return [b.id, { el: h('div', { class: 'sys-emu-board', 'data-node': b.id }, a.wrap), paint: a.paint }];
     }));
     boardsEl.replaceChildren(...[...views.values()].map(v => v.el));

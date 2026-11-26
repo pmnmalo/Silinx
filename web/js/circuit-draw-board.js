@@ -1,7 +1,7 @@
 // The circuit editor's drawing of a board (#5215, core/circuit-boards.js), as the emulators draw it (#5366): the Board
 // Emulator's Basys2 and Nexys2 (web/js/emulator-basys2.js, emulator-nexys2.js: their drawing, their LEDs, switches,
 // buttons, digits and power switch where they put them), the System Emulator's Arduino Uno and Nano
-// (emulator-arduino.js), at the circuit's scale (a pitch of the drawing a pitch of the grid), its pin 1 at the part's
+// (emulator-arduino.js) and ESP32 DevKitC (emulator-esp32.js, #5495), at the circuit's scale (a pitch of the drawing a pitch of the grid), its pin 1 at the part's
 // place: its headers' and Pmods' pins where the circuit's are. Its id under it. Drawn under the wires, with the
 // breadboards (web/js/circuit-draw.js); all SVG, so that Print and the image export have it. Its parts' look:
 // web/css/circuit-editor.css.
@@ -11,6 +11,7 @@ import { mcuBoard } from '/core/system-doc.js';
 import { BOARDS } from '/core/boards.js';
 import { svgEl } from './emulator-pcb.js';
 import { arduinoArt } from './emulator-arduino.js';
+import { esp32Art } from './emulator-esp32.js';
 import { basys2Art, basys2Places } from './emulator-basys2.js';
 import { nexys2Art, nexys2Places } from './emulator-nexys2.js';
 import { makeDigit } from './emulator.js';
@@ -31,8 +32,9 @@ export function drawBoard(g, p, d) {
     art.append(svgEl(a.w, a.h, fpga[0](board)));
     for (const q of fpga[1](board)) placed(art, q);
   } else {
-    const { art: body, l, on } = arduinoArt(mcuBoard(d.board));
-    art.append(svgEl(a.w, a.h, body), sv('circle', { cx: l.x, cy: l.y, r: 6, class: 'circ-bd-led' }), sv('circle', { cx: on.x, cy: on.y, r: 6, class: 'circ-bd-led circ-bd-on' }));
+    // (an Arduino's LED L and power LED; an ESP32's power LED, #5495)
+    const { art: body, l, on } = d.board === 'esp32-devkitc' ? esp32Art() : arduinoArt(mcuBoard(d.board));
+    art.append(svgEl(a.w, a.h, body), ...(l ? [sv('circle', { cx: l.x, cy: l.y, r: 6, class: 'circ-bd-led' })] : []), sv('circle', { cx: on.x, cy: on.y, r: 6, class: 'circ-bd-led circ-bd-on' }));
   }
   g.append(art, sv('rect', { x: ox, y: oy, width: w, height: ht, rx: 4, class: 'circ-board-outline' }),
     sv('text', { x: ox, y: oy + ht + 14, class: 'circ-label', 'data-no-i18n': 'true' }, p.label || p.id));

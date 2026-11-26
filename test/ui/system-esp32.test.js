@@ -3,7 +3,7 @@
 // properties (its program a .py of its folder; + SPI and + I²C, its board's buses), linked to a terminal, saved as the format has it; Try
 // it runs its .py on MicroPython's WebAssembly port (the console says which back end): the program's bytes in the terminal, its
 // console a terminal of its own, a line typed to the terminal echoed back in upper case; no warnings. Portuguese; both
-// interfaces. #5658: the same System on both back ends, the same run (each wire's bytes at the same times, the consoles); a
+// interfaces. Emulate: the ESP32 DevKitC drawn (#5495), each of its pins' level. #5658: the same System on both back ends, the same run (each wire's bytes at the same times, the consoles); a
 // program with a Timer, a PWM, an SPI read and an I²C write no one acknowledges the same on both (#5495). The uart-esp32
 // example: its hello echoed by the FPGA into the ESP32's console; + SPI gives its node SPI1.
 import { before, after } from 'node:test';
@@ -198,5 +198,35 @@ uiTest('#5495 the uart-esp32 example: Try it, its hello echoed by the FPGA into 
   await page.waitFor((ed) => document.querySelector(`${ed} .sys-selection h3`)?.textContent === 'Microcontroller esp', [ED], { what: 'its properties' });
   await page.click(`${ED} .asm-side .sys-add-spi`);
   await page.waitFor((ed) => document.querySelector(`${ed} .sys-iface[data-id="esp.SPI1"]`), [ED], { what: 'its SPI1' });
+  assert.deepEqual(page.console.filter((c) => c.type === 'warning' || c.type === 'warn' || c.type === 'error').map((c) => c.text), []);
+}, { timeout: 300000 });
+
+uiTest('#5495 Emulate: the ESP32 DevKitC drawn, its headers\' pins each its level (its program\'s GPIO2 high, its UART\'s TX idle high), its power LED; Portuguese', E, async (page) => {
+  const EMU = '.doc:not([hidden]) .sys-emu';
+  const sys = await readWs(env, 'EspSys', FILE);
+  await makeProject(env, { name: 'EspEmu', template: 'uart', files: { [FILE]: sys, 'mcu/main.py': ['from machine import Pin, UART', 'import time', 'u = UART(2, 9600)', 'Pin(2, Pin.OUT).value(1)', 'Pin(4, Pin.OUT).value(0)', 'while True:', '    time.sleep_ms(1)', '    u.any()', ''].join('\n') } });
+  const pj = await env.server.api('GET', '/api/projects/EspEmu');
+  delete pj.fileTree;
+  await env.server.api('PUT', '/api/projects/EspEmu', { ...pj, kind: 'system', board: null, constraints: null, top: null });
+  await page.openProject('EspEmu');
+  await page.eval((f) => window.SilinxApp.openFile(f), FILE);
+  await page.waitFor((ed) => document.querySelector(ed), [ED], { what: 'the System editor' });
+  await page.click(`${ED} .sys-emu-btn`);
+  await page.waitFor((e) => document.querySelector(`${e} [data-node=mcu] .emu-pcb`) && document.querySelector(`${e} .sys-term-in`), [EMU], { what: 'the board', timeout: 60000 });
+  assert.deepEqual(await page.eval((e) => { const b = document.querySelector(`${e} [data-node=mcu]`), r = b.querySelector('.emu-pcb').getBoundingClientRect(), svg = b.querySelector('.emu-pcb svg').innerHTML;
+    return [b.querySelectorAll('.sys-pin').length, Math.round(r.width), Math.round(r.height), b.querySelector('.emu-board-note').textContent, !!b.querySelector('.sys-esp-power'),
+      ['ESP32-WROOM-32', 'ESP32-DevKitC V4', 'EN', 'BOOT', '>VP<', '>TX<', '>CLK<'].filter((t) => !svg.includes(t.startsWith('>') ? t : `>${t}<`))]; }, EMU),
+  [26, 514, 264, 'ESP32 DevKitC — mcu · ESP32-WROOM-32, MicroPython (behavioural)', true, []]);
+  await page.waitFor((e) => ['GPIO2', 'GPIO17'].every((p) => document.querySelector(`${e} [data-node=mcu] .sys-pin[data-pin=${p}]`)?.classList.contains('high'))
+    && document.querySelector(`${e} [data-node=mcu] .sys-pin[data-pin=GPIO4]`)?.classList.contains('low'), [EMU], { what: 'its pins\' levels', timeout: 60000 });
+  const s = await page.eval(() => window.Silinx.active.emulator.state());
+  assert.deepEqual([s.boards.mcu.pins.GPIO2, s.boards.mcu.pins.GPIO4, s.boards.mcu.pins.GPIO5, s.boards.mcu.led, s.warnings, s.errors], [1, 0, null, undefined, [], []]);
+  // (a pin's dot under its header's pad: GPIO2 the 15th of J3, along the top edge)
+  assert.deepEqual(await page.eval((e) => { const b = document.querySelector(`${e} [data-node=mcu] .emu-pcb`).getBoundingClientRect(), d = document.querySelector(`${e} [data-node=mcu] .sys-pin[data-pin=GPIO2]`).getBoundingClientRect();
+    return [Math.round(d.x + d.width / 2 - b.x), Math.round(d.y + d.height / 2 - b.y)]; }, EMU), [41 + 14 * 24, 12]);
+  await page.eval(async () => (await import('/js/i18n.js')).setLanguage('pt'));
+  await page.waitFor((e) => /comportamental/.test(document.querySelector(`${e} [data-node=mcu] .emu-board-note`)?.textContent || ''), [EMU], { what: 'Portuguese' });
+  assert.equal(await page.eval((e) => document.querySelector(`${e} [data-node=mcu] .emu-board-note`).textContent, EMU), 'ESP32 DevKitC — mcu · ESP32-WROOM-32, MicroPython (comportamental)');
+  await page.eval(async () => (await import('/js/i18n.js')).setLanguage('en'));
   assert.deepEqual(page.console.filter((c) => c.type === 'warning' || c.type === 'warn' || c.type === 'error').map((c) => c.text), []);
 }, { timeout: 300000 });

@@ -70,3 +70,14 @@ test('#5495 edit_system gives the ESP32 its buses, each its board\'s next one (S
   const bad = await call('edit_system', { project: 'p', file: SYS, edits: [{ action: 'add_interface', node: 'esp', fields: { kind: 'i2c', name: 'Wire' } }] });
   assert.deepEqual([bad.isError, bad.text], [true, 'edit_system: edit 0 (add_interface): esp: a microcontroller\'s I²C bus is its board\'s (I2C0, I2C1) (nothing written)']);
 });
+
+test('#5495 an ESP32 emulated (simulate with controls, as Emulate System): its board, each of its pins\' level (the program\'s LED on GPIO2, its UART\'s TX idle high), no LED of its program\'s', async () => {
+  await ok('write_file', { project: 'p', path: 'esp/main.py', text: 'from machine import Pin, UART\nimport time\nu = UART(2, 9600)\nPin(2, Pin.OUT).value(1)\nPin(4, Pin.OUT).value(0)\nwhile True:\n    time.sleep_ms(1)\n    u.any()\n' });
+  await ok('edit_system', { project: 'p', file: SYS, edits: [{ action: 'change_node', node: 'esp', fields: { firmware: 'esp/main.py' } }] });
+  const e = await ok('simulate', { project: 'p', top: SYS, time_ns: 5e6, controls: [] });
+  const esp = e.data.boards.esp;
+  assert.deepEqual(Object.keys(esp), ['pins']);
+  assert.deepEqual(Object.keys(esp.pins), ['GPIO0', 'GPIO1', 'GPIO2', 'GPIO3', 'GPIO4', 'GPIO5', 'GPIO12', 'GPIO13', 'GPIO14', 'GPIO15', 'GPIO16', 'GPIO17', 'GPIO18', 'GPIO19', 'GPIO21', 'GPIO22', 'GPIO23', 'GPIO25', 'GPIO26', 'GPIO27', 'GPIO32', 'GPIO33', 'GPIO34', 'GPIO35', 'GPIO36', 'GPIO39']);
+  assert.deepEqual(['GPIO2', 'GPIO4', 'GPIO17', 'GPIO5'].map((p) => esp.pins[p]), [1, 0, 1, null]);
+  assert.deepEqual([e.data.warnings, e.data.errors], [[], []]);
+});

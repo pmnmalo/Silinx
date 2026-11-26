@@ -359,8 +359,11 @@ An ESP32 DevKitC (`board: 'esp32-devkitc'`, #5495, `core/system-sim-esp32.js`) i
   with nothing typed: a fine SPI or I²C window costs no round trip.
 - **Not modelled:** interrupts (Pin.irq), analog voltages (an ADC reads a level), SPI and I²C peripheral modes, Wi-Fi but
   through the System's network links (#5500), the real firmware (Espressif's QEMU on the server, phase 5). A `while`
-  loop whose body is one line gets no time (#5751). Its drawing in the System Emulator, as a circuit's part, and the
-  browser edition (no local server, no `/core` for its Worker) come later.
+  loop whose body is one line gets no time (#5751). The browser edition (no local server, no `/core` for its Worker) comes
+  later.
+- **Its drawing** (`web/js/emulator-esp32.js`, #5495): Espressif's DevKitC V4 seen from above, its module and antenna,
+  its micro-USB socket, its EN and BOOT buttons, its two headers with each pin's silkscreen name; the System Emulator
+  shows each GPIO's level on it, and the circuit editor draws its part (`esp32-devkitc`) with it.
 
 ### Network links and the MQTT broker
 
@@ -734,12 +737,12 @@ server's `check_system` says them too, a line each after the System described (`
 data (`wires`).
 
 **The boards as the circuit's parts** (#5215, `core/circuit-boards.js`): the Circuit editor's Parts panel has a Boards
-group, the Arduino Uno and Nano, the Basys2 and the Nexys2, each as large as the board and with its real pins, drawn as
+group, the Arduino Uno and Nano, the ESP32 DevKitC (#5495), the Basys2 and the Nexys2, each as large as the board and with its real pins, drawn as
 the emulators draw it (#5366: the Board Emulator's Basys2 and Nexys2, their LEDs, switches, buttons and digits where it
-puts them; the System Emulator's Uno and Nano; `BOARD_ART` gives each drawing's size, pitch and pin 1, the part's body
+puts them; the System Emulator's Uno, Nano and DevKitC; `BOARD_ART` gives each drawing's size, pitch and pin 1, the part's body
 on the grid; the Pmods 0.9 inch apart, the Uno's headers where the real ones are). An
 Arduino's pins are its board's (`MCU_BOARDS`: D0…D13, A0…; the Uno's SDA and SCL joined to A4 and A5 inside it; the
-Nano a DIP-30 across a breadboard's channel); an FPGA board's are its Pmod connectors' (JA1…, each with its package pin
+Nano a DIP-30 across a breadboard's channel; the DevKitC's J2 and J3 1 inch apart, its flash's pins and EN not connected); an FPGA board's are its Pmod connectors' (JA1…, each with its package pin
 from `core/boards.js`: the Basys2's JA2 and JA3 its UART's). A board powers the breadboard: its 5V, 3V3 and GND drive a
 1 and a 0, as the supply's terminals, in Try it, the checks and the HDL. Its other pins drive nothing in the circuit
 alone; a circuit as a System's node gives them to the System's nodes.

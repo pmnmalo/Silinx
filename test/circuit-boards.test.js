@@ -94,8 +94,26 @@ test('#5366 the boards\' bodies are their drawings\' (the emulators\'): their si
   assert.deepEqual([BOARD_ART['arduino-uno'].w / BOARD_ART['arduino-uno'].pitch, BOARD_ART['arduino-uno'].h / BOARD_ART['arduino-uno'].pitch], [27, 21], 'an Uno: 2.7 x 2.1 inch');
 });
 
+test('#5495 the ESP32 DevKitC\'s pins: its board\'s GPIOs (the System\'s), each once, at 3.3 V, 34 to 39 inputs only; J2 and J3 1 inch apart; the flash\'s and EN not connected; its supplies joined', () => {
+  const b = MCU_BOARDS.find((x) => x.id === 'esp32-devkitc'), d = PARTS['esp32-devkitc'];
+  assert.deepEqual([d.kind, d.board, d.title, d.prefix, d.vio, d.pins.length], ['board', 'esp32-devkitc', 'ESP32 DevKitC', 'E', 3.3, 38]);
+  const io = d.pins.filter((p) => p.dir === 'board');
+  assert.deepEqual(io.map((p) => p.name).sort(), [...b.pins].sort(), 'its board\'s pins, each once');
+  for (const p of io) assert.equal(p.volts, 3.3, p.name);
+  assert.deepEqual(io.filter((p) => p.inputOnly).map((p) => p.name), ['GPIO36', 'GPIO39', 'GPIO34', 'GPIO35']);
+  assert.deepEqual(d.pins.filter((p) => p.dir === 'nc').map((p) => p.name), ['EN', 'SD2', 'SD3', 'CMD', 'SD1', 'SD0', 'CLK']);
+  // (J2 from its 3V3 at the antenna's end along dy 0, J3 from its GND 10 pitches above; its 3V3, 5V and GND supplies, its
+  // three GND joined)
+  assert.deepEqual([1, 19, 20, 38].map((n) => { const p = d.pins[n - 1]; return [p.n, p.name, p.dx, p.dy]; }), [[1, '3V3', 0, 0], [19, '5V', 18, 0], [20, 'GND', 0, -10], [38, 'CLK', 18, -10]]);
+  assert.deepEqual(d.pins.filter((p) => p.supply).map((p) => `${p.name} ${p.dir}`), ['3V3 vcc', 'GND gnd', '5V vcc', 'GND gnd', 'GND gnd']);
+  assert.deepEqual(d.bridges, [[14, 20], [14, 26]]);
+  // (its body: the drawing's 514 × 264 pixels at 24 a pitch, its pin 1 41 pixels from its left edge, 12 from its bottom)
+  assert.deepEqual([BOARD_ART['esp32-devkitc'], d.size], [{ w: 514, h: 264, pitch: 24, pin1: [41, 252] }, { x0: -1.71, y0: -10.5, x1: 19.71, y1: 0.5 }]);
+  assert.equal(partInfo('esp32-devkitc').pins.find((p) => p.name === 'GPIO34').role, "the board's pin");
+});
+
 test('#5215 the boards in the library: after the parts, before the ICs; their details, their ids; not exported to KiCad', () => {
-  assert.deepEqual(PART_ORDER.filter((t) => PARTS[t].kind === 'board'), ['arduino-uno', 'arduino-nano', 'fpga-basys2', 'fpga-nexys2']);
+  assert.deepEqual(PART_ORDER.filter((t) => PARTS[t].kind === 'board'), ['arduino-uno', 'arduino-nano', 'esp32-devkitc', 'fpga-basys2', 'fpga-nexys2']);
   assert.ok(PART_ORDER.indexOf('arduino-uno') > PART_ORDER.indexOf('probe') && PART_ORDER.indexOf('fpga-nexys2') < PART_ORDER.indexOf('7400'));
   const listed = partsList().find((x) => x.type === 'fpga-basys2');
   assert.deepEqual([listed.title, listed.kind, listed.board, listed.pins[0]], ['Digilent Basys2', 'board', 'basys2', { n: 1, name: 'JA1', dir: 'board', dx: 0, dy: 0, loc: 'B2', volts: 3.3 }]);
@@ -174,7 +192,7 @@ test('#5215 #5202 the boards are the Systems\': in a release not listed nor adde
     assert.equal(partsList().some((x) => x.kind === 'board'), false);
     assert.deepEqual(addPart(m, { type: 'arduino-uno', at: [0, 30] }), { error: `arduino-uno: ${SYSTEMS_OFF}` });
   } finally { setBuildChannel('dev'); }
-  assert.equal(partsList().filter((x) => x.kind === 'board').length, 4);
+  assert.equal(partsList().filter((x) => x.kind === 'board').length, 5);
   const r = addPart(m, { type: 'arduino-uno', at: [0, 30] });
   assert.deepEqual([r.id, r.model.parts.at(-1)], ['A1', { id: 'A1', type: 'arduino-uno', x: 0, y: 30 }]);
 });
