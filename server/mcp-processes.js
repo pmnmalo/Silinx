@@ -53,8 +53,18 @@ export const REPORT_FILES = {
     pins: top => `build/${top}_io.rpt`,
     drc: top => `build/${top}_drc.rpt`,
   },
+  // Intel Quartus Prime's (the Intel FPGAs, #5378, server/quartus.js): its tools' reports in output_files/
+  quartus: {
+    power: null,
+    timing: top => `build/output_files/${top}.sta.rpt`,
+    synthesis: top => `build/output_files/${top}.map.rpt`,
+    map: top => `build/output_files/${top}.fit.rpt`,
+    par: top => `build/output_files/${top}.fit.summary`,
+    pins: top => `build/output_files/${top}.pin`,
+    drc: null,
+  },
 };
-const TOOLCHAIN_NAMES = { silinx: 'Silinx toolchain', ise: 'Xilinx ISE', vivado: 'AMD Vivado', arduino: 'arduino-cli', system: 'its nodes\' toolchains' };
+const TOOLCHAIN_NAMES = { silinx: 'Silinx toolchain', ise: 'Xilinx ISE', vivado: 'AMD Vivado', quartus: 'Intel Quartus Prime', arduino: 'arduino-cli', system: 'its nodes\' toolchains' };
 // the map and par reports of a Silinx toolchain run, from its Design Summary (build/reports.json); the router's passes
 // only when the engine counts them (nextpnr's do not, #2420)
 export const OPEN_REPORTS = {
@@ -119,7 +129,7 @@ export async function runProcess(name, proc, { toolchain, node, timeoutS = 1800,
   const lines = await waitFor(job, proc, { timeoutS, signal, progress });
   const paths = (await P.readSources(name).catch(() => [])).map(s => s.path);
   const { errors, warnings, locations } = processMessages(lines, paths);
-  const tc = ['silinx', 'vivado'].includes(job.meta?.toolchain) ? job.meta.toolchain : 'ise';
+  const tc = ['silinx', 'vivado', 'quartus'].includes(job.meta?.toolchain) ? job.meta.toolchain : 'ise';
   return { top: node === undefined ? pj.top : node === '*' ? 'System' : `node ${node}`, lines, errors, warnings, locations, paths, ok: job.status === 'ok', silinx: tc === 'silinx', toolchain: tc };
 }
 
@@ -173,7 +183,7 @@ export const PROCESS_TOOLS = [
     description: 'Run a process and wait for it: synthesize, implement, bitstream (Generate Programming File), timing, power, pins (Back-annotate Pin Locations), post_synthesis_model / post_translate_model / post_map_model / post_par_model (then simulate with model); firmware: an Arduino node\'s sketch to its .hex (arduino-cli); build: a System\'s nodes not up to date, by its plan. The Silinx toolchain by default; toolchain ise (Xilinx ISE, when configured) or vivado (AMD Vivado, a 7-series device; no simulation models; the Artix-7 and the Zynq-7000\'s logic also silinx, on trial). Returns the errors, the warnings (their files and lines) and the log\'s end.',
     inputSchema: { type: 'object', properties: {
       project: PROJECT, process: { type: 'string', enum: [...Object.keys(PROCESSES), 'firmware', 'build'], description: 'The process.' },
-      toolchain: { type: 'string', enum: ['silinx', 'ise', 'vivado'], description: 'The toolchain (default: the project\'s synthesis tool, else Toolchain Settings).' },
+      toolchain: { type: 'string', enum: ['silinx', 'ise', 'vivado', 'quartus'], description: 'The toolchain (default: the project\'s synthesis tool, else Toolchain Settings).' },
       node: STR('A System node\'s id (* all): an FPGA\'s; firmware: an Arduino\'s; build: any.'),
       log_lines: { type: 'integer', description: `The lines of the end of the log returned (default 40; from 1 to ${PROCESS_LIMITS.logLines}).` },
       timeout_s: { type: 'integer', description: `How long to wait, in seconds (default 1800; from 1 to ${PROCESS_LIMITS.timeoutS}): then the process is stopped.` },
@@ -216,8 +226,8 @@ export const PROCESS_TOOLS = [
       const summary = await projectReports(name).catch(() => ({ available: false }));
       const top = pj.top || 'top';
       const build = path.join(P.projectDir(name), 'build');
-      const tc = summary.available !== false ? ({ open: 'silinx', vivado: 'vivado' })[summary.source] || 'ise'
-        : fs.existsSync(path.join(build, 'run.tcl')) ? 'vivado' : fs.existsSync(path.join(build, `${top}.syr`)) ? 'ise' : 'silinx';
+      const tc = summary.available !== false ? ({ open: 'silinx', vivado: 'vivado', quartus: 'quartus' })[summary.source] || 'ise'
+        : fs.existsSync(path.join(build, 'run.tcl')) ? 'vivado' : fs.existsSync(path.join(build, `${top}.qpf`)) ? 'quartus' : fs.existsSync(path.join(build, `${top}.syr`)) ? 'ise' : 'silinx';
       const open = tc === 'silinx', who = TOOLCHAIN_NAMES[tc];
       const file = REPORT_FILES[open ? 'open' : tc][report]?.(top);
       if (!file) {

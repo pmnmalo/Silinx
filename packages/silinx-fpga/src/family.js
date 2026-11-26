@@ -31,11 +31,11 @@ export const FAMILY_INFO = {
   // (#2431: Project Peppercorn's, nextpnr-himbaechel-gatemate and gmpack; its constraints Cologne Chip's CCF, its bitstream gmpack's .bit)
   gatemate:     { name: 'GateMate', constraints: 'ccf', bitstream: '.bit' },
   // (#5376: the Intel (Altera) FPGAs of Terasic's DE boards, experimental families: their boards and their constraints, QSF
-  // (qsf.js, its clocks in an SDC), no flow that runs yet: the Silinx toolchain's Cyclone V (#5377), Quartus Prime (#5378); next,
-  // what comes)
-  max10:        { name: 'MAX 10', experimental: true, constraints: 'qsf', vendor: 'intel', next: 'Quartus Prime comes next' },
-  cyclone4e:    { name: 'Cyclone IV E', experimental: true, constraints: 'qsf', vendor: 'intel', next: 'Quartus Prime comes next' },
-  cyclone5:     { name: 'Cyclone V', experimental: true, constraints: 'qsf', vendor: 'intel', next: 'the Silinx toolchain\'s flow and Quartus Prime come next' },
+  // (qsf.js, its clocks in an SDC); Intel Quartus Prime their back end on the local server (#5378), none in the browser
+  // (next: what the browser edition's message adds); the Silinx toolchain's Cyclone V to come (#5377))
+  max10:        { name: 'MAX 10', experimental: true, constraints: 'qsf', vendor: 'intel', backEnd: 'quartus', openFlow: false, next: 'Intel Quartus Prime implements it on the local server' },
+  cyclone4e:    { name: 'Cyclone IV E', experimental: true, constraints: 'qsf', vendor: 'intel', backEnd: 'quartus', openFlow: false, next: 'Intel Quartus Prime implements it on the local server' },
+  cyclone5:     { name: 'Cyclone V', experimental: true, constraints: 'qsf', vendor: 'intel', backEnd: 'quartus', openFlow: false, next: 'Intel Quartus Prime implements it on the local server; the Silinx toolchain\'s flow to come' },
 };
 
 /** Family id of a part name such as xc3s250e, xc6slx9, xc3s700an, xc7a100t, ice40up5k. */
@@ -73,12 +73,15 @@ export function deviceFamily(device) {
 export const isIseFamily = f => !!FAMILY_INFO[f]?.xise;
 /** Is this project device's family one only the open toolchain implements? (An unknown family is not: it stays with ISE's flow;
  *  nor one Vivado implements, the Spartan-7, #3895.) */
-export const openOnlyDevice = device => { const f = deviceFamily(device); return !!FAMILY_INFO[f] && !isIseFamily(f) && FAMILY_INFO[f].backEnd !== 'vivado'; };
+export const openOnlyDevice = device => { const f = deviceFamily(device); return !!FAMILY_INFO[f] && !isIseFamily(f) && !FAMILY_INFO[f].backEnd; };
 /** Is this project device's family an experimental one (#1648): its boards and constraints, no flow that runs yet? */
 export const experimentalDevice = device => !!FAMILY_INFO[deviceFamily(device)]?.experimental;
 /** Is this project device's family one AMD Vivado implements (#1649: the Artix-7, on the local server; #3895: the Spartan-7,
  *  the Kintex-7 and the Zynq-7000, Vivado ML Standard's; the Virtex-7 keeps ISE 14.7's flow)? */
 export const vivadoDevice = device => FAMILY_INFO[deviceFamily(device)]?.backEnd === 'vivado';
+/** Is this project device's family one Intel Quartus Prime implements (#5378: the MAX 10, the Cyclone IV E, the Cyclone V, on the
+ *  local server)? */
+export const quartusDevice = device => FAMILY_INFO[deviceFamily(device)]?.backEnd === 'quartus';
 /** Has this project device's family a flow of the Silinx toolchain (#3895: not the 7-series' but the Artix-7's, whose bit
  *  database Silinx has; #4680: the Zynq-7000's XC7Z010 and XC7Z020, its openParts)? An ISE family's is the Silinx
  *  toolchain's Spartan-3E / Spartan-6 one, or its message. */

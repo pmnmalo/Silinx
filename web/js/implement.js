@@ -16,7 +16,7 @@ import { commandInfo, log, logError, logInfo, logLine, setDiagnostics, showConso
 import { showCommandLines } from './messages.js';
 import { reloadProject } from './project.js';
 import { refreshOpenEditor, topUcfPorts, ucfPort } from './drawings.js';
-import { EXTRA_STEPS, IMPL_IDS, SIM_MODEL_NAMES, checkSyntax, loadUcfText, openMode, projectTool, renderProcesses, vivadoMode,
+import { EXTRA_STEPS, IMPL_IDS, SIM_MODEL_NAMES, checkSyntax, loadUcfText, openMode, projectTool, quartusMode, renderProcesses, vivadoMode,
   saveAll, saveImplStatus, setStatus, synthFingerprint } from './processes.js';
 import { inView, saveProjectJson, setTop } from './design.js';
 import { OPEN_SYNTH, SYNTH_OPEN } from './tool-descriptors.js';
@@ -242,7 +242,7 @@ async function runImplInner(mod, steps, opts, pjName) {
   procState.diags = procState.diags.filter(d => d.source !== 'console');   // new run: drop the previous run's messages
   const extra = [...steps].reverse().find(st => EXTRA_STEPS[st] && st !== 'trce') || (opts.timing ? 'trce' : null);
   const procId = extra || (steps.includes('bitgen') ? 'bitgen' : steps.includes('translate') ? 'impl' : 'synth');
-  const procName = EXTRA_STEPS[procId] || { synth: openMode() ? OPEN_SYNTH : vivadoMode() ? 'Synthesize - Vivado' : 'Synthesize - XST', impl: 'Implement Design', bitgen: 'Generate Programming File' }[procId];
+  const procName = EXTRA_STEPS[procId] || { synth: openMode() ? OPEN_SYNTH : vivadoMode() ? 'Synthesize - Vivado' : quartusMode() ? 'Synthesize - Quartus' : 'Synthesize - XST', impl: 'Implement Design', bitgen: 'Generate Programming File' }[procId];
   // Synthesize - XST always starts with Check Syntax (same messages as the Check Syntax process)
   if (!await checkSyntax(mod, false, { hierarchy: true })) {
     setStatus('synth', 'err');
@@ -291,9 +291,12 @@ async function runImplInner(mod, steps, opts, pjName) {
     const tc = S.toolchain || await api.toolchain();
     // (the Silinx toolchain runs without ISE: a project whose synthesis is Silinx's, or a family ISE does not implement;
     // a device of Vivado's runs AMD Vivado, #1649)
-    const vivado = vivadoMode();
-    const ran = openMode() || (vivado ? !!tc.vivado?.available : tc.ise.available);
-    if (!ran && vivado) {
+    const vivado = vivadoMode(), quartus = quartusMode();
+    const ran = openMode() || (quartus ? !!tc.quartus?.available : vivado ? !!tc.vivado?.available : tc.ise.available);
+    if (!ran && quartus) {
+      R.log(`Intel Quartus Prime not available (${tc.quartus?.mode} mode): ${tc.quartus?.reason}`, 'warn');
+      R.log('The build directory, the Quartus project and run.sh are still generated so they can be run on a machine with Quartus Prime Lite. Configure it in Toolchain Settings (quartus in ~/.silinx/config.json).', 'info');
+    } else if (!ran && vivado) {
       R.log(`AMD Vivado not available (${tc.vivado?.mode} mode): ${tc.vivado?.reason}`, 'warn');
       R.log('The build directory, run.tcl and run.sh are still generated so they can be run on a machine with Vivado 2025.2. Configure it in Toolchain Settings (the gear in the toolbar).', 'info');
     } else if (!ran) {

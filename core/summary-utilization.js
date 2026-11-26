@@ -17,9 +17,10 @@ const pct = (u, t) => (t ? Math.round((100 * u) / t) : 0);
  */
 export function designUtilization(rep, part, pkg) {
   // made by the Silinx toolchain (no ISE), by AMD Vivado (a 7-series device, #1649)
-  const open = rep?.source === 'open', vivado = rep?.source === 'vivado';
+  // (Intel Quartus Prime's, #5378: its summaries' rows, as Vivado's)
+  const open = rep?.source === 'open', vivado = rep?.source === 'vivado' || rep?.source === 'quartus';
   const syn = open || vivado ? (rep?.synthesis?.utilization || []).filter(u => u.total && !u.level) : [];
-  const caption = `Device Utilization Summary${rep?.map ? (open ? ' (Silinx toolchain)' : vivado ? ' (AMD Vivado)' : '') : syn.length ? ' (after synthesis)' : ' (not yet implemented)'}`;
+  const caption = `Device Utilization Summary${rep?.map ? (open ? ' (Silinx toolchain)' : rep.source === 'quartus' ? ' (Intel Quartus Prime)' : vivado ? ' (AMD Vivado)' : '') : syn.length ? ' (after synthesis)' : ' (not yet implemented)'}`;
   const res = part ? resourcesOf(part, pkg).filter(r => r.report && r.count) : [];
   let lines = (rep?.map?.utilization || []).filter(u => u.total).map(u => [u.name, u.used, u.total, u.percent]);
   // (Vivado's rows name the 7-series' resources its own way: its rows alone, after routing or after synthesis)
