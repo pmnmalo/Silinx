@@ -15,6 +15,7 @@ import { resolveBoard } from '../core/devices.js';
 import { importXise } from '../core/xise.js';
 import { readSystem } from '../core/system-doc.js';
 import { constraintsPaths } from '../core/system-constraints.js';
+import { normalizeCircuit } from '../core/circuit.js';
 
 const ROOT = path.resolve(import.meta.dirname, '..');
 const DESCRIPTIONS = execFileSync('git', ['ls-files', '*silinx.json'], { cwd: ROOT, encoding: 'utf8' }).trim().split('\n');
@@ -89,13 +90,15 @@ test('#5416 phase 3: every project of the corpus its System; one node as silinx.
       // (its FPGA nodes' pins their constraints files', #5581)
       const constraints = Object.fromEntries(constraintsPaths(r.model).filter(f => files.includes(f)).map(f => [f, fs.readFileSync(path.join(ROOT, path.dirname(rel), f), 'utf8')]));
       assert.deepEqual(Object.keys(constraints).length, r.model.nodes.filter(n => n.kind === 'fpga').length, rel);
-      const d = checkSystem(r.model, { constraints });
+      // (its circuit nodes' circuits, adc-pmod's: the nodes their boards reach, #5384)
+      const circuits = Object.fromEntries(r.model.nodes.filter(n => n.kind === 'circuit' && n.circuit).map(n => [n.circuit, normalizeCircuit(JSON.parse(fs.readFileSync(path.join(ROOT, path.dirname(rel), n.circuit), 'utf8')))]));
+      const d = checkSystem(r.model, { constraints, circuits });
       assert.deepEqual(d.filter(x => x.severity === 'error'), [], rel);
       assert.ok(d.every(x => /a 5 V output, drives .* a 3\.3 V input of the FPGA \(LVCMOS33\): a level shifter or a divider on the real boards$/.test(x.message)), rel);
     }
   }
-  assert.equal(systems, 5);   // (the System examples: uart-avr, spi-avr, i2c-avr, regs-avr, uart-pic24)
-  assert.equal(implicit, DESCRIPTIONS.length - 5);
+  assert.equal(systems, 6);   // (the System examples: uart-avr, spi-avr, i2c-avr, regs-avr, uart-pic24, adc-pmod)
+  assert.equal(implicit, DESCRIPTIONS.length - 6);
   assert.deepEqual(snapshot(dirs), before);
 });
 
