@@ -48,10 +48,12 @@ uiTest('#2692 a UCF\'s Check Syntax and Check Constraints: their lines in the Im
   assert.deepEqual(await linesFrom(page, 'Started : "Check Constraints"'), expected);
   assert.deepEqual(await pressed(page), ['impl']);
   assert.equal(await page.eval(() => [...document.querySelectorAll('#console-log .ln.mc-off')].filter((l) => /Check Constraints|ConstraintSystem/.test(l.textContent)).length), 0);
-  // the Check Constraints process: the same
+  // I/O Pin Planning's Check (Check Constraints, the tree's process before #5642): the same
   await page.click('#mc-filters .filt[data-src="check"]');
   await page.treeRow('#hier', 'top');
-  await page.treeRow('#procs', 'Check Constraints', { dbl: true, exact: true });
+  await page.treeRow('#procs', 'I/O Pin Planning', { dbl: true, exact: true });
+  await page.waitFor(() => window.Silinx.active?.id === 'pins' && document.querySelector('.doc:not([hidden]) .pp-check'), [], { what: 'I/O Pin Planning' });
+  await page.click('.doc:not([hidden]) .pp-check');
   await page.waitFor(() => window.__console().split('Started : "Check Constraints"').length === 3, [], { what: 'Check Constraints run again' });
   await page.waitConsole(/(Process "Check Constraints" completed successfully with 1 warning\(s\)[^]*){2}/);
   assert.deepEqual(await linesFrom(page, 'Started : "Check Constraints"'), expected);

@@ -46,7 +46,7 @@ uiTest('#3146 Design Properties: the Basys 3\'s synthesis tool, Vivado or Silinx
   await page.setView('impl');
   await page.treeRow('#hier', 'top');
   const labels = await procLabels(page);
-  for (const present of ['User Constraints', 'Synthesize - Yosys', 'View RTL Schematic', 'Check Syntax', 'Implement Design', 'Translate', 'Place & Route',
+  for (const present of ['I/O Pin Planning', 'Synthesize - Yosys', 'View RTL Schematic', 'Check Syntax', 'Implement Design', 'Translate', 'Place & Route',
     'Generate Post-Place & Route Static Timing', 'Generate Programming File', 'Configure Target Device'])
     assert.ok(labels.includes(present), `${present}: ${labels}`);
   for (const absent of ['Synthesize - Vivado', 'Synthesize - XST', 'Map', 'View Technology Schematic', 'Generate Text Power Report', 'View Implemented Design (FPGA)'])

@@ -56,7 +56,7 @@ test('#5446 the refusals: no FPGA node, no module, no board, an unknown board, n
   assert.equal(nodeRefusal({ ...NODE, module: null }), 'fpga: an FPGA node with no module');
   assert.equal(nodeRefusal({ ...NODE, board: null }), 'fpga: an FPGA node with no board');
   assert.equal(nodeRefusal({ ...NODE, board: 'robot' }), 'fpga: no FPGA board \'robot\' (variant 250)');
-  assert.equal(nodeRefusal({ ...NODE, pins: {} }), 'fpga: its module\'s ports are on no pin of its board (its User Constraints\' I/O Pin Planning)');
+  assert.equal(nodeRefusal({ ...NODE, pins: {} }), 'fpga: its module\'s ports are on no pin of its board (its I/O Pin Planning)');
   assert.equal(nodeBoard({ board: 'nexys2', variant: '1200' }).device.part, 'xc3s1200e');
 });
 

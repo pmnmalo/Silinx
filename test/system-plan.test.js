@@ -56,7 +56,7 @@ test('#5489 an FPGA node that cannot be built: why, no build', () => {
   const [e] = plan([{ ...FPGA, pins: {} }]).nodes;
   assert.equal(e.state, 'not buildable');
   assert.equal(e.build, null);
-  assert.equal(planLine(e), 'fpga: not buildable (its module\'s ports are on no pin of its board (its User Constraints\' I/O Pin Planning)); programmed over JTAG');
+  assert.equal(planLine(e), 'fpga: not buildable (its module\'s ports are on no pin of its board (its I/O Pin Planning)); programmed over JTAG');
   assert.equal(planLine(plan([{ ...FPGA, module: undefined }]).nodes[0]), 'fpga: not buildable (an FPGA node with no module); programmed over JTAG');
   assert.equal(planLine(plan([{ ...FPGA, board: 'nope' }]).nodes[0]), 'fpga: not buildable (no FPGA board \'nope\' (variant 250)); programmed over JTAG');
 });

@@ -380,6 +380,8 @@ html[data-ui] .menu-popup .mi:has(> .sc > .collab-roles):hover { background: non
 /* the Board view (#2694): the board, its parts the targets of the ports dragged from the Ports panel on its left (#2715,
    as the schematic editor's Symbols: folded to a strip by its title's button, side-fold.js) */
 .pin-planner .pp-board:not([hidden]) { flex: 1; overflow: auto; min-height: 0; padding: 10px; background: var(--panel, #fff); }
+.pin-planner .pp-text[hidden] { display: none; }   /* (its Text view, the constraints file's editor, #5642) */
+.pin-planner > .doc-status[hidden] { display: none; }   /* (one status line: the table's, else the text's, #5642) */
 .pin-planner .pp-ports-side { width: 200px; flex: none; overflow-y: auto; background: var(--asm-panel); border-right: 1px solid var(--asm-border); }
 .pin-planner .pp-ports-side[hidden] { display: none; }
 @media (min-width: 1024px) {

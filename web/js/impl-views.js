@@ -96,13 +96,15 @@ export async function openSummary({ background = false, wanted } = {}) {
 }
 export function refreshSummary() { const d = findDoc('summary'); d?.refresh?.(); }
 
-export async function openPinPlanner(mod) {
+// (task: the Tasks interface's task it is shown in, Emulate's when run from there, else Implement's, #5642; view: the
+// view shown first, its table's else)
+export async function openPinPlanner(mod, { task, view } = {}) {
   const { mountPinPlanner } = await import('./pinplanner.js');
   const top = mod || S.project.top;
   if (!top) { commandWarning('I/O Pin Planning', 'Select a top-level module first.'); return; }
   const old = findDoc('pins');
   if (old) await closeDoc(old);
-  openDoc({ id: 'pins', title: 'I/O Pin Planning', icon: 'pins', create: (el, d) => mountPinPlanner(el, d, top) });
+  openDoc({ id: 'pins', title: 'I/O Pin Planning', icon: 'pins', task, create: (el, d) => mountPinPlanner(el, d, top, null, { view }) });
 }
 
 export async function openImpact() {

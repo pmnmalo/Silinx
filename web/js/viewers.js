@@ -387,7 +387,8 @@ export async function openEmulator(mod, { scale, model = null, engine = null, qu
   if (!await checkSyntax(mod, false, { hierarchy: true })) return;
   await loadUcfText();   // the pins as they are now (pin planner / editor changes)
   // (no pins set: said first, I/O Pin Planning one click away; a re-run on a change says nothing, #1508)
-  if (!quiet && !await pinsReady(filesState.ucfText, 'emulate', () => app.openPinPlanner(mod), S.project.device)) return;
+  // (I/O Pin Planning in Emulate, the Tasks interface's, #5642)
+  if (!quiet && !await pinsReady(filesState.ucfText, 'emulate', () => app.openPinPlanner(mod, { task: document.documentElement.dataset.layout === 'tasks' ? 'emu' : undefined }), S.project.device)) return;
   // (constraints made for another board: said, their regeneration offered, as Implement does; not run on their pins, #3742)
   if (!await boardConstraints(board, { emulate: true, quiet })) return;
   await loadUcfText();

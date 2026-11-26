@@ -2,6 +2,9 @@
 // pinplanner-ports.js, #2715; the console's lines stay in English, as every process's), merged into the dictionary of i18n.js.
 export const PINS_PT = {
   'The assignments as a table': 'As atribuições numa tabela',
+  // (its Text view and its Check, #5642)
+  'The constraints file as text': 'O ficheiro de restrições em texto',
+  'Check the constraints file: its syntax, the top module\'s ports, the board\'s pins (Check Constraints)': 'Verificar o ficheiro de restrições: a sintaxe, as portas do módulo de topo, os pinos da placa (Verificar Restrições)',
   'Drag the ports onto the parts of the board': 'Arraste as portas para as peças da placa',
   'Drag a port onto a part of the board': 'Arraste uma porta para uma peça da placa',
   'Drag it onto a part of the board or a row of Board Resources': 'Arraste-a para uma peça da placa ou uma linha de Recursos da Placa',
