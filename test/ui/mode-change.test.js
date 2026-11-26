@@ -1,4 +1,4 @@
-// UI: Project ▸ Change Mode… (#5755, web/js/mode-change-ui.js on core/mode-change.js, as the MCP's set_mode): the three
+// UI: Project ▸ Change Mode… (#5755, web/js/mode-change-ui.js on core/mode-change.js, as the MCP's set_design_properties mode): the three
 // modes as New Project's cards, the project's checked; what a change does said as it is chosen (up: nothing lost; down: a
 // warning with each loss); blinky Board → System (its files in fpga/, its System document) → Board (the System document
 // said lost, a WARNING in the console); a Circuit project given a board (its constraints written from the board's pins);

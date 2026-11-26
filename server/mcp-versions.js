@@ -18,12 +18,13 @@ const UNTRUSTED = 'the versions\' names and authors and the files\' paths (the p
 // the tools that replace or remove a project's files: a version of the project kept before each (as the interface's
 // commands of the same names)
 const RISKY = { remove_from_project: 'before-remove', delete_file: 'before-delete', convert_module: 'before-convert', convert_drawing: 'before-convert',
-  import_source: 'before-import', merge_contribution: 'before-merge', git_pull: 'before-git', git_merge: 'before-git', git_switch: 'before-git', set_mode: 'before-mode' };
+  import_source: 'before-import', merge_contribution: 'before-merge', git_pull: 'before-git', git_merge: 'before-git', git_switch: 'before-git' };
 
 /** A version before a tool that replaces or removes files (server/mcp.js, before it runs): a warning line when none could
  *  be kept, else null (none needed, or kept). */
 export async function versionBeforeTool(tool, args) {
-  const reason = RISKY[tool];
+  // (set_design_properties' mode, #5755: Change Mode's version)
+  const reason = tool === 'set_design_properties' && args?.mode !== undefined ? 'before-mode' : RISKY[tool];
   if (!reason || typeof args?.project !== 'string') return null;
   try { await P.readProject(args.project); } catch { return null; }   // (no such project: the tool's own error)
   const v = await versionBefore(P, args.project, reason, { author: AUTHOR });

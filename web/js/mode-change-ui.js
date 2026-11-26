@@ -1,4 +1,4 @@
-// Silinx - Project ▸ Change Mode… (#5755, roadmap #5753): the project's mode changed by the plan the MCP's set_mode makes
+// Silinx - Project ▸ Change Mode… (#5755, roadmap #5753): the project's mode changed by the plan the MCP's set_design_properties mode makes
 // (core/mode-change.js). The three modes as New Project's cards (web/js/project-kind-step.js), the project's checked; below
 // them what the change does, as it is chosen: going up, what is done (nothing lost; Circuit → Board's board to choose);
 // going down, a warning with each thing lost (System down: the node kept, to choose); a refusal disables Change Mode.

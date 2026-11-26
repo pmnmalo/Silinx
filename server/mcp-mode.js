@@ -1,12 +1,13 @@
 // Silinx - Copyright 2026 Pedro Maló - AGPL-3.0-only
-// The MCP's set_mode (#5755, roadmap #5753): a project's mode changed as Project ▸ Change Mode… does it, by the same plan
+// The MCP's set_design_properties mode (#5755, roadmap #5753; a field of that tool, not a tool of its own: tools/list's
+// budget, #4752, #5520): a project's mode changed as Project ▸ Change Mode… does it, by the same plan
 // (core/mode-change.js) and the same messages. Up: Circuit → Board (its board, or its device), Board or Circuit → System
 // (its node the first, its files moved into the node's folder, its System document written). Down: refused unless
 // `confirm` is given, the refusal saying what would be lost; with it, done and each loss said as a WARNING line. Nothing
 // is deleted. A version of the project is kept before it (#5740: server/mcp-versions.js).
 import * as P from './projects.js';
-import { toolError, readProject, STR, PROJECT, boardDevice } from './mcp-util.js';
-import { MODES, modeOf } from '../core/project-mode.js';
+import { toolError, readProject, boardDevice } from './mcp-util.js';
+import { modeOf } from '../core/project-mode.js';
 import { modeChange, modeChangeText, confirmText, relinked } from '../core/mode-change.js';
 import { isSystemFile } from '../core/system-doc.js';
 import { VIEW_RE } from '../core/view-hdl.js';
@@ -43,18 +44,11 @@ async function changeMode(name, to, { board, variant, keep, confirm = false } = 
   return { plan, text: modeChangeText(name, to, plan) };
 }
 
-export const MODE_TOOLS = [
-  {
-    name: 'set_mode', title: 'Change a project\'s mode',
-    description: 'A project\'s mode changed, as Project ▸ Change Mode…: up loses nothing (circuit to board: its board or device; board or circuit to system: its node the System\'s first, its files moved into the node\'s folder, its System document written); down (system to board or circuit, board to circuit) is refused unless confirm is true, the refusal saying what would be lost (nodes, links, the board, the constraints, HDL sources no drawing makes); nothing is deleted from the disk.',
-    inputSchema: { type: 'object', properties: { project: PROJECT, mode: { type: 'string', enum: MODES.map(m => m.id), description: 'The mode: circuit, board or system.' },
-      board: STR('Circuit to Board: the board (list_devices).'), variant: STR('Circuit to Board: the board\'s variant.'),
-      keep: STR('System down: the node kept (default: its first FPGA node).'), confirm: { type: 'boolean', description: 'Going down: true to do it, what is lost said (default false: refused, what would be lost said).' } },
-    required: ['project', 'mode'], additionalProperties: false },
-    annotations: { readOnlyHint: false, destructiveHint: true },
-    async run({ project: name, mode, board, variant, keep, confirm }) {
-      const { plan, text } = await changeMode(name, mode, { board, variant, keep, confirm });
-      return { text, data: { project: name, mode, moved: plan.moves, system: plan.write?.path ?? null, kept: plan.kept, lost: plan.lost } };
-    },
-  },
-];
+/** set_design_properties' `mode` (`args`: its arguments; with it, board, variant, keep and confirm alone): its result. */
+export async function setMode(args) {
+  const other = Object.keys(args).filter(k => !['project', 'mode', 'board', 'variant', 'keep', 'confirm'].includes(k));
+  if (other.length) throw toolError(`mode: give it with board, variant, keep or confirm alone, not ${other.join(', ')}`);
+  const { project: name, mode, board, variant, keep, confirm } = args;
+  const { plan, text } = await changeMode(name, mode, { board, variant, keep, confirm });
+  return { text, data: { project: name, mode, moved: plan.moves, system: plan.write?.path ?? null, kept: plan.kept, lost: plan.lost } };
+}
