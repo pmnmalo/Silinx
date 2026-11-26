@@ -61,6 +61,10 @@ export const ZYNQ_TARGETS = [{ board: 'zybo-z7', variant: '20' }, { board: 'zybo
 // Zynq-7000's PL); Vivado's
 // (the Arty S7's alone; the Zybo Z7's the Silinx toolchain's too: ZYNQ_TARGETS); the examples' display, LEDs and switches the boards lack on their Pmods (#3709)
 export const VIVADO_TARGETS = [{ board: 'arty-s7' }, { board: 'zybo-z7' }, { board: 'arty-z7' }];
+// the Intel (Altera) boards (#5380): Terasic's DE boards, their constraints QSF, built by Intel Quartus Prime on the local server
+// (#5378) and programmed with openFPGALoader (#5379); the examples' 4-digit display (seg, an, dp) on the GPIO header (an external
+// display, as the other boards' Pmods), their HEX displays not used; their buttons the KEYs (active low: BTN_LOW)
+export const INTEL_TARGETS = [{ board: 'de10-lite' }, { board: 'de0-cv' }, { board: 'de1-soc' }, { board: 'de10-nano' }, { board: 'de0-nano' }, { board: 'de2-115' }];
 /** The board an example runs on for a target: vga on the iCEBreaker with its PmodVGA, on the ULX3S with its VGA. */
 const VGA_BOARDS = { icebreaker: 'icebreaker-vga', ulx3s: 'ulx3s-vga', tangnano9k: 'tangnano9k-vga', 'gatemate-evb': 'gatemate-evb-vga' };
 export const exampleBoard = (name, t) => (name === 'vga' && VGA_BOARDS[t.board] ? { ...t, board: VGA_BOARDS[t.board] } : t);
