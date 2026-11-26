@@ -126,7 +126,8 @@ const XCASE = `module xcase(input clk, input [1:0] d, output reg y, output reg e
   always @* if (st == 2'b11) en = 1;
 endmodule
 `;
-const XCASE_WARNINGS = ["Warning: Latch inferred for signal `\\xcase.\\en' from process `\\xcase.$proc$xcase_syn.v:31$4': $auto$proc_dlatch.cc:557:proc_dlatch$1113"];
+// (Yosys 0.71's text, #5634: the process named $xcase_syn.v:31$proc$4, was $proc$xcase_syn.v:31$4; its line of proc_dlatch.cc)
+const XCASE_WARNINGS = ["Warning: Latch inferred for signal `\\xcase.\\en' from process `\\xcase.$xcase_syn.v:31$proc$4': $auto$proc_dlatch.cc:647:proc_dlatch$1119"];
 
 test('a case taking its default on an X state at power-up is not a mismatch (#20)', { timeout: 120000 }, async () => {
   const sources = [{ path: 'xcase.v', lang: 'verilog', text: XCASE }];

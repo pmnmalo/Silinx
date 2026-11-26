@@ -319,8 +319,8 @@ end;
   assert.match(x.text, /^ {6}ss\[\(e \+ 4'd2\)\] <= din;$/m);
   assert.match(x.text, /c <= 1'\(ra >> \(3'd7 - p\w+\)\);/);
   assert.doesNotMatch(x.text, /\[\(?\$signed/, 'no index as a 32-bit signed number');
-  // (were 127 LUTs and 265 carry cells; its 8:1 reads on MUXF5 / MUXF6, #511: 66 LUTs without them)
-  assert.deepEqual([x.r.util.luts, x.r.util.carry, x.r.depth.muxf?.kept], [60, 35, true]);
+  // (were 127 LUTs and 265 carry cells; its 8:1 reads on MUXF5 / MUXF6, #511: 66 LUTs without them; 60 with Yosys 0.70, #5634)
+  assert.deepEqual([x.r.util.luts, x.r.util.carry, x.r.depth.muxf?.kept], [64, 35, true]);
   assert.deepEqual(x.r.warnings, []);
   const cx = compareNetlist(x.d, x.r, { name: 'int-index-ix', seed: 'ix', sim: { cycles: 600, ranges: { d: [0, 7], e: [-2, 5] } } });
   assert.equal(cx.status, 'pass', cx.report || cx.reason);
@@ -372,9 +372,9 @@ end;`;
   assert.match(a.text, /^ {4}t\[fn_f\(i\)\] <= \(c \? 1'\(v\) : 1'\(1'\(t >> fn_f\(i\)\)\)\);$/m);
   assert.match(b.text, /^ {4}ss\[i\] <= \(\(c == 1'h1\) \? 1'\(v\) : 1'\(1'\(ss >> i\)\)\);$/m);
   assert.match(b.text, /^ {4}tt\[fn_f\(i\)\] <= /m);
-  // (were 82 and 80 LUTs, 12 MUXF5 / MUXF6 each: the 8:1 reads of q and r)
+  // (were 82 and 80 LUTs, 12 MUXF5 / MUXF6 each: the 8:1 reads of q and r; 71 LUTs with Yosys 0.70, #5634)
   for (const x of [a, b]) {
-    assert.deepEqual([x.r.util.luts, x.r.util.muxes], [71, 6]);
+    assert.deepEqual([x.r.util.luts, x.r.util.muxes], [73, 6]);
     assert.deepEqual(x.r.warnings, []);
     assert.deepEqual(x.d.diags, []);
     const c = compareNetlist(x.d, x.r, { name: 'read-back', seed: 'rb', sim: { cycles: 600 } });
@@ -655,7 +655,8 @@ endmodule
 `;
   const shl = elaborate(compile([{ path: 'shl.v', lang: 'verilog', text: SHL }]), 'shl');
   const r = await synthesizeOpen(shl, { family: 'spartan3e', run: yosysNode });
-  assert.deepEqual([r.util.luts, r.util.muxes, r.depth.wide.kept, r.depth.kept], [139, 47, true, false], JSON.stringify(r.depth));
+  // (139 LUTs and 47 MUXF5 with Yosys 0.70, #5634)
+  assert.deepEqual([r.util.luts, r.util.muxes, r.depth.wide.kept, r.depth.kept], [147, 50, true, false], JSON.stringify(r.depth));
   assert.equal(r.cells.MUXF6 || 0, 0);
   assert.ok(r.depth.wide.ns <= r.depth.ns[0], JSON.stringify(r.depth));
   assert.deepEqual(r.warnings, []);
@@ -664,8 +665,8 @@ endmodule
   const rot = elaborate(compile([{ path: 'rot.v', lang: 'verilog', text: SHL.replace('rd << rs', '(rd << rs) | (rd >> (32 - rs))').replace(/shl/g, 'rot') }]), 'rot');
   const r2 = await synthesizeOpen(rot, { family: 'spartan3e', run: yosysNode });
   // (raised by Yosys 0.70 (#368): 313 LUTs with 0.68, 319 with 0.70; 313 again with the speedup's mapping, #652: as fast,
-  // 6 LUTs and 4 slices fewer)
-  assert.deepEqual([r2.util.luts, r2.util.muxes, r2.depth.wide.kept, r2.depth.speed.kept, r2.depth.speed.luts], [313, 0, false, true, 313], JSON.stringify(r2.depth));
+  // 6 LUTs and 4 slices fewer; 314 with Yosys 0.71, #5634)
+  assert.deepEqual([r2.util.luts, r2.util.muxes, r2.depth.wide.kept, r2.depth.speed.kept, r2.depth.speed.luts], [314, 0, false, true, 314], JSON.stringify(r2.depth));
   const d2 = compareNetlist(rot, r2, { name: 'lut4-rot', sim: { cycles: 300 } });
   assert.equal(d2.status, 'pass', d2.report || JSON.stringify(d2));
 });
@@ -917,7 +918,8 @@ test('#54 a register file read at three addresses: its memory as distributed RAM
 // 300 nodes at most: the requests' and the priorities' terms reach more. The fourth candidate (onto LUT4s alone)
 // takes windows of MFS's 5000 nodes (the EPFL arbiter in the corpus's I/O wrapper 2019 -> 1537 LUTs, 1010 -> 769
 // slices, as deep); the other candidates and the GIA's SOP balancing keep mfs2's own windows
-test('#370 the fourth candidate with mfs2\'s windows of 5000 nodes: a 32-request arbiter in 320 LUTs instead of 354, as deep and as fast by the estimate, equal to the RTL', { timeout: 300000 }, async () => {
+// (Yosys 0.70, #5634: 320 LUTs and 160 slices instead of 354 and 177, 8.77 ns, 7 levels)
+test('#370 the fourth candidate with mfs2\'s windows of 5000 nodes: a 32-request arbiter in 341 LUTs instead of 347, as deep and as fast by the estimate, equal to the RTL', { timeout: 300000 }, async () => {
   assert.equal(MFS, 'mfs2 -M 5000');
   assert.ok(DEPTH_ABC2_LUT4.startsWith(DEPTH_ABC2.replaceAll('mfs2', 'mfs2 -M 5000')));
   for (const s of [DEPTH_ABC, DEPTH_ABC2, DEPTH_ABC3, DEPTH_SOPB]) assert.ok(!s.includes(' -M '), s);
@@ -931,15 +933,16 @@ test('#370 the fourth candidate with mfs2\'s windows of 5000 nodes: a 32-request
     return { top, files: { [`${top}.json`]: j }, luts: utilization(cellCounts(j, top)).luts, slices: sliceCount(j, top), ns: +criticalDelay(j, top).toFixed(2), levels: logicLevels(j, top) };
   };
   const a = await map(DEPTH_ABC2), b = await map(DEPTH_ABC2.replaceAll('mfs2', MFS));
-  assert.deepEqual([a.luts, a.slices, a.ns, a.levels], [354, 177, 8.77, 7]);
-  assert.deepEqual([b.luts, b.slices, b.ns, b.levels], [320, 160, 8.77, 7]);
+  assert.deepEqual([a.luts, a.slices, a.ns, a.levels], [347, 174, 9.92, 8]);
+  assert.deepEqual([b.luts, b.slices, b.ns, b.levels], [341, 171, 9.92, 8]);
   const c = compareNetlist(d, b, { name: 'mfs-arbiter', seed: 'arb32', sim: { cycles: 400 } });
   assert.equal(c.status, 'pass', c.report || JSON.stringify(c));
 });
 
 // #370: each more round of the fourth candidate's area mapping (choices, mapping, mfs2 on wide windows) shares more of
 // the arbiter's terms, as deep: four more rounds (the EPFL arbiter in the corpus's I/O wrapper 1537 -> 1410 LUTs at High)
-test('#370 the fourth candidate\'s area mapping made four more times: a 32-request arbiter in 248 LUTs instead of 320, as deep and as fast by the estimate, equal to the RTL', { timeout: 300000 }, async () => {
+// (Yosys 0.70, #5634: 248 LUTs and 124 slices instead of 320 and 160, as deep and as fast)
+test('#370 the fourth candidate\'s area mapping made four more times: a 32-request arbiter in 274 LUTs instead of 341, no deeper nor slower by the estimate, equal to the RTL', { timeout: 300000 }, async () => {
   assert.equal(DEPTH_ABC2_LUT4, `${DEPTH_ABC2.replaceAll('mfs2', 'mfs2 -M 5000')}${'; strash; dch -f; if; mfs2 -M 5000'.repeat(4)}`);
   const d = elaborate(compile([{ path: 'arb.v', lang: 'verilog', text: arbiter(32) }]), 'arb');
   const { text, top } = toVerilog(d);
@@ -951,8 +954,8 @@ test('#370 the fourth candidate\'s area mapping made four more times: a 32-reque
     return { top, files: { [`${top}.json`]: j }, luts: utilization(cellCounts(j, top)).luts, slices: sliceCount(j, top), ns: +criticalDelay(j, top).toFixed(2), levels: logicLevels(j, top) };
   };
   const a = await map(DEPTH_ABC2.replaceAll('mfs2', MFS)), b = await map(DEPTH_ABC2_LUT4);
-  assert.deepEqual([a.luts, a.slices, a.ns, a.levels], [320, 160, 8.77, 7]);
-  assert.deepEqual([b.luts, b.slices, b.ns, b.levels], [248, 124, 8.77, 7]);
+  assert.deepEqual([a.luts, a.slices, a.ns, a.levels], [341, 171, 9.92, 8]);
+  assert.deepEqual([b.luts, b.slices, b.ns, b.levels], [274, 137, 8.77, 7]);
   const c = compareNetlist(d, b, { name: 'rounds-arbiter', seed: 'arb32r', sim: { cycles: 400 } });
   assert.equal(c.status, 'pass', c.report || JSON.stringify(c));
 });
@@ -983,15 +986,17 @@ const MAX4 = `module max4 #(parameter W = 16) (input clk, input [W-1:0] a, b, c,
   always @(posedge clk) begin ra <= a; rb <= b; rc <= c; rd <= d; m <= gt(ab, cd) ? ab : cd; end
 endmodule
 `;
+// (Yosys 0.71, #5634: balanced once more with the LUT delays, 13.7 ns and 131 LUTs against 15.2 and 146; with 0.70, the one
+// balanced once more without them was kept)
 test('logic depth: the maximum of four numbers is balanced once more, that netlist kept (faster and smaller than the first depth-oriented one) and equal to the RTL (#52)', { timeout: 300000 }, async () => {
   const max4 = elaborate(compile([{ path: 'max4.v', lang: 'verilog', text: MAX4 }]), 'max4');
   const r = await synthesizeOpen(max4, { family: 'spartan3e', run: yosysNode });
   assert.equal(r.depth.kept, true, JSON.stringify(r.depth));
-  assert.equal(r.depth.second.kept, true, JSON.stringify(r.depth));
-  assert.ok(r.depth.second.ns < r.depth.ns[1] && r.depth.second.luts < r.depth.luts[1], JSON.stringify(r.depth));
+  assert.deepEqual([r.depth.second.kept, r.depth.delays.kept], [false, true], JSON.stringify(r.depth));
+  assert.ok(r.depth.delays.ns < r.depth.ns[1] && r.depth.delays.luts < r.depth.luts[1], JSON.stringify(r.depth));
   // (or, better still, the speedup's mapping or the enables folded, #652, #653)
-  const kept = [r.depth.fold, r.depth.speed].find(x => x?.kept) || r.depth.second;
-  assert.ok(kept.ns <= r.depth.second.ns, JSON.stringify(r.depth));
+  const kept = [r.depth.fold, r.depth.speed].find(x => x?.kept) || r.depth.delays;
+  assert.ok(kept.ns <= r.depth.delays.ns, JSON.stringify(r.depth));
   assert.equal(r.util.luts, kept.luts);
   assert.equal(criticalDelay(r.files['max4.json'], 'max4'), kept.ns);
   assert.deepEqual(r.warnings, []);
@@ -1014,7 +1019,9 @@ const PRIO = `module prio(input clk, input [127:0] x, output reg [6:0] q);
   always @(posedge clk) begin r <= x; q <= idx; end
 endmodule
 `;
-test('#52 logic depth: balanced twice more (DEPTH_ABC3, with the LUT delays), a third candidate; a priority encoder keeps it at both efforts (17 % faster than the mapping balanced once more, as large), equal to the RTL', { timeout: 300000 }, async () => {
+// (Yosys 0.71, #5634: the third candidate as fast as the one balanced once more with the delays, 9.17 ns, with fewer LUTs; the
+// mapping onto LUT4s alone faster, 8.85 ns, and kept. With 0.70 the third was kept, 17 % faster than the others)
+test('#52 logic depth: balanced twice more (DEPTH_ABC3, with the LUT delays), a third candidate; a priority encoder: as fast as the one balanced once more, fewer LUTs, the mapping onto LUT4s kept at both efforts, equal to the RTL', { timeout: 300000 }, async () => {
   assert.equal(DEPTH_ABC3, 'strash; dc2; balance; dch -f; if -g; strash; dc2; dch -f; if -g; strash; dc2; dch -f; if -g; strash; dc2; dch -f; if -g; strash; dc2; dch -f; if; mfs2; strash; dch -f; if; mfs2');
   const prio = elaborate(compile([{ path: 'prio.v', lang: 'verilog', text: PRIO }]), 'prio');
   for (const effort of ['high', 'normal']) {
@@ -1022,13 +1029,13 @@ test('#52 logic depth: balanced twice more (DEPTH_ABC3, with the LUT delays), a 
     const dp = JSON.stringify(r.depth);
     if (effort === 'normal') assert.equal(r.depth.auto, true, dp);
     assert.equal(r.depth.kept, true, dp);
-    // (before #52's third candidate: the one balanced once more with the delays, 11.1 ns estimated)
-    assert.deepEqual([r.depth.second.kept, r.depth.delays.kept, r.depth.third.kept], [false, false, true], dp);
+    assert.deepEqual([r.depth.second.kept, r.depth.delays.kept, r.depth.third.kept, r.depth.lut4.kept], [false, false, false, true], dp);
     const before = Math.min(r.depth.second.ns, r.depth.delays.ns);
-    assert.ok(r.depth.third.ns <= before * 0.9, dp);
+    assert.ok(r.depth.third.ns <= before, dp);
     assert.ok(r.depth.third.luts <= Math.min(r.depth.second.luts, r.depth.delays.luts) && r.depth.third.slices <= Math.min(r.depth.second.slices, r.depth.delays.slices), dp);
-    assert.equal(r.util.luts, r.depth.third.luts);
-    assert.equal(criticalDelay(r.files['prio.json'], 'prio'), r.depth.third.ns);
+    assert.ok(r.depth.lut4.ns < r.depth.third.ns, dp);
+    assert.equal(r.util.luts, r.depth.lut4.luts);
+    assert.equal(criticalDelay(r.files['prio.json'], 'prio'), r.depth.lut4.ns);
     assert.deepEqual(r.warnings, []);
     const d = compareNetlist(prio, r, { name: `depth-prio-${effort}`, sim: { cycles: 400 } });
     assert.equal(d.status, 'pass', d.report || JSON.stringify(d));
@@ -1157,7 +1164,8 @@ test('#631 the netlist has its top: an empty one, and an escaped name, at Normal
     assert.equal(r.util.cells, 0);
     const esc = elaborate(compile([{ path: 'x.v', lang: 'verilog', text: 'module \\1dff (input clk, input d, output reg q);\n  always @(posedge clk) q <= d;\nendmodule' }]), '1dff');
     const s = await synthesizeOpen(esc, { family: 'spartan3e', run: yosysNode, effort });
-    assert.deepEqual(Object.keys(JSON.parse(s.files[`${s.top}.json`]).modules), [s.top], effort);
+    // (Yosys 0.71 writes \1dff as "1dff" in its JSON, #5605)
+    assert.deepEqual(Object.keys(JSON.parse(s.files[`${s.top}.json`]).modules), [s.top.replace(/^\\/, '')], effort);
     assert.equal(s.cells.FDRE ?? s.cells.FD ?? s.cells.FDE, 1, JSON.stringify(s.cells));
     assert.deepEqual(s.warnings, [], effort);
   }

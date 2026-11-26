@@ -13,7 +13,7 @@ which npm installs with it, and includes the ported ones (their code or data in 
 | @yowasp/nextpnr-himbaechel-gatemate | 0.11.825 | ISC | https://yowasp.org/ |
 | @yowasp/nextpnr-himbaechel-gowin | 0.11.825 | ISC | https://yowasp.org/ |
 | @yowasp/nextpnr-ice40 | 0.11.825 | ISC | https://yowasp.org/ |
-| @yowasp/yosys | 0.70.1258 | ISC | https://yowasp.org/ |
+| @yowasp/yosys | 0.71.1284 | ISC | https://yowasp.org/ |
 | apicula | 0.32 | MIT | https://github.com/YosysHQ/apicula |
 | prjxray | c9f02d8 | ISC | https://github.com/f4pga/prjxray |
 | prjxray-db | 0a0adde | CC0-1.0 | https://github.com/f4pga/prjxray-db |
@@ -1706,7 +1706,7 @@ OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
 Not in silinx-<version>.zip: Silinx downloads it from npm's registry on its first use.
 
-## @yowasp/yosys 0.70.1258 — ISC
+## @yowasp/yosys 0.71.1284 — ISC
 
 https://yowasp.org/
 

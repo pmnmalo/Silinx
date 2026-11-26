@@ -16,10 +16,11 @@
 const REF = 'silinx_ref', UUT = 'silinx_uut', MITER = 'silinx_miter';
 // the files of the ABC run: the miter's AIG (its one output, trigger) and its map (each input bit's wire), the AIG with
 // every output (ASCII, replayed here; its symbols name its inputs and outputs, a constant one too, which a map leaves
-// out), the witnesses of dsat, bmc3 and pdr
+// out), the witnesses of dsat, bmc3 and pdr, and ABC's status after each (write_status, #5604)
 const AIG = `${MITER}.aig`;
 export const AIG_MAP = `${MITER}.aim`, ALL = 'silinx_all.aag';
 export const BMC_CEX = 'silinx_bmc.aiw', PDR_CEX = 'silinx_pdr.aiw', SAT_CEX = 'silinx_sat.aiw';
+const SAT_STATUS = 'silinx_sat.sts', BMC_STATUS = 'silinx_bmc.sts', PDR_STATUS = 'silinx_pdr.sts';
 // the module of one gate the `abc` pass runs on (its network put back unchanged, so that Yosys reads it again)
 const ABC_HOST = 'silinx_abc.v';
 const HOST_TEXT = 'module silinx_abc(input a, b, output y); assign y = a & b; endmodule\n';
@@ -69,8 +70,9 @@ export function abcScript(depth, seconds) {
     'delete -output w:gold_* w:gate_*', 'opt_clean', `write_aiger -zinit -map ${AIG_MAP} ${AIG}`,
     `design -reset`, `read_verilog ${ABC_HOST}`, 'hierarchy -top silinx_abc', 'techmap',
     // (dsat refuses a miter with registers, bmc3 one without)
-    `abc -script ${inline(['strash', '&get -n', `read_aiger ${AIG}`, 'print_stats', 'dsat', `write_cex -a ${SAT_CEX}`, `bmc3 -F ${depth} -T ${T}`,
-      `write_cex -a ${BMC_CEX}`, `pdr -T ${Math.min(T, PDR_SECONDS)}`, `write_cex -a ${PDR_CEX}`, '&put'])}`,
+    `abc -script ${inline(['strash', '&get -n', `read_aiger ${AIG}`, 'print_stats', 'dsat', `write_cex -a ${SAT_CEX}`, `write_status ${SAT_STATUS}`,
+      `bmc3 -F ${depth} -T ${T}`, `write_cex -a ${BMC_CEX}`, `write_status ${BMC_STATUS}`, `pdr -T ${Math.min(T, PDR_SECONDS)}`,
+      `write_cex -a ${PDR_CEX}`, `write_status ${PDR_STATUS}`, '&put'])}`,
   ].join('; ');
 }
 
@@ -98,6 +100,26 @@ export function readAbc(lines) {
     pdr: p.some(l => /Property proved/.test(l)) ? 'proved' : pf !== undefined ? { frame: pf } : null,
     sat: d.some(l => /^UNSATISFIABLE/.test(l)) ? 'proved' : d.some(l => /^SATISFIABLE/.test(l)) ? { frame: 0 } : null,
   };
+}
+
+/**
+ * ABC's results as readAbc gives them, from its status files (write_status after dsat, bmc3 and pdr: "snl_UNK <the last
+ * frame checked>", "snl_UNSAT …", "snl_SAT … <po> <frame>") and the AIG's latches (ALL's header), or null without them
+ * (#5604): YoWASP's Yosys 0.71 loses ABC's own output, which readAbc reads.
+ */
+export function readAbcStatus(files) {
+  const status = f => {
+    const m = /^snl_(SAT|UNSAT|UNK) (-?\d+)(?: \S+ \d+ (\d+))?/.exec(String(files?.[f] ?? ''));
+    return m && { s: m[1], n: +m[2], frame: m[3] === undefined ? undefined : +m[3] };
+  };
+  const h = /^aig \d+ \d+ (\d+)/.exec(typeof files?.[AIG] === 'string' ? files[AIG] : new TextDecoder().decode((files?.[AIG] ?? new Uint8Array()).slice(0, 64)));
+  const [d, b, p] = [SAT_STATUS, BMC_STATUS, PDR_STATUS].map(status);
+  if (!h || !d || !b || !p) return null;
+  const decided = x => x.s !== 'UNK';
+  // (a step after one that decided says the same: the miter is solved)
+  const bmc = decided(d) ? { checked: 0 } : b.s === 'SAT' ? { frame: b.frame } : b.s === 'UNSAT' ? { reached: true } : { checked: b.n + 1 };
+  const pdr = decided(d) || decided(b) ? null : p.s === 'UNSAT' ? 'proved' : p.s === 'SAT' ? { frame: p.frame } : null;
+  return { latches: +h[1], bmc, pdr, sat: d.s === 'UNSAT' ? 'proved' : d.s === 'SAT' ? { frame: 0 } : null };
 }
 
 /** An ASCII AIGER (Yosys's write_aiger -ascii): { I, L, inputs, latches: [[lit, next]], outputs, ands: [[lhs, a, b]] }. */
