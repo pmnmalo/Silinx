@@ -270,3 +270,24 @@ test('the flow\'s postpar step: the routed design\'s model, its SDF with every c
     assert.ok(fast.events.filter(e => /Timing violation/.test(e.text)).every(e => e.time >= CHECKS_FROM));
   }
 });
+
+test('#5702 a carry chain\'s first XOR (X = F XOR CIN, its CIN the constant CYINIT): the model keeps its delay from the LUT to X, Topx (a buffer, the XOR folded); the SDF\'s period the static timing\'s', { timeout: 600000 }, async () => {
+  // (a registered adder: its bit 0's sum, the LUT's a0 ^ b0 through the slice's XORF with the chain's CIN constant)
+  const ADD = `module add(input clk, input [3:0] a, input [3:0] b, output reg [3:0] s);
+  reg [3:0] ra = 0, rb = 0;
+  always @(posedge clk) begin ra <= a; rb <= b; s <= ra + rb; end
+endmodule`;
+  const r = await flow({ top: 'add', steps: orderOpenSteps(['postpar']) }, [{ path: 'add.v', lang: 'verilog', text: ADD }], []);
+  assert.equal(r.ok, true, r.lines.join('\n'));
+  const xdl = r.store['open/routed.xdl'];
+  // the routed design has the stage: a slice whose X is its F stage's XOR, with no CIN
+  const stages = xdl.split(/\ninst /).filter(i => /FXMUX::FXOR/.test(i) && !/CIN/.test(i.split('cfg')[0]));
+  assert.ok(stages.length >= 1, 'no first stage of a carry chain on X');
+  const vhd = r.store['netgen/par/add_timesim.vhd'], sdf = parseSdf(r.store['netgen/par/add_timesim.sdf']);
+  // its XOR folded into a buffer that keeps Topx - Tilo (SLICEL 1.060 - 0.704, SLICEM 1.118 - 0.759 ns)
+  const bufs = [...sdf.cells.entries()].filter(([n, c]) => c.type === 'X_BUF' && /XORF|xorcy/i.test(n));
+  assert.ok(bufs.length >= 1, [...sdf.cells.keys()].join(' '));
+  for (const [n, c] of bufs) assert.ok(c.iopath.length === 1 && [356, 359].includes(c.iopath[0].ps), `${n}: ${JSON.stringify(c.iopath)}`);
+  const P = Math.round(analyzeTiming(parseXdl(xdl), device()).period * 1000);
+  assert.ok(Math.abs(sdfPeriod(vhd, sdf) - P) <= 10, `${sdfPeriod(vhd, sdf)} ps by the SDF, ${P} ps by the static timing`);
+});

@@ -149,7 +149,8 @@ test('against nextpnr: the packer\'s fixtures (wide multiplexers, flip-flops of 
 // four (the Spartan-6's netlists, of LUT6s, have no estimate)
 // (#3710, the examples' clock as CLK_HZ: blinky 116, clock 195, vga 121, micro80 148 before; #4377, blinky's debouncers in 2
 // bits counting ticks: 118 with their 22, #3922)
-const EXAMPLE_SLICES = { gates: 1, breadboard: 4, traffic: 66, blinky: 91, pong: 255, stopwatch: 196, clock: 214, vga: 123, isqrt: 63, uart: 112, micro80: 146, lock: 137 };
+// (Yosys 0.71's netlists, #5634: pong 255, stopwatch 196, clock 214, isqrt 63, micro80 146, lock 137 with 0.70's)
+const EXAMPLE_SLICES = { gates: 1, breadboard: 4, traffic: 66, blinky: 91, pong: 250, stopwatch: 193, clock: 220, vga: 123, isqrt: 65, uart: 112, micro80: 147, lock: 140 };
 for (const names of [EXAMPLES.slice(0, 5), EXAMPLES.slice(5)]) {
   test(`against nextpnr: the examples ${names.join(', ')}`, { timeout: 900000 }, async () => {
     const { synthesizeOpen } = await import('../core/synth-front.js');

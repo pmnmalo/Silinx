@@ -14,7 +14,7 @@ import zlib from 'node:zlib';
 import { fileURLToPath } from 'node:url';
 
 // Yosys 0.70: the version YoWASP (@yowasp/yosys 0.70.x) runs
-export const YOSYS_TESTS_PIN = { tag: 'v0.70', commit: '28ba3cb926fe376fa05ebfc1b921747d011d4557' };
+export const YOSYS_TESTS_PIN = { tag: 'v0.71', commit: 'b4c586fd37d0ec61bb38fc1a85fd6a2fde48fcd1' };
 export const YOSYS_TEST_DIRS = ['tests/simple', 'tests/asicworld', 'tests/hana', 'tests/vloghtb', 'tests/various'];
 const ROOT = path.join(path.dirname(fileURLToPath(import.meta.url)), '..');
 const CACHE = path.join(ROOT, '.cache', 'yosys-tests');

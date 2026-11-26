@@ -15,13 +15,15 @@ const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'silinx-examples-gatemate-'));
 process.env.SILINX_CONFIG_DIR = path.join(tmp, 'config');
 test.after(() => fs.rmSync(tmp, { recursive: true, force: true }));
 
-// the warnings of each example (seed 1): micro80's Yosys's of its RAM's port, widened to the block RAM's; uart's two crashes of
-// nextpnr's after its placement with seeds 1 and 2 (a WebAssembly trap), seed 3 the one that places and routes it
-const crashed = seed => `WARNING:Place - nextpnr-himbaechel-gatemate crashed with seed ${seed} (memory access out of bounds): placed and routed again with seed ${seed + 1}.`;
+// the warnings of each example (seed 1): micro80's Yosys's of its RAM's port, widened to the block RAM's (Yosys 0.71's netlists:
+// nextpnr places and routes every example with seed 1, uart's two crashes of Yosys 0.70's netlist gone, #5634)
 const WARNINGS = {
   micro80: ['WARNING:Yosys - Resizing cell port micro80_top.memory.0.0.B_DO from 10 bits to 20 bits.'],
-  uart: [crashed(1), crashed(2)],
 };
+// the bitstreams gmunpack cannot read back: Project Peppercorn's gmunpack (YoWASP's 0.11.825) traps on stopwatch's, which its
+// own gmpack wrote from nextpnr's configuration (a WebAssembly trap, "memory access out of bounds"; Yosys 0.71's netlist, #5699):
+// the trap asserted, so that the read-back comes back when gmunpack reads it
+const UNREADABLE = new Set(['stopwatch']);
 
 test('the examples\' ports on the GateMate evaluation board: every one with a pin', () => {
   for (const name of EXAMPLES) assert.deepEqual(exampleUcf(name, exampleBoard(name, GATEMATE_TARGETS[0])).unmatched, [], name);
@@ -50,7 +52,9 @@ describe('the examples on the GateMate\'s board', { concurrency: 2 }, () => {
         assert.deepEqual(job.lines.filter(l => /warning/i.test(l)), WARNINGS[name] || []);
         // the bitstream read back: nextpnr's configuration
         const { runGmunpack } = await import('@yowasp/nextpnr-himbaechel-gatemate');
-        const out = await runGmunpack(['design.bit', 'unpacked.cfg'], { 'design.bit': bit }, { stdout: () => {}, stderr: () => {}, fetchProgress: () => {} });
+        const unpack = () => runGmunpack(['design.bit', 'unpacked.cfg'], { 'design.bit': bit }, { stdout: () => {}, stderr: () => {}, fetchProgress: () => {} });
+        if (UNREADABLE.has(name)) { await assert.rejects(unpack(), /memory access out of bounds/, name); return; }
+        const out = await unpack();
         const read = out['unpacked.cfg'];
         const back = compareConfigs(fs.readFileSync(path.join(dir, 'build', 'open', 'routed.cfg'), 'utf8'), typeof read === 'string' ? read : new TextDecoder().decode(read));
         assert.ok(back.settings > 0);

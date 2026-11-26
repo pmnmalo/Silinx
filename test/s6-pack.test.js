@@ -190,18 +190,21 @@ endmodule`);
 
 // night 1: map's packing of the clock example (BOUTMUX CY, BFF #AND2L with BFFMUX XOR) in a slice of no other storage element
 test('a carry\'s sum and carry out both out of one position: the carry out by its MUX, the sum through the storage element as a gate (AND2L), alone in the slice', async () => {
-  // (the clock example's 2-bit adder: a plain one takes its carry out by the next stage's sum, without the conflict)
+  // (the clock example's 2-bit adders: a plain one takes its carry out by the next stage's sum, without the conflict; two of
+  // them in Yosys 0.71's netlist, one in 0.70's, #5634)
   const ex = example('clock');
   const nl = await netlistOf(ex.design.map(f => ({ path: f.path, lang: f.lang, text: f.text })), ex.project.top);
   const p = packed(nl);
   const g = p.slices.flatMap(sl => Object.entries(sl.pos).filter(([, q]) => q.ff === AND2L).map(([k, q]) => ({ sl, k, q })));
-  assert.equal(g.length, 1);
-  assert.equal(g[0].k, 'B', 'BFF, as map');
-  assert.equal(g[0].q.mux, 'cy');
-  assert.equal(g[0].sl.ctrl, AND2L);
+  assert.equal(g.length, 2);
+  for (const x of g) {
+    assert.equal(x.k, 'B', 'BFF, as map');
+    assert.equal(x.q.mux, 'cy');
+    assert.equal(x.sl.ctrl, AND2L);
+    assert.ok(Object.values(x.sl.pos).every(q => q.ff5 === null && (q.ff === null || q.ff === AND2L)), 'no flip-flop beside the gate');
+  }
   assert.deepEqual(p.warnings, []);
-  assert.equal(p.stats.and2l, 1);
-  assert.ok(Object.values(g[0].sl.pos).every(q => q.ff5 === null && (q.ff === null || q.ff === AND2L)), 'no flip-flop beside the gate');
+  assert.equal(p.stats.and2l, 2);
   // the rule's own error: a gate anywhere else
   const bad = JSON.parse(JSON.stringify(g[0].sl));
   bad.pos[g[0].k].mux = 'xor';
@@ -271,27 +274,30 @@ test('a cell the packer has no place for: a PackError naming it', () => {
 
 // every example for the XC6SLX16: its slices by kind and the packer's warnings (none: clock's 2-bit adder, whose sum
 // and carry out both leave the slice, has its sum through a storage element as a gate, as map packs it on night 1)
+// (#5634: Yosys 0.71's netlists, its cells in another order, one to six LUTs apart, the slices with them; clock's has two
+// such adders, uart's none)
 const EXAMPLE_PACK = {
   gates: { slices: 1, X: 1, L: 0, M: 0, luts: 1, ffs: 0, warnings: 0 },
   breadboard: { slices: 2, X: 1, L: 1, M: 0, luts: 3, ffs: 8, warnings: 0 },   // (#3901: a digital circuit's, its 74LS chips)
-  traffic: { slices: 34, X: 14, L: 20, M: 0, luts: 96, ffs: 58, warnings: 0 },
-  blinky: { slices: 41, X: 22, L: 19, M: 0, luts: 93, ffs: 94, warnings: 0 },   // (#3710: 53, 29, 130 with 20-bit debouncers; #3922: 102, 132 with 21-bit, 55, 31, 103, 134 with 22-bit; #4377: 2-bit, in ticks)
-  pong: { slices: 108, X: 54, L: 54, M: 0, luts: 258, ffs: 256, warnings: 0 },
-  stopwatch: { slices: 86, X: 43, L: 42, M: 1, luts: 183, ffs: 202, warnings: 0 },
-  clock: { slices: 81, X: 35, L: 46, M: 0, luts: 152, ffs: 158, warnings: 0 },
-  vga: { slices: 52, X: 22, L: 30, M: 0, luts: 129, ffs: 56, warnings: 0 },
-  isqrt: { slices: 30, X: 17, L: 13, M: 0, luts: 74, ffs: 86, warnings: 0 },
-  uart: { slices: 52, X: 33, L: 19, M: 0, luts: 140, ffs: 138, warnings: 0 },
-  micro80: { slices: 65, X: 45, L: 18, M: 2, luts: 180, ffs: 185, warnings: 0 },   // (#3710: 63, 43, 172 before its CLK_HZ)
-  lock: { slices: 58, X: 31, L: 27, M: 0, luts: 134, ffs: 175, warnings: 0 },
+  traffic: { slices: 31, X: 14, L: 17, M: 0, luts: 98, ffs: 58, warnings: 0 },
+  blinky: { slices: 41, X: 22, L: 19, M: 0, luts: 92, ffs: 94, warnings: 0 },   // (#3710: 53, 29, 130 with 20-bit debouncers; #3922: 102, 132 with 21-bit, 55, 31, 103, 134 with 22-bit; #4377: 2-bit, in ticks)
+  pong: { slices: 110, X: 57, L: 53, M: 0, luts: 261, ffs: 256, warnings: 0 },
+  stopwatch: { slices: 86, X: 43, L: 42, M: 1, luts: 182, ffs: 202, warnings: 0 },
+  clock: { slices: 81, X: 34, L: 47, M: 0, luts: 150, ffs: 158, warnings: 0 },
+  vga: { slices: 52, X: 22, L: 30, M: 0, luts: 132, ffs: 56, warnings: 0 },
+  isqrt: { slices: 29, X: 16, L: 13, M: 0, luts: 73, ffs: 86, warnings: 0 },
+  uart: { slices: 50, X: 31, L: 19, M: 0, luts: 139, ffs: 138, warnings: 0 },
+  micro80: { slices: 63, X: 43, L: 18, M: 2, luts: 174, ffs: 185, warnings: 0 },   // (#3710: 63, 43, 172 before its CLK_HZ)
+  lock: { slices: 57, X: 31, L: 26, M: 0, luts: 128, ffs: 175, warnings: 0 },
 };
 // with LUT combining (combine: 'area'): the slices, never more than without, and the same warnings (isqrt: 29 when
 // the combining came before the storage elements, which then filled the slices it emptied again, #2636)
 // (blinky: 54 with 21-bit debouncers, #3922, 55 with 22-bit; 40 with 2-bit, in ticks, #4377)
-const EXAMPLE_AREA = { gates: 1, breadboard: 2, traffic: 31, blinky: 40, pong: 102, stopwatch: 82, clock: 76, vga: 49, isqrt: 28, uart: 49, micro80: 63, lock: 57 };
+// (#5634, Yosys 0.71: traffic 31, blinky 40, pong 102, stopwatch 82, uart 49, micro80 63 with 0.70's netlists)
+const EXAMPLE_AREA = { gates: 1, breadboard: 2, traffic: 28, blinky: 41, pong: 104, stopwatch: 80, clock: 76, vga: 49, isqrt: 28, uart: 48, micro80: 60, lock: 57 };
 // the SLICELs and SLICEMs of night 1's netlists where an example changed since (blinky's 21-bit debouncers, #3710: 31
-// now; pong's and stopwatch's registers for the Zynq's 125 MHz, #4877)
-const NIGHT1 = { blinky: { L: 29 }, pong: { L: 53 }, stopwatch: { M: 0 } };
+// now; pong's and stopwatch's registers for the Zynq's 125 MHz, #4877; traffic's and clock's of Yosys 0.71, #5634)
+const NIGHT1 = { traffic: { L: 20 }, blinky: { L: 29 }, pong: { L: 53 }, stopwatch: { M: 0 }, clock: { L: 46 } };
 // map's packing of the same netlists on ISE (packages/silinx-fpga/research/s6/measured/night1.json, night 1): its SLICELs are the packer's
 // (the carry chains and the wide multiplexers); its SLICEX are a placement's, more (packages/silinx-fpga/research/s6/README.md)
 test('the packer\'s SLICELs are those of ISE\'s map on the same netlists, every example on the Nexys3 and the Atlys (night 1)', () => {
@@ -316,7 +322,7 @@ test('every example packs into legal slices for the XC6SLX16 (the slices by kind
     const p = packed(nl);
     const { slices, X, L, M, luts, ffs } = p.stats;
     assert.deepEqual({ slices, X, L, M, luts, ffs, warnings: p.warnings.length }, EXAMPLE_PACK[name], name);
-    assert.equal(p.stats.and2l, name === 'clock' || name === 'uart' ? 1 : 0, name);
+    assert.equal(p.stats.and2l, name === 'clock' ? 2 : 0, name);
     // (LUT combining: never more slices)
     const area = packed(nl, { combine: 'area' });
     assert.deepEqual([area.stats.slices, area.stats.luts, area.warnings], [EXAMPLE_AREA[name], luts, p.warnings], name);
