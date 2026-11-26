@@ -9,7 +9,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import os from 'node:os';
 import { collectPins, parseLsRemote, compareTags, latestReleaseTag, yowaspTag, checkYosysTests, checkCommit, checkMcc, issueBody, issueAction, checkAll, TITLE, LABELS, parseReleaseUrl, compareVersions, checkRelease,
-  collectDeclared, commentPins, pinError, sameCommit, tagShape, checkTag, checkWatched, checkSha256, checkReported, gitUrl } from '../scripts/check-pins.mjs';
+  collectDeclared, commentPins, pinError, sameCommit, tagShape, checkTag, checkWatched, checkSha256, checkNpm, checkReported, gitUrl } from '../scripts/check-pins.mjs';
 import { YOSYS_TESTS_PIN } from '../scripts/fetch-yosys-tests.mjs';
 
 const ROOT = path.join(path.dirname(fileURLToPath(import.meta.url)), '..');
@@ -226,7 +226,9 @@ test('check-pins: the pins declared in the repository, each read with what its k
   assert.match(by('KiCad catalogue: the KiCad Library for Arduino Modules').tag, /^v\d+\.\d+\.\d+$/);
   for (const n of ['KiCad\'s symbol libraries', 'KiCad catalogue: KiCad\'s footprints']) assert.deepEqual([by(n).kind, by(n).series], ['tag', '9.'], n);
   const shas = pins.filter(p => p.kind === 'sha256');
-  assert.deepEqual(shas.map(p => p.url.split('/').pop()), ['74xx.kicad_sym', '4xxx.kicad_sym']);
+  assert.deepEqual(shas.map(p => p.url.split('/').pop()), ['74xx.kicad_sym', '4xxx.kicad_sym', 'eecircuit-engine-1.9.0.tgz']);
+  // ngspice's engine, downloaded on first use (#5386): its version on npm
+  assert.deepEqual(pins.filter(p => p.kind === 'npm').map(p => [p.package, p.version, p.file]), [['eecircuit-engine', '1.9.0', 'server/ngspice.js']]);
   // the ported code and data (light8080's is the corpus's), Digilent's XDCs (core/boards.js's comment: its constant's commit)
   assert.deepEqual(['ported: prjxray', 'ported: prjxray-db', 'ported: apicula'].map(n => by(n).kind), ['commit', 'commit', 'tag']);
   assert.ok(!pins.some(p => /light8080|SparkFun/.test(p.name) && p.file === 'scripts/third-party.mjs'));
@@ -255,12 +257,14 @@ test('check-pins: a declared pin\'s kinds and what each needs; a tag\'s shape; a
   assert.equal(pinError({ kind: 'commit', name: 'c', repo: 'o/r', remote: { url: 'https://x/y', match: 'R: (\\w+)' } }), '');
   assert.equal(pinError({ kind: 'sha256', name: 's', url: 'https://x/f.bin', sha256: 'A'.repeat(64) }), '');
   assert.equal(pinError({ kind: 'reported', name: 'r', current: 'img:1' }), '');
+  assert.equal(pinError({ kind: 'npm', name: 'n', package: '@scope/pkg', version: '1.9.0' }), '');
   assert.equal(pinError(null), 'not an object');
   assert.equal(pinError({ kind: 'tag', repo: 'o/r', tag: 'v1' }), 'no name');
-  assert.match(pinError({ kind: 'pypi', name: 'p' }), /^p: no kind "pypi" \(tag, commit, sha256, reported\)$/);
+  assert.match(pinError({ kind: 'pypi', name: 'p' }), /^p: no kind "pypi" \(tag, commit, sha256, npm, reported\)$/);
   for (const bad of [{ kind: 'tag', repo: 'o/r', tag: 'latest' }, { kind: 'commit', repo: 'o/r', commit: 'main' },
     { kind: 'commit', repo: 'https://gitlab.com/o/r.git', commit: A, watch: ['src'] }, { kind: 'commit', repo: 'o/r', commit: A, watch: [] },
-    { kind: 'sha256', url: 'http://x/f', sha256: 'a'.repeat(64) }, { kind: 'sha256', url: 'https://x/f', sha256: 'a'.repeat(63) }, { kind: 'reported', current: '' }]) {
+    { kind: 'sha256', url: 'http://x/f', sha256: 'a'.repeat(64) }, { kind: 'sha256', url: 'https://x/f', sha256: 'a'.repeat(63) }, { kind: 'reported', current: '' },
+    { kind: 'npm', package: 'a b', version: '1.0.0' }, { kind: 'npm', package: 'p', version: 'latest' }]) {
     assert.match(pinError({ name: 'x', ...bad }), /^x: not what a \w+ pin needs$/, JSON.stringify(bad));
   }
   assert.deepEqual(tagShape('v10.0.0'), { prefix: 'v', version: '10.0.0' });
@@ -321,7 +325,7 @@ test('check-pins: a tag pin: behind a newer tag of its shape (in its series), cu
   assert.deepEqual([none.behind, none.latest, none.notes], [false, '?', ['the tag pinned, v4.2.0, is not in o/lib', 'no v* tag in o/lib']]);
 });
 
-test('check-pins: a watched commit, a file\'s SHA-256, a reported pin', () => {
+test('check-pins: a watched commit, a file\'s SHA-256, an npm package\'s version, a reported pin', () => {
   const pin = { kind: 'commit', name: 'w', repo: 'o/w', commit: A, watch: ['src', 'data'] };
   assert.deepEqual(checkWatched(pin, B, []), { pin, current: 'aaaaaaa', latest: 'bbbbbbb', behind: false, notes: [] });
   assert.deepEqual(checkWatched(pin, B, ['data']).notes, ['changed since: `data`']);
@@ -330,6 +334,11 @@ test('check-pins: a watched commit, a file\'s SHA-256, a reported pin', () => {
   assert.deepEqual([checkSha256(sha, 'ab'.repeat(32)).behind, checkSha256(sha, 'ab'.repeat(32)).notes], [false, []]);
   const changed = checkSha256(sha, 'cd'.repeat(32));
   assert.deepEqual([changed.behind, changed.current, changed.latest, changed.notes], [true, 'ABABABABABAB', 'cdcdcdcdcdcd', ['the file served at https://x/rom.bin changed: not the SHA-256 pinned']]);
+  // an npm package's version (#5386): behind when npm has a newer one
+  const npm = { kind: 'npm', name: 'n', package: 'eecircuit-engine', version: '1.9.0' };
+  assert.deepEqual(checkNpm(npm, '1.9.0'), { pin: npm, current: '1.9.0', latest: '1.9.0', behind: false, notes: [] });
+  assert.deepEqual([checkNpm(npm, '1.10.0').behind, checkNpm(npm, '1.8.2').behind], [true, false]);
+  assert.deepEqual(checkNpm(npm, undefined).notes, ['no latest version of eecircuit-engine on npm']);
   assert.deepEqual(checkReported({ kind: 'reported', name: 'r', current: 'img:1', note: 'by hand' }), { pin: { kind: 'reported', name: 'r', current: 'img:1', note: 'by hand' }, current: 'img:1', latest: '—', behind: false, reported: true, notes: ['by hand'] });
 });
 
