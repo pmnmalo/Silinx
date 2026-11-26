@@ -152,14 +152,15 @@ for Xilinx FPGAs supported by ISE 14.7.
   design drives is checked; any row can be changed by hand.
 - **New Source types**: *Boolean Algebra*, *Digital Electronic Circuit*, *Module (HDL)* (the ISE Define Module page: language, entity/module and
   architecture names, a port table), *Schematic* (a blank sheet), *Finite State Machine (FSM)*, *Algorithmic State
-  Machine (ASM)*, *Petri Net*, *Clock Manager (DCM / PLL)*, *Block Memory*, *Test Bench*, *Implementation
+  Machine (ASM)*, *Petri Net*, *Clock Manager (DCM / PLL)*, *Block Memory*, *XADC (analog inputs)* (a 7-series device's: the XADC
+  Wizard, #5385: the channels chosen, each one's last 12-bit code on an output), *Test Bench*, *Implementation
   Constraints File*, *Memory Initialization File (.mem)*, *C Function (HLS)*, *C++ Function (HLS)*. Page 2 is the same for every type: the file name, the
   location and the language (VHDL / Verilog, the project's preferred language by default), with the buttons
   *Wizard > | < Back | Next > | Cancel*: *Next >* makes the plain source, *Wizard >* opens the type's wizard (Boolean
   Algebra, Module, Schematic, FSM, ASM, Petri Net, Test Bench, Clocking Wizard, Block Memory, UCF) at its own pages,
   with that name, location and language, and its *< Back* on the first page goes back to New Source to change them;
   *Wizard >* is disabled for a type that has none, and *Next >* for a type that has only the wizard (Clock Manager,
-  Block Memory).
+  Block Memory, XADC).
 - **Digital circuits** (*New Source ▸ Digital Electronic Circuit*, its wizard's typical assemblies; a new project's top, [docs/CIRCUITS.md](circuits.md)): real ICs (74LS gates, open collector
   ones too, and 4000 gates; the MSI ICs, 7447 / 7448, 74138 / 74139, 74151 / 74153 / 74157, 7483 / 74283, 7485; the
   sequential ones, 7474, 7476, 74112, counters 7490 to 74193 and 4017, shift registers 74164 to 74595, the 4511, #3900:
