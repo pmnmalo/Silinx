@@ -19,7 +19,8 @@ async function call(name, args = {}) {
 const read = (...p) => fs.readFileSync(path.join(...p), 'utf8');
 const example = (...p) => read(ROOT, 'examples', 'stopwatch', ...p);
 // every file of a folder, its path with '/'
-const tree = dir => fs.readdirSync(dir, { recursive: true }).map(f => f.split(path.sep).join('/')).filter(f => fs.statSync(path.join(dir, f)).isFile()).sort();
+// (a project's hidden folder, .silinx/: its versions kept before a deletion, #5740, not among its files)
+const tree = dir => fs.readdirSync(dir, { recursive: true }).map(f => f.split(path.sep).join('/')).filter(f => !f.startsWith('.silinx/') && fs.statSync(path.join(dir, f)).isFile()).sort();
 
 before(async () => {
   tmp = fs.realpathSync(await scratchEnv('silinx-delete-trash-'));
@@ -72,4 +73,9 @@ test('the MCP\'s delete_file: a folder into the workspace\'s .trash, said where;
   assert.equal(fs.existsSync(path.join(dir, 'src')), false);
   for (const f of tree(dir).filter(x => x !== 'silinx.json')) assert.equal(read(dir, f), example(f), f);
   assert.deepEqual((await P.readProject('m')).files.map(f => f.path), ['sim/tb_stopwatch.vhd']);
+  // (a version of the project kept before it, #5740: src's files in it)
+  const { serverVersions } = await import('../server/versions.js');
+  const [v] = await serverVersions(P).list('m');
+  assert.deepEqual([v.reason, v.author], ['before-delete', 'MCP']);
+  assert.equal((await serverVersions(P).read('m', v.id)).files['src/stopwatch.vhd'], example('src', 'stopwatch.vhd'));
 });
