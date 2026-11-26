@@ -1,10 +1,11 @@
-// A System's FPGA node's User Constraints in the interface (#5581's part 2, core/system-constraints.js): its constraints
-// file in its folder (`fpga/uart.ucf`), as an FPGA project's: I/O Pin Planning on its board, Edit Constraints (Text) (the
-// file made when it has none yet) and Check Constraints, for its module; the node told its file (its `constraints` in
-// the System document) once it has one. The nodes' constraints files are read with the project's drawings
+// A System's FPGA node's constraints in the interface (#5581's part 2, core/system-constraints.js): its constraints
+// file in its folder (`fpga/uart.ucf`), as an FPGA project's: I/O Pin Planning on its board, for its module, alone in the
+// trees (#5642: its Text view the file, Edit Constraints (Text) of before; its Check, Check Constraints'; the file made
+// when it has none yet by a save or a Check); the node told its file (its `constraints` in the System document) once it
+// has one. The nodes' constraints files are read with the project's drawings
 // (web/js/project.js, designState.viewTexts): the System's check and its runs read each node's pins from them
 // (nodePinsHere). A System document of before, its pins in it, has them moved into the files when the project opens.
-import { S, app, findDoc, openDoc, closeDoc, setDirty, openFile } from './app.js';
+import { S, app, findDoc, openDoc, closeDoc, setDirty } from './app.js';
 import { api } from './api.js';
 import { appLog, commandError } from './console.js';
 import { designState } from './state-design.js';
@@ -15,7 +16,7 @@ import { ucfPort } from '/core/board-constraints.js';
 import { isSystemFile, readSystem, writeSystem } from '/core/system-doc.js';
 import { changeNode } from '/core/system-edit.js';
 import { nodeBoard } from '/core/system-node.js';
-import { constraintsPaths, nodeConstraintsPath, pinsText, pinsToConstraints, withNodePins } from '/core/system-constraints.js';
+import { constraintsPaths, nodeConstraintsPath, pinsToConstraints, withNodePins } from '/core/system-constraints.js';
 
 /** The System `sys` with its FPGA nodes' pins read from their constraints files (as the project read them). */
 export const nodePinsHere = sys => withNodePins(sys, designState.viewTexts || {});
@@ -58,8 +59,9 @@ async function recordConstraints(id, path, title) {
 // the node `id` of the open System, as its document says it
 const nodeOf = id => projectSystemDoc()?.system.nodes.find(x => x.id === id && x.kind === 'fpga') ?? null;
 
-/** I/O Pin Planning of the FPGA node `id`: its module's ports on its board, written to its constraints file. */
-export async function openNodePins(id) {
+/** I/O Pin Planning of the FPGA node `id`: its module's ports on its board, written to its constraints file; `task`: the
+ *  Tasks interface's task it is shown in (Emulate's when run from there, #5642), `view`: the view shown first. */
+export async function openNodePins(id, { task, view } = {}) {
   const title = 'I/O Pin Planning', n = nodeOf(id);
   if (!n?.module) return commandError(title, `${id}: an FPGA node with no module`);
   const board = nodeBoard(n);
@@ -68,43 +70,15 @@ export async function openNodePins(id) {
   const { mountPinPlanner } = await import('./pinplanner.js');
   const old = findDoc(docId);
   if (old) await closeDoc(old);
-  openDoc({ id: docId, title: `I/O Pin Planning (${id})`, icon: 'pins', create: (el, d) => mountPinPlanner(el, d, n.module, {
+  openDoc({ id: docId, title: `I/O Pin Planning (${id})`, icon: 'pins', task, create: (el, d) => mountPinPlanner(el, d, n.module, {
     board: n.board, device: board.device, constraints: path,
     saved: async () => { await recordConstraints(id, path, title); await app.reloadProject(); },
-  }) });
+  }, { view }) });
 }
 
-/** Edit Constraints (Text) of the FPGA node `id`: its constraints file opened (made first when it has none: no pin yet). */
-export async function openNodeConstraints(id) {
-  const title = 'Edit Constraints (Text)', n = nodeOf(id);
-  if (!n) return commandError(title, `no FPGA node '${id}' in the System`);
-  if (!nodeBoard(n)) return commandError(title, `${id}: no FPGA board '${n.board}'`);
-  const path = nodeConstraintsPath(n);
-  if (!(filesState.fileTree || []).includes(path)) {
-    await api.writeFile(S.project.name, path, pinsText(n, null, {}, portsOf(n.module) || []));
-    if (!await recordConstraints(id, path, title)) return;
-    await app.reloadProject();
-    appLog(`${title}: ${path} made, ${id}'s constraints file.`, 'info');
-  } else if (!await recordConstraints(id, path, title)) return;
-  openFile(path);
-}
-
-/** Check Constraints of the FPGA node `id`: its constraints file against its module's ports and its board. */
-async function checkNodeConstraints(id) {
-  const n = nodeOf(id);
-  if (!n) return commandError('Check Constraints', `no FPGA node '${id}' in the System`);
-  const path = nodeConstraintsPath(n);
-  if (!(filesState.fileTree || []).includes(path)) return commandError('Check Constraints', `${id}: no constraints file ${path} yet (its I/O Pin Planning or Edit Constraints (Text) makes it)`);
-  const { checkUcfFile } = await import('./implement.js');
-  return checkUcfFile(path, { target: { top: n.module, board: n.board, device: nodeBoard(n)?.device } });
-}
-
-/** The User Constraints of the FPGA node `n` (a process group, as an FPGA project's). */
-export const nodeConstraintsProcs = n => ({ id: `uc-${n.id}`, label: 'User Constraints', ico: 'procGroup', children: [
-  { id: `uc-pins-${n.id}`, label: 'I/O Pin Planning', ico: 'pins', run: () => openNodePins(n.id) },
-  { id: `uc-edit-${n.id}`, label: 'Edit Constraints (Text)', ico: 'ucf', run: () => openNodeConstraints(n.id) },
-  { id: `uc-check-${n.id}`, label: 'Check Constraints', ico: 'process', run: () => checkNodeConstraints(n.id) },
-] });
+/** The constraints of the FPGA node `n`: its I/O Pin Planning alone (#5642: its User Constraints folder before), opened in
+ *  `task` (Emulate's tree's: Emulate's). */
+export const nodeConstraintsProcs = (n, task) => ({ id: `uc-pins-${n.id}`, label: 'I/O Pin Planning', ico: 'pins', run: () => openNodePins(n.id, { task }) });
 
 /** A System document of before (its FPGA nodes' pins in it) made one of now as the project opens: the pins moved into
  *  the nodes' constraints files, said in the console. Whether it changed anything. */

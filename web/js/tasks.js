@@ -95,7 +95,7 @@ export function taskOfDoc(id) {
   // logic analyzer's capture, Configure Target Device's, #3327)
   // (a System's FPGA node's I/O Pin Planning, pins:<node>, #5581)
   if (/^(summary|pins|fpgaview|impact|capture)$/.test(s) || /^(text|tech|rtl|pins):/.test(s) || s.startsWith('file:build/')) return 'impl';
-  // (the constraints file: Edit Constraints (Text), as I/O Pin Planning, #1265)
+  // (the constraints file, as I/O Pin Planning (#1265); opened from Emulate, I/O Pin Planning is Emulate's: its `task`, #5642)
   if (/^file:.+\.(ucf|pcf|lpf|cst|ccf|xdc)$/i.test(s)) return 'impl';
   return 'edit';
 }
@@ -445,7 +445,7 @@ function build() {
   // (I/O Pin Planning and Emulate on Board above them, as Implement's bar, #1424)
   $('proc-panel').after(h('div', { class: 'ise-panel', id: 'task-emu-panel' },
     h('div', { id: 'task-emu-bar' },
-      h('button', { class: 'btn', type: 'button', 'data-act': 'pins', onclick: () => app.S.project?.top && app.openPinPlanner() }, 'I/O Pin Planning'),
+      h('button', { class: 'btn', type: 'button', 'data-act': 'pins', onclick: () => app.S.project?.top && app.openPinPlanner(undefined, { task: 'emu' }) }, 'I/O Pin Planning'),   // (in Emulate, #5642)
       // (a System project's: Emulate System, its ticked nodes, #5581; web/js/processes.js names the button)
       h('button', { class: 'btn', type: 'button', 'data-act': 'emulate', onclick: async () => {
         if ((await import('./design-system.js')).systemTop()) return (await import('./system-emulate-ui.js')).emulateSystem();

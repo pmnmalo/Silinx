@@ -1,5 +1,6 @@
 // UI (#1204): Tasks ▸ Emulate has its Processes at the top of its side column, under a tab named Emulate (#1212): the top
-// module's User Constraints (I/O Pin Planning, Edit Constraints (Text), Check Constraints) and Emulate on Board with
+// module's I/O Pin Planning (alone since #5642: no User Constraints folder, its Text view and Check button instead of
+// Edit Constraints (Text) and Check Constraints; opened in Emulate) and Emulate on Board with
 // its models, the same as Implement's (web/js/processes.js emulateProcesses), each run by a double-click, its state
 // the Processes panel's; in Portuguese; folded with the side panel; none in the ISE style interface. No warnings.
 import { before, after } from 'node:test';
@@ -37,11 +38,11 @@ const row = (page, label) => page.eval((b, l) => {
   const r = [...document.querySelectorAll(`${b} .task-emu-tree .row`)].find((x) => x.querySelector('.lbl').textContent === l);
   r.dispatchEvent(new MouseEvent('dblclick', { bubbles: true }));
 }, BOX, label);
-const EN = ['User Constraints', '  I/O Pin Planning', '  Edit Constraints (Text)', '  Check Constraints', 'Emulate on Board',
+const EN = ['I/O Pin Planning', 'Emulate on Board',
   '  Emulate Behavioral Model (RTL)', '  Emulate Post-Synthesis Model', '  Emulate Post-Translate Model', '  Emulate Post-Map Model',
   '  Emulate Post-Place & Route Model'];
 
-uiTest('#1204 Tasks ▸ Emulate: its Processes, the top\'s User Constraints and Emulate on Board, run from there; in Portuguese; ISE style none', E, async (page) => {
+uiTest('#1204 #5642 Tasks ▸ Emulate: its Processes, the top\'s I/O Pin Planning and Emulate on Board, run from there; in Portuguese; ISE style none', E, async (page) => {
   await makeProject(env, { name: 'EmuProcs', template: 'blinky' });
   await page.setViewport(1680, 1050);   // (the side panel, the board and the Watch side by side, #1399)
   await tasksInterface(page);
@@ -67,25 +68,21 @@ uiTest('#1204 Tasks ▸ Emulate: its Processes, the top\'s User Constraints and 
   assert.deepEqual(emuSide, [await page.eval(() => Math.round(document.getElementById('left').getBoundingClientRect().width)), true], 'Implement\'s width');
   await page.click('#task-switch .task-btn[data-task="emu"]');
   // a state: the Processes panel's, drawn in Emulate too
-  await page.eval(() => { window.SilinxApp.S.status['ucf-check'] = 'ok'; window.SilinxApp.renderProcesses(); });
-  assert.ok(await page.eval((b) => !!document.querySelector(`${b} li[data-proc="ucf-check"] > .row .status svg`), BOX), 'Check Constraints\' state');
+  await page.eval(() => { window.SilinxApp.S.status.pins = 'ok'; window.SilinxApp.renderProcesses(); });
+  assert.ok(await page.eval((b) => !!document.querySelector(`${b} li[data-proc="pins"] > .row .status svg`), BOX), 'I/O Pin Planning\'s state');
   assert.deepEqual((await procs(page)).rows, EN, 'redrawn the same');
-  // Check Constraints: the project's UCF checked
-  await row(page, 'Check Constraints');
-  await page.waitConsole(/Process "Check Constraints" completed successfully/);
-  // Edit Constraints (Text): the UCF opens (Implement's document, as I/O Pin Planning, #1265)
-  await row(page, 'Edit Constraints (Text)');
-  await page.waitFor(() => /\.ucf$/.test(window.SilinxApp.S.active?.title || '') && document.documentElement.dataset.task === 'impl', [], { what: 'the UCF in Implement' });
-  // back to Emulate: I/O Pin Planning (Implement's document)
-  await page.click('#task-switch .task-btn[data-task="emu"]');
+  // I/O Pin Planning: opened in Emulate, which stays in front (#5642: Implement's before)
   await row(page, 'I/O Pin Planning');
   await page.waitFor(() => window.SilinxApp.S.active?.id === 'pins', [], { what: 'the pin planner' });
+  assert.equal(await page.eval(() => document.documentElement.dataset.task), 'emu');
   // in Portuguese
   await page.click('#task-switch .task-btn[data-task="emu"]');
   await page.eval(async () => (await import('/js/i18n.js')).setLanguage('pt'));
   await page.waitFor(() => document.querySelector('#task-emu-tab .tab-lbl')?.textContent === 'Emular', [], { what: 'Portuguese' });
-  assert.deepEqual((await procs(page)).rows.slice(0, 5), ['Restrições do Utilizador', '  Planeamento de Pinos de E/S', '  Editar Restrições (Texto)', '  Verificar Restrições', 'Emular na Placa']);
+  assert.deepEqual((await procs(page)).rows.slice(0, 2), ['Planeamento de Pinos de E/S', 'Emular na Placa']);
   await page.eval(async () => (await import('/js/i18n.js')).setLanguage('en'));
+  // (the Board Emulator in front again: I/O Pin Planning is Emulate's document too, #5642, in front since)
+  await page.eval(() => window.SilinxApp.activateDoc(window.SilinxApp.findDoc('emulator')));
   // folded with the side panel, the Watch kept (#1399)
   await page.click('#task-view [data-act="side"]');
   assert.equal((await procs(page)).shown, false, 'folded');

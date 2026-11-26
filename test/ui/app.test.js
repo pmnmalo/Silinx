@@ -808,7 +808,8 @@ uiTest('Design Summary: once closed it reopens from the Processes panel whatever
   // a module (Implementation view: the constraints' processes under it, the UCF a row of its own under the top, #4591), the Simulation view
   // (test bench and nothing selected)
   await page.treeRow('#hier', 'top', {});
-  assert.ok(await page.eval(() => [...document.querySelectorAll('#procs .lbl')].some((e) => e.textContent === 'Check Constraints')), 'the UCF processes are kept');
+  // (the constraints' process: I/O Pin Planning, its Check Check Constraints', #5642)
+  assert.ok(await page.eval(() => [...document.querySelectorAll('#procs .lbl')].some((e) => e.textContent === 'I/O Pin Planning')), 'the constraints\' process is kept');
   await reopenFromProcesses('module');
   await page.setView('sim');
   await reopenFromProcesses('Simulation view, nothing selected');

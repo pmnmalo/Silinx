@@ -21,7 +21,7 @@ uiTest('#5446 a System\'s FPGA node synthesized on its own board from its row; t
   await page.waitFor(() => [...document.querySelectorAll('#hier .row .lbl')].some((l) => l.textContent.trim() === 'fpga'), [], { what: 'the nodes' });
   await page.treeRow('#hier', 'fpga', { exact: true });
   await page.waitFor(() => [...document.querySelectorAll('#procs .row .lbl')].some((l) => l.textContent.trim() === 'Synthesize'), [], { what: 'the node\'s processes' });
-  assert.deepEqual(await procs(page), ['View/Edit System', 'User Constraints', 'I/O Pin Planning', 'Edit Constraints (Text)', 'Check Constraints', 'Check Syntax', 'View RTL Schematic', 'Synthesize', 'Implement Design', 'Generate Programming File', 'Program Node', 'Simulate Node', 'Emulate Node', 'Emulate Behavioral Model (RTL)', 'Emulate Post-Synthesis Model', 'Emulate Post-Translate Model', 'Emulate Post-Map Model', 'Emulate Post-Place & Route Model']);
+  assert.deepEqual(await procs(page), ['View/Edit System', 'I/O Pin Planning', 'Check Syntax', 'View RTL Schematic', 'Synthesize', 'Implement Design', 'Generate Programming File', 'Program Node', 'Simulate Node', 'Emulate Node', 'Emulate Behavioral Model (RTL)', 'Emulate Post-Synthesis Model', 'Emulate Post-Translate Model', 'Emulate Post-Map Model', 'Emulate Post-Place & Route Model']);
   await page.treeRow('#procs', 'Synthesize', { exact: true, dbl: true });
   await page.waitConsole(/^Process "Synthesize \(System node fpga\)" completed successfully$/m, { timeout: 120000 });
   const all = await lines(page);

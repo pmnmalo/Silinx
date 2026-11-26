@@ -6,8 +6,8 @@
 // - The emulator's side panel (Watch, the timing generics, the hints) is shown at first (#1020): at the right of the
 //   board (#2666), over it on a narrow window, behind the bar's ☰ Properties (#2713); the VGA monitor wraps below the board when the width runs short, and the
 //   board's area scrolls (web/css/tasks.css); the Design pane is not shown in Emulate.
-// - Its Processes (#1204): the top module's User Constraints (I/O Pin Planning, Edit Constraints (Text), Check
-//   Constraints) and Emulate on Board with its models, as in Implement: the task's side panel, as Implement's
+// - Its Processes (#1204): the top module's I/O Pin Planning (its Table, Board and Text views, its Check, #5642; opened
+//   in Emulate) and Emulate on Board with its models, as in Implement: the task's side panel, as Implement's
 //   (web/js/tasks.js, #1399).
 // - The emulator's own bar stays its controls (Model, Engine, Run, Step, Power cycle, Clock), right under the task's
 //   bar; its status (the emulated time and rate) in its status line, its last line, as every document's and as in the

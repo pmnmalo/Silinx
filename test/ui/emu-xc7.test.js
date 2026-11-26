@@ -103,10 +103,10 @@ uiTest('#3704 the Tasks interface: a Basys 3 project has the Emulate task; Emula
   assert.deepEqual(await page.eval(() => [...document.querySelectorAll('#task-switch .task-btn')].map((b) => b.dataset.task)), ['edit', 'sim', 'emu', 'impl']);
   await page.click('#task-switch .task-btn[data-task="emu"]');
   await page.waitFor(() => !document.querySelector('#task-emu-bar [data-act=emulate]')?.disabled, [], { what: 'Emulate on Board on' });
-  // its processes: the top's User Constraints and Emulate on Board, its RTL model only
+  // its processes: the top's I/O Pin Planning (no User Constraints folder, #5642) and Emulate on Board, its RTL model only
   await page.waitFor(() => document.querySelectorAll('#task-emu-panel .task-emu-tree li').length > 0, [], { what: 'Emulate\'s Processes' });
   assert.deepEqual(await page.eval(() => [...document.querySelectorAll('#task-emu-panel .task-emu-tree .row .lbl')].map((x) => x.textContent)),
-    ['User Constraints', 'I/O Pin Planning', 'Edit Constraints (Text)', 'Check Constraints', 'Emulate on Board', 'Emulate Behavioral Model (RTL)']);
+    ['I/O Pin Planning', 'Emulate on Board', 'Emulate Behavioral Model (RTL)']);
   await page.click('#task-emu-bar [data-act=emulate]');
   await reacts(page);
   await page.eval(async () => (await import('/js/i18n.js')).setLanguage('pt'));

@@ -2,7 +2,10 @@
 // The look of the diagram editors (#2671, asm-editor.css): their toolbar, and their side panel for the board's resources,
 // folded to a strip (side-fold.js), its groups folded each, over the table on a narrow window (narrow.js).
 // Two views (#2694): the table, and the board as the Board Emulator draws it (pinplanner-board.js), the ports dragged
-// from the Ports panel on its left (pinplanner-ports.js, #2715) onto its parts or onto the rows of Board Resources.
+// from the Ports panel on its left (pinplanner-ports.js, #2715) onto its parts or onto the rows of Board Resources; and the
+// text (#5642): the constraints file in the text editor (Edit Constraints (Text) of before), the table's changes written
+// into it as the format writes them, its own read back into the table. Check (#5642, before Clear All): Check Constraints
+// of the file, its lines the console's (web/js/implement.js checkUcfFile).
 // Read only (#5247), as the other editors: a followed project's (#3181; but an editor's link that edits its constraints)
 // and a phone's (#5121): its notice at the right end of its toolbar, the assignments shown, nothing changed (Auto-assign
 // and Clear All hidden, the table's fields disabled, no port dragged nor taken off its pin).
@@ -12,6 +15,7 @@ import { toolWide } from './editor-icons.js';
 import { mountSideFold } from './side-fold.js';
 import { mountPinBoard } from './pinplanner-board.js';
 import { mountPinPorts } from './pinplanner-ports.js';
+import { checkPins, mountPinText } from './pinplanner-text.js';
 import { panelToggle, PORTS_KEY, RESOURCES_KEY } from './narrow.js';
 import { api } from './api.js';
 import { icons } from './icons.js';
@@ -27,8 +31,9 @@ import { designState } from './state-design.js';
 import { following, followNotice } from './collab-state.js';
 import { phoneNotice } from './phone-readonly.js';
 
-// `target`: a System's FPGA node's (#5581: { board, device, constraints (its file), saved() }), else the project's
-export function mountPinPlanner(el, doc, top, target = null) {
+// `target`: a System's FPGA node's (#5581: { board, device, constraints (its file), saved() }), else the project's;
+// `view`: the view shown first (the table's, else the text's: #5642)
+export function mountPinPlanner(el, doc, top, target = null, { view: first = 'table' } = {}) {
   const pj = target ? { ...S.project, board: target.board, device: target.device, constraints: target.constraints } : S.project;
   const db = S.devices;
   const board = app.projectBoard(pj);
@@ -75,25 +80,33 @@ export function mountPinPlanner(el, doc, top, target = null) {
   const hist = [];
   let hi = -1;
   const snap = () => { const t = JSON.stringify({ asg, clocks }); if (t === hist[hi]) return; hist.length = hi + 1; hist.push(t); if (hist.length > 200) hist.shift(); hi = hist.length - 1; };
-  const restore = i => { hi = i; ({ asg, clocks } = JSON.parse(hist[hi])); render(); setDirty(doc, true); };
-  const changed = () => { snap(); setDirty(doc, true); };
+  const restore = i => { hi = i; ({ asg, clocks } = JSON.parse(hist[hi])); textView.tableChanged(); render(); setDirty(doc, true); };
+  const changed = () => { snap(); textView.tableChanged(); setDirty(doc, true); };
+  // (the Text view: its editor's own Undo / Redo, #5642)
+  const textEd = () => (view === 'text' ? textView.editor() : null);
   doc.pinPlanner = {
-    undo: () => { if (hi > 0) restore(hi - 1); }, redo: () => { if (hi < hist.length - 1) restore(hi + 1); },
-    canUndo: () => hi > 0, canRedo: () => hi < hist.length - 1,
+    undo: () => { if (textEd()) textEd().exec('undo'); else if (hi > 0) restore(hi - 1); },
+    redo: () => { if (textEd()) textEd().exec('redo'); else if (hi < hist.length - 1) restore(hi + 1); },
+    canUndo: () => (textEd() ? textEd().historySize().undo > 0 : hi > 0), canRedo: () => (textEd() ? textEd().historySize().redo > 0 : hi < hist.length - 1),
   };
   root.addEventListener('keydown', e => {
-    if (/^(INPUT|TEXTAREA)$/.test(e.target.tagName)) return;
+    if (/^(INPUT|TEXTAREA)$/.test(e.target.tagName) || e.target.closest?.('.cm-editor')) return;
     const mod = e.ctrlKey || e.metaKey, k = e.key.toLowerCase();
     if (mod && k === 'z' && !e.shiftKey) { e.preventDefault(); e.stopPropagation(); doc.pinPlanner.undo(); }
     else if (mod && (k === 'y' || (k === 'z' && e.shiftKey))) { e.preventDefault(); e.stopPropagation(); doc.pinPlanner.redo(); }
   });
+  // the bits of the buses written x[1] or x(1) become x<1>; any other name stays as written (#63)
+  const parse = text => {
+    try {
+      const u = readPins(pj.device, text, { ports });
+      asg = u.assignments || {}; clocks = u.clocks || []; other = u.other || [];
+    } catch (e) { logError(`cannot parse ${pj.constraints}: ${e.message}`); }
+  };
   const load = async () => {
     if (pj.constraints && filesState.fileTree.includes(pj.constraints)) {
-      try {
-        // the bits of the buses written x[1] or x(1) become x<1>; any other name stays as written (#63)
-        const u = readPins(pj.device, await api.readFile(pj.name, pj.constraints), { ports });
-        asg = u.assignments || {}; clocks = u.clocks || []; other = u.other || [];
-      } catch (e) { logError(`cannot parse ${pj.constraints}: ${e.message}`); }
+      let text = null;
+      try { text = await api.readFile(pj.name, pj.constraints); } catch (e) { logError(`cannot open ${pj.constraints}: ${e.message}`); }
+      if (text != null) { parse(text); textView.saved(text); }
     }
     snap();
     render();
@@ -101,16 +114,26 @@ export function mountPinPlanner(el, doc, top, target = null) {
 
   const tableHost = h('div', { class: 'pp-table' });
   const boardHost = h('div', { class: 'pp-board', hidden: true });
+  const textHost = h('div', { class: 'pp-text editor-host', hidden: true });
+  // (the Text view, #5642: its edits read into the table when it is left, the table's written into it when it is shown)
+  const checkTarget = target ? { top, board: target.board, device: target.device } : null;
+  const textView = mountPinText({
+    host: textHost, file: () => pj.constraints, text: null, readOnly, generate: () => pinsText(),
+    read: text => { parse(text); snap(); render(); }, edited: () => setDirty(doc, true),
+    diagnostics: async text => (await import('./implement.js')).ucfDiagnostics(text, pj.constraints || `constraints/top${constraintsExt(pj.device)}`, checkTarget),
+  });
   // the board's view: the ports on its left (folded to a strip, remembered), dragged onto it
   const portsList = h('div', { class: 'pp-portlist' });
   const portsSide = h('aside', { class: 'pp-ports-side', hidden: true }, h('div', { class: 'asm-cap' }, 'Ports'), portsList);
   const portsView = board && mountPinPorts({ list: portsList, root, board, ports, assignments: () => asg, drop: boardDrop, remove: removeNets, readOnly });
-  // the view shown: the table or the board (its drawing loaded the first time: the emulator's module)
+  // the view shown: the table, the board (its drawing loaded the first time: the emulator's module) or the text (#5642)
   let view = 'table', boardView = null;
   const viewBtn = (id, label, title) => h('button', { type: 'button', class: 'asm-btn asm-wide pp-view', 'data-view': id, title, onclick: () => setView(id) }, label);
-  const viewBtns = [viewBtn('table', 'Table', 'The assignments as a table'), viewBtn('board', 'Board', board ? 'Drag the ports onto the parts of the board' : 'Select a board in Design Properties')];
+  const viewBtns = [viewBtn('table', 'Table', 'The assignments as a table'), viewBtn('board', 'Board', board ? 'Drag the ports onto the parts of the board' : 'Select a board in Design Properties'),
+    viewBtn('text', 'Text', 'The constraints file as text')];
   viewBtns[1].disabled = !board;
   async function setView(id) {
+    if (view === 'text' && id !== 'text') textView.sync();
     if (id === 'board' && !boardView) {
       const emulator = await import('./emulator.js');
       boardView = mountPinBoard({ host: boardHost, board, title: top, assignments: () => asg, pinMenu, emulator });
@@ -153,17 +176,21 @@ export function mountPinPlanner(el, doc, top, target = null) {
   const autoBtn = toolWide('beautify', 'Auto-assign from Board', board ? 'Match port names with board resources (clk, led, sw, btn, seg, an…)' : 'Select a board in Design Properties', () => autoAssign());
   autoBtn.disabled = !board;
   const portsBtn = panelToggle(root, h('button', { type: 'button', class: 'asm-btn asm-wide', title: 'Show / hide the ports panel' }, '☰ Ports'), { cls: 'ports-open', key: PORTS_KEY });
-  const editing = h('div', { class: 'asm-group', hidden: readOnly }, autoBtn, toolWide('del', 'Clear All', 'Remove every pin assignment', () => { asg = {}; clocks = []; render(); changed(); }));
+  // (Check before Clear All, #5642: Check Constraints, read only too)
+  const checkBtn = toolWide('check', 'Check', 'Check the constraints file: its syntax, the top module\'s ports, the board\'s pins (Check Constraints)', () => check(), 'pp-check');
+  const clearBtn = toolWide('del', 'Clear All', 'Remove every pin assignment', () => { textView.sync(); asg = {}; clocks = []; render(); changed(); }, 'pp-clear');
+  autoBtn.hidden = clearBtn.hidden = readOnly;
+  const editing = h('div', { class: 'asm-group' }, autoBtn, checkBtn, clearBtn);
   const bar = h('div', { class: 'asm-toolbar pp-bar' },
     h('div', { class: 'asm-group' }, ...viewBtns),
-    readOnly ? null : sep(),
+    sep(),
     editing,
     h('div', { class: 'asm-spacer' }),
     // (a narrow window: the ports and the board's resources over the board and the table, shown by these)
     h('div', { class: 'asm-group' }, portsBtn, panelToggle(root, h('button', { type: 'button', class: 'asm-btn asm-wide', title: 'Show / hide the board resources panel' }, '☰ Board Resources'), { key: RESOURCES_KEY })),
     notice);   // (read only: its notice at the right end, docs/UI-GUIDELINES.md)
   const side = h('aside', { class: 'asm-side pp-side' }, h('div', { class: 'asm-cap' }, 'Board Resources'), resHost);
-  root.append(bar, h('div', { class: 'asm-body' }, portsSide, h('div', { class: 'asm-main' }, tableHost, boardHost), side), line.el);
+  root.append(bar, h('div', { class: 'asm-body' }, portsSide, h('div', { class: 'asm-main' }, tableHost, boardHost, textHost), side), line.el);
   mountSideFold({ root, side, key: 'silinx.pins.props.folded', titles: { fold: 'Collapse the Board Resources panel', unfold: 'Expand the Board Resources panel' } });
   mountSideFold({ root, side: portsSide, key: 'silinx.pins.ports.folded', titles: { fold: 'Collapse the Ports panel', unfold: 'Expand the Ports panel' }, cls: 'ports-folded', toward: 'left' });
 
@@ -176,8 +203,10 @@ export function mountPinPlanner(el, doc, top, target = null) {
   function render() {
     const u = used();
     tableHost.hidden = view !== 'table'; boardHost.hidden = view !== 'board'; portsSide.hidden = view !== 'board'; portsBtn.style.display = view === 'board' ? '' : 'none';
+    textHost.hidden = view !== 'text';
     for (const b of viewBtns) { b.classList.toggle('on', b.dataset.view === view); b.setAttribute('aria-pressed', String(b.dataset.view === view)); }
     if (view === 'board') { boardView.render(); portsView.render(); }
+    textView.shown(view === 'text', root, line.el);
     tableHost.innerHTML = '';
     const tbl = h('table', { class: 'grid' }, h('tr', {}, ...['I/O Name', 'Direction', 'Board Resource', 'Site (LOC)', 'I/O Std.', 'Drive', 'Slew', 'Pull', 'Clock period (ns)'].map(t => h('th', {}, t))));
     for (const n of nets) {
@@ -242,6 +271,7 @@ export function mountPinPlanner(el, doc, top, target = null) {
   // by name (clk, led, sw, btn, seg, an…), then the ports left by direction: inputs on the free
   // switches and buttons, outputs on the LEDs (packages/silinx-fpga/src/ucf.js boardAutoAssign)
   function autoAssign() {
+    textView.sync();
     const r = boardAutoAssign(ports.map(p => ({ name: p.name, dir: p.dir, width: p.width, msb: p.msb, lsb: p.lsb })), board, { byDirection: true });
     for (const [net, a] of Object.entries(r.assignments)) asg[net] = { ...(asg[net] || {}), ...a };
     for (const c of r.clocks) if (!clocks.some(x => x.net === c.net)) clocks.push(c);
@@ -257,20 +287,27 @@ export function mountPinPlanner(el, doc, top, target = null) {
     else logWarning(`I/O Pin Planning: ${msg.join('; ')}.`);
   }
 
+  // the table's assignments as the constraints file's text
+  const pinsText = () => writePins(pj.device, {
+    ports: ports.map(p => ({ name: p.name, dir: p.dir, msb: p.msb, lsb: p.lsb, width: p.width })),
+    assignments: asg, clocks, other,
+    header: `${constraintsExt(pj.device).slice(1).toUpperCase()} generated by Silinx I/O Pin Planning for top '${top}' (${pj.device.part}${pj.device.speed}-${pj.device.package}${board ? `, ${board.name}` : ''})`,
+  });
+
+  // Check (#5642): Check Constraints of the file, saved first (made, when there is none yet: the table's)
+  const check = () => checkPins({ file: () => pj.constraints, save: readOnly ? null : save, target: checkTarget });
+
   let lastDups = '';
   async function save() {
     if (readOnly) return;   // (nothing changed)
+    // (the Text view's edits read into the table first, the text it saves; else the table's, #5642)
+    const text = textView.toSave();
     const u = used();
     const dup = [...u.entries()].filter(([, v]) => v.length > 1);
     // (a message the console's, not its status line's, #2784: once, until the pins in question change; saved, the tab's mark)
     const dups = dup.map(([k]) => k).join(', ');
     if (dups && dups !== lastDups) app.log(`I/O Pin Planning: pins assigned more than once: ${dups}.`, 'warn');
     lastDups = dups;
-    const text = writePins(pj.device, {
-      ports: ports.map(p => ({ name: p.name, dir: p.dir, msb: p.msb, lsb: p.lsb, width: p.width })),
-      assignments: asg, clocks, other,
-      header: `${constraintsExt(pj.device).slice(1).toUpperCase()} generated by Silinx I/O Pin Planning for top '${top}' (${pj.device.part}${pj.device.speed}-${pj.device.package}${board ? `, ${board.name}` : ''})`,
-    });
     if (target) {
       // (a System's FPGA node's file, #5581: the node told its file once it has one)
       await api.writeFile(pj.name, pj.constraints, text);
@@ -283,10 +320,11 @@ export function mountPinPlanner(el, doc, top, target = null) {
       await app.reloadProject();
     }
     setDirty(doc, false);
+    textView.saved(text);
     const d = app.findDoc(`file:${pj.constraints}`);
     if (d) { d.editor.setValue(text); d.editor.markClean(); setDirty(d, false); }
   }
 
-  load();
-  return { save };
+  load().then(() => { if (first !== 'table') setView(first); });
+  return { save, destroy: () => textView.destroy(), pinView: () => view, setPinView: setView, pinText: () => textView.editor() };
 }

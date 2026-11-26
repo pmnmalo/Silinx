@@ -1,6 +1,6 @@
 // The System editor's side panel (#4700, web/js/system-editor.js): the selection's properties, each change an edit of
 // core/system-edit.js (the MCP server's edit_system's): a node's id, an FPGA node's module, board, variant and its
-// constraints file (its pins: its I/O Pin Planning and Edit Constraints (Text), #5581), a microcontroller's board and firmware (a .hex / .elf of the project), either's USB id and serial number (#5489); an interface's name, a UART's TX and RX
+// constraints file (its pins: its I/O Pin Planning, #5581, its Text view the file, #5642), a microcontroller's board and firmware (a .hex / .elf of the project), either's USB id and serial number (#5489); an interface's name, a UART's TX and RX
 // ports, baud and frame, GPIO's pins and direction; a link's id and ends; and the System's name. An edit refused says
 // why in the console (opts.onMessage).
 import { h } from './ui.js';
@@ -53,11 +53,11 @@ export function mountSystemSide(ctx) {
         field('Board', choose(n.board, BOARDS.map(b => [b.id, b.name]), v => take(changeNode(M(), n.id, { board: v, variant: null }), 'node'), 'sys-board')));
       if (board?.variants?.length) out.push(field('Variant', choose(n.variant || '', [['', '(the board\'s)'], ...board.variants.map(v => [v.id, v.id])], v => take(changeNode(M(), n.id, { variant: v }), 'node'), 'sys-variant')));
       out.push(...usbFields(n));
-      // its pins: its constraints file's, edited by its User Constraints (#5581: web/js/system-constraints-ui.js)
+      // its pins: its constraints file's, edited by its I/O Pin Planning (#5581: web/js/system-constraints-ui.js; its Text
+      // view the file as text, Edit Constraints (Text) of before, #5642)
       const ui = f => async () => (await import('./system-constraints-ui.js'))[f](n.id);
       out.push(field('Constraints', h('span', { class: 'mono sys-constraints', 'data-no-i18n': '' }, nodeConstraintsPath(n))),
-        h('div', { class: 'asm-row' }, btn('I/O Pin Planning', 'Its module\'s ports on its board\'s pins, written to its constraints file', ui('openNodePins'), 'asm-small sys-pins'),
-          btn('Edit Constraints (Text)', 'Its constraints file, as text', ui('openNodeConstraints'), 'asm-small sys-edit-constraints')));
+        h('div', { class: 'asm-row' }, btn('I/O Pin Planning', 'Its module\'s ports on its board\'s pins, written to its constraints file', ui('openNodePins'), 'asm-small sys-pins')));
       out.push(h('div', { class: 'asm-row' },
         btn('+ UART', 'Add a UART interface: its TX and RX ports', () => take(addInterface(M(), n.id, { kind: 'uart' }), 'iface'), 'asm-small sys-add-uart'),
         btn('+ GPIO', 'Add GPIO wires: their ports and direction', () => take(addInterface(M(), n.id, { kind: 'gpio' }), 'iface'), 'asm-small sys-add-gpio'),

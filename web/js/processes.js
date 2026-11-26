@@ -13,7 +13,7 @@ import * as wiz from './wizards.js';
 import { designDiags, lintEnabled, sevWord } from './diaghelp.js';
 import { designSize, hdlCheck } from '/core/hdl-check.js';
 import { checkLive } from './hdl-check-client.js';
-import { S, flushDoc, openFile, openFpgaView, openImpact, openPinPlanner, openSummary, openUcf,
+import { S, flushDoc, openFile, openFpgaView, openImpact, openPinPlanner, openSummary,
   status, viewRoots, withPrimitives } from './app.js';
 import { log, logError, logInfo, showProblems, setDiagnostics, startRun } from './console.js';
 import { diagLocation } from '/core/message.js';
@@ -146,22 +146,20 @@ function selectionProcesses(sel, view) {
 // a Generate Post-… Simulation Model process: the ISE style interface's only; the Tasks interface's Implement has none,
 // Simulate's model choice generates the one it needs (#1265, #490)
 const simModelActions = top => (globalThis.document?.documentElement.dataset.layout === 'tasks' ? {} : Object.fromEntries(Object.keys(SIM_MODEL_NAMES).map(step => [step, () => generateSimModel(top, step)])));
-// the User Constraints group (Implement's, and Emulate's, #1204), of module `mod`
-const constraintsProcs = mod => ({ id: 'constraints', label: 'User Constraints', ico: 'procGroup', children: [
-  { id: 'pins', label: 'I/O Pin Planning', ico: 'pins', run: () => openPinPlanner(mod) },
-  { id: 'ucf-edit', label: 'Edit Constraints (Text)', ico: 'ucf', run: () => openUcf() },
-  { id: 'ucf-check', label: 'Check Constraints', ico: 'process', run: () => checkUcfFile() },
-] });
+// the constraints of module `mod` (Implement's, and Emulate's, #1204): I/O Pin Planning alone, its views the table, the
+// board and the text (Edit Constraints (Text) of before), its Check Check Constraints (#5642); opened in the task it is
+// run from (`task`: Emulate's, else Implement's)
+const constraintsProcs = (mod, task) => ({ id: 'pins', label: 'I/O Pin Planning', ico: 'pins', run: () => openPinPlanner(mod, { task }) });
 // Emulate on Board and its models, of the top module `top` (onTop: what it does to the top, said when another
 // module is selected; none in Emulate's own list, which is the top's); the models the project's tool generates (#3704)
 const emulateProcs = (top, onTop) => ({ id: 'emulate', label: 'Emulate on Board', ico: 'board', onTop, run: () => openEmulator(top), children: [
   { id: 'emulate-rtl', label: 'Emulate Behavioral Model (RTL)', ico: 'board', onTop, run: () => openEmulator(top) },
   ...Object.entries(SIM_MODEL_NAMES).filter(([step]) => simModelsOf(projectTool()).includes(step)).map(([step, name]) => ({ id: `emulate-${step}`, label: `Emulate ${name} Model`, ico: 'board', onTop, run: () => openEmulator(top, { model: step }) })),
 ] });
-/** The processes of the Tasks interface's Emulate (#1204): the top module's User Constraints and Emulate on Board. */
+/** The processes of the Tasks interface's Emulate (#1204): the top module's I/O Pin Planning and Emulate on Board. */
 function emulateProcesses() {
   const top = S.project?.top;
-  return top ? [constraintsProcs(top), emulateProcs(top)] : [];
+  return top ? [constraintsProcs(top, 'emu'), emulateProcs(top)] : [];
 }
 
 // (drawn again whenever a process's state changes: said, for the toolbar's steps to follow it, #4764)
@@ -195,7 +193,7 @@ function drawProcesses() {
   // (Simulate's, a System project's, #5581: web/js/system-simulate-ui.js)
   const simSys = systemTop() ? systemSimulateProcesses() : null;
   for (const el of document.querySelectorAll('.task-sim-system')) { if (simSys) renderProcessTree(el, simSys); else el.replaceChildren(); }
-  // (its bar: Emulate System; I/O Pin Planning a node's, its User Constraints, #5581's part 2)
+  // (its bar: Emulate System; I/O Pin Planning a node's, in its row of the tree, #5581's part 2, #5642)
   const bar = document.getElementById('task-emu-bar');
   if (bar) {
     const emu = bar.querySelector('[data-act=emulate]'), pins = bar.querySelector('[data-act=pins]');
@@ -203,7 +201,7 @@ function drawProcesses() {
     emu.textContent = sys ? 'Emulate System' : 'Emulate on Board';
     pins.disabled = !!sys || !S.project?.top;
     emu.disabled = !sys && !S.project?.top;
-    pins.title = sys ? 'A node\'s: its User Constraints in the tree below' : '';
+    pins.title = sys ? 'A node\'s: its I/O Pin Planning in the tree below' : '';
   }
 }
 

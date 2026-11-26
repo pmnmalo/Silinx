@@ -492,11 +492,12 @@ are:
 - The file is in the node's folder, in its board's family's format: `fpga/uart.ucf`, a 7-series' `.xdc`, an iCE40's
   `.pcf`. The node's `constraints` names it; without one, it is `<id>/<module><ext>`. A System may have several FPGA
   nodes, each with its own file.
-- Its **User Constraints** edit it: in the Emulate task's tree and on the node's row in the ISE style.
-  - I/O Pin Planning shows its module's ports on its board, and writes the file.
-  - Edit Constraints (Text) opens the file, made first, with no pin, when the node has none yet.
-  - Check Constraints checks the file against its module and its board.
-  - The System editor's side panel names the file and has the first two.
+- Its **I/O Pin Planning** edits it: in the Emulate task's tree (opened in Emulate) and in Implement's, and on the
+  node's row in the ISE style.
+  - Its Table and Board views show its module's ports on its board, and write the file.
+  - Its Text view is the file as text; with no file yet, the table's text, the file made when it is saved.
+  - Its Check button checks the file against its module and its board (Check Constraints).
+  - The System editor's side panel names the file and opens it.
 - The System's check, Simulate, Emulate, Implement and Build All read each node's pins from its file. A node with no
   file is warned: `fpga: no constraints file fpga/uart.ucf yet: its module's ports are on no pin of its board (its I/O
   Pin Planning)`.
@@ -790,7 +791,7 @@ shows the System's tree where it said "No top module is set":
 - the System's row: Build Plan, Connected Boards, Build All and Program All;
 - a row per node of the plan, the FPGA nodes first, its plan's state its mark (✓ up to date or given, ! out of date) and
   its plan's line its tip;
-- an FPGA node's User Constraints, Synthesize, Implement Design, Generate Programming File (its build) and Program Node;
+- an FPGA node's I/O Pin Planning, Synthesize, Implement Design, Generate Programming File (its build) and Program Node;
 - an Arduino node's Compile Firmware (its build; its firmware, when it is given) and Program Node;
 - a PIC24 node's firmware (given) and a MicroPython node's Program Node disabled, its tip why (MPLAB IPE, mpremote);
 - the bar: Build All and Program All.
@@ -861,7 +862,7 @@ boards show since the last.
 - the bar: Emulate System.
 
 The ISE style's Processes panel has the same on the System's and the nodes' rows. Simulate and Implement have the same
-kind of tree (#5581's parts 3 and 4). An FPGA node's User Constraints (a `.ucf` in its folder) are part 2.
+kind of tree (#5581's parts 3 and 4). An FPGA node's constraints (a `.ucf` in its folder, its I/O Pin Planning) are part 2.
 
 **Its toolbar** (#5613) has the Board Emulator's controls that a System has, laid out as [UI-GUIDELINES.md](UI-GUIDELINES.md)
 says:
