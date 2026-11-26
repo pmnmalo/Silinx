@@ -1,6 +1,6 @@
 // UI (#5718): a drawing's module name in its Properties is shown, never edited there: the schematic's (the sheet's
-// Properties), the ASM chart's, the state diagram's and the Petri net's field disabled, with a note saying where a
-// module is renamed (the Design pane's Rename…). Changed there, it renamed the drawing alone: its HDL declared another
+// Properties), the ASM chart's, the state diagram's and the Petri net's field disabled, its tip saying where a module
+// is renamed (the Design pane's Rename…), no line under it (no hint line). Changed there, it renamed the drawing alone: its HDL declared another
 // module, and the hierarchy showed the one its parent instantiates "(missing)", with the error's red cross. In
 // English and in Portuguese.
 import { before, after } from 'node:test';
@@ -15,7 +15,7 @@ let env;
 before(async () => { env = await setupUi(); });
 after(async () => { await env?.teardown?.(); });
 const E = () => env;
-const NOTE = 'renamed with Rename… in the Design pane';
+const TIP = 'Renamed with Rename… in the Design pane';
 const TOP = `library ieee;
 use ieee.std_logic_1164.all;
 
@@ -29,17 +29,17 @@ begin
 end architecture rtl;
 `;
 
-// a field of the visible editor's Properties by its label: { disabled, value, note }
+// a field of the visible editor's Properties by its label: { disabled, value, tip, note }
 const fieldOf = (page, label) => page.eval((l) => {
   const f = [...document.querySelectorAll('.doc:not([hidden]) .se-field, .doc:not([hidden]) .asm-field')]
     .find((x) => x.querySelector('label, .asm-label')?.textContent === l);
   const i = f?.querySelector('input');
-  return i && { disabled: i.disabled, value: i.value, note: f.querySelector('.se-note, .asm-fhint')?.textContent ?? null };
+  return i && { disabled: i.disabled, value: i.value, tip: i.title, note: f.querySelector('.se-note, .asm-fhint')?.textContent ?? null };
 }, label);
 // the Design pane's rows: "label meta"
 const rows = (page) => page.eval(() => [...document.querySelectorAll('#hier .row')].map((r) => `${r.querySelector('.lbl').textContent} ${r.querySelector('.meta')?.textContent ?? ''}`.trim()));
 
-uiTest('#5718 a schematic\'s module name in Properties: shown, disabled, its note; used, no module "(missing)" in the hierarchy', E, async (page) => {
+uiTest('#5718 a schematic\'s module name in Properties: shown, disabled, its tip; used, no module "(missing)" in the hierarchy', E, async (page) => {
   // top (VHDL) instantiates sub, drawn as a schematic: i -> inverter -> o
   const doc = newDoc('sub', 'vhdl');
   doc.symbols.push({ id: 'S1', type: 'inv', name: 'U1', x: 120, y: 90, rot: 0, mirror: false, params: { width: 1 } });
@@ -53,7 +53,7 @@ uiTest('#5718 a schematic\'s module name in Properties: shown, disabled, its not
   await page.eval(() => window.SilinxApp.openSch('src/sub.sch.json'));
   await page.waitFor(() => document.querySelector('.doc:not([hidden]) .sch-editor svg .sym'), [], { what: 'the schematic drawn' });
   await page.waitFor(() => [...document.querySelectorAll('.doc:not([hidden]) .se-field label')].some((l) => l.textContent === 'Module name'), [], { what: 'the sheet\'s Properties' });
-  assert.deepEqual(await fieldOf(page, 'Module name'), { disabled: true, value: 'sub', note: NOTE });
+  assert.deepEqual(await fieldOf(page, 'Module name'), { disabled: true, value: 'sub', tip: TIP, note: null });
   // used as before the fix (a value typed, the change sent): nothing renamed
   await page.eval(() => {
     const i = [...document.querySelectorAll('.doc:not([hidden]) .se-field')].find((f) => f.querySelector('label')?.textContent === 'Module name').querySelector('input');
@@ -67,16 +67,16 @@ uiTest('#5718 a schematic\'s module name in Properties: shown, disabled, its not
   const after = await rows(page);
   assert.equal(after.filter((r) => r.includes('(missing)')).length, 0, `no module missing: ${after}`);
   assert.equal(await page.eval(() => document.querySelectorAll('#console-errors .diag').length), 0, 'no errors');
-  // in Portuguese: the note translated
+  // in Portuguese: the tip translated
   await page.eval(async () => (await import('/js/i18n.js')).setLanguage('pt'));
   try {
-    assert.deepEqual(await fieldOf(page, 'Nome do módulo'), { disabled: true, value: 'sub', note: 'muda-se com Mudar o Nome… no painel Design' });
+    assert.deepEqual(await fieldOf(page, 'Nome do módulo'), { disabled: true, value: 'sub', tip: 'Muda-se com Mudar o Nome… no painel Design', note: null });
   } finally {
     await page.eval(async () => (await import('/js/i18n.js')).setLanguage('en'));
   }
 });
 
-uiTest('#5718 the ASM chart\'s, the state diagram\'s and the Petri net\'s module name: shown, disabled, its note', E, async (page) => {
+uiTest('#5718 the ASM chart\'s, the state diagram\'s and the Petri net\'s module name: shown, disabled, its tip', E, async (page) => {
   await makeProject(env, { name: 'ModNameDrw', files: {
     'src/ctl.asm.json': JSON.stringify(newModel('ctl', 'vhdl')),
     'src/seq.fsm.json': JSON.stringify(newFsm('seq', 'vhdl')),
@@ -86,7 +86,7 @@ uiTest('#5718 the ASM chart\'s, the state diagram\'s and the Petri net\'s module
     const file = { openAsm: 'src/ctl.asm.json', openFsm: 'src/seq.fsm.json', openPetri: 'src/net.pn.json' }[open];
     await page.eval(([o, f]) => window.SilinxApp[o](f), [open, file]);
     await page.waitFor((l) => [...document.querySelectorAll('.doc:not([hidden]) .asm-field .asm-label')].some((x) => x.textContent === l), [label], { what: `${open}'s ${label}` });
-    assert.deepEqual(await fieldOf(page, label), { disabled: true, value, note: NOTE }, open);
+    assert.deepEqual(await fieldOf(page, label), { disabled: true, value, tip: TIP, note: null }, open);
   }
   assert.equal(await page.eval(() => document.querySelectorAll('#console-errors .diag').length), 0, 'no errors');
 });

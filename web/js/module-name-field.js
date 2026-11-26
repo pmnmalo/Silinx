@@ -4,8 +4,8 @@
 
 import { h } from './dom.js';
 
-/** The note under the field: where a module is renamed. */
-export const MODULE_NAME_NOTE = 'renamed with Rename… in the Design pane';
+/** The field's tip: where a module is renamed (a tip, not a line under the field: docs/UI-GUIDELINES.md, no hint line). */
+const MODULE_NAME_TIP = 'Renamed with Rename… in the Design pane';
 
 /** The module name's field: its input, disabled (docs/UI-GUIDELINES.md: a read-only field). */
-export const moduleNameInput = (name, cls = '') => h('input', { type: 'text', class: cls, value: name ?? '', disabled: true, spellcheck: 'false', 'data-module-name': '' });
+export const moduleNameInput = (name, cls = '') => h('input', { type: 'text', class: cls, value: name ?? '', disabled: true, title: MODULE_NAME_TIP, spellcheck: 'false', 'data-module-name': '' });

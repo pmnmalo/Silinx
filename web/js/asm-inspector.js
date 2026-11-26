@@ -3,7 +3,7 @@
 // name, clock and reset, the initial state, the inputs, outputs, registers and generics). mountInspector(ctx) is
 // called by mountAsmEditor where this code was.
 import { h } from './dom.js';
-import { moduleNameInput, MODULE_NAME_NOTE } from './module-name-field.js';
+import { moduleNameInput } from './module-name-field.js';
 import { designKind } from './project-kind-flag.js';
 import { condAsText } from '/core/cond-notation.js';
 import { widthValue } from '/core/asm-width.js';
@@ -107,7 +107,7 @@ export function mountInspector(ctx) {
     machineBody.innerHTML = '';
     const txt = (label, get, set, key, hintText) => field(label, h('input', { class: 'asm-input', value: get(), spellcheck: 'false',
       oninput: (ev) => { set(ev.target.value.trim()); commit(key); } }), hintText);
-    machineBody.append(field('Module / entity name', moduleNameInput(M().name, 'asm-input'), MODULE_NAME_NOTE));   // (renamed by the Design pane's Rename… only, #5718)
+    machineBody.append(field('Module / entity name', moduleNameInput(M().name, 'asm-input')));   // (renamed by the Design pane's Rename… only, #5718)
     const row = h('div', { class: 'asm-grid2' },
       txt('Clock', () => M().clock, (v) => { M().clock = v; }, 'm-clk'),
       txt('Reset', () => M().reset.name, (v) => { M().reset.name = v; }, 'm-rst'));
