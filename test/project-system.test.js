@@ -20,7 +20,9 @@ const ROOT = path.resolve(import.meta.dirname, '..');
 const DESCRIPTIONS = execFileSync('git', ['ls-files', '*silinx.json'], { cwd: ROOT, encoding: 'utf8' }).trim().split('\n');
 const XISE = execFileSync('git', ['ls-files', '*.xise'], { cwd: ROOT, encoding: 'utf8' }).trim().split('\n');
 
-const filesOf = dir => fs.readdirSync(dir, { recursive: true }).map(String).filter(f => fs.statSync(path.join(dir, f)).isFile()).sort();
+// a path as the stores give it, `/` between its folders: readdirSync's are the system's (`\\` on Windows, #5685)
+const storePath = (f, sep = path.sep) => String(f).split(sep).join('/');
+const filesOf = dir => fs.readdirSync(dir, { recursive: true }).map(f => storePath(f)).filter(f => fs.statSync(path.join(dir, f)).isFile()).sort();
 // a project read as the stores give it to projectSystem: its silinx.json, its files, its System documents' texts
 function project(rel) {
   const dir = path.join(ROOT, path.dirname(rel));
@@ -41,6 +43,16 @@ function expectedFpga(pj) {
   else if (!resolveBoard(pj.board, { part: pj.device?.part })) out.push(`error: fpga: no FPGA board '${pj.board}'`);
   return [...out, 'warning: fpga joins nothing: no link reaches it'];
 }
+
+test('#5685 the corpus\'s files as the stores give them: a Windows path\'s folders joined by /, as the constraints\' paths are', () => {
+  assert.equal(storePath('fpga\\uart.ucf', '\\'), 'fpga/uart.ucf');
+  assert.equal(storePath('a\\b\\c.vhd', '\\'), 'a/b/c.vhd');
+  assert.equal(storePath('fpga/uart.ucf', '/'), 'fpga/uart.ucf');
+  // (a System's FPGA node's constraints file found among them on any system)
+  const files = ['uart_avr.sys.json', 'fpga\\uart.ucf', 'uno\\hello.hex'].map(f => storePath(f, '\\'));
+  const model = readSystem(fs.readFileSync(path.join(ROOT, 'examples/uart-avr/uart_avr.sys.json'), 'utf8')).system;
+  assert.deepEqual(constraintsPaths(model).filter(f => files.includes(f)), ['fpga/uart.ucf']);
+});
 
 test('#5416 phase 3: the corpus has its kinds of projects', () => {
   assert.ok(DESCRIPTIONS.length >= 80, String(DESCRIPTIONS.length));
