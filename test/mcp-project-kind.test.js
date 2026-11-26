@@ -130,7 +130,7 @@ test('#5440 set_design_properties profile: an FPGA project widened to Embedded /
 test('#5754 new_project mode: circuit, board, system, each its profile and its kind as New Project\'s cards; a finer profile of the mode; another refused; project_info and list_projects say each mode', async () => {
   const tools = (await handle({ jsonrpc: '2.0', id: ++id, method: 'tools/list', params: {} })).result.tools;
   const np = tools.find(t => t.name === 'new_project');
-  assert.deepEqual(np.inputSchema.properties.mode, { type: 'string', enum: ['circuit', 'board', 'system'], description: 'Its mode, New Project\'s first page: circuit (drawings and circuits, no board), board (one board, the default), system (devices linked in a System).' });
+  assert.deepEqual(np.inputSchema.properties.mode, { type: 'string', enum: ['circuit', 'board', 'system'], description: 'Its mode: circuit (no board), board (one board, the default), system (devices linked).' });
   const c = await ok('new_project', { name: 'm1', mode: 'circuit' });
   assert.equal(c.text, 'Empty Digital Logic project \'m1\' made (a design and simulation project). Add its drawings with new_source, then set_top.');
   assert.deepEqual([c.data.mode, c.data.kind, (await P.readProject('m1')).kind, (await P.readProject('m1')).board], ['circuit', 'design', 'design', null]);
@@ -157,4 +157,22 @@ test('#5754 new_project mode: circuit, board, system, each its profile and its k
   const bytes = fs.readFileSync(file, 'utf8');
   assert.equal((await ok('project_info', { project: 'm1' })).data.mode, 'circuit');
   assert.equal(fs.readFileSync(file, 'utf8'), bytes);
+});
+
+test('#5757 the examples by mode: list_examples\' modes; new_project_from_example mode circuit, a Circuit example with no board; refusals', async () => {
+  const l = await ok('list_examples', {});
+  const modes = Object.fromEntries(l.data.examples.map(e => [e.name, e.modes]));
+  assert.deepEqual([modes.gates, modes.breadboard, modes.blinky, modes['uart-avr']], [['circuit', 'board'], ['circuit', 'board'], ['board'], ['system']]);
+  assert.ok(l.text.split('\n').some(x => /^gates: top gates, .*; a Circuit example too$/.test(x)), l.text);
+  const r = await ok('new_project_from_example', { name: 'ce1', example: 'gates', mode: 'circuit' });
+  assert.match(r.text, /^Circuit project 'ce1' made from the example gates: top gates, no board\. It is untrusted/);
+  const pj = await P.readProject('ce1');
+  assert.deepEqual([pj.kind, pj.board, pj.constraints, (await ok('project_info', { project: 'ce1' })).data.mode], ['design', null, null, 'circuit']);
+  assert.ok(!fs.existsSync(path.join(P.projectDir('ce1'), 'constraints')) || !fs.readdirSync(path.join(P.projectDir('ce1'), 'constraints')).length, 'its constraints file not copied');
+  // (its test bench runs as the example's)
+  const s = await ok('simulate', { project: 'ce1' });
+  assert.deepEqual(s.data.warnings ?? [], []);
+  await fails('new_project_from_example', { name: 'ce2', example: 'blinky', mode: 'circuit' }, 'blinky is not a circuit example (its modes: board)');
+  await fails('new_project_from_example', { name: 'ce3', example: 'gates', mode: 'circuit', board: 'nexys2' }, 'mode circuit: a Circuit project has no board');
+  await fails('new_project', { name: 'ce4', profile: 'logic', board: 'basys2' }, 'a Digital Logic project (profile logic) has no board: give profile logic or a board, not both');
 });

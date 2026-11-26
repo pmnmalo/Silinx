@@ -38,12 +38,12 @@ const warnings = async page => (await page.consoleText()).split('\n').filter(l =
 uiTest('#3780 New Project: Design and simulation only, no board, no device, no HDL; the flow left out', E, async (page) => {
   await page.menu('File', 'New Project…');
   await page.waitDialog('New Project Wizard');
-  // (its kind first, #5041: Digital Logic, #5133; then its name alone: no example to start from, no Project Kind field)
+  // (its kind first, #5041: Digital Logic, #5133; then its name and its examples, #5757: no Project Kind field)
   await page.click('.dlg-overlay .kind-card[data-kind=design] input');
   await page.dialogButton('Next >');
   await page.waitFor(() => document.querySelector('.dlg-overlay .wiz-main h3')?.textContent === 'Create New Project');
   await page.fill('.dlg-overlay .wiz-main input[type=text]', 'Drawn');
-  assert.deepEqual(await page.eval(() => [...document.querySelectorAll('.dlg-overlay .form-grid > label')].filter(l => l.style.display !== 'none').map(l => l.textContent)), ['Name:', 'Location:']);
+  assert.deepEqual(await page.eval(() => [...document.querySelectorAll('.dlg-overlay .form-grid > label')].filter(l => l.style.display !== 'none').map(l => l.textContent)), ['Name:', 'Location:', 'Start from:']);   // (its examples, #5757)
   await page.dialogButton('Next >');
   await page.waitFor(() => document.querySelector('.dlg-overlay .wiz-main h3')?.textContent === 'Project Settings');
   // (its fields: the Top-Level Source Type alone, a drawing: no HDL)

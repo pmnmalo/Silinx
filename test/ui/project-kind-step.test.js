@@ -32,6 +32,8 @@ const kindPage = page => page.eval(() => ({
   steps: [...document.querySelectorAll('.dlg-overlay .wiz-side .step')].map(s => s.textContent),
 }));
 // Digital Logic's card says nothing of FPGA or HDL (#5133: its students need not know what an FPGA is)
+// Start from's options offered (not hidden)
+const startFrom = page => page.eval(() => [...document.querySelectorAll('.dlg-overlay .wiz-main select option')].filter(o => !o.hidden && !o.disabled).map(o => o.value));
 const designCardText = page => page.eval(() => document.querySelector('.dlg-overlay .kind-card[data-kind=design]').textContent);
 const openWizard = async (page, l) => {
   await page.menu(l.file, l.item).catch(() => page.menu(l.file, L.en.item));
@@ -91,14 +93,14 @@ async function makeNoFpga(page, name, l) {
   assert.deepEqual([pj.kind, pj.board, pj.constraints, pj.top], ['design', null, null, 'top']);
 }
 // the process tree of its top shown (the ISE style interface's: its Implementation view)
-async function showProcesses(page) {
+async function showProcesses(page, top = 'top') {
   if (await page.eval(() => document.documentElement.dataset.layout === 'tasks')) return;
   await page.setView('impl');
-  await page.treeRow('#hier', 'top');
+  await page.treeRow('#hier', top);
   await page.waitFor(() => document.querySelectorAll('#procs .row .lbl').length > 0, [], { what: 'the processes' });
 }
 
-uiTest('#5041 #5133 #4702 #5754 New Project: the mode first, three cards with a drawing each (Circuit, Board, System); Circuit: no example; Back keeps it', E, async (page) => {
+uiTest('#5041 #5133 #4702 #5754 #5757 New Project: the mode first, three cards with a drawing each (Circuit, Board, System); Circuit: its examples alone; Back keeps it', E, async (page) => {
   await openWizard(page, L.en);
   assert.deepEqual(await kindPage(page), { title: 'Project Mode', hint: 'Choose the mode of the project.', cards: EN_CARDS,
     steps: ['Project Mode', 'Create New Project', 'Project Settings', 'Project Summary'] });
@@ -112,11 +114,12 @@ uiTest('#5041 #5133 #4702 #5754 New Project: the mode first, three cards with a 
   await page.dialogButton('Next >');
   assert.equal(await h3(page), 'Create New Project');
   assert.deepEqual(await shownLabels(page), ['Name:', 'Location:', 'Start from:']);
-  // back, Digital Logic: no example to start from; its kind kept going back and forth
+  // back, Circuit: its examples alone to start from (#5757: the drawings-only ones); its kind kept going back and forth
   await page.dialogButton('< Back');
   await page.click('.dlg-overlay .kind-card[data-kind=design] input');
   await page.dialogButton('Next >');
-  assert.deepEqual(await shownLabels(page), ['Name:', 'Location:']);
+  assert.deepEqual(await shownLabels(page), ['Name:', 'Location:', 'Start from:']);
+  assert.deepEqual(await startFrom(page), ['empty', 'gates', 'breadboard']);
   await page.dialogButton('< Back');
   assert.equal(await page.eval(() => document.querySelector('.dlg-overlay .kind-card input:checked').value), 'design');
   await page.dialogButton('Cancel');
@@ -157,4 +160,22 @@ uiTest('#5041 #5133 #5754 in Portuguese: New Project\'s mode, its cards (Circuit
   } finally {
     await page.eval(async () => (await import('/js/i18n.js')).setLanguage('en'));
   }
+});
+
+uiTest('#5757 New Project: a Circuit project from the gates example, no board, no constraints, nothing of HDL or FPGA shown', E, async (page) => {
+  await openWizard(page, L.en);
+  await page.click('.dlg-overlay .kind-card[data-kind=design] input');
+  await page.dialogButton('Next >');
+  await page.fill('.dlg-overlay .wiz-main input[type=text]', 'GatesC');
+  await page.fill('.dlg-overlay .wiz-main select', 'gates');
+  await page.dialogButton('Next >');
+  await page.dialogButton('Next >');
+  await page.dialogButton('Finish');
+  await page.waitNoDialog();
+  await page.waitFor(() => window.Silinx.project?.name === 'GatesC' && document.querySelector('#hier .row.top-mod'), [], { what: 'GatesC open' });
+  const pj = await page.eval(() => window.Silinx.project);
+  assert.deepEqual([pj.kind, pj.board, pj.constraints, pj.top, pj.topSourceType], ['design', null, null, 'gates', undefined]);   // (its top type the example's own: none)
+  await showProcesses(page, 'gates');
+  assert.deepEqual(await fpgaShown(page), NOTHING);
+  assert.deepEqual(await warnings(page), []);
 });

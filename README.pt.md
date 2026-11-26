@@ -44,8 +44,9 @@ GitHub, cópias de um grupo juntadas.</td>
 
 As ferramentas do Silinx implementam para as placas **Basys2**, **Nexys2**, **Nexys3**, **Atlys**, **iCEBreaker**,
 **ULX3S**, **Tang Nano 9K** e **GateMate de avaliação** (e para a Basys 3 e a Nexys A7 da Série 7, uma família experimental) sem mais nada instalado; o
-Xilinx ISE 14.7 e o AMD Vivado, que instala por si, acrescentam as outras placas (o Vivado também a Arty S7 e a Zybo Z7). Um projeto de desenho e simulação
-não precisa de placa nenhuma. [Placas e ferramentas](docs/user/pt/boards.md)
+Xilinx ISE 14.7 e o AMD Vivado, que instala por si, acrescentam as outras placas (o Vivado também a Arty S7 e a Zybo Z7). Um projeto é um **Circuito**
+(sem placa nenhuma), uma **Placa** (uma placa FPGA, ou uma placa de processador sozinha: um Arduino, um Pico, um ESP32) ou um **Sistema** de
+dispositivos ligados: [Modos de projeto](docs/user/pt/modes.md). [Placas e ferramentas](docs/user/pt/boards.md)
 
 | Basys2 (Spartan-3E) | Nexys3 (Spartan-6) |
 |---|---|

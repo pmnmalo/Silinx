@@ -20,7 +20,7 @@ import { foldName, sameNameIn, spelledAs } from '../core/fold-name.js';
 import { fsFailure } from './fs-error.js';
 import { mapLimit, filesOf } from './concurrent.js';
 import { PROJECT_NAME_RE, projectNameError, sameProject } from '../core/project-name.js';
-import { boardRefusal, createRefusal, newSystemKind } from '../core/project-kind.js';
+import { DESIGN_KIND, boardRefusal, circuitExample, createRefusal, newSystemKind } from '../core/project-kind.js';
 import { newSystemFile } from '../core/system-doc.js';
 import { newProjectJson, projectJsonText } from '../core/project-defaults.js';
 import { renameProblem, renamedFile } from '../core/project-rename.js';
@@ -406,6 +406,16 @@ export async function createProject({ name, template = 'empty', device, board, k
     if (noBoard) throw new HttpError(400, noBoard);
     pj.files ||= [];
     await copyDir(src, dir, { skipRoot: PROJECT_FILE });
+    // (a Circuit example, #5757: a design project, no board, its constraints file left out of the copy)
+    if (kind === DESIGN_KIND) {
+      const c = circuitExample(pj);
+      // (and its folder, left empty: the browser edition's has none, #5757)
+      for (const f of c.drop) { await fs.rm(safeJoin(dir, f), { force: true }); if (path.dirname(f) !== '.') await fs.rmdir(safeJoin(dir, path.dirname(f))).catch(() => {}); }
+      if (fromOutside) c.project.trusted = false;
+      if (madeBy === 'mcp') Object.assign(c.project, { trusted: false, madeBy });
+      await recordMade(dir, { fromOutside, madeBy });
+      return writeProject(name, c.project);
+    }
     const was = `${pj.board}|${pj.device?.part}|${pj.device?.package}`, fromBoard = pj.board;
     if (device) pj.device = device;
     if (board !== undefined) pj.board = board;

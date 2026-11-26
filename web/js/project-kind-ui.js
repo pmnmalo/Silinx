@@ -4,7 +4,8 @@
 // design (a board, or None Specified and a device) makes a design project an FPGA project, the reverse is refused while
 // the project has HDL or C sources of its own (the console says which). Design Properties says what a change of kind
 // does as it is chosen (#5041): the refusal and its sources, OK disabled; or what leaves the project, none deleted.
-import { SYSTEM_EXAMPLES, SYSTEM_KIND, DESIGN_KIND, DESIGN_ONLY_LABEL, DESIGN_ONLY_MESSAGES, isSystemProject, newSystemKind, ownSources, toDesignProject } from '/core/project-kind.js';
+import { exampleModes } from '/core/examples.js';
+import { SYSTEM_KIND, DESIGN_KIND, DESIGN_ONLY_LABEL, DESIGN_ONLY_MESSAGES, isSystemProject, newSystemKind, ownSources, toDesignProject } from '/core/project-kind.js';
 import { profileChangedText, profileNote, profileOf, profileOn } from '/core/project-profile.js';
 import { changeProfile } from '/core/profile-change.js';
 import { filesState } from './state-files.js';
@@ -88,10 +89,11 @@ export async function makeDesignProject(pj) {
 /** New Project's settings page of a System project (#4702): what stands for the device and the flow. */
 export const SYSTEM_NOTE = 'A System project has no board of its own: each FPGA node of its System names its board and pins, each microcontroller its firmware.';
 
-/** New Project's Start from for the kind chosen (#4702): a System project's the System examples, the others' the
- *  other examples (an option hidden and disabled; the one chosen, hidden, back to Empty). */
-export function syncTemplates(tplSel, system) {
-  for (const o of tplSel.options) { const cx = SYSTEM_EXAMPLES.includes(o.value); o.hidden = o.disabled = o.value !== 'empty' && (system ? !cx : cx); }
+/** New Project's Start from for the mode chosen (#4702, #5757: core/examples.js exampleModes): a System project's the
+ *  System examples, a Circuit project's the Circuit examples, a Board project's the others (the test designs: a Board
+ *  project's); an option hidden and disabled, the one chosen, hidden, back to Empty. */
+export function syncTemplates(tplSel, mode) {
+  for (const o of tplSel.options) o.hidden = o.disabled = o.value !== 'empty' && !exampleModes(o.value).includes(mode);
   if (tplSel.selectedOptions[0]?.disabled) tplSel.value = 'empty';
 }
 

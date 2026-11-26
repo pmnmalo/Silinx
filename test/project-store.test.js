@@ -56,13 +56,24 @@ test('#3780 a design and simulation project: the server\'s (silinx.json text, sr
   assert.equal(server['silinx.json'], projectJsonText('Drawn', pj));
   assert.deepEqual([pj.kind, pj.board, pj.constraints], ['design', null, null]);
   // (the same refusals, the same messages)
-  for (const [args, message] of [[{ name: 'D2', kind: 'other' }, 'unknown project kind \'other\''], [{ name: 'D3', kind: 'design', template: 'blinky' }, 'a design and simulation project starts empty: no example']]) {
+  for (const [args, message] of [[{ name: 'D2', kind: 'other' }, 'unknown project kind \'other\''], [{ name: 'D3', kind: 'design', template: 'blinky' }, 'a design and simulation project starts empty or from a Circuit example (gates, breadboard)']]) {
     await assert.rejects(ops.create(args), { message });
     await assert.rejects(P.createProject(args), { message });
   }
   const { normalizeProjectJson } = await import('../web/js/project-store.js');
   assert.deepEqual(['kind', 'board'].map(k => normalizeProjectJson({ ...pj, board: 'basys2' }, 'Drawn').json[k]), ['design', null]);
   assert.equal(normalizeProjectJson({ ...pj, kind: 'other' }, 'Drawn').json.kind, undefined);
+});
+
+test('#5757 a Circuit project from a Circuit example: the server\'s (no board, no constraints, its constraints file not copied)', async () => {
+  const { root, ops } = folder();
+  const pj = await ops.create({ name: 'GatesC', template: 'gates', kind: 'design' });
+  await P.createProject({ name: 'GatesC', template: 'gates', kind: 'design' });
+  const server = diskTree(P.projectDir('GatesC'));
+  assert.deepEqual(under(await dump(root), 'GatesC'), sorted(server));
+  assert.equal(server['silinx.json'], projectJsonText('GatesC', pj));
+  assert.deepEqual([pj.kind, pj.board, pj.constraints, pj.top], ['design', null, null, 'gates']);
+  assert.ok(!Object.keys(server).some(k => /\.ucf$/.test(k)), Object.keys(server).join(' '));
 });
 
 test('folder: a new empty project is the server\'s (silinx.json text, src/ sim/ constraints/)', async () => {
