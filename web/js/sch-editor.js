@@ -351,7 +351,7 @@ export function mountSchEditor(container, opts = {}) {
     canUndo: () => !live && (shared() ? shared().canUndo() : undoStack.length > 0), canRedo: () => !live && (shared() ? shared().canRedo() : redoStack.length > 0),
     // Edit ▸ Cut / Copy / Paste / Delete (#677)
     copy: () => copySel(), cut: () => copySel(true), paste: (clip, offset) => paste(clip, offset), deleteSelection: () => { if (!live) deleteSel(); },
-    canCopy: () => !readOnly && !live && sel.size > 0, canPaste: () => !readOnly && !live && hasClip('schematic'),
+    canCopy: () => !live && sel.size > 0, canDelete: () => !readOnly && !live && sel.size > 0, canPaste: () => !readOnly && !live && hasClip('schematic'),
     handwritten: readOnly ? null : () => import('./sch-ink.js').then(m => m.handwrittenSchematicInto({ doc: () => doc, replace: parts => edit(() => { doc = { ...doc, ...parts }; }), fit: () => fit() })),   // (#1067, #1098)
     setDoc(d) { leaveSim(); infoDlg?.close(); doc = normalizeDoc(d || newDoc(), { modules }); undoStack.length = 0; redoStack.length = 0; sel.clear(); lastDiags = null; genLang = doc.lang; renderSheet(); renderPalette(); render(); renderProps(); fit(); },
     // its HDL file linked (generatedFile, #245): nothing else changes, Undo / Redo keep the link

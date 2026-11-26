@@ -93,7 +93,7 @@ export function mountSchSelect(ctx) {
     return { x: a.x, y: a.y, w: b.x - a.x, h: b.y - a.y };
   }
   function copySel(cut = false) {
-    if (!sel().size || readOnly || live()) return;
+    if (!sel().size || live() || (cut && readOnly)) return;   // (a read-only one copied, never cut, #5733)
     const clip = copySchematic(doc(), { symbols: selected('sym'), wires: selected('wire'), ports: selected('port'), labels: selected('label'), graphics: selected('graphic') }, modules());
     writeClip('schematic', clip);
     if (cut) deleteSel();

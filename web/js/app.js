@@ -614,7 +614,7 @@ export async function openFile(path, line, col, { task } = {}) {
         ed.view.dom.addEventListener('contextmenu', e => {
           e.preventDefault();
           const hdl = lang === 'vhdl' || lang === 'verilog';
-          const hasSel = ed.somethingSelected();
+          const hasSel = ed.somethingSelected(), clip = textClip(ed);
           const sch = designState.hdlToSch?.[path];
           const at = ed.posAt(e.clientX, e.clientY);
           const edit = hdl && !sch;   // (the HDL generated from a drawing: read-only, #1176)
@@ -622,9 +622,10 @@ export async function openFile(path, line, col, { task } = {}) {
             sch ? null : { label: 'Undo', action: () => ed.exec('undo'), disabled: !ed.historySize().undo },
             sch ? null : { label: 'Redo', action: () => ed.exec('redo'), disabled: !ed.historySize().redo },
             sch ? null : '-',
-            sch ? null : { label: 'Cut', action: () => { navigator.clipboard?.writeText(ed.getSelection()); ed.replaceSelection(''); }, disabled: !hasSel },
-            { label: 'Copy', action: () => navigator.clipboard?.writeText(ed.getSelection()), disabled: !hasSel },
-            sch ? null : { label: 'Paste', action: async () => { try { ed.replaceSelection(await navigator.clipboard.readText()); ed.focus(); } catch { logInfo('Use Ctrl+V to paste'); } } },
+            // (through the app's clipboard, as Edit ▸ Cut / Copy / Paste: a read-only file's copy pasted elsewhere, #5732)
+            sch ? null : { label: 'Cut', action: () => clip.cut(), disabled: !clip.canDelete() },
+            { label: 'Copy', action: () => clip.copy(), disabled: !hasSel },
+            sch ? null : { label: 'Paste', action: () => clip.paste(), disabled: !clip.canPaste() },
             { label: 'Select All', action: () => ed.exec('selectAll') },
             '-',
             edit ? { label: 'Toggle Comment', action: () => ed.exec('toggleComment') } : null,
