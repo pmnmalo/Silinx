@@ -12,6 +12,7 @@ import { api, followJob } from './api.js';
 import { logError, startRun } from './console.js';
 import { runState } from './state-run.js';
 import { procState } from './state-proc.js';
+import { filesState } from './state-files.js';
 import { dialog, h } from './ui.js';
 import { deviceText } from '/core/system-usb.js';
 import { programRefusal } from '/core/system-program.js';
@@ -62,7 +63,7 @@ async function overWebSerial(name, ids, images, refused = {}) {
 async function inBrowser(name, node) {
   const sys = shownSystem()?.system;
   if (!sys) { logError(`${name}: the System is not open`); return false; }
-  const plan = systemBuildPlan(sys, { files: S.fileTree || [] });
+  const plan = systemBuildPlan(sys, { files: filesState.fileTree || [] });
   const steps = plan.nodes.filter(e => node === '*' || e.id === node);
   if (!steps.length) { logError(`${name}: no node '${node}' to program in the System`); return false; }
   const refused = {}, ids = [], images = {};
