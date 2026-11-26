@@ -51,25 +51,66 @@ export function deviceGrid(dev) {
 
 // ------------------------------------------------------------------ XDL design
 // tokens: "quoted strings" (\" escapes), ',' ';' and words; a string with no closing quote is an error (it ran to
-// the end of the text again from each quote inside it, #2011)
+// the end of the text again from each quote inside it, #2011). A scanner of characters, not a regexp over the whole text:
+// a routed design's XDL is a few hundred KB, and a regexp run on it can fail with "too much recursion" in Firefox, its
+// backtracking stack's limit or an interrupt of its native code in a worker that nextpnr's run just left (#5592)
+const isSpace = (c, ch) => c === 32 || (c >= 9 && c <= 13) || (c > 127 && /\s/.test(ch));
+
 function tokenize(text) {
   const toks = [];
-  const src = String(text).split('\n').filter(l => !/^\s*#/.test(l)).join('\n');
-  const re = /"((?:[^"\\]|\\[\s\S])*)("?)|([,;])|([^\s,;"]+)/g;
-  let m;
-  // quoted strings keep their raw text too (with its escapes), for writeXdl()
-  while ((m = re.exec(src))) {
-    if (m[1] !== undefined && !m[2]) throw new Error(`XDL: a quoted string with no closing quote: "${m[1].slice(0, 40)}`);
-    toks.push(m[1] !== undefined ? { s: m[1].replace(/\\([\s\S])/g, '$1'), raw: m[1] } : m[3] ? { p: m[3] } : { w: m[4] });
+  // the comment lines ('#' first) left out
+  const src = String(text).split('\n').filter(l => l.trimStart()[0] !== '#').join('\n');
+  const n = src.length;
+  let i = 0;
+  while (i < n) {
+    const c = src.charCodeAt(i);
+    if (isSpace(c, src[i])) { i++; continue; }
+    if (c === 44 || c === 59) { toks.push({ p: src[i++] }); continue; }   // ',' ';'
+    if (c === 34) {   // '"': quoted strings keep their raw text too (with its escapes), for writeXdl()
+      const start = ++i;
+      let s = '';
+      while (i < n && src.charCodeAt(i) !== 34) {
+        if (src.charCodeAt(i) === 92) { if (i + 1 >= n) break; s += src[i + 1]; i += 2; } else s += src[i++];
+      }
+      const raw = src.slice(start, i);
+      if (i >= n || src.charCodeAt(i) !== 34) throw new Error(`XDL: a quoted string with no closing quote: "${raw.slice(0, 40)}`);
+      i++;
+      toks.push({ s, raw });
+      continue;
+    }
+    const start = i;
+    while (i < n) { const d = src.charCodeAt(i); if (d === 44 || d === 59 || d === 34 || isSpace(d, src[i])) break; i++; }
+    toks.push({ w: src.slice(start, i) });
   }
   return toks;
+}
+
+// the configuration's words: runs of escapes ('\\' and the next character, not a line's end) and non-blank characters,
+// scanned, not matched by a regexp (#5592, as tokenize)
+const isLineEnd = (c) => c === 10 || c === 13 || c === 0x2028 || c === 0x2029;
+function cfgWords(cfg) {
+  const words = [];
+  const n = cfg.length;
+  let i = 0;
+  while (i < n) {
+    const start = i;
+    for (;;) {
+      if (i >= n) break;
+      const c = cfg.charCodeAt(i);
+      if (c === 92 && i + 1 < n && !isLineEnd(cfg.charCodeAt(i + 1))) { i += 2; continue; }
+      if (isSpace(c, cfg[i])) break;
+      i++;
+    }
+    if (i > start) words.push(cfg.slice(start, i)); else i++;
+  }
+  return words;
 }
 
 /** Split a configuration string into { attr, name, value } items ("F:u1/n5:#LUT:D=(A1*A2)").
  *  Colons and spaces inside names are escaped with '\'. */
 export function parseCfg(cfg) {
   const items = [];
-  for (const raw of String(cfg || '').match(/(?:\\.|\S)+/g) || []) {
+  for (const raw of cfgWords(String(cfg || ''))) {
     const parts = [];
     let cur = '', esc = false;
     for (const ch of raw) {
