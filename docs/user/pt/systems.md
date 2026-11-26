@@ -128,6 +128,18 @@ emulador do Sistema num separador próprio:
 
 A linha de estado mostra o tempo e a rapidez com que as placas correm face ao tempo real.
 
+## Nas placas reais
+
+Na tarefa **Implementar**, **Programar Tudo** programa cada nó na sua placa (primeiro os nós FPGA), e o **Programar Nó**
+de um nó só esse nó. O servidor local encontra cada placa pelo seu identificador USB; o firmware de um Arduino é
+carregado pelo upload do arduino-cli.
+
+O firmware de um Arduino Uno ou Nano também pode ser carregado a partir do browser pelo **Web Serial** (Chrome e Edge;
+não o Safari, nem o iPad): o seu `.hex` (ou `.elf`) passa pelo bootloader da placa (STK500, como o Arduino IDE faz) e é
+depois lido e comparado. A edição para browser faz sempre assim (os seus nós FPGA são programados pelo servidor local,
+por agora); com o servidor local, o **Programar Nó** de um Arduino cuja placa ele não vê oferece **Web Serial…** na
+janela *Escolher a Placa*.
+
 ## Experimente: o exemplo uart-avr
 
 1. Novo Projeto ▸ **Sistema**, Começar por **Exemplo: uart-avr**, Concluir. O Sistema abre: `uno` (um Arduino Uno com

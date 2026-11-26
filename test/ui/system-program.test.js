@@ -4,7 +4,8 @@
 // uart-avr example with its FPGA node's bitstream: the System's row has Program All, the FPGA's and the Uno's rows Program
 // Node; two Unos connected: Program All asks which board the Uno is (Choose the Board), the FPGA programmed by djtgcfg on
 // its board by its serial number, then the Uno on the board picked; Program Node of the Uno, Skip: not programmed, said;
-// in Portuguese; the browser edition says the local server programs them. Both interfaces.
+// in Portuguese; the browser edition: the FPGA node the local server's, the Uno over Web Serial (#5448, a simulated Optiboot);
+// an Uno the local server does not see: Web Serial… in Choose the Board, a board that answers nothing. Both interfaces.
 import { before, after } from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
@@ -32,6 +33,18 @@ const lines = (page) => page.eval(() => [...document.querySelectorAll('#console-
 const procs = (page) => page.eval(() => [...document.querySelectorAll('#procs .row .lbl')].map((l) => l.textContent.trim()).filter((t) => t !== 'Design Summary/Reports' && t !== 'Resumo do Projeto/Relatórios'));
 const dlg = (page) => page.waitFor(() => document.querySelector('.dlg .dlg-title span')?.textContent === 'Choose the Board', [], { what: 'Choose the Board' });
 const press = (page, label) => page.eval((label) => [...document.querySelectorAll('.dlg .dlg-buttons button')].find((b) => b.textContent === label).click(), label);
+
+// a fake Web Serial in the page (#5448): its port a simulated Optiboot's (core/stk500-sim.js, window.__boot, window.__port),
+// the Uno's .hex read as an independent reference (window.__fw: its bytes and size)
+const FAKE_SERIAL = async () => {
+  const { Optiboot, simulatedPort } = await import('/core/stk500-sim.js');
+  const { readIntelHex } = await import('/core/avr-firmware.js');
+  const r = readIntelHex(await (await fetch(`/api/projects/${encodeURIComponent(window.SilinxApp.S.project.name)}/file?path=uno/hello.hex`)).text());
+  window.__fw = { bytes: r.bytes.subarray(0, r.size), size: r.size };
+  window.__boot = new Optiboot();
+  window.__port = simulatedPort(window.__boot);
+  Object.defineProperty(navigator, 'serial', { configurable: true, value: { async requestPort(o) { window.__asked = o; return window.__port; } } });
+};
 
 uiTest('#5489 Program All and Program Node: the FPGA, then the Uno on the board picked; Skip; Portuguese; the browser edition', E, async (page) => {
   if (process.platform === 'win32') return;   // (the stand-ins are scripts run by their #! line)
@@ -79,10 +92,53 @@ uiTest('#5489 Program All and Program Node: the FPGA, then the Uno on the board 
   await page.eval(async () => { (await import('/js/i18n.js')).setLanguage('pt'); });
   await page.waitFor(() => [...document.querySelectorAll('#procs .row .lbl')].some((l) => l.textContent.trim() === 'Programar Tudo'), [], { what: 'Portuguese' });
   await page.eval(async () => { (await import('/js/i18n.js')).setLanguage('en'); });
-  // the browser edition: the local server's, said
+  // the browser edition (#5448): the FPGA node the local server's, said; the Uno over Web Serial, a simulated Optiboot
+  await page.eval(FAKE_SERIAL);
   await page.eval(async () => { (await import('/js/api.js')).api.standalone = true; });
   await page.treeRow('#procs', 'Program All', { exact: true, dbl: true });
-  await page.waitConsole(/^ERROR: Program All: a System's boards are programmed by the local server for now \(the browser edition programs an FPGA project's board\)$/m);
+  await page.waitConsole(/^Process failed: the System node\(s\) fpga not programmed$/m, { timeout: 30000 });
+  all = await lines(page);
+  const web = ['ERROR: System node fpga: not programmed: an FPGA node of a System is programmed by the local server for now (the browser edition programs an FPGA project\'s board)',
+    'System node uno: loading uno/hello.hex (HEX bytes) on USB 2341:0043 through its bootloader (STK500, 115200 baud, Web Serial).'];
+  const n = await page.eval(() => window.__fw.size);
+  assert.deepEqual(all.filter((l) => /^(ERROR: System node|System node uno: |Program: )/.test(l)).slice(-6), [web[0], web[1].replace('HEX', n),
+    `System node uno: ${Math.ceil(n / 128)} page(s) written.`, `System node uno: ${Math.ceil(n / 128)} page(s) verified.`,
+    `System node uno: programmed (${n} bytes, ${Math.ceil(n / 128)} page(s) of 128, verified); its program runs.`, 'Program: 1 node(s) programmed (uno), 0 failed, 1 not programmed (fpga).']);
+  assert.deepEqual(await page.eval(() => [window.__boot.started, [...window.__boot.flash.subarray(0, window.__fw.size)].join() === [...window.__fw.bytes].join(), window.__port.opens[0].baudRate]), [1, true, 115200]);
   await page.eval(async () => { delete (await import('/js/api.js')).api.standalone; });
+  assert.deepEqual(page.console.filter((c) => c.type === 'error' || c.type === 'warning' || c.type === 'warn').map((c) => c.text), []);
+}, { timeout: 180000 });
+
+uiTest('#5448 Program Node of an Uno the local server does not see: Web Serial chosen, its .hex loaded through the simulated bootloader; Portuguese', E, async (page) => {
+  if (process.platform === 'win32') return;
+  fs.writeFileSync(path.join(dir, 'arduino-ports.json'), '[]');
+  fs.writeFileSync(path.join(dir, 'usb-devices.json'), '[]');
+  await makeProject(env, { name: 'SysWeb', template: 'uart-avr' });
+  await page.openProject('SysWeb');
+  await page.leftTab('design');
+  await page.waitFor(() => [...document.querySelectorAll('#hier .row .lbl')].some((l) => l.textContent.trim() === 'uart_avr'), [], { what: 'the System' });
+  await page.eval(FAKE_SERIAL);
+  await page.eval(async () => { (await import('/js/i18n.js')).setLanguage('pt'); });
+  await page.treeRow('#hier', 'uno', { exact: true });
+  await page.waitFor(() => [...document.querySelectorAll('#procs .row .lbl')].some((l) => l.textContent.trim() === 'Programar Nó'), [], { what: 'the Uno\'s processes' });
+  await page.treeRow('#procs', 'Programar Nó', { exact: true, dbl: true });
+  await page.waitFor(() => document.querySelector('.dlg .dlg-title span')?.textContent === 'Escolher a Placa', [], { what: 'Escolher a Placa' });
+  assert.deepEqual(await page.eval(() => [...document.querySelectorAll('.dlg .dlg-buttons button')].map((b) => b.textContent)), ['Web Serial…', 'Saltar']);
+  assert.equal(await page.eval(() => document.querySelector('.dlg p:last-child').textContent), 'O servidor local não encontrou nenhuma placa ligada.');
+  await press(page, 'Web Serial…');
+  await page.waitConsole(/completed successfully|concluído com sucesso/m, { timeout: 30000 });
+  await page.eval(async () => { (await import('/js/i18n.js')).setLanguage('en'); });
+  const all = await lines(page);
+  assert.ok(all.includes('Program: 1 node(s) programmed (uno), 0 failed, 0 not programmed.'), all.join('\n'));
+  assert.deepEqual(all.filter((l) => /^(WARNING|ERROR)/.test(l)), []);
+  assert.deepEqual(await page.eval(() => [window.__boot.started, [...window.__boot.flash.subarray(0, window.__fw.size)].join() === [...window.__fw.bytes].join(), window.__asked.filters.length]), [1, true, 5]);
+  // (a board that answers nothing: said, the run failed)
+  await page.eval(() => { window.__boot.reset = () => {}; window.__boot.running = false; window.__port.closed = 0; });
+  await page.treeRow('#procs', 'Program Node', { exact: true, dbl: true });
+  await dlg(page);
+  await press(page, 'Web Serial…');
+  await page.waitConsole(/^Process failed: the System node\(s\) uno not programmed$/m, { timeout: 60000 });
+  assert.ok((await lines(page)).includes('ERROR: System node uno: no bootloader answered after 10 tries (the bootloader did not answer): is it the board\'s port, and its bootloader at this baud rate?'));
+  assert.equal(await page.eval(() => window.__port.closed), 1, 'the port closed');
   assert.deepEqual(page.console.filter((c) => c.type === 'error' || c.type === 'warning' || c.type === 'warn').map((c) => c.text), []);
 }, { timeout: 180000 });

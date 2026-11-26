@@ -16,6 +16,7 @@ export const SYSTEM_PT = {
   'Implement System': 'Implementar Sistema', 'Synthesize': 'Sintetizar',   // (every FPGA node on its own board; a node's, #5446)
   'Build Plan': 'Plano de Construção', 'Build All': 'Construir Tudo',   // (the System's build plan and its nodes built, #5489)
   'Program All': 'Programar Tudo', 'Program Node': 'Programar Nó', 'Choose the Board': 'Escolher a Placa', 'Skip': 'Saltar',   // (its nodes on their boards, #5489)
+  'No connected board was found by the local server.': 'O servidor local não encontrou nenhuma placa ligada.',   // (an Arduino over Web Serial, #5448)
   'Connected Boards': 'Placas Ligadas', 'USB id': 'Identificador USB', 'USB serial': 'Número de série USB',   // (its nodes' boards by their USB id, #5489)
   "vendor:product, hexadecimal (empty: the board's)": 'fabricante:produto, em hexadecimal (vazio: o da placa)',
   'its board told apart from another of the same kind': 'distingue a sua placa de outra do mesmo tipo',
