@@ -115,16 +115,16 @@ export const THIRD_PARTY = [
   },
   {
     "name": "@trystero-p2p/core",
-    "version": "0.27.0",
+    "version": "0.26.0",
     "license": "MIT",
-    "url": "https://github.com/dmotz/trystero",
+    "url": "https://www.npmjs.com/package/@trystero-p2p/core",
     "standalone": true
   },
   {
     "name": "@trystero-p2p/torrent",
-    "version": "0.27.0",
+    "version": "0.26.0",
     "license": "MIT",
-    "url": "https://github.com/dmotz/trystero",
+    "url": "https://www.npmjs.com/package/@trystero-p2p/torrent",
     "standalone": true
   },
   {
