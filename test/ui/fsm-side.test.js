@@ -174,7 +174,7 @@ uiTest('#405 FSM side panel: the machine (its name shown, not edited, #5718; a p
     const r = {};
     side.renderSide();
     const nameIn = field(B, 'Module name');   // (#5718: renamed by the Design pane's Rename… only)
-    r.nameField = [nameIn.disabled, nameIn.value, nameIn.title, nameIn.closest('.asm-field').querySelector('.asm-fhint')];
+    r.nameField = [nameIn.readOnly && !nameIn.disabled, nameIn.value, nameIn.title, nameIn.closest('.asm-field').querySelector('.asm-fhint')];
     B.querySelector('.fsm-add-in').click();
     B.querySelector('.fsm-add-out').click();
     r.ports = [M.inputs.map((p) => p.name), M.outputs.map((p) => `${p.name}=${p.default}`)];

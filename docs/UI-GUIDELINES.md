@@ -102,7 +102,8 @@ panel uses it rather than its own:
   at first, and it is shown and hidden by a `☰ <its name>` button in the toolbar (`panelToggle`: a flat button of the
   toolbar, before its ⋮ menu, shown only there); open or closed is remembered per viewer. No folding there, and the
   panel never moves below or above the canvas (#266).
-- **Read-only:** shown, its fields disabled, its buttons hidden.
+- **Read-only:** shown, its text fields read only (their text still selected and copied, #5736: `web/js/lock-fields.js`),
+  its other fields disabled, its buttons hidden.
 - **Tests:** a UI test folds and expands it, reloads (the fold kept), and opens and closes it on a narrow window;
   `test/ui/side-resize.test.js` drags its edge.
 
@@ -124,8 +125,11 @@ viewer of its own:
   `mountAsmEditor` and `mountFsmEditor`, `setBanner` of the schematic editor). Out of sync, it is also
   `.out-of-sync` (red).
 - **The tools that change it are hidden**, not disabled: add, delete, arrange, validate, the language and the
-  encoding, the Problems panel (which goes to the console, #2718). Zoom, pan, select, Tables and Simulate stay. Its properties are shown, their fields
-  disabled.
+  encoding, the Problems panel (which goes to the console, #2718). Zoom, pan, select, Tables and Simulate stay. Its properties are shown, their text
+  fields read only, the others disabled.
+- **Copy stays** (#5732, #5733, #5736): its selection copied by Edit ▸ Copy, the toolbar's Copy, Ctrl+C and its context
+  menu, through the app's clipboard (`web/js/clipboard.js`), so that it pastes into another document; Cut, Paste and
+  Delete are disabled.
 - Nothing in it is validated or reported: it is right by construction, or its source's problems (in the console) say
   why not.
 

@@ -69,7 +69,7 @@ uiTest('#3793 FSM editor: the diagram locked while Try it is open, unlocked when
   await page.waitFor((ed) => document.querySelector(`${ed} .fsm-sname`), [ED], { what: 'B selected' });
   const side = () => page.eval((ed) => {
     const s = document.querySelector(`${ed} .fsm-selection`);
-    return { h: s.querySelector('h3').textContent, fields: [...new Set([...s.querySelectorAll('input, select')].map((x) => x.disabled))],
+    return { h: s.querySelector('h3').textContent, fields: [...new Set([...s.querySelectorAll('input, select')].map((x) => x.disabled || x.readOnly))],
       buttons: [...s.querySelectorAll('button')].filter((x) => !x.hidden).length };
   }, ED);
   assert.deepEqual(await side(), { h: 'State', fields: [true], buttons: 0 });

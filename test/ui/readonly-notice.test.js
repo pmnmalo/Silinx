@@ -172,7 +172,7 @@ uiTest('#3181 a project followed: "Read-only, following Ana\'s project" at the r
     const at = await fp.eval((p) => { const r = document.querySelector(`${p} .pn-place[data-id=p1] circle`).getBoundingClientRect(); return { x: r.left + r.width / 2, y: r.top + 4 }; }, P);
     await fp.click(at);
     await fp.waitFor((p) => document.querySelector(`${p} .pn-selection h3`)?.textContent === 'Place idle', [P], { what: 'idle selected' });
-    assert.equal(await fp.eval((p) => [...document.querySelectorAll(`${p} .asm-side :is(input, textarea, select)`)].every((x) => x.disabled), P), true);
+    assert.equal(await fp.eval((p) => [...document.querySelectorAll(`${p} .asm-side :is(input, textarea, select)`)].every((x) => x.disabled || x.readOnly), P), true);
     await fp.key('Delete');
     assert.equal(await fp.eval((p) => !!document.querySelector(`${p} .pn-place[data-id=p1]`), P), true);
     assert.equal(await fp.eval(() => window.Silinx.active.petriEditor.canDelete()), false);
@@ -181,7 +181,7 @@ uiTest('#3181 a project followed: "Read-only, following Ana\'s project" at the r
     await fp.eval(() => window.SilinxApp.openFile('src/regs.regs.json'));
     await fp.waitFor(() => window.Silinx.active?.id === 'regs:src/regs.regs.json' && document.querySelector('.doc:not([hidden]) .regmap-editor [data-follow-notice]'), [], { what: 'the register map' });
     await check(fp, NOTE, 'a register map followed');
-    assert.deepEqual(await fp.eval(() => { const r = '.doc:not([hidden]) .regmap-editor'; return { add: !!document.querySelector(`${r} .regs-add`), disabled: [...document.querySelectorAll(`${r} :is(.regs-table input, .regs-table select, .regs-bus)`)].every((x) => x.disabled) }; }), { add: false, disabled: true });
+    assert.deepEqual(await fp.eval(() => { const r = '.doc:not([hidden]) .regmap-editor'; return { add: !!document.querySelector(`${r} .regs-add`), disabled: [...document.querySelectorAll(`${r} :is(.regs-table input, .regs-table select, .regs-bus)`)].every((x) => x.disabled || x.readOnly) }; }), { add: false, disabled: true });
     assert.deepEqual(fp.console.filter((c) => c.type === 'warning' || c.type === 'warn').map((c) => c.text), []);
     assert.deepEqual(fp.errors, []);
   } finally { await fp.close(); await page.eval(async () => (await import('/js/collab-share.js')).stopSharing()); }

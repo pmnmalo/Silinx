@@ -441,6 +441,10 @@ html[data-ui] .menu-popup .mi:has(> .sc > .collab-roles):hover { background: non
    right end, before its ⋮ menu (the schematic's, placed apart), ellipsized when the window is narrow */
 :is(.editor-bar, .se-toolbar, .asm-toolbar, .tt-toolbar) > .gen-banner.read-only { margin-left: auto; min-width: 0; max-width: 100%; box-sizing: border-box; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
+/* a read-only document's text field (web/js/lock-fields.js, #5736; the module name, #5718): read only, so that its text
+   is still selected and copied, but drawn as the disabled fields beside it */
+:is(.asm-side, .regs-table, .pp-table) :is(input, textarea)[readonly], input[data-module-name][readonly] { opacity: .6; cursor: text; }
+
 /* plain-language help of a diagnostic (web/js/diaghelp.js): Errors / Warnings tabs and editor tooltip */
 .console-page .diag .diag-more { flex: none; margin-left: 10px; color: #0645ad; cursor: pointer; white-space: nowrap; }
 .console-page .diag .diag-more:hover { text-decoration: underline; }

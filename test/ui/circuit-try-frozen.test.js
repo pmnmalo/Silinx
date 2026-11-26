@@ -41,7 +41,7 @@ uiTest('#5365 Circuit editor: in Try it nothing is edited (no drag, no Delete, R
   await page.click(await at(page, 40, 6));
   assert.equal(await model(page), m0, 'the circuit as it was');
   assert.deepEqual(await page.eval((ed) => [document.querySelector(`${ed} .circ-tools [title^="Delete"], ${ed} button[title^="Delete the selection"]`)?.disabled ?? null,
-    [...document.querySelectorAll(`${ed} .asm-side input, ${ed} .asm-side select`)].every((x) => x.disabled)], ED), [true, true]);
+    [...document.querySelectorAll(`${ed} .asm-side input, ${ed} .asm-side select`)].every((x) => x.disabled || x.readOnly)], ED), [true, true]);
   assert.deepEqual(await page.eval(() => [window.Silinx.active.circuitEditor.canUndo(), window.Silinx.active.circuitEditor.canDelete(), window.Silinx.active.circuitEditor.canPaste()]), [false, false, false]);
   // its switches still clicked: S1 on, the sum's LED lit
   const knob = await page.eval((ed) => { const r = document.querySelector(`${ed} [data-id=S1] .circ-sw-knob`).getBoundingClientRect(); return { x: r.left + r.width / 2, y: r.top + r.height / 2 }; }, ED);

@@ -42,6 +42,7 @@ import { statusLine } from './status-line.js';
 import { mountAsmSim } from './asm-sim.js';
 import { mountDockPanel } from './dock-panel.js';
 import { drawnCond, drawnLength, onNotation } from './notation.js';
+import { lockFields } from './lock-fields.js';
 
 export const GRID = 20;
 const CHW = 7.25;          // approx. width of a 12px monospace character
@@ -156,7 +157,7 @@ function readOnlyChrome({ root, toolbar, hide, banner }) {
   // (at the toolbar's right end, before its ⋮ menu)
   if (banner) toolbar.querySelector(':scope > .tb-more').before(banner);
 }
-const lockSide = (readOnly, side) => { if (readOnly) for (const x of side.querySelectorAll('input, textarea, select, button:not(.asm-fold)')) x.disabled = true; };
+const lockSide = (readOnly, side) => { if (readOnly) lockFields(side.querySelectorAll('input, textarea, select, button:not(.asm-fold)')); };
 /** The encodings' names, in the ⋮ menu's Encoding choice (#4055) and the status line (#2763). */
 export const ENCODING_NAMES = { binary: 'Binary', gray: 'Gray', onehot: 'One-hot', enum: 'Enum / auto' };
 export function mountAsmEditor(container, { model, onChange, onProblems, onValidate, onMessage, onVerify, readOnly = false, banner } = {}) {
@@ -415,8 +416,9 @@ export function mountAsmEditor(container, { model, onChange, onProblems, onValid
     // (a change under way the merge must wait for: boxes moved or a link drawn, a field of the side panel being typed)
     busy: () => ['move', 'connect'].includes(drag?.mode) || side.contains(document.activeElement),
     // Edit ▸ Cut / Copy / Paste / Delete (#677)
-    copy: () => copySel(), cut: () => copySel(true), paste: () => paste(), deleteSelection: () => deleteSelection(),
-    canCopy: () => sel.nodes.size > 0, canDelete: () => sel.nodes.size > 0 || !!sel.edge, canPaste: () => hasClip('asm'),
+    // (read only: Copy alone, #5736)
+    copy: () => copySel(), cut: () => copySel(!readOnly), paste: () => { if (!readOnly) paste(); }, deleteSelection: () => { if (!readOnly) deleteSelection(); },
+    canCopy: () => sel.nodes.size > 0, canDelete: () => !readOnly && (sel.nodes.size > 0 || !!sel.edge), canPaste: () => !readOnly && hasClip('asm'),
     setModel(m) {
       M = normalizeModel(m || newModel('fsm', 'vhdl'));
       hist = [JSON.stringify(M)]; hi = 0; lastKey = null;

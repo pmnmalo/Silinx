@@ -75,7 +75,8 @@ async function notEditable(page, before) {
   await page.key('v', { modifiers: 2 });   // Ctrl+V
   await page.key('w');                     // (the wire tool)
   assert.equal(JSON.stringify(await viewerDoc(page)), before);
-  assert.deepEqual(await page.eval(() => [window.Silinx.active.viewer.canPaste(), window.Silinx.active.viewer.canCopy()]), [false, false]);
+  // (Ctrl+A's selection copied, not pasted: a read-only schematic's Copy, #5733)
+  assert.deepEqual(await page.eval(() => [window.Silinx.active.viewer.canPaste(), window.Silinx.active.viewer.canCopy()]), [false, true]);
 }
 
 uiTest('Truth Table schematic: Simulate in the read-only view, outputs as the table for every input, not editable, in Portuguese (#946)', E, async (page) => {

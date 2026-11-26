@@ -30,6 +30,7 @@ import { filesState } from './state-files.js';
 import { designState } from './state-design.js';
 import { following, followNotice } from './collab-state.js';
 import { phoneNotice } from './phone-readonly.js';
+import { lockFields } from './lock-fields.js';
 
 // `target`: a System's FPGA node's (#5581: { board, device, constraints (its file), saved() }), else the project's;
 // `view`: the view shown first (the table's, else the text's: #5642)
@@ -242,7 +243,7 @@ export function mountPinPlanner(el, doc, top, target = null, { view: first = 'ta
         h('td', {}, resSel), h('td', { class: conflict ? 'conflict' : '', title: conflict ? `Pin used by ${u.get(a.loc.toUpperCase()).join(', ')}` : '' }, loc),
         h('td', {}, std), h('td', {}, drive), h('td', {}, slew), h('td', {}, pull), h('td', {}, per)));
     }
-    if (readOnly) for (const x of tbl.querySelectorAll('input, select')) x.disabled = true;
+    if (readOnly) lockFields(tbl.querySelectorAll('input, select'));
     tableHost.append(tbl, h('datalist', { id: 'pp-pins' }, ...resPins.map(r => h('option', { value: r.pin }, r.label))));
     const assigned = nets.filter(n => asg[n.net]?.loc).length;
     setStatus(`${assigned}/${nets.length} I/Os assigned`);

@@ -14,6 +14,7 @@ import { drawnCond, onNotation } from './notation.js';
 import { drawBarsIn } from './overbar.js';
 import { dropOutputValues, outputRows, outputsWhere, renameOutputValues, setOutputValue } from '/core/fsm-outputs.js';
 import { designKind } from './project-kind-flag.js';
+import { lockFields } from './lock-fields.js';
 
 /** { renderSide } of an FSM editor (M(), sel(): its current model and selection; setSel(s) selects). */
 export function mountSide(ctx) {
@@ -59,7 +60,7 @@ export function mountSide(ctx) {
     if (b) { b.focus({ preventScroll: true }); if (caret) b.setSelectionRange(...caret); }
   }
   // (read-only, #2696, or in Try it, #3793: its fields shown, disabled; its buttons hidden)
-  const lock = () => { if (locked()) for (const x of [...selSection.querySelectorAll('input, select, textarea, button'), ...machineBody.querySelectorAll('input, select, textarea, button')]) if (x.tagName === 'BUTTON') x.hidden = true; else x.disabled = true; };
+  const lock = () => { if (locked()) lockFields([...selSection.querySelectorAll('input, select, textarea, button'), ...machineBody.querySelectorAll('input, select, textarea, button')], { hideButtons: true }); };
 
   function renderSelection() {
     selSection.textContent = '';
