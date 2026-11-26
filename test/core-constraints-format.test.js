@@ -16,7 +16,7 @@ const UCFS = execFileSync('git', ['ls-files', '*.ucf'], { cwd: ROOT, encoding: '
 const DEVICES = Object.fromEntries(['basys2', 'icebreaker', 'ulx3s', 'tangnano9k', 'gatemate-evb', 'basys3'].map(b => [b, resolveBoard(b).device]));
 
 test('#5588 web/js/constraints-format.js still exports every name it did, readPins and writePins core\'s', () => {
-  assert.deepEqual(Object.keys(web).sort(), ['ccfDiagnostics', 'constraintsExt', 'constraintsForDevice', 'cstDiagnostics', 'lpfDiagnostics', 'pcfDiagnostics', 'readPins', 'writePins', 'xdcDiagnostics']);
+  assert.deepEqual(Object.keys(web).sort(), ['ccfDiagnostics', 'constraintsExt', 'constraintsForDevice', 'cstDiagnostics', 'lpfDiagnostics', 'pcfDiagnostics', 'qsfDiagnostics', 'readPins', 'writePins', 'xdcDiagnostics']);
   assert.equal(typeof web.readPins, 'function');
   assert.equal(typeof web.writePins, 'function');
 });

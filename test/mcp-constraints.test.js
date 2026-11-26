@@ -106,7 +106,7 @@ test('a UCF: check_constraints is checkUcf\'s; the refusals', async () => {
   const c = await ok('check_constraints', { project: 's3e' });
   assert.equal(c.data.ok, false);
   assert.match(c.text, /^ERROR:ConstraintSystem - "constraints\/gates.ucf" Line 2: pin P11 is already assigned to NET "sw<0>" \(line 1\)$/m);
-  await fails('check_constraints', { project: 's3e', file: 'src/gates.vhd' }, 'src/gates.vhd is not a constraints file (.ucf, .pcf, .lpf, .cst, .ccf, .xdc)');
+  await fails('check_constraints', { project: 's3e', file: 'src/gates.vhd' }, 'src/gates.vhd is not a constraints file (.ucf, .pcf, .lpf, .cst, .ccf, .xdc, .qsf)');
   await fails('check_constraints', { project: 's3e', file: 'constraints/none.ucf' }, 'constraints/none.ucf cannot be read.');
   await fails('constraints_wizard', { project: 's3e', module: 'gates', name: 'w2', attributes: { 'led<0>': { drive: '8' } } }, 'attributes: a UCF\'s are I/O Pin Planning\'s (write_file), not the wizard\'s');
 });

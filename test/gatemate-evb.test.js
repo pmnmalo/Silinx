@@ -40,7 +40,7 @@ test('the GateMate evaluation board in the board data: its own pins, the breadbo
 });
 
 test('the GateMate in the device database: after the Gowin, the CCGM1A1 and CCGM1A2 of nextpnr\'s chip databases, their figures', () => {
-  assert.deepEqual(FAMILIES.slice(-4).map(f => f.id), ['ice40', 'ecp5', 'gowin', 'gatemate']);
+  assert.deepEqual(FAMILIES.slice(-7).map(f => f.id), ['ice40', 'ecp5', 'gowin', 'gatemate', 'max10', 'cyclone4e', 'cyclone5']);   // (the Intel families last, #5376)
   assert.deepEqual(partsOfFamily('gatemate').map(p => p.part), Object.keys(GATEMATE_PARTS));
   const a1 = findPart('ccgm1a1'), a2 = findPart('ccgm1a2');
   assert.deepEqual([a1.logicCells, a1.luts, a1.ffs, a1.brams, a1.bramSize, a1.plls, a1.packages.fbga324.userIo, a1.speeds], [20480, 40960, 40960, 32, 40, 4, 162, []]);
