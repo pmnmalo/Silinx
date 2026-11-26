@@ -46,6 +46,8 @@ export const SYSTEM_PT = {
   // an I²C bus (#5214)
   '+ I²C': '+ I²C', 'Add an I²C bus, the peripheral: its SCL port and its SDA, an inout port': 'Acrescentar um barramento I²C, o periférico: o seu porto SCL e o seu SDA, um porto inout',
   "Add the board's I²C bus (Wire), the master: SCL A5, SDA A4": 'Acrescentar o barramento I²C da placa (Wire), o mestre: SCL A5, SDA A4',
+  "Add one of the board's SPI buses, the master: SPI1 (SCK GPIO14, MOSI GPIO13, MISO GPIO12, SS GPIO15) or SPI2 (GPIO18, GPIO23, GPIO19, GPIO5)": 'Acrescentar um dos barramentos SPI da placa, o mestre: SPI1 (SCK GPIO14, MOSI GPIO13, MISO GPIO12, SS GPIO15) ou SPI2 (GPIO18, GPIO23, GPIO19, GPIO5)',
+  "Add one of the board's I²C buses, the master: I2C0 (SCL GPIO18, SDA GPIO19) or I2C1 (GPIO25, GPIO26)": 'Acrescentar um dos barramentos I²C da placa, o mestre: I2C0 (SCL GPIO18, SDA GPIO19) ou I2C1 (GPIO25, GPIO26)',
   'SCL (an input of the module)': 'SCL (uma entrada do módulo)', 'SDA (an inout port)': 'SDA (um porto inout)',
   'SCL rate (Hz)': 'Ritmo do SCL (Hz)', "at least the program's: 100000 with Wire": 'pelo menos o do programa: 100000 com Wire',
   'Baud': 'Débito (baud)', 'Frame': 'Trama', 'data bits, parity, stop bits: 8N1, 7E1…': 'bits de dados, paridade, bits de paragem: 8N1, 7E1…',

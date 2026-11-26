@@ -1,9 +1,11 @@
 // UI (#5495): a System's ESP32 node in the local server's page (cross-origin isolated, #5648): on JSPI where the browser
 // has it (#5658, Silinx's MicroPython build), else in a Worker through Atomics; the page's ?esp32=worker forces the latter. In a System project's System editor: the ESP32 tool places an ESP32 DevKitC (in MicroPython, its UART2), its
-// properties (its program a .py of its folder; no SPI or I²C yet), linked to a terminal, saved as the format has it; Try
+// properties (its program a .py of its folder; + SPI and + I²C, its board's buses), linked to a terminal, saved as the format has it; Try
 // it runs its .py on MicroPython's WebAssembly port (the console says which back end): the program's bytes in the terminal, its
 // console a terminal of its own, a line typed to the terminal echoed back in upper case; no warnings. Portuguese; both
-// interfaces. #5658: the same System on both back ends, the same run (each wire's bytes at the same times, the consoles).
+// interfaces. #5658: the same System on both back ends, the same run (each wire's bytes at the same times, the consoles); a
+// program with a Timer, a PWM, an SPI read and an I²C write no one acknowledges the same on both (#5495). The uart-esp32
+// example: its hello echoed by the FPGA into the ESP32's console; + SPI gives its node SPI1.
 import { before, after } from 'node:test';
 import assert from 'node:assert/strict';
 import os from 'node:os';
@@ -57,20 +59,25 @@ uiTest('#5495 #5658 the ESP32 in the System editor: placed, its .py, linked to a
   await page.click(`${ED} .sys-tool`, { text: 'Terminal' });
   await page.click({ x: canvas.x + canvas.w * 0.7, y: canvas.y + canvas.h * 0.6 });
   await page.waitFor((ed) => document.querySelector(`${ed} .doc-status`)?.textContent === '2 nodes · 0 links', [ED], { what: 'two nodes' });
-  // its properties: the board, its program (its folder's .py only), no SPI nor I²C yet
+  // its properties: the board, its program (its folder's .py only), its board's SPI and I²C buses (#5495)
   await page.click(`${ED} .sys-node[data-id="mcu"] .sys-head`);
   await page.waitFor((ed) => document.querySelector(`${ed} .sys-selection h3`)?.textContent === 'Microcontroller mcu', [ED], { what: 'its properties' });
   const side = await page.eval((ed) => {
     const s = document.querySelector(`${ed} .asm-side`), fw = s.querySelector('.sys-firmware'), f = fw.closest('.asm-field');
     return { board: s.querySelector('.sys-board').value, program: [...fw.options].map((o) => o.value), hint: f.querySelector('.asm-fhint').textContent,
-      adds: [...s.querySelectorAll('.asm-small')].map((b) => b.textContent.trim()).filter((t) => t.startsWith('+')) };
+      adds: [...s.querySelectorAll('.asm-small')].filter((b) => b.textContent.trim().startsWith('+')).map((b) => [b.textContent.trim(), b.title]) };
   }, ED);
-  assert.deepEqual(side, { board: 'esp32-devkitc', program: ['', 'mcu/main.py'], hint: 'a .py of the project, run by MicroPython', adds: ['+ GPIO'] });
+  assert.deepEqual(side, { board: 'esp32-devkitc', program: ['', 'mcu/main.py'], hint: 'a .py of the project, run by MicroPython', adds: [['+ GPIO', 'Add GPIO wires: the board\'s pins and their direction'],
+    ['+ SPI', 'Add one of the board\'s SPI buses, the master: SPI1 (SCK GPIO14, MOSI GPIO13, MISO GPIO12, SS GPIO15) or SPI2 (GPIO18, GPIO23, GPIO19, GPIO5)'],
+    ['+ I²C', 'Add one of the board\'s I²C buses, the master: I2C0 (SCL GPIO18, SDA GPIO19) or I2C1 (GPIO25, GPIO26)']] });
   // in Portuguese
   await page.eval(async () => (await import('/js/i18n.js')).setLanguage('pt'));
   await page.waitFor((ed) => document.querySelector(`${ed} .sys-add-esp32`)?.title.startsWith('Clique') && document.querySelector(`${ed} .asm-side .sys-firmware`), [ED], { what: 'Portuguese' });
-  assert.deepEqual(await page.eval((ed) => [document.querySelector(`${ed} .sys-add-esp32`).title, document.querySelector(`${ed} .asm-side .sys-firmware`).closest('.asm-field').querySelector('.asm-fhint').textContent], ED),
-    ['Clique na tela para acrescentar uma ESP32 DevKitC: MicroPython, comportamental, o seu programa um .py', 'um .py do projeto, corrido pelo MicroPython']);
+  assert.deepEqual(await page.eval((ed) => [document.querySelector(`${ed} .sys-add-esp32`).title, document.querySelector(`${ed} .asm-side .sys-firmware`).closest('.asm-field').querySelector('.asm-fhint').textContent,
+    document.querySelector(`${ed} .asm-side .sys-add-spi`).title, document.querySelector(`${ed} .asm-side .sys-add-i2c`).title], ED),
+  ['Clique na tela para acrescentar uma ESP32 DevKitC: MicroPython, comportamental, o seu programa um .py', 'um .py do projeto, corrido pelo MicroPython',
+    'Acrescentar um dos barramentos SPI da placa, o mestre: SPI1 (SCK GPIO14, MOSI GPIO13, MISO GPIO12, SS GPIO15) ou SPI2 (GPIO18, GPIO23, GPIO19, GPIO5)',
+    'Acrescentar um dos barramentos I²C da placa, o mestre: I2C0 (SCL GPIO18, SDA GPIO19) ou I2C1 (GPIO25, GPIO26)']);
   await page.eval(async () => (await import('/js/i18n.js')).setLanguage('en'));
   await setField(page, '.sys-firmware', 'mcu/main.py');
   await page.click(`${ED} .sys-tool`, { text: 'Link' });
@@ -140,5 +147,56 @@ uiTest('#5658 the same ESP32 on JSPI and in a Worker through Atomics: the same r
   assert.deepEqual([jspi.run.warnings, jspi.run.errors], [[], []]);
   assert.deepEqual(worker.run, jspi.run);
   await page.eval(() => history.replaceState(null, '', `${location.pathname}${location.hash}`));
+  assert.deepEqual(page.console.filter((c) => c.type === 'warning' || c.type === 'warn' || c.type === 'error').map((c) => c.text), []);
+}, { timeout: 300000 });
+
+// a Timer, a PWM, an SPI read and an I²C write with nothing on their buses (MISO and SDA pulled up: 0xFF, no ACK): each bus
+// step waited for, its result the node's (#5495)
+const MACHINE = ['from machine import SPI, I2C, Timer, PWM, Pin', 'import time', 'n = []', 't = Timer(0, period=1, callback=lambda t: n.append(time.ticks_us()))',
+  'p = PWM(Pin(4), freq=2000, duty_u16=30000)', 'spi = SPI(2, baudrate=100000)', 'print("spi", spi.read(2), time.ticks_us())', 'i2c = I2C(0, freq=100000)', 'try:',
+  '    i2c.writeto(0x42, b"x")', 'except OSError as e:', '    print("i2c", e, time.ticks_us())', 'time.sleep_ms(3)', 't.deinit()', 'print("timer", n)', 'print("done")', ''].join('\n');
+
+uiTest('#5495 #5658 an ESP32\'s Timer, PWM, SPI and I²C on JSPI and in a Worker: the same run (each bus step\'s end, its result; the Timer\'s times)', E, async (page) => {
+  const sys = await readWs(env, 'EspSys', FILE);
+  await makeProject(env, { name: 'EspBus', template: 'uart', files: { [FILE]: sys, 'mcu/main.py': MACHINE } });
+  const pj = await env.server.api('GET', '/api/projects/EspBus');
+  delete pj.fileTree;
+  await env.server.api('PUT', '/api/projects/EspBus', { ...pj, kind: 'system', board: null, constraints: null, top: null });
+  await page.openProject('EspBus');
+  await page.leftTab('design');
+  await page.waitFor(() => [...document.querySelectorAll('#hier .row .badge')].some((b) => b.textContent === 'System'), [], { what: 'the System\'s row' });
+  await page.click('#hier .row .badge', { text: 'System' });
+  await page.waitFor((ed) => document.querySelector(ed), [ED], { what: 'the System editor' });
+  const jspi = await runOn(page, null);
+  const worker = await runOn(page, 'worker');
+  assert.deepEqual([jspi.said, worker.said], [['Simulate System: ESP32 mcu: MicroPython on this thread (JSPI).'], ['Simulate System: ESP32 mcu: MicroPython in a Worker (Atomics).']]);
+  // (the SPI read from its 7th line, 160 µs; the I²C START, address and STOP, 110 µs; the Timer's each ms, its callback's line 1 µs)
+  assert.equal(jspi.run.terminals['mcu.repl'], "spi b'\\xff\\xff' 167\ni2c [Errno 19] ENODEV 282\ntimer [1005, 2005, 3005]\ndone\n");
+  assert.deepEqual([jspi.run.warnings, jspi.run.errors], [[], []]);
+  assert.deepEqual(worker.run, jspi.run);
+  await page.eval(() => history.replaceState(null, '', `${location.pathname}${location.hash}`));
+  assert.deepEqual(page.console.filter((c) => c.type === 'warning' || c.type === 'warn' || c.type === 'error').map((c) => c.text), []);
+}, { timeout: 300000 });
+
+uiTest('#5495 the uart-esp32 example: Try it, its hello echoed by the FPGA into the ESP32\'s console; + SPI gives its node SPI1', E, async (page) => {
+  await makeProject(env, { name: 'UartEsp', template: 'uart-esp32' });
+  await page.openProject('UartEsp');
+  await page.leftTab('design');
+  await page.waitFor(() => [...document.querySelectorAll('#hier .row .badge')].some((b) => b.textContent === 'System'), [], { what: 'the System\'s row' });
+  await page.click('#hier .row .badge', { text: 'System' });
+  await page.waitFor((ed) => document.querySelector(ed), [ED], { what: 'the System editor' });
+  await page.click(`${ED} .sys-sim-btn`);
+  await page.waitFor((ed) => document.querySelector(`${ed} .sys-sim-panel:not([hidden]) .sys-run-for`), [ED], { what: 'the simulation view' });
+  await page.click(`${ED} .sys-run-for`);
+  await page.waitFor((ed) => document.querySelector(`${ed} .sys-term-out[data-term="esp.repl"]`)?.textContent === 'Hello from ESP32!\r\n' && !window.Silinx.active.systemEditor.sim.state()?.running, [ED], { what: 'the echo', timeout: 240000 });
+  const s = await page.eval(() => window.Silinx.active.systemEditor.sim.state());
+  assert.deepEqual([s.warnings, s.errors, s.traffic.map((t) => [t.wire, String.fromCharCode(...t.bytes.map((b) => b.byte))])], [[], [], [['serial_esp', 'Hello from ESP32!\r\n'], ['serial_fpga', 'Hello from ESP32!\r\n']]]);
+  const lines = await page.eval(() => [...document.querySelectorAll('#console-log .ln')].map((l) => l.textContent.trim()).filter(Boolean));
+  assert.deepEqual(lines.filter((l) => /^(ERROR|WARNING)/.test(l)), []);
+  // + SPI: the board's first SPI bus, its master's pins said
+  await page.click(`${ED} .sys-node[data-id="esp"] .sys-head`);
+  await page.waitFor((ed) => document.querySelector(`${ed} .sys-selection h3`)?.textContent === 'Microcontroller esp', [ED], { what: 'its properties' });
+  await page.click(`${ED} .asm-side .sys-add-spi`);
+  await page.waitFor((ed) => document.querySelector(`${ed} .sys-iface[data-id="esp.SPI1"]`), [ED], { what: 'its SPI1' });
   assert.deepEqual(page.console.filter((c) => c.type === 'warning' || c.type === 'warn' || c.type === 'error').map((c) => c.text), []);
 }, { timeout: 300000 });

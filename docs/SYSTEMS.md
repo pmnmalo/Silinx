@@ -3,7 +3,7 @@
 The design of roadmap #4695. Modules on FPGAs and on microcontrollers (an Arduino's AVR, a Raspberry Pi Pico's
 RP2040, an ESP32), wired to each other in one drawing, then simulated, emulated and tried on the real boards
 together. Its phases 1 and 2 are built (the scheduler, the System document, the AVR node, the links, the System
-Emulator); of phase 4, the RP2040 node (#5494) and the ESP32 node's Worker + Atomics back end (#5495) are built, below. Each phase becomes issues of its own
+Emulator); of phase 4, the RP2040 node (#5494) and the ESP32 node (#5495, its Worker + Atomics and JSPI back ends, its machine) are built, below. Each phase becomes issues of its own
 when it starts.
 
 **What a System holds** (#5411): nodes of every kind, linked as the design wants (GPIO, UART, SPI, I²C, buses, a
@@ -345,8 +345,21 @@ An ESP32 DevKitC (`board: 'esp32-devkitc'`, #5495, `core/system-sim-esp32.js`) i
   program ended, a line typed there runs. A traceback is its error, with the program's own lines.
 - **Its pins** are the DevKitC's GPIOs at 3.3 V (34 to 39 inputs only); a UART's TX is its frames at the program's baud,
   its RX sampled back into bytes (UART(2) on GPIO17 / GPIO16 by default).
-- **Not modelled:** interrupts (Pin.irq, Timer), PWM, ADC, SPI and I²C, Wi-Fi but through the System's network links
-  (#5500, next), the real firmware (Espressif's QEMU on the server, phase 5). Its drawing in the System Emulator and the
+- **Its machine** (#5495) has, besides Pin and UART: **Timer** (periodic or one-shot, `period`, `freq`, `tick_hz`): its
+  callback runs between two lines of the program once its time has come, or during a sleep at its time; **PWM** (1 Hz to
+  40 MHz, `duty`, `duty_u16`, `duty_ns`): its pin's edges at its period and duty, a new duty from its time; **ADC**
+  (its ADC pins, `read_u16`, `read`, `read_uv`, `atten`, `width`): its pin's logic level, 0 or full scale; **SPI** (SPI(1)
+  and SPI(2) on their default pins, or SoftSPI on any) and **I2C** (I2C(0) and I2C(1), or SoftI2C), masters: each step
+  (an SPI transfer, an I²C START, byte or STOP) becomes its pins' waveforms (`core/esp32-buses.js`), as the AVR's
+  (open drain on I²C, pulled up), and the program waits for its end; what it reads (MISO's bits, an ACK, a byte) is read
+  by the node from the levels the other end gave at each sampling edge, so an FPGA peripheral answers it as it answers the
+  Arduino's (`writeto`, `readfrom`, `readfrom_mem`, `scan`; an address no one acknowledges raises `OSError` ENODEV).
+  Its System interfaces are its board's buses (SPI1, SPI2, I2C0, I2C1: **+ SPI** and **+ I²C** add the next one). The
+  node asks its engine for nothing while its program sleeps or waits for a bus step past the window, or has ended
+  with nothing typed: a fine SPI or I²C window costs no round trip.
+- **Not modelled:** interrupts (Pin.irq), analog voltages (an ADC reads a level), SPI and I²C peripheral modes, Wi-Fi but
+  through the System's network links (#5500), the real firmware (Espressif's QEMU on the server, phase 5). A `while`
+  loop whose body is one line gets no time (#5751). Its drawing in the System Emulator, as a circuit's part, and the
   browser edition (no local server, no `/core` for its Worker) come later.
 
 ### Network links and the MQTT broker
@@ -1021,6 +1034,10 @@ The local server does the same for the MCP's `serial_terminal` (`server/serial-m
    message is printed too. Both sides at 3.3 V. The FPGA's first byte is the one it read while the Pico booted, its TX held
    low by the RP2040's pull-down at reset: echoed before the Pico's UART is on, as on the boards. It teaches CircuitPython's
    `busio`, `board` and `digitalio` and its CIRCUITPY drive.
+10. **`uart-esp32`** (#5495). An ESP32 DevKitC in MicroPython with an FPGA: its `esp/main.py` sends "Hello from ESP32!"
+    over UART (UART(2), GPIO17 and GPIO16, 9600 baud) and prints each byte it receives, the FPGA's echo and its BTN0's
+    "Hello from Silinx!", in its console; the FPGA (the uart example's module) shows them on its LEDs. Both sides at 3.3 V.
+    It teaches a UART from Python, the same program on the real board.
 
 A scenario test fits `grade` and the labs: press the Arduino's button, expect "OK" on the FPGA's UART.
 

@@ -21,7 +21,7 @@ UART and GPIO links. Its design is in [SYSTEMS.md](../../SYSTEMS.md); its roadma
   schematic, and Synthesize, Implement Design and Generate Programming File on its own board, built in
   `build/nodes/<id>/`, #5446); the System's row has View/Edit, Check, Emulate and Implement System (every FPGA node). It opens
   in the **System editor**: the tools place an FPGA node, an Arduino Uno or Nano, an Explorer 16/32, a Raspberry Pi
-  **Pico**, a **Pico W** or an **ESP32** DevKitC (in MicroPython, the ESP32 behavioural, its Python run in a WebAssembly MicroPython: its program a `.py` of its folder, run on MicroPython's own firmware, which the local server
+  **Pico**, a **Pico W** or an **ESP32** DevKitC (in MicroPython, the ESP32 behavioural, its Python run in a WebAssembly MicroPython with its `machine`'s Pin, UART, Timer, PWM, ADC, SPI and I2C: example **uart-esp32**; its program a `.py` of its folder, run on MicroPython's own firmware, which the local server
   downloads once; what it prints is shown in a terminal of its own, its REPL; a Pico in CircuitPython, its Properties'
   Firmware: its program the `code.py` of its CIRCUITPY drive, with its folder's other files, as on the board; Program
   Node copies them to a real Pico's CIRCUITPY drive; the example **uart-pico**), an **MQTT Broker** (a Pico W's MQTT
