@@ -27,7 +27,7 @@ const place = (p) => `${p.n} ${p.name} ${p.dx},${p.dy}`;
 const note = (t) => `parts/Silinx.kicad_sym: Silinx_${t}: its Silinx.Model is the library's ${t}, which a KiCad part does not behave as yet: drawn only`;
 
 test('the whole library: every part with pins, read back with the same pins in the same places; the ICs, LED, button and switch as the library\'s', () => {
-  assert.deepEqual(EXPORTED_PARTS, PART_ORDER.filter((t) => !t.startsWith('breadboard-') && !['keypad-4x4', 'rotary-encoder'].includes(t) && !['board', 'lcd', 'oled', 'sensor', 'servo', 'buzzer', 'sonar', 'pir', 'dht', 'stepper', 'sd'].includes(PARTS[t].kind)));   // (a keypad, #5364: KiCad's own)   // (a board, #5215, an LCD, #5330, an OLED, #5336, an LM75, #5342, a servo, #5347: KiCad's own)
+  assert.deepEqual(EXPORTED_PARTS, PART_ORDER.filter((t) => !t.startsWith('breadboard-') && !['keypad-4x4', 'rotary-encoder'].includes(t) && !['board', 'lcd', 'oled', 'sensor', 'servo', 'buzzer', 'sonar', 'pir', 'dht', 'stepper', 'sd', 'analog', 'meter'].includes(PARTS[t].kind)));   // (the analog parts, #5382: KiCad's own)   // (a keypad, #5364: KiCad's own)   // (a board, #5215, an LCD, #5330, an OLED, #5336, an LM75, #5342, a servo, #5347: KiCad's own)
   assert.deepEqual(EXPORTED_PARTS.filter((t) => PARTS[t].kind !== 'ic'), OTHERS);
   assert.deepEqual(EXPORTED_PARTS.filter((t) => PARTS[t].kind === 'ic'), EXPORTED_ICS);
   const lib = partsLibrary();

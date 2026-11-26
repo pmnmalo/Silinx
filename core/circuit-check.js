@@ -7,6 +7,7 @@ import { isName } from './ident.js';
 import { reservedError } from './reserved.js';
 import { checkModels } from './circuit-kicad-hdl.js';
 import { keypadKey } from './circuit-keypad.js';
+import { resistiveLinks } from './circuit-analog-parts.js';
 
 // a name of the HDL: an identifier (core/ident.js), not a reserved word of VHDL or Verilog (core/reserved.js), nor a
 // name the generated VHDL uses itself
@@ -116,6 +117,13 @@ function drivenNets(nets, m, { err }) {
   const driven = nets.nets.map((net, i) => strong[i] || net.pins.some((q) => q.dir === 'weak'));
   // (driven both ways: an output, the supply; an open drain only pulls low, a contact may join it to GND, #5470)
   const hard = nets.nets.map((net) => net.pins.some((q) => q.dir === 'out' || isSupply(q)));
+  // (an analog circuit's resistors, #5382: a net a resistor joins to a driven one is driven, a pull-up's or a series
+  // resistor's)
+  const links = resistiveLinks(m, nets.pinNet);
+  for (let grew = true; grew;) {
+    grew = false;
+    for (const l of links) if (driven[l.a] !== driven[l.b]) { driven[l.a] = driven[l.b] = true; grew = true; }
+  }
   const via = new Map();
   const typeOf = new Map(m.parts.map((p) => [p.id, p.type]));
   for (const c of nets.contacts) {

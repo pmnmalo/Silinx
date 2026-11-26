@@ -26,6 +26,7 @@ import { DHT11, DHT22 } from './circuit-dht.js';
 import { KEYPAD_4X4 } from './circuit-keypad.js';
 import { ROTARY_ENCODER } from './circuit-encoder.js';
 import { OLED_SSD1306 } from './circuit-oled.js';
+import { ANALOG_PARTS } from './circuit-analog-parts.js';
 import { systemsOn } from './build-channel.js';
 
 // ------------------------------------------------------------------ the breadboards
@@ -116,6 +117,9 @@ const OTHERS = [
   DHT11, DHT22,
   // an SD card on SPI (#5477, core/circuit-sd.js)
   SD_CARD,
+  // the analog parts: resistors, capacitors, a potentiometer, an LDR, a thermistor, a diode, a voltmeter (#5382,
+  // core/circuit-analog-parts.js)
+  ...ANALOG_PARTS,
 ];
 
 // ------------------------------------------------------------------ the library
@@ -156,11 +160,11 @@ export const nudged = (x, v, dir) => Math.min(x.max, Math.max(x.min, onStep(v + 
 export const sensePin = (p, x) => (partDef(p.type).sense.length > 1 ? `${p.id}.${x.prop}` : p.id);
 export const partDef = (type) => (Object.hasOwn(PARTS, String(type)) ? PARTS[type] : theParts().get(String(type)) ?? null);
 
-/** The pins a part drives as a supply's terminals: [{ n, value: '1' | '0' }] (the supply's + and −, a board's 5V, 3V3 and
+/** The pins a part drives as a supply's terminals: [{ n, value: '1' | '0', volts }] (the supply's + and −, a board's 5V, 3V3 and
  *  GND, #5215). */
 export function supplyPins(d) {
-  if (d?.kind === 'supply') return [{ n: 1, value: '1' }, { n: 2, value: '0' }];
-  return (d?.pins || []).filter((p) => p.supply).map((p) => ({ n: p.n, value: p.dir === 'vcc' ? '1' : '0' }));
+  if (d?.kind === 'supply') return [{ n: 1, value: '1', volts: 5 }, { n: 2, value: '0', volts: 0 }];
+  return (d?.pins || []).filter((p) => p.supply).map((p) => ({ n: p.n, value: p.dir === 'vcc' ? '1' : '0', volts: p.dir === 'vcc' ? p.volts ?? 5 : 0 }));
 }
 
 /** A pin's place unturned (dx, dy) turned by `rot` quarter turns clockwise. */
@@ -233,6 +237,9 @@ export function partsList() {
     type: d.type, title: d.title, kind: d.kind, ...(d.chip ? { chip: d.chip, family: d.family, tpd: d.tpd, ...(d.oc ? { openCollector: true } : {}) } : {}),
     pins: d.pins.map((p) => ({ n: p.n, name: p.name, dir: p.dir, dx: p.dx, dy: p.dy, ...(p.loc ? { loc: p.loc } : {}), ...(p.volts ? { volts: p.volts } : {}) })),
     ...(d.kind === 'board' ? { board: d.board } : {}),
+    // (an analog part's values and what it senses, #5382: their ranges and defaults)
+    ...(d.values ? { values: d.values.map((x) => ({ prop: x.prop, unit: x.unit, min: x.min, max: x.max, default: x.default })) } : {}),
+    ...(d.sense ? { sense: d.sense.map((x) => ({ prop: x.prop, unit: x.unit, min: x.min, max: x.max, step: x.step, default: x.default })) } : {}),
     ...(d.gates ? { gates: d.gates.map((g) => `${g.fn} (${g.ins.join(', ')}) → ${g.out}`) } : {}),
     ...(d.model || d.seq ? { function: d.title } : {}),
     // (a project's KiCad part: its file, its symbol, its source; the library part it behaves as, or none: drawn only)

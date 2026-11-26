@@ -26,7 +26,7 @@ const read = (rel) => fs.readFileSync(path.join(tmp, 'ws', 'c', rel), 'utf8');
 test('circuit_parts: the library, one part with its pins, gates and delay, its details (#4126); an unknown part', async () => {
   const all = await ok('circuit_parts', {});
   assert.deepEqual(all.data.parts.map((p) => p.type), ['breadboard-half', 'breadboard-full', 'supply', 'logic-switch', 'button', 'spdt', 'dip-4', 'dip-8', 'keypad-4x4', 'rotary-encoder', 'clock', 'pull-up', 'pull-down',
-    'led', 'seg7-cc', 'seg7-ca', 'led-bar-10', 'probe', 'lcd-1602', 'oled-ssd1306', 'lm75', 'servo-sg90', 'buzzer', 'stepper-28byj48', 'hc-sr04', 'hc-sr501', 'dht11', 'dht22', 'sd-card', 'arduino-uno', 'arduino-nano', 'fpga-basys2', 'fpga-nexys2', '7400', '7401', '7402', '7403', '7404', '7405', '7406', '7408', '7410', '7411', '7414', '7420', '7427', '7430', '7432', '7486',
+    'led', 'seg7-cc', 'seg7-ca', 'led-bar-10', 'probe', 'lcd-1602', 'oled-ssd1306', 'lm75', 'servo-sg90', 'buzzer', 'stepper-28byj48', 'hc-sr04', 'hc-sr501', 'dht11', 'dht22', 'sd-card', 'resistor', 'capacitor', 'potentiometer', 'ldr', 'thermistor', 'diode', 'voltmeter', 'arduino-uno', 'arduino-nano', 'fpga-basys2', 'fpga-nexys2', '7400', '7401', '7402', '7403', '7404', '7405', '7406', '7408', '7410', '7411', '7414', '7420', '7427', '7430', '7432', '7486',
     '7407', '7409', '7412', '7413', '7415', '7421', '7422', '7426', '7428', '7433', '7437', '7438', '7440', '74132', '74133', '74136', '74386', '7451', '7454', '7455',
     '74125', '74126', '74240', '74241', '74244', '74365', '74366', '74367', '74368', '74540', '74541', '74242', '74243', '74245',
     '4001', '4011', '4030', '4069', '4070', '4071', '4081', '4002', '4012', '4023', '4025', '4049', '4050', '4072', '4073', '4075', '4077', '7447', '7448', '74138', '74139', '74151', '74153', '74157', '7483', '74283', '7485',
@@ -439,4 +439,33 @@ test('#5477 simulate_drawing: an SD card powered up and sent CMD0 by switches, s
   assert.equal(r.data.steps.length, steps.length);
   const info = await ok('circuit_parts', { type: 'sd-card' });
   assert.match(info.text, /^sd-card: SD card module \(SPI, microSD\); pins 1 GND gnd, 2 VCC vcc, 3 MISO out, 4 MOSI in, 5 SCK in, 6 CS in\nA microSD card module/);
+});
+
+test('#5382 edit_circuit: an analog circuit\'s values set ("4k7"); simulate_drawing: its voltmeters, its LEDs\' currents, a potentiometer turned, a capacitor charging; circuit_parts their values', async () => {
+  // the supply, RV1 (10 kΩ) its wiper to VM1 and through R1 (330 Ω) to D1; C1 from the wiper to GND
+  const P = (id, n) => ({ RV1: [[0, 0], [1, 0], [2, 0]], R1: [[0, 4], [4, 4]], D1: [[8, 4], [9, 4]], VM1: [[0, 8], [1, 8]], C1: [[0, 12], [1, 12]] })[id][n - 1];
+  await ok('write_file', { project: 'c', path: 'src/an.circ.json', text: JSON.stringify({ format: 'silinx-circuit', version: 1, name: 'an', lang: 'vhdl',
+    parts: [{ id: 'P1', type: 'supply', x: -10, y: -10 }, { id: 'RV1', type: 'potentiometer', x: 0, y: 0 }, { id: 'R1', type: 'resistor', x: 0, y: 4 }, { id: 'D1', type: 'led', x: 8, y: 4 },
+      { id: 'VM1', type: 'voltmeter', x: 0, y: 8 }, { id: 'C1', type: 'capacitor', x: 0, y: 12 }],
+    wires: [{ id: 'w1', points: [[-10, -10], P('RV1', 1)] }, { id: 'w2', points: [[-10, -9], P('RV1', 3)] }, { id: 'w3', points: [P('RV1', 2), P('R1', 1)] }, { id: 'w4', points: [P('R1', 2), P('D1', 1)] },
+      { id: 'w5', points: [P('D1', 2), [-10, -9]] }, { id: 'w6', points: [P('RV1', 2), P('VM1', 1)] }, { id: 'w7', points: [P('VM1', 2), [-10, -9]] }, { id: 'w8', points: [P('C1', 1), P('RV1', 2)] }, { id: 'w9', points: [P('C1', 2), [-10, -9]] }] }) });
+  const e = await ok('edit_circuit', { project: 'c', path: 'src/an.circ.json', operations: [{ op: 'set', id: 'R1', ohms: '4k7' }, { op: 'set', id: 'C1', farads: '10n' }, { op: 'set', id: 'RV1', pos: 0 }] });
+  assert.deepEqual([e.data.errors, e.data.warnings], [[], []]);
+  assert.deepEqual(JSON.parse(read('src/an.circ.json')).parts.map((p) => p.ohms ?? p.farads ?? null), [null, 10000, 4700, null, null, 1e-8]);
+  await fails('edit_circuit', { project: 'c', path: 'src/an.circ.json', operations: [{ op: 'set', id: 'R1', ohms: '20M' }] }, 'operation 0 (set): ohms: resistance from 1 Ω to 10 MΩ (a number, or as 4.7k, 100n) (nothing written)');
+  // its wiper at end 1 (5 V): the capacitor charges in µs, the LED through 4.7 kΩ; turned to the middle, then to its end 3
+  const r = await ok('simulate_drawing', { project: 'c', file: 'src/an.circ.json', cycles: [{ after_us: 1000 }, { RV1: 50 }, { after_us: 1000 }, { RV1: 100 }, { after_us: 1000 }] });
+  // (at time 0 the capacitor empty; a step's change read at once, the capacitor holding; its charge after after_us. At 50 %
+  // by hand: the wiper 2.5 V through 2.5 kΩ, the LED's 1.45 V through 4.7 kΩ: 0.146 mA, 2.135 V)
+  assert.deepEqual(r.text.split('\n').slice(1), ['start: t = 0 ns; LEDs D1=0; VM1 1 mV; D1 0 mA',
+    'step 0: inputs none; t = 1000000 ns; LEDs D1=1; VM1 5 V; D1 0.74 mA', 'step 1: inputs none; t = 1000000 ns; LEDs D1=1; VM1 5 V; D1 0.74 mA',
+    'step 2: inputs none; t = 2000000 ns; LEDs D1=1; VM1 2.13 V; D1 0.15 mA', 'step 3: inputs none; t = 2000000 ns; LEDs D1=1; VM1 2.13 V; D1 0.15 mA',
+    'step 4: inputs none; t = 3000000 ns; LEDs D1=0; VM1 0 V; D1 0 mA']);
+  assert.deepEqual(r.data.steps.at(-1).volts, { VM1: 0 });
+  assert.deepEqual(r.data.steps[0].mA, { D1: 0.74 });
+  assert.deepEqual(r.data.warnings, []);
+  await fails('simulate_drawing', { project: 'c', file: 'src/an.circ.json', cycles: [{ RV1: 120 }] }, 'step 0: RV1 = 120: position (%) from 0 to 100');
+  const parts = await ok('circuit_parts', {});
+  assert.deepEqual(parts.data.parts.find((p) => p.type === 'potentiometer').values, [{ prop: 'ohms', unit: 'Ω', min: 1, max: 10e6, default: 10000 }]);
+  assert.deepEqual(parts.data.parts.find((p) => p.type === 'ldr').sense, [{ prop: 'lux', unit: 'lux', min: 0, max: 1000, step: 1, default: 100 }]);
 });

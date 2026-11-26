@@ -321,7 +321,7 @@ test('the edits: a part added on a hole or by its pin, moved, turned, deleted; a
   assert.deepEqual(pointOf(m, 'U1.14'), [4, 4]);
   assert.deepEqual(pointOf(m, 'U1.VCC'), [4, 4]);
   assert.deepEqual(pointOf(m, 'U1.15').error, '\'U1.15\': U1 (7400) has no pin 15 (its pins: 1 1A, 2 1B, 3 1Y, 4 2A, 5 2B, 6 2Y, 7 GND, 8 3Y, 9 3A, 10 3B, 11 4Y, 12 4A, 13 4B, 14 VCC)');
-  assert.deepEqual(addPart(m, { type: 'resistor' }), { error: 'no part \'resistor\' in the library' });
+  assert.deepEqual(addPart(m, { type: 'flux-capacitor' }), { error: 'no part \'flux-capacitor\' in the library' });
   assert.deepEqual(addPart(m, { type: 'led', id: 'U1' }), { error: 'U1: the circuit has a part or a wire named so' });
   r = addWire(m, { from: 'U1.14', to: 'BB1.tp5', color: 'red' });
   assert.equal(r.id, 'w5');

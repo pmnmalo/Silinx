@@ -8,6 +8,7 @@ import { isName } from './ident.js';
 import { LM75_TEMP } from './circuit-lm75.js';
 import { PIR_HOLD, PIR_RETRIGGER } from './circuit-pir.js';
 import { wireStyleOf } from './wire-style.js';
+import { parseSi, sig3 } from './circuit-analog-parts.js';
 
 export { portName };
 
@@ -34,6 +35,8 @@ export function normalizeCircuit(m = {}) {
     // (a temperature sensor's temperature, #5342: its saved one, in 0.5 °C)
     // (a part's sensed values, #5456: each its saved one in its range, a step's multiple, else its default)
     for (const s of d?.sense || []) { const v = Number(p[s.prop]); out[s.prop] = Number.isFinite(v) ? Math.min(s.max, Math.max(s.min, onStep(v, s.step))) : s.default; }
+    // (an analog part's values, #5382: each its saved one in its range, three digits, else its default)
+    for (const s of d?.values || []) { const v = parseSi(p[s.prop]); out[s.prop] = Number.isFinite(v) && v >= s.min && v <= s.max ? sig3(v) : s.default; }
     // (a motion sensor's hold time, s, in its range, and its jumper, #5463)
     if (d?.kind === 'pir') { const h = Number(p.hold); out.hold = Number.isFinite(h) ? Math.min(PIR_HOLD.max, Math.max(PIR_HOLD.min, Math.round(h))) : PIR_HOLD.default; out.retrigger = p.retrigger == null ? PIR_RETRIGGER : !!p.retrigger; }
     if (d?.kind === 'sensor') { const t = Number(p.temp); out.temp = Number.isFinite(t) ? Math.min(LM75_TEMP.max, Math.max(LM75_TEMP.min, Math.round(t * 2) / 2)) : LM75_TEMP.default; }

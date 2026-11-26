@@ -45,6 +45,14 @@ const ABOUT = {
   'lcd-1602': "Two lines of 16 characters, its HD44780 controller simulated: a write on E's falling edge, RS 0 a command, 1 a character; 8-bit or 4-bit (D7..D4) mode; off until its program turns it on. Not a port of the HDL.",
   // (a graphic OLED, #5336)
   'oled-ssd1306': "128 × 64 pixels, its SSD1306 controller simulated on I²C at 0x3C: a control byte, then commands or its display's bytes (8 pages of 128, bit 0 a page's top row); lit while on and its charge pump on. SCL and SDA need a pull-up each. Not a port of the HDL.",
+  // (the analog parts, #5382: a circuit with one is solved as a circuit, core/circuit-analog.js)
+  resistor: 'Limits the current between its two leads: I = V / R (Ohm\'s law). On a circuit with an analog part, every voltage and current is solved; in the HDL, a resistor from a rail is a pull-up or a pull-down, one between two nets joins them. Not a port of the HDL.',
+  capacitor: 'Holds a charge: its voltage changes as its current charges it, I = C dV/dt (through a resistor, an exponential with the time constant RC). Not in the HDL.',
+  potentiometer: 'A resistor with a wiper W between its ends 1 and 3: its position (0 to 100 %, set while trying it: its − and +) divides its resistance, the wiper\'s voltage between its ends\'. Not a port of the HDL.',
+  ldr: 'A light-dependent resistor (GL5528): about 10 kΩ at 10 lux, less with more light, 1 MΩ in the dark. The light (lux) is set while trying it (its − and +). With a resistor, a voltage divider that a Schmitt-trigger input or an ADC reads. Not a port of the HDL.',
+  thermistor: 'An NTC thermistor, 10 kΩ at 25 °C (B = 3950 K): less resistance as it warms. Its temperature is set while trying it (its − and +). With a resistor, a voltage divider that an ADC reads. Not a port of the HDL.',
+  diode: 'A silicon diode (1N4148): it conducts from its anode A to its cathode K (about 0.6 V across it), not the other way. Not in the HDL.',
+  voltmeter: 'Shows the voltage of its + lead against its COM lead, and draws no current. On a circuit with no analog part, a net\'s level as the volts of what drives it (a 74LS output\'s 1 at 3.4 V). Not a port of the HDL.',
   // (the boards, #5215)
   'arduino-uno': "Its headers' pins, the board's (D0…D13, A0…A5; SDA and SCL are A4 and A5): its 5V, 3V3 and GND power the breadboard; its other pins are its program's, in a System (alone, they drive nothing).",
   'arduino-nano': "A DIP-30 that straddles a breadboard's channel, its pins the board's (D0…D13, A0…A7; A6 and A7 inputs only): its 5V, 3V3 and GND power the breadboard; its other pins are its program's, in a System (alone, they drive nothing).",
@@ -53,7 +61,7 @@ const ABOUT = {
 };
 /** A pin's role by its direction. */
 export const PIN_ROLES = { in: 'input', out: 'output', oc: 'open-collector output', vcc: 'supply +5 V', gnd: 'supply GND', nc: 'not connected',
-  pass: 'contact', weak: 'weak output', probe: 'tip', none: 'not simulated', board: "the board's pin", vcc33: 'supply 3.3 V' };
+  pass: 'contact', weak: 'weak output', probe: 'tip', none: 'not simulated', board: "the board's pin", vcc33: 'supply 3.3 V', analog: 'terminal' };
 const FAMILY = { ttl: '74LS (TTL)', cmos: '4000 (CMOS)' };
 const FN = { and: 'AND', or: 'OR', nand: 'NAND', nor: 'NOR', xor: 'XOR', xnor: 'XNOR', not: 'NOT', buf: 'BUF' };
 
