@@ -377,8 +377,8 @@ end silinx;`;
 // of unisim-xc7.js; no timing beyond its conversions', the Xilinx UNISIM sources not used. Its analog inputs are values,
 // not its pins (VP, VN, VAUXP, VAUXN are its package's pins, left as they are): the die temperature (temp_mc, in
 // thousandths of °C, 25 °C at first), VCCINT, VCCAUX and VCCBRAM (vccint_mv, vccaux_mv, vccbram_mv: 1.0, 1.8 and 1.0 V)
-// and the unipolar inputs VP / VN and VAUX0..15 (vp_mv, vaux_mv(k), 0 to 1000 mV, 0 at first): signals a simulation sets
-// (force: the Board Emulator's potentiometer and temperature), SIM_MONITOR_FILE not read.
+// and the unipolar inputs VP / VN and VAUX0..15 (vp_mv, vaux0_mv..vaux15_mv, 0 to 1000 mV, 0 at first): signals a
+// simulation sets (force: the Board Emulator's analog inputs, #5385; simulate's forces), SIM_MONITOR_FILE not read.
 //   - its DRP: on DCLK's rising edge with DEN, a read of DADDR (DWE low) or a write of DI (DWE high: the configuration
 //     registers 40h-42h and 48h-4Fh), DRDY one DCLK later with DO; the status registers: 00h the temperature, 01h VCCINT,
 //     02h VCCAUX, 03h VP/VN, 06h VCCBRAM, 10h-1Fh VAUX0..15, each its 12-bit code MSB-justified (DO(15 downto 4)); the
@@ -414,6 +414,8 @@ architecture silinx of XADC is
   signal vccaux_mv : integer := 1800;
   signal vccbram_mv : integer := 1000;
   signal vp_mv : integer := 0;
+  signal vaux0_mv, vaux1_mv, vaux2_mv, vaux3_mv, vaux4_mv, vaux5_mv, vaux6_mv, vaux7_mv, vaux8_mv, vaux9_mv, vaux10_mv, vaux11_mv, vaux12_mv,
+         vaux13_mv, vaux14_mv, vaux15_mv : integer := 0;
   signal vaux_mv : int_array := (others => 0);
   -- (each configuration register its INIT_xx until a write sets it)
   signal cfg40, cfg41, cfg42, cfg48, cfg49, w40, w41, w42, w48, w49 : std_logic_vector(15 downto 0) := (others => '0');
@@ -451,6 +453,8 @@ begin
   cfg42 <= w42 when wr42 = '1' else to_stdlogicvector(INIT_42);
   cfg48 <= w48 when wr48 = '1' else to_stdlogicvector(INIT_48);
   cfg49 <= w49 when wr49 = '1' else to_stdlogicvector(INIT_49);
+  vaux_mv <= (vaux0_mv, vaux1_mv, vaux2_mv, vaux3_mv, vaux4_mv, vaux5_mv, vaux6_mv, vaux7_mv, vaux8_mv, vaux9_mv, vaux10_mv, vaux11_mv, vaux12_mv,
+              vaux13_mv, vaux14_mv, vaux15_mv);
   DO <= do_r; DRDY <= drdy_r; EOC <= eoc_r; EOS <= eos_r; BUSY <= busy_r; CHANNEL <= chan_r; MUXADDR <= (others => '0');
   process (DCLK)
     variable div, n, ch, seq : integer;

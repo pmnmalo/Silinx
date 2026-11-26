@@ -34,6 +34,11 @@ menu hides it (*Modules on the headers*).
 - A **watch list** of internal signals, and the clock rate, real time or slower.
 - Two engines: the design **compiled** (tens of millions of cycles per second), or the **event-driven** simulation of
   the HDL, to debug.
+- **Analog inputs (XADC)** (#5385): a 7-series design that instantiates the XADC gets a box of the side panel, its die
+  temperature (°C) and an analog input's voltage (VP / VN or VAUX0..15, 0 to 1 V, as a potentiometer on the Basys 3's
+  JXADC), set while it runs and kept through a power cycle. Such a design runs on the event-driven engine (the compiled
+  one has no model of the XADC, said in the console). The MCP server's `simulate` sets the same values with its forces
+  (the XADC instance's `temp_mc`, `vp_mv`, `vaux6_mv`…, in thousandths).
 
 ## Pressing the buttons
 
