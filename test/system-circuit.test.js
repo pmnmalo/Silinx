@@ -161,7 +161,7 @@ test('#5215 a circuit node edited: added with its circuit, changed, no interface
   assert.deepEqual([a.id, a.system.nodes.at(-1)], ['circuit', { id: 'circuit', kind: 'circuit', circuit: 'circuit/bench.circ.json', interfaces: [], x: 40, y: 10 }]);
   const b = changeNode(a.system, 'circuit', { id: 'bench', circuit: 'bench/b2.circ.json' });
   assert.deepEqual(b.system.nodes.at(-1), { id: 'bench', kind: 'circuit', circuit: 'bench/b2.circ.json', interfaces: [], x: 40, y: 10 });
-  assert.deepEqual(changeNode(b.system, 'bench', { board: 'x' }), { error: 'bench: a Circuit node has no field \'board\' (id, circuit, x, y)' });
+  assert.deepEqual(changeNode(b.system, 'bench', { board: 'x' }), { error: 'bench: a Circuit node has no field \'board\' (id, circuit, spiHz, x, y)' });
   assert.deepEqual(addInterface(b.system, 'bench', { kind: 'gpio' }), { error: 'bench: a circuit node has no interfaces: its boards\' pins it wires are its links' });
   assert.equal(editSystem(s0, { action: 'add_node', fields: { kind: 'circuit', id: 'mid', circuit: 'mid/m.circ.json' } }).id, 'mid');
   assert.ok(describeSystem(b.system).includes('node bench: circuit bench/b2.circ.json'));
