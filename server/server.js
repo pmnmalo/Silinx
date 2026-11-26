@@ -205,17 +205,20 @@ export async function createApp({ host = '127.0.0.1', token = null, codes = crea
   for (const pkg of importMapPackages()) {
     app.use(`/vendor/npm/${pkg}`, asset(path.join(ROOT, 'node_modules', pkg)));
   }
+  // a downloaded file's route that failed (#5721-#5724): a name not served a 404 that does not repeat it, a download that
+  // failed its reason, as JSON (never the request's words in a page: CodeQL's reflected XSS)
+  const vendorError = (res, e, notServed) => (notServed.test(e.message) ? res.status(404).json({ error: 'no such file' }) : res.status(502).json({ error: e.message }));
   // a Pico's firmware (#5494): MicroPython's .uf2 and the RP2040's bootrom, downloaded once by the local server
   // (server/rp2040-firmware.js), not shipped
   app.get('/vendor/rp2040/:file', async (req, res) => {
     const { rp2040Path } = await import('./rp2040-firmware.js');
-    try { res.sendFile(await rp2040Path(req.params.file)); } catch (e) { res.status(/^no RP2040 firmware file/.test(e.message) ? 404 : 502).type('text/plain').send(e.message); }
+    try { res.sendFile(await rp2040Path(req.params.file)); } catch (e) { vendorError(res, e, /^no RP2040 firmware file/); }
   });
   // Silinx's MicroPython build for an ESP32 node's JSPI back end (#5658, server/micropython-jspi.js): downloaded once,
   // not shipped
   app.get('/vendor/micropython-jspi/:file', async (req, res) => {
     const { micropythonJspiPath } = await import('./micropython-jspi.js');
-    try { res.sendFile(await micropythonJspiPath(req.params.file)); } catch (e) { res.status(/^no file /.test(e.message) ? 404 : 502).type('text/plain').send(e.message); }
+    try { res.sendFile(await micropythonJspiPath(req.params.file)); } catch (e) { vendorError(res, e, /^no file /); }
   });
   // MicroPython's WebAssembly port (#5495): an ESP32 node's engine, its settrace build, in its Worker (web/js/esp32-worker.js)
   app.use('/vendor/micropython-wasm', asset(path.join(ROOT, 'node_modules/@micropython/micropython-webassembly-pyscript')));
