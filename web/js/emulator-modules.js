@@ -4,7 +4,7 @@
 import { prefKey } from './prefs.js';
 import { menuCheck, menuTitle } from './toolbar-menu.js';
 
-const LABELS = { vga: 'VGA monitor', serial: 'Serial terminal', display: 'Display', switches: 'Switches' };
+const LABELS = { vga: 'VGA monitor', serial: 'Serial terminal', display: 'Display', switches: 'Switches', io: 'Modules on the headers' };
 const MODULE_KEY = (id) => prefKey(`silinx.emulator.module.${id}`);
 const pref = (id) => { try { return localStorage.getItem(MODULE_KEY(id)) !== 'hidden'; } catch { return true; } };
 

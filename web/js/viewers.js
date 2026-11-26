@@ -10,6 +10,7 @@ import { naturalCompare } from '/core/hier-order.js';
 import { hierarchySources } from '/core/top-hierarchy.js';
 import { Simulator } from '/core/simulator.js';
 import { ENGINE_KEY, defaultEngine } from '/core/emulate-engine.js';
+import { withHeaderModules } from '/core/emulate-headers.js';   // (the modules on the board's headers, #5641)
 import { modulesFromLibrary } from '/core/schdoc.js';
 import * as wiz from './wizards.js';
 import { countEvent } from './analytics.js';
@@ -456,7 +457,7 @@ export async function openEmulator(mod, { scale, model = null, engine = null, qu
         const notes = [];
         let headed = false;   // (its first line written)
         const onNote = (text, kind = '') => (headed ? log(`Board Emulator: ${text}`, kind, EMU) : notes.push([text, kind]));
-        const view = mountEmulator(el, { onNote, design: r.design, board, assignments, title: `${mod}${model ? ` — ${SIM_MODEL_NAMES[model]} netlist` : ''}`, files,
+        const view = mountEmulator(el, { onNote, design: r.design, board: withHeaderModules(board, r.design.top.ports, assignments), assignments, title: `${mod}${model ? ` — ${SIM_MODEL_NAMES[model]} netlist` : ''}`, files,
           timing: { gens, scale: r.scale, onChange: (k) => setTimeout(() => openEmulator(mod, { scale: k, model, engine }), 0) },
           model: { current: model, available: models, names: SIM_MODEL_NAMES,
             onChange: (m) => setTimeout(() => openEmulator(mod, { model: m || null, engine }), 0) },

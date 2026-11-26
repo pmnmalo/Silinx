@@ -5,6 +5,7 @@ import { h } from './dom.js';
 import { vgaPins } from '/core/vga.js';
 import { BOARD_LAYOUTS, makeDigit } from './emulator.js';
 import { pressEnd } from '/core/emulate-press.js';
+import { ledNumbers } from '/core/emulate.js';
 import { mountTouchControls } from './emulator-touch.js';
 import { noMenu } from './emulator-pcb.js';
 
@@ -129,7 +130,13 @@ export function mountBoardParts(ctx) {
     noMenu(boardEl);
     main.append(boardEl);
     const cell = (kind, idx, widget) => h('div', { class: `emu-cell${bitFor(kind, idx) ? '' : ' nc'}`, title: tip(kind, idx) },
-      widget, h('span', { class: 'res' }, `${resLabel[kind] || kind}${idx}`), h('span', { class: 'port' }, portLabel(kind, idx)));
+      widget, h('span', { class: 'res' }, cellName(kind, idx)), h('span', { class: 'port' }, portLabel(kind, idx)));
+    // (a module's part named from the port's lowest bit on it: LD4, SW4…, #5641)
+    const MODULE_NAMES = { LEDs: 'LD', Switches: 'SW', Buttons: 'BTN' };
+    function cellName(kind, idx) {
+      const r = resOf(kind);
+      return r?.extra?.module && MODULE_NAMES[r.group] ? `${MODULE_NAMES[r.group]}${(r.extra.first ?? 0) + idx}` : `${resLabel[kind] || kind}${idx}`;
+    }
     const row = (res, kind, mk) => {
       const r = resOf(res);
       if (!r) return;
@@ -145,6 +152,13 @@ export function mountBoardParts(ctx) {
     row('led', 'led', (k) => mkLed(k));
     row('sw', 'sw', (k) => mkSwitch(k));
     row('btn', 'btn', (k) => mkButton(k));
+    // the modules on its headers (core/emulate-headers.js, #5641): their LEDs (numbered after the board's), switches, buttons
+    const n = ledNumbers(board);
+    for (const r of board.resources.filter((x) => x.extra?.module)) {
+      if (r.group === 'LEDs') row(r.name, r.name, (k) => mkLed(n[r.name] + k));
+      else if (r.group === 'Switches') row(r.name, r.name, (k) => mkSwitch(k, 'emu-sw', r.name));
+      else if (r.group === 'Buttons') row(r.name, r.name, (k) => mkButton(k, 'emu-btn', r.name));
+    }
     const others = board.resources.filter((r) => r.name !== 'btn' && (/^btn_/.test(r.name) || r.name === 'rot_center'));
     if (others.length) boardEl.append(h('div', { class: 'emu-row' }, ...others.map((r) => h('div', { class: `emu-cell${bitFor(r.name) ? '' : ' nc'}`, title: tip(r.name) },
       mkButton(0, 'emu-btn', r.name), h('span', { class: 'res' }, r.name.replace(/^btn_/, '').toUpperCase()), h('span', { class: 'port' }, portLabel(r.name))))));

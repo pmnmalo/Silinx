@@ -268,9 +268,9 @@ test('theme.css: the pages\' own colours have a dark value; no colour written in
     const src = fs.readFileSync(path.join(ROOT, 'web/js', f), 'utf8');
     for (const m of src.matchAll(/\b(background|backgroundColor|color|border\w*|outline)\s*(:|=)\s*['`][^'`]*(#[0-9a-fA-F]{3,8}\b|rgba?\()[^'`]*['`]/g)) found.push(`${f}: ${m[0]}`);
   }
+  // (an LED's colour, the board's: emulator-paint.js's rgbOf, no colour written there since #4684)
   assert.deepEqual(found, [
     "emulator-board.js: color: '#cfe8d4'",
-    'emulator-paint.js: background = `rgb(${ledColour(v, red).join()})`',
     "fpgaview.js: color = '#4e79a7'",
     "wizards.js: background: '#c4161c'",
     "wizards.js: color: '#fff'",

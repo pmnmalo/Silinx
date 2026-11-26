@@ -17,7 +17,10 @@ ao estilo do ISE) abre-o com o módulo de topo do projeto.
 A Basys2, a Nexys2, a Nexys3, a Atlys, a Basys 3, a Nexys A7, o Spartan-3E Starter Kit, a iCEBreaker, a ULX3S, a Tang
 Nano 9K, a Zybo Z7 e a Arty Z7 (entre outras) são desenhadas tal como são, incluindo a cor da placa; as outras placas (a
 placa de avaliação GateMate, a Arty S7…) têm um painel genérico. Na Zybo Z7 e na Arty Z7 as peças do sistema de
-processamento (o LED e os botões MIO, o PS-SRST) estão desenhadas mas não são emuladas.
+processamento (o LED e os botões MIO, o PS-SRST) estão desenhadas mas não são emuladas. O que um exemplo precisa e essa
+placa não tem (o mostrador de 4 dígitos, os LEDs e os interruptores para além dos seus, na Zybo Z7, na Arty Z7 e na Arty
+S7), que as restrições põem nas suas Pmods, é desenhado numa breadboard por baixo da placa, cada módulo com o nome das
+suas Pmods, e emulado como as peças da própria placa; o menu da barra de ferramentas esconde-o (*Módulos nos conectores*).
 
 | Uma Nexys3 e o seu monitor VGA (o exemplo vga) | Uma iCEBreaker e os seus Pmods (o exemplo clock) |
 |---|---|

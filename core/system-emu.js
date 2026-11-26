@@ -67,7 +67,7 @@ export function emulationBoards(sys, inputs) {
     const wiring = boardWiring({ ports: portsOf(inputs.netlists[n.id]).map(portOf), assignments, board: r });
     const ins = wiring.bits.filter(b => b.dir === 'in' && (b.kind === 'sw' || b.kind === 'btn') && !driven.has(`${n.id}.${pinOf(b)}`) && !driven.has(`${n.id}.${b.port}`));
     const outs = wiring.bits.filter(b => b.dir === 'out' && ['led', 'seg', 'dp', 'an'].includes(b.kind));
-    out.push({ id: n.id, kind: 'fpga', board: r, wiring,
+    out.push({ id: n.id, kind: 'fpga', board: wiring.board, wiring,
       inputs: ins.map(b => ({ pin: pinOf(b), kind: b.kind, res: b.res.name, idx: b.idx, activeLow: !!b.res.extra?.activeLow })),
       outputs: [...new Set(outs.map(pinOf))] });
   }
