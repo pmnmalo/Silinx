@@ -149,7 +149,7 @@ uiTest('#4700 the System editor mounted alone, read only (a project followed): n
   await page.drag(head, { x: head.x + 120, y: head.y + 80 });
   await page.click(head);
   await page.eval((ed) => document.querySelector(ed).dispatchEvent(new KeyboardEvent('keydown', { key: 'Delete', bubbles: true })), RO);
-  assert.ok(await page.eval((ed) => [...document.querySelectorAll(`${ed} .asm-side input, ${ed} .asm-side select`)].every((x) => x.disabled || x.readOnly), RO));
+  assert.ok(await page.eval((ed) => [...document.querySelectorAll(`${ed} .asm-side input, ${ed} .asm-side select`)].every((x) => x.disabled || !!x.readOnly), RO));
   assert.equal(await page.eval(() => JSON.stringify(window.roEd.getModel())), before);
   assert.equal(await page.eval(() => window.roEd.canDelete()), false);
   await page.eval(() => { window.roEd.destroy(); document.getElementById('ro-host').remove(); });
