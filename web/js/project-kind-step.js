@@ -20,7 +20,7 @@ const ART = {
   system: [rect(2, 10, 20, 20, 2), rect(8, 16, 8, 8), rect(34, 10, 20, 20, 2), rect(40, 16, 8, 8),
     ['path', { d: 'M22 17h12M22 23h12', 'stroke-dasharray': '3 2' }]],
 };
-const art = id => h('span', { class: 'kind-art', 'aria-hidden': 'true' },
+export const art = id => h('span', { class: 'kind-art', 'aria-hidden': 'true' },
   sv('svg', { viewBox: '0 0 56 40', width: 56, height: 40, fill: 'none', stroke: 'currentColor', 'stroke-width': 1.6, 'stroke-linejoin': 'round' },
     ...ART[id].map(([tag, a]) => sv(tag, a))));
 

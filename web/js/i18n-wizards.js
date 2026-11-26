@@ -26,6 +26,9 @@ export const WIZARDS_PT = {
   // Design Properties' Project Kind, what a change of kind does (#5041, core/project-kind.js DESIGN_ONLY_MESSAGES)
   // (the profiles, #5440: core/project-profile.js)
   'Embedded / SoC': 'Embebido / SoC',
+  // Project ▸ Change Mode… (#5755, web/js/mode-change-ui.js, core/mode-change.js)
+  'Change Mode…': 'Mudar o Modo…', 'Change Mode': 'Mudar o Modo', "Choose the project's mode.": 'Escolha o modo do projeto.', 'Node Kept:': 'Nó Mantido:',
+  'Going down loses (nothing is deleted from the disk):': 'Descer perde (nada é apagado do disco):', 'Nothing is lost:': 'Nada se perde:',
   // (Systems not in a release yet, #5202: core/build-channel.js)
   "Systems are not in this release yet: it is in the development build (the site's dev/) until it is stable.": 'Os Sistemas ainda não estão nesta versão: está na versão de desenvolvimento (a dev/ do site) até estar estável.',
   'Its board and its constraints file leave the project (the file stays on the disk); its drawings stay, their HDL and the test benches hidden, none deleted.':
@@ -138,6 +141,26 @@ const label = what => (WIZARDS_PT[`${what}:`] || `${what}:`).replace(/:$/, '');
 
 // the profiles' labels in Portuguese (#5440), in the messages that name them
 const PROFILE_PT = { 'Digital Logic': 'Lógica Digital', FPGA: 'FPGA', 'Embedded / SoC': 'Embebido / SoC', System: 'Sistema' };
+// a mode change's lines (#5755, core/mode-change.js): what is done, what is lost (in Change Mode's note and, a WARNING, in
+// the console)
+const MODE_PT = { Circuit: 'Circuito', Board: 'Placa', System: 'Sistema' };
+const MODE_LINES = [
+  [/^its board (\S+)$/, 'a sua placa $1'], [/^its device, no board yet$/, 'o seu dispositivo, ainda sem placa'],
+  [/^its constraints file (\S+), to be written$/, 'o seu ficheiro de restrições $1, a escrever'],
+  [/^its (board|drawings) the System's first node, (\S+)( \(\S+\))?$/, (_, w, n, b) => `${w === 'board' ? 'a sua placa' : 'os seus desenhos'} o primeiro nó do Sistema, ${n}${b || ''}`],
+  [/^its files moved into the node's folder, (\S+) \((.+)\)$/, 'os seus ficheiros movidos para a pasta do nó, $1 ($2)'],
+  [/^its System document (\S+) written$/, 'o seu documento de Sistema $1 escrito'],
+  [/^the node (\S+) the project's( \(\S+\))?$/, (_, n, b) => `o nó ${n} o do projeto${b || ''}`],
+  [/^the node (\S+) \((.+)\) leaves the project: its folder (\S+) stays on the disk$/, 'o nó $1 ($2) sai do projeto: a sua pasta $3 fica no disco'],
+  [/^the node (\S+) \((.+)\) leaves the project$/, 'o nó $1 ($2) sai do projeto'],
+  [/^its (\d+) links? \((.+)\)$/, (_, k, l) => `${k === '1' ? 'a sua ligação' : `as suas ${k} ligações`} (${l})`],
+  [/^its System document (\S+) \(it stays in the folder, out of the flow\)$/, 'o seu documento de Sistema $1 (fica na pasta, fora do fluxo)'],
+  [/^the sources of the other nodes leave the project's list: (.+)$/, 'as fontes dos outros nós saem da lista do projeto: $1'],
+  [/^its board, (\S+)$/, 'a sua placa, $1'], [/^its constraints file (\S+) \(it stays on the disk\)$/, 'o seu ficheiro de restrições $1 (fica no disco)'],
+  [/^its HDL and C sources no drawing makes leave the project \(they stay on the disk\): (.+)$/, 'as suas fontes HDL e C que nenhum desenho faz saem do projeto (ficam no disco): $1'],
+  [/^its implementation, emulation and programming$/, 'a sua implementação, emulação e programação'],
+];
+const modeLine = l => { const m = MODE_LINES.find(([re]) => re.test(l)); return m ? l.replace(m[0], m[1]) : l; };
 export const WIZARDS_PT_PATTERNS = [
   // (a System as the top, #5402: web/js/system-top-ui.js)
   [/^(\S+): a System project now, its System (\S+) its top \(its board kept\)\.$/, '$1: agora um projeto de Sistema, o seu Sistema $2 é o topo (a placa fica guardada).'],
@@ -214,4 +237,11 @@ export const WIZARDS_PT_PATTERNS = [
     (_, n, p, one, list, allows) => `o projeto '${n}' não pode ser ${PROFILE_PT[p]}: ${one === 'node' ? `o seu nó ${list} não é permitido` : `os seus nós ${list} não são permitidos`} (${PROFILE_PT[p]} permite ${allows})`],
   [/^the project '(.+)' cannot be (Digital Logic|FPGA|Embedded \/ SoC|System): its top is its System \(Set as Top Module on one of its modules first\)$/,
     (_, n, p) => `o projeto '${n}' não pode ser ${PROFILE_PT[p]}: o seu topo é o seu Sistema (primeiro Definir como Módulo de Topo num dos seus módulos)`],
+  // (a mode change, #5755: core/mode-change.js modeChangeText, its refusals)
+  ...MODE_LINES,
+  [/^(\S+): (Circuit|Board|System) now \(nothing lost\)\.$/, (_, n, m) => `${n}: agora ${MODE_PT[m]} (nada perdido).`],
+  [/^(\S+): (Circuit|Board|System) now \(nothing deleted: what left the project stays on the disk\)\.$/, (_, n, m) => `${n}: agora ${MODE_PT[m]} (nada apagado: o que saiu do projeto fica no disco).`],
+  [/^WARNING: lost: (.+)$/, (_, l) => `AVISO: perdido: ${modeLine(l)}`],
+  [/^lost: (.+)$/, (_, l) => `perdido: ${modeLine(l)}`],
+  [/^the project '(.+)' is a (Circuit|Board|System) project already$/, (_, n, m) => `o projeto '${n}' já é um projeto ${MODE_PT[m]}`],
 ];

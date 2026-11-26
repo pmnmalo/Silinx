@@ -9,7 +9,7 @@ import express from 'express';
 import { serverVersions, saveVersion, restoreServerVersion, diffServerVersion } from './versions.js';
 
 // (the reasons a page asks for: a version by hand, or before one of its own risky commands; the others are the server's)
-const PAGE_REASONS = /^(manual|before-(remove|delete|convert|import|merge|git))$/;
+const PAGE_REASONS = /^(manual|before-(remove|delete|convert|import|merge|git|mode))$/;
 
 export function mountVersionRoutes({ P, api, wrap, bad }) {
   const json = express.json({ limit: '64kb' });
@@ -22,7 +22,7 @@ export function mountVersionRoutes({ P, api, wrap, bad }) {
   api.post('/projects/:p/versions', json, wrap(async req => {
     await P.readProject(req.params.p);
     const reason = str(req.body?.reason, 'reason') || 'manual';
-    if (!PAGE_REASONS.test(reason)) throw bad('reason: manual, or before-remove, before-delete, before-convert, before-import, before-merge, before-git');
+    if (!PAGE_REASONS.test(reason)) throw bad('reason: manual, or before-remove, before-delete, before-convert, before-import, before-merge, before-git, before-mode');
     try { return await saveVersion(P, req.params.p, { reason, label: str(req.body?.label, 'label'), author: str(req.body?.author, 'author') }); } catch (e) { return rethrow(e); }
   }));
   api.get('/projects/:p/versions/:id', wrap(async req => {

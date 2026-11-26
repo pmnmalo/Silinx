@@ -54,7 +54,7 @@ async function drawingsOfHdl(name) {
   return out;
 }
 /** The HDL files a project's drawings generate: the HDL that is no source of the user's own. */
-const generatedFiles = async name => Object.keys(await drawingsOfHdl(name));
+export const generatedFiles = async name => Object.keys(await drawingsOfHdl(name));
 
 /** A design project's diagnostics as its interface shows them (web/js/design-only.js shownDiag, #3891): an HDL file's,
  *  its drawing's (`drawn`: no line, the HDL's lines are not the drawing's), the checker Silinx. */
