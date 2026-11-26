@@ -56,7 +56,7 @@ uiTest('#5484 the Explorer 16/32 in the System editor: placed, its .hex, linked 
     return { board: s.querySelector('.sys-board').value, boards: [...s.querySelector('.sys-board').options].map((o) => o.textContent), firmware: [...fw.options].map((o) => o.value),
       hint: fw.closest('.asm-field').querySelector('.asm-fhint').textContent, adds: [...s.querySelectorAll('.asm-small')].map((b) => b.textContent.trim()) };
   }, ED);
-  assert.deepEqual([side.board, side.boards, side.firmware, side.adds.filter((t) => t.startsWith('+'))], ['explorer-1632', ['Arduino Uno', 'Arduino Nano', 'Explorer 16/32', 'Raspberry Pi Pico'], ['', 'mcu/echo.hex'], ['+ GPIO']]);
+  assert.deepEqual([side.board, side.boards, side.firmware, side.adds.filter((t) => t.startsWith('+'))], ['explorer-1632', ['Arduino Uno', 'Arduino Nano', 'Explorer 16/32', 'Raspberry Pi Pico', 'Raspberry Pi Pico W'], ['', 'mcu/echo.hex'], ['+ GPIO']]);
   assert.equal(side.hint, 'a .hex of the project (XC16\'s)');
   assert.deepEqual(await page.eval((ed) => document.querySelector(`${ed} .sys-node[data-id="mcu"]`).textContent.includes('Explorer 16/32'), ED), true);
   // in Portuguese

@@ -72,6 +72,8 @@ export function mountSystemSide(ctx) {
         field(py ? 'Program (.py)' : 'Firmware', choose(n.firmware || '', [['', '(none)'], ...[...new Set([...fw, ...(n.firmware ? [n.firmware] : [])])].map(f => [f, f])], v => take(changeNode(M(), n.id, { firmware: v }), 'node'), 'sys-firmware'), py ? 'a .py of the project, run by MicroPython' : pic ? 'a .hex of the project (XC16\'s)' : 'a .hex or an .elf of the project'),
         // (the Explorer 16/32's SPI and I²C links: #5484's next part)
         h('div', { class: 'asm-row' }, btn('+ GPIO', 'Add GPIO wires: the board\'s pins and their direction', () => take(addInterface(M(), n.id, { kind: 'gpio' }), 'iface'), 'asm-small sys-add-gpio'),
+          // (a Pico W's network: its MQTT interface, #5500)
+          ...(mcuBoard(n.board)?.network && !n.interfaces.some(i => i.kind === 'mqtt') ? [btn('+ MQTT', 'Add its MQTT interface: its link to a broker', () => take(addInterface(M(), n.id, { kind: 'mqtt', name: 'mqtt' }), 'iface'), 'asm-small sys-add-mqtt')] : []),
           ...(pic || py ? [] : [btn('+ SPI', 'Add the board\'s SPI bus, the master: SCK D13, MOSI D11, MISO D12, SS D10', () => take(addInterface(M(), n.id, { kind: 'spi' }), 'iface'), 'asm-small sys-add-spi'),
             btn('+ I²C', 'Add the board\'s I²C bus (Wire), the master: SCL A5, SDA A4', () => take(addInterface(M(), n.id, { kind: 'i2c' }), 'iface'), 'asm-small sys-add-i2c')])));
     } else if (n.kind === 'circuit') {
@@ -86,7 +88,7 @@ export function mountSystemSide(ctx) {
     const n = M().nodes.find(x => x.id === nid), f = n?.interfaces.find(x => x.name === name);
     if (!f) return [];
     const change = fields => take(changeInterface(M(), nid, name, fields), 'iface');
-    const out = [h('h3', {}, `${{ uart: 'UART', gpio: 'GPIO', spi: 'SPI', i2c: 'I²C' }[f.kind] || f.kind} ${nid}.${name}`)];
+    const out = [h('h3', {}, `${{ uart: 'UART', gpio: 'GPIO', spi: 'SPI', i2c: 'I²C', mqtt: 'MQTT' }[f.kind] || f.kind} ${nid}.${name}`)];
     if (n.kind === 'fpga' || f.kind === 'gpio') out.push(field('Name', text(f.name, v => change({ name: v }))));
     if (f.kind === 'uart') {
       if (n.kind === 'fpga') {
@@ -119,11 +121,14 @@ export function mountSystemSide(ctx) {
       const hz = h('input', { type: 'number', class: 'asm-input sys-hz', value: String(f.hz), min: '1' });
       hz.addEventListener('change', () => change({ hz: Math.round(+hz.value) }));
       out.push(field('SCL rate (Hz)', hz, 'at least the program\'s: 100000 with Wire'));
+    } else if (f.kind === 'mqtt') {
+      // (#5500: its links' messages, a client's to its broker, every client's to a broker's)
+      out.push(h('div', { class: 'asm-label' }, n.kind === 'broker' ? 'Every client\'s MQTT link ends here' : 'Its link to an MQTT broker: its program\'s network and umqtt.simple'));
     } else {
       out.push(field('Pins', text(f.pins.join(', '), v => change({ pins: v.split(/[,;\s]+/).filter(Boolean) }), 'mono sys-pins'), n.kind === 'fpga' ? 'the module\'s ports, a bus\'s bit as led<0>' : mcuBoard(n.board)?.arch === 'pic24' ? 'the board\'s pins: RA0, RD6…' : 'the board\'s pins: D2, A0…'),
         field('Direction', choose(f.dir, [['in', 'in'], ['out', 'out']], v => change({ dir: v }), 'sys-dir')));
     }
-    if (n.kind === 'fpga' || f.kind !== 'uart') out.push(h('div', { class: 'asm-row' }, btn('Remove Interface', 'Remove the interface and its link', () => { if (apply(removeInterface(M(), nid, name))) setSel({ kind: 'node', id: nid }); }, 'asm-small asm-danger')));
+    if ((n.kind === 'fpga' || f.kind !== 'uart') && n.kind !== 'broker') out.push(h('div', { class: 'asm-row' }, btn('Remove Interface', 'Remove the interface and its link', () => { if (apply(removeInterface(M(), nid, name))) setSel({ kind: 'node', id: nid }); }, 'asm-small asm-danger')));
     return out;
   }
 
@@ -136,7 +141,7 @@ export function mountSystemSide(ctx) {
     else if (s?.kind === 'link') {
       const l = M().links.find(x => x.id === s.id);
       if (l) selSection.append(h('h3', {}, `Link ${l.id}`), field('Id', text(l.id, v => take(changeLink(M(), l.id, { id: v }), 'link'))),
-        h('div', { class: 'asm-label sys-ends' }, `${l.kind === 'uart' ? 'UART' : 'GPIO'}: ${l.a} ↔ ${l.b}`));
+        h('div', { class: 'asm-label sys-ends' }, `${({ uart: 'UART', spi: 'SPI', i2c: 'I²C', mqtt: 'MQTT' })[l.kind] ?? 'GPIO'}: ${l.a} ↔ ${l.b}`));
     }
     sysBody.replaceChildren(field('Name', text(M().name, v => { if (v) apply({ system: { ...M(), name: v } }); })));
   }

@@ -35,6 +35,7 @@ export function systemWaves(sys, { name = 'system' } = {}) {
   const pins = new Map([...sys.nodes.keys()].map((n) => [n, []]));
   const links = [];
   for (const l of sys.links.values()) {
+    if (l.sent.some((v, i) => i % 2 && v && typeof v === 'object')) continue;   // (a network link's messages: no wave, #5500)
     pins.get(l.src.node).push(signal(l.src.pin, l.sent));
     for (const d of l.dsts) pins.get(d.node).push(signal(d.pin, l.trace));
     links.push(signal(l.name, l.sent));

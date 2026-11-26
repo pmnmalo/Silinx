@@ -21,6 +21,7 @@ import { CompiledNode } from './system-sim-compiled.js';
 import { AvrNode } from './system-sim-avr.js';
 import { pic24Contract } from './system-sim-pic24.js';
 import { rp2040Contract, replOf } from './system-sim-rp2040.js';
+import { BrokerNode } from './system-mqtt.js';
 import { TerminalNode } from './system-sim-terminal.js';
 import { CircuitNode } from './system-sim-circuit.js';
 import { circuitNodePins } from './system-circuit.js';
@@ -57,6 +58,7 @@ function endOf(sys, end) {
   if (f.kind === 'gpio') return { n, f, pins: n.kind === 'fpga' ? f.pins.map(p => String(p).replace(/<(\d+)>$/, '[$1]')) : f.pins };
   if (f.kind === 'spi') { const s = n.kind === 'mcu' ? mcuBoard(n.board)?.spis?.[f.name] : f; return s ? { n, f, spi: { sck: s.sck, mosi: s.mosi, miso: s.miso, ss: s.ss } } : null; }
   if (f.kind === 'i2c') { const s = n.kind === 'mcu' ? mcuBoard(n.board)?.i2cs?.[f.name] : f; return s ? { n, f, i2c: { scl: s.scl, sda: s.sda } } : null; }
+  if (f.kind === 'mqtt') return { n, f, mqtt: true };
   if (n.kind === 'fpga') return { n, f, tx: f.tx, rx: f.rx };
   if (n.kind === 'mcu') { const u = mcuBoard(n.board)?.uarts[f.name]; return u ? { n, f, tx: u.tx, rx: u.rx } : null; }
   return { n, f, tx: 'tx', rx: 'rx' };
@@ -96,7 +98,13 @@ export function systemPlan(sys, { ports = {}, circuits = {} } = {}) {
       outs.get(from.n.id)?.add(from.pin);
       driven.add(`${to.n.id}.${to.pin}`);
     };
-    if (l.kind === 'uart') {
+    if (l.kind === 'mqtt') {
+      // (an MQTT link, #5500: its messages up to the broker and down to the client, each a wire of its own, `<link>_up`
+      // and `<link>_down`, at the network's latency)
+      const [c, k] = a.n.kind === 'broker' ? [b, a] : [a, b];
+      wires.push({ name: `${l.id}_up`, link: l.id, kind: 'mqtt', from: `${c.n.id}.net_tx`, to: `${k.n.id}.rx_${c.n.id}` });
+      wires.push({ name: `${l.id}_down`, link: l.id, kind: 'mqtt', from: `${k.n.id}.tx_${c.n.id}`, to: `${c.n.id}.net_rx` });
+    } else if (l.kind === 'uart') {
       const uart = { baud: a.f.baud, frame: a.f.frame };
       for (const [s, d] of [[a, b], [b, a]]) if (s.tx && d.rx) wire({ n: s.n, pin: s.tx }, { n: d.n, pin: d.rx }, null, 'uart', uart);
     } else if (l.kind === 'spi') {
@@ -163,10 +171,15 @@ export function buildSystem(sys, plan, { fpga = {}, firmware = {} } = {}) {
       // (an Arduino's AVR, avr8js's; the Explorer 16/32's PIC24, silinx-pic24's behind the node contract, #5484; a Pico's
       // RP2040, rp2040js's on MicroPython, its REPL a terminal of its own, `<id>.repl`, #5494)
       const arch = mcuBoard(n.board)?.arch;
-      const a = sim.addNode(n.id, arch === 'pic24' ? pic24Contract({ board: n.board, firmware: firmware[n.id] }) : arch === 'rp2040' ? rp2040Contract({ board: n.board, program: firmware[n.id] }) : new AvrNode({ board: n.board, firmware: firmware[n.id] }));
+      const network = !!mcuBoard(n.board)?.network && n.interfaces.some(f => f.kind === 'mqtt');   // (a Pico W's MQTT, #5500)
+      const a = sim.addNode(n.id, arch === 'pic24' ? pic24Contract({ board: n.board, firmware: firmware[n.id] }) : arch === 'rp2040' ? rp2040Contract({ board: n.board, program: firmware[n.id], network }) : new AvrNode({ board: n.board, firmware: firmware[n.id] }));
       if (arch === 'rp2040') terminals.set(`${n.id}.repl`, replOf(a));
     }
-    else if (n.kind === 'circuit') {
+    else if (n.kind === 'broker') {
+      // (an MQTT broker, #5500: a pin pair for each client its links join)
+      const clients = sys.links.filter(l => l.kind === 'mqtt').map(l => [linkEnd(l.a), linkEnd(l.b)]).filter(es => es.some(e => e?.node === n.id)).map(es => es.find(e => e?.node !== n.id)?.node).filter(Boolean);
+      terminals.set(n.id, sim.addNode(n.id, new BrokerNode({ clients })));   // (its traffic's view, a terminal's)
+    } else if (n.kind === 'circuit') {
       const c = plan.circuits.find(x => x.id === n.id);
       sim.addNode(n.id, new CircuitNode({ model: c.model, pins: c.pins }));
     } else {
@@ -183,7 +196,7 @@ export function buildSystem(sys, plan, { fpga = {}, firmware = {} } = {}) {
     // (an SPI or I²C wire: a sixteenth of its clock's period, the peripheral's answer in time for the master's next edge;
     // SS and I²C's lines pulled up, #5214; a UART's line too, at rest while its transmitter is not enabled yet: an AVR's D1
     // an input before Serial.begin, #5561)
-    const latency = lookahead({ protocol: w.kind, baud: w.baud, hz: w.hz });
+    const latency = lookahead({ protocol: w.kind, baud: w.baud, hz: w.hz });   // (an MQTT wire's: the network's, 1 ms)
     sim.link({ name: w.name, from: w.from, to: w.to, kind: w.kind === 'uart' ? 'uart' : 'wire', baud: w.baud, latency, pull: w.line === 'ss' || w.kind === 'i2c' || w.kind === 'uart' ? 1 : null });
   }
   for (const { node, pin, value } of plan.idle) sim.nodes.get(node).setPin(pin, value);

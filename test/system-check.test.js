@@ -87,16 +87,16 @@ test('the links: their ids, kinds and ends', () => {
   assert.deepEqual(run(s => s.links.push({ id: 'w3', kind: 'gpio', a: 'fpga', b: 'nobody.x' }, { id: 'w4', kind: 'gpio', a: 'uno.nothing', b: 'fpga.sw0' })), [
     'error: w3: its end \'fpga\' is not node.interface [link:w3]', 'error: w3: no node nobody [link:w3]', 'error: w4: uno has no interface nothing [link:w4]']);
   assert.deepEqual(run(s => s.links.push({ id: 'w1', kind: 'gpio', a: 'uno.out', b: 'fpga.sw0' }, { id: '', kind: 'gpio', a: 'uno.out', b: 'fpga.sw0' }, { id: 'w5', kind: 'can', a: 'uno.out', b: 'fpga.sw0' })), [
-    'error: Two links are named w1 [link:w1]', 'error: A link (uno.out to fpga.sw0) has no id [link:]', 'error: w5: no link kind \'can\' (the kinds: uart, gpio, spi, i2c) [link:w5]']);
+    'error: Two links are named w1 [link:w1]', 'error: A link (uno.out to fpga.sw0) has no id [link:]', 'error: w5: no link kind \'can\' (the kinds: uart, gpio, spi, i2c, mqtt) [link:w5]']);
   assert.deepEqual(run(s => { s.links.splice(1, 1); }), ['warning: uno joins nothing: no link reaches it [node:uno]']);
 });
 
 test('the nodes: ids, kinds, modules, boards, firmware', () => {
   assert.deepEqual(run(s => s.nodes.push({ id: 'uno', kind: 'mcu', board: 'arduino-uno' }, { kind: 'terminal' }, { id: 'x', kind: 'robot' })), [
-    'error: Two nodes are named uno [node:uno]', 'error: A node (terminal) has no id [node:]', 'error: x: no node kind \'robot\' (the kinds: fpga, mcu, terminal, circuit, design) [node:x]']);
+    'error: Two nodes are named uno [node:uno]', 'error: A node (terminal) has no id [node:]', 'error: x: no node kind \'robot\' (the kinds: fpga, mcu, terminal, circuit, design, broker) [node:x]']);
   assert.deepEqual(run(s => { Object.assign(N(s, 'fpga'), { module: 'nomod', board: 'zedboard' }); Object.assign(N(s, 'uno'), { board: 'esp32', firmware: 'fw/echo.bin' }); }), [
     'error: fpga: no module \'nomod\' in the project [node:fpga]', 'error: fpga: no FPGA board \'zedboard\' (variant 250) [node:fpga]',
-    'error: uno: no microcontroller board \'esp32\' (the boards: arduino-uno, arduino-nano, explorer-1632, pico) [node:uno]', 'error: uno: its firmware fw/echo.bin is not a .hex or an .elf [node:uno]']);
+    'error: uno: no microcontroller board \'esp32\' (the boards: arduino-uno, arduino-nano, explorer-1632, pico, pico-w) [node:uno]', 'error: uno: its firmware fw/echo.bin is not a .hex or an .elf [node:uno]']);
   assert.deepEqual(run(s => { Object.assign(N(s, 'fpga'), { module: null, board: null }); N(s, 'uno').board = null; }), [
     'error: fpga: an FPGA node with no module [node:fpga]', 'error: fpga: an FPGA node with no board [node:fpga]', 'error: uno: a microcontroller with no board [node:uno]']);
   assert.deepEqual(run(s => { N(s, 'uno').firmware = 'fw/other.hex'; }), ['error: uno: no firmware fw/other.hex in the project [node:uno]']);
@@ -107,7 +107,7 @@ test('the interfaces: names, kinds, pins, directions', () => {
   assert.deepEqual(run(s => N(s, 'uno').interfaces.push({ name: '', kind: 'gpio' }, { name: 'btn', kind: 'gpio', pins: ['D7'], dir: 'in' }, { name: 'g', kind: 'gpio', pins: [], dir: 'in' },
     { name: 'h', kind: 'gpio', pins: ['D8'], dir: 'both' }, { name: 's', kind: 'can' }, { name: 'k', kind: 'gpio', pins: ['D20', 'A9'], dir: 'in' })), [
     'error: uno: an interface has no name [node:uno]', 'error: uno: two interfaces are named btn [node:uno]', 'error: uno.g: a GPIO interface with no pins [node:uno]',
-    'error: uno.h: its direction \'both\' is not in or out [node:uno]', 'error: uno.s: no interface kind \'can\' (the kinds: uart, gpio, spi, i2c) [node:uno]',
+    'error: uno.h: its direction \'both\' is not in or out [node:uno]', 'error: uno.s: no interface kind \'can\' (the kinds: uart, gpio, spi, i2c, mqtt) [node:uno]',
     'error: uno.k: D20, A9 are not pins of the Arduino Uno [node:uno]']);
   assert.deepEqual(run(s => N(s, 'term').interfaces.push({ name: 'g', kind: 'gpio', pins: ['x'], dir: 'in' })), ['error: term: a serial terminal has UART interfaces only (g is gpio) [node:term]']);
   assert.deepEqual(run(s => { N(s, 'uno').board = 'arduino-nano'; F(s, 'uno', 'out').pins = ['A6', 'A7']; }), ['error: uno.out: A6, A7 of the Arduino Nano are inputs only [node:uno]']);
@@ -177,5 +177,5 @@ test('#5485 each node\'s typed ports: a direction, a kind, a level; each wire\'s
   // (a node in error: its ports those resolved; none known, none)
   assert.deepEqual(analyzeSystem(normalizeSystem({ name: 'x', nodes: [{ id: 'f', kind: 'fpga', interfaces: [] }], links: [] })).ports, { f: [] });
   for (const k of LINK_KINDS) assert.ok(linkTypeOf(k), `${k}: a protocol of a link kind`);
-  assert.deepEqual(LINK_KINDS.map(linkTypeOf), ['transaction', 'pin', 'transaction', 'transaction']);
+  assert.deepEqual(LINK_KINDS.map(linkTypeOf), ['transaction', 'pin', 'transaction', 'transaction', 'network']);
 });

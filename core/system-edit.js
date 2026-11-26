@@ -12,7 +12,7 @@ const copy = sys => normalizeSystem(JSON.parse(JSON.stringify(sys)));
 /** A new UART interface's settings. */
 export const UART_DEFAULTS = { baud: 9600, frame: '8N1' };
 /** The node kinds' names, as the editor's Add menu and the MCP server say them. */
-export const NODE_KIND_NAMES = { fpga: 'FPGA', mcu: 'Microcontroller', terminal: 'Serial terminal', circuit: 'Circuit' };
+export const NODE_KIND_NAMES = { fpga: 'FPGA', mcu: 'Microcontroller', terminal: 'Serial terminal', circuit: 'Circuit', broker: 'MQTT broker' };
 
 /** An id not used by a node or a link of the System: `base`, else base2, base3… */
 export function freeId(sys, base) {
@@ -45,7 +45,7 @@ export function addNode(sys, { kind, id = null, board = null, module = null, cir
   if (!NODE_KINDS.includes(kind)) return { error: `no node kind '${kind}': ${NODE_KINDS.join(', ')}` };
   if (lang != null && langError(kind, lang)) return { error: langError(kind, lang) };
   const out = copy(sys);
-  const nid = id ?? freeId(out, kind === 'mcu' ? 'mcu' : kind === 'terminal' ? 'term' : kind === 'circuit' ? 'circuit' : 'fpga');
+  const nid = id ?? freeId(out, kind === 'mcu' ? 'mcu' : kind === 'terminal' ? 'term' : kind === 'circuit' ? 'circuit' : kind === 'broker' ? 'broker' : 'fpga');
   const bad = idError(out, nid);
   if (bad) return { error: bad };
   let n;
@@ -56,12 +56,14 @@ export function addNode(sys, { kind, id = null, board = null, module = null, cir
     // (a board of one language: in it, the Pico's MicroPython, #5494)
     if (b.langs && lang != null && !b.langs.includes(lang)) return { error: `the ${b.name} runs ${b.langs.join(', ')}, not ${lang}` };
     if (b.langs && lang == null) lang = b.langs[0];
-    n = { id: nid, kind, board: b.id, firmware: null, interfaces: Object.keys(b.uarts).map(name => ({ name, kind: 'uart', ...UART_DEFAULTS })) };
+    // (a Pico W's network: its MQTT interface, #5500)
+    n = { id: nid, kind, board: b.id, firmware: null, interfaces: [...Object.keys(b.uarts).map(name => ({ name, kind: 'uart', ...UART_DEFAULTS })), ...(b.network ? [{ name: 'mqtt', kind: 'mqtt' }] : [])] };
   } else if (kind === 'circuit') {
     const why = outside(nid, 'circuit', circuit);
     if (why) return { error: why };
     n = { id: nid, kind, circuit, interfaces: [] };
   }
+  else if (kind === 'broker') n = { id: nid, kind, interfaces: [{ name: 'mqtt', kind: 'mqtt' }] };   // (#5500: every client's link's end)
   else n = { id: nid, kind, interfaces: [{ name: 'serial', kind: 'uart', ...UART_DEFAULTS }] };
   out.nodes.push({ ...n, ...(lang != null ? { lang } : {}), x: Math.round(+x || 0), y: Math.round(+y || 0) });
   return { system: normalizeSystem(out), id: nid };
@@ -157,7 +159,8 @@ function ifaceError(n, f) {
     if (![0, 1, 2, 3].includes(f.mode)) return `${n.id}.${f.name}: an SPI bus's mode is 0, 1, 2 or 3, not '${f.mode}'`;
   } else if (f.kind === 'i2c') {
     if (!(Number(f.hz) > 0)) return `${n.id}.${f.name}: an I²C bus's SCL rate is a number of Hz, not '${f.hz}'`;
-  } else if (!['in', 'out'].includes(f.dir)) return `${n.id}.${f.name}: a GPIO's direction is in or out, not '${f.dir}'`;
+  } else if (f.kind === 'mqtt') return null;
+  else if (!['in', 'out'].includes(f.dir)) return `${n.id}.${f.name}: a GPIO's direction is in or out, not '${f.dir}'`;
   return null;
 }
 
@@ -174,6 +177,8 @@ export function addInterface(sys, id, f = {}) {
   const kind = f.kind ?? 'uart';
   if (n.kind === 'mcu' && kind === 'uart') return { error: `${id}: a microcontroller's UARTs are its board's (${n.interfaces.filter(i => i.kind === 'uart').map(i => i.name).join(', ') || 'none'})` };
   if (n.kind === 'terminal') return { error: `${id}: a serial terminal has one UART, its own` };
+  if (n.kind === 'broker') return { error: `${id}: an MQTT broker has one interface, its own` };
+  if (kind === 'mqtt' && (n.kind !== 'mcu' || !mcuBoard(n.board)?.network)) return { error: `${id}: an MQTT interface is a network's: a Pico W's` };
   if (n.kind === 'circuit') return { error: `${id}: a circuit node has no interfaces: its boards' pins it wires are its links` };
   const spis = n.kind === 'mcu' ? Object.keys(mcuBoard(n.board)?.spis || {}) : null;
   if (kind === 'spi' && spis && !spis.some(s => lc(s) === lc(f.name ?? spis[0]))) return { error: `${id}: a microcontroller's SPI bus is its board's (${spis.join(', ') || 'none'})` };
@@ -183,6 +188,7 @@ export function addInterface(sys, id, f = {}) {
   const it = kind === 'uart' ? { name, kind, ...UART_DEFAULTS, ...pick(f, ['tx', 'rx', 'baud', 'frame']) }
     : kind === 'spi' ? { name, kind, ...(spis ? {} : pick(f, ['sck', 'mosi', 'miso', 'ss'])), hz: SPI_HZ, mode: 0, ...pick(f, ['hz', 'mode']) }
     : kind === 'i2c' ? { name, kind, ...(i2cs ? {} : pick(f, ['scl', 'sda'])), hz: I2C_HZ, ...pick(f, ['hz']) }
+    : kind === 'mqtt' ? { name, kind }
       : { name, kind, pins: [], dir: 'in', ...pick(f, ['pins', 'dir']) };
   if (n.interfaces.some(i => lc(i.name) === lc(name))) return { error: `${id}: an interface named '${name}' is there already` };
   const bad = ifaceError(n, it);
@@ -242,12 +248,13 @@ export function addLink(sys, { a, b, id = null } = {}) {
     if (!x) return { error: `'${e}' is not a link's end: node.interface` };
     if (!n) return { error: `no node '${x.node}' in the System` };
     if (!f) return { error: `${x.node}: no interface '${x.iface}'` };
-    const other = reaching(out, x.node, x.iface)[0];
+    const other = n.kind !== 'broker' && reaching(out, x.node, x.iface)[0];   // (a broker's: every client's, #5500)
     if (other) return { error: `${e} is linked already (${other.id}): an interface joins one link` };
   }
   if (ends[0].n === ends[1].n) return { error: `a link joins two nodes: ${a} and ${b} are both of ${ends[0].n.id}` };
   if (ends[0].f.kind !== ends[1].f.kind) return { error: `${a} is ${kindText(ends[0].f.kind)}, ${b} is ${kindText(ends[1].f.kind)}: a link joins two interfaces of one kind` };
-  const lid = id ?? freeId(out, { uart: 'serial', spi: 'spi', i2c: 'i2c' }[ends[0].f.kind] ?? 'wires');
+  if (ends[0].f.kind === 'mqtt' && (ends[0].n.kind === 'broker') === (ends[1].n.kind === 'broker')) return { error: `${a} and ${b}: an MQTT link joins a client and a broker` };
+  const lid = id ?? freeId(out, { uart: 'serial', spi: 'spi', i2c: 'i2c', mqtt: 'mqtt' }[ends[0].f.kind] ?? 'wires');
   const bad = idError(out, lid);
   if (bad) return { error: bad };
   out.links.push({ id: lid, kind: ends[0].f.kind, a, b });
@@ -296,11 +303,12 @@ export function editSystem(sys, { action, node = null, interface: iface = null, 
 }
 
 // an interface's kind in a sentence
-const kindText = k => ({ uart: 'a UART', gpio: 'GPIO', spi: 'an SPI bus', i2c: 'an I²C bus' }[k] ?? k);
+const kindText = k => ({ uart: 'a UART', gpio: 'GPIO', spi: 'an SPI bus', i2c: 'an I²C bus', mqtt: 'an MQTT interface' }[k] ?? k);
 
 // an interface said in a few words
 function ifaceText(n, f) {
   if (f.kind === 'gpio') return `${f.name}: GPIO ${f.dir}, ${f.pins.length ? f.pins.join(' ') : 'no pins'}`;
+  if (f.kind === 'mqtt') return `${f.name}: MQTT`;   // (#5500)
   if (f.kind === 'spi') {
     const s = n.kind === 'mcu' ? mcuBoard(n.board)?.spis?.[f.name] : f;
     const at = k => `${k.toUpperCase()} ${s?.[k] ?? '?'}${n.kind === 'fpga' && n.pins?.[s?.[k]] ? ` (${n.pins[s[k]]})` : ''}`;
