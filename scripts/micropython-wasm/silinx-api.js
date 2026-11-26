@@ -3,7 +3,8 @@
 // loadMicroPython. runPythonSuspending(mp, code, wait) runs code as runPython does, through the promising export
 // silinx_exec: each silinx_jspi.wait() of the code awaits wait() (a promise of a number), the page's thread free
 // meanwhile; it resolves with the code's result, or rejects with its PythonError. MicroPython's JavaScript reads the
-// global Module: this instance's is put there before the run (and by wait()'s import on resuming).
+// global Module: this instance's is put there before the run (and by wait()'s import on resuming); with several
+// instances, a caller of their other functions (runPython, registerJsModule…) puts its instance's there first.
 export async function runPythonSuspending(mp, code, wait) {
     const Module = mp._module;
     Module.silinxWait = wait;
