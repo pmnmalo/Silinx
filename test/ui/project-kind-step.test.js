@@ -41,12 +41,12 @@ const openWizard = async (page, l) => {
 // (the three modes, #5754: Circuit, Board, System, each the kind it makes, its mode, its drawing)
 const EN_CARDS = [
   ['design', 'circuit', true, 'Circuit', 'Elementary components with no board: gates, flip-flops, circuits on a breadboard, schematics, truth tables and state machines, drawn and simulated.', null, false, false],
-  ['fpga', 'board', true, 'Board', 'One board, with its flow, its emulator and its programming: HDL sources and drawings synthesized, implemented and programmed on the FPGA, or emulated.', null, true, false],
+  ['fpga', 'board', true, 'Board', 'One board, with its flow, its emulator and its programming: an FPGA\'s HDL and drawings synthesized and programmed, or a processor board\'s firmware built and run; or emulated.', null, true, false],
   ['system', 'system', true, 'System', 'Several devices linked (UART, SPI, Pmods): FPGA boards and microcontrollers in one System document, simulated as one.', null, false, false],
 ];
 const PT_CARDS = [
   ['design', 'circuit', true, 'Circuito', 'Componentes elementares sem placa: portas, flip-flops, circuitos numa breadboard, esquemáticos, tabelas de verdade e máquinas de estados, desenhados e simulados.', null, false, false],
-  ['fpga', 'board', true, 'Placa', 'Uma placa, com o seu fluxo, o seu emulador e a sua programação: fontes HDL e desenhos sintetizados, implementados e programados na FPGA, ou emulados.', null, true, false],
+  ['fpga', 'board', true, 'Placa', 'Uma placa, com o seu fluxo, o seu emulador e a sua programação: o HDL e os desenhos de uma FPGA sintetizados e programados, ou o firmware de uma placa de processador compilado e executado; ou emulados.', null, true, false],
   ['system', 'system', true, 'Sistema', 'Vários dispositivos ligados (UART, SPI, Pmods): placas FPGA e microcontroladores num documento de Sistema, simulados como um todo.', null, false, false],
 ];
 

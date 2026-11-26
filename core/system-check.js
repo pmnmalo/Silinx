@@ -78,7 +78,8 @@ export function analyzeSystem(sys, { modules = null, files = null, circuits = nu
   const nodes = checkNodes(sys, { modules, files }, say);
   const used = checkLinks(sys, nodes, say, wires);
   for (const id of checkCircuitNodes(sys, { circuits, modules }, wires, say)) used.add(id);
-  for (const n of sys.nodes) if (n.id && nodes.has(lc(n.id)) && !used.has(lc(n.id))) say.warn(`${n.id} joins nothing: no link reaches it`, node(n.id));
+  // (a System of one node, a processor board's Board project's, #5756: nothing to join it to, no warning)
+  if (sys.nodes.length > 1) for (const n of sys.nodes) if (n.id && nodes.has(lc(n.id)) && !used.has(lc(n.id))) say.warn(`${n.id} joins nothing: no link reaches it`, node(n.id));
   // (its constraints files' problems, after the System's own)
   for (const p of pinned?.problems ?? []) (p.severity === 'error' ? say.err : say.warn)(p.message, node(p.node));
   return { diags: out, wires, ports: nodePorts(nodes) };
