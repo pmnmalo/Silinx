@@ -496,7 +496,8 @@ test('family: every family from part names, xise names, bit header parts', () =>
     xc7a100t: 'artix7', xc7k325t: 'kintex7', xc7v585t: 'virtex7', xc7z020: 'zynq', XC3S500E: 'spartan3e',
   };
   for (const [p, f] of Object.entries(parts)) assert.equal(fam.familyOfPart(p), f, p);
-  for (const p of [null, undefined, '', 'xc9572', 'ep4ce22']) assert.equal(fam.familyOfPart(p), null, String(p));
+  for (const p of [null, undefined, '', 'xc9572', 'ep3c16']) assert.equal(fam.familyOfPart(p), null, String(p));   // (a Cyclone III: not Silinx's; the EP4CE22 is, #5376)
+  assert.equal(fam.familyOfPart('ep4ce22'), 'cyclone4e');
   assert.equal(fam.deviceFamily({ family: 'spartan3e', part: 'xc6slx9' }), 'spartan6');
   assert.equal(fam.deviceFamily({ family: 'Virtex4' }), 'virtex4');
   assert.equal(fam.deviceFamily({}), null);

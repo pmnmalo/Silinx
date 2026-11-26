@@ -74,10 +74,11 @@ test('every resource of the boards the manual\'s table of its signal: its pins i
 test('the I/O standards: the manual\'s as Quartus names them; the DE2-115\'s the jumpers\' defaults (JP7 2.5 V, JP6 3.3 V)', () => {
   for (const id of IDS.filter(x => x !== 'de2-115')) {
     const { tables } = manual(id);
-    for (const r of board(id).resources) assert.equal(r.iostandard, quartus(tables[signalOf(r, tables)].iostandard), `${id} ${r.name}`);
+    // (the names' case as Quartus lists them: it reads them in any case)
+    for (const r of board(id).resources) assert.equal(r.iostandard.toUpperCase(), quartus(tables[signalOf(r, tables)].iostandard).toUpperCase(), `${id} ${r.name}`);
   }
   // (the DE10-Lite's keys and Arduino reset: Schmitt-trigger inputs)
-  assert.deepEqual(board('de10-lite').resources.filter(r => r.iostandard !== '3.3-V LVTTL').map(r => [r.name, r.iostandard]), [['btn', '3.3 V SCHMITT TRIGGER'], ['arduino_reset_n', '3.3 V SCHMITT TRIGGER']]);
+  assert.deepEqual(board('de10-lite').resources.filter(r => r.iostandard !== '3.3-V LVTTL').map(r => [r.name, r.iostandard]), [['btn', '3.3 V Schmitt Trigger'], ['arduino_reset_n', '3.3 V Schmitt Trigger']]);
   // the DE2-115: the manual says "Depending on JP6 / JP7" for these, the golden top's standards those of the jumpers' defaults
   const d = board('de2-115'), std = n => d.resources.find(r => r.name === n);
   assert.deepEqual(['sw', 'btn', 'led', 'ledg', 'hex0', 'hex1', 'hex2'].map(n => std(n).iostandard), Array(7).fill('2.5 V'));
