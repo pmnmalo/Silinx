@@ -17,7 +17,15 @@ const MAX = 100;
  * hooks: { project() → the open project's name, files() → the project's file paths,
  *   settings() → the open project's settings as JSON (else read from the backend),
  *   flush() → saves the open documents, before(changed) → may refuse an undo/redo (paths changed since),
- *   restored(entry, paths) → reload the project and its open documents, changed() → menus to update }
+ *   restored(entry, paths) → reload the project and its open documents, changed() → menus to update,
+ *   shared() → the project is edited by others too (shared live with editors, #5739), merge(step, side, now) → the
+ *   step merged into the project as it is now (core/history-merge.js mergeStep), conflict(entry, side, conflicts) →
+ *   say an Undo / Redo refused, regenerate(paths) → the drawings' HDL made again }
+ *
+ * In a project others edit too (#5739), an Undo / Redo reverts (or makes again) the step's own changes only, merged
+ * three ways into the project as it is now, through the api as it is then (a shared project's: into the shared
+ * document, so that everyone sees it): the others' later changes stay; where they overlap the step's, nothing is
+ * written and conflict() says it.
  */
 export function createHistory(api, hooks) {
   const raw = { writeFile: api.writeFile, deleteFile: api.deleteFile, renameFile: api.renameFile, saveProject: api.saveProject, readFile: api.readFile, project: api.project };
@@ -91,6 +99,7 @@ export function createHistory(api, hooks) {
 
   // write one side (before / after) of a step
   async function apply(e, side) {
+    if (hooks.shared?.() && hooks.merge) return applyMerged(e, side);
     const other = side === 'before' ? 'after' : 'before';
     // changed since (by an editor, another command): ask before overwriting
     const changed = [];
@@ -104,6 +113,23 @@ export function createHistory(api, hooks) {
       if (e.settings) await raw.saveProject(e.project, JSON.parse(e.settings[side]));
     } finally { quiet--; }
     await hooks.restored?.(e, e.files.map(f => f.path));
+    return true;
+  }
+
+  // a step's side merged into the project as it is now (#5739): the others' changes since kept
+  async function applyMerged(e, side) {
+    const now = { json: JSON.parse(await settingsOf(e.project)), files: {} };
+    for (const f of e.files) now.files[f.path] = await read(e.project, f.path);
+    const m = await hooks.merge(e, side, now);
+    if (m.conflicts.length) { await hooks.conflict?.(e, side, m.conflicts); return false; }
+    quiet++;
+    try {
+      for (const p of m.remove) { try { await api.deleteFile(e.project, p); } catch { /* gone */ } }
+      for (const [p, t] of Object.entries(m.write)) await api.writeFile(e.project, p, t);
+      if (m.json) await api.saveProject(e.project, m.json);
+    } finally { quiet--; }
+    await hooks.restored?.(e, e.files.map(f => f.path));
+    if (m.regenerate.length) await hooks.regenerate?.(m.regenerate);
     return true;
   }
 

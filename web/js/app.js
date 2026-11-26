@@ -19,6 +19,7 @@ import { phoneNotice } from './phone-readonly.js';
 import { initTasks, restoreStartTask } from './tasks.js';
 import { registerServiceWorker } from './pwa.js';
 import { createHistory } from './history.js';
+import { sharedUndo } from './history-shared.js';
 import { viewHdl } from '/core/view-hdl.js';
 import { inCpuNode } from '/core/drawing-code.js';
 import { modulesFromLibrary } from '/core/schdoc.js';
@@ -283,6 +284,7 @@ export const history = createHistory(api, {
   files: () => filesState.diskTree || filesState.fileTree || [],
   settings: () => { if (!S.project) return null; const pj = { ...S.project }; delete pj.fileTree; return JSON.stringify(pj); },
   flush: () => saveAll({ quiet: true }),
+  ...sharedUndo(() => S.project?.name),   // (a project shared live with editors: each one's own commands, #5739)
   before: (changed) => confirmDlg('Undo / Redo', `Changed since:\n${changed.slice(0, 12).join('\n')}${changed.length > 12 ? '\n…' : ''}\n\nUndo / Redo anyway (those changes are lost)?`),
   restored: async (e, paths) => {
     // the documents of the files it changed: closed (without saving), opened again from the files
