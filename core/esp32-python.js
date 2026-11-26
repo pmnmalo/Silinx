@@ -18,6 +18,9 @@ def _module(name, **names):
         setattr(m, k, names[k])
     sys.modules[name] = m
     return m
+def _bytes(a):
+    # (a JavaScript array: a list in MicroPython's npm build, a JsProxy in Silinx's own, #5658)
+    return bytes(a if isinstance(a, (list, tuple)) else [a[i] for i in range(a.length)])
 class Pin:
     IN = 1
     OUT = 3
@@ -59,13 +62,14 @@ class UART:
     def any(self):
         return _silinx.uart_any(self.id)
     def read(self, n=-1):
-        got = _silinx.uart_read(self.id, n)
-        return bytes(got) if len(got) else None
+        got = _bytes(_silinx.uart_read(self.id, n))
+        return got if len(got) else None
     def readline(self):
-        got = _silinx.uart_readline(self.id)
-        return bytes(got) if len(got) else None
+        got = _bytes(_silinx.uart_readline(self.id))
+        return got if len(got) else None
 def _sleep_us(us):
-    _silinx.sleep_us(us)
+    if _silinx.sleep_us(us):
+        _wait()
 _module("machine", Pin=Pin, UART=UART, freq=lambda *a: 240000000, unique_id=lambda: b"silinx", reset=lambda: None)
 _t = _module("time", sleep=lambda s: _sleep_us(int(s * 1000000)), sleep_ms=lambda ms: _sleep_us(int(ms) * 1000), sleep_us=_sleep_us,
     ticks_us=lambda: _silinx.ticks_us(), ticks_ms=lambda: _silinx.ticks_us() // 1000, ticks_cpu=lambda: _silinx.ticks_us(),
@@ -74,13 +78,18 @@ sys.modules["utime"] = _t
 def _trace(frame, event, arg):
     if frame.f_code.co_filename != "<string>":
         return None
-    if event == "line":
-        _silinx.line()
+    if event == "line" and _silinx.line():
+        _wait()
     return _trace
 `;
 
-/** The Python run before the program: the modules, and the program itself run traced (`exec`'s frame: a line, a time). */
-export const esp32Prelude = (program) => `${MODULES}sys.settrace(_trace)
+// how the program waits for the scheduler once its time reached the target (_silinx.line() and sleep_us() say so): the
+// Worker's blocking call, or JSPI's suspending one (#5658)
+const WAITS = { worker: '_wait = _silinx.pause\n', jspi: 'import silinx_jspi\n_wait = silinx_jspi.wait\n' };
+
+/** The Python run before the program: the modules, and the program itself run traced (`exec`'s frame: a line, a time);
+ *  `backend` how it waits ('worker', 'jspi'). */
+export const esp32Prelude = (program, backend = 'worker') => `${MODULES}${WAITS[backend]}sys.settrace(_trace)
 try:
     exec(${JSON.stringify(String(program))}, {"__name__": "__main__"})
 finally:

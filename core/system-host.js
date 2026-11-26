@@ -4,15 +4,16 @@
 // netlists, the firmware) and drives the run by messages; the host builds it (systemFromInputs) and answers each with
 // the run as it is then (systemReport).
 //
-// The messages, page -> host: init { system, inputs, emulate, stimulus } (its stimulus file's, #5581: core/system-stimulus.js), run { id, until } (ps), send { node, bytes } (a
+// The messages, page -> host: init { system, inputs, emulate, stimulus, esp32 } (esp32: an ESP32's back end forced, #5658) (its stimulus file's, #5581: core/system-stimulus.js), run { id, until } (ps), send { node, bytes } (a
 // terminal's line), set { node, pin, value } (a board's switch or button, a circuit's, #5322: the System Emulator's), waves { id }; host ->
-// page: ready { nodes, wires, terminals, boards } or failed { error }, state { id, report, finished, boards }, waves
+// page: ready { nodes, wires, terminals, boards, engines } (engines: an ESP32's back end, { id: 'jspi' | 'worker' }, #5658) or failed { error }, state { id, report, finished, boards }, waves
 // { id, design } (core/system-waves.js), error { id, message }. emulate: the boards emulated too (core/system-emu.js,
 // #5212): `ready`'s boards, each state's what they show since the last.
 //
 // Isomorphic ES module, no DOM.
 import { systemFromInputs, systemReport, loadEngines, disposeSystem } from './system-run.js';
 import { systemWaves } from './system-waves.js';
+import { esp32Engines } from './system-sim-esp32.js';
 import { emulationBoards, withBoards, watchBoards, boardStates, setBoardInput } from './system-emu.js';
 import { setsControls, stimulusSteps, runSteps } from './system-stimulus.js';
 
@@ -31,13 +32,13 @@ export function hostSystemRun(port) {
       catch (e) { run = null; post({ type: 'failed', error: `its stimulus file: ${e.message}` }); return; }
       run = r; name = system.name; shown = 0; prev = {};
       if (boards) watchBoards(r.sim, boards);
-      post({ type: 'ready', nodes: [...r.sim.nodes.keys()], wires: r.wires, terminals: [...r.terminals.keys()],
+      post({ type: 'ready', nodes: [...r.sim.nodes.keys()], wires: r.wires, terminals: [...r.terminals.keys()], engines: esp32Engines(r.sim),
         boards: boards && boards.map(b => (b.kind === 'circuit' ? { id: b.id, kind: b.kind, inputs: b.inputs, outputs: [] }
           : { id: b.id, kind: b.kind, board: b.kind === 'fpga' ? b.board.board.id : b.board.id, variant: b.board.variant?.id ?? null, inputs: b.inputs ?? [], outputs: b.outputs })) });
     },
-    run({ id, until }) {
+    async run({ id, until }) {
       if (!run) throw new Error('no System: init first');
-      const f = runSteps(run, steps, until);   // (its stimulus's steps due on the way, #5581)
+      const f = await runSteps(run, steps, until);   // (its stimulus's steps due on the way, #5581; awaited: an ESP32 on JSPI, #5658)
       const shows = boards ? (prev = boardStates(run.sim, boards, shown, run.sim.now, prev)) : undefined;
       shown = run.sim.now;
       post({ type: 'state', id, report: systemReport(run), finished: f.finished, boards: shows });
@@ -57,17 +58,20 @@ export function hostSystemRun(port) {
       post({ type: 'waves', id, design: systemWaves(run.sim, { name }).design, now: run.sim.now });
     },
   };
-  const dispatch = m => { try { handle[m.type]?.(m); } catch (err) { post({ type: 'error', id: m.id, message: err.message }); } };
+  const dispatch = m => {
+    const fail = err => post({ type: 'error', id: m.id, message: err.message });
+    try { const r = handle[m.type]?.(m); return r?.then ? r.then(null, fail) : null; } catch (err) { fail(err); return null; }
+  };
   // (a System's microcontrollers' engines loaded before its init, the messages after it waiting for them: a Pico's
-  // rp2040js and firmware, #5494)
+  // rp2040js and firmware, #5494; a run that is awaited, an ESP32's on JSPI, #5658, holds the messages after it)
   let gate = null;
   const onMessage = e => {
     const m = e.data;
-    if (m.type === 'init') gate = (gate || Promise.resolve()).then(() => loadEngines(m.system)).then(() => null, err => err.message);
-    if (!gate) { dispatch(m); return; }
-    gate = gate.then(failed => {
+    if (m.type === 'init') gate = (gate || Promise.resolve()).then(() => loadEngines(m.system, { esp32: m.esp32 ?? null })).then(() => null, err => err.message);
+    if (!gate) { const r = dispatch(m); if (r) gate = r.then(() => null); return; }
+    gate = gate.then(async failed => {
       if (m.type === 'init' && failed) { run = null; post({ type: 'failed', error: failed }); return failed; }
-      dispatch(m);
+      await dispatch(m);
       return null;
     });
   };

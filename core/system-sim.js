@@ -224,15 +224,34 @@ export class SystemSim {
     return end;
   }
 
-  /** Run up to `until` (ps), or until a node stops (finished: { node, why }). */
+  /** Run up to `until` (ps), or until a node stops (finished: { node, why }). A system with a node whose advanceTo is
+   *  asynchronous (an ESP32's JSPI back end, #5658: `async` true) runs with runAsync. */
   run(until) {
+    const steps = this.windows(until);
+    for (let r = steps.next(); ; r = steps.next(r.value)) {
+      if (r.done) return r.value;
+      if (typeof r.value?.then === 'function') throw new Error('this system has a node that runs asynchronously: runAsync');
+    }
+  }
+
+  /** run(until), each node's advanceTo awaited (the same windows, the same order: the same run). */
+  async runAsync(until) {
+    const steps = this.windows(until);
+    for (let r = steps.next(); ; r = steps.next(await r.value)) if (r.done) return r.value;
+  }
+
+  /** Whether a node runs asynchronously (runAsync then). */
+  get async() { return [...this.nodes.values()].some(a => a.async); }
+
+  // the run's windows: each node's advanceTo(end) yielded, its changes given back
+  *windows(until) {
     if (typeof until !== 'number' || Number.isNaN(until)) throw new Error('run(until): a time in ps');
     if (!this.started) this.start();
     while (!this.finished) {
       this.due();
       if (this.now >= until) break;
       const end = this.windowEnd(until);
-      for (const [name, a] of this.nodes) this.route(name, a.advanceTo(end), end);
+      for (const [name, a] of this.nodes) this.route(name, yield a.advanceTo(end), end);
       this.now = end;
       this.stats.windows++;
       for (const [name, a] of this.nodes) {

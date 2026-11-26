@@ -12,6 +12,10 @@ function spawn() {
   return src ? new Worker(workerUrl) : new Worker('/js/system-worker.js', { type: 'module' });
 }
 
+// an ESP32's back end forced by the page's address, ?esp32=worker or ?esp32=jspi (#5658: a diagnosis, the tests' comparison
+// of the two), else none: the one the run's worker has
+const esp32Forced = () => { const b = new URLSearchParams(globalThis.location?.search ?? '').get('esp32'); return b === 'worker' || b === 'jspi' ? b : null; };
+
 /** The run of `system` from its inputs (core/system-run.js systemInputs'), started in its worker. */
 export function startSystemRun(system, inputs, { emulate = false, stimulus = null } = {}) {
   let w;
@@ -26,7 +30,7 @@ export function startSystemRun(system, inputs, { emulate = false, stimulus = nul
       const m = e.data;
       if (m.type === 'failed') { w.terminate(); resolve({ error: m.error }); return; }
       if (m.type === 'ready') {
-        ready = { nodes: m.nodes, wires: m.wires, terminals: m.terminals, boards: m.boards,
+        ready = { nodes: m.nodes, wires: m.wires, terminals: m.terminals, boards: m.boards, engines: m.engines ?? {},
           run: (until) => ask({ type: 'run', until }), waves: () => ask({ type: 'waves' }),
           send: (node, bytes) => w.postMessage({ type: 'send', node, bytes }), set: (node, pin, value) => w.postMessage({ type: 'set', node, pin, value }),
           close: () => w.terminate() };
@@ -38,6 +42,6 @@ export function startSystemRun(system, inputs, { emulate = false, stimulus = nul
       waiting.delete(m.id);
       if (m.type === 'error') x.fail(new Error(m.message)); else x.ok(m);
     };
-    w.postMessage({ type: 'init', system, inputs, emulate, stimulus });
+    w.postMessage({ type: 'init', system, inputs, emulate, stimulus, esp32: esp32Forced() });
   });
 }

@@ -3,23 +3,26 @@
 // `machine` and `time` (core/esp32-python.js), no Xtensa instruction emulated, each line of Python 1 µs. The back end
 // here is the Worker + Atomics one (its engine: core/esp32-engine.js, in a Worker of its own; their shared memory:
 // core/esp32-link.js): advanceTo(t) asks the engine to run to t and blocks until it has, so the node is in lockstep with
-// the scheduler, deterministic. Its pins are the DevKitC's GPIOs at 3.3 V: a pin the program drives (Pin.OUT) its
+// the scheduler, deterministic; the JSPI one (#5658: esp32JspiEngine, Silinx's own MicroPython build) runs on the
+// scheduler's thread, advanceTo(t) a promise (`async`: the scheduler's runAsync), where the browser or Node has JSPI
+// (esp32Backend: WebAssembly.Suspending and promising), with no SharedArrayBuffer. Both give the same run. Its pins are the DevKitC's GPIOs at 3.3 V: a pin the program drives (Pin.OUT) its
 // value, an input its link's level; a UART's TX its frames at the program's baud, its RX sampled back into bytes. What it
 // prints is its REPL's console, a terminal of its own (`<id>.repl`), and a line typed there runs once the program ended.
-// Its Worker is made before the run (prepareEsp32: a browser starts a Worker only while its creator is not blocked).
+// Its engine is made before the run (prepareEsp32: a browser starts a Worker only while its creator is not blocked).
 //
-//   await prepareEsp32(['esp']);   // in Node, or in a cross-origin isolated page (#5648)
+//   await prepareEsp32(['esp']);   // JSPI; else in Node, or in a cross-origin isolated page (#5648)
 //   const node = new Esp32Node({ id: 'esp', program: { name: 'esp/main.py', data } });
 //
 // Isomorphic ES module, no DOM.
 import { mcuBoard } from './system-doc.js';
 import { UartLinkDecoder } from './system-decode.js';
 import { esp32Buffer, hostLink } from './esp32-link.js';
+import { esp32JspiEngine } from './esp32-engine.js';
 import { isolationProblem } from './cross-origin.js';
 
 // the UARTs' default pins in MicroPython's ESP32 port (UART(n) with no tx nor rx)
 const UART_PINS = { 0: { tx: 1, rx: 3 }, 1: { tx: 10, rx: 9 }, 2: { tx: 17, rx: 16 } };
-const workers = new Map();   // (a node's Worker made before its run: { sab, terminate })
+const workers = new Map();   // (a node's engine made before its run: { sab, terminate } or { jspi })
 const isNode = typeof process !== 'undefined' && !!process.versions?.node && typeof window === 'undefined' && !globalThis.WorkerGlobalScope;
 
 // a Worker running the engine on `sab`, once its MicroPython is loaded: a page's or a worker's (web/js/esp32-worker.js),
@@ -32,6 +35,23 @@ let spawn = async (sab) => {
 /** Where an ESP32 node's engine runs in Node: `fn(sab)` -> { terminate } once its MicroPython is loaded. */
 export function setEsp32Spawner(fn) { spawn = fn; }
 
+// Silinx's MicroPython build for JSPI (scripts/micropython-wasm/): where this side loads it from (its module's exports
+// and the .wasm's URL); none: the Worker + Atomics back end only
+// (a computed address: the bundlers leave it to the page)
+const JSPI_DIR = '/vendor/micropython-jspi';
+let jspiLoad = typeof window !== 'undefined' || globalThis.WorkerGlobalScope
+  ? async () => ({ ...(await import(`${JSPI_DIR}/micropython.mjs`)), url: `${JSPI_DIR}/micropython.wasm` })
+  : null;
+/** Where an ESP32 node's JSPI build is loaded from in Node: `fn()` -> { loadMicroPython, runPythonSuspending, url }. */
+export function setEsp32JspiLoader(fn) { jspiLoad = fn; }
+
+/** The back end an ESP32 node runs on here (#5658): 'jspi' where WebAssembly has JSPI (Suspending, promising) and its
+ *  build can be loaded, else 'worker'; `forced` ('worker', 'jspi') chooses (a test, a diagnosis). */
+export function esp32Backend(g = globalThis, forced = null) {
+  if (forced === 'worker' || forced === 'jspi') return forced;
+  return typeof g.WebAssembly?.Suspending === 'function' && typeof g.WebAssembly?.promising === 'function' && jspiLoad ? 'jspi' : 'worker';
+}
+
 /** Why an ESP32 node cannot run here (its Worker + Atomics back end needs SharedArrayBuffer: the page cross-origin
  *  isolated; `node`: in Node, always), or null. */
 export function esp32Problem(g = globalThis, node = isNode) {
@@ -39,16 +59,26 @@ export function esp32Problem(g = globalThis, node = isNode) {
   return `an ESP32 node runs in a page cross-origin isolated: ${isolationProblem(g) ?? 'no SharedArrayBuffer here'}`;
 }
 
-/** The Workers of the ESP32 nodes `ids` made, each its MicroPython loaded (before the System's run is built). */
-export async function prepareEsp32(ids) {
-  const why = esp32Problem();
+/** The engines of the ESP32 nodes `ids` made, each its MicroPython loaded (before the System's run is built), on the
+ *  back end esp32Backend chooses (`backend`: forced). */
+export async function prepareEsp32(ids, { backend = null } = {}) {
+  const which = esp32Backend(globalThis, backend);
+  const why = which === 'worker' ? esp32Problem() : null;
   if (why) throw new Error(why);
   await Promise.all(ids.map(async id => {
-    workers.get(id)?.terminate();   // (one made for a run that was not built)
+    workers.get(id)?.terminate?.();   // (one made for a run that was not built)
+    workers.delete(id);
+    if (which === 'jspi') { workers.set(id, { jspi: await esp32JspiEngine({ load: jspiLoad }) }); return; }
     const sab = esp32Buffer();
     workers.set(id, { sab, ...(await spawn(sab)) });
   }));
 }
+
+/** What the console says of an ESP32 node's back end (#5658): the same run on both. */
+export const esp32EngineText = (id, backend) => `ESP32 ${id}: MicroPython ${backend === 'jspi' ? 'on this thread (JSPI)' : 'in a Worker (Atomics)'}`;
+
+/** The back ends of a run's ESP32 nodes: { id: 'jspi' | 'worker' }. */
+export const esp32Engines = sim => Object.fromEntries([...sim.nodes].filter(([, a]) => a instanceof Esp32Node).map(([id, a]) => [id, a.backend]));
 
 const gpOf = name => { const m = /^GPIO(\d+)$/.exec(String(name).toUpperCase()); return m ? Number(m[1]) : null; };
 
@@ -68,7 +98,9 @@ export class Esp32Node {
     if (!w) throw new Error(`${id}: its MicroPython not started (prepareEsp32 first)`);
     workers.delete(id);
     this.worker = w;
-    this.link = hostLink(w.sab);
+    this.backend = w.jspi ? 'jspi' : 'worker';
+    this.async = !!w.jspi;   // (its advanceTo a promise: the scheduler's runAsync)
+    this.link = w.jspi ?? hostLink(w.sab);
     this.board = b;
     this.fidelity = ESP32_FIDELITY;   // (the node contract's notes, #5499)
     this.pins = b.pins;
@@ -169,18 +201,32 @@ export class Esp32Node {
     }
   }
 
-  advanceTo(t) {
+  // the command to its engine for a run to t: its events up to t, its inputs (its UARTs' bytes received up to t, to the
+  // program at their stop bit); null when it has stopped
+  commandTo(t) {
     if (t < this.now) throw new Error(`the node is at ${this.now} ps, not back at ${t}`);
     while (this.queue.length && this.queue[0].t <= t) { const e = this.queue.shift(); this.now = e.t; e.fn(this); }
-    if (!this.finished) {
-      // (its UARTs' bytes received up to t, to the program at their stop bit)
-      const inputs = this.pending.splice(0);
-      for (const u of this.uarts.values()) { u.decoder.flush(t); for (const r of u.decoder.take()) { if (r.error) this.log.push({ kind: 'warning', time: r.t, text: `UART(${u.id}) RX: a ${r.error} error at ${u.baud} baud` }); else inputs.push({ uart: u.id, t: r.t + (1 + Number(u.frame[0]) + (u.frame[1] === 'N' ? 0 : 1)) * 1e12 / u.baud, byte: r.byte }); } }
-      let r;
-      try { r = this.link.command(t, { inputs, ...(this.started ? {} : { program: this.program, name: this.name }) }); } catch (e) { this.finished = 'error'; this.log.push({ kind: 'error', time: t, text: e.message }); return this.out.splice(0); }
-      this.started = true;
-      this.took(r.out);
-    }
+    if (this.finished) return null;
+    const inputs = this.pending.splice(0);
+    for (const u of this.uarts.values()) { u.decoder.flush(t); for (const r of u.decoder.take()) { if (r.error) this.log.push({ kind: 'warning', time: r.t, text: `UART(${u.id}) RX: a ${r.error} error at ${u.baud} baud` }); else inputs.push({ uart: u.id, t: r.t + (1 + Number(u.frame[0]) + (u.frame[1] === 'N' ? 0 : 1)) * 1e12 / u.baud, byte: r.byte }); } }
+    const cmd = { inputs, ...(this.started ? {} : { program: this.program, name: this.name }) };
+    this.started = true;
+    return cmd;
+  }
+
+  // its engine stopped answering: the node stopped, said
+  failed(t, e) { this.finished = 'error'; this.log.push({ kind: 'error', time: t, text: e.message }); return this.out.splice(0); }
+
+  advanceTo(t) {
+    const cmd = this.commandTo(t);
+    if (this.async) return cmd ? this.link.command(t, cmd).then(r => this.reached(t, r), e => this.failed(t, e)) : Promise.resolve(this.reached(t, null));
+    if (cmd) { let r; try { r = this.link.command(t, cmd); } catch (e) { return this.failed(t, e); } return this.reached(t, r); }
+    return this.reached(t, null);
+  }
+
+  // what its engine did up to t taken: its pins' changes up to t
+  reached(t, r) {
+    if (r) this.took(r.out);
     this.now = t;
     // (the UARTs' TX frames' bits up to t)
     for (const u of this.uarts.values()) while (u.bits.length && u.bits[0].t <= t) {
@@ -194,6 +240,6 @@ export class Esp32Node {
   messages() { return this.log.slice(this.logN, (this.logN = this.log.length)); }
 
   /** Its Worker ended (the run over). */
-  dispose() { this.worker.terminate(); }
+  dispose() { this.worker.terminate?.(); }
 }
 

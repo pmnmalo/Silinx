@@ -209,6 +209,12 @@ export async function createApp({ host = '127.0.0.1', token = null, codes = crea
     const { rp2040Path } = await import('./rp2040-firmware.js');
     try { res.sendFile(await rp2040Path(req.params.file)); } catch (e) { res.status(/^no RP2040 firmware file/.test(e.message) ? 404 : 502).type('text/plain').send(e.message); }
   });
+  // Silinx's MicroPython build for an ESP32 node's JSPI back end (#5658, server/micropython-jspi.js): downloaded once,
+  // not shipped
+  app.get('/vendor/micropython-jspi/:file', async (req, res) => {
+    const { micropythonJspiPath } = await import('./micropython-jspi.js');
+    try { res.sendFile(await micropythonJspiPath(req.params.file)); } catch (e) { res.status(/^no file /.test(e.message) ? 404 : 502).type('text/plain').send(e.message); }
+  });
   // MicroPython's WebAssembly port (#5495): an ESP32 node's engine, its settrace build, in its Worker (web/js/esp32-worker.js)
   app.use('/vendor/micropython-wasm', asset(path.join(ROOT, 'node_modules/@micropython/micropython-webassembly-pyscript')));
   // Yosys compiled to WebAssembly (YoWASP): the open synthesis runs in the browser (web/js/yosys-worker.js)

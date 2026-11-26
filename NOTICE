@@ -34,7 +34,8 @@ https://gitlab.com/libeigen/eigen), a port of adepttool (MIT), avr8js (MIT: the 
 https://github.com/kieler/elkjs). The micro80 example includes light8080 (LGPL-2.1, https://github.com/jaruiz/light8080).
 A System's Raspberry Pi Pico runs MicroPython's firmware (MIT) and the RP2040's bootrom (Raspberry Pi's, BSD-3-Clause;
 its float library mufplib for the RP2040 alone, or GPL-2.0): Silinx does not ship them, the local server downloads them
-on their first use.
+on their first use. A System's ESP32 on JSPI runs Silinx's own build of MicroPython's WebAssembly port (MIT; its module
+silinx_jspi Silinx's), published as a release of Silinx's repository and downloaded the same way.
 A circuit's analog side can run on ngspice, through eecircuit-engine (its wrapper MIT; ngspice Modified BSD, with its KLU
 solver under LGPL-2.0 and numparam under LGPL-2.0 or later compiled in, OSDI MPL-2.0, XSPICE public domain; the model
 cards it bundles Apache-2.0, PTM's with no licence given, not used): Silinx does not ship it, the local server downloads

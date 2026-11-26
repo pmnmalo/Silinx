@@ -1,13 +1,18 @@
-// UI (#5495): a System's ESP32 node, its Worker + Atomics back end, in the local server's page (cross-origin isolated,
-// #5648). In a System project's System editor: the ESP32 tool places an ESP32 DevKitC (in MicroPython, its UART2), its
+// UI (#5495): a System's ESP32 node in the local server's page (cross-origin isolated, #5648): on JSPI where the browser
+// has it (#5658, Silinx's MicroPython build), else in a Worker through Atomics; the page's ?esp32=worker forces the latter. In a System project's System editor: the ESP32 tool places an ESP32 DevKitC (in MicroPython, its UART2), its
 // properties (its program a .py of its folder; no SPI or I²C yet), linked to a terminal, saved as the format has it; Try
-// it runs its .py on MicroPython's WebAssembly port in a Worker of its own: the program's bytes in the terminal, its
+// it runs its .py on MicroPython's WebAssembly port (the console says which back end): the program's bytes in the terminal, its
 // console a terminal of its own, a line typed to the terminal echoed back in upper case; no warnings. Portuguese; both
-// interfaces.
+// interfaces. #5658: the same System on both back ends, the same run (each wire's bytes at the same times, the consoles).
 import { before, after } from 'node:test';
 import assert from 'node:assert/strict';
+import os from 'node:os';
+import path from 'node:path';
 import { newSystem } from '../../core/system-doc.js';
 import { setupUi, uiTest, makeProject, readWs } from './harness.js';
+
+// (Silinx's MicroPython build for the JSPI back end, #5658: downloaded once into the tests' shared folder)
+process.env.SILINX_MICROPYTHON_JSPI_CACHE ??= path.join(os.tmpdir(), 'silinx-micropython-jspi');
 
 let env;
 before(async () => { env = await setupUi(); });
@@ -34,7 +39,7 @@ const setField = (page, sel, value) => page.eval((ed, sel, value) => {
 }, ED, sel, value);
 const term = (page, id) => page.eval((ed, id) => document.querySelector(`${ed} .sys-term-out[data-term="${id}"]`)?.textContent ?? null, ED, id);
 
-uiTest('#5495 the ESP32 in the System editor: placed, its .py, linked to a terminal; Try it runs it in its Worker, its console a terminal; Portuguese', E, async (page) => {
+uiTest('#5495 #5658 the ESP32 in the System editor: placed, its .py, linked to a terminal; Try it runs it on JSPI, its console a terminal; Portuguese', E, async (page) => {
   await makeProject(env, { name: 'EspSys', template: 'uart', files: { [FILE]: JSON.stringify(newSystem('esp'), null, 2), 'mcu/main.py': PY, 'mcu/old.hex': ':00000001FF\n' } });
   const pj = await env.server.api('GET', '/api/projects/EspSys');
   delete pj.fileTree;
@@ -92,5 +97,48 @@ uiTest('#5495 the ESP32 in the System editor: placed, its .py, linked to a termi
   assert.deepEqual([s.warnings, s.errors, s.traffic.map((t) => [t.wire, t.from, t.to])], [[], [], [['serial_mcu', 'mcu.GPIO17', 'term.rx'], ['serial_term', 'term.tx', 'mcu.GPIO16']]]);
   const lines = await page.eval(() => [...document.querySelectorAll('#console-log .ln')].map((l) => l.textContent.trim()).filter(Boolean));
   assert.deepEqual(lines.filter((l) => /^(ERROR|WARNING)/.test(l)), []);
+  assert.ok(lines.includes('Simulate System: ESP32 mcu: MicroPython on this thread (JSPI).'), lines.join('\n'));
+  assert.deepEqual(page.console.filter((c) => c.type === 'warning' || c.type === 'warn' || c.type === 'error').map((c) => c.text), []);
+}, { timeout: 300000 });
+
+// a program whose run depends on nothing typed: its bytes and its prints at its lines' and sleeps' times
+const TICKS = ['from machine import UART, Pin', 'import time', 'u = UART(2, 9600)', 'led = Pin(2, Pin.OUT)', 'for i in range(4):',
+  '    led.value(i % 2)', '    u.write(str(i))', '    print("tick", i)', '    time.sleep_ms(3)', 'print("done")', ''].join('\n');
+
+// Try it to its end on the back end the page's address chooses: what the run said (each wire's bytes with their times, the
+// terminals) and the console's line of its back end
+async function runOn(page, backend) {
+  await page.eval((b) => history.replaceState(null, '', `${location.pathname}${b ? `?esp32=${b}` : ''}${location.hash}`), backend);
+  const before = await page.eval(() => document.querySelectorAll('#console-log .ln').length);
+  if (await page.eval((ed) => !!document.querySelector(`${ed} .sys-sim-panel:not([hidden]) .sys-restart`), ED)) await page.click(`${ED} .sys-restart`);
+  else await page.click(`${ED} .sys-sim-btn`);
+  await page.waitFor((ed) => document.querySelector(`${ed} .sys-sim-panel:not([hidden]) .sys-run-for`), [ED], { what: 'the simulation view' });
+  await page.click(`${ED} .sys-run-for`);
+  await page.waitFor(() => { const s = window.Silinx.active.systemEditor.sim.state(); return s && !s.running && s.terminals['mcu.repl']?.endsWith('done\n'); }, [], { what: `the run on ${backend ?? 'JSPI'}`, timeout: 120000 });
+  const s = await page.eval(() => window.Silinx.active.systemEditor.sim.state());
+  const said = await page.eval((n) => [...document.querySelectorAll('#console-log .ln')].slice(n).map((l) => l.textContent.trim()).filter((l) => l.includes('ESP32')), before);
+  return { run: { traffic: s.traffic.map((t) => ({ wire: t.wire, bytes: t.bytes })), terminals: s.terminals, warnings: s.warnings, errors: s.errors }, said };
+}
+
+uiTest('#5658 the same ESP32 on JSPI and in a Worker through Atomics: the same run, each wire\'s bytes at the same times; the console says which', E, async (page) => {
+  const sys = await readWs(env, 'EspSys', FILE);
+  await makeProject(env, { name: 'EspTwo', template: 'uart', files: { [FILE]: sys, 'mcu/main.py': TICKS } });
+  const pj = await env.server.api('GET', '/api/projects/EspTwo');
+  delete pj.fileTree;
+  await env.server.api('PUT', '/api/projects/EspTwo', { ...pj, kind: 'system', board: null, constraints: null, top: null });
+  await page.openProject('EspTwo');
+  await page.leftTab('design');
+  await page.waitFor(() => [...document.querySelectorAll('#hier .row .badge')].some((b) => b.textContent === 'System'), [], { what: 'the System\'s row' });
+  await page.click('#hier .row .badge', { text: 'System' });
+  await page.waitFor((ed) => document.querySelector(ed), [ED], { what: 'the System editor' });
+  const jspi = await runOn(page, null);
+  const worker = await runOn(page, 'worker');
+  assert.deepEqual(jspi.said, ['Simulate System: ESP32 mcu: MicroPython on this thread (JSPI).']);
+  assert.deepEqual(worker.said, ['Simulate System: ESP32 mcu: MicroPython in a Worker (Atomics).']);
+  assert.equal(jspi.run.terminals.term, '0123');
+  assert.equal(jspi.run.terminals['mcu.repl'], 'tick 0\ntick 1\ntick 2\ntick 3\ndone\n');
+  assert.deepEqual([jspi.run.warnings, jspi.run.errors], [[], []]);
+  assert.deepEqual(worker.run, jspi.run);
+  await page.eval(() => history.replaceState(null, '', `${location.pathname}${location.hash}`));
   assert.deepEqual(page.console.filter((c) => c.type === 'warning' || c.type === 'warn' || c.type === 'error').map((c) => c.text), []);
 }, { timeout: 300000 });

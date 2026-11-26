@@ -133,8 +133,8 @@ async function runReady(name, file, sys, { ready, emu, stimulus, set, type, cont
     if (!t) throw toolError(`type: no terminal '${id}' in the System`);
     t.send([...new TextEncoder().encode(String(text))]);
   }
-  const shown = controls ? runControls(ready.sim, emu.boards, controls, ms * 1e9) : null;
-  if (!controls) runSteps(ready, steps, ms * 1e9);
+  const shown = controls ? await runControls(ready.sim, emu.boards, controls, ms * 1e9) : null;
+  if (!controls) await runSteps(ready, steps, ms * 1e9);
   const rep = systemReport(ready);
   const vcd = `build/${sys.name}.vcd`;
   await P.writeFile(name, vcd, systemVcd(ready.sim, { name: sys.name }));
@@ -156,16 +156,18 @@ async function emulated(sys, how) {
 }
 
 // the controls set at their times (as the System Emulator's clicks), the run to `end` (ps); what each board shows over
-// its last 10 ms: { node: { leds, digits } | { pins, led } | { leds, inputs, lit } (a circuit's, #5322) }
-function runControls(sim, boards, controls, end) {
+// its last 10 ms: { node: { leds, digits } | { pins, led } | { leds, inputs, lit } (a circuit's, #5322) }; the run
+// awaited (an ESP32's JSPI back end, #5658)
+async function runControls(sim, boards, controls, end) {
   let list;
   // (core/system-controls.js, #5602: its error the tool's)
   try { list = controlSteps(boards, controls, end); } catch (e) { throw toolError(e.message); }
-  for (const c of list) { sim.run(c.t); setBoardInput(sim, c.b, c.pin, c.on); }
+  const go = t => (sim.async ? sim.runAsync(t) : sim.run(t));
+  for (const c of list) { await go(c.t); setBoardInput(sim, c.b, c.pin, c.on); }
   const from = Math.max(sim.now, end - 10e9);
-  sim.run(from);
+  await go(from);
   boardStates(sim, boards, 0, from);
-  sim.run(end);
+  await go(end);
   return boardStates(sim, boards, from, end);
 }
 

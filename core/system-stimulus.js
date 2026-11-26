@@ -51,8 +51,10 @@ export function stimulusSteps(s, { boards = [], terminals = [], end = Infinity }
 }
 
 /** The run (systemFromInputs's: { sim, terminals }) to `until` (ps), the steps due on the way set at their times (each
- *  taken from `steps`, in order). Returns the run's last result. */
+ *  taken from `steps`, in order). Returns the run's last result; a promise of it when a node runs asynchronously (an
+ *  ESP32's JSPI back end, #5658: the scheduler's runAsync). */
 export function runSteps(run, steps, until) {
+  if (run.sim.async) return runStepsAsync(run, steps, until);
   while (steps.length && steps[0].t <= until) {
     const s = steps.shift();
     if (s.t > run.sim.now) run.sim.run(s.t);
@@ -60,4 +62,14 @@ export function runSteps(run, steps, until) {
     else run.terminals.get(s.type.node).send(s.type.bytes);
   }
   return run.sim.run(until);
+}
+
+async function runStepsAsync(run, steps, until) {
+  while (steps.length && steps[0].t <= until) {
+    const s = steps.shift();
+    if (s.t > run.sim.now) await run.sim.runAsync(s.t);
+    if (s.set) setBoardInput(run.sim, s.set.b, s.set.pin, s.set.on);
+    else run.terminals.get(s.type.node).send(s.type.bytes);
+  }
+  return run.sim.runAsync(until);
 }
