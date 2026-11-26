@@ -14,6 +14,7 @@
 // Isomorphic ES module, no DOM.
 import { LINE_PS, esp32Prelude } from './esp32-python.js';
 import { mailbox } from './esp32-link.js';
+import { spiTime, i2cStep, halfOf } from './esp32-buses.js';
 
 // a traceback as the program's: the prelude's frames left out, the program named by its file
 const programTrace = (text, name = 'main.py') => text.split('\n').filter(l => !/File "<stdin>"/.test(l)).join('\n').replaceAll('File "<string>"', `File "${name}"`);
@@ -31,6 +32,10 @@ class Esp32Program {
     this.rx = new Map();
     this.repl = [];
     this.name = 'main.py';
+    this.spis = new Map();      // (an SPI bus's set-up, its transfers' times)
+    this.i2cs = new Map();      // (an I²C bus's: { freq, held })
+    this.buses = new Map();     // (a bus step's result: 'spi1' -> its words, 'i2c0' -> an ACK or a byte)
+    this.busEnd = 0;            // (the last bus step's end)
   }
 
   // (what it prints, its bytes of one time together)
@@ -43,12 +48,14 @@ class Esp32Program {
       if (e.pin != null) this.pins.set(e.pin, e.value);
       else if (e.uart != null) (this.rx.get(e.uart) ?? this.rx.set(e.uart, []).get(e.uart)).push(e.byte);
       else if (e.repl != null) this.repl.push(e.repl);
+      else if (e.bus != null) this.buses.set(e.bus, e.value);
     }
   }
 
   /** A command of the scheduler's: its inputs, the time to reach. */
   accept(t, cmd) {
     this.target = t;
+    this.from = cmd.from ?? this.from ?? 0;   // (the scheduler's time when it gave the command: its inputs' latest)
     this.pending.push(...(cmd.inputs ?? []));
     this.pending.sort((a, b) => a.t - b.t);
     if (cmd.name) this.name = cmd.name;
@@ -69,6 +76,23 @@ class Esp32Program {
       sleep_us: us => p.advance(Math.max(0, Number(us)) * 1e6),
       pause,
       ticks_us: () => Math.floor(p.vt / 1e6),
+      now_us: () => p.vt / 1e6,
+      // (the program waits for the node now: a bus step's result not there yet)
+      hold: () => { p.target = p.vt; },
+      pwm: (n, freq, duty) => p.out.push({ kind: 'pwm', t: p.vt, pin: `GPIO${n}`, freq, duty }),
+      adc: n => p.level(n),
+      spi_init: (key, sck, mosi, miso, baud, polarity, phase, bits, lsb) => { p.spis.set(key, { baud, bits }); p.out.push({ kind: 'spi-init', t: p.vt, key, sck, mosi, miso, baud, polarity, phase, bits, lsb }); },
+      spi_xfer: (key, bytes) => { const w = [...bytes]; p.busEnd = p.vt + spiTime(p.spis.get(key), w.length); p.out.push({ kind: 'spi', t: p.vt, key, bytes: w }); },
+      i2c_init: (key, scl, sda, freq) => { p.i2cs.set(key, { freq, held: false }); p.out.push({ kind: 'i2c-init', t: p.vt, key, scl, sda, freq }); },
+      i2c_op: (key, op, arg) => {
+        const c = p.i2cs.get(key);
+        p.busEnd = p.vt + i2cStep(op, arg, c.held).end * halfOf(c.freq);
+        c.held = op !== 'stop';
+        p.out.push({ kind: 'i2c', t: p.vt, key, op, arg });
+      },
+      bus_wait: () => p.advance(Math.max(0, p.busEnd - p.vt)),
+      bus_ready: key => { p.take(); return p.buses.has(key); },
+      bus_take: key => { const v = p.buses.get(key); p.buses.delete(key); return v; },
       pin_mode: (n, mode, pull) => { p.pulls.set(n, pull === 2 ? 1 : 0); p.out.push({ kind: 'mode', t: p.vt, pin: `GPIO${n}`, out: mode === 3 || mode === 7 }); },
       pin_set: (n, v) => p.out.push({ kind: 'pin', t: p.vt, pin: `GPIO${n}`, value: v }),
       pin_get: n => p.level(n),
@@ -89,6 +113,8 @@ class Esp32Program {
   /** The program ended: a line typed to its REPL run as it comes (`run`: MicroPython's runPython), its time the
    *  scheduler's. */
   idle(run) {
+    // (its time the scheduler's: its inputs, the lines typed, all applied at their times)
+    this.vt = Math.max(this.vt, this.from);
     this.take();
     while (this.repl.length) {
       const line = this.repl.shift();

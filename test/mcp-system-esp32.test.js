@@ -56,3 +56,17 @@ test('#5495 an ESP32 with no program: said by simulate', async () => {
   const none = await call('simulate', { project: 'p', top: SYS, time_ns: 1e6 });
   assert.deepEqual([none.isError, none.text], [true, `simulate: ${SYS}: esp: no program: a .py of the project (MicroPython)`]);
 });
+
+test('#5495 edit_system gives the ESP32 its buses, each its board\'s next one (SPI1, SPI2, I2C0) as the System editor\'s + SPI and + I²C; check_system describes them; a third SPI refused', async () => {
+  const e = await ok('edit_system', { project: 'p', file: SYS, edits: [
+    { action: 'add_interface', node: 'esp', fields: { kind: 'spi' } }, { action: 'add_interface', node: 'esp', fields: { kind: 'spi', hz: 1e6 } },
+    { action: 'add_interface', node: 'esp', fields: { kind: 'i2c' } }] });
+  assert.deepEqual(e.text.split('\n').slice(0, 3), ['add_interface esp.SPI1', 'add_interface esp.SPI2', 'add_interface esp.I2C0']);
+  const c = await ok('check_system', { project: 'p', file: SYS });
+  assert.deepEqual(c.text.split('\n').slice(1, 6), ['node esp: ESP32 DevKitC, program (none), in MicroPython', '  UART2: UART 9600 baud 8N1, TX GPIO17, RX GPIO16',
+    '  SPI1: SPI 125000 Hz mode 0, SCK GPIO14, MOSI GPIO13, MISO GPIO12, SS GPIO15', '  SPI2: SPI 1000000 Hz mode 0, SCK GPIO18, MOSI GPIO23, MISO GPIO19, SS GPIO5', '  I2C0: I²C 100000 Hz, SCL GPIO18, SDA GPIO19']);
+  const no = await call('edit_system', { project: 'p', file: SYS, edits: [{ action: 'add_interface', node: 'esp', fields: { kind: 'spi' } }] });
+  assert.deepEqual([no.isError, no.text], [true, 'edit_system: edit 0 (add_interface): esp: an interface named \'SPI1\' is there already (nothing written)']);
+  const bad = await call('edit_system', { project: 'p', file: SYS, edits: [{ action: 'add_interface', node: 'esp', fields: { kind: 'i2c', name: 'Wire' } }] });
+  assert.deepEqual([bad.isError, bad.text], [true, 'edit_system: edit 0 (add_interface): esp: a microcontroller\'s I²C bus is its board\'s (I2C0, I2C1) (nothing written)']);
+});

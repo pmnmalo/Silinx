@@ -1,0 +1,53 @@
+{
+  "format": "silinx-system",
+  "version": 2,
+  "name": "uart_esp32",
+  "nodes": [
+    {
+      "id": "esp",
+      "kind": "mcu",
+      "board": "esp32-devkitc",
+      "firmware": "esp/main.py",
+      "lang": "micropython",
+      "interfaces": [
+        {
+          "name": "UART2",
+          "kind": "uart",
+          "baud": 9600,
+          "frame": "8N1"
+        }
+      ],
+      "x": 0,
+      "y": 0
+    },
+    {
+      "id": "fpga",
+      "kind": "fpga",
+      "module": "uart",
+      "board": "basys2",
+      "variant": "250",
+      "constraints": "fpga/uart.ucf",
+      "lang": "vhdl",
+      "interfaces": [
+        {
+          "name": "uart",
+          "kind": "uart",
+          "tx": "tx",
+          "rx": "rx",
+          "baud": 9600,
+          "frame": "8N1"
+        }
+      ],
+      "x": 320,
+      "y": 0
+    }
+  ],
+  "links": [
+    {
+      "id": "serial",
+      "kind": "uart",
+      "a": "esp.UART2",
+      "b": "fpga.uart"
+    }
+  ]
+}

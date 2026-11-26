@@ -73,8 +73,10 @@ export const MCU_BOARDS = [
   // (a Pico W, #5500: the same, and a network, Silinx's behavioural `network` and `umqtt.simple` over its USB)
   { id: 'pico-w', name: 'Raspberry Pi Pico W', arch: 'rp2040', mcu: 'RP2040', clockHz: 125e6, vio: 3.3, pins: picoPins(), firmwares: ['py'], langs: ['micropython'], network: true, uarts: { UART0: { tx: 'GP0', rx: 'GP1' }, UART1: { tx: 'GP4', rx: 'GP5' } }, spis: {}, i2cs: {} },
   // (an ESP32 DevKitC, #5495: MicroPython behavioural, its program a .py; its GPIOs, 34 to 39 inputs only; MicroPython's
-  // UART(2) on GPIO17 and GPIO16)
-  { id: 'esp32-devkitc', name: 'ESP32 DevKitC', arch: 'esp32', mcu: 'ESP32-WROOM-32', clockHz: 240e6, vio: 3.3, pins: esp32Pins(), firmwares: ['py'], langs: ['micropython'], inputOnly: ['GPIO34', 'GPIO35', 'GPIO36', 'GPIO39'], uarts: { UART2: { tx: 'GPIO17', rx: 'GPIO16' } }, spis: {}, i2cs: {} },
+  // UART(2) on GPIO17 and GPIO16, SPI(1) and SPI(2) (HSPI, VSPI) and I2C(0) and I2C(1) on their default pins, SS the
+  // program's pin, CS0's)
+  { id: 'esp32-devkitc', name: 'ESP32 DevKitC', arch: 'esp32', mcu: 'ESP32-WROOM-32', clockHz: 240e6, vio: 3.3, pins: esp32Pins(), firmwares: ['py'], langs: ['micropython'], inputOnly: ['GPIO34', 'GPIO35', 'GPIO36', 'GPIO39'], uarts: { UART2: { tx: 'GPIO17', rx: 'GPIO16' } },
+    spis: { SPI1: { sck: 'GPIO14', mosi: 'GPIO13', miso: 'GPIO12', ss: 'GPIO15' }, SPI2: { sck: 'GPIO18', mosi: 'GPIO23', miso: 'GPIO19', ss: 'GPIO5' } }, i2cs: { I2C0: { scl: 'GPIO18', sda: 'GPIO19' }, I2C1: { scl: 'GPIO25', sda: 'GPIO26' } } },
 ];
 /** A microcontroller's board by its id, or null. */
 export const mcuBoard = id => MCU_BOARDS.find(b => b.id === id) || null;

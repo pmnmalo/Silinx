@@ -198,11 +198,13 @@ export function addInterface(sys, id, f = {}) {
   if (n.kind === 'broker') return { error: `${id}: an MQTT broker has one interface, its own` };
   if (kind === 'mqtt' && (n.kind !== 'mcu' || !mcuBoard(n.board)?.network)) return { error: `${id}: an MQTT interface is a network's: a Pico W's` };
   if (n.kind === 'circuit') return { error: `${id}: a circuit node has no interfaces: its boards' pins it wires are its links` };
+  // (a microcontroller's bus with no name: its board's first one it has no interface for, an ESP32's SPI1 then SPI2, #5495)
+  const unused = list => list.find(s => !n.interfaces.some(i => lc(i.name) === lc(s))) ?? list[0];
   const spis = n.kind === 'mcu' ? Object.keys(mcuBoard(n.board)?.spis || {}) : null;
-  if (kind === 'spi' && spis && !spis.some(s => lc(s) === lc(f.name ?? spis[0]))) return { error: `${id}: a microcontroller's SPI bus is its board's (${spis.join(', ') || 'none'})` };
+  if (kind === 'spi' && spis && !spis.some(s => lc(s) === lc(f.name ?? unused(spis)))) return { error: `${id}: a microcontroller's SPI bus is its board's (${spis.join(', ') || 'none'})` };
   const i2cs = n.kind === 'mcu' ? Object.keys(mcuBoard(n.board)?.i2cs || {}) : null;
-  if (kind === 'i2c' && i2cs && !i2cs.some(s => lc(s) === lc(f.name ?? i2cs[0]))) return { error: `${id}: a microcontroller's I²C bus is its board's (${i2cs.join(', ') || 'none'})` };
-  const name = f.name ?? (kind === 'spi' && spis ? spis[0] : kind === 'i2c' && i2cs ? i2cs[0] : freeIfaceName(n, kind));
+  if (kind === 'i2c' && i2cs && !i2cs.some(s => lc(s) === lc(f.name ?? unused(i2cs)))) return { error: `${id}: a microcontroller's I²C bus is its board's (${i2cs.join(', ') || 'none'})` };
+  const name = f.name ?? (kind === 'spi' && spis ? unused(spis) : kind === 'i2c' && i2cs ? unused(i2cs) : freeIfaceName(n, kind));
   const it = kind === 'uart' ? { name, kind, ...UART_DEFAULTS, ...pick(f, ['tx', 'rx', 'baud', 'frame']) }
     : kind === 'spi' ? { name, kind, ...(spis ? {} : pick(f, ['sck', 'mosi', 'miso', 'ss'])), hz: SPI_HZ, mode: 0, ...pick(f, ['hz', 'mode']) }
     : kind === 'i2c' ? { name, kind, ...(i2cs ? {} : pick(f, ['scl', 'sda'])), hz: I2C_HZ, ...pick(f, ['hz']) }

@@ -77,6 +77,9 @@ export function mountSystemSide(ctx) {
         h('div', { class: 'asm-row' }, btn('+ GPIO', 'Add GPIO wires: the board\'s pins and their direction', () => take(addInterface(M(), n.id, { kind: 'gpio' }), 'iface'), 'asm-small sys-add-gpio'),
           // (a Pico W's network: its MQTT interface, #5500)
           ...(mcuBoard(n.board)?.network && !n.interfaces.some(i => i.kind === 'mqtt') ? [btn('+ MQTT', 'Add its MQTT interface: its link to a broker', () => take(addInterface(M(), n.id, { kind: 'mqtt', name: 'mqtt' }), 'iface'), 'asm-small sys-add-mqtt')] : []),
+          // (an ESP32's: its next bus of the two, SPI1 then SPI2, I2C0 then I2C1, #5495)
+          ...(arch === 'esp32' ? [btn('+ SPI', 'Add one of the board\'s SPI buses, the master: SPI1 (SCK GPIO14, MOSI GPIO13, MISO GPIO12, SS GPIO15) or SPI2 (GPIO18, GPIO23, GPIO19, GPIO5)', () => take(addInterface(M(), n.id, { kind: 'spi' }), 'iface'), 'asm-small sys-add-spi'),
+            btn('+ I²C', 'Add one of the board\'s I²C buses, the master: I2C0 (SCL GPIO18, SDA GPIO19) or I2C1 (GPIO25, GPIO26)', () => take(addInterface(M(), n.id, { kind: 'i2c' }), 'iface'), 'asm-small sys-add-i2c')] : []),
           ...(pic || py ? [] : [btn('+ SPI', 'Add the board\'s SPI bus, the master: SCK D13, MOSI D11, MISO D12, SS D10', () => take(addInterface(M(), n.id, { kind: 'spi' }), 'iface'), 'asm-small sys-add-spi'),
             btn('+ I²C', 'Add the board\'s I²C bus (Wire), the master: SCL A5, SDA A4', () => take(addInterface(M(), n.id, { kind: 'i2c' }), 'iface'), 'asm-small sys-add-i2c')])));
     } else if (n.kind === 'circuit') {
