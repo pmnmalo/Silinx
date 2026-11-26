@@ -90,7 +90,7 @@ test('the tools: those of the areas, the ones of before the split in their order
   assert.deepEqual(names(WCFG_TOOLS), ['save_wave_config', 'load_wave_config']);
   assert.deepEqual(names(HLS_TOOLS), ['c_simulation', 'c_cosimulation', 'c_synthesis_report', 'c_generated']);
   assert.deepEqual(names(PROCESS_TOOLS), ['run_process', 'get_report']);
-  assert.deepEqual(names(BOARD_TOOLS), ['program_board', 'program_prom', 'jtag_scan', 'bitstream_info', 'toolchain_info']);   // (Configure Target Device, #2674, #2298; its PROM, scan and file, Toolchain Settings read, #4751)
+  assert.deepEqual(names(BOARD_TOOLS), ['program_board', 'program_prom', 'jtag_scan', 'bitstream_info', 'toolchain_info', 'serial_terminal']);   // (Configure Target Device, #2674, #2298; its PROM, scan and file, Toolchain Settings read, #4751; a real board's serial terminal, #5449)
   assert.deepEqual(names(CAPTURE_TOOLS), ['capture_settings', 'capture']);   // (the logic analyzer, #3176)
   assert.deepEqual(names(TIMING_TOOLS), ['timing_paths']);
   assert.deepEqual(names(LAB_TOOLS), ['lab']);   // (the guided labs, #3179)

@@ -68,7 +68,9 @@ Platform Flash PROM, as iMPACT's window: programmed with the project's PROM file
 `build/prom-backup/`, erased, the FPGA reloaded from it; a trusted project only), `jtag_scan` (the JTAG chain's devices),
 `bitstream_info` (the programming file's header: its design, part and date, another device's warned), `toolchain_info`
 (*Toolchain Settings*' state, read only: ISE's mode, whether ISE and Vivado can run and why not; no host, user or path:
-the settings are changed in the interface only, #4751), `lab` (a project's guided labs: listed, a step shown,
+the settings are changed in the interface only, #4751), `serial_terminal` (a real board's USB serial port, as the System
+Emulator terminal's *Real Board…*: a System node's board matched by its USB id, or a port given, at its link's baud and frame;
+the text sent and what the board answers, through arduino-cli's monitor, #5449), `lab` (a project's guided labs: listed, a step shown,
 checked on the project and recorded, as *Guided Labs…* does; a lab restarted), `capture_settings` (the logic analyzer's
 capture: the signals of the design to watch on the board, the clock, the depth, the trigger, checked on the design with the block
 RAMs it takes), `capture` (a capture on the board over the JTAG cable, the Basys2's / Nexys2's Digilent Adept USB through

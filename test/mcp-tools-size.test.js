@@ -5,8 +5,9 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { TOOLS } from '../server/mcp.js';
 
-/** The budget of tools/list's JSON, in characters, and of one tool's description and one argument's. */
-export const LIST_MAX = 128 * 1024, TOOL_MAX = 700, ARG_MAX = 250;
+/** The budget of tools/list's JSON, in characters, and of one tool's description and one argument's (136 KB since #5449:
+ *  the co-design's real boards, serial_terminal, when main was at 128 KB to a few characters). */
+export const LIST_MAX = 136 * 1024, TOOL_MAX = 700, ARG_MAX = 250;
 const list = TOOLS.map(({ run, ...t }) => t);
 
 test('#4752 tools/list under its budget', () => {

@@ -113,6 +113,11 @@ the System Emulator in a tab of its own:
 - an FPGA board's LEDs and displays light as its module drives them;
 - an Arduino's pins show their levels (lit high, dark low, hollow floating) and its LED L lights with D13;
 - each serial terminal is in the **Terminals** panel: type a line, Enter sends it.
+- a terminal's **Real Board…** joins it to a real board's USB serial port through Web Serial (Chrome and Edge; not
+  Safari, nor the iPad): an Arduino's, chosen among its board's USB ids, or an FPGA board's USB-UART adapter. The port
+  opens at the link's baud and frame; the terminal shows what the board sends, as the simulation shows it, and the line
+  typed goes to the board. **Disconnect** gives the terminal back to the emulation. The MCP server's `serial_terminal`
+  does the same on the local server, through arduino-cli's monitor.
 
 The status line shows the time and how fast the boards run against real time.
 

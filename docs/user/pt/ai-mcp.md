@@ -9,7 +9,9 @@ mesmas funções, com as mesmas verificações e mensagens. Menos o que é só s
 Project*, #2830) e as *Definições da Toolchain* (o modo e os caminhos do ISE, um anfitrião SSH, os programadores: deste
 computador; `toolchain_info` só lê o que encontraram, sem anfitriões, utilizadores nem caminhos). O iMPACT tem as suas:
 `program_board`, `program_prom` (a PROM da placa: programada, verificada, copiada, apagada), `jtag_scan` (a cadeia JTAG) e
-`bitstream_info` (o cabeçalho do ficheiro de programação).
+`bitstream_info` (o cabeçalho do ficheiro de programação). `serial_terminal`: a porta série USB de uma placa real, como a
+*Placa Real…* de um terminal do Emulador do Sistema (a placa de um nó pelo seu identificador USB, ou uma porta dada, com o baud
+e a trama da sua ligação; pelo monitor do arduino-cli).
 
 ## Ligá-lo
 

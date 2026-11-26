@@ -30,25 +30,36 @@ if (a[0] === 'upload') {
   console.log('avrdude: 2 bytes of flash verified');
   process.exit(0);
 }
-if (a[0] !== 'compile') { console.error(`stub: no command ${a[0]}`); process.exit(2); }
-const opt = k => a[a.indexOf(k) + 1];
-const dir = a[a.length - 1], out = opt('--output-dir'), name = path.basename(dir);
-fs.mkdirSync(out, { recursive: true });
-fs.writeFileSync(path.join(out, '..', 'args.json'), JSON.stringify(a));
-let errors = 0;
-const walk = d => fs.readdirSync(d, { withFileTypes: true }).flatMap(e => (e.isDirectory() ? walk(path.join(d, e.name)) : [path.join(d, e.name)])).sort();
-for (const f of walk(dir)) {
-  fs.readFileSync(f, 'utf8').split('\n').forEach((l, i) => {
-    const m = /^(\s*)#(error|warning)\s+(.*)$/.exec(l);
-    if (!m) return;
-    if (m[2] === 'error') errors++;
-    console.error(`${f}: In function 'void setup()':`);
-    console.error(`${f}:${i + 1}:${m[1].length + 2}: ${m[2]}: #${m[2]} ${m[3]}`);
-    console.error(`    ${i + 1} | ${l}`);
-    console.error(`      | ${' '.repeat(m[1].length)} ^~~~~`);
-  });
+// (#5449: `monitor -p P -c CFG --quiet`: its arguments written to $SILINX_CONFIG_DIR/monitor.json; the board's greeting
+// said, then what it is sent echoed back, as a board that echoes; STUB_MONITOR_FAIL=1, the port not there)
+if (a[0] === 'monitor') {
+  fs.writeFileSync(path.join(process.env.SILINX_CONFIG_DIR || '.', 'monitor.json'), JSON.stringify(a));
+  if (process.env.STUB_MONITOR_FAIL === '1') { console.error(`Port monitor error: command 'open' failed: Serial port not found`); process.exit(1); }
+  process.stdout.write('Hello from the board\r\n');
+  process.stdin.on('data', d => process.stdout.write(d));
+  process.stdin.on('end', () => setTimeout(() => process.exit(0), 50));
+  setInterval(() => {}, 1000);
+} else if (a[0] !== 'compile') { console.error(`stub: no command ${a[0]}`); process.exit(2); } else compile();
+function compile() {
+  const opt = k => a[a.indexOf(k) + 1];
+  const dir = a[a.length - 1], out = opt('--output-dir'), name = path.basename(dir);
+  fs.mkdirSync(out, { recursive: true });
+  fs.writeFileSync(path.join(out, '..', 'args.json'), JSON.stringify(a));
+  let errors = 0;
+  const walk = d => fs.readdirSync(d, { withFileTypes: true }).flatMap(e => (e.isDirectory() ? walk(path.join(d, e.name)) : [path.join(d, e.name)])).sort();
+  for (const f of walk(dir)) {
+    fs.readFileSync(f, 'utf8').split('\n').forEach((l, i) => {
+      const m = /^(\s*)#(error|warning)\s+(.*)$/.exec(l);
+      if (!m) return;
+      if (m[2] === 'error') errors++;
+      console.error(`${f}: In function 'void setup()':`);
+      console.error(`${f}:${i + 1}:${m[1].length + 2}: ${m[2]}: #${m[2]} ${m[3]}`);
+      console.error(`    ${i + 1} | ${l}`);
+      console.error(`      | ${' '.repeat(m[1].length)} ^~~~~`);
+    });
+  }
+  if (errors) { console.error('exit status 1'); console.error('Error during build: exit status 1'); process.exit(1); }
+  fs.writeFileSync(path.join(out, `${name}.ino.hex`), ':02000000FFCF30\n:00000001FF\n');
+  console.log('Sketch uses 2 bytes (0%) of program storage space. Maximum is 32256 bytes.');
+  console.log('Global variables use 0 bytes (0%) of dynamic memory, leaving 2048 bytes for local variables. Maximum is 2048 bytes.');
 }
-if (errors) { console.error('exit status 1'); console.error('Error during build: exit status 1'); process.exit(1); }
-fs.writeFileSync(path.join(out, `${name}.ino.hex`), ':02000000FFCF30\n:00000001FF\n');
-console.log('Sketch uses 2 bytes (0%) of program storage space. Maximum is 32256 bytes.');
-console.log('Global variables use 0 bytes (0%) of dynamic memory, leaving 2048 bytes for local variables. Maximum is 2048 bytes.');

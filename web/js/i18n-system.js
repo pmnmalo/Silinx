@@ -74,6 +74,9 @@ export const SYSTEM_PT = {
   'Emulate System': 'Emular o Sistema',
   'Terminals': 'Terminais', '☰ Terminals': '☰ Terminais', 'Show / hide the terminals panel': 'Mostrar / ocultar o painel dos terminais',
   'Collapse the terminals panel': 'Recolher o painel dos terminais', 'Expand the terminals panel': 'Expandir o painel dos terminais',
+  // (a terminal joined to a real board over Web Serial, #5449: web/js/system-serial-ui.js)
+  'Real Board…': 'Placa Real…', 'Disconnect': 'Desligar', 'Give the terminal back to the emulation': 'Devolver o terminal à emulação',
+  "Join this terminal to a real board's USB serial port (Web Serial), at its link's baud and frame": 'Ligar este terminal à porta série USB de uma placa real (Web Serial), com o baud e a trama da sua ligação',
   'LED L (D13)': 'LED L (pino D13)', 'Power': 'Alimentação',
   // an Explorer 16/32 (#5484)
   'Potentiometer R6 (AN5): 0 to 3.3 V': 'Potenciómetro R6 (AN5): 0 a 3,3 V', 'Temperature sensor TC1047A (AN4), °C': 'Sensor de temperatura TC1047A (AN4), °C',

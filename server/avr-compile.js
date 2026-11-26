@@ -29,7 +29,7 @@ export const runningFirmware = name => { const j = getJob(running.get(name.toLow
 const DIRS = ['/opt/homebrew/bin', '/usr/local/bin', '/usr/bin'];
 
 /** arduino-cli's path: config.json's paths['arduino-cli'] (explicit), else PATH's and the usual folders'; or null. */
-function arduinoCliPath(cfg) {
+export function arduinoCliPath(cfg) {
   const explicit = cfg?.paths?.['arduino-cli'];
   if (explicit) return which(String(explicit)) ? String(explicit) : null;
   return which('arduino-cli', DIRS);

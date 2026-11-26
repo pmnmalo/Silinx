@@ -823,6 +823,15 @@ end, through the same functions.
 
 Web Serial is in Chrome, Edge and Firefox. It is not in Safari nor on the iPad, which have no WebUSB either.
 
+**A real board's serial terminal** (#5449, `core/serial-line.js`): a System terminal's **Real Board…** in the System
+Emulator (`web/js/system-serial-ui.js`) opens a board's USB serial port through Web Serial, at the terminal's link's baud
+and frame (7 or 8 data bits: a serial port's). The port chooser offers the ports of the board at the link's other end (an
+Arduino's USB ids, `MCU_USB`; every port for an FPGA board, whose USB-UART is an adapter). While joined, the terminal
+shows the board's bytes as the simulation's text (`bytesText`), so a class compares the simulation, the emulation and the
+board, and the line typed goes to the board; Disconnect, or the board unplugged (said), gives it back to the emulation.
+The local server does the same for the MCP's `serial_terminal` (`server/serial-monitor.js`) through arduino-cli's monitor
+(no serial library of Silinx's): a node's board matched by its USB id as Program Node's, or a port given.
+
 **Hardware in the loop.** Each node is either simulated or real.
 
 - **A real microcontroller and a simulated FPGA.** The board's USB serial port is joined to the simulated FPGA
