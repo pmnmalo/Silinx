@@ -11,7 +11,7 @@ import { formatSi } from '/core/circuit-analog-parts.js';
 const P = 20;
 const BAND = ['black', 'brown', 'red', 'orange', 'yellow', 'green', 'blue', 'violet', 'grey', 'white'];
 /** A resistance's four colour bands: its two digits, its multiplier, gold (5 %). */
-export function resistorBands(ohms) {
+function resistorBands(ohms) {
   const e = Math.floor(Math.log10(Math.max(ohms, 1))) - 1, d = Math.round(ohms / 10 ** e);
   const [a, b, x] = d >= 100 ? [1, 0, e + 1] : [Math.floor(d / 10), d % 10, e];
   return [BAND[a], BAND[b], x >= 0 ? BAND[x] : x === -1 ? 'gold' : 'silver', 'gold'];
