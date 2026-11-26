@@ -196,7 +196,9 @@ html:not([data-ui="silinx"]) .tree :is(.row.sel, .row.msel) .twisty { color: #dd
 .dlg-note { margin-top: 8px; color: var(--muted); font-size: 11px; }
 .dlg-err { min-height: 16px; margin-top: 4px; color: var(--error-fg); }
 .dlg-title, .dlg-buttons { flex: none; }   /* (not shrunk by a tall body: #1409) */
-.dlg-buttons { display: flex; justify-content: flex-end; gap: 8px; padding: 8px 12px 10px; border-top: 1px solid #dfdfdf; }
+.dlg-buttons { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 8px; padding: 8px 12px 10px; border-top: 1px solid #dfdfdf; }
+/* (a button's label on one line: a row too wide wraps whole buttons, #5748) */
+.dlg-buttons .btn { white-space: nowrap; }
 .share-about { display: grid; margin: 8px 0 10px; }   /* (every way's sentence in one place, the others unseen: as tall as the tallest, #4712) */
 .share-about > p { grid-area: 1 / 1; margin: 0; }
 .share-about > .share-about-ghost { visibility: hidden; }

@@ -44,6 +44,15 @@ async function rowClick(page, label, { modifiers = 0, button } = {}) {
 }
 const menuItems = (page) => page.waitFor(() => { const m = [...document.querySelectorAll('body > .menu-popup .mi')].map((i) => `${i.textContent.trim()}${i.classList.contains('disabled') ? ' (disabled)' : ''}`); return m.length ? m : null; }, [], { what: 'the context menu' });
 const question = (page) => page.eval(() => [...document.querySelectorAll('.dlg-overlay')].pop().querySelector('.msg-text').textContent);
+// the question's buttons that do not show their label on one line, in one row (#5748: they wrapped and overflowed)
+const badButtons = (page) => page.eval(() => {
+  const all = [...[...document.querySelectorAll('.dlg-overlay')].pop().querySelectorAll('.dlg-buttons .btn')];
+  return all.filter((b) => {
+    const r = document.createRange();
+    r.selectNodeContents(b);
+    return new Set([...r.getClientRects()].map((x) => Math.round(x.top))).size !== 1 || b.scrollWidth > b.clientWidth || b.offsetTop !== all[0].offsetTop;
+  }).map((b) => b.textContent);
+});
 const buttons = (page) => page.eval(() => [...[...document.querySelectorAll('.dlg-overlay')].pop().querySelectorAll('.dlg-buttons .btn')].map((b) => `${b.textContent}${b.classList.contains('primary') ? '*' : ''}`));
 
 async function openMulti(page, name) {
@@ -107,6 +116,7 @@ uiTest('#5720 Remove from Project of a selection (its menu): the files kept in t
   await page.click('body > .menu-popup .mi', { text: 'Remove from Project' });
   await page.waitDialog('Remove Source');
   assert.equal(await question(page), "Remove these 3 sources from the project?\n'src/b.vhd'\n'src/c.vhd'\n'src/st.fsm.json' and its HDL file 'src/st.vhd'\n(The files stay in the project folder: Undo or Add to Project in the Files view brings them back.)\n\nRemove and Delete Files moves them to the workspace's .trash folder.");
+  assert.deepEqual(await badButtons(page), []);
   assert.deepEqual(await buttons(page), ['Remove from Project*', 'Remove and Delete Files', 'Cancel']);
   // (the default: Enter, the files kept)
   await page.key('Enter');
@@ -179,6 +189,7 @@ uiTest('#5720 Delete on a selection: Remove and Delete Files deletes them (into 
   await page.key('Delete');
   await page.waitDialog('Remove Source');
   assert.equal(await question(page), "Remove 'src/c.vhd' from the project?\n(The file stays in the project folder: Undo or Add to Project in the Files view brings it back.)\n\nRemove and Delete File moves it to the workspace's .trash folder.");
+  assert.deepEqual(await badButtons(page), []);
   assert.deepEqual(await buttons(page), ['Remove from Project*', 'Remove and Delete File', 'Cancel']);
   await page.dialogButton('Remove and Delete File');
   await page.waitNoDialog();
@@ -200,7 +211,8 @@ uiTest('#5720 in Portuguese: a selection\'s menu, the question and its buttons, 
     await page.click('body > .menu-popup .mi', { text: 'Remover do Projeto' });
     await page.waitDialog('Remover Fonte');
     assert.equal(await question(page), "Remover estas 3 fontes do projeto?\n'src/a.vhd'\n'src/b.vhd'\n'src/c.vhd'\n(Os ficheiros ficam na pasta do projeto: Anular ou Acrescentar ao Projeto na vista Ficheiros repõe-nos.)\n\nRemover e Apagar Ficheiros move-os para a pasta .trash da área de trabalho.");
-    assert.deepEqual(await buttons(page), ['Remover do Projeto*', 'Remover e Apagar Ficheiros', 'Cancelar']);
+    assert.deepEqual(await badButtons(page), []);
+  assert.deepEqual(await buttons(page), ['Remover do Projeto*', 'Remover e Apagar Ficheiros', 'Cancelar']);
     await page.dialogButton('Remover e Apagar Ficheiros');
     await page.waitNoDialog();
     await page.waitFor(() => document.querySelectorAll('#hier .row[data-key^="m:"]').length === 1, [], { what: 'st left' });
