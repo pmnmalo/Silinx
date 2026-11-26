@@ -132,7 +132,7 @@ test('run_process post_synthesis_model and post_par_model on the Tang Nano 9K: b
   const par = await ok('run_process', { project: 'models', process: 'post_par_model' });
   // (Place & Route's warnings, blinky's 8 as test/examples-gowin.test.js lists them: nets routed through the general routing)
   assert.deepEqual([par.data.warnings.length, par.data.warnings.filter(w => !/^WARNING:Place - Failed to route net 'swon\[1\]' from \S+ to \S+ using dedicated routing\.$/.test(w)), par.data.errors], [8, [], []]);
-  assert.match(par.text, /^Post-Place & Route Simulation Model: build\/netgen\/par\/top_timesim\.v \(Verilog, the Gowin cells\), 264 cells$/m);
+  assert.match(par.text, /^Post-Place & Route Simulation Model: build\/netgen\/par\/top_timesim\.v \(Verilog, the Gowin cells\), 265 cells$/m);
   const p = await ok('simulate', { project: 'models', model: 'postpar', time_ns: 2000000, signals: [] });
   assert.deepEqual([p.data.log.map(l => l.text).slice(-1), p.data.warnings, p.data.failed], [['Simulation finished OK'], [], false]);
   const message = 'the Gowin GW1N flow makes no post-map simulation model (only the post-synthesis and post-place & route ones): simulate the behavioral model or the post-synthesis or the post-place & route one';

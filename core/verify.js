@@ -25,7 +25,7 @@ import { toVerilog, signedInt } from './synth-verilog.js';
 import { tbPorts } from './testbench.js';
 import { clocksOf } from './schematic.js';
 import { VERIFY_TIME_LIMIT, timeLimitError, runWithin, timeoutText } from './verify-limit.js';
-import { structuralScript, readStructural, abcScript, abcFiles, readAbc, replayWitness, BMC_CEX, PDR_CEX, SAT_CEX } from './verify-abc.js';
+import { structuralScript, readStructural, abcScript, abcFiles, readAbc, readAbcStatus, replayWitness, BMC_CEX, PDR_CEX, SAT_CEX } from './verify-abc.js';
 
 export const VERIFY_DEPTH = 20;
 export const MAX_DEPTH = 1000;
@@ -206,7 +206,8 @@ async function checkMiterIn(run, files, s, { depth, timeLimit, outputs, onLine }
   // (bmc3 and pdr each given 40% of the time left, Yosys's own work before them the rest)
   const w = await runWithin(run, ['-p', abcScript(depth, left() * 0.4)], { ...files, ...abcFiles() }, l => { a.push(l); onLine(l); }, Math.max(left(), 0.001));
   if (w.timedOut) return { status: 'timeout', timeLimit, checked: 0 };
-  const r = readAbc(a);
+  // (ABC's results from its log; YoWASP's Yosys 0.71 loses ABC's output: from its status files, #5604)
+  const r = a.some(l => l.startsWith('ABC: ')) ? readAbc(a) : readAbcStatus(w.files) ?? readAbc(a);
   if (r.latches === null) return { status: 'error', message: 'Yosys gave no result (its log has neither a proof nor a counterexample)' };
   const failed = (frame, cex) => {
     const cycles = replayWitness(w.files, cex);

@@ -15,12 +15,10 @@ const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'silinx-examples-gatemate-'));
 process.env.SILINX_CONFIG_DIR = path.join(tmp, 'config');
 test.after(() => fs.rmSync(tmp, { recursive: true, force: true }));
 
-// the warnings of each example (seed 1): micro80's Yosys's of its RAM's port, widened to the block RAM's; uart's two crashes of
-// nextpnr's after its placement with seeds 1 and 2 (a WebAssembly trap), seed 3 the one that places and routes it
-const crashed = seed => `WARNING:Place - nextpnr-himbaechel-gatemate crashed with seed ${seed} (memory access out of bounds): placed and routed again with seed ${seed + 1}.`;
+// the warnings of each example (seed 1): micro80's Yosys's of its RAM's port, widened to the block RAM's (Yosys 0.71's netlists:
+// nextpnr places and routes every example with seed 1, uart's two crashes of Yosys 0.70's netlist gone, #5634)
 const WARNINGS = {
   micro80: ['WARNING:Yosys - Resizing cell port micro80_top.memory.0.0.B_DO from 10 bits to 20 bits.'],
-  uart: [crashed(1), crashed(2)],
 };
 
 test('the examples\' ports on the GateMate evaluation board: every one with a pin', () => {

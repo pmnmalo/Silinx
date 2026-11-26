@@ -41,8 +41,9 @@ test('synthGoal: Fast, Area, Speed of the two ISE properties; every project befo
 // the examples' sizes (Spartan-3E, Normal; LUTs): the usual mapping's, Speed's. Neither is always the smaller. (The
 // stopwatch's comparisons of one signal with several constants as logic, #3097: 226 and 224 before; the clock's 199 and 208
 // before its counters were sized by CLK_HZ and its inputs read through btnOn / swOn, #3710; the stopwatch's 226 and 226 with one
-// register of to_decimal's value, #5654.)
-const USUAL_SPEED = { traffic: [110, 106], stopwatch: [227, 216], clock: [203, 212], pong: [300, 276] };
+// register of to_decimal's value, #5654. With Yosys 0.70, #5634: traffic 110 and 106, stopwatch 227 and 216, clock 203 and
+// 212, pong 300 and 276.)
+const USUAL_SPEED = { traffic: [115, 109], stopwatch: [225, 206], clock: [202, 220], pong: [298, 296] };
 for (const [name, [usualLuts, speedLuts]] of Object.entries(USUAL_SPEED)) {
   test(`Area's synthesis of ${name}: the usual mapping (FAST_SYNTH, one mapping) and Speed's, the smaller kept`, async () => {
     const ex = example(name);
@@ -62,8 +63,8 @@ for (const [name, [usualLuts, speedLuts]] of Object.entries(USUAL_SPEED)) {
   });
 }
 
-// a priority encoder of 128 requests (#3096): 42 levels of logic in the usual mapping (DEEP_RULE: more than 16), 49.0 ns by the
-// estimate; Speed's mappings 7.6 ns, 217 LUTs against 182
+// a priority encoder of 128 requests (#3096): 41 levels of logic in the usual mapping (DEEP_RULE: more than 16), 47.9 ns by the
+// estimate; Speed's mappings 8.8 ns, 202 LUTs against 183 (Yosys 0.70, #5634: 42 levels, 49.0 ns; 7.6 ns, 217 LUTs against 182)
 const PRIO = `module prio(input clk, input [127:0] req, output reg [6:0] idx, output reg any);
   reg [127:0] r; integer i;
   always @(posedge clk) begin r <= req; any <= |r; idx <= 0; for (i = 0; i < 128; i = i + 1) if (r[i]) idx <= i; end
@@ -77,13 +78,13 @@ const prioInput = () => {
 test('#3096 Fast\'s synthesis of a deep design: Speed\'s netlist too, kept when DEEP_RULE.gain faster', async () => {
   const opts = { family: 'spartan3e', run: yosysNode, effort: 'normal' };
   const [usual, speed] = await Promise.all([synthesizeVerilog(prioInput(), { ...opts, ...FAST_SYNTH }), synthesizeVerilog(prioInput(), { ...opts, effort: 'high' })]);
-  assert.equal(logicLevels(usual.files['prio.json'], 'prio'), 42);
-  assert.deepEqual([usual.util.luts, speed.util.luts], [182, 217]);
+  assert.equal(logicLevels(usual.files['prio.json'], 'prio'), 41);
+  assert.deepEqual([usual.util.luts, speed.util.luts], [183, 202]);
   const lines = [];
   const fast = await synthesizeFast(prioInput(), { ...opts, onLine: l => lines.push(l) });
-  assert.equal(fast.fast.levels, 42);
+  assert.equal(fast.fast.levels, 41);
   assert.equal(fast.fast.kept, 'speed');
-  assert.deepEqual([fast.fast.usual.luts, fast.fast.speed.luts], [182, 217]);
+  assert.deepEqual([fast.fast.usual.luts, fast.fast.speed.luts], [183, 202]);
   assert.ok(fast.fast.speed.ns <= fast.fast.usual.ns * (1 - DEEP_RULE.gain), JSON.stringify(fast.fast));
   assert.equal(fast.files['prio.json'], speed.files['prio.json']);
   assert.deepEqual(fast.warnings, []);   // no warnings
@@ -93,7 +94,7 @@ test('#3096 Fast\'s synthesis of a deep design: Speed\'s netlist too, kept when 
   assert.equal(slow.files['prio.json'], usual.files['prio.json']);
   assert.deepEqual(slow.warnings, []);
   // not deep by the rule: the usual mapping alone, no r.fast
-  const shallow = await synthesizeFast(prioInput(), { ...opts, deepRule: { ...DEEP_RULE, levels: 42 } });
+  const shallow = await synthesizeFast(prioInput(), { ...opts, deepRule: { ...DEEP_RULE, levels: 41 } });
   assert.equal(shallow.fast, undefined);
   assert.equal(shallow.files['prio.json'], usual.files['prio.json']);
 });
@@ -161,8 +162,8 @@ test('#652 Fast\'s synthesis of a short control path (spi-fpga-slave\'s enable):
 
 // #370: a deep design too large for DEEP_RULE (the EPFL arbiter: 4033 LUTs, 30 levels, 34.9 ns in the usual mapping) gets the usual
 // mapping balanced as sums of products (DEPTH_SOPB), the old Normal's, kept when DEEP_RULE.gain faster. The priority encoder with
-// DEEP_RULE.maxLuts below its 182 LUTs stands for it: 42 levels and 49.0 ns before, 6 levels and 7.70 ns so, then 7.62 with
-// its critical LUTs made shallower (#652; Speed's: 7.62)
+// DEEP_RULE.maxLuts below its 183 LUTs stands for it: 41 levels and 47.9 ns before, 7.70 ns so, then 5 levels and 6.55 ns with
+// its critical LUTs made shallower (#652) (Yosys 0.70, #5634: 217 LUTs and 109 slices balanced, 7.62 ns made shallower, 6 levels)
 test('#370 Fast\'s synthesis of a deep design too large for DEEP_RULE: the usual mapping balanced as sums of products, kept when DEEP_RULE.gain faster; the netlist simulates as the design', async () => {
   const opts = { family: 'spartan3e', run: yosysNode, effort: 'normal' };
   const large = { ...DEEP_RULE, maxLuts: 100 };
@@ -170,18 +171,18 @@ test('#370 Fast\'s synthesis of a deep design too large for DEEP_RULE: the usual
   const fast = await synthesizeFast(prioInput(), { ...opts, deepRule: large, onLine: l => lines.push(l) });
   const json = fast.files['prio.json'];
   assert.equal(fast.fast, undefined, 'not deep by the rule: Speed\'s not made');
-  assert.deepEqual(fast.depth.sopb, { ns: fast.depth.sopb.ns, luts: 217, slices: 109, kept: true });
+  assert.deepEqual(fast.depth.sopb, { ns: fast.depth.sopb.ns, luts: 228, slices: 114, kept: true });
   assert.ok(Math.abs(fast.depth.sopb.ns - 7.70) < 1e-9, String(fast.depth.sopb.ns));
-  // then the balanced netlist's critical LUTs made shallower (#652): 7.62 ns, Speed's
-  assert.deepEqual({ ...fast.depth.resynth, ns: +fast.depth.resynth.ns.toFixed(2) }, { rounds: 2, changed: 2, ns: 7.62, luts: 217, slices: 109, kept: true });
-  assert.ok(Math.abs(criticalDelay(json, 'prio') - 7.62) < 1e-9, String(criticalDelay(json, 'prio')));
-  assert.deepEqual([fast.util.luts, logicLevels(json, 'prio'), sliceCount(json, 'prio')], [217, 6, 109]);
+  // then the balanced netlist's critical LUTs made shallower (#652): 6.55 ns
+  assert.deepEqual({ ...fast.depth.resynth, ns: +fast.depth.resynth.ns.toFixed(2) }, { rounds: 2, changed: 2, ns: 6.55, luts: 232, slices: 116, kept: true });
+  assert.ok(Math.abs(criticalDelay(json, 'prio') - 6.55) < 1e-9, String(criticalDelay(json, 'prio')));
+  assert.deepEqual([fast.util.luts, logicLevels(json, 'prio'), sliceCount(json, 'prio')], [232, 5, 116]);
   assert.deepEqual(fast.warnings, []);   // no warnings
   assert.deepEqual(lines.filter(l => /^Warning/.test(l)), []);
-  // the usual mapping alone (FAST_SYNTH: Area's), as Fast was: 42 levels
+  // the usual mapping alone (FAST_SYNTH: Area's), as Fast was: 41 levels
   const usual = await synthesizeVerilog(prioInput(), { ...opts, ...FAST_SYNTH });
   assert.equal(usual.depth.sopb, undefined);
-  assert.deepEqual([usual.util.luts, logicLevels(usual.files['prio.json'], 'prio')], [182, 42]);
+  assert.deepEqual([usual.util.luts, logicLevels(usual.files['prio.json'], 'prio')], [183, 41]);
   // not that much faster: the usual mapping kept, its netlist (its resynthesis not kept either)
   const slow = await synthesizeFast(prioInput(), { ...opts, deepRule: { ...large, gain: 0.99 } });
   assert.deepEqual([slow.depth.sopb.kept, slow.depth.resynth.kept], [false, false]);
@@ -191,14 +192,17 @@ test('#370 Fast\'s synthesis of a deep design too large for DEEP_RULE: the usual
   assert.equal(cmp.status, 'pass', cmp.report || cmp.reason);
 });
 
-test('#3096 Fast\'s synthesis of a design not deep (traffic): the usual mapping alone, as FAST_SYNTH', async () => {
+// (Yosys 0.71, #5634: the usual mapping's critical LUTs made shallower (#652) are kept, 7.34 ns by the estimate, 120 LUTs against
+// 115; with 0.70 they were not, and Fast's netlist was the usual mapping's, 110 LUTs)
+test('#3096 Fast\'s synthesis of a design not deep (traffic): the usual mapping alone, as FAST_SYNTH, its critical LUTs made shallower', async () => {
   const ex = example('traffic');
   const fe = flowFrontEnd(ex.sources.filter(s => s.role !== 'sim' && /^(vhdl|verilog)$/.test(s.lang)), ex.project.top);
   const opts = { family: 'spartan3e', run: yosysNode, effort: 'normal' };
   const [usual, fast] = await Promise.all([synthesizeVerilog(fe.input(), { ...opts, ...FAST_SYNTH }), synthesizeFast(fe.input(), opts)]);
   assert.equal(fast.fast, undefined);
-  assert.equal(fast.util.luts, 110);
-  assert.equal(fast.files[`${fast.top}.json`], usual.files[`${usual.top}.json`]);
+  assert.deepEqual([usual.util.luts, usual.depth.resynth], [115, undefined]);
+  assert.deepEqual({ ...fast.depth.resynth, ns: +fast.depth.resynth.ns.toFixed(2) }, { rounds: 12, changed: 18, ns: 7.34, luts: 120, slices: 70, kept: true });
+  assert.equal(fast.util.luts, 120);
 });
 
 test('Fast, Area and Speed through the whole flow (traffic, Basys2-250): their logs, placements and the same warnings', async () => {
@@ -214,7 +218,7 @@ test('Fast, Area and Speed through the whole flow (traffic, Basys2-250): their l
     const said = (lines, re) => lines.filter(l => re.test(l));
     assert.deepEqual(said(fast, /^Optimization/), ['Optimization Fast: one mapping, none of the mappings for speed but for a design limited by its logic depth; one placement, no register replication.']);
     assert.deepEqual(said(area, /^Optimization/).slice(0, 1), ['Optimization Area: the usual mapping and the mappings for speed, the smaller netlist kept; one placement, no register replication.']);
-    assert.ok(said(area, /^Optimization Area: the usual mapping \d+ slices, 110 LUTs, the mappings for speed \d+ slices, \d+ LUTs: the (usual mapping|mappings for speed') kept\.$/).length === 1, said(area, /Optimization/).join('\n'));
+    assert.ok(said(area, /^Optimization Area: the usual mapping \d+ slices, 115 LUTs, the mappings for speed \d+ slices, \d+ LUTs: the (usual mapping|mappings for speed') kept\.$/).length === 1, said(area, /Optimization/).join('\n'));
     assert.ok(said(speed, /^Optimization Effort High: the mappings for speed tried too, the fastest kept\.$/).length === 1, said(speed, /Optimization/).join('\n'));
     for (const lines of [fast, area]) assert.deepEqual(said(lines, /placements \(seeds|^Placement \d+ of|^Register replication/), []);
     assert.ok(said(speed, /^Optimization Effort High: \d+ placements|^Placement 1 of [2-9]/).length > 0, said(speed, /lacement/).join('\n'));

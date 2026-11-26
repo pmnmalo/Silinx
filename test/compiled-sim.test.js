@@ -616,7 +616,8 @@ const failure = async (name, text) => {
   return null;
 };
 test('a combinational loop, a tristate buffer, a primitive with no model (PULLUP): not compiled, with the reason', async () => {
-  assert.equal(await failure('loop.v', 'module loop(input x, y, output a); wire b; assign a = b ^ x; assign b = a & y; endmodule'), "combinational loop through 'b': not compiled");
+  // (a wire of the loop: 'a' in Yosys 0.71's netlist, 'b' in 0.70's, #5634)
+  assert.equal(await failure('loop.v', 'module loop(input x, y, output a); wire b; assign a = b ^ x; assign b = a & y; endmodule'), "combinational loop through 'a': not compiled");
   // (a $tribuf on an output port: a pad, #4709, its output A and its enable EN; one on a net of the design: refused)
   const tb = oneCell('$tribuf', { WIDTH: 1 }, { A: 1, EN: 1, Y: 1 });
   const pad = new CompiledSim(compileNetlist(tb, { top: 't' }));

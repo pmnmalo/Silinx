@@ -171,35 +171,36 @@ async function same(design, label) {
 }
 
 // (chains, registers made words, cells before and after)
+// (Yosys 0.71's netlists, #5634)
 const EXPECTED = {
   gates: { chains: 0, registers: 0, cells: [1, 1] },
   breadboard: { chains: 0, registers: 0, cells: [20, 20] },
-  traffic: { chains: 2, registers: 2, cells: [312, 156] },
+  traffic: { chains: 2, registers: 2, cells: [313, 157] },
   blinky: { chains: 3, registers: 3, cells: [473, 325] },
-  pong: { chains: 7, registers: 7, cells: [1192, 671] },
-  stopwatch: { chains: 8, registers: 8, cells: [931, 431] },   // (#5654: 9, 9, [938, 372] with one register of to_decimal's value)
-  clock: { chains: 6, registers: 6, cells: [891, 469] },
-  vga: { chains: 2, registers: 2, cells: [457, 385] },
-  isqrt: { chains: 1, registers: 1, cells: [342, 289] },
+  pong: { chains: 7, registers: 7, cells: [1218, 669] },
+  stopwatch: { chains: 9, registers: 9, cells: [945, 382] },   // (#5654: its to_decimal a register of its value per multiplier)
+  clock: { chains: 6, registers: 6, cells: [918, 496] },
+  vga: { chains: 2, registers: 2, cells: [458, 386] },
+  isqrt: { chains: 1, registers: 1, cells: [353, 300] },
   uart: { chains: 3, registers: 3, cells: [588, 445] },
-  micro80: { chains: 2, registers: 2, cells: [762, 628] },
-  lock: { chains: 4, registers: 4, cells: [736, 452] },   // (#5654: [737, 453] with typed.cpp's 16-bit register)
+  micro80: { chains: 2, registers: 2, cells: [764, 630] },
+  lock: { chains: 4, registers: 4, cells: [735, 451] },   // (#5654: typed.cpp's 12-bit register)
 };
 // (#659, #670: the equalities with a constant; the tables (their inputs at most, their words, their outputs), the
 // cells before and after; the registers wordLevel made again of the flip-flops the tables feed)
 const TABLES = {
   gates: [0, { tables: 0, inputs: 12, words: 0, outputs: 0, cells: [1, 1] }, 0],
   breadboard: [0, { tables: 1, inputs: 12, words: 64, outputs: 5, cells: [20, 9] }, 1],
-  traffic: [5, { tables: 13, inputs: 12, words: 14816, outputs: 43, cells: [144, 56] }, 5],
-  blinky: [3, { tables: 24, inputs: 12, words: 11752, outputs: 61, cells: [321, 129] }, 10],
-  pong: [7, { tables: 83, inputs: 11, words: 41472, outputs: 178, cells: [639, 311] }, 12],
-  stopwatch: [8, { tables: 46, inputs: 12, words: 30120, outputs: 82, cells: [392, 252] }, 5],   // (#5654: 7, 40, 10864, 70, [334, 225], 4 before)
-  clock: [8, { tables: 28, inputs: 12, words: 28248, outputs: 81, cells: [439, 144] }, 4],
-  vga: [2, { tables: 20, inputs: 12, words: 38368, outputs: 54, cells: [383, 107] }, 3],
-  isqrt: [1, { tables: 35, inputs: 12, words: 22512, outputs: 78, cells: [285, 131] }, 6],
-  uart: [6, { tables: 50, inputs: 11, words: 23536, outputs: 96, cells: [433, 222] }, 6],
-  micro80: [2, { tables: 119, inputs: 10, words: 51752, outputs: 196, cells: [617, 439] }, 5],
-  lock: [4, { tables: 78, inputs: 12, words: 18936, outputs: 110, cells: [428, 227] }, 9],   // (#5654: 429, 8 before)
+  traffic: [4, { tables: 12, inputs: 12, words: 13144, outputs: 43, cells: [145, 54] }, 5],
+  blinky: [3, { tables: 24, inputs: 12, words: 11752, outputs: 62, cells: [321, 128] }, 10],
+  pong: [9, { tables: 84, inputs: 11, words: 43844, outputs: 164, cells: [634, 314] }, 9],
+  stopwatch: [8, { tables: 42, inputs: 12, words: 28960, outputs: 70, cells: [355, 244] }, 4],   // (#5654: its to_decimal's registers)
+  clock: [7, { tables: 31, inputs: 12, words: 20256, outputs: 94, cells: [464, 152] }, 4],
+  vga: [2, { tables: 20, inputs: 12, words: 38368, outputs: 54, cells: [385, 107] }, 2],
+  isqrt: [1, { tables: 35, inputs: 12, words: 22512, outputs: 78, cells: [296, 131] }, 5],
+  uart: [5, { tables: 50, inputs: 11, words: 23536, outputs: 97, cells: [433, 219] }, 6],
+  micro80: [2, { tables: 119, inputs: 10, words: 50088, outputs: 199, cells: [619, 440] }, 5],
+  lock: [5, { tables: 76, inputs: 12, words: 18632, outputs: 111, cells: [426, 231] }, 9],   // (#5654: typed.cpp's 12-bit register)
 };
 // (#670: the part of its operations a step evaluates at most, as the profile estimates it: clock's and vga's models,
 // their display's and their pixel clock's logic changing at every other step, unguarded; blinky's display refresh
@@ -239,8 +240,8 @@ test('#650 #659 blinky\'s post-translate, post-map and post-place & route models
   const want = { posttrans: [473, 325], postmap: [541, 361], postpar: [541, 361] };
   const wantTables = {
     posttrans: [3, { tables: 18, inputs: 12, words: 7392, outputs: 143, cells: [325, 161] }, 8],
-    postmap: [3, { tables: 20, inputs: 12, words: 7464, outputs: 164, cells: [361, 178] }, 7],
-    postpar: [3, { tables: 19, inputs: 12, words: 7400, outputs: 149, cells: [361, 192] }, 7],
+    postmap: [3, { tables: 20, inputs: 12, words: 7464, outputs: 158, cells: [361, 184] }, 7],
+    postpar: [3, { tables: 20, inputs: 12, words: 7464, outputs: 158, cells: [361, 184] }, 7],
   };
   for (const [step, design] of Object.entries(m)) {
     const { stats, tables } = await same(design, step);
