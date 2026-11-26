@@ -75,23 +75,75 @@ _t = _module("time", sleep=lambda s: _sleep_us(int(s * 1000000)), sleep_ms=lambd
     ticks_us=lambda: _silinx.ticks_us(), ticks_ms=lambda: _silinx.ticks_us() // 1000, ticks_cpu=lambda: _silinx.ticks_us(),
     ticks_diff=lambda a, b: a - b, ticks_add=lambda a, b: a + b, time=lambda: _silinx.ticks_us() // 1000000, time_ns=lambda: _silinx.ticks_us() * 1000)
 sys.modules["utime"] = _t
+_seen = [0]
 def _trace(frame, event, arg):
     if frame.f_code.co_filename != "<string>":
         return None
-    if event == "line" and _silinx.line():
-        _wait()
+    if event == "line":
+        _seen[0] = frame.f_lineno
+        if _silinx.line():
+            _wait()
     return _trace
+def _silinx_loop(n, c):
+    if _seen[0] == n:
+        _seen[0] = 0
+    elif _silinx.line():
+        _wait()
+    return c
+import builtins
+builtins._silinx_loop = _silinx_loop
 `;
+
+// (a string's end: its quotes, single or triple, its escapes; i its opening quote)
+function stringEnd(s, i) {
+  const q = s[i], triple = s.startsWith(q.repeat(3), i), close = triple ? q.repeat(3) : q;
+  for (let j = i + close.length; j < s.length; j++) {
+    if (s[j] === '\\') j++;
+    else if (s.startsWith(close, j)) return j + close.length;
+    else if (!triple && s[j] === '\n') return j;
+  }
+  return s.length;
+}
+
+/** A program's `while` loops each a line's time a check of their condition (#5751): MicroPython's trace says a line only
+ *  when the line changes, and a loop's check carries its body's last line, so a loop whose body is one line (`while not
+ *  u.any(): pass`) took no time and never handed back to the scheduler. Each header `while C:` becomes `while
+ *  _silinx_loop(N, (C)):`, N its line (its first check that line's own, every other a line's time, as CPython's trace
+ *  says the header each time); on the same lines, the program's lines and errors unchanged. */
+export function timeWhileLoops(program) {
+  const s = String(program);
+  let out = '', i = 0, line = 1, depth = 0, start = true, header = 0;
+  while (i < s.length) {
+    const c = s[i];
+    if (start && depth === 0 && !header) {
+      const m = /^[ \t]*while(?=[\s(\\])/.exec(s.slice(i, i + 200));
+      if (m) { out += `${m[0]} _silinx_loop(${line}, (`; i += m[0].length; header = 1; start = false; continue; }
+      if (!/[ \t\r\n]/.test(c)) start = false;
+    }
+    // (a string, a comment: as they are)
+    const end = c === '"' || c === "'" ? stringEnd(s, i) : c === '#' ? (s.indexOf('\n', i) + 1 || s.length + 1) - 1 : i;
+    if (end > i) { const t = s.slice(i, end); line += t.split('\n').length - 1; out += t; i = end; continue; }
+    if (c === '\\' && s[i + 1] === '\n') { out += '\\\n'; i += 2; line++; continue; }
+    if ('([{'.includes(c)) depth++;
+    else if (')]}'.includes(c)) depth = Math.max(0, depth - 1);
+    else if (c === '\n') { line++; if (depth === 0) start = true; }
+    else if (c === ':' && header && depth === 0 && s[i + 1] !== '=') { out += ')):'; i++; header = 0; continue; }
+    out += c;
+    i++;
+  }
+  return out;
+}
 
 // how the program waits for the scheduler once its time reached the target (_silinx.line() and sleep_us() say so): the
 // Worker's blocking call, or JSPI's suspending one (#5658)
 const WAITS = { worker: '_wait = _silinx.pause\n', jspi: 'import silinx_jspi\n_wait = silinx_jspi.wait\n' };
 
-/** The Python run before the program: the modules, and the program itself run traced (`exec`'s frame: a line, a time);
+/** The Python run before the program: the modules, and the program itself run traced (`exec`'s frame: a line, a time;
+ *  a `while` loop's check a line too: timeWhileLoops);
  *  `backend` how it waits ('worker', 'jspi'). */
 export const esp32Prelude = (program, backend = 'worker') => `${MODULES}${WAITS[backend]}sys.settrace(_trace)
 try:
-    exec(${JSON.stringify(String(program))}, {"__name__": "__main__"})
+    exec(${JSON.stringify(timeWhileLoops(program))}, {"__name__": "__main__"})
 finally:
     sys.settrace(None)
 `;
