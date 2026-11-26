@@ -100,7 +100,7 @@ uiTest('#405 ASM inspector: the machine (its name shown, not edited, #5718; rese
     r.tables = [...B.querySelectorAll('.asm-ports-head .asm-label')].map((e) => e.textContent);
     r.inputs = [...B.querySelectorAll('table.ins tbody tr')].map((tr) => tr.querySelector('input').value);
     const nameIn = input(B, 'Module / entity name');   // (#5718: renamed by the Design pane's Rename… only)
-    r.nameField = [nameIn.disabled, nameIn.value, nameIn.title, nameIn.closest('.asm-field').querySelector('.asm-fhint')];
+    r.nameField = [nameIn.readOnly && !nameIn.disabled, nameIn.value, nameIn.title, nameIn.closest('.asm-field').querySelector('.asm-fhint')];
     set(input(B, 'Reset type'), 'sync', 'change');
     set(input(B, 'Initial state'), 's3', 'change');
     r.machine = [M().name, M().reset.sync, M().initial];

@@ -54,7 +54,7 @@ uiTest('#2696 a Petri net\'s state machine, read-only: its [FSM] badge and comma
   const at = await page.eval((ed) => { const r = document.querySelector(`${ed} .fsm-states [data-state=s1] circle`).getBoundingClientRect(); return { x: r.x + r.width / 2, y: r.y + r.height / 2 }; }, ED);
   await page.click(at);
   await page.waitFor((ed) => document.querySelector(`${ed} .fsm-scomment`)?.textContent === 'idle=0, work=1', [ED], { what: 'its marking' });
-  assert.ok(await page.eval((ed) => [...document.querySelectorAll(`${ed} .asm-side input, ${ed} .asm-side select`)].every((x) => x.disabled || x.readOnly), ED));
+  assert.ok(await page.eval((ed) => [...document.querySelectorAll(`${ed} .asm-side input, ${ed} .asm-side select`)].every((x) => x.disabled || !!x.readOnly), ED));
   assert.ok(await page.eval((ed) => [...document.querySelectorAll(`${ed} .asm-side button:not(.asm-fold)`)].every((x) => x.hidden || !x.closest('.asm-section')), ED));
   await page.drag(at, { x: at.x + 120, y: at.y + 60 });
   await page.eval((ed) => document.querySelector(ed).dispatchEvent(new KeyboardEvent('keydown', { key: 'Delete', bubbles: true })), ED);

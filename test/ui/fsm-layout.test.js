@@ -173,7 +173,7 @@ uiTest('#2729 a Petri net\'s state machine (read-only): no hint or status line, 
   await page.waitFor((ed) => document.querySelector(`${ed}.asm-readonly .asm-side`)?.getClientRects().length, [ED], { what: 'the state machine' });
   const ro = await page.eval((ed) => {
     const e = document.querySelector(ed), f = [...e.querySelectorAll('.asm-side input, .asm-side select, .asm-side textarea')];
-    return { disabled: f.length > 0 && f.every((x) => x.disabled || x.readOnly), hint: e.querySelectorAll('.asm-hint, .asm-status').length, info: e.querySelector(':scope > .doc-status .fsm-info').textContent,
+    return { disabled: f.length > 0 && f.every((x) => x.disabled || !!x.readOnly), hint: e.querySelectorAll('.asm-hint, .asm-status').length, info: e.querySelector(':scope > .doc-status .fsm-info').textContent,
       labels: [...e.querySelectorAll('.fsm-tb-label')].filter((x) => x.getClientRects().length).length, reset: e.querySelector('.fsm-reset')?.textContent };
   }, ED);
   assert.deepEqual(ro, { disabled: true, hint: 0, info: ro.info, labels: 0, reset: 'rst' });

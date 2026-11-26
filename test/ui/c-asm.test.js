@@ -64,7 +64,7 @@ uiTest('#1575 a sequential C module\'s ASM chart, read-only: its [ASM] badge and
   await page.drag(box, { x: box.x + 120, y: box.y + 60 });
   await page.eval(() => document.querySelector('.doc:not([hidden]) .asm-editor').dispatchEvent(new KeyboardEvent('keydown', { key: 'Delete', bubbles: true })));
   assert.equal(await page.eval(() => JSON.stringify(window.Silinx.active.asmEditor.getModel())), before0);
-  assert.ok(await page.eval(() => [...document.querySelectorAll('.doc:not([hidden]) .asm-side :is(input, textarea, select)')].every((x) => x.disabled || x.readOnly)));
+  assert.ok(await page.eval(() => [...document.querySelectorAll('.doc:not([hidden]) .asm-side :is(input, textarea, select)')].every((x) => x.disabled || !!x.readOnly)));
   // (no hint; its states in its status line, #2763; the encoding hidden, with the ⋮ menu that holds it, #4055; no problems in the console, #2730)
   assert.deepEqual(await page.eval(() => { const el = document.querySelector('.doc:not([hidden]) .asm-editor');
     return [!!el.querySelector('.asm-hint, .asm-status, .asm-toolbar .asm-info'), /^\d+ states$/.test(el.querySelector(':scope > .doc-status .asm-info').textContent), !el.querySelector('.asm-encoding') && el.querySelector('.asm-toolbar > .tb-more').hidden,
