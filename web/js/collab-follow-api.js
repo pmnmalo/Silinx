@@ -12,8 +12,30 @@ import { docProject, watchDoc, editFile, gatedDocFile, docFile, putFile } from '
 import { createFile, deleteFile, renameFile, setDescription, textEditable } from '/core/collab-files.js';
 import { collab, readOnlyError, editsHere } from './collab-state.js';
 import { followedReports, followedRuns, reportPath } from '/core/collab-runs.js';
+import { docVersions, putRequest, watchDone } from '/core/collab-versions.js';
+import { prefKey } from './prefs.js';
 
 const notFound = what => Object.assign(new Error(what), { status: 404 });
+// the owner's client (the room's: its parts of the versions taken from it only, #5742); null: not known yet
+const ownerClient = () => collab.session?.owner?.()?.client ?? null;
+const ASK_MS = 120e3;
+// a request of the versions (#5742, core/collab-versions.js): written into the document as this editor's edit, the
+// owner's answer awaited (its result; its failure an error with its line)
+function ask(doc, req) {
+  let by = '';
+  try { by = localStorage.getItem(prefKey('silinx.collab.name')) || ''; } catch { /* none */ }
+  const nonce = `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
+  return new Promise((resolve, reject) => {
+    const timer = setTimeout(() => { off(); reject(new Error(`${collab.owner}'s Silinx did not answer`)); }, ASK_MS);
+    const off = watchDone(doc, d => {
+      if (d.nonce !== nonce) return;
+      clearTimeout(timer); off();
+      if (d.ok && d.result) resolve(d.result); else reject(new Error(d.line.replace(/^[^:]*: (Save|Restore) Version: /, '')));
+    }, { owner: ownerClient });
+    try { putRequest(doc, { ...req, nonce, by: by || '?' }); } catch (e) { clearTimeout(timer); off(); reject(e); }
+  });
+}
+const ownersOnly = () => Object.assign(new Error(`a version's files are opened and compared in ${collab.owner}'s Silinx, which keeps the versions`), { status: 403 });
 // a file, or a folder's files
 const inFolder = (tree, p) => (tree.includes(p) ? [p] : tree.filter(f => f.startsWith(`${p}/`)));
 
@@ -124,6 +146,12 @@ export function followApi(api, doc, { warn = () => {}, activity = () => null } =
       doc.transact(() => { for (const p of gone) deleteFile(doc, p); });
       return { ok: true };   // (into the owner's .trash, where it has one)
     },
+    // the owner's versions (#5742): listed as its page publishes them; an editor's Save Version… and restore done there
+    listVersions: async name => { check(name); return { versions: docVersions(doc, { owner: ownerClient() }) }; },
+    saveVersion: async (name, { label = '' } = {}) => { check(name); if (!collab.editor) throw readOnlyError(); return ask(doc, { kind: 'save', label }); },
+    restoreVersion: async (name, id, { path = null } = {}) => { check(name); if (!collab.editor) throw readOnlyError(); return ask(doc, { kind: 'restore', id: String(id), path }); },
+    readVersion: async () => { throw ownersOnly(); },
+    versionDiff: async () => { throw ownersOnly(); },
     // what the owner changes, as the local server's events of a change on disk (web/js/project-watch.js)
     events: (name, onEvent, signal) => new Promise(resolve => {
       const off = watchDoc(doc, ({ changes, project }) => {

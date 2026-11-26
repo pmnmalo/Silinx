@@ -45,6 +45,7 @@ import { followedSim, simLines } from '../core/collab-sim.js';
 import { followedEmu, emuLines } from '../core/collab-emu.js';
 import { followedTry, tryLines } from '../core/collab-try.js';
 import { severityOf } from '../core/log-severity.js';
+import { ownerVersions, followVersion } from './mcp-collab-versions.js';
 
 const DEFAULT_SERVER = 'http://127.0.0.1:8642';
 const ARRIVE_MS = 15_000;
@@ -278,11 +279,14 @@ export const COLLAB_TOOLS = [
       const { createProjectWatcher } = await import('./project-watch.js');
       const watcher = createProjectWatcher({ dirOf: P.projectDir });
       const writes = session.editKey ? ownerWrites(name, doc, owner, w => warnings.push(w), bases) : null;
+      // (its versions, its editors' requests of one, #5742: an answer's line among the warnings)
+      const versions = ownerVersions(name, doc, line => warnings.push(line));
       const unsub = watcher.subscribe(name, async () => {
+        versions.published();
         if (writes) { writes.queue.again(); return; }   // (after the editors' changes waiting, #4418)
         try { publishProject(doc, { ...await readAll(name), owner, bases }); } catch { /* the next change */ }
       });
-      const off = () => { unsub(); writes?.off(); watcher.close?.(); };
+      const off = () => { unsub(); writes?.off(); versions.off(); watcher.close?.(); };
       const base = own ? SITE_URL : `${origin}/`, meetAt = own ? own.address : null;
       const link = followLink(base, session.room, session.key, 'relay', null, meetAt, null, session.ownerKey);
       const editLink = session.editKey ? followLink(base, session.room, session.key, 'relay', session.editKey, meetAt, null, session.ownerKey) : null;
@@ -297,7 +301,7 @@ export const COLLAB_TOOLS = [
   },
   {
     name: 'follow_project', title: 'Follow a shared project (read only)',
-    description: 'Follow a project someone shares (a link …/#view=… of Share Project… or share_project; …&relay=… through that relay; an older …/#follow=…), read only, as the interface opened at that link; an editor\'s link (…/#edit=…) can write, source and settings. Gives its files, who is in it, the owner\'s open file, cursor and selection (ownerView), and their activity (ownerActivity: documents, processes and logs, simulations, Board Emulators, Try it). path: that file\'s text now (a drawing as merged, with its Check). stop: leave; keep: a copy in the workspace, untrusted, as Keep a Copy. Reconnects on its own (connected; ownerAway, ownerResumed).',
+    description: 'Follow a project someone shares (a link …/#view=… of Share Project… or share_project; …&relay=… through that relay; an older …/#follow=…), read only, as the interface opened at that link; an editor\'s link (…/#edit=…) can write, source and settings. Gives its files, who is in it, the owner\'s open file, cursor and selection (ownerView), and their activity (ownerActivity: documents, processes and logs, simulations, Board Emulators, Try it). path: that file\'s text now (a drawing as merged, with its Check). version: the owner\'s versions; an editor saves, restores. stop: leave; keep: a copy in the workspace, untrusted, as Keep a Copy. Reconnects on its own (connected; ownerAway, ownerResumed).',
     inputSchema: { type: 'object', properties: {
       link: STR('The link to follow (the whole address).'),
       path: STR('A file of the project: its text as it is now.'),
@@ -305,11 +309,12 @@ export const COLLAB_TOOLS = [
       write: { type: 'object', description: 'Editor\'s link only: a file\'s new text, merged as this participant\'s edit: a text file (HDL, constraints, C / C++, notes) or a .fsm, .bool, .asm, .pn or .sch .json drawing, merged per object and field (with its Check, but a table\'s and a schematic\'s).', properties: { path: STR('The file.'), text: STR('Its new text.') }, required: ['path', 'text'], additionalProperties: false },
       source: { type: 'object', description: 'Editor\'s link only: as New Source…, Remove from Project, Delete File…, Rename…: add (path, text; no text: a file of the folder), remove (file kept), delete (into the owner\'s .trash), rename (to). Through the import gate, the project untrusted.', properties: { action: { type: 'string', enum: ['add', 'remove', 'delete', 'rename'] }, path: STR('The file\'s path in the project.'), to: STR('rename: its new path.'), text: STR('add: the new file\'s text.') }, required: ['action', 'path'], additionalProperties: false },
       settings: { type: 'object', description: 'Editor\'s link only: fields of silinx.json set, as Set as Top Module, Design Properties…, Process Properties… (top, simTop, device, board, impl, …); its id, name, origin and trust stay the owner\'s.' },
+      version: { type: 'object', description: 'The owner\'s versions (list), as Versions… shows them on a follower\'s page; an editor\'s link asks the owner to keep one (save, its name) or to restore one (restore: id, and path for one file), with this participant\'s name as its author.', properties: { action: { type: 'string', enum: ['list', 'save', 'restore'] }, id: STR('restore: the version\'s number.'), path: STR('restore: one file only.'), name: STR('save: the version\'s name.') }, required: ['action'], additionalProperties: false },
       stop: { type: 'boolean', description: 'Stop following it.' },
       keep: { type: 'boolean', description: 'With stop, or once following ended: keep a copy of the project as the room has it, under a free name in the workspace, imported and untrusted, as Keep a Copy; then leave.' },
     }, required: ['link'], additionalProperties: false },
     annotations: { readOnlyHint: false, destructiveHint: false, openWorldHint: true },
-    async run({ link, path, name: who, write, source, settings, stop = false, keep = false }) {
+    async run({ link, path, name: who, write, source, settings, version, stop = false, keep = false }) {
       let l;
       try { l = parseFollowLink(link); } catch (e) { throw toolError(e.message); }
       if (!l || !l.base) throw toolError('link: a link to follow (http(s)://…/#view=…)');
@@ -353,7 +358,7 @@ export const COLLAB_TOOLS = [
         } catch (e) { session?.close(); throw toolError(`cannot follow: ${e.message}`); }
         // (who is in it comes right after the project: the owner awaited a little)
         for (let t = 0; t < 40 && !session.owner(); t++) await new Promise(r => setTimeout(r, 25));
-        follows.set(slot, cur = { session, link });
+        follows.set(slot, cur = { session, link, name: cleanName(who) || 'MCP agent' });
       }
       let wrote = null;
       if (write !== undefined) {
@@ -376,6 +381,12 @@ export const COLLAB_TOOLS = [
           changed.push(`Set ${Object.keys(settings).join(', ') || 'nothing'} in the project's description.`);
         }
         await cur.session.flush();
+      }
+      // (#5742: the owner's versions; with an editor's link, one saved or restored, done by the owner)
+      if (version !== undefined) {
+        let r;
+        try { r = await followVersion(cur.session, version, { by: cur.name || 'MCP agent', editor: cur.session.editor }); } catch (e) { throw toolError(`version: ${e.message}`); }
+        return { text: r.text, data: { project: docProject(cur.session.doc).project?.name ?? null, ...r.data }, untrusted: 'the owner\'s versions\' names and authors, the files\' paths and the owner\'s answer' };
       }
       const { project, owner, fileTree } = docProject(cur.session.doc);
       const peers = cur.session.peers();

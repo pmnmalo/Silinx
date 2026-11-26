@@ -82,9 +82,12 @@ test('#3527 updateRoots: what it builds on that the document does not have; an u
 
 test('#3527 updateOutside (an owner\'s update at a follower\'s) and editOutside (an editor\'s edit at the owner\'s): their messages', () => {
   const doc = owned();
-  assert.deepEqual(DOC_ROOTS, ['meta', 'project', 'files', 'drawings']);
-  assert.deepEqual(EDIT_ROOTS, ['project', 'files', 'drawings']);
+  // (the owner's versions, an editor's request of one: #5742)
+  assert.deepEqual(DOC_ROOTS, ['meta', 'project', 'files', 'drawings', 'versions']);
+  assert.deepEqual(EDIT_ROOTS, ['project', 'files', 'drawings', 'versions']);
   const one = change => updatesOf(doc, change)[0];
+  assert.equal(updateOutside(doc, one(d => d.getMap('versions').set('list', '[]'))), null);
+  assert.equal(editOutside(doc, one(d => d.getMap('versions').set('request', '{}'))), null);
   assert.equal(updateOutside(doc, one(CHANGES['a root of its own'])), 'the shared project holds a part that no shared project has ("evil")');
   assert.equal(updateOutside(doc, one(CHANGES['the meta, a value replaced'])), null);
   assert.equal(updateOutside(doc, one(d => d.getMap(`x${'y'.repeat(100)}`).set('k', 1))), `the shared project holds a part that no shared project has ("x${'y'.repeat(63)}")`);

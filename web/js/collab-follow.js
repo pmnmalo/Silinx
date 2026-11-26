@@ -17,6 +17,7 @@
 // pane's page, the Design view, the task, the Design pane's rows expanded and selected; the follower's own action there
 // is browsing alone. A link's relay that is neither this Silinx's nor this browser's own is marked unknown in the
 // follow dialog, Follow enabled only once the follower ticks that they know who runs it (#4742).
+import { watchDone } from '/core/collab-versions.js';
 import { api } from './api.js';
 import { h, dialog } from './ui.js';
 import { S, app, activateDoc, closeDoc } from './app.js';
@@ -147,6 +148,8 @@ function followed(session, { hash, link, name, resumed = null }) {
   Object.assign(api, followApi(api, session.doc, { warn: text => collabLog(`WARNING: Follow a shared project: ${text}.`, 'warn'), activity: ch => session.activity(ch) }));
   setPresenceCommands(commands);
   watchLeave(session, real);
+  // (the owner's answers to its editors' requests of the versions, #5742: in every participant's console)
+  watchDone(session.doc, d => collabLog(d.line, d.ok ? 'info' : 'warn'), { owner: () => session.owner()?.client ?? null });
   watchOwnActions(() => { if (fol?.following && !fol.session.closed()) setFollowing(false); });
   setInterval(track, TRACK_MS);
   trackOnEvents(document, tracking.poke);   // (#4647: a key, a click, a selection: looked at a frame later)

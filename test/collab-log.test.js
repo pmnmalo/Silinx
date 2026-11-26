@@ -46,7 +46,7 @@ test('every collaboration module writes to the console through collabLog only', 
   assert.deepEqual(bad, [], 'a collaboration message written past collabLog');
   // the modules that write messages (a new one adds itself here once it writes)
   assert.deepEqual(writers, ['collab-follow.js', 'collab-host.js', 'collab-leave.js', 'collab-meet.js', 'collab-share.js',
-    'collab-try.js', 'collab-users.js', 'git-branch.js', 'git-clone-exists.js', 'git-repo-list.js', 'git-signin.js', 'git.js',
+    'collab-try.js', 'collab-users.js', 'collab-versions.js', 'git-branch.js', 'git-clone-exists.js', 'git-repo-list.js', 'git-signin.js', 'git.js',
     'link-copy.js', 'merge-dialog.js', 'relay-setup.js', 'short-links.js']);
 });
 
