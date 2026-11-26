@@ -57,14 +57,14 @@ export function normalizeRegmap(m) {
     ...(m?.lang ? { lang: m.lang === 'verilog' ? 'verilog' : 'vhdl' } : {}), ...(m?.generatedFile ? { generatedFile: String(m.generatedFile) } : {}) };
 }
 
-/** A register map's text read: { regmap } or { error }. */
+/** A register map's text read: { regmap } or { error }. One a newer Silinx saved (its version above this one's) is read as
+ *  it is, its version kept, for its editor to open it read-only (#4756, core/doc-format.js) and never write it back. */
 export function readRegmap(text) {
   let m;
   try { m = JSON.parse(text); } catch (e) { return { error: `not a register map: ${e.message}` }; }
   if (!m || typeof m !== 'object' || Array.isArray(m) || m.format !== REGMAP_FORMAT) return { error: `not a register map (its format is not '${REGMAP_FORMAT}')` };
   if (!Number.isInteger(m.version) || m.version < 1) return { error: 'not a register map (no version)' };
-  if (m.version > REGMAP_VERSION) return { error: `a register map of version ${m.version}: this Silinx reads version ${REGMAP_VERSION}` };
-  return { regmap: normalizeRegmap(m) };
+  return { regmap: { ...normalizeRegmap(m), version: m.version } };
 }
 
 /** A register map's text, as saved: its normalized model, two spaces, a last newline. */

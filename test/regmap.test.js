@@ -6,7 +6,8 @@
 // co-simulation's transfers as register accesses, a partial one, an address with no register.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { normalizeRegmap, readRegmap, writeRegmap, checkRegmap, newRegmap, isRegmapFile, hexByte } from '../core/regmap.js';
+import { normalizeRegmap, readRegmap, writeRegmap, checkRegmap, newRegmap, isRegmapFile, hexByte, regmapFor } from '../core/regmap.js';
+import { newerDrawing, downgradeRefusal } from '../core/doc-format.js';
 import { generateRegmap } from '../core/regmap-hdl.js';
 import { regmapHeader } from '../core/regmap-c.js';
 import { regAccesses, accessText } from '../core/regmap-decode.js';
@@ -37,9 +38,22 @@ test('#5288 a register map read and written: its fields in their order, a new on
   assert.ok(writeRegmap(m).endsWith('}\n'));
   assert.deepEqual(newRegmap('r').registers, [{ name: 'ctrl', addr: 0, width: 8, access: 'rw', reset: 0 }]);
   assert.deepEqual(readRegmap('{"format":"silinx-system","version":2}'), { error: 'not a register map (its format is not \'silinx-regmap\')' });
-  assert.deepEqual(readRegmap('{"format":"silinx-regmap","version":2}'), { error: 'a register map of version 2: this Silinx reads version 1' });
   assert.match(readRegmap('{').error, /^not a register map: /);
   assert.deepEqual([isRegmapFile('src/pwm.regs.json'), isRegmapFile('pwm.sys.json')], [true, false]);
+});
+
+test('#5737 a register map a newer Silinx saved: read as it is, its version kept, for its editor to open it read-only', () => {
+  const m = MAP('spi');
+  const r = readRegmap(JSON.stringify({ ...m, version: 99, added: 'by a newer Silinx' }));
+  assert.equal(r.error, undefined, 'not refused');
+  assert.deepEqual(r.regmap, { ...m, version: 99 });
+  assert.deepEqual(Object.keys(r.regmap), Object.keys(m), 'its fields in their order');
+  assert.deepEqual(newerDrawing('src/pwm_regs.regs.json', r.regmap), { version: 99, supported: 1, message: 'pwm_regs.regs.json was saved by a newer Silinx (its format 99; this one reads up to 1): opened read-only, so that it is not saved in the older format and loses nothing: update Silinx to change it' });
+  assert.equal(newerDrawing('src/pwm_regs.regs.json', readRegmap(writeRegmap(m)).regmap), null, 'its own version: none');
+  // never written back in the older format (the server's refusal)
+  assert.match(downgradeRefusal('src/pwm_regs.regs.json', JSON.stringify(r.regmap), writeRegmap(r.regmap)), /was saved by a newer Silinx \(its format 99; this one writes 1\): not written in the older format/);
+  // a System's simulation finds it too
+  assert.equal(regmapFor({ 'src/pwm_regs.regs.json': JSON.stringify({ ...m, version: 99 }) }, 'pwm_regs')?.version, 99);
 });
 
 test('#5288 a register map checked: names, the bus and its address, widths, accesses, addresses, resets, overlaps', () => {
