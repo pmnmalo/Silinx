@@ -27,7 +27,7 @@ uiTest('#2431 Design Properties: the GateMate, its CCGM1A1 and CCGM1A2, its synt
     return { part: sel('Device:').value, parts: [...sel('Device:').options].map((o) => o.value), pkg: sel('Package:').value, synth: sel('Synthesis Tool:').value,
       synthOff: sel('Synthesis Tool:').disabled, family: fam.selectedOptions[0].textContent, last: [...fam.options].at(-1).textContent };
   });
-  assert.deepEqual(state, { part: 'ccgm1a1', parts: ['ccgm1a1', 'ccgm1a2'], pkg: 'fbga324', synth: 'silinx', synthOff: true, family: 'GateMate', last: 'GateMate' });
+  assert.deepEqual(state, { part: 'ccgm1a1', parts: ['ccgm1a1', 'ccgm1a2'], pkg: 'fbga324', synth: 'silinx', synthOff: true, family: 'GateMate', last: 'Cyclone V (experimental)' });
   await page.dialogButton('Cancel');
 });
 
