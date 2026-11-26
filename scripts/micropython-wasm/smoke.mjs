@@ -69,7 +69,9 @@ assert.match(a.text(), /a 7\n$/);
 assert.equal(b.text(), 'b 8\n');
 ok('two instances suspended at once, each resumed on its own');
 
-// the plain API still works (runPython, a JavaScript module)
+// the plain API still works (runPython, a JavaScript module), once the instance's Module is the global one again (b's
+// since it resumed: MicroPython's JavaScript reads the global; a caller with several instances selects one first)
+globalThis.Module = a.mp._module;
 a.mp.registerJsModule('_js', { twice: x => 2 * x });
 a.mp.runPython('import _js\ny = _js.twice(21)');
 assert.equal(a.mp.globals.get('y'), 42);
