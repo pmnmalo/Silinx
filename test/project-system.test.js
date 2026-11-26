@@ -97,8 +97,8 @@ test('#5416 phase 3: every project of the corpus its System; one node as silinx.
       assert.ok(d.every(x => /a 5 V output, drives .* a 3\.3 V input of the FPGA \(LVCMOS33\): a level shifter or a divider on the real boards$/.test(x.message)), rel);
     }
   }
-  assert.equal(systems, 6);   // (the System examples: uart-avr, spi-avr, i2c-avr, regs-avr, uart-pic24, adc-pmod)
-  assert.equal(implicit, DESCRIPTIONS.length - 6);
+  assert.equal(systems, 7);   // (the System examples: uart-avr, spi-avr, i2c-avr, regs-avr, uart-pic24, adc-pmod, uart-pico)
+  assert.equal(implicit, DESCRIPTIONS.length - 7);
   assert.deepEqual(snapshot(dirs), before);
 });
 

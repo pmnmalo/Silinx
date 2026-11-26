@@ -65,7 +65,7 @@ converts nothing; widening it allows more kinds.
 | FPGA | VHDL or Verilog (its drawings generate it) | the compiled engine, the event-driven simulator | a bitstream |
 | CPU board: Arduino / AVR | C / C++ (an Arduino sketch) | avr8js | a `.hex` |
 | CPU board: ESP32 | MicroPython | MicroPython in WebAssembly, Silinx's `machine` | `.py` files |
-| CPU board: Pico (RP2040) | MicroPython | rp2040js with MicroPython's firmware | a `.uf2`, `.py` files |
+| CPU board: Pico (RP2040) | MicroPython or CircuitPython | rp2040js with MicroPython's or CircuitPython's firmware | a `.uf2`, `.py` files |
 | Microcontroller: PIC24 (the Explorer 16/32, PIC24FJ1024GB610) | C with assembly (XC16) | a PIC24 emulator (LabWired's or Silinx's own: being evaluated, #5480) | a `.hex` |
 | SoC: Zynq (FPGA + ARM joined by AXI, #5412) | VHDL / Verilog for the PL, C for the PS | the FPGA's engines, the PS's processor engine | a bitstream and an `.elf` |
 | Digital circuit | the breadboard's drawing | the circuit's Try it | the parts, wired by hand |
@@ -279,8 +279,41 @@ A Raspberry Pi Pico (`board: 'pico'`, #5494, `core/system-sim-rp2040.js`) is a m
 - **Its pins** are GP0..GP22, GP25 (the LED) and GP26..GP28, at 3.3 V; a pin MicroPython gives a UART is that UART's frames
   (UART0 on GP0/GP1, UART1 on GP4/GP5 by default, the node's interfaces). rp2040js raises a UART's TX interrupt again as soon
   as it is cleared, which hangs MicroPython's interrupt-driven write: the adapter raises it when a byte leaves, as the PL011 does.
-- **What it does not model yet:** the second core (`_thread`), the ADC's inputs, SPI and I²C links, and the file system kept
-  between runs. Its drawing in the System Emulator and an example come next.
+- **Its ADC's inputs** (GP26..GP28) read their pins' levels, 0 V or 3.3 V (a System's links are digital); its temperature
+  sensor 27 °C. A floating input reads its pull-up (rp2040js's input stays low otherwise).
+- **What it does not model yet:** the second core (`_thread`), SPI and I²C links, and the file system kept between runs.
+  Its drawing in the System Emulator comes next.
+
+#### CircuitPython (#5697)
+
+A Pico's **firmware** (`runtime`, its Properties' Firmware, MCP `edit_system`'s field) is MicroPython (the default, not
+written) or `circuitpython`: Adafruit's CircuitPython (10.3.2, MIT), pinned and downloaded as MicroPython's is (its
+`.uf2` in `RP2040_FILES`; both followed by the Pins workflow, `PINNED`: their tags and SHA-256).
+
+- **Its program is code.py on its CIRCUITPY drive** (`core/circuitpython-drive.js`, `core/fat-image.js`): Silinx makes the
+  FAT12 drive CircuitPython's Pico build mounts from its flash (1 MB at 0x100000, after its 1020 KB of firmware and 4 KB of
+  NVM) with the node's program as `code.py` and its folder's other files at their places (`lib/x.py`, `settings.toml`),
+  read by `systemInputs`'s `nodeFiles`. It adds what makes the run start at once, as on a board already connected:
+  `CIRCUITPY_SAFE_MODE_DELAY = 0` in `settings.toml` (no second's wait for the reset button), the `boot_out.txt` the
+  firmware writes (else it waits a second before writing it: `bootOut` in `RP2040_FILES`, its version, board and the UID
+  rp2040js's flash gives), and a `boot.py` that sets the first run to `silinx_wait.py`, which waits for the USB serial
+  port's host and reloads (CircuitPython drops what is printed before its host sets DTR). `code.py` then starts about
+  280 ms into the System's time.
+- **rp2040js for it:** its USB host sets DTR with a request to the CDC interface (TinyUSB takes no class request to the
+  device: MicroPython does not wait for DTR, CircuitPython does); the BOOTSEL button reads released (the flash's chip
+  select high); a UART's TX pin idles high once the UART is on. The drive's writes are lost (rp2040js models no flash
+  writes): a program that writes files is not modelled.
+- **Its console** (`<id>.repl`, "CircuitPython REPL (USB)") is its serial output from `code.py output:` on, its status
+  bar's escapes taken out; then "Code done running." and, at a key, its REPL. A traceback is its error.
+- **Its modules taught** run on the node's pins and links, each tested against the simulation
+  (`test/system-sim-circuitpython.test.js`): `board`, `digitalio` (pulls too), `analogio.AnalogIn` (0 V or 3.3 V),
+  `pwmio.PWMOut`, `time`, `busio.UART`; `busio.SPI` and `busio.I2C` as MicroPython's: no links yet.
+- **A real Pico** (Program Node, MCP `program_board`, `server/circuitpy-copy.js`): the local server copies the program as
+  `code.py` and its folder's other `.py` files to the CIRCUITPY drive mounted (macOS `/Volumes`, Linux's media folders,
+  Windows' drives; told by its `boot_out.txt`); CircuitPython runs it again. None mounted, or the browser edition: the
+  console says how to copy them by hand.
+- **The example `uart-pico`** is `uart-avr`'s System with a Pico on CircuitPython in the Arduino's place.
+
 ### The ESP32
 
 An ESP32 DevKitC (`board: 'esp32-devkitc'`, #5495, `core/system-sim-esp32.js`) is a microcontroller node in MicroPython,
@@ -983,6 +1016,11 @@ The local server does the same for the MCP's `serial_terminal` (`server/serial-m
    answer in a sixteenth of the SPI clock (3.125 MHz by default: 20 ns, said in the console), so that the FPGA reads each
    bit as the converter puts it out; a faster SCK is the circuit node's SPI clock, in its Properties (`spiHz`). It
    teaches SPI, an A/D converter's code (⌊VIN × 4096 / VCC⌋) and multiplexed displays.
+9. **`uart-pico`** (#5697). `uart-avr` with a Raspberry Pi Pico on CircuitPython: its `pico/code.py` sends "Hello from the
+   Pico!" over `busio.UART` (GP0/GP1, 9600 baud) and prints each line the FPGA echoes, its LED toggling; the FPGA's BTN0
+   message is printed too. Both sides at 3.3 V. The FPGA's first byte is the one it read while the Pico booted, its TX held
+   low by the RP2040's pull-down at reset: echoed before the Pico's UART is on, as on the boards. It teaches CircuitPython's
+   `busio`, `board` and `digitalio` and its CIRCUITPY drive.
 
 A scenario test fits `grade` and the labs: press the Arduino's button, expect "OK" on the FPGA's UART.
 

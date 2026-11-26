@@ -36,7 +36,7 @@ const run = async (py, ms, type = null) => {
 };
 
 test('#5494 the firmware\'s files pinned; a UF2 file\'s blocks into the flash; the bootrom\'s words as bytes', () => {
-  assert.deepEqual(RP2040_FILES.map(f => [f.file, /^[0-9a-f]{64}$/.test(f.sha256), /^https:\/\//.test(f.url)]), [['micropython-rpi-pico-v1.24.1.uf2', true, true], ['rp2040-bootrom-b1.bin', true, true]]);
+  assert.deepEqual(RP2040_FILES.map(f => [f.file, /^[0-9a-f]{64}$/.test(f.sha256), /^https:\/\//.test(f.url)]), [['micropython-rpi-pico-v1.24.1.uf2', true, true], ['circuitpython-rpi-pico-v10.3.2.uf2', true, true], ['rp2040-bootrom-b1.bin', true, true]]);
   assert.deepEqual([...wordsBytes('export const b = new Uint32Array([\n  0x20041f00, 0x000000ef,\n]);')], [0x00, 0x1f, 0x04, 0x20, 0xef, 0, 0, 0]);
   assert.equal(wordsBytes('nothing'), null);
   // (a UF2 block: its magics, its address and size, its data at 32)
