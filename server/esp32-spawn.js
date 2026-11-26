@@ -3,6 +3,7 @@
 // server/rp2040-firmware.js is, by what runs a System here (the MCP server's simulations, the tests).
 import { Worker } from 'node:worker_threads';
 import { setEsp32Spawner } from '../core/system-sim-esp32.js';
+import './micropython-jspi.js';   // (where Node has JSPI: the build loaded from its download, #5658)
 
 setEsp32Spawner(async (sab) => {
   const w = new Worker(new URL('./esp32-worker.js', import.meta.url), { workerData: { sab } });

@@ -15,6 +15,7 @@ before(async () => { tmp = await scratchEnv('silinx-mcp-system-esp32-'); });
 after(() => fs.rmSync(tmp, { recursive: true, force: true }));
 
 const { handle } = await import('../server/mcp.js');
+const { esp32Backend } = await import('../core/system-sim-esp32.js');
 let id = 0;
 async function call(name, args = {}) {
   const r = (await handle({ jsonrpc: '2.0', id: ++id, method: 'tools/call', params: { name, arguments: args } })).result;
@@ -45,6 +46,8 @@ test('#5495 edit_system adds an ESP32 linked to a terminal; check_system describ
   const s = await ok('simulate', { project: 'p', top: SYS, time_ns: 20e6, type: { pc: 'hi' } });
   assert.deepEqual([s.data.time, s.data.warnings, s.data.errors], ['20 ms', [], []]);
   assert.deepEqual(s.data.terminals, { 'esp.repl': 'ready\n', pc: 'HIHI' });
+  // (its back end said, #5658: JSPI where this Node has it, else its Worker)
+  assert.ok(s.text.split('\n').includes(`ESP32 esp: MicroPython ${esp32Backend() === 'jspi' ? 'on this thread (JSPI)' : 'in a Worker (Atomics)'}`), s.text);
   assert.deepEqual(s.data.traffic.map(t => [t.wire, t.from, t.to, String.fromCharCode(...t.bytes.map(b => b.byte))]), [['usb_esp', 'esp.GPIO17', 'pc.rx', 'HIHI'], ['usb_pc', 'pc.tx', 'esp.GPIO16', 'hi']]);
 });
 

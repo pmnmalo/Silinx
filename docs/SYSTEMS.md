@@ -295,9 +295,19 @@ An ESP32 DevKitC (`board: 'esp32-devkitc'`, #5495, `core/system-sim-esp32.js`) i
   runs in a Worker of its own and blocks on a SharedArrayBuffer (`core/esp32-link.js`) between windows; the node blocks
   until the engine reached t. A browser starts a Worker only while its creator is free, so the Workers are made before
   the run (`prepareEsp32`). It needs the page cross-origin isolated (#5648); a page that is not says why in the console.
-  In Node (the MCP server, the tests) a `worker_threads` Worker (`server/esp32-spawn.js`). The **JSPI** back end (our own
-  MicroPython build, on the page's thread, Chrome and Edge, no isolation needed) comes next, picked by feature
-  detection, and a test runs one design on both and compares their traces.
+  In Node (the MCP server, the tests) a `worker_threads` Worker (`server/esp32-spawn.js`). The **JSPI** back end (#5658,
+  `esp32JspiEngine`) runs on the scheduler's own thread (the System's Web Worker), with no SharedArrayBuffer: Silinx's
+  own MicroPython build (`scripts/micropython-wasm/`: v1.29.0's webassembly port with `sys.settrace`, WebAssembly's
+  exceptions and JSPI, its module `silinx_jspi`, whose `wait()` suspends the program until the next command), built by
+  the workflow `micropython-wasm.yml` and published as the release `micropython-wasm-v1.29.0-1` of Silinx's repository;
+  the local server downloads it once, checks its SHA-256 and serves it (`server/micropython-jspi.js`,
+  `/vendor/micropython-jspi/`). Its node's `advanceTo` is a promise (`async`), so the scheduler runs such a System with
+  `runAsync` (the same windows, the same run), and so do the System's Web Worker (`core/system-host.js`) and the MCP's
+  `simulate`. The back end is picked by feature detection (`esp32Backend`: `WebAssembly.Suspending` and `promising`;
+  today's Chrome, Edge, Firefox and Safari have them; Node from its V8 with JSPI on), else the Worker; the page's
+  address forces one (`?esp32=worker`, `?esp32=jspi`: a diagnosis), and the console says which runs (`ESP32 <id>:
+  MicroPython on this thread (JSPI)` or `in a Worker (Atomics)`). A UI test runs one System on both and compares their
+  runs: the same bytes at the same times, the same consoles.
 - **Its program** is a `.py` of its folder; what it prints is its console, a terminal of its own (`<id>.repl`); once the
   program ended, a line typed there runs. A traceback is its error, with the program's own lines.
 - **Its pins** are the DevKitC's GPIOs at 3.3 V (34 to 39 inputs only); a UART's TX is its frames at the program's baud,

@@ -434,3 +434,34 @@ test('#5212 the scheduler\'s watch: an output no link reads, its changes kept at
   assert.throws(() => sys.watch('z', ['o']), /^Error: no node 'z'$/);
   noMessages(sys);
 });
+
+// a Scripted node whose advanceTo is a promise (an ESP32's JSPI back end, #5658), answered after a turn of the event loop
+class AsyncScripted extends Scripted {
+  constructor(o) { super(o); this.async = true; }
+  advanceTo(t) { const out = super.advanceTo(t); return new Promise((r) => setTimeout(() => r(out), 0)); }
+}
+
+test('#5658 runAsync: a node whose advanceTo is a promise awaited, the same windows and deliveries as run; run refuses it', async () => {
+  const script = [{ t: 30e6, pin: 'o', value: 0 }, { t: 31e6, pin: 'o', value: 1 }, { t: 900e6, pin: 'o', value: 0 }];
+  const make = (Node) => {
+    const sys = new SystemSim({ wide: 100e6 });
+    const a = sys.addNode('a', new Node({ script }));
+    const b = sys.addNode('b', new Scripted({ init: 0 }));
+    const l = sys.link({ from: 'a.o', to: ['b.i'], fine: 1e6, hold: 10e6 });
+    return { sys, a, b, l };
+  };
+  const plain = make(Scripted);
+  plain.sys.run(1e9);
+  const x = make(AsyncScripted);
+  assert.equal(x.sys.async, true);
+  assert.equal(plain.sys.async, false);
+  const r = await x.sys.runAsync(1e9);
+  assert.deepEqual(r, { now: 1e9, finished: null });
+  assert.deepEqual([x.l.sent, x.l.trace, x.b.got, x.a.ends, x.sys.stats], [plain.l.sent, plain.l.trace, plain.b.got, plain.a.ends, plain.sys.stats]);
+  // (run: its first window's promise refused, said)
+  assert.throws(() => make(AsyncScripted).sys.run(1e9), { message: 'this system has a node that runs asynchronously: runAsync' });
+  // (runAsync on a system of synchronous nodes: as run)
+  const y = make(Scripted);
+  await y.sys.runAsync(1e9);
+  assert.deepEqual(y.l.sent, plain.l.sent);
+});

@@ -5667,7 +5667,7 @@ used during the build process and is not part of the compiled source code.
         /dfu.py (LGPL-3.0-only)
 ```
 
-Not in silinx-<version>.zip: the local server downloads its firmware for the Raspberry Pi Pico (RPI_PICO-20241129-v1.24.1.uf2) from micropython.org on its first use, checks its SHA-256 and keeps it in ~/.silinx/rp2040/; a System's Pico node runs it on rp2040js (core/system-sim-rp2040.js). The firmware also holds the Pico SDK (BSD-3-Clause) and TinyUSB (MIT), as its LICENSE says.
+Not in silinx-<version>.zip: the local server downloads its firmware for the Raspberry Pi Pico (RPI_PICO-20241129-v1.24.1.uf2) from micropython.org on its first use, checks its SHA-256 and keeps it in ~/.silinx/rp2040/; a System's Pico node runs it on rp2040js (core/system-sim-rp2040.js). The firmware also holds the Pico SDK (BSD-3-Clause) and TinyUSB (MIT), as its LICENSE says. Also not in the zip: Silinx's own build of its v1.29.0 webassembly port for an ESP32 node's JSPI back end (#5658: scripts/micropython-wasm/, with Silinx's module silinx_jspi, AGPL-3.0-only), built by .github/workflows/micropython-wasm.yml and published as the release micropython-wasm-v1.29.0-1 of Silinx's repository, which the local server downloads on its first use, checks by its SHA-256 and keeps in ~/.silinx/micropython-jspi/ (server/micropython-jspi.js).
 
 ## mime-db 1.54.0 — MIT
 

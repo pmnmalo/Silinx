@@ -12,7 +12,7 @@
 //   v.restart(); v.runFor(ps); v.pause(); v.state(); v.destroy();
 import { h } from './ui.js';
 import { t as tr } from './i18n.js';
-import { bytesText, runTimeText, termCaption } from '/core/system-run.js';
+import { bytesText, runTimeText, termCaption, esp32EngineText } from '/core/system-run.js';
 import { usText, byteText } from '/core/system-decode.js';
 
 const SLICE = 5e9;        // a slice of the run between two frames (ps): 5 ms
@@ -47,6 +47,7 @@ export function mountSystemSim(host, opts) {
       if (r.error) { say(`ERROR: ${NAME()}: ${r.error}`, 'error'); setTime(''); return null; }
       ready = r; saidLog = 0; saidDecoded = new Set();
       say(`${NAME()}: ${r.nodes.join(', ')} ready, ${r.wires.length} wire(s).`);
+      for (const [id, b] of Object.entries(r.engines ?? {})) say(`${NAME()}: ${esp32EngineText(id, b)}.`);   // (#5658)
       report = (await r.run(0)).report;
       layout();
       return r;

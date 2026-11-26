@@ -9,12 +9,15 @@ import { compiledNodeModel } from './system-sim-compiled.js';
 import { loadAvr8js } from './system-sim-avr.js';
 import { loadRp2040 } from './system-sim-rp2040.js';
 import { BrokerNode, messageText } from './system-mqtt.js';
-import { prepareEsp32 } from './system-sim-esp32.js';
+import { prepareEsp32, esp32Engines, esp32EngineText } from './system-sim-esp32.js';
 import { mcuBoard } from './system-doc.js';
 import { linkTraffic, usText, decodeSpi, spiWarnings, decodeI2c, i2cWarnings, wiredAnd } from './system-decode.js';
 import { regAccesses, accessText } from './regmap-decode.js';
 import { normalizeCircuit } from './circuit.js';
+
 import { sdText } from './circuit-sd.js';
+
+export { esp32EngineText };   // (the views' console lines, #5658)
 
 /** A run's time as Simulate System says it: ms or s. */
 export const runTimeText = ps => (ps >= 1e12 ? `${+(ps / 1e12).toFixed(3)} s` : `${+(ps / 1e9).toFixed(3)} ms`);
@@ -58,14 +61,14 @@ export function systemFromInputs(sys, { plan, netlists, firmware, regmaps = {} }
 }
 
 /** The microcontrollers' engines of the System `sys` loaded here (avr8js for an Arduino; rp2040js and MicroPython's
- *  firmware for a Pico, #5494). */
-export async function loadEngines(sys) {
+ *  firmware for a Pico, #5494); `esp32`: an ESP32's back end forced ('worker', 'jspi', #5658), else the one it has here. */
+export async function loadEngines(sys, { esp32 = null } = {}) {
   const arch = new Set(sys.nodes.filter(n => n.kind === 'mcu').map(n => mcuBoard(n.board)?.arch));
   if (arch.has('avr')) await loadAvr8js();
   if (arch.has('rp2040')) await loadRp2040();
-  // (an ESP32's MicroPython, each in a Worker made now, before the run, #5495)
+  // (an ESP32's MicroPython, each made now, before the run, #5495: in a Worker, or on this thread with JSPI, #5658)
   const esp = sys.nodes.filter(n => n.kind === 'mcu' && mcuBoard(n.board)?.arch === 'esp32').map(n => n.id);
-  if (esp.length) await prepareEsp32(esp);
+  if (esp.length) await prepareEsp32(esp, { backend: esp32 });
 }
 
 /** A run's nodes' resources freed (an ESP32's Worker), the run over. */
@@ -135,6 +138,8 @@ export function systemReport({ sim, wires, terminals, regmaps = {} }) {
   for (const [id, a] of [...sim.nodes].filter(([, x]) => x.sensors)) for (const [k, s] of Object.entries(a.sensors())) lines.push(`circuit ${id}: ${k} ${s.temp.toFixed(1)} °C, OS ${s.os ? 'active' : 'inactive'}`);
   for (const [id, a] of [...sim.nodes].filter(([, x]) => x.oleds)) for (const [k, s] of Object.entries(a.oleds())) lines.push(`circuit ${id}: ${k} ${s.on ? `on, ${s.lit} pixel(s) lit` : 'off'}`);
   for (const [id, ls] of Object.entries(circuits)) lines.push(`circuit ${id}: ${Object.entries(ls).map(([k, l]) => `${k} ${l.on ? 'on' : 'off'}${l.times ? `, lit ${l.times} time(s)` : ', never lit'}`).join('; ') || 'no lamps'}`);
+  // (an ESP32's back end, #5658: the same run on both)
+  for (const [id, b] of Object.entries(esp32Engines(sim))) lines.push(esp32EngineText(id, b));
   for (const w of warnings) lines.push(`WARNING: ${w}`);
   for (const e of errors) lines.push(`ERROR: ${e}`);
   return { now: sim.now, traffic, spi, i2c, regs, terminals: term, circuits, ...(brokers.length ? { mqtt } : {}), warnings, errors, lines };

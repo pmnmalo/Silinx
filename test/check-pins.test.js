@@ -226,7 +226,7 @@ test('check-pins: the pins declared in the repository, each read with what its k
   assert.match(by('KiCad catalogue: the KiCad Library for Arduino Modules').tag, /^v\d+\.\d+\.\d+$/);
   for (const n of ['KiCad\'s symbol libraries', 'KiCad catalogue: KiCad\'s footprints']) assert.deepEqual([by(n).kind, by(n).series], ['tag', '9.'], n);
   const shas = pins.filter(p => p.kind === 'sha256');
-  assert.deepEqual(shas.map(p => p.url.split('/').pop()), ['74xx.kicad_sym', '4xxx.kicad_sym', 'eecircuit-engine-1.9.0.tgz']);
+  assert.deepEqual(shas.map(p => p.url.split('/').pop()), ['74xx.kicad_sym', '4xxx.kicad_sym', 'micropython.mjs', 'micropython.wasm', 'eecircuit-engine-1.9.0.tgz']);
   // ngspice's engine, downloaded on first use (#5386): its version on npm
   assert.deepEqual(pins.filter(p => p.kind === 'npm').map(p => [p.package, p.version, p.file]), [['eecircuit-engine', '1.9.0', 'server/ngspice.js']]);
   // the ported code and data (light8080's is the corpus's), Digilent's XDCs (core/boards.js's comment: its constant's commit)

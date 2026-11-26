@@ -23,7 +23,7 @@ import { mountSideFold } from './side-fold.js';
 import { panelToggle, PROPS_KEY } from './narrow.js';
 import { emulationBoards, pinOf } from '/core/system-emu.js';
 import { pressHolds } from '/core/emulate-press.js';
-import { runTimeText, termCaption } from '/core/system-run.js';
+import { runTimeText, termCaption, esp32EngineText } from '/core/system-run.js';
 import { nextFrame, watchSeen, hiddenPref, setHiddenPref } from './when-hidden.js';
 import { menuChoice, toolbarMenu } from './toolbar-menu.js';
 import { sv } from './dom.js';
@@ -186,6 +186,7 @@ export function mountSystemEmulator(host, opts) {
     if (r.error) { say(`ERROR: Emulate System: ${r.error}`, 'error'); info.set([]); return null; }
     ready = r; boards = emulationBoards(r.system ?? opts.system(), r.inputs); saidLog = 0; clock.now = 0;   // (its nodes' pins read, #5581)
     say(`Emulate System: ${r.nodes.join(', ')} ready, ${boards.length} board(s).`);
+    for (const [id, b] of Object.entries(r.engines ?? {})) say(`Emulate System: ${esp32EngineText(id, b)}.`);   // (#5658)
     const st = await r.run(0);
     report = st.report; shown = st.boards || {};
     layout();
