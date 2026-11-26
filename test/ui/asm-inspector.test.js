@@ -91,7 +91,7 @@ uiTest('#405 ASM inspector: nothing, several boxes, a state, a decision, a case 
   assert.deepEqual(out.calls, ['deleteSelection', 'deleteSelection']);
 });
 
-uiTest('#405 ASM inspector: the machine (name, reset, an input added and removed, registers), a model replaced', E, async (page) => {
+uiTest('#405 ASM inspector: the machine (its name shown, not edited, #5718; reset, an input added and removed, registers), a model replaced', E, async (page) => {
   await page.eval(MOUNT);
   const out = await page.eval(() => {
     const { ins, commits, machineBody: B, input, set, M, setM, select } = window.__i;
@@ -99,7 +99,8 @@ uiTest('#405 ASM inspector: the machine (name, reset, an input added and removed
     ins.renderMachine();
     r.tables = [...B.querySelectorAll('.asm-ports-head .asm-label')].map((e) => e.textContent);
     r.inputs = [...B.querySelectorAll('table.ins tbody tr')].map((tr) => tr.querySelector('input').value);
-    set(input(B, 'Module / entity name'), ' ctl ');
+    const nameIn = input(B, 'Module / entity name');   // (#5718: renamed by the Design pane's Rename… only)
+    r.nameField = [nameIn.disabled, nameIn.value, nameIn.closest('.asm-field').querySelector('.asm-fhint')?.textContent];
     set(input(B, 'Reset type'), 'sync', 'change');
     set(input(B, 'Initial state'), 's3', 'change');
     r.machine = [M().name, M().reset.sync, M().initial];
@@ -124,12 +125,13 @@ uiTest('#405 ASM inspector: the machine (name, reset, an input added and removed
   });
   assert.deepEqual(out.tables, ['Inputs', 'Outputs', 'Registers', 'Generics']);
   assert.deepEqual(out.inputs, ['start', 'done', 'mode']);
-  assert.deepEqual(out.machine, ['ctl', true, 's3']);
+  assert.deepEqual(out.nameField, [true, 'fsm', 'renamed with Rename… in the Design pane']);
+  assert.deepEqual(out.machine, ['fsm', true, 's3']);
   assert.deepEqual(out.added, ['start', 'done', 'mode', 'in3']);
   assert.equal(out.removed, 3);
   assert.deepEqual(out.regs, ['r0:8:0']);
   assert.equal(out.noRegs, false);
-  assert.deepEqual(out.commits, ['m-name', null, null, null, null, null, null]);
+  assert.deepEqual(out.commits, [null, null, null, null, null, null]);
   assert.deepEqual(out.replaced, ['other', 'START']);
 });
 

@@ -4,6 +4,7 @@
 // the console (opts.onProblems, #2718).
 import { formatOutputs, parseOutputs } from '/core/fsm.js';
 import { h } from './ui.js';
+import { moduleNameInput, MODULE_NAME_NOTE } from './module-name-field.js';
 import { validatePetri } from '/core/petri.js';
 import { checkPetri } from '/core/petri-analysis.js';
 
@@ -55,7 +56,7 @@ export function mountPetriSide(ctx) {
     }
     // the net
     netBody.replaceChildren(
-      field('Module name', text(M().name, v => { M().name = v.trim() || M().name; commit(); }, 'mono')),
+      field('Module name', moduleNameInput(M().name, 'asm-input mono'), MODULE_NAME_NOTE),   // (renamed by the Design pane's Rename… only, #5718)
       field('Inputs', text(ioText(M().inputs), v => { M().inputs = parseIo(v); commit(); }, 'mono'), 'names, a width in brackets: go, sel[2]'),
       field('Outputs', text(ioText(M().outputs), v => { M().outputs = parseIo(v); commit(); }, 'mono'), 'e.g. busy, st[2]'),
       field('Clock', text(M().clock, v => { M().clock = v.trim() || 'clk'; commit(); }, 'mono')),

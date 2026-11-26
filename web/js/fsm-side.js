@@ -5,6 +5,7 @@
 // (core/fsm-outputs.js, #3814; a value refused: the console, flash(text)). No Delete button: a state or a transition is
 // deleted as any selection is, by the Delete key or the toolbar's (#3882). Its look last: web/js/fsm-look.js (#3883).
 import { h } from './ui.js';
+import { moduleNameInput, MODULE_NAME_NOTE } from './module-name-field.js';
 import { lookFields } from './fsm-look.js';
 import { drawnAsElse, ELSE_COND, FSM_ALL_ENCODINGS, isElseWord, outputLines, setEncoding, setStateCode, USER_ENCODING } from '/core/fsm.js';
 import { FSM_ENCODING_NAMES } from './fsm-editor.js';
@@ -152,7 +153,7 @@ export function mountSide(ctx) {
 
   function renderMachine() {
     machineBody.textContent = '';
-    const name = input(M().name, (v) => { M().name = v.trim(); commit('name'); }, { cls: 'mono fsm-mname', key: 'mname' });
+    const name = moduleNameInput(M().name, 'asm-input mono fsm-mname');   // (renamed by the Design pane's Rename… only, #5718)
     const clk = input(M().clock, (v) => { M().clock = v.trim(); commit('clk'); }, { cls: 'mono', key: 'clk' });
     const rst = input(M().reset.name, (v) => { M().reset.name = v.trim(); commit('rst'); }, { cls: 'mono', key: 'rst' });
     const act = h('select', { class: 'asm-select' }, h('option', { value: 'high', selected: M().reset.active === 'high' }, 'active high'), h('option', { value: 'low', selected: M().reset.active === 'low' }, 'active low'));
@@ -195,7 +196,7 @@ export function mountSide(ctx) {
     const desc = h('textarea', { class: 'asm-input', rows: 2, placeholder: designKind() ? 'What the machine does' : 'What the machine does (written in the HDL header)' }, M().description || '');
     desc.addEventListener('change', () => { if (desc.value.trim()) M().description = desc.value.trim(); else delete M().description; commit(); });
     machineBody.append(
-      field('Module name', name),
+      field('Module name', name, MODULE_NAME_NOTE),
       h('div', { class: 'asm-ports fsm-inputs' }, h('div', { class: 'asm-ports-head' }, h('span', { class: 'asm-label' }, 'Inputs'), btn('+ Input', 'Add an input', addPort('in', 'x', {}), 'asm-small fsm-add-in')), ports(M().inputs, 'in')),
       h('div', { class: 'asm-ports fsm-outputs' }, h('div', { class: 'asm-ports-head' }, h('span', { class: 'asm-label' }, 'Outputs'), btn('+ Output', 'Add an output', addPort('out', 'z', { default: '0' }), 'asm-small fsm-add-out')), ports(M().outputs, 'out')),
       h('div', { class: 'asm-grid2' }, field('Clock', clk), field('Reset signal', rst)),
