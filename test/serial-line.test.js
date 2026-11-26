@@ -4,7 +4,7 @@
 // simulation's (a TerminalNode decoding the same bytes from their frames), the port lost and closed.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { SerialLine, monitorConfig, portFilters, portText, serialOptions, terminalPeer, webSerialMissing } from '../core/serial-line.js';
+import { SerialLine, monitorConfig, portFilters, serialPortText, serialOptions, terminalPeer, webSerialMissing } from '../core/serial-line.js';
 import { TerminalNode } from '../core/system-sim-terminal.js';
 import { bytesText } from '../core/system-run.js';
 
@@ -51,9 +51,9 @@ test('#5449 Web Serial missing (Safari, the iPad) said; the chooser\'s filters; 
   assert.deepEqual(portFilters({ kind: 'fpga', board: 'basys2' }), []);
   assert.deepEqual(portFilters(null), []);
   assert.deepEqual(portFilters({ kind: 'fpga', board: 'basys2', usb: { vendor: '0403', product: null } }), [{ usbVendorId: 0x0403 }]);
-  assert.equal(portText({ usbVendorId: 0x2341, usbProductId: 0x43 }), 'USB 2341:0043');
-  assert.equal(portText({ usbVendorId: 0x2341 }), 'USB 2341:????');
-  assert.equal(portText({}), 'a serial port');
+  assert.equal(serialPortText({ usbVendorId: 0x2341, usbProductId: 0x43 }), 'USB 2341:0043');
+  assert.equal(serialPortText({ usbVendorId: 0x2341 }), 'USB 2341:????');
+  assert.equal(serialPortText({}), 'a serial port');
   const sys = { nodes: [{ id: 'term', kind: 'terminal' }, { id: 'uno', kind: 'mcu' }, { id: 'lone', kind: 'terminal' }], links: [{ id: 'console', kind: 'uart', a: 'uno.Serial', b: 'term.serial' }] };
   assert.deepEqual([terminalPeer(sys, 'term').node.id, terminalPeer(sys, 'term').link.id], ['uno', 'console']);
   assert.deepEqual(terminalPeer(sys, 'lone'), { node: null, link: null });
