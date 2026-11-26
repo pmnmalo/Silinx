@@ -72,13 +72,18 @@ function savedViewState(name) {
 export async function restoreViewState(name) {
   const v = savedViewState(name);
   if (!v) return false;
-  await applyViewState(v);
+  await applyViewState(v, { keepFront: true });
   return true;
 }
 /** A view state ({ open, active, page, view, split }: a kept one, or a design link's, #2886) put on the page: its
- *  documents reopened (those of REOPEN's kinds that open in this project), the split, the one in front. */
-export async function applyViewState(v) {
+ *  documents reopened (those of REOPEN's kinds that open in this project), the split, the one in front. keepFront
+ *  (a project's own view reopened as it opens): a document brought to the front meanwhile by another (the user, a
+ *  followed owner) stays there, the kept one behind it (#5627: a follower's file covered by the Design Summary). */
+export async function applyViewState(v, { keepFront = false } = {}) {
   keepView = true;
+  let front = keepFront && docsState.docs.includes(docsState.active) ? docsState.active : null;
+  const other = ({ detail: { doc } }) => { if (!v.open.includes(reopenKey(doc))) front = doc; };
+  if (keepFront) addEventListener('silinx:doc-activated', other);
   try {
     if (v.view === 'sim' || v.view === 'impl') { if (v.view !== designState.view) setView(v.view); }
     if (['design', 'files', 'libs', 'teaching', 'collab'].includes(v.page)) showLeftPage(v.page);
@@ -88,8 +93,9 @@ export async function applyViewState(v) {
       try { await open(...re.exec(id).slice(1)); } catch { /* a document that cannot open any more */ }
     }
     restoreSplit(v.split, k => docsState.docs.find(d => reopenKey(d) === k), v.open);   // (in the kept order, #2887)
-    const active = v.active && docsState.docs.find(d => reopenKey(d) === v.active);
+    removeEventListener('silinx:doc-activated', other);
+    const active = front && docsState.docs.includes(front) ? front : v.active && docsState.docs.find(d => reopenKey(d) === v.active);
     if (active) activateDoc(active);
-  } finally { keepView = false; }
+  } finally { keepView = false; removeEventListener('silinx:doc-activated', other); }
   saveViewState();
 }
