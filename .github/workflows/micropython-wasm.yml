@@ -1,0 +1,71 @@
+name: MicroPython WebAssembly
+# Silinx's MicroPython for the ESP32 node's JSPI back end (#5658): MicroPython's webassembly port at a pinned tag, built with
+# a pinned emsdk as Silinx's variant (sys.settrace, WebAssembly's exceptions, JSPI) with the module silinx_jspi
+# (scripts/micropython-wasm/build.sh, its pins declared there for pins.yml). Built twice, in two folders, and the two
+# compared byte by byte (reproducible); then its smoke test (scripts/micropython-wasm/smoke.mjs) in Node with JSPI.
+# On a pull request that changes the build: the build and its checks, the output an artifact. By hand on main (Actions ▸
+# MicroPython WebAssembly ▸ Run workflow, with a build number): the same, then a GitHub release of this repository,
+# micropython-wasm-<MicroPython's tag>-<build>, with the output as its assets (micropython.mjs, micropython.wasm, the
+# licences, SHA256SUMS): where Silinx downloads it from, its SHA-256s pinned in the code that does.
+on:
+  pull_request:
+    paths: [scripts/micropython-wasm/**, .github/workflows/micropython-wasm.yml]
+  workflow_dispatch:
+    inputs:
+      build:
+        description: 'The build number of the release (micropython-wasm-<tag>-<build>)'
+        required: true
+permissions:
+  contents: read
+concurrency:
+  group: micropython-wasm-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 24
+      - name: Build (twice, in two folders)
+        run: |
+          scripts/micropython-wasm/build.sh "$RUNNER_TEMP/a" out
+          scripts/micropython-wasm/build.sh "$RUNNER_TEMP/b/c" "$RUNNER_TEMP/again"
+      - name: Reproducible
+        run: diff out/SHA256SUMS "$RUNNER_TEMP/again/SHA256SUMS"
+      - name: Smoke test (JSPI)
+        run: node --experimental-wasm-jspi scripts/micropython-wasm/smoke.mjs out
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: micropython-wasm
+          path: out/
+  release:
+    needs: build
+    if: github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: micropython-wasm
+          path: out
+      - name: Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          BUILD: ${{ inputs.build }}
+        run: |
+          [[ "$BUILD" =~ ^[0-9]+$ ]] || { echo "::error::the build number: digits ($BUILD)"; exit 1; }
+          MP=$(sed -nE 's/^MICROPYTHON_TAG="(v[0-9.]+)".*/\1/p' scripts/micropython-wasm/build.sh)
+          TAG="micropython-wasm-$MP-$BUILD"
+          gh release create "$TAG" --repo "$GITHUB_REPOSITORY" --target "$GITHUB_SHA" --title "MicroPython $MP for Silinx (build $BUILD)" \
+            --notes "MicroPython $MP's webassembly port built for the ESP32 node's JSPI back end (#5658) by .github/workflows/micropython-wasm.yml at $GITHUB_SHA. MicroPython: MIT (LICENSE-micropython); the module silinx_jspi and silinx-api.js: AGPL-3.0-only (LICENSE). SHA-256s: SHA256SUMS." \
+            out/micropython.mjs out/micropython.wasm out/LICENSE-micropython out/LICENSE out/SHA256SUMS
