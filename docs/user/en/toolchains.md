@@ -152,6 +152,32 @@ Digilent **Zybo Z7**-20 and -10: its programmable logic only, the .bit over JTAG
 **Kintex-7** (XC7K70T, XC7K160T; no board). Their Synthesis Tool is Vivado alone. The examples' display, LEDs and
 switches these boards lack are on their Pmods. The Virtex-7 is no free edition's: ISE 14.7's flow.
 
+## The Intel boards with Intel Quartus Prime
+
+Terasic's **DE10-Lite** (MAX 10), **DE0-Nano** and **DE2-115** (Cyclone IV E), **DE0-CV**, **DE1-SoC** and **DE10-Nano**
+(Cyclone V; the SoC boards' FPGA side only), each an experimental family, are built by **Intel Quartus Prime Lite**
+(free; #5378), which you install yourself, on the local server: `build/<top>.qpf`, `<top>.qsf` (the device, the
+sources, the project's QSF pins), `<top>.sdc` (the clocks of the QSF's `# create_clock` lines) and `run.sh`
+(`quartus_map`, `quartus_fit`, `quartus_sta`, `quartus_asm`). Its mode is `quartus` in `~/.silinx/config.json`:
+
+```json
+{ "quartus": { "mode": "local", "image": "", "path": "" } }
+```
+
+- `local`: Quartus on this Linux or Windows machine (`quartus_sh` on PATH, or `path` its `quartus/bin`, which only the
+  file sets, or its usual installation folders); `docker`: an x86-64 image with Quartus; `ssh`: on the ssh host of the
+  ISE settings. Quartus does not run on macOS.
+- The Design Summary shows Quartus's utilization (ALMs or logic elements, registers, pins, memory), its worst slack and
+  Fmax per clock, its warnings.
+- *Generate Programming File* makes the `.sof`, then the file the board is loaded with (#5379): `<top>.rbf` for the
+  Cyclone IV and V, `<top>.svf` for the MAX 10. *Configure Target Device ▸ Program FPGA* loads it into the FPGA's SRAM
+  with **openFPGALoader** through the board's on-board USB-Blaster (`-c usb-blaster`; the DE1-SoC's and DE10-Nano's
+  USB-Blaster II, `-c usb-blasterII`, needs its firmware, Quartus's `blaster_6810.hex`, which Silinx finds in a local
+  Quartus). The configuration flash (the MAX 10's own, the EPCS) is written with Quartus's programmer.
+- The examples run on every DE board (#5380): their switches, LEDs and KEYs the board's own, their 4-digit display (its
+  segments and digit enables) on the GPIO header, the board's HEX displays not used yet.
+- In the browser edition these boards have their pins and constraints (QSF) only.
+
 ## Programming the board
 
 Programming loads the `.bit` into the FPGA's configuration SRAM (volatile). In the browser it goes
