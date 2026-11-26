@@ -29,8 +29,8 @@ test('list_devices: the Basys 3 and the Nexys A7, Artix-7 and its XC7A35T, marke
   assert.match(all.text, /\n {2}Spartan-7 \(spartan7\) \[experimental: AMD Vivado's flow\]:\n {4}xc7s6: cpga196 -1 -2, csga225 -1 -2, ftgb196 -1 -2\n/);
   assert.match(all.text, /\n {2}Virtex-6 \(virtex6\):\n/);
   assert.deepEqual(all.data.boards.find(b => b.id === 'basys3'), { id: 'basys3', name: 'Digilent Basys 3', device: 'xc7a35tcpg236-1', experimental: true, variants: [] });
-  assert.deepEqual(all.data.boards.filter(b => b.experimental).map(b => b.id), ['basys3', 'nexys-a7', 'arty-s7', 'zybo-z7', 'arty-z7']);   // (#3895: Vivado's other 7-series)
-  assert.deepEqual(all.data.families.filter(f => f.experimental).map(f => f.id), ['artix7', 'spartan7', 'kintex7', 'zynq']);
+  assert.deepEqual(all.data.boards.filter(b => b.experimental && !/^de/.test(b.id)).map(b => b.id), ['basys3', 'nexys-a7', 'arty-s7', 'zybo-z7', 'arty-z7']);   // (#3895: Vivado's other 7-series)
+  assert.deepEqual(all.data.families.filter(f => f.experimental && !['max10', 'cyclone4e', 'cyclone5'].includes(f.id)).map(f => f.id), ['artix7', 'spartan7', 'kintex7', 'zynq']);
   assert.ok(!/basys2.*experimental|Spartan-3E.*experimental/.test(all.text));
   const a7 = await ok('list_devices', { family: 'artix7' });
   assert.deepEqual(a7.data.families.map(f => [f.id, f.experimental]), [['artix7', true]]);
@@ -194,7 +194,7 @@ test('#3895 set_design_properties and run_process on the Spartan-7, the Kintex-7
 test('#3895 the Arty S7 and the Zybo Z7: list_devices, new_project_from_example, set_design_properties with a variant; Vivado alone', async () => {
   const all = await ok('list_devices');
   assert.match(all.text, /\n {2}arty-s7: Digilent Arty S7 \(50 xc7s50csga324-1, the default; 25 xc7s25csga324-1\) \[experimental: AMD Vivado's flow\]\n {2}zybo-z7: Digilent Zybo Z7 \(20 xc7z020clg400-1, the default; 10 xc7z010clg400-1\) \[experimental: AMD Vivado's flow\]\n {2}arty-z7: Digilent Arty Z7 \(20 xc7z020clg400-1, the default; 10 xc7z010clg400-1\) \[experimental: AMD Vivado's flow\]\n/);
-  assert.deepEqual(all.data.boards.filter(b => b.experimental).map(b => b.id), ['basys3', 'nexys-a7', 'arty-s7', 'zybo-z7', 'arty-z7']);
+  assert.deepEqual(all.data.boards.filter(b => b.experimental && !/^de/.test(b.id)).map(b => b.id), ['basys3', 'nexys-a7', 'arty-s7', 'zybo-z7', 'arty-z7']);
   const e = await ok('new_project_from_example', { name: 'a7s', example: 'blinky', board: 'arty-s7' });
   const pj = await P.readProject('a7s');
   // (no synthesis tool written: the device's, AMD Vivado, as the Basys 3's)
