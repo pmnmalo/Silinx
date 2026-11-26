@@ -13,7 +13,7 @@ import { sealCode, openCode } from '/core/collab-codes.js';
 import { keyOf } from '/core/collab-crypto.js';
 import { splitFrame, frameJoiner } from '/core/collab-frag.js';
 import { FOLLOWER_JOIN } from '/core/collab-loop.js';
-import { withLoopback } from '/core/collab-loopback.js';
+import { withLoopback, firefoxSdp, FIREFOX_ONE_COMPUTER } from '/core/collab-loopback.js';
 
 /** The STUN servers: a public one, or this browser's own list (JSON, [] for none: a classroom's one network). */
 export const STUN_KEY = prefKey('silinx.collab.stun');
@@ -42,14 +42,19 @@ function gathered(pc) {
     pc.addEventListener('icegatheringstatechange', () => { if (pc.iceGatheringState === 'complete') { clearTimeout(t); resolve(); } });
   });
 }
-// a channel open, or why not
-function opened(dc, pc) {
+// a channel open, or why not; with Firefox one of the two, how two browsers of one computer connect (#4497: the remote
+// description as its code gave it, since Chrome's remoteDescription writes an origin line of its own)
+function opened(dc, pc, remoteSdp) {
+  const why = (text) => {
+    const firefox = firefoxSdp(pc.localDescription?.sdp) || firefoxSdp(remoteSdp);
+    return new Error(`no connection: ${text}${firefox ? `; ${FIREFOX_ONE_COMPUTER}` : ''}`);
+  };
   return new Promise((resolve, reject) => {
     if (dc.readyState === 'open') { resolve(dc); return; }
-    const t = setTimeout(() => reject(new Error('no connection: the codes were not exchanged in time')), CONNECT_MS);
+    const t = setTimeout(() => reject(why('the codes were not exchanged in time')), CONNECT_MS);
     dc.addEventListener('open', () => { clearTimeout(t); resolve(dc); }, { once: true });
     pc.addEventListener('connectionstatechange', () => {
-      if (pc.connectionState === 'failed') { clearTimeout(t); reject(new Error('no connection: the network between you lets no WebRTC through (no UDP)')); }
+      if (pc.connectionState === 'failed') { clearTimeout(t); reject(why('the network between you lets no WebRTC through (no UDP)')); }
     });
   });
 }
@@ -67,7 +72,7 @@ export async function followerOffer({ key: keyText, room }) {
     async accept(answer) {
       const sdp = await openCode(key, room, 'answer', answer);
       await pc.setRemoteDescription({ type: 'answer', sdp });
-      return opened(dc, pc);
+      return opened(dc, pc, sdp);
     },
     close: () => pc.close(),
   };
@@ -83,7 +88,7 @@ export async function ownerAnswer({ key: keyText, room, code }) {
       const dc = ev.channel;
       if (dc.label !== LABEL) { dc.close(); return; }
       dc.binaryType = 'arraybuffer';
-      opened(dc, pc).then(resolve, reject);
+      opened(dc, pc, sdp).then(resolve, reject);
     });
   });
   channel.catch(() => {});

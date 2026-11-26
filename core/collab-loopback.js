@@ -12,6 +12,11 @@
 //   loopbackSdp(sdp) -> the description with its mDNS host candidates' twins
 //   loopbackCandidate(candidate) -> a trickled candidate's twin (RTCIceCandidateInit), or null
 //   withLoopback(PC) -> a connection class whose remote descriptions and candidates get their twins
+// Firefox takes no twin (#4497): its ICE sockets are bound to the interface's address, so neither its checks to
+// 127.0.0.1 nor a twin's to it get through. Firefox and another browser of one computer reach each other only by their
+// mDNS names, which on macOS needs both browsers' Local Network access, or through a relay; a failed connection where
+// Firefox is one of the two says so (firefoxSdp, FIREFOX_ONE_COMPUTER).
+//   firefoxSdp(sdp) -> whether a session description is Firefox's
 
 export const LOOPBACK = '127.0.0.1';
 /** Twins in one description at most. */
@@ -69,3 +74,11 @@ export function withLoopback(PC) {
     }
   };
 }
+
+/** Whether a session description is Firefox's (its origin line: `o=mozilla...THIS_IS_SDPARTA-<version>`). */
+export function firefoxSdp(sdp) {
+  return typeof sdp === 'string' && /^o=mozilla\.\.\.THIS_IS_SDPARTA/m.test(sdp);
+}
+
+/** What a connection that found no path says too when Firefox is one of the two (#4497). */
+export const FIREFOX_ONE_COMPUTER = 'Firefox and another browser of one computer reach each other only by their .local names: on macOS, allow both browsers in System Settings ▸ Privacy & Security ▸ Local Network, or share through a relay (Share Project…\'s Relay)';

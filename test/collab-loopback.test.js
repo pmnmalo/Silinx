@@ -8,7 +8,7 @@
 // twin refused left out, the candidate's own failure its caller's.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { loopbackSdp, loopbackCandidate, withLoopback, LOOPBACK, MAX_TWINS, MIN_PORT } from '../core/collab-loopback.js';
+import { loopbackSdp, loopbackCandidate, withLoopback, firefoxSdp, FIREFOX_ONE_COMPUTER, LOOPBACK, MAX_TWINS, MIN_PORT } from '../core/collab-loopback.js';
 
 // (a description's candidate lines)
 const cands = sdp => sdp.split(/\r?\n/).filter(l => l.startsWith('a=candidate:'));
@@ -152,4 +152,16 @@ test('#4494 withLoopback: MAX_TWINS trickled twins at most for a connection, eac
   assert.equal(a.added.filter(c => c.includes(' 127.0.0.1 ')).length, MAX_TWINS);
   await b.addIceCandidate({ candidate: 'candidate:1 1 udp 1 x.local 6000 typ host' });
   assert.deepEqual(b.added, ['candidate:1 1 udp 1 x.local 6000 typ host', 'candidate:L1 1 udp 1 127.0.0.1 6000 typ host']);
+});
+
+// #4497: Firefox takes no twin; a connection that found no path, Firefox one of the two, says how two browsers of one
+// computer connect (web/js/collab-rtc.js)
+test('#4497 firefoxSdp: Firefox\'s description by its origin line, with \\r\\n or \\n; not Chrome\'s nor Safari\'s nor a candidate\'s text', () => {
+  assert.equal(firefoxSdp(FIREFOX), true);
+  assert.equal(firefoxSdp(FIREFOX.replace(/\r\n/g, '\n')), true);
+  assert.equal(firefoxSdp(CHROME), false);
+  assert.equal(firefoxSdp(SAFARI), false);
+  assert.equal(firefoxSdp(CHROME.replace('s=-', 's=o=mozilla...THIS_IS_SDPARTA')), false);
+  for (const x of [undefined, null, '', 42]) assert.equal(firefoxSdp(x), false);
+  assert.match(FIREFOX_ONE_COMPUTER, /^Firefox and another browser of one computer reach each other only by their \.local names: on macOS, allow both browsers in System Settings ▸ Privacy & Security ▸ Local Network, or share through a relay \(Share Project…'s Relay\)$/);
 });
