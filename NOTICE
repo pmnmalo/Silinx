@@ -35,6 +35,10 @@ https://github.com/kieler/elkjs). The micro80 example includes light8080 (LGPL-2
 A System's Raspberry Pi Pico runs MicroPython's firmware (MIT) and the RP2040's bootrom (Raspberry Pi's, BSD-3-Clause;
 its float library mufplib for the RP2040 alone, or GPL-2.0): Silinx does not ship them, the local server downloads them
 on their first use.
+A circuit's analog side can run on ngspice, through eecircuit-engine (its wrapper MIT; ngspice Modified BSD, with its KLU
+solver under LGPL-2.0 and numparam under LGPL-2.0 or later compiled in, OSDI MPL-2.0, XSPICE public domain; the model
+cards it bundles Apache-2.0, PTM's with no licence given, not used): Silinx does not ship it, the local server downloads
+it from npm's registry on its first use.
 Their licence texts are in THIRD-PARTY-NOTICES.md.
 
 Your designs, and the HDL Silinx generates for them, are not covered by this licence.
