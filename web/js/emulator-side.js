@@ -108,6 +108,6 @@ export function mountEmuSide(ctx) {
   // (a design's XADC: its analog inputs, #5385, emulator-xadc.js)
   const xadc = mountEmuXadc({ design, sim, side, compiled, refresh });
   // (an oscilloscope on the design's signals, #5383, emulator-scope.js)
-  mountEmuScope({ design, sim, side, compiled });
-  return { logEl, side, watched, xadc };
+  const scope = mountEmuScope({ design, sim, side, compiled });
+  return { logEl, side, watched, xadc, scope };
 }

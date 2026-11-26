@@ -63,8 +63,9 @@ uiTest('Circuit editor: the half adder opened, a part placed and undone, a wire 
   assert.equal(await page.eval((ed) => document.querySelector(`${ed} .circ-led.lit`).closest('[data-id]').dataset.id, ED), 'D1');
   assert.deepEqual(await status(page), ['2 IC(s) · 2 input(s) · 2 display(s) · 16 wire(s)', 't = 24 ns']);
   // the Try it bar (#4067): its Reset from time 0 (the switch as saved, the LED off), its Stop (Esc); no Reset, no
-  // Waveforms in the toolbar (#4068)
-  assert.deepEqual(await page.eval((ed) => [...document.querySelectorAll(`${ed} .circ-simbar > *`)].map((e) => e.textContent.trim()).filter(Boolean), ED), ['Try it', 'Reset', 'Stop']);
+  // Waveforms in the toolbar (#4068); its ngspice hidden, a digital circuit's (#5386)
+  assert.deepEqual(await page.eval((ed) => [...document.querySelectorAll(`${ed} .circ-simbar > :not([hidden])`)].map((e) => e.textContent.trim()).filter(Boolean), ED), ['Try it', 'Reset', 'Stop']);
+  assert.equal(await page.eval((ed) => document.querySelector(`${ed} .circ-simbar .circ-ngspice`).hidden, ED), true);
   assert.deepEqual(await page.eval((ed) => [...document.querySelectorAll(`${ed} .circ-toolbar .circ-reset, ${ed} .circ-toolbar .circ-waves`)].length, ED), 0);
   await page.click(`${ED} .circ-reset`);
   await page.waitFor((ed) => document.querySelectorAll(`${ed} .circ-led.lit`).length === 0, [ED], { what: 'reset: the LED off' });
@@ -86,12 +87,12 @@ uiTest('Circuit editor: the half adder opened, a part placed and undone, a wire 
   assert.deepEqual(await status(page), ['2 CI(s) · 2 entrada(s) · 2 mostrador(es) · 16 fio(s)']);
   assert.deepEqual(await page.eval((ed) => [...document.querySelectorAll(`${ed} .circ-parts-side .asm-cap, ${ed} .circ-lib-title > span:first-child`)].map((e) => e.textContent), ED),
     // (Placas: the boards, #5215, listed in the development build where Systems are on; none in a release: system-release.test.js)
-    ['Peças', 'Placas de ensaio', 'Alimentação', 'Placas', 'Entradas', 'Saídas', 'Portas (74LS)', 'Portas (4000)', 'MSI (74LS, 4000)', 'Sequenciais (74LS, 4000)', 'Catálogo KiCad']);
+    ['Peças', 'Placas de ensaio', 'Alimentação', 'Placas', 'Entradas', 'Saídas', 'Analógico', 'Portas (74LS)', 'Portas (4000)', 'MSI (74LS, 4000)', 'Sequenciais (74LS, 4000)', 'Catálogo KiCad']);
   assert.equal(await page.eval((ed) => document.querySelector(`${ed} .circ-search`).placeholder, ED), 'Procurar peças…');
   assert.equal(await page.eval((ed) => document.querySelector(`${ed} .circ-sim-btn`).textContent.trim(), ED), 'Experimentar');
   assert.equal(await page.eval((ed) => document.querySelector(`${ed} .circ-sim-btn`).title, ED), 'Experimentar: clique num interruptor para o mudar, carregue num botão para o manter premido; os LEDs e o nível de cada pino mostram o circuito a funcionar');
   assert.equal(await page.eval((ed) => document.querySelector(`${ed} .circ-lib-part[data-part="7400"]`).textContent, ED), '7400 Quatro portas NAND de 2 entradas');
-  assert.deepEqual(await page.eval((ed) => [...document.querySelectorAll(`${ed} .circ-simbar > *`)].map((e) => [e.textContent.trim(), e.title]).filter((x) => x[0]), ED),
+  assert.deepEqual(await page.eval((ed) => [...document.querySelectorAll(`${ed} .circ-simbar > :not([hidden])`)].map((e) => [e.textContent.trim(), e.title]).filter((x) => x[0]), ED),
     [['Experimentar', ''], ['Reset', 'Recomeçar a simulação no instante 0'], ['Parar', 'Parar de experimentar e voltar a editar o circuito (Esc)']]);
   await page.eval(async () => { (await import('/js/i18n.js')).setLanguage('en'); });
   assert.deepEqual(page.console.filter((c) => c.type === 'warning' || c.type === 'warn').map((c) => c.text), []);

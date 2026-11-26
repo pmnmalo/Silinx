@@ -13,7 +13,9 @@ import { intervalWhileSeen } from './when-hidden.js';
 const P = 20, X = 6, Y = 18;   // (the scope drawn as a part at (X, Y): its case from (0, 8) to (264, 360) pixels)
 const IO_VOLTS = 3.3;
 
-/** The box (null: a design with no one-bit signal). ctx: { design, sim, side, compiled() }. */
+/** The box (null: a design with no one-bit signal): { draw(), stop() } (stop(): its timer and its watcher, by the emulator's
+ * destroy(): held once its box is gone, the timer never looked again and kept the closed emulator alive, #5763).
+ * ctx: { design, sim, side, compiled() }. */
 export function mountEmuScope({ design, sim, side, compiled }) {
   const bits = design.signals.filter((s) => !Array.isArray(s.init) && s.t?.w === 1 && s.t?.kind !== 'str');
   if (!bits.length) return null;
@@ -73,5 +75,5 @@ export function mountEmuScope({ design, sim, side, compiled }) {
   let drawnAt = null;
   const tick = intervalWhileSeen(box, 100, () => { if (!box.isConnected) { tick.stop(); return; } if (sim.now !== drawnAt) draw(); });
   draw();
-  return { draw };
+  return { draw, stop: () => tick.stop() };
 }

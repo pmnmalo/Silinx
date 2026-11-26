@@ -320,7 +320,7 @@ export function mountEmulator(container, { design, board, assignments, title = '
   // finds it in the sync pulses (core/vga.js), in the board's time; with the compiled engine only
   let vgaView = null;
   // (the VGA monitor, the side panel: emulator-side.js)
-  const { logEl, side, watched, xadc } = mountEmuSide({
+  const { logEl, side, watched, xadc, scope } = mountEmuSide({
     board, design, engine, timing, title, after: (...a) => after(...a), clockSigs, compiled: () => compiled,
     engineNote: () => engineNote, main, note: onNote, powered: () => powered, refresh: (...a) => refresh(...a), root,
     running: () => running, sim, vgaView: () => vgaView, vgaWired, wiring, setVgaView: (v) => { vgaView = v; }
@@ -518,7 +518,7 @@ export function mountEmulator(container, { design, board, assignments, title = '
   setRunning(true);
 
   return withBoardControls(main, () => running, () => speed, setRunning, {   // (#4002)
-    destroy() { destroyed = true; unschedule(); cancelAnimationFrame(paintRaf); seen.destroy(); compiled?.destroy(); root.remove(); },
+    destroy() { destroyed = true; unschedule(); cancelAnimationFrame(paintRaf); seen.destroy(); scope?.stop(); compiled?.destroy(); root.remove(); },
     pause: () => setRunning(false),
     power: (on) => setPower(!!on),
     get powered() { return powered; },
