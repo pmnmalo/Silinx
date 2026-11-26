@@ -21,6 +21,7 @@ import { partsScope } from './parts-scope.js';
 import { sendError } from './http-errors.js';
 import { channelScript } from './build-channel.js';
 import { VERSION } from '../core/version.js';
+import { ISOLATION_HEADERS } from '../core/cross-origin.js';
 
 const ROOT = path.join(path.dirname(fileURLToPath(import.meta.url)), '..');
 
@@ -167,9 +168,10 @@ export async function createApp({ host = '127.0.0.1', token = null, codes = crea
   // inline scripts, by their hashes), no plug-ins, no framing; so a script injected into a page
   // cannot run and reach the API above
   // every response (#1236): served as the type it says (a project's text is never taken for a script), no
-  // address sent to another site, and no word of the server's software
+  // address sent to another site, and no word of the server's software; the page cross-origin isolated (#5648: COOP and
+  // COEP, core/cross-origin.js), its workers given SharedArrayBuffer and Atomics.wait
   app.disable('x-powered-by');
-  app.use((req, res, next) => { res.set({ 'X-Content-Type-Options': 'nosniff', 'Referrer-Policy': 'no-referrer' }); next(); });
+  app.use((req, res, next) => { res.set({ 'X-Content-Type-Options': 'nosniff', 'Referrer-Policy': 'no-referrer', ...ISOLATION_HEADERS }); next(); });
   // (on the file served, so however the URL spells it)
   const setHeaders = (res, file) => { if (/\.html$/i.test(file)) { const csp = pageCsp(file); if (csp) res.set('Content-Security-Policy', csp); } };
   // the build's channel for the page (#5202: web/build-channel.js, the server's own)

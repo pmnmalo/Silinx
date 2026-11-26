@@ -11,6 +11,7 @@
 // - 'network': everything else, not intercepted (version.json, GitHub's API, the usage counter, the
 //   downloaded Silinx.html, the root's dev/: the development edition's own worker).
 import { VENDOR_ASSET } from './asset-cache.js';
+import { ISOLATION_HEADERS } from '../../core/cross-origin.js';
 
 /** The files the worker keeps beside the page (the site's, scripts/pwa.mjs). */
 export const SHELL = ['manifest.webmanifest', 'icons/silinx-192.png', 'icons/silinx-512.png', 'icons/silinx-maskable-512.png'];
@@ -26,6 +27,13 @@ export function route({ url, method = 'GET', mode } = {}, scope) {
   if (VENDOR_ASSET.test(url)) return 'asset';
   if (rel === '' || rel === 'index.html') return mode === 'navigate' ? 'page' : 'network';
   return SHELL.includes(rel) ? 'shell' : 'network';
+}
+
+/** A response's headers with the page's cross-origin isolation (#5648: GitHub Pages sends no COOP nor COEP). */
+export function isolatedHeaders(headers) {
+  const out = new Headers(headers);
+  for (const [k, v] of Object.entries(ISOLATION_HEADERS)) out.set(k, v);
+  return out;
 }
 
 /** The caches an update left: this edition's other builds' (another edition's are not touched). */

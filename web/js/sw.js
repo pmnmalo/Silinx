@@ -4,7 +4,7 @@
 // What it does with each request: web/js/sw-policy.js.
 /* global SILINX_SW_BUILD */
 import { ASSET_CACHE } from './asset-cache.js';
-import { SHELL, pageCacheName, route, staleCaches } from './sw-policy.js';
+import { SHELL, isolatedHeaders, pageCacheName, route, staleCaches } from './sw-policy.js';
 
 const scope = self.registration.scope;
 const CACHE = pageCacheName(scope, SILINX_SW_BUILD);
@@ -23,11 +23,13 @@ self.addEventListener('activate', e => e.waitUntil((async () => {
 
 self.addEventListener('fetch', e => {
   const how = route(e.request, scope);
-  if (how === 'page') e.respondWith(page(e.request));
+  if (how === 'page') e.respondWith(page(e.request).then(isolated));
   else if (how === 'shell') e.respondWith(kept(CACHE, e.request, false));
   else if (how === 'asset') e.respondWith(kept(ASSET_CACHE, e.request, true));
 });
 
+// the page cross-origin isolated (#5648): its headers COOP's and COEP's
+const isolated = res => new Response(res.body, { status: res.status, statusText: res.statusText, headers: isolatedHeaders(res.headers) });
 // the page: the network's (kept for next time), the kept one when there is no network
 async function page(req) {
   const cache = await caches.open(CACHE);
