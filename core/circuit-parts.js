@@ -28,6 +28,8 @@ import { ROTARY_ENCODER } from './circuit-encoder.js';
 import { OLED_SSD1306 } from './circuit-oled.js';
 import { ANALOG_PARTS } from './circuit-analog-parts.js';
 import { OSCILLOSCOPE } from './circuit-scope.js';
+import { FUNCTION_GENERATOR, LM393 } from './circuit-analog-devices.js';
+import { PMOD_DA2, PMOD_AD1 } from './circuit-pmod.js';
 import { systemsOn } from './build-channel.js';
 
 // ------------------------------------------------------------------ the breadboards
@@ -123,6 +125,8 @@ const OTHERS = [
   ...ANALOG_PARTS,
   // an oscilloscope, two channels (#5383, core/circuit-scope.js)
   OSCILLOSCOPE,
+  // a function generator, a dual comparator, Digilent's DAC and ADC Pmods (#5384)
+  FUNCTION_GENERATOR, LM393, PMOD_DA2, PMOD_AD1,
 ];
 
 // ------------------------------------------------------------------ the library
@@ -243,6 +247,9 @@ export function partsList() {
     // (an analog part's values and what it senses, #5382: their ranges and defaults)
     ...(d.values ? { values: d.values.map((x) => ({ prop: x.prop, unit: x.unit, min: x.min, max: x.max, default: x.default })) } : {}),
     ...(d.sense ? { sense: d.sense.map((x) => ({ prop: x.prop, unit: x.unit, min: x.min, max: x.max, step: x.step, default: x.default })) } : {}),
+    // (a generator's wave, #5384; an oscilloscope's settings, #5383)
+    ...(d.choices ? { choices: d.choices.map((x) => ({ prop: x.prop, options: x.options, default: x.default })) } : {}),
+    ...(d.type === 'oscilloscope' ? { settings: ['tdiv', 'vdiv', 'source', 'level', 'edge', 'mode'] } : {}),
     ...(d.gates ? { gates: d.gates.map((g) => `${g.fn} (${g.ins.join(', ')}) → ${g.out}`) } : {}),
     ...(d.model || d.seq ? { function: d.title } : {}),
     // (a project's KiCad part: its file, its symbol, its source; the library part it behaves as, or none: drawn only)

@@ -115,7 +115,8 @@ export function measure(tr, t0, t1) {
 
 /** A measurement said: 1.25 ms, 800 Hz, 50 %, 3.3 V. */
 export function measureText(m) {
-  const si = (v, u) => { if (v == null) return '–'; const a = Math.abs(v); const [p, f] = a >= 1e6 ? ['M', 1e6] : a >= 1e3 ? ['k', 1e3] : a >= 1 || a === 0 ? ['', 1] : a >= 1e-3 ? ['m', 1e-3] : a >= 1e-6 ? ['µ', 1e-6] : ['n', 1e-9]; return `${Number((v / f).toPrecision(3))} ${p}${u}`; };
+  // (its three digits first: 999.99 Hz is 1 kHz)
+  const si = (v0, u) => { if (v0 == null) return '–'; const v = Number(v0.toPrecision(3)), a = Math.abs(v); const [p, f] = a >= 1e6 ? ['M', 1e6] : a >= 1e3 ? ['k', 1e3] : a >= 1 || a === 0 ? ['', 1] : a >= 1e-3 ? ['m', 1e-3] : a >= 1e-6 ? ['µ', 1e-6] : ['n', 1e-9]; return `${Number((v / f).toPrecision(3))} ${p}${u}`; };
   return { vpp: si(m.vpp, 'V'), min: si(m.min, 'V'), max: si(m.max, 'V'), mean: si(m.mean, 'V'), period: si(m.period, 's'), frequency: si(m.frequency, 'Hz'),
     duty: m.duty == null ? '–' : `${Number(m.duty.toPrecision(3))} %`, rise: si(m.rise, 's'), fall: si(m.fall, 's') };
 }

@@ -16,12 +16,30 @@ import { createSonar } from './circuit-sonar.js';
 import { createPir } from './circuit-pir.js';
 import { createDht } from './circuit-dht.js';
 import { onStep } from './circuit-parts.js';
+import { createDac121, createAd7476, dacOutput } from './circuit-pmod.js';
 
 /**
  * A device of a part, or null (another part): { ic, reads } (its state, as createCircuitSim's ics; the nets it reads).
  * at(name): its pin's net; addDriver(net, value, strength): a driver of a net; level(net): a net's level now.
  */
 export function setupDevice(p, d, { at, addDriver, level }) {
+  // (the Pmod DA2, #5384: its two DACs fed by SYNC, SCLK and their DIN; its outputs the analog side's sources)
+  if (d.type === 'pmod-da2') {
+    const ic = { part: p, def: d, da2: [createDac121(), createDac121()], vcc: at('VCC'), gnd: at('GND'), sync: at('SYNC'), sclk: at('SCLK'), din: [at('DINA'), at('DINB')], was: false };
+    return { ic, reads: [ic.vcc, ic.gnd, ic.sync, ic.sclk, ...ic.din] };
+  }
+  // (the Pmod AD1, #5384: its two ADCs sampling A0 and A1 as CS falls, D0 and D1 driven)
+  if (d.type === 'pmod-ad1') {
+    const ic = { part: p, def: d, ad1: [createAd7476(), createAd7476()], vcc: at('VCC'), gnd: at('GND'), cs: at('CS'), sck: at('SCK'), ain: [at('A0'), at('A1')],
+      dout: [addDriver(at('D0'), 'Z', 's', 0), addDriver(at('D1'), 'Z', 's', 0)] };
+    return { ic, reads: [ic.vcc, ic.gnd, ic.cs, ic.sck] };
+  }
+  // (an LM393, #5384: its comparators evaluated at each update, their outputs open collector)
+  if (d.comparators) {
+    const n = (k) => at(d.pins.find((q) => q.n === k).name);
+    const ic = { part: p, def: d, cmp: d.comparators.map((c) => ({ plus: n(c.plus), minus: n(c.minus), out: addDriver(n(c.out), 'Z', 's', d.tpd) })), vcc: at('VCC'), gnd: at('GND') };
+    return { ic, reads: [ic.vcc, ic.gnd] };
+  }
   // (a character LCD, #5330: its controller, a write on E's falling edge while powered)
   if (d.kind === 'lcd') {
     const ic = { part: p, def: d, lcd: createLcd({ cols: d.cols, rows: d.rows }), vcc: at('VDD'), gnd: at('VSS'), e: at('E'), rs: at('RS'),
@@ -82,7 +100,28 @@ export function setupDevice(p, d, { at, addDriver, level }) {
 
 /** A device evaluated (true), or not one (false). powered(ic), level(net), now() (ns), drive(driver, value), wake(at): the
  *  device evaluated again at its own time (#5456); input(k): its part's input k (#5463). */
-export function evaluateDevice(ic, { powered, level, now, drive, wake, input }) {
+export function evaluateDevice(ic, { powered, level, now, drive, wake, input, analog }) {
+  if (ic.da2) {   // (unpowered: its outputs at 0 V; a word's 16th bit an output updated, the levels read again now)
+    const on = powered(ic), lv = (net) => (level(net) === '1' ? '1' : '0');
+    ic.da2.forEach((dac, k) => {
+      const before = dac.state();
+      const st = on ? dac.step(lv(ic.sync), lv(ic.sclk), lv(ic.din[k])) : before;
+      if (on && st.writes !== before.writes) { analog.setSource(`${ic.part.id}:${k}`, dacOutput(st, analog.volts(ic.vcc))); wake(now()); }
+      if (!on && ic.was) analog.setSource(`${ic.part.id}:${k}`, { volts: 0, ohms: 1 });
+    });
+    ic.was = on;
+    return true;
+  }
+  if (ic.ad1) {   // (unpowered: D0 and D1 released)
+    const on = powered(ic), lv = (net) => (level(net) === '1' ? '1' : '0');
+    ic.ad1.forEach((adc, k) => drive(ic.dout[k], on ? adc.step(lv(ic.cs), lv(ic.sck), analog.volts(ic.ain[k]), analog.volts(ic.vcc)).out : 'Z'));
+    return true;
+  }
+  if (ic.cmp) {   // (an output off while its IN+ is above its IN−, else low; unpowered: off)
+    const on = powered(ic);
+    for (const c of ic.cmp) drive(c.out, on && !(analog.volts(c.plus) > analog.volts(c.minus)) ? '0' : 'Z');
+    return true;
+  }
   if (ic.lcd) {   // (its controller reset while unpowered; a write as E falls)
     const on = powered(ic), e = level(ic.e);
     if (!on) ic.lcd.reset();
@@ -172,6 +211,8 @@ export function deviceViews(ics, { now, evaluate, update }) {
     oleds: () => Object.fromEntries(ics.filter((x) => x.oled).map((x) => [x.part.id, x.oled.state()])),
     /** each servo's state now: { angle, target, width, period } (#5347), and what it said (once each) */
     servos: () => Object.fromEntries(ics.filter((x) => x.servo).map((x) => [x.part.id, x.servo.state(now())])),
+    /** each Pmod DA2's DACs and Pmod AD1's ADCs (#5384): { code, pd, writes } and { code, samples } */
+    pmods: () => Object.fromEntries(ics.filter((x) => x.da2 || x.ad1).map((x) => [x.part.id, (x.da2 ?? x.ad1).map((c) => c.state())])),
     servoWarnings: () => ics.filter((x) => x.servo || x.buzzer || x.sonar || x.dht || x.stepper || x.sd?.card).flatMap((x) => (x.servo || x.buzzer || x.sonar || x.dht || x.stepper || x.sd.card).warnings.map((w) => `${x.part.id}: ${w.text}`)),
     /** each buzzer's state now: { sounding, hz, how } (#5454) */
     /** each stepper motor's state: { steps, angle, coils } (#5476) */

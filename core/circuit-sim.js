@@ -79,6 +79,10 @@ export function createCircuitSim(m, { nets = circuitNets(m), onLevel = null, onU
   // own wake-ups while its capacitors move)
   const an = isAnalogCircuit(m) ? createCircuitAnalog(m, nets, { byNet }) : null;
   let anaAt = Infinity, anaGen = 0;
+  // (a device's analog side, #5384: a DAC's output set, a net's voltage read; the comparators evaluated at each update)
+  let api = null;
+  const analogIo = { setSource: (k, o) => an?.setSource(k, o), volts: (net) => (api ? api.volts(net) : NaN) };
+  const comparators = ics.filter((x) => x.cmp);
   const closed = (c) => state.get(c.part)[c.input] === c.when;
 
   // the nodes: the nets joined by the closed contacts
@@ -109,7 +113,7 @@ export function createCircuitSim(m, { nets = circuitNets(m), onLevel = null, onU
   const powered = (ic) => levels[ic.vcc] === '1' && levels[ic.gnd] === '0';
   function evaluate(ic) {
     if (ic.analog) { if (ic.analog === anaGen) { anaAt = Infinity; scheduleAnalog(); } return; }   // (its next step)
-    if (evaluateDevice(ic, { powered, level: (net) => levels[net], now: () => time, drive, wake: (at) => wake(ic, at), input: (k) => !!state.get(ic.part.id)?.[k] })) return;
+    if (evaluateDevice(ic, { powered, level: (net) => levels[net], now: () => time, drive, wake: (at) => wake(ic, at), input: (k) => !!state.get(ic.part.id)?.[k], analog: analogIo })) return;
     if (ic.live) {   // (a module: its inputs' levels in, its outputs' out)
       const o = ic.live.run(Object.fromEntries(ic.ins.map((x) => [x.port, levels[x.net]])));
       for (const x of ic.outs) drive(x.d, o[x.port] ?? 'X');
@@ -195,6 +199,7 @@ export function createCircuitSim(m, { nets = circuitNets(m), onLevel = null, onU
       }
     }
     for (const ic of touched) evaluate(ic);
+    for (const ic of comparators) evaluate(ic);
     scheduleAnalog();
     onUpdate?.(time);
   }
@@ -264,7 +269,7 @@ export function createCircuitSim(m, { nets = circuitNets(m), onLevel = null, onU
   };
   const lit = m.parts.filter((p) => partDef(p.type)?.lamps);
   const views = deviceViews(ics, { now: () => time, evaluate, update });
-  return {
+  api = {
     nets, run, set, drive: driveOutside,
     /** the simulated time moved on by `ns` (a clock's half period between its ticks), the circuit run meanwhile */
     advance(ns) {
@@ -293,6 +298,7 @@ export function createCircuitSim(m, { nets = circuitNets(m), onLevel = null, onU
     inputs: () => Object.fromEntries([...state].map(([id, st]) => [id, st.length === 1 ? st[0] : [...st]])),
     changed: (net) => changes[net],
   };
+  return api;
 }
 
 /**

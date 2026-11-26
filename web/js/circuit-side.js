@@ -77,6 +77,12 @@ export function mountCircuitSide(ctx) {
         v.addEventListener('change', () => apply(setPartProps(M(), p.id, { [x.prop]: v.value })));
         kids.push(field(x.label, v));
       }
+      // (a part's choices, #5384: a generator's wave)
+      for (const c of d?.choices ?? []) {
+        const s = h('select', { class: 'circ-choice-in', 'data-prop': c.prop }, ...c.options.map((o) => h('option', { value: o, selected: p[c.prop] === o }, o)));
+        s.addEventListener('change', () => apply(setPartProps(M(), p.id, { [c.prop]: s.value })));
+        kids.push(field(c.label, s));
+      }
       // (an oscilloscope's settings, #5383: Try it starts from them)
       if (d?.type === 'oscilloscope') {
         const sel = (prop, opts) => { const s = h('select', { class: 'circ-scope-in', 'data-prop': prop }, ...opts.map(([v, t]) => h('option', { value: String(v), selected: String(p[prop]) === String(v), ...(/\d/.test(t) ? { 'data-no-i18n': 'true' } : {}) }, t)));

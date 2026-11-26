@@ -26,7 +26,7 @@ const read = (rel) => fs.readFileSync(path.join(tmp, 'ws', 'c', rel), 'utf8');
 test('circuit_parts: the library, one part with its pins, gates and delay, its details (#4126); an unknown part', async () => {
   const all = await ok('circuit_parts', {});
   assert.deepEqual(all.data.parts.map((p) => p.type), ['breadboard-half', 'breadboard-full', 'supply', 'logic-switch', 'button', 'spdt', 'dip-4', 'dip-8', 'keypad-4x4', 'rotary-encoder', 'clock', 'pull-up', 'pull-down',
-    'led', 'seg7-cc', 'seg7-ca', 'led-bar-10', 'probe', 'lcd-1602', 'oled-ssd1306', 'lm75', 'servo-sg90', 'buzzer', 'stepper-28byj48', 'hc-sr04', 'hc-sr501', 'dht11', 'dht22', 'sd-card', 'resistor', 'capacitor', 'potentiometer', 'ldr', 'thermistor', 'diode', 'voltmeter', 'oscilloscope', 'arduino-uno', 'arduino-nano', 'fpga-basys2', 'fpga-nexys2', '7400', '7401', '7402', '7403', '7404', '7405', '7406', '7408', '7410', '7411', '7414', '7420', '7427', '7430', '7432', '7486',
+    'led', 'seg7-cc', 'seg7-ca', 'led-bar-10', 'probe', 'lcd-1602', 'oled-ssd1306', 'lm75', 'servo-sg90', 'buzzer', 'stepper-28byj48', 'hc-sr04', 'hc-sr501', 'dht11', 'dht22', 'sd-card', 'resistor', 'capacitor', 'potentiometer', 'ldr', 'thermistor', 'diode', 'voltmeter', 'oscilloscope', 'function-generator', 'lm393', 'pmod-da2', 'pmod-ad1', 'arduino-uno', 'arduino-nano', 'fpga-basys2', 'fpga-nexys2', '7400', '7401', '7402', '7403', '7404', '7405', '7406', '7408', '7410', '7411', '7414', '7420', '7427', '7430', '7432', '7486',
     '7407', '7409', '7412', '7413', '7415', '7421', '7422', '7426', '7428', '7433', '7437', '7438', '7440', '74132', '74133', '74136', '74386', '7451', '7454', '7455',
     '74125', '74126', '74240', '74241', '74244', '74365', '74366', '74367', '74368', '74540', '74541', '74242', '74243', '74245',
     '4001', '4011', '4030', '4069', '4070', '4071', '4081', '4002', '4012', '4023', '4025', '4049', '4050', '4072', '4073', '4075', '4077', '7447', '7448', '74138', '74139', '74151', '74153', '74157', '7483', '74283', '7485',
@@ -490,4 +490,23 @@ test('#5383 simulate_drawing: an oscilloscope\'s measurements each step (a 74LS1
   assert.ok(Math.abs(cap.max - 1.6) < 0.02 && Math.abs(cap.min - 0.8) < 0.02, `the capacitor ${cap.min} to ${cap.max}`);
   assert.match(r.text.split('\n').at(-1), /^step 0: inputs none; t = 120000\d\d ns; LEDs none; OSC1 CH1 f 79\d Hz, T 1\.2\d ms, D 30\.\d %, Vpp 3\.16 V, Vavg [\d.]+ V; OSC1 CH2 f 7[89]\d Hz, T 1\.2\d ms, D [\d.]+ %, Vpp 8\d\d mV, Vavg [\d.]+ m?V$/);
   await fails('edit_circuit', { project: 'c', path: 'src/osc.circ.json', operations: [{ op: 'set', id: 'OSC1', mode: 'once' }] }, 'operation 0 (set): mode: auto, normal, single (nothing written)');
+});
+
+test('#5384 edit_circuit: a function generator\'s PWM (its frequency, duty cycle, wave) through an RC; simulate_drawing: its duty turned, the capacitor\'s mean; circuit_parts its choices', async () => {
+  // FG1 (OUT (0,0), COM (1,0)) through R1 10 kΩ ((0,4)-(4,4)) into C1 1 µF ((8,4)-(9,4)), VM1 on the capacitor
+  await ok('write_file', { project: 'c', path: 'src/pwm.circ.json', text: JSON.stringify({ format: 'silinx-circuit', version: 1, name: 'pwm', lang: 'vhdl',
+    parts: [{ id: 'FG1', type: 'function-generator', x: 0, y: 0 }, { id: 'R1', type: 'resistor', x: 0, y: 4, ohms: 10e3 }, { id: 'C1', type: 'capacitor', x: 8, y: 4, farads: 1e-6 }, { id: 'VM1', type: 'voltmeter', x: 8, y: 8 }],
+    wires: [{ id: 'w1', points: [[0, 0], [0, 4]] }, { id: 'w2', points: [[4, 4], [8, 4]] }, { id: 'w3', points: [[9, 4], [1, 0]] }, { id: 'w4', points: [[8, 4], [8, 8]] }, { id: 'w5', points: [[9, 8], [1, 0]] }] }) });
+  const e = await ok('edit_circuit', { project: 'c', path: 'src/pwm.circ.json', operations: [{ op: 'set', id: 'FG1', hz: '2k', duty: 20, vhigh: 3.3 }] });
+  assert.deepEqual([e.data.errors, e.data.warnings], [[], []]);
+  assert.deepEqual(JSON.parse(read('src/pwm.circ.json')).parts[0], { id: 'FG1', type: 'function-generator', x: 0, y: 0, hz: 2000, vhigh: 3.3, vlow: 0, duty: 20, wave: 'square' });
+  await fails('edit_circuit', { project: 'c', path: 'src/pwm.circ.json', operations: [{ op: 'set', id: 'FG1', wave: 'sawtooth' }] }, 'operation 0 (set): wave: square, sine, triangle (nothing written)');
+  // 150 ms (15 τ): the capacitor at the PWM's mean, 20 % of 3.3 V (its ripple ±15 mV); turned to 60 %, 150 ms more
+  const r = await ok('simulate_drawing', { project: 'c', file: 'src/pwm.circ.json', cycles: [{ after_us: 150000 }, { FG1: 60 }, { after_us: 150000 }] });
+  const [a, , b] = r.data.steps.map((x) => x.volts.VM1);
+  assert.ok(Math.abs(a - 0.2 * 3.3) < 0.03, `20 %: ${a} V`);
+  assert.ok(Math.abs(b - 0.6 * 3.3) < 0.03, `60 %: ${b} V`);
+  const parts = await ok('circuit_parts', {});
+  assert.deepEqual(parts.data.parts.find((p) => p.type === 'function-generator').choices, [{ prop: 'wave', options: ['square', 'sine', 'triangle'], default: 'square' }]);
+  assert.deepEqual(parts.data.parts.find((p) => p.type === 'oscilloscope').settings, ['tdiv', 'vdiv', 'source', 'level', 'edge', 'mode']);
 });

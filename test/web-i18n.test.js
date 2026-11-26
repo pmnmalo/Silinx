@@ -548,7 +548,7 @@ test('#4705 the labels that are also names: the examples\' names, the identifier
     'always', 'and', 'async', 'asynchronous', 'auto', 'bidirectional', 'black', 'blue', 'both', 'changes', 'clock', 'contact',
     'default', 'down', 'enable', 'errors', 'falling', 'falls', 'follower', 'green', 'hidden', 'input', 'live', 'logic',
     'multiplier', 'name', 'net', 'no', 'none', 'optional', 'or', 'orange', 'output', 'owner', 'priority', 'purple', 'red',
-    'rises', 'rising', 'sync', 'synchronous', 'tip', 'up', 'viewer', 'visible', 'white', 'yellow', 'yes', 'you']);
+    'rises', 'rising', 'sine', 'square', 'sync', 'synchronous', 'tip', 'triangle', 'up', 'viewer', 'visible', 'white', 'yellow', 'yes', 'you']);
 });
 
 // #5164: the messages the Petri net, circuit and state diagram editors log in the console (drawings.js's onMessage: t()),

@@ -402,6 +402,25 @@ on a screen of 10 × 8 divisions (0 V two divisions above its bottom).
   T 1.27 ms, D 30.2 %, Vpp 3.16 V, Vavg 1.05 V`), with `after_us` to let the time pass; edit_circuit's set takes `tdiv`,
   `vdiv`, `source`, `level`, `edge` and `mode`.
 
+## A function generator, a comparator, the Pmod DA2 and AD1
+
+From the Analog group too (#5384):
+
+- **A function generator:** a square wave (a PWM: its duty cycle turned while trying it, its − and +), a sine or a
+  triangle between its low and high levels at its frequency (0.1 Hz to 1 MHz), on OUT through 50 Ω; its COM is earthed,
+  the circuit's GND. Through a resistor into a capacitor, a PWM's mean is its duty cycle times its high level: a simple
+  DAC (its ripple the RC's). An LED on a PWM is drawn as bright as its mean current, as the eye sees it.
+- **An LM393:** two comparators, each output open collector (a pull-up on it): off while IN+ is above IN−, else low.
+- **The Pmod DA2** (two DAC121S101) and **the Pmod AD1** (two AD7476A), their J1 a Pmod's pins on SPI and their J2 the
+  analog pins, as the chips work: the DA2 takes 16 bits while SYNC is low, on SCLK's falling edges, MSB first (2 ignored,
+  2 of power-down, the 12 of the code) and sets VOUT = VCC × code / 4096; the AD1 samples A0 and A1 as CS falls and puts
+  out 4 zeros and the 12 bits of code = VIN × 4096 / VCC on D0 and D1, one on each of SCK's falling edges. Their VCC is
+  their reference: 3.3 V on a board's Pmod connector. While trying, each DAC's code and each ADC's last code are drawn.
+- **An R-2R ladder** is built of resistors: its output is the reference times the code over 2ⁿ.
+- **The MCP server:** edit_circuit's set takes a generator's `hz`, `vhigh`, `vlow`, `duty` and `wave`; simulate_drawing
+  sets its duty cycle by its id; circuit_parts lists each part's values, what it senses, its choices and a scope's
+  settings.
+
 ## The checks
 
 A circuit's Check (and every change, as the other drawings') says in the console, a click on a message selecting the

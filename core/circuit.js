@@ -38,6 +38,8 @@ export function normalizeCircuit(m = {}) {
     for (const s of d?.sense || []) { const v = Number(p[s.prop]); out[s.prop] = Number.isFinite(v) ? Math.min(s.max, Math.max(s.min, onStep(v, s.step))) : s.default; }
     // (an analog part's values, #5382: each its saved one in its range, three digits, else its default)
     for (const s of d?.values || []) { const v = parseSi(p[s.prop]); out[s.prop] = Number.isFinite(v) && v >= s.min && v <= s.max ? sig3(v) : s.default; }
+    // (a part's choices, #5384: a generator's wave)
+    for (const c of d?.choices || []) out[c.prop] = c.options.includes(p[c.prop]) ? p[c.prop] : c.default;
     // (an oscilloscope's settings, #5383: its time base, its scale, its trigger)
     if (d?.type === 'oscilloscope') Object.assign(out, scopeSettings(p));
     // (a motion sensor's hold time, s, in its range, and its jumper, #5463)
