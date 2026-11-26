@@ -7,7 +7,8 @@
 // a BroadcastChannel), never the public trackers. The second follower in Portuguese. And a follower's connection to
 // the owner lost (#3835): "Reconnecting to Ana…" meanwhile, the owner found again at the meeting point, the owner's
 // change made meanwhile arriving, each seeing the other again. And a follower's connections answer no offer, on the
-// browser's own WebRTC (#4197: only the owner's do). No warnings but those asserted.
+// browser's own WebRTC (#4197: only the owner's do); the public meeting point's join on the page's Trystero 0.27, its
+// self the page's peer id (#5651). No warnings but those asserted.
 import { before, after } from 'node:test';
 import assert from 'node:assert/strict';
 import { setupUi, uiTest, makeProject } from './harness.js';
@@ -172,6 +173,25 @@ uiTest('#4197 a follower\'s connections at the meeting point answer no offer, on
     return out;
   });
   assert.deepEqual(r, { refused: 'a follower answers no offer at the meeting point', isPC: true, follower: 'stable', mine: 'stable', remote: 'answer' });
+  assert.deepEqual(await warnings(page), []);
+  assert.deepEqual(page.errors, []);
+});
+
+uiTest('#5651 the public meeting point on the page\'s Trystero 0.27 (no tracker, no network): a join\'s self is the page\'s peer id, the same in every room, nothing kept in IndexedDB', E, async (page) => {
+  const r = await page.eval(async () => {
+    const tr = await import('@trystero-p2p/torrent');
+    const { trysteroMeeting } = await import('/core/collab-meet.js');
+    const meet = trysteroMeeting({ joinRoom: tr.joinRoom, trackers: [], rtcConfig: { iceServers: [] } });
+    const a = await meet.join({ topic: 'silinx-5651-ui-a', password: 'K' });
+    const b = await meet.join({ topic: 'silinx-5651-ui-b', password: 'K', answers: false });
+    const out = { selfId: 'selfId' in tr, a: a.self, same: a.self === b.self, binding: await a.binding('nobody') };
+    await a.leave();
+    await b.leave();
+    out.dbs = (await indexedDB.databases?.() ?? []).map((d) => d.name).filter((n) => /trystero/i.test(n));
+    return out;
+  });
+  assert.match(r.a, /^[A-Za-z0-9]{20}$/);
+  assert.deepEqual({ ...r, a: '' }, { selfId: false, a: '', same: true, binding: null, dbs: [] });
   assert.deepEqual(await warnings(page), []);
   assert.deepEqual(page.errors, []);
 });
