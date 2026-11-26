@@ -53,7 +53,7 @@ for (const [w, h] of [[375, 812], [430, 932]]) {
     assert.deepEqual(await page.eval(() => {
       const r = document.querySelector('.dlg-overlay .dlg').getBoundingClientRect(), b = document.querySelector('.dlg-overlay .dlg-body');
       return [Math.round(r.left), Math.round(r.top), Math.round(r.width), Math.round(r.height), b.scrollWidth <= b.clientWidth, [...document.querySelectorAll('.dlg .wiz-side > *')].filter((s) => s.getClientRects().length).map((s) => s.textContent)];
-    }), [0, 0, w, h, true, ['Project Kind']]);
+    }), [0, 0, w, h, true, ['Project Mode']]);
     await page.tap('.dlg-overlay .dlg-buttons .btn', { text: 'Cancel' });
     await page.waitNoDialog();
     // a menu of the header: the menu bar's File (ISE style), Settings (Silinx): the whole width too

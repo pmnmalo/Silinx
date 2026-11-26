@@ -105,7 +105,7 @@ test('the examples, a new project from one (for another board too), the projects
   assert.equal((await srv.call('new_project_from_example', { name: 'X', example: 'nope' })).content[0].text, 'new_project_from_example: unknown example \'nope\' (list_examples)');
   assert.equal((await srv.call('new_project_from_example', { name: 'X', example: 'gates', board: 'basys2', variant: '500' })).content[0].text, 'new_project_from_example: the Digilent Basys2 has no variant \'500\'');
   assert.deepEqual((await srv.call('list_projects')).structuredContent.projects, [
-    { name: 'Blinky', top: 'top', board: 'basys2', device: 'xc3s250ecp132-4', stored: 'folder', github: null }, { name: 'TrafficN', top: 'top', board: 'nexys2', device: 'xc3s500efg320-4', stored: 'folder', github: null }]);
+    { name: 'Blinky', top: 'top', board: 'basys2', device: 'xc3s250ecp132-4', mode: 'board', stored: 'folder', github: null }, { name: 'TrafficN', top: 'top', board: 'nexys2', device: 'xc3s500efg320-4', mode: 'board', stored: 'folder', github: null }]);   // (each mode, #5754)
   // (where each is kept, as Open Project's Stored In, #4314)
   assert.equal((await srv.call('list_projects')).content[0].text, 'Blinky: top top, basys2 (xc3s250ecp132-4); Kept in the workspace folder.\nTrafficN: top top, nexys2 (xc3s500efg320-4); Kept in the workspace folder.');
   const info = await srv.call('project_info', { project: 'Blinky' });

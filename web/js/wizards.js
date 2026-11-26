@@ -266,19 +266,19 @@ export async function newProjectWizard({ template = 'empty' } = {}) {
       const b = db.boards.find(x => x.id === boardSel.value);
       if (kinds.system()) {
         summary.append(h('pre', { class: 'code-box' }, `Project Navigator will create a new project with the following specifications.\n\n` +
-          `Project:\n  Project Name: ${name.value.trim()}\n  Template:     ${tplSel.value}\n  Kind:         System\n\n` +
+          `Project:\n  Project Name: ${name.value.trim()}\n  Template:     ${tplSel.value}\n  Mode:         System\n\n` +
           `Flow:\n  Top-Level Source: its System (FPGA and microcontroller nodes)\n  Simulator:        Simulate System`));
         return;
       }
       if (isDesign()) {
         summary.append(h('pre', { class: 'code-box' }, `Project Navigator will create a new project with the following specifications.\n\n` +
-          `Project:\n  Project Name: ${name.value.trim()}\n  Template:     ${tplSel.value}\n  Kind:         ${DESIGN_ONLY_LABEL}\n\n` +
+          `Project:\n  Project Name: ${name.value.trim()}\n  Template:     ${tplSel.value}\n  Mode:         Circuit\n\n` +
           `Flow:\n  Top-Level Source Type: ${TOP_TYPES.find(t => t.id === topType.value).label}\n  Simulator:          SSim (Silinx behavioural simulator)`));
         return;
       }
       summary.append(h('pre', { class: 'code-box' },
         `Project Navigator will create a new project with the following specifications.\n\n` +
-        `Project:\n  Project Name: ${name.value.trim()}\n  Template:     ${tplSel.value}\n\n` +
+        `Project:\n  Project Name: ${name.value.trim()}\n  Template:     ${tplSel.value}\n  Mode:         Board\n\n` +
         `Device:\n  Board:        ${b ? b.name : 'None Specified'}\n  Family:       ${dp.familyName()}\n  Device:       ${dp.value().part.toUpperCase()}\n  Package:      ${dp.value().package.toUpperCase()}\n  Speed:        ${dp.value().speed}\n\n` +
         `Flow:\n  Top-Level Source Type: ${TOP_TYPES.find(t => t.id === topType.value).label}\n  Synthesis Tool:     ${synthSel.selectedOptions[0]?.textContent || synthSel.value}\n  Simulator:          SSim (Silinx behavioural simulator)\n  Preferred Language: ${langSel.value.toUpperCase()}`));
     },

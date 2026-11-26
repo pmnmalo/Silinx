@@ -9,6 +9,7 @@ import { orderExamples } from '../core/examples.js';
 import { nameUnnamed } from '../core/schname.js';
 import { SYSTEM_KIND, DESIGN_KIND, isSystemProject, isDesignOnly, newSystemKind, offeredExamples } from '../core/project-kind.js';
 import { PROFILES, profileOf } from '../core/project-profile.js';
+import { MODES, modeOf, newProjectProfile } from '../core/project-mode.js';
 import { systemsOn, SYSTEMS_OFF } from '../core/build-channel.js';
 import { placeText } from '../core/project-place.js';
 import { withPlaces } from './project-places.js';
@@ -105,7 +106,7 @@ export const PROJECT_TOOLS = [
       // (where each is kept, as Open Project's Stored In: the workspace folder, its GitHub repository, #4314)
       // (a damaged one, its silinx.json unreadable: listed with why, #4755)
       const projects = (await withPlaces(await P.listProjects())).map(p => ({ ...(p.damaged ? { name: p.name, damaged: p.damaged } : isDesignOnly(p) ? { name: p.name, top: p.top || null, kind: DESIGN_KIND, board: null, device: null }
-        : { name: p.name, top: p.top || null, board: p.board || null, device: p.device ? `${p.device.part}${p.device.package}${p.device.speed}` : null }), stored: p.stored, github: p.github }));
+        : { name: p.name, top: p.top || null, board: p.board || null, device: p.device ? `${p.device.part}${p.device.package}${p.device.speed}` : null }), ...(p.damaged ? {} : { mode: modeOf(p) }), stored: p.stored, github: p.github }));   // (its mode, #5754)
       return { text: projects.length ? projects.map(p => p.damaged ? `${p.name}: damaged, ${p.damaged}; ${placeText(p)}` : `${p.name}: top ${p.top || '(none)'}, ${p.kind ? 'a design and simulation project (no FPGA)' : `${p.board || 'no board'} (${p.device})`}; ${placeText(p)}`).join('\n') : 'No project in the workspace (new_project_from_example makes one).', data: { workspace: P.workspaceDir(), projects } };
     },
   },
@@ -130,12 +131,17 @@ export const PROJECT_TOOLS = [
   },
   {
     name: 'new_project', title: 'New empty project',
-    description: 'Make a new empty project in the workspace for a board (list_devices; default: the Basys2-250\'s device, no board); then write_file its sources (a test bench in sim/) and set_top. profile logic (Digital Logic): no board, device or constraints; drawings (new_source) simulated with test_bench_wizard and simulate; no implementation, emulation or programming (set_design_properties with a board makes it an FPGA project). top_source_type: its top document, module \'top\' (a drawing\'s HDL generated; top.c / .cpp: HLS\'s function; hdl: none; system: a System project).',
-    inputSchema: { type: 'object', properties: { name: STR('The new project\'s name: a letter, then up to 63 letters, digits, - and _.'), board: STR('The board (list_devices).'), variant: STR('The board\'s variant (default: the board\'s), e.g. 100 or 250 for the Basys2.'), profile: { type: 'string', enum: PROFILES.map(p => p.id), description: `Its profile, New Project's first page: ${PROFILES.map(p => `${p.id} (${p.label}: ${PROFILE_SHORT[p.id]})`).join(', ')}.` },
+    description: 'Make a new empty project in the workspace for a board (list_devices; default: the Basys2-250\'s device, no board); then write_file its sources (a test bench in sim/) and set_top. mode circuit (profile logic, Digital Logic): no board, device or constraints; drawings (new_source) simulated with test_bench_wizard and simulate; no implementation, emulation or programming (set_design_properties with a board makes it a board project); mode system: devices linked in a System. top_source_type: its top document, module \'top\' (a drawing\'s HDL generated; top.c / .cpp: HLS\'s function; hdl: none; system: a System project).',
+    inputSchema: { type: 'object', properties: { name: STR('The new project\'s name: a letter, then up to 63 letters, digits, - and _.'), board: STR('The board (list_devices).'), variant: STR('The board\'s variant (default: the board\'s), e.g. 100 or 250 for the Basys2.'), mode: { type: 'string', enum: MODES.map(m => m.id), description: `Its mode, New Project's first page: ${MODES.map(m => `${m.id} (${m.short})`).join(', ')}.` },
+      profile: { type: 'string', enum: PROFILES.map(p => p.id), description: `Its profile, finer than its mode: ${PROFILES.map(p => `${p.id} (${p.label}: ${PROFILE_SHORT[p.id]})`).join(', ')}.` },
       top_source_type: { type: 'string', enum: TOP_TYPES.map(t => t.id), description: 'Its Top-Level Source Type, as New Project\'s (tt: Boolean algebra; a design project\'s: a drawing; system: a System project); saved, its top document made.' },
       language: { type: 'string', enum: ['vhdl', 'verilog'], description: 'Its Preferred Language, as New Project\'s (default vhdl): the top document\'s HDL module\'s.' } }, required: ['name'], additionalProperties: false },
     annotations: { readOnlyHint: false, destructiveHint: false },
-    async run({ name, board, variant, profile, top_source_type: type, language }) {
+    async run({ name, board, variant, mode, profile: given0, top_source_type: type, language }) {
+      // (its mode, #5754: its profile, or the finer one given if it is of the mode, core/project-mode.js)
+      let profile = given0;
+      if (mode !== undefined) { const r = newProjectProfile(mode, profile); if (r.error) throw toolError(r.error); profile = r.profile; }
+      if (mode === 'board' && type === SYSTEM_TOP) throw toolError('top_source_type system makes a System project: give mode system, not board');
       // (its profile, #5440; kind and design_only, its deprecated names: server/mcp-aliases.js); as a new project's kind
       const given = profile === 'logic' ? DESIGN_KIND : profile;
       // (a System project, #4702: no board, its System document, no top document)
@@ -145,7 +151,7 @@ export const PROJECT_TOOLS = [
         if (board || variant || (type !== undefined && type !== SYSTEM_TOP)) throw toolError('a System project (profile system or embedded) has no board nor top document: its System (edit_system) names each FPGA node\'s board');
         try { await P.createProject({ name, kind: newSystemKind(given) ? given : SYSTEM_KIND, madeBy: 'mcp' }); } catch (e) { throw toolError(e.message); }
         const sys = `${name}.sys.json`;
-        return { text: `Empty System project '${name}' made: its System ${sys} (no node yet). Write its modules with write_file, its firmware (.hex, .elf), then edit_system.${UNTRUSTED}`, data: { project: name, kind: SYSTEM_KIND, profile: newSystemKind(given) ? given : 'system', board: null, system: sys, trusted: false } };
+        return { text: `Empty System project '${name}' made: its System ${sys} (no node yet). Write its modules with write_file, its firmware (.hex, .elf), then edit_system.${UNTRUSTED}`, data: { project: name, kind: SYSTEM_KIND, mode: 'system', profile: newSystemKind(given) ? given : 'system', board: null, system: sys, trusted: false } };
       }
       const designOnly = (given ?? 'fpga') === DESIGN_KIND;
       if (designOnly && (board || variant)) throw toolError('a Digital Logic project (profile logic) has no board: give profile logic or a board, not both');
@@ -159,8 +165,8 @@ export const PROJECT_TOOLS = [
       const pj = await P.readProject(name);
       const made = top ? ` It starts with ${top} (the top module 'top').` : '';
       const more = flow ? { topSourceType: pj.topSourceType ?? null, preferredLanguage: pj.preferredLanguage, top: pj.top || null, topFile: top } : {};
-      if (designOnly) return { text: `${top ? '' : 'Empty '}Digital Logic project '${name}' made (a design and simulation project).${made} Add its drawings with new_source${top ? '' : ', then set_top'}.`, data: { project: name, kind: DESIGN_KIND, board: null, device: null, ...more, trusted: false } };
-      return { text: `${top ? 'P' : 'Empty p'}roject '${name}' made: ${pj.board || 'no board'} (${deviceName(pj.device)}).${made} Write its sources with write_file${top ? '' : ', then set_top'}.${UNTRUSTED}`, data: { project: name, board: pj.board || null, device: pj.device, ...more, trusted: false } };
+      if (designOnly) return { text: `${top ? '' : 'Empty '}Digital Logic project '${name}' made (a design and simulation project).${made} Add its drawings with new_source${top ? '' : ', then set_top'}.`, data: { project: name, kind: DESIGN_KIND, mode: 'circuit', board: null, device: null, ...more, trusted: false } };
+      return { text: `${top ? 'P' : 'Empty p'}roject '${name}' made: ${pj.board || 'no board'} (${deviceName(pj.device)}).${made} Write its sources with write_file${top ? '' : ', then set_top'}.${UNTRUSTED}`, data: { project: name, mode: 'board', board: pj.board || null, device: pj.device, ...more, trusted: false } };
     },
   },
   {
@@ -211,13 +217,13 @@ export const PROJECT_TOOLS = [
       // (its nodes, #5414, #5416: one, implicit, for an FPGA or a design project; a System's, each with its files; and its
       // System, the model of a System document, implicit for those: #5416's phase 3)
       const { system, nodes } = await systemOf(name, pj);
-      if (isDesignOnly(pj)) { const r = designProjectInfo(name, pj, await P.fileTree(name)); Object.assign(r.data, { nodes, system }); return shared(r); }
+      if (isDesignOnly(pj)) { const r = designProjectInfo(name, pj, await P.fileTree(name)); Object.assign(r.data, { mode: modeOf(pj), nodes, system }); return shared(r); }
       const files = (pj.files || []).map(f => ({ path: f.path, lang: f.lang, role: f.role || 'design' }));
       const all = (await P.fileTree(name)).filter(f => !/^build\//.test(f));
       const hierarchy = { implementation: await hierarchyOf(name, pj, false), simulation: await hierarchyOf(name, pj, true) };
       // (the files the implementation and the emulator read, as the Implementation view lists them under the top, #4591)
       const flow = flowFiles(pj, all);
-      const data = { nodes, system, project: name, top: pj.top || null, simTop: pj.simTop || null, device: pj.device || null, board: pj.board || null, constraints: pj.constraints || null, synthTool: pj.synthTool || null, files, otherFiles: all.filter(f => !files.some(x => x.path === f) && f !== 'silinx.json'), hierarchy, flowFiles: flow };
+      const data = { mode: modeOf(pj), nodes, system, project: name, top: pj.top || null, simTop: pj.simTop || null, device: pj.device || null, board: pj.board || null, constraints: pj.constraints || null, synthTool: pj.synthTool || null, files, otherFiles: all.filter(f => !files.some(x => x.path === f) && f !== 'silinx.json'), hierarchy, flowFiles: flow };
       return shared({ text: [`${name}: top ${data.top || '(none)'}, test bench ${data.simTop || '(none)'}, ${data.board || 'no board'} (${data.device ? `${data.device.part}${data.device.package}${data.device.speed}` : 'no device'}), constraints ${data.constraints || '(none)'}`,
         ...files.map(f => `  ${f.path} (${f.lang}, ${f.role})`), ...(data.otherFiles.length ? [`  other files: ${data.otherFiles.join(', ')}`] : []),
         ...Object.entries(hierarchy).filter(([, r]) => r.length).map(([v, r]) => `  ${v} hierarchy: ${r.join(', ')}`),
