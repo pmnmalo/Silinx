@@ -27,6 +27,7 @@ import { KEYPAD_4X4 } from './circuit-keypad.js';
 import { ROTARY_ENCODER } from './circuit-encoder.js';
 import { OLED_SSD1306 } from './circuit-oled.js';
 import { ANALOG_PARTS } from './circuit-analog-parts.js';
+import { OSCILLOSCOPE } from './circuit-scope.js';
 import { systemsOn } from './build-channel.js';
 
 // ------------------------------------------------------------------ the breadboards
@@ -120,6 +121,8 @@ const OTHERS = [
   // the analog parts: resistors, capacitors, a potentiometer, an LDR, a thermistor, a diode, a voltmeter (#5382,
   // core/circuit-analog-parts.js)
   ...ANALOG_PARTS,
+  // an oscilloscope, two channels (#5383, core/circuit-scope.js)
+  OSCILLOSCOPE,
 ];
 
 // ------------------------------------------------------------------ the library

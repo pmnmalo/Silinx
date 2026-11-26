@@ -382,6 +382,26 @@ A resistor's resistance and a capacitor's capacitance are set in their Propertie
   voltmeter's reading and each LED's current (mA), and `after_us` lets the capacitors charge (a step's change is read
   at once, the capacitors holding their voltage); circuit_parts lists each part's values and what it senses.
 
+## The oscilloscope
+
+The **Oscilloscope** of the Analog group (#5383): two probes, CH1 and CH2, each the voltage of the net its lead touches
+against GND (a logic net's at its levels' volts, an analog net's solved), drawn against time while trying the circuit,
+on a screen of 10 × 8 divisions (0 V two divisions above its bottom).
+
+- **Its time base and scale:** 1 µs to 1 s a division, 10 mV to 5 V a division, each between its − and +.
+- **Its trigger:** its source (CH1 or CH2), its edge (↑ rising, ↓ falling) and its level (− and +, 0.1 V), marked on the
+  screen; its mode: AUTO shows the last screen even with no trigger, NORMAL waits for one ("Waiting for the trigger"),
+  SINGLE keeps the first screen it triggered on (a knob's click arms it again).
+- **Its cursors:** a click on its screen sets cursor A, a second B: their Δt and 1/Δt, each channel's volts at them.
+- **Its measurements,** each channel's over the screen: its frequency f, its period T, its duty cycle D, its Vpp, its
+  mean Vavg (core/scope.js: the period between rising crossings of the middle, the rise and fall times 10 % to 90 %).
+- Its settings are saved in its Properties (Try it starts from them); the knobs while trying change them for the run.
+  A circuit with an oscilloscope runs in real time (a tenth of a second at a time: slower than real time rather than
+  falling behind).
+- **The MCP server:** simulate_drawing says each step each scope's measurements over its screen (`; OSC1 CH1 f 790 Hz,
+  T 1.27 ms, D 30.2 %, Vpp 3.16 V, Vavg 1.05 V`), with `after_us` to let the time pass; edit_circuit's set takes `tdiv`,
+  `vdiv`, `source`, `level`, `edge` and `mode`.
+
 ## The checks
 
 A circuit's Check (and every change, as the other drawings') says in the console, a click on a message selecting the

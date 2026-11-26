@@ -7,6 +7,7 @@ import { partDef, LED_COLORS, WIRE_COLORS, CLOCK_HZ } from '/core/circuit-parts.
 import { LM75_TEMP } from '/core/circuit-lm75.js';
 import { PIR_HOLD } from '/core/circuit-pir.js';
 import { formatSi } from '/core/circuit-analog-parts.js';
+import { TIMEBASES, VSCALES } from '/core/scope.js';
 import { setPartProps, setWireProps } from '/core/circuit-edit.js';
 import { portName } from '/core/circuit.js';
 import { partInfo } from '/core/circuit-part-info.js';
@@ -75,6 +76,16 @@ export function mountCircuitSide(ctx) {
         const v = h('input', { type: 'text', class: 'circ-value-in', 'data-prop': x.prop, value: formatSi(p[x.prop] ?? x.default, x.unit), spellcheck: 'false' });
         v.addEventListener('change', () => apply(setPartProps(M(), p.id, { [x.prop]: v.value })));
         kids.push(field(x.label, v));
+      }
+      // (an oscilloscope's settings, #5383: Try it starts from them)
+      if (d?.type === 'oscilloscope') {
+        const sel = (prop, opts) => { const s = h('select', { class: 'circ-scope-in', 'data-prop': prop }, ...opts.map(([v, t]) => h('option', { value: String(v), selected: String(p[prop]) === String(v), ...(/\d/.test(t) ? { 'data-no-i18n': 'true' } : {}) }, t)));
+          s.addEventListener('change', () => apply(setPartProps(M(), p.id, { [prop]: ['edge', 'mode'].includes(prop) ? s.value : Number(s.value) }))); return s; };
+        const level = h('input', { type: 'number', class: 'circ-scope-in', 'data-prop': 'level', min: '-20', max: '20', step: '0.1', value: String(p.level) });
+        level.addEventListener('change', () => apply(setPartProps(M(), p.id, { level: Number(level.value) })));
+        kids.push(field('Time base (per division)', sel('tdiv', TIMEBASES.map((v) => [v, formatSi(v, 's')]))), field('Scale (per division)', sel('vdiv', VSCALES.map((v) => [v, formatSi(v, 'V')]))),
+          field('Trigger source', sel('source', [[1, 'CH1'], [2, 'CH2']])), field('Trigger edge', sel('edge', [['rise', 'Rising'], ['fall', 'Falling']])),
+          field('Trigger level (V)', level), field('Trigger mode', sel('mode', [['auto', 'Auto'], ['normal', 'Normal'], ['single', 'Single']])));
       }
       // (a motion sensor's hold time and jumper, #5463)
       if (d?.kind === 'pir') {

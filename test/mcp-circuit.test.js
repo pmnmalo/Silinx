@@ -26,7 +26,7 @@ const read = (rel) => fs.readFileSync(path.join(tmp, 'ws', 'c', rel), 'utf8');
 test('circuit_parts: the library, one part with its pins, gates and delay, its details (#4126); an unknown part', async () => {
   const all = await ok('circuit_parts', {});
   assert.deepEqual(all.data.parts.map((p) => p.type), ['breadboard-half', 'breadboard-full', 'supply', 'logic-switch', 'button', 'spdt', 'dip-4', 'dip-8', 'keypad-4x4', 'rotary-encoder', 'clock', 'pull-up', 'pull-down',
-    'led', 'seg7-cc', 'seg7-ca', 'led-bar-10', 'probe', 'lcd-1602', 'oled-ssd1306', 'lm75', 'servo-sg90', 'buzzer', 'stepper-28byj48', 'hc-sr04', 'hc-sr501', 'dht11', 'dht22', 'sd-card', 'resistor', 'capacitor', 'potentiometer', 'ldr', 'thermistor', 'diode', 'voltmeter', 'arduino-uno', 'arduino-nano', 'fpga-basys2', 'fpga-nexys2', '7400', '7401', '7402', '7403', '7404', '7405', '7406', '7408', '7410', '7411', '7414', '7420', '7427', '7430', '7432', '7486',
+    'led', 'seg7-cc', 'seg7-ca', 'led-bar-10', 'probe', 'lcd-1602', 'oled-ssd1306', 'lm75', 'servo-sg90', 'buzzer', 'stepper-28byj48', 'hc-sr04', 'hc-sr501', 'dht11', 'dht22', 'sd-card', 'resistor', 'capacitor', 'potentiometer', 'ldr', 'thermistor', 'diode', 'voltmeter', 'oscilloscope', 'arduino-uno', 'arduino-nano', 'fpga-basys2', 'fpga-nexys2', '7400', '7401', '7402', '7403', '7404', '7405', '7406', '7408', '7410', '7411', '7414', '7420', '7427', '7430', '7432', '7486',
     '7407', '7409', '7412', '7413', '7415', '7421', '7422', '7426', '7428', '7433', '7437', '7438', '7440', '74132', '74133', '74136', '74386', '7451', '7454', '7455',
     '74125', '74126', '74240', '74241', '74244', '74365', '74366', '74367', '74368', '74540', '74541', '74242', '74243', '74245',
     '4001', '4011', '4030', '4069', '4070', '4071', '4081', '4002', '4012', '4023', '4025', '4049', '4050', '4072', '4073', '4075', '4077', '7447', '7448', '74138', '74139', '74151', '74153', '74157', '7483', '74283', '7485',
@@ -468,4 +468,26 @@ test('#5382 edit_circuit: an analog circuit\'s values set ("4k7"); simulate_draw
   const parts = await ok('circuit_parts', {});
   assert.deepEqual(parts.data.parts.find((p) => p.type === 'potentiometer').values, [{ prop: 'ohms', unit: 'Ω', min: 1, max: 10e6, default: 10000 }]);
   assert.deepEqual(parts.data.parts.find((p) => p.type === 'ldr').sense, [{ prop: 'lux', unit: 'lux', min: 0, max: 1000, step: 1, default: 100 }]);
+});
+
+test('#5383 simulate_drawing: an oscilloscope\'s measurements each step (a 74LS14 RC oscillator\'s frequency, duty cycle, Vpp); edit_circuit its settings', async () => {
+  // the 7414 (pin 1 at (0, 0)): its 1Y (pin 2) through R1 1 kΩ to its 1A (pin 1), C1 1 µF from 1A to GND; OSC1's CH1 on 1Y, CH2 on 1A
+  await ok('write_file', { project: 'c', path: 'src/osc.circ.json', text: JSON.stringify({ format: 'silinx-circuit', version: 1, name: 'osc', lang: 'vhdl',
+    parts: [{ id: 'P1', type: 'supply', x: -20, y: -20 }, { id: 'U1', type: '7414', x: 0, y: 3 }, { id: 'R1', type: 'resistor', x: -10, y: 10, ohms: 1000 }, { id: 'C1', type: 'capacitor', x: -10, y: 20, farads: 1e-6 },
+      { id: 'OSC1', type: 'oscilloscope', x: 10, y: 30 }],
+    wires: [] }) });
+  // (its pins from circuit_parts' place: the 7414's pins as the library has them)
+  const lib = (await ok('circuit_parts', {})).data.parts.find((p) => p.type === '7414');
+  const at = (n) => { const q = lib.pins.find((x) => x.n === n); return [q.dx, 3 + q.dy]; };
+  const W = (from, to) => ({ op: 'wire', from, to });
+  await ok('edit_circuit', { project: 'c', path: 'src/osc.circ.json', operations: [W([-20, -20], at(14)), W([-20, -19], at(7)), W(at(2), [-10, 10]), W([-6, 10], at(1)), W([-10, 20], at(1)), W([-9, 20], [-20, -19]),
+    W([10, 30], at(2)), W([11, 30], at(1)), { op: 'set', id: 'OSC1', tdiv: 0.001, level: 1.2 }] });
+  const r = await ok('simulate_drawing', { project: 'c', file: 'src/osc.circ.json', cycles: [{ after_us: 12000 }] });
+  const [out, cap] = r.data.steps[0].scopes.OSC1;
+  // (its half periods by its exponentials, core/circuit-analog's test: 381.8 µs high, 882.3 µs low)
+  assert.ok(Math.abs(out.period - 1.2641e-3) < 1.5e-5, `period ${out.period}`);
+  assert.ok(Math.abs(out.duty - 30.2) < 1.5, `duty ${out.duty}`);
+  assert.ok(Math.abs(cap.max - 1.6) < 0.02 && Math.abs(cap.min - 0.8) < 0.02, `the capacitor ${cap.min} to ${cap.max}`);
+  assert.match(r.text.split('\n').at(-1), /^step 0: inputs none; t = 120000\d\d ns; LEDs none; OSC1 CH1 f 79\d Hz, T 1\.2\d ms, D 30\.\d %, Vpp 3\.16 V, Vavg [\d.]+ V; OSC1 CH2 f 7[89]\d Hz, T 1\.2\d ms, D [\d.]+ %, Vpp 8\d\d mV, Vavg [\d.]+ m?V$/);
+  await fails('edit_circuit', { project: 'c', path: 'src/osc.circ.json', operations: [{ op: 'set', id: 'OSC1', mode: 'once' }] }, 'operation 0 (set): mode: auto, normal, single (nothing written)');
 });

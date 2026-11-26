@@ -53,6 +53,8 @@ const ABOUT = {
   thermistor: 'An NTC thermistor, 10 kΩ at 25 °C (B = 3950 K): less resistance as it warms. Its temperature is set while trying it (its − and +). With a resistor, a voltage divider that an ADC reads. Not a port of the HDL.',
   diode: 'A silicon diode (1N4148): it conducts from its anode A to its cathode K (about 0.6 V across it), not the other way. Not in the HDL.',
   voltmeter: 'Shows the voltage of its + lead against its COM lead, and draws no current. On a circuit with no analog part, a net\'s level as the volts of what drives it (a 74LS output\'s 1 at 3.4 V). Not a port of the HDL.',
+  // (an oscilloscope, #5383)
+  oscilloscope: 'Two channels, CH1 and CH2, each the voltage of the net its lead touches against GND, drawn against time while trying the circuit: from its trigger (its source\'s edge through its level; auto shows the last screen without one, normal waits for one, single keeps the first), over its time base and its scale (each its − and +). A click on its screen sets a cursor, then a second: their Δt. Under it, each channel\'s frequency, period, duty cycle, Vpp and mean. Not a port of the HDL.',
   // (the boards, #5215)
   'arduino-uno': "Its headers' pins, the board's (D0…D13, A0…A5; SDA and SCL are A4 and A5): its 5V, 3V3 and GND power the breadboard; its other pins are its program's, in a System (alone, they drive nothing).",
   'arduino-nano': "A DIP-30 that straddles a breadboard's channel, its pins the board's (D0…D13, A0…A7; A6 and A7 inputs only): its 5V, 3V3 and GND power the breadboard; its other pins are its program's, in a System (alone, they drive nothing).",

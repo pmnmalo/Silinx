@@ -143,7 +143,7 @@ export function mountCircuitEditor(container, opts = {}) {
     if (destroyed) return;
     const sim = tryIt.sim();
     applyView();
-    world.replaceChildren(drawCircuit({ ...M, wireStyle: wireStyle() }, { sel, draft, ghost, inside: inside(), hops: hops(), handles: !readOnly && !sim, levels: sim ? (id, n) => sim.pin(id, n) : null, leds: sim?.leds(), lcds: sim?.lcds(), oleds: sim?.oleds(), sensors: sim?.sensors(), servos: sim?.servos(), buzzers: sim?.buzzers(), steppers: sim?.steppers(), sds: sim?.sds(), sonars: sim?.sonars(), pirs: sim?.pirs(), dhts: sim?.dhts(), analog: sim ? { volts: sim.meters(), mA: sim.lampCurrents(), sensed: (id, prop) => sim.sensed(id, prop) } : null, inputs: sim?.inputs(), encoders: tryIt.detents() }));
+    world.replaceChildren(drawCircuit({ ...M, wireStyle: wireStyle() }, { sel, draft, ghost, inside: inside(), hops: hops(), handles: !readOnly && !sim, levels: sim ? (id, n) => sim.pin(id, n) : null, leds: sim?.leds(), lcds: sim?.lcds(), oleds: sim?.oleds(), sensors: sim?.sensors(), servos: sim?.servos(), buzzers: sim?.buzzers(), steppers: sim?.steppers(), sds: sim?.sds(), sonars: sim?.sonars(), pirs: sim?.pirs(), dhts: sim?.dhts(), analog: sim ? { volts: sim.meters(), mA: sim.lampCurrents(), sensed: (id, prop) => sim.sensed(id, prop) } : null, scopes: tryIt.scopes(), inputs: sim?.inputs(), encoders: tryIt.detents() }));
     sync();   // (the Wires' ✓: an undo, a model set)
     for (const b of [delBtn]) b.disabled = !sel || !!sim;
     rotBtn.disabled = sel?.kind !== 'part' || !!sim;
@@ -186,6 +186,8 @@ export function mountCircuitEditor(container, opts = {}) {
       else if (t.input === 'sense-up' || t.input === 'sense-down') { const x = partDef(M.parts.find((q) => q.id === t.id).type).sense[t.lever || 0]; sim.setSensed(t.id, x.prop, nudged(x, sim.sensed(t.id, x.prop), t.input === 'sense-up' ? 1 : -1)); runSim(); }
       // (a rotary encoder's ↺ and ↻, #5451: a detent each way)
       else if (t.input === 'enc-cw' || t.input === 'enc-ccw') tryIt.turn(t.id, t.input === 'enc-cw' ? 1 : -1);
+      // (an oscilloscope's knobs, a click on its screen: a cursor, #5383)
+      else if (t.input.startsWith('scope-')) { const r = e.target.closest('[data-input=scope-screen]')?.getBoundingClientRect(); tryIt.scopeInput(t.id, t.input, r ? (e.clientX - r.left) / r.width : 0); }
       else if (t.input === 'switch') setInput(t.id, !sim.inputs()[t.id]);
       else if (t.input === 'dip') setInput(t.id, !sim.inputs()[t.id][t.lever], t.lever);
       else { setInput(t.id, true, t.lever); drag = { kind: 'press', id: t.id, lever: t.lever }; }   // (a button, a keypad's key, #5364)
