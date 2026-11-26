@@ -136,7 +136,7 @@ uiTest('#3895 Design Properties: the Arty S7 and the Zybo Z7, experimental; the 
     b.value = 'arty-s7'; b.dispatchEvent(new Event('change'));
     return { boards, part: sel('Device:').value, pkg: sel('Package:').value, speed: sel('Speed:').value, synth: [...sel('Synthesis Tool:').options].map(o => o.value), synthOff: sel('Synthesis Tool:').disabled };
   });
-  assert.deepEqual(r.boards.filter(b => /experimental/.test(b)), ['Digilent Basys 3 (experimental)', 'Digilent Nexys A7 (experimental)', 'Digilent Arty S7 (experimental)', 'Digilent Zybo Z7 (experimental)', 'Digilent Arty Z7 (experimental)']);
+  assert.deepEqual(r.boards.filter(b => /^Digilent.*experimental/.test(b)), ['Digilent Basys 3 (experimental)', 'Digilent Nexys A7 (experimental)', 'Digilent Arty S7 (experimental)', 'Digilent Zybo Z7 (experimental)', 'Digilent Arty Z7 (experimental)']);
   assert.deepEqual([r.part, r.pkg, r.speed, r.synth, r.synthOff], ['xc7s50', 'csga324', '-1', ['vivado'], true]);
   await page.dialogButton('OK');
   await page.waitDialog('Update Constraints');
