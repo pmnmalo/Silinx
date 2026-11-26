@@ -12,6 +12,8 @@ import { circuitNets, netText } from './circuit-net.js';
 import { savedInputs, partLamps } from './circuit-io.js';
 import { coreModel, MODEL_TPD } from './circuit-live-model.js';
 import { setupDevice, evaluateDevice, deviceViews } from './circuit-sim-devices.js';
+import { createCircuitAnalog, isAnalogCircuit, analogViews } from './circuit-analog.js';
+import { OUTPUT_SPEC, supplySpec, boardSpec } from './circuit-analog-parts.js';
 
 const SETTLE_NS = 1000;   // a circuit still changing after this long is said to oscillate
 
@@ -23,12 +25,13 @@ const SETTLE_NS = 1000;   // a circuit still changing after this long is said to
  */
 export function createCircuitSim(m, { nets = circuitNets(m), onLevel = null, runner = null, external = [] } = {}) {
   const N = nets.nets.length;
-  const drivers = [];                       // { net, value, strength, pending, gen, tpd }
+  const drivers = [];                       // { net, value, strength, pending, gen, tpd, elec } (elec: its volts and output
+                                            // resistance on an analog net, #5382: core/circuit-analog-parts.js)
   const byNet = Array.from({ length: N }, () => []);
   const readers = Array.from({ length: N }, () => new Set());   // the ICs that read a net (an input or a power pin)
   const parts = new Map(m.parts.map((p) => [p.id, p]));
   const netOfPin = (part, n) => nets.pinNet.get(`${part}.${n}`);
-  const addDriver = (net, value, strength = 's', tpd = 0) => { const d = { net, value, strength, pending: null, gen: 0, tpd }; drivers.push(d); byNet[net].push(d); return d; };
+  const addDriver = (net, value, strength = 's', tpd = 0, elec = null) => { const d = { net, value, strength, pending: null, gen: 0, tpd, elec }; drivers.push(d); byNet[net].push(d); return d; };
   const state = new Map();                  // each part's inputs: [level] (a switch's, a button pressed, a clock's)
   const sources = new Map();                // a part's input → its strong driver ('S1:0')
   const ics = [];
@@ -37,7 +40,7 @@ export function createCircuitSim(m, { nets = circuitNets(m), onLevel = null, run
     if (!d) continue;
     if (d.inputs) state.set(p.id, savedInputs(p));
     // (the supply's terminals, a board's 5V and GND, #5215)
-    for (const x of supplyPins(d)) addDriver(netOfPin(p.id, x.n), x.value);
+    for (const x of supplyPins(d)) addDriver(netOfPin(p.id, x.n), x.value, 's', 0, supplySpec(x.volts || 5));
     for (const s of d.sources || []) sources.set(`${p.id}:${s.input}`, addDriver(netOfPin(p.id, s.pin), state.get(p.id)[s.input] ? '1' : '0'));
     for (const u of d.pulls || []) addDriver(netOfPin(p.id, u.pin), u.value, 'w');
     // (a KiCad part modelled by a module of the project, #4284: its own copy of the module, run live; its outputs after
@@ -54,21 +57,28 @@ export function createCircuitSim(m, { nets = circuitNets(m), onLevel = null, run
     if (dev) { ics.push(dev.ic); for (const net of dev.reads) readers[net].add(dev.ic); }
     if (d.kind === 'ic') {
       const pinOf = (dir) => d.pins.find((q) => q.dir === dir).n;
+      const elec = OUTPUT_SPEC[d.family] ?? null;
       const ic = { part: p, def: d, vcc: netOfPin(p.id, pinOf('vcc')), gnd: netOfPin(p.id, pinOf('gnd')),
-        gates: (d.gates || []).map((g) => ({ g, ins: g.ins.map((n) => netOfPin(p.id, n)), en: (g.en || []).map(([n, a]) => [netOfPin(p.id, n), a]), out: addDriver(netOfPin(p.id, g.out), 'X', 's', d.tpd) })) };
+        gates: (d.gates || []).map((g) => ({ g, ins: g.ins.map((n) => netOfPin(p.id, n)), en: (g.en || []).map(([n, a]) => [netOfPin(p.id, n), a]), out: addDriver(netOfPin(p.id, g.out), 'X', 's', d.tpd, elec) })) };
       // (an MSI IC: its model, its inputs and outputs by port, core/circuit-msi.js)
       if (d.model || d.seq || d.core) {
         // (an IC written once in VHDL, #4397: its own copy of its core, run live)
         if (d.core) ic.core = coreModel(d);
         ic.ins = d.pins.filter((q) => q.dir === 'in').map((q) => ({ port: q.port, net: netOfPin(p.id, q.n) }));
-        ic.outs = d.pins.filter((q) => q.dir === 'out' || q.dir === 'oc').map((q) => ({ port: q.port, oc: q.dir === 'oc', d: addDriver(netOfPin(p.id, q.n), 'X', 's', d.tpd) }));
+        ic.outs = d.pins.filter((q) => q.dir === 'out' || q.dir === 'oc').map((q) => ({ port: q.port, oc: q.dir === 'oc', d: addDriver(netOfPin(p.id, q.n), 'X', 's', d.tpd, elec) }));
       }
       ics.push(ic);
       for (const net of [ic.vcc, ic.gnd, ...ic.gates.flatMap((x) => [...x.ins, ...x.en.map(([n]) => n)]), ...(ic.ins || []).map((x) => x.net)]) readers[net].add(ic);
     }
   }
   // (the pins driven from outside, #5215: a driver each, nothing (Z) until drive())
-  const outside = new Map(external.map((ref) => [ref, addDriver(nets.pinNet.get(ref), 'Z')]));
+  // (on an analog net, #5382: a board's pin at its volts)
+  const pinVoltsOf = (ref) => { const [id, n] = ref.split('.'); return partDef(parts.get(id)?.type)?.pins.find((q) => String(q.n) === n)?.volts; };
+  const outside = new Map(external.map((ref) => [ref, addDriver(nets.pinNet.get(ref), 'Z', 's', 0, boardSpec(pinVoltsOf(ref)))]));
+  // (a circuit with an analog part, #5382: core/circuit-analog.js, its nodes solved as a circuit, stepped in time by its
+  // own wake-ups while its capacitors move)
+  const an = isAnalogCircuit(m) ? createCircuitAnalog(m, nets, { byNet }) : null;
+  let anaAt = Infinity, anaGen = 0;
   const closed = (c) => state.get(c.part)[c.input] === c.when;
 
   // the nodes: the nets joined by the closed contacts
@@ -81,6 +91,7 @@ export function createCircuitSim(m, { nets = circuitNets(m), onLevel = null, run
     nodeOf = parent.map((_, i) => { const r = find(i); if (!ids.has(r)) ids.set(r, ids.size); return ids.get(r); });
     nodeNets = Array.from({ length: ids.size }, () => []);
     nodeOf.forEach((k, i) => nodeNets[k].push(i));
+    an?.regroup(nodeOf);
   }
   // a node's level and whether it is a short: its strongest drivers' level
   function resolveNode(k) {
@@ -97,6 +108,7 @@ export function createCircuitSim(m, { nets = circuitNets(m), onLevel = null, run
 
   const powered = (ic) => levels[ic.vcc] === '1' && levels[ic.gnd] === '0';
   function evaluate(ic) {
+    if (ic.analog) { if (ic.analog === anaGen) { anaAt = Infinity; scheduleAnalog(); } return; }   // (its next step)
     if (evaluateDevice(ic, { powered, level: (net) => levels[net], now: () => time, drive, wake: (at) => wake(ic, at), input: (k) => !!state.get(ic.part.id)?.[k] })) return;
     if (ic.live) {   // (a module: its inputs' levels in, its outputs' out)
       const o = ic.live.run(Object.fromEntries(ic.ins.map((x) => [x.port, levels[x.net]])));
@@ -164,17 +176,26 @@ export function createCircuitSim(m, { nets = circuitNets(m), onLevel = null, run
     while (i > 0 && queue[i - 1].t > ev.t) i--;
     queue.splice(i, 0, ev);
   }
-  // the levels after a change of drivers: every node again, and the ICs that read a net that changed evaluated
+  // the analog side's next step while its capacitors move (#5382): a wake-up, sooner if a change asks for smaller steps
+  function scheduleAnalog() {
+    if (!an?.dynamic) return;
+    const at = time + an.dtNs;
+    if (at < anaAt) { anaAt = at; wake({ analog: ++anaGen }, at); }
+  }
+  // the levels after a change of drivers: every node again, and the ICs that read a net that changed evaluated (an
+  // analog node's level its voltage's, #5382, its capacitors moved on to now first)
   function update() {
     const touched = new Set();
+    an?.at(time * 1e-9);
     for (let k = 0; k < nodeNets.length; k++) {
-      const r = resolveNode(k);
+      const r = an?.has(k) ? { level: an.resolve(k, levels[nodeNets[k][0]]), short: resolveNode(k).short } : resolveNode(k);
       for (const net of nodeNets[k]) {
         shorted[net] = r.short;
         if (levels[net] !== r.level) { levels[net] = r.level; changes[net]++; lastChange[net] = time; onLevel?.(net, r.level, time); for (const ic of readers[net]) touched.add(ic); }
       }
     }
     for (const ic of touched) evaluate(ic);
+    scheduleAnalog();
   }
 
   regroup();
@@ -185,10 +206,11 @@ export function createCircuitSim(m, { nets = circuitNets(m), onLevel = null, run
    * Runs until the circuit is quiet, at most `maxNs` from now: { quiet, time, oscillating: [net index] } (the nets
    * still changing in the last tenth of the window, when it is not quiet).
    */
-  function run({ maxNs = SETTLE_NS } = {}) {
+  function run({ maxNs = SETTLE_NS, steps = false } = {}) {
     const start = time, end = time + maxNs;
     changes = new Array(N).fill(0);
-    while (queue.length && queue[0].t <= end) {
+    // (an analog circuit's own steps alone left, #5382: quiet; the time moving on is advance's, `steps`)
+    while (queue.length && queue[0].t <= end && (steps || !queue.every((e) => e.wake?.analog))) {
       time = queue[0].t;
       const woke = new Set();
       while (queue.length && queue[0].t === time) {
@@ -232,16 +254,23 @@ export function createCircuitSim(m, { nets = circuitNets(m), onLevel = null, run
     update();
   }
 
-  // a lamp: on (its anode 1, its cathode 0), x (either unknown) or off
+  // a lamp: on (its anode 1, its cathode 0), x (either unknown) or off; on an analog circuit, lit by its current (#5382)
   const lampState = (x) => {
+    const i = an?.lamp(x.part, x.index);
+    if (i != null) return an.lit(i) ? 'on' : 'off';
     const a = levels[netOfPin(x.part, x.a)], k = levels[netOfPin(x.part, x.k)];
     return a === '1' && k === '0' ? 'on' : a === 'X' || k === 'X' ? 'x' : 'off';
   };
   const lit = m.parts.filter((p) => partDef(p.type)?.lamps);
+  const views = deviceViews(ics, { now: () => time, evaluate, update });
   return {
     nets, run, set, drive: driveOutside,
     /** the simulated time moved on by `ns` (a clock's half period between its ticks), the circuit run meanwhile */
-    advance(ns) { const r = run({ maxNs: ns }); if (r.quiet) time = r.start + ns; return { ...r, time }; },
+    advance(ns) {
+      const r = run({ maxNs: ns, steps: true });
+      if (r.quiet) { time = r.start + ns; if (an) update(); }   // (an analog circuit's capacitors moved on to it too, #5382)
+      return { ...r, time };
+    },
     /** the time (ns) a device waits for, its next own wake-up (#5456), or null */
     nextWake: () => queue.find((e) => e.wake)?.t ?? null,
     /** each logic probe's tip level: 0, 1, Z (open), X */
@@ -251,7 +280,9 @@ export function createCircuitSim(m, { nets = circuitNets(m), onLevel = null, run
     /** a pin's level ('U1.3', or a part id and a pin number) */
     pin: (ref, n) => levels[n == null ? nets.pinNet.get(ref) : netOfPin(ref, n)],
     shorts: () => levels.map((_, i) => i).filter((i) => shorted[i]),
-    ...deviceViews(ics, { now: () => time, evaluate, update }),
+    ...views,
+    // (the analog side's views, #5382: core/circuit-analog.js)
+    ...analogViews(m, an, views, { nets, netOfPin, lit, level: (net) => levels[net], nodeDrivers: (net) => nodeNets[nodeOf[net]].flatMap((i) => byNet[i]), nodeOf: () => nodeOf, update }),
     powered: (id) => { const ic = ics.find((x) => x.part.id === id); return ic ? powered(ic) : null; },
     /** each part's lamps: an LED's state, a display's or a bar's list of them */
     leds: () => Object.fromEntries(lit.map((p) => { const s = partLamps(p).map(lampState); return [p.id, s.length === 1 ? s[0] : s]; })),

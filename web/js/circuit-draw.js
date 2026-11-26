@@ -21,6 +21,7 @@ import { drawSd } from './circuit-draw-sd.js';
 import { drawSonar } from './circuit-draw-sonar.js';
 import { drawPir } from './circuit-draw-pir.js';
 import { drawDht } from './circuit-draw-dht.js';
+import { drawAnalog } from './circuit-draw-analog.js';
 import { icInside, stripsSvg } from './circuit-draw-inside.js';
 import { wirePaths } from '/core/circuit-wires.js';
 import { wireHandles } from '/core/circuit-wire-edit.js';
@@ -34,7 +35,7 @@ const px = (v) => v * P;
 
 /** The circuit drawn: a <g> of its breadboards, wires and parts. `levels(partId, pin)`: a pin's level while simulating;
  *  `inside`: the ICs' gates or pin names and the breadboards' strips shown (#4060); `hops`: the wires' hop-overs (#4064). */
-export function drawCircuit(m, { sel = null, levels = null, leds = null, lcds = null, oleds = null, sensors = null, servos = null, buzzers = null, steppers = null, sds = null, sonars = null, pirs = null, dhts = null, inputs = null, encoders = null, draft = null, ghost = null, inside = false, hops = false, handles = false } = {}) {
+export function drawCircuit(m, { sel = null, levels = null, leds = null, lcds = null, oleds = null, sensors = null, servos = null, buzzers = null, steppers = null, sds = null, sonars = null, pirs = null, dhts = null, analog = null, inputs = null, encoders = null, draft = null, ghost = null, inside = false, hops = false, handles = false } = {}) {
   const g = sv('g', { class: `circ-drawing${inside ? ' circ-inside' : ''}` });
   const isSel = (id) => sel?.id === id;
   for (const p of m.parts) if (partDef(p.type)?.kind === 'breadboard') g.append(breadboardSvg(p, isSel(p.id), inside));
@@ -43,7 +44,7 @@ export function drawCircuit(m, { sel = null, levels = null, leds = null, lcds = 
   // (direct, orthogonal or curved, hopping over the wires drawn before them: core/circuit-wires.js)
   const d = wirePaths(m.wires.map((w) => ({ id: w.id, pts: w.points.map(([x, y]) => [px(x), px(y)]) })), { style: wireStyleOf(m, 'direct'), hops });
   for (const w of m.wires) g.append(wireSvg(w, isSel(w.id), d[w.id]));
-  for (const p of m.parts) if (partDef(p.type) && !['breadboard', 'board'].includes(partDef(p.type).kind)) g.append(partSvg(p, isSel(p.id), { levels, leds, lcds, oleds, sensors, servos, buzzers, steppers, sds, sonars, pirs, dhts, inputs, encoders, inside, hops }));
+  for (const p of m.parts) if (partDef(p.type) && !['breadboard', 'board'].includes(partDef(p.type).kind)) g.append(partSvg(p, isSel(p.id), { levels, leds, lcds, oleds, sensors, servos, buzzers, steppers, sds, sonars, pirs, dhts, analog, inputs, encoders, inside, hops }));
   // (the selected wire's handles while editing, #4930, #4931: over the parts, an end on a pin)
   const hw = handles && sel?.kind === 'wire' ? m.wires.find((w) => w.id === sel.id) : null;
   if (hw) g.append(handlesSvg(hw));
@@ -190,13 +191,14 @@ export function drawnPartSvg(d) {
 }
 
 // (turned, #4114: drawn unturned, then turned whole about its place)
-function partSvg(turned, selected, { levels, leds, lcds = null, oleds = null, sensors = null, servos = null, buzzers = null, steppers = null, sds = null, sonars = null, pirs = null, dhts = null, inputs, encoders = null, inside = false, hops = false }) {
+function partSvg(turned, selected, { levels, leds, lcds = null, oleds = null, sensors = null, servos = null, buzzers = null, steppers = null, sds = null, sonars = null, pirs = null, dhts = null, analog = null, inputs, encoders = null, inside = false, hops = false }) {
   const p = { ...turned, rot: 0 }, d = partDef(p.type);
   const pins = partPins(p);
   const g = sv('g', { class: `circ-part circ-${d.kind}${selected ? ' circ-sel' : ''}`, 'data-kind': 'part', 'data-id': p.id });
   const xs = pins.map((q) => px(q.x)), ys = pins.map((q) => px(q.y));
   const box = { x0: Math.min(...xs), x1: Math.max(...xs), y0: Math.min(...ys), y1: Math.max(...ys) };
   if (drawPart2(g, p, box, { on: inputs ? inputs[p.id] : p.on, lamps: leds?.[p.id], level: levels?.(p.id, 1) })) { /* (phase 2's parts: circuit-draw-parts.js) */ }
+  else if (drawAnalog(g, p, box, analog)) { /* (the analog parts, #5382: circuit-draw-analog.js) */ }
   else if (d.kind === 'ic') {
     g.append(sv('rect', { x: box.x0 - P * 0.4, y: box.y0 + P * 0.35, width: box.x1 - box.x0 + P * 0.8, height: box.y1 - box.y0 - P * 0.7, rx: 2, class: 'circ-ic-body' }));
     // its notch on pin 1's short side, its name and chip
@@ -236,7 +238,10 @@ function partSvg(turned, selected, { levels, leds, lcds = null, oleds = null, se
     // (a 5 mm LED seen from its side, #5367: its two legs, the anode's bent, its rim flat on the cathode's side, its dome
     // lit in its colour)
     const r = P * 0.85, yb = cy - P * 0.9, yt = yb - P * 1.9, c = p.color || 'red';
-    g.append(sv('path', { d: `M${cx - r},${yb}V${yt + r}a${r},${r} 0 0 1 ${2 * r},0V${yb}z`, class: `circ-led circ-led-${c}${st === 'on' ? ' lit' : st === 'x' ? ' unknown' : ''}` }),
+    // (on an analog circuit, #5382: as bright as its current, 20 mA full; its current in its tip)
+    const mA = analog?.mA?.[p.id], bright = st === 'on' && Number.isFinite(mA) ? { style: `opacity: ${(0.45 + 0.55 * Math.min(1, mA / 20)).toFixed(2)}` } : {};
+    if (Number.isFinite(mA)) g.append(sv('title', {}, `${p.id}: ${mA.toFixed(1)} mA`));
+    g.append(sv('path', { d: `M${cx - r},${yb}V${yt + r}a${r},${r} 0 0 1 ${2 * r},0V${yb}z`, class: `circ-led circ-led-${c}${st === 'on' ? ' lit' : st === 'x' ? ' unknown' : ''}`, ...bright }),
       sv('path', { d: `M${box.x0},${box.y0}v${-P * 0.35}l${P * 0.3},${-P * 0.25}V${yb} M${box.x1},${box.y1}V${yb}`, class: 'circ-led-leg' }),
       sv('path', { d: `M${cx - r - P * 0.12},${yb}h${2 * r + P * 0.02}v${P * 0.22}h${-2 * r - P * 0.02}z`, class: `circ-led-rim circ-led-${c}` }),
       sv('path', { d: `M${cx - r * 0.55},${yb - P * 0.2}V${yt + r}a${r * 0.55},${r * 0.55} 0 0 1 ${r * 0.4},${-r * 0.45}`, class: 'circ-led-shine' }),

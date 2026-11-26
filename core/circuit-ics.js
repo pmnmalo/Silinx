@@ -33,7 +33,7 @@ const AOI_7455 = [[[1, 2, 3, 4], [10, 11, 12, 13], 8]];   // Y = /(ABCD + EFGH)
  * DIP of 14 pins (VCC 14 and GND 7; a 4000's VDD and VSS) or 16 (`supply`: its VCC's and its GND's pins), the pins no
  * gate uses not connected (NC); `oc`: its outputs open collector.
  */
-function gateIc(type, chip, title, fn, groups, tpd, { family = 'ttl', oc = false, pins: n = 14, supply = [14, 7] } = {}) {
+function gateIc(type, chip, title, fn, groups, tpd, { family = 'ttl', oc = false, pins: n = 14, supply = [14, 7], schmitt = false } = {}) {
   const at = dip(n);
   const pins = new Map();
   const one = groups.length === 1;
@@ -48,7 +48,7 @@ function gateIc(type, chip, title, fn, groups, tpd, { family = 'ttl', oc = false
   pins.set(supply[1], { n: supply[1], name: family === 'ttl' ? 'GND' : 'VSS', dir: 'gnd' });
   pins.set(supply[0], { n: supply[0], name: family === 'ttl' ? 'VCC' : 'VDD', dir: 'vcc' });
   for (let k = 1; k <= n; k++) if (!pins.has(k)) pins.set(k, { n: k, name: 'NC', dir: 'nc' });
-  return { type, title, kind: 'ic', family, chip, pins: [...pins.values()].sort((a, b) => a.n - b.n).map((p) => ({ ...p, ...at(p.n) })), gates, tpd, dip: n, ...(oc ? { oc: true } : {}) };
+  return { type, title, kind: 'ic', family, chip, pins: [...pins.values()].sort((a, b) => a.n - b.n).map((p) => ({ ...p, ...at(p.n) })), gates, tpd, dip: n, ...(oc ? { oc: true } : {}), ...(schmitt ? { schmitt: true } : {}) };
 }
 // A three-state buffer IC (#4397, group B): its buffers `fn` (buf or not) on `pairs` ([A, Y] each), on a DIP of `pins` with
 // `supply` [VCC, GND]; `enables` [{ pins, active ('0' or '1'), of: the buffers' indices }]: a buffer drives its output while
@@ -96,7 +96,7 @@ export const ICS = [
   ttl('7408', 'Quad 2-input AND', 'and', QUAD, 10),
   ttl('7410', 'Triple 3-input NAND', 'nand', TRIPLE3, 10),
   ttl('7411', 'Triple 3-input AND', 'and', TRIPLE3, 10),
-  ttl('7414', 'Hex Schmitt-trigger inverter', 'not', HEX, 15),
+  ttl('7414', 'Hex Schmitt-trigger inverter', 'not', HEX, 15, false, { schmitt: true }),   // (its inputs' hysteresis on an analog net, #5382)
   ttl('7420', 'Dual 4-input NAND', 'nand', DUAL4, 10),
   ttl('7427', 'Triple 3-input NOR', 'nor', TRIPLE3, 10),
   ttl('7430', '8-input NAND', 'nand', OCT8, 12),
@@ -116,7 +116,7 @@ export const ICS = [
   ttl('7437', 'Quad 2-input NAND buffer', 'nand', QUAD, 12),
   ttl('7438', 'Quad 2-input NAND buffer, open collector', 'nand', QUAD, 15, true),
   ttl('7440', 'Dual 4-input NAND buffer', 'nand', DUAL4, 12),
-  ttl('74132', 'Quad 2-input NAND, Schmitt trigger', 'nand', QUAD, 15),
+  ttl('74132', 'Quad 2-input NAND, Schmitt trigger', 'nand', QUAD, 15, false, { schmitt: true }),
   ttl('74133', '13-input NAND', 'nand', NAND13, 10, false, { pins: 16, supply: [16, 8] }),
   ttl('74136', 'Quad 2-input XOR, open collector', 'xor', QUAD, 20, true),
   ttl('74386', 'Quad 2-input XOR', 'xor', QUAD_4001, 12),

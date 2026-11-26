@@ -7,6 +7,7 @@ import { checkCircuit } from '/core/circuit-check.js';
 import { createCircuitSim, runMessages } from '/core/circuit-sim.js';
 import { intervalWhileSeen } from './when-hidden.js';
 import { encoderTurn, ENCODER_STEP_NS } from '/core/circuit-encoder.js';
+import { isAnalogCircuit } from '/core/circuit-analog.js';
 
 /**
  * Its Try it: ctx { M() (the circuit), opts (the editor's: hdl), root, status(msg, err), render(), destroyed() }; returns
@@ -37,7 +38,8 @@ export function mountCircuitTry({ M, opts, root, status, render, destroyed }) {
   // (a device that keeps time, #5456: an ultrasonic sensor, a motion sensor (#5463), a DHT (#5470), a stepper motor
   // (#5476); the simulated time follows the real one, at most a second at a time, so that a trigger pressed by hand lasts
   // what it lasted; its wake-ups reached in real time)
-  const timed = () => M().parts.some((p) => ['hc-sr04', 'hc-sr501', 'dht11', 'dht22', 'stepper-28byj48'].includes(p.type));
+  // (#5476); an analog circuit, its capacitors charging (#5382)
+  const timed = () => M().parts.some((p) => ['hc-sr04', 'hc-sr501', 'dht11', 'dht22', 'stepper-28byj48'].includes(p.type)) || isAnalogCircuit(M());
   function catchUp() {
     const t = performance.now(), ns = Math.min(1e9, Math.round((t - seen) * 1e6));
     seen = t;
@@ -47,6 +49,8 @@ export function mountCircuitTry({ M, opts, root, status, render, destroyed }) {
     clearTimeout(wakeTimer); wakeTimer = null;
     const at = sim?.nextWake();
     if (at == null) return;
+    // (an analog circuit's steps, #5382: in real time, a frame at a time)
+    if (sim.analog) { wakeTimer = setTimeout(() => { wakeTimer = null; if (!sim || destroyed()) return; catchUp(); runSim(); }, Math.min(40, Math.max(1, (at - sim.time) / 1e6))); return; }
     wakeTimer = setTimeout(() => { wakeTimer = null; if (!sim || destroyed()) return; seen = performance.now(); sim.advance(Math.max(0, at - sim.time)); runSim(); }, Math.max(1, (at - sim.time) / 1e6));
   }
   // a rotary encoder turned a detent (`dir` 1 clockwise, -1 anticlockwise, #5451): its quadrature a quarter at a time, the

@@ -6,6 +6,7 @@ import { h } from './ui.js';
 import { partDef, LED_COLORS, WIRE_COLORS, CLOCK_HZ } from '/core/circuit-parts.js';
 import { LM75_TEMP } from '/core/circuit-lm75.js';
 import { PIR_HOLD } from '/core/circuit-pir.js';
+import { formatSi } from '/core/circuit-analog-parts.js';
 import { setPartProps, setWireProps } from '/core/circuit-edit.js';
 import { portName } from '/core/circuit.js';
 import { partInfo } from '/core/circuit-part-info.js';
@@ -67,6 +68,12 @@ export function mountCircuitSide(ctx) {
       for (const x of d?.sense ?? []) {
         const v = h('input', { type: 'number', class: 'circ-sense-in', 'data-prop': x.prop, min: String(x.min), max: String(x.max), step: String(x.step), value: String(p[x.prop] ?? x.default) });
         v.addEventListener('change', () => apply(setPartProps(M(), p.id, { [x.prop]: Number(v.value) })));
+        kids.push(field(x.label, v));
+      }
+      // (an analog part's values, #5382: a resistor's resistance, a capacitor's capacitance, as 4.7 kΩ or 4k7)
+      for (const x of d?.values ?? []) {
+        const v = h('input', { type: 'text', class: 'circ-value-in', 'data-prop': x.prop, value: formatSi(p[x.prop] ?? x.default, x.unit), spellcheck: 'false' });
+        v.addEventListener('change', () => apply(setPartProps(M(), p.id, { [x.prop]: v.value })));
         kids.push(field(x.label, v));
       }
       // (a motion sensor's hold time and jumper, #5463)

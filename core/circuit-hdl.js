@@ -7,7 +7,8 @@
 // same entity). A closed contact copies its driven side's net to its other side (one between two driven nets is an
 // error of the check, core/circuit-check.js). Isomorphic module.
 import { partDef, supplyPins } from './circuit-parts.js';
-import { circuitNets } from './circuit-net.js';
+import { circuitNets, netSupply } from './circuit-net.js';
+import { resistiveLinks } from './circuit-analog-parts.js';
 import { normalizeCircuit, circuitPorts } from './circuit.js';
 import { partInputs, partLamps, portRef, portDecls } from './circuit-io.js';
 import { circuitErrors } from './circuit-check.js';
@@ -165,7 +166,25 @@ function netPlan(m, V, ports) {
   const typeOf = new Map(m.parts.map((p) => [p.id, p.type]));
   const strong = nets.nets.map((net) => net.pins.some((q) => q.dir === 'out' || q.dir === 'oc' || isSupply(q)));
   const pulls = nets.nets.map((net) => [...new Set(net.pins.filter((q) => q.dir === 'weak').map((q) => partDef(typeOf.get(q.part)).pulls[0].value))]);
+  // (an analog circuit's resistors, #5382: one from a supply's rail a pull of its other net; one between two other nets a
+  // link, its driven side copied to the other as a closed contact's)
+  const links = [];
+  for (const l of resistiveLinks(m, nets.pinNet)) {
+    const sa = netSupply(nets.nets[l.a]), sb = netSupply(nets.nets[l.b]), ra = sa.vcc || sa.gnd, rb = sb.vcc || sb.gnd;
+    if (ra && !rb) pulls[l.b].push(sa.vcc ? '1' : '0');
+    else if (rb && !ra) pulls[l.a].push(sb.vcc ? '1' : '0');
+    else if (!ra && !rb) links.push(l);
+  }
+  pulls.forEach((x, i) => { pulls[i] = [...new Set(x)]; });
   const driven = strong.map((s, i) => s || pulls[i].length > 0);
+  const linkFrom = new Map();
+  for (let grew = true; grew;) {
+    grew = false;
+    for (const l of links) {
+      const f = linkFrom.has(l) ? null : driven[l.a] && !driven[l.b] ? l.a : driven[l.b] && !driven[l.a] ? l.b : null;
+      if (f != null) { linkFrom.set(l, f); driven[f === l.a ? l.b : l.a] = true; grew = true; }
+    }
+  }
   // (a transceiver's pin, #4397: read as it is driven)
   const read = nets.nets.map((net) => net.pins.some((q) => q.dir === 'in' || q.io || ((q.dir === 'vcc' || q.dir === 'gnd') && !isSupply(q))));
   // (a net a logic probe watches is a signal too, for the waveforms, #3900; one nothing else reads: watched only)
@@ -175,6 +194,7 @@ function netPlan(m, V, ports) {
   const hard = nets.nets.map((net) => net.pins.some((q) => q.dir === 'out' || isSupply(q)));
   const from = (k) => (hard[k.a] && !hard[k.b] ? k.a : hard[k.b] && !hard[k.a] ? k.b : strong[k.a] && !strong[k.b] ? k.a : strong[k.b] && !strong[k.a] ? k.b : !driven[k.a] && driven[k.b] ? k.b : driven[k.a] && !driven[k.b] ? k.a : null);
   for (const k of nets.contacts) { const f = from(k); if (f != null && read[f === k.a ? k.b : k.a]) read[f] = true; }
+  for (let grew = true; grew;) { grew = false; for (const [l, f] of linkFrom) if (read[f === l.a ? l.b : l.a] && !read[f]) { read[f] = true; grew = true; } }
   const watchedOnly = probed.map((p, i) => p && !read[i]);
   probed.forEach((p, i) => { if (p) read[i] = true; });
   const name = [], drv = [];
@@ -217,6 +237,7 @@ function netPlan(m, V, ports) {
       if (name[f]) add(to, V ? `${name[f]} when ${port} = '${ct.when ? 1 : 0}' else 'Z'` : `${ct.when ? port : `!${port}`} ? ${name[f]} : 1'bz`, `${p.id} ${p.type === 'button' || p.type === 'keypad-4x4' || (p.type === 'rotary-encoder' && ct.input === 2) ? 'pressed' : p.type === 'rotary-encoder' ? 'turned' : ct.when ? 'on' : 'off'}`);
     }
   }
+  for (const [l, f] of linkFrom) if (name[f]) add(f === l.a ? l.b : l.a, name[f], `through ${l.part}`);
   nets.nets.forEach((net, i) => {
     if (!name[i]) return;
     const icOut = net.pins.some((q) => isOut(q.dir) && ['ic', 'model', 'sonar', 'pir', 'sd'].includes(partDef(typeOf.get(q.part))?.kind));   // (an ultrasonic sensor's echo, #5456; a PIR's OUT, #5463; an SD card's MISO, #5477)

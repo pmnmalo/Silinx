@@ -23,6 +23,8 @@ const GROUPS = [['Breadboards', ['breadboard-half', 'breadboard-full']], ['Power
   // (the boards, #5215: an Arduino, an FPGA board, with their real pins)
   ['Boards', PART_ORDER.filter((t) => PARTS[t].kind === 'board')],
   ['Inputs', ['logic-switch', 'button', 'spdt', 'dip-4', 'dip-8', 'keypad-4x4', 'rotary-encoder', 'clock', 'lm75', 'hc-sr04', 'hc-sr501', 'dht11', 'dht22']], ['Outputs', ['led', 'seg7-cc', 'seg7-ca', 'led-bar-10', 'buzzer', 'servo-sg90', 'stepper-28byj48', 'sd-card', 'lcd-1602', 'oled-ssd1306', 'probe']],
+  // (the analog parts, #5382)
+  ['Analog', ['resistor', 'capacitor', 'potentiometer', 'ldr', 'thermistor', 'diode', 'voltmeter']],
   ['Gates (74LS)', PART_ORDER.filter((t) => PARTS[t].gates && PARTS[t].family === 'ttl')], ['Gates (4000)', PART_ORDER.filter((t) => PARTS[t].gates && PARTS[t].family === 'cmos')],
   // (an IC written once in VHDL whose function is a decoder's, a multiplexer's…: an MSI IC, #4397)
   ['MSI (74LS, 4000)', PART_ORDER.filter((t) => PARTS[t].model || PARTS[t].msi)], ['Sequential (74LS, 4000)', PART_ORDER.filter((t) => (PARTS[t].seq || PARTS[t].core) && !PARTS[t].msi)]];
@@ -147,7 +149,7 @@ function latchPreview(q = null) {
 function fitted(g, key) {
   // (its name and tips left out, the row's name says it; its marks kept: the supply's +5V and GND, a pull's arrow; its
   // print left out, too small there: a DIP switch's numbers and ON, a module's, the servo's, #5367)
-  for (const x of g.querySelectorAll('text.circ-label, text.circ-ic-text, text.circ-dip-num, text.circ-dip-on, text.circ-silk, text.circ-servo-text, text.circ-key-text, text.circ-keypad-pin, text.circ-enc-pin, .circ-enc-turn, text.circ-buzz-plus, text.circ-step-pin, text.circ-step-chip-text, text.circ-step-angle, text.circ-sd-card-text, text.circ-sd-pin, text.circ-sonar-tx, text.circ-sonar-name, text.circ-sonar-pin, text.circ-pir-pin, text.circ-dht-name, text.circ-dht-val, .circ-dht-btn, .circ-sonar-btn, text.circ-sonar-cm, title')) x.remove();   // (a KiCad part's id and number too, #4281)
+  for (const x of g.querySelectorAll('text.circ-label, text.circ-ic-text, text.circ-dip-num, text.circ-dip-on, text.circ-silk, text.circ-servo-text, text.circ-key-text, text.circ-keypad-pin, text.circ-enc-pin, .circ-enc-turn, text.circ-buzz-plus, text.circ-step-pin, text.circ-step-chip-text, text.circ-step-angle, text.circ-sd-card-text, text.circ-sd-pin, text.circ-sonar-tx, text.circ-sonar-name, text.circ-sonar-pin, text.circ-pir-pin, text.circ-dht-name, text.circ-dht-val, .circ-dht-btn, .circ-sonar-btn, text.circ-sonar-cm, text.circ-meter-text, text.circ-an-val, .circ-an-btn, title')) x.remove();   // (a KiCad part's id and number too, #4281)
   // (fitted to its drawing's box, measured off the page once: its body as drawn, not its pins', #4124; a small part not
   // magnified past MAX)
   const m = sv('svg', { width: 0, height: 0, style: 'position:absolute;visibility:hidden' }, g);

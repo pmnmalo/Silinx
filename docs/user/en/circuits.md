@@ -348,6 +348,40 @@ folder, with `libraries` to choose among them.
 - **SSim:** the generated HDL is simulated as any module's (its test bench, the waveforms); the unit tests check that
   the live engine and the HDL simulated by Silinx agree.
 
+## Analog parts and the analog/digital boundary
+
+The **Analog** group of the Parts panel (#5382): a resistor, a capacitor, a potentiometer (a trimmer, its ends 1 and 3,
+its wiper W), a light-dependent resistor (GL5528), an NTC thermistor (10 kΩ, B 3950), a diode (1N4148) and a voltmeter.
+A resistor's resistance and a capacitor's capacitance are set in their Properties, written as `4.7k`, `4k7`, `100n` or
+`2.2u`; a potentiometer's position, an LDR's light and a thermistor's temperature are set while trying the circuit (their
+− and +) and saved in their Properties.
+
+- **A circuit with an analog part is solved as a circuit too** (`core/analog-mna.js`, a modified-nodal-analysis solver,
+  DC and in time): its nets that an analog part or an LED touches are analog nodes; the others stay logic as before. A
+  circuit with no analog part is the logic it always was (its LEDs lit by their levels).
+- **The boundary at the pins:** an output drives its levels through its output resistance (a 74LS output's 1 is 3.4 V
+  through about 70 Ω, its 0 through 30 Ω; a 4000's 5 V and 0 V through 400 Ω; a switch, a clock, a board's pin 25 Ω; a
+  pull-up 10 kΩ; the supply 0.05 Ω); an input reads its node's voltage against its thresholds: a 74LS input 0 under
+  0.8 V, 1 over 2.0 V and X between them, a 4000's 1.5 V and 3.5 V. A Schmitt-trigger input (the 7414, the 74132)
+  switches at 1.6 V rising and 0.8 V falling, its hysteresis between them. A 74LS input sources its own current (1.5 V
+  through 4 kΩ): open it reads high, and a 10 kΩ pull-down is too large to make it 0 (it reads X), 1 kΩ is not. A node
+  that nothing drives through the parts floats (Z).
+- **An LED is a diode of its colour** (red 1.9 V, yellow 2.0 V, green 2.1 V, blue and white 3.1 V at 20 mA): lit by its
+  current, as bright as it (its current in its tip). More than 30 mA is said once in the console: a current-limiting
+  resistor is missing, with its value from 5 V.
+- **In time:** the capacitors charge between the logic's events, the solver stepping them while they move (a step aims
+  at 50 mV, smaller near an input's threshold: a crossing is found within a millivolt). A 7414 with a resistor from its
+  output to its input and a capacitor to GND oscillates at the period its exponentials give; a button with an RC and a
+  Schmitt trigger is debounced. Try it runs an analog circuit in real time.
+- **The voltmeter** shows its + lead's voltage against its COM lead's, to the millivolt; on a circuit with no analog part,
+  a net's level as the volts of what drives it.
+- **In the HDL:** a resistor from a supply's rail is a pull-up or a pull-down of its other net, one between two other
+  nets joins them (its driven side copied to the other); capacitors, diodes and the voltmeter are not in it.
+- **The MCP server:** edit_circuit's set takes `ohms`, `farads`, `pos`, `lux` and a thermistor's `temp`;
+  simulate_drawing sets a potentiometer's position, an LDR's light and a thermistor's temperature by its id, says each
+  voltmeter's reading and each LED's current (mA), and `after_us` lets the capacitors charge (a step's change is read
+  at once, the capacitors holding their voltage); circuit_parts lists each part's values and what it senses.
+
 ## The checks
 
 A circuit's Check (and every change, as the other drawings') says in the console, a click on a message selecting the

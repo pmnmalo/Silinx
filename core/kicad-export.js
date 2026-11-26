@@ -106,7 +106,7 @@ export async function partsPackage(files, meta, codec, { ics = null, parts = nul
 // the parts' descriptions whenever it is exported, never kept as a file: it is always the running version's library.
 
 /** The library's parts written as KiCad symbols: its ICs and its other parts with pins, in the library's order. */
-export const EXPORTED_PARTS = PART_ORDER.filter((t) => PARTS[t].pins.length && !['board', 'lcd', 'oled', 'sensor', 'servo', 'buzzer', 'sonar', 'pir', 'dht', 'stepper', 'sd'].includes(PARTS[t].kind) && !['keypad-4x4', 'rotary-encoder'].includes(t));   // (a board, #5215, a character LCD, #5330, an OLED, #5336, an LM75, #5342, a servo, #5347, a keypad, #5364, an encoder, #5451, a buzzer, #5454: KiCad has its own)
+export const EXPORTED_PARTS = PART_ORDER.filter((t) => PARTS[t].pins.length && !['board', 'lcd', 'oled', 'sensor', 'servo', 'buzzer', 'sonar', 'pir', 'dht', 'stepper', 'sd', 'analog', 'meter'].includes(PARTS[t].kind) && !['keypad-4x4', 'rotary-encoder'].includes(t));   // (a board, #5215, a character LCD, #5330, an OLED, #5336, an LM75, #5342, a servo, #5347, a keypad, #5364, an encoder, #5451, a buzzer, #5454, the analog parts, #5382: KiCad has its own)
 /** The footprint library of the parts that are no DIP (Silinx.pretty). */
 export const FOOTPRINT_LIB = 'Silinx';
 /** A part's symbol's name: an IC's its chip's (SN74LS00), another part's Silinx_<type>. */

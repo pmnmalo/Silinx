@@ -116,7 +116,7 @@ test('copy and paste (#4066): a breadboard with the parts on it and the wires be
   assert.deepEqual(copyParts(m, 'U9'), { error: 'no part U9 in the circuit' });
   assert.deepEqual(pasteParts(m, { parts: [] }), { error: 'nothing to paste' });
   assert.deepEqual(pasteParts(m, clip, [1]), { error: 'by: a move [dx, dy] in grid steps' });
-  assert.deepEqual(pasteParts(m, { parts: [{ type: 'resistor', x: 0, y: 0 }] }), { error: 'no part \'resistor\' in the library' });
+  assert.deepEqual(pasteParts(m, { parts: [{ type: 'flux-capacitor', x: 0, y: 0 }] }), { error: 'no part \'flux-capacitor\' in the library' });
 });
 
 test('a wire\'s colour set (#4121), as its Properties\' Colour: the wire alone changed, the connections the same; setProps a part\'s or a wire\'s; the refusals', () => {
