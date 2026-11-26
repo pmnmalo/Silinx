@@ -23,7 +23,7 @@ import { mountSideFold } from './side-fold.js';
 import { panelToggle, PROPS_KEY } from './narrow.js';
 import { emulationBoards, pinOf } from '/core/system-emu.js';
 import { pressHolds } from '/core/emulate-press.js';
-import { runTimeText } from '/core/system-run.js';
+import { runTimeText, termCaption } from '/core/system-run.js';
 import { nextFrame, watchSeen, hiddenPref, setHiddenPref } from './when-hidden.js';
 import { menuChoice, toolbarMenu } from './toolbar-menu.js';
 import { sv } from './dom.js';
@@ -163,7 +163,7 @@ export function mountSystemEmulator(host, opts) {
         if (rb.connected()) rb.send(bytes); else ready.send(id, bytes);
         input.value = '';
       });
-      return h('section', { class: 'sys-term' }, h('div', { class: 'sys-term-cap' }, h('span', {}, `${id} · ${u?.baud ?? 9600} ${u?.frame ?? '8N1'}`), rb.el), out, input);
+      return h('section', { class: 'sys-term' }, h('div', { class: 'sys-term-cap' }, h('span', {}, termCaption(id, u)), rb.el), out, input);
     }));
     paint();
   }

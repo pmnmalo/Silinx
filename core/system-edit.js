@@ -53,6 +53,9 @@ export function addNode(sys, { kind, id = null, board = null, module = null, cir
   else if (kind === 'mcu') {
     const b = mcuBoard(board ?? 'arduino-uno');
     if (!b) return { error: `no microcontroller board '${board}': ${MCU_BOARDS.map(m => m.id).join(', ')}` };
+    // (a board of one language: in it, the Pico's MicroPython, #5494)
+    if (b.langs && lang != null && !b.langs.includes(lang)) return { error: `the ${b.name} runs ${b.langs.join(', ')}, not ${lang}` };
+    if (b.langs && lang == null) lang = b.langs[0];
     n = { id: nid, kind, board: b.id, firmware: null, interfaces: Object.keys(b.uarts).map(name => ({ name, kind: 'uart', ...UART_DEFAULTS })) };
   } else if (kind === 'circuit') {
     const why = outside(nid, 'circuit', circuit);
@@ -318,7 +321,7 @@ export function describeSystem(sys) {
   const lines = [`System ${sys.name}: ${sys.nodes.length} node${sys.nodes.length === 1 ? '' : 's'}, ${sys.links.length} link${sys.links.length === 1 ? '' : 's'}`];
   for (const n of sys.nodes) {
     const what = n.kind === 'fpga' ? `FPGA, module ${n.module ?? '(none)'} on ${n.board ?? '(no board)'}${n.variant ? `-${n.variant}` : ''}`
-      : n.kind === 'mcu' ? `${mcuBoard(n.board)?.name ?? n.board}, firmware ${n.firmware ?? '(none)'}` : n.kind === 'circuit' ? `circuit ${n.circuit ?? '(none)'}` : NODE_KIND_NAMES[n.kind] || n.kind;
+      : n.kind === 'mcu' ? `${mcuBoard(n.board)?.name ?? n.board}, ${mcuBoard(n.board)?.arch === 'rp2040' ? 'program' : 'firmware'} ${n.firmware ?? '(none)'}` : n.kind === 'circuit' ? `circuit ${n.circuit ?? '(none)'}` : NODE_KIND_NAMES[n.kind] || n.kind;
     lines.push(`node ${n.id}: ${what}${n.lang ? `, in ${LANG_NAMES[n.lang] ?? n.lang}` : ''}`);
     for (const f of n.interfaces) lines.push(`  ${ifaceText(n, f)}`);
   }

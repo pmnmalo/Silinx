@@ -122,7 +122,7 @@ const modules = () => [...new Set([...viewRoots(false), ...(designState.modules 
 const portsOf = name => (designState.modules || []).find(m => m.name === name)?.portList || [];
 // (a node's: its folder's, #5488)
 const inNode = (f, id) => id == null || relInNode(f, id) != null;
-const firmwares = id => (filesState.fileTree || []).filter(f => /\.(hex|elf)$/i.test(f) && inNode(f, id));
+const firmwares = id => (filesState.fileTree || []).filter(f => /\.(hex|elf|py)$/i.test(f) && inNode(f, id));   // (a Pico's program a .py, #5494)
 const circuits = id => (filesState.fileTree || []).filter(f => /\.circ\.json$/i.test(f) && inNode(f, id));   // (a circuit node's, #5215)
 
 export async function openSystem(path) {

@@ -483,6 +483,13 @@ export const THIRD_PARTY = [
     "standalone": false
   },
   {
+    "name": "micropython",
+    "version": "v1.24.1",
+    "license": "MIT",
+    "url": "https://github.com/micropython/micropython",
+    "ported": true
+  },
+  {
     "name": "mime-db",
     "version": "1.54.0",
     "license": "MIT",
@@ -546,6 +553,13 @@ export const THIRD_PARTY = [
     "standalone": false
   },
   {
+    "name": "pico-bootrom-rp2040",
+    "version": "b1",
+    "license": "BSD-3-Clause AND GPL-2.0-only",
+    "url": "https://github.com/raspberrypi/pico-bootrom-rp2040",
+    "ported": true
+  },
+  {
     "name": "prjxray",
     "version": "c9f02d8",
     "license": "ISC",
@@ -593,6 +607,13 @@ export const THIRD_PARTY = [
     "license": "MIT",
     "url": "pillarjs/router",
     "standalone": false
+  },
+  {
+    "name": "rp2040js",
+    "version": "1.4.2",
+    "license": "MIT",
+    "url": "https://github.com/wokwi/rp2040js",
+    "standalone": true
   },
   {
     "name": "safer-buffer",

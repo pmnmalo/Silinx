@@ -220,6 +220,8 @@ function checkMcu(n, at, { files }, { err, warn }) {
   const b = mcuBoard(n.board);
   if (!n.board) err(`${n.id}: a microcontroller with no board`, ref);
   else if (!b) err(`${n.id}: no microcontroller board '${n.board}' (the boards: ${MCU_BOARDS.map(m => m.id).join(', ')})`, ref);
+  // (a board of one language, the Pico's MicroPython, #5494)
+  if (b?.langs && n.lang && !b.langs.includes(n.lang)) err(`${n.id}: the ${b.name} runs ${b.langs.map(l => (l === 'micropython' ? 'MicroPython' : l)).join(' or ')}, not ${n.lang === 'cpp' ? 'C++' : n.lang === 'c' ? 'C' : n.lang}`, ref);
   if (n.firmware) {
     const exts = b?.firmwares ?? ['hex', 'elf'], ext = /\.([a-z0-9]+)$/i.exec(n.firmware)?.[1]?.toLowerCase();
     if (!exts.includes(ext)) err(`${n.id}: its firmware ${n.firmware} is not ${exts.map(e => (e === 'elf' ? 'an .elf' : `a .${e}`)).join(' or ')}${b?.arch === 'pic24' ? ' (XC16\'s Intel HEX)' : ''}`, ref);

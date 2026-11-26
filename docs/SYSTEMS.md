@@ -3,7 +3,7 @@
 The design of roadmap #4695. Modules on FPGAs and on microcontrollers (an Arduino's AVR, a Raspberry Pi Pico's
 RP2040, an ESP32), wired to each other in one drawing, then simulated, emulated and tried on the real boards
 together. Its phases 1 and 2 are built (the scheduler, the System document, the AVR node, the links, the System
-Emulator); the RP2040 and ESP32 nodes are phase 4, not started (#5494, #5495). Each phase becomes issues of its own
+Emulator); of phase 4, the RP2040 node is built (#5494, below), the ESP32 node not yet (#5495). Each phase becomes issues of its own
 when it starts.
 
 **What a System holds** (#5411): nodes of every kind, linked as the design wants (GPIO, UART, SPI, I²C, buses, a
@@ -261,6 +261,26 @@ On the Design pane (`web/js/design-cpu.js`) such a drawing's row, under its node
 drawing's badge first (the base), its node's language's last, `[C]` (or `[C++]`, `[Py]`), its code, opened from it; marked when
 its C is not made (the drawing has errors: its tip says them) or not made again since. A drawing with no C gets it when
 the project is opened, as the MCP's tools give it (`adoptDrawing`); its C has no row of its own, the node's sketch has.
+
+### The RP2040
+
+A Raspberry Pi Pico (`board: 'pico'`, #5494, `core/system-sim-rp2040.js`) is a microcontroller node in MicroPython:
+
+- **Its engine** is rp2040js (MIT, Wokwi's) running MicroPython's own firmware for the Pico (v1.24.1) and the RP2040's
+  bootrom. Its time is rp2040js's simulation clock, so the node runs as the scheduler says. MicroPython boots in about 0.3 s
+  of the System's time: what reaches its UART before is lost, as on the board.
+- **Its firmware is not shipped** (`core/rp2040-firmware.js`): the local server downloads the `.uf2` and the bootrom once,
+  from their pinned addresses, checks their SHA-256 and keeps them in `~/.silinx/rp2040/` (`server/rp2040-firmware.js`); the
+  page reads them at `/vendor/rp2040/`. The bootrom's float library, mufplib, is for the RP2040 alone or under GPL-2.0, so
+  Silinx never distributes it. The browser edition has no copy yet: a Pico runs with the local server.
+- **Its program** is a `.py` of its folder (its `firmware`), typed into MicroPython's raw REPL once its USB serial port is up;
+  what it prints is its REPL's console, a terminal of its own (`<id>.repl`, in Try it and Emulate). A traceback is its
+  error. When the program ends, the friendly REPL (`>>>`) takes what is typed.
+- **Its pins** are GP0..GP22, GP25 (the LED) and GP26..GP28, at 3.3 V; a pin MicroPython gives a UART is that UART's frames
+  (UART0 on GP0/GP1, UART1 on GP4/GP5 by default, the node's interfaces). rp2040js raises a UART's TX interrupt again as soon
+  as it is cleared, which hangs MicroPython's interrupt-driven write: the adapter raises it when a byte leaves, as the PL011 does.
+- **What it does not model yet:** the second core (`_thread`), the ADC's inputs, SPI and I²C links, and the file system kept
+  between runs. Its drawing in the System Emulator and an example come next.
 
 ### The page cross-origin isolated
 

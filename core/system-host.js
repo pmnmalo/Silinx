@@ -11,7 +11,7 @@
 // #5212): `ready`'s boards, each state's what they show since the last.
 //
 // Isomorphic ES module, no DOM.
-import { systemFromInputs, systemReport } from './system-run.js';
+import { systemFromInputs, systemReport, loadEngines } from './system-run.js';
 import { systemWaves } from './system-waves.js';
 import { emulationBoards, withBoards, watchBoards, boardStates, setBoardInput } from './system-emu.js';
 import { setsControls, stimulusSteps, runSteps } from './system-stimulus.js';
@@ -56,9 +56,19 @@ export function hostSystemRun(port) {
       post({ type: 'waves', id, design: systemWaves(run.sim, { name }).design, now: run.sim.now });
     },
   };
+  const dispatch = m => { try { handle[m.type]?.(m); } catch (err) { post({ type: 'error', id: m.id, message: err.message }); } };
+  // (a System's microcontrollers' engines loaded before its init, the messages after it waiting for them: a Pico's
+  // rp2040js and firmware, #5494)
+  let gate = null;
   const onMessage = e => {
     const m = e.data;
-    try { handle[m.type]?.(m); } catch (err) { post({ type: 'error', id: m.id, message: err.message }); }
+    if (m.type === 'init') gate = (gate || Promise.resolve()).then(() => loadEngines(m.system)).then(() => null, err => err.message);
+    if (!gate) { dispatch(m); return; }
+    gate = gate.then(failed => {
+      if (m.type === 'init' && failed) { run = null; post({ type: 'failed', error: failed }); return failed; }
+      dispatch(m);
+      return null;
+    });
   };
   if (port.addEventListener) { port.addEventListener('message', onMessage); port.start?.(); } else port.onmessage = onMessage;
 }

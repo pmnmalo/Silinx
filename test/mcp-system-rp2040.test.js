@@ -1,0 +1,58 @@
+// The MCP server with a System's RP2040 node (#5494, #2674: as the System editor and Simulate System): edit_system adds a
+// Raspberry Pi Pico (MicroPython, its UARTs), links its UART0 to a terminal and gives it its program, a .py; check_system
+// describes and checks it (its ports at 3.3 V); simulate runs the program with the terminal typing to it: each wire's
+// bytes, its REPL's console as a terminal of its own; with no program, said. The firmware's files from the tests' shared
+// folder (SILINX_RP2040_CACHE: downloaded once).
+import { test, before, after } from 'node:test';
+import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
+import { scratchEnv } from './server-helpers.js';
+import { unlabelled } from './mcp-label.js';
+
+process.env.SILINX_RP2040_CACHE ??= path.join(os.tmpdir(), 'silinx-rp2040');
+let tmp;
+before(async () => { tmp = await scratchEnv('silinx-mcp-system-rp2040-'); });
+after(() => fs.rmSync(tmp, { recursive: true, force: true }));
+
+const { handle } = await import('../server/mcp.js');
+let id = 0;
+async function call(name, args = {}) {
+  const r = (await handle({ jsonrpc: '2.0', id: ++id, method: 'tools/call', params: { name, arguments: args } })).result;
+  return { text: r.content[0].text, data: unlabelled(r.structuredContent), isError: r.isError };
+}
+const ok = async (name, args) => { const r = await call(name, args); assert.equal(r.isError, false, r.text); return r; };
+const SYS = 'uart_avr.sys.json';
+// (MicroPython boots in about 0.3 s of the System's time: what the terminal types before is lost, as on the board)
+const PY = 'from machine import UART, Pin\nu = UART(0, 9600, tx=Pin(0), rx=Pin(1))\nu.write(b"HI")\nprint("ready")\n';
+
+test('#5494 edit_system adds a Pico linked to a terminal; check_system describes it, its ports at 3.3 V; simulate runs its .py', async () => {
+  await ok('new_project_from_example', { name: 'p', example: 'uart-avr' });
+  await ok('write_file', { project: 'p', path: SYS, text: JSON.stringify({ format: 'silinx-system', version: 2, name: 'pico_echo', nodes: [], links: [] }, null, 2) });
+  await ok('write_file', { project: 'p', path: 'pico/main.py', text: PY });
+  const e = await ok('edit_system', { project: 'p', file: SYS, edits: [
+    { action: 'add_node', fields: { kind: 'mcu', id: 'pico', board: 'pico' } },
+    { action: 'change_node', node: 'pico', fields: { firmware: 'pico/main.py' } },
+    { action: 'add_node', fields: { kind: 'terminal', id: 'pc', x: 300 } },
+    { action: 'add_link', fields: { id: 'usb', a: 'pico.UART0', b: 'pc.serial' } },
+  ] });
+  assert.deepEqual(e.text.split('\n'), ['add_node pico', 'change_node pico', 'add_node pc', 'add_link usb', `Process "Check System" of ${SYS} completed successfully.`]);
+  const c = await ok('check_system', { project: 'p', file: SYS });
+  assert.deepEqual(c.text.split('\n'), ['System pico_echo: 2 nodes, 1 link', 'node pico: Raspberry Pi Pico, program pico/main.py, in MicroPython', '  UART0: UART 9600 baud 8N1, TX GP0, RX GP1', '  UART1: UART 9600 baud 8N1, TX GP4, RX GP5',
+    'node pc: Serial terminal', '  serial: UART 9600 baud 8N1', 'link usb: UART pico.UART0 ↔ pc.serial',
+    'usb TX: pico GP0 → pc serial.rx', 'usb TX: pc serial.tx → pico GP1', `Process "Check System" of ${SYS} completed successfully.`]);
+  assert.deepEqual([c.data.errors, c.data.warnings], [[], []]);
+  assert.deepEqual(c.data.ports.pico.slice(0, 2), [{ name: 'GP0', dir: 'out', kind: 'pin', volts: 3.3, width: 1, protocol: null, role: null }, { name: 'GP1', dir: 'in', kind: 'pin', volts: 3.3, width: 1, protocol: null, role: null }]);
+  // simulate: the program's bytes on the terminal, the terminal's on the wire; the REPL's console
+  const s = await ok('simulate', { project: 'p', top: SYS, time_ns: 800e6, type: { pc: 'hi' } });
+  assert.deepEqual([s.data.time, s.data.warnings, s.data.errors], ['800 ms', [], []]);
+  assert.deepEqual(s.data.terminals, { pc: 'HI', 'pico.repl': 'ready\r\n>>> ' });
+  assert.deepEqual(s.data.traffic.map(t => [t.wire, t.from, t.to, String.fromCharCode(...t.bytes.map(b => b.byte))]), [['usb_pico', 'pico.GP0', 'pc.rx', 'HI'], ['usb_pc', 'pc.tx', 'pico.GP1', 'hi']]);
+});
+
+test('#5494 a Pico with no program: said by simulate', async () => {
+  await ok('edit_system', { project: 'p', file: SYS, edits: [{ action: 'change_node', node: 'pico', fields: { firmware: null } }] });
+  const none = await call('simulate', { project: 'p', top: SYS, time_ns: 1e6 });
+  assert.deepEqual([none.isError, none.text], [true, `simulate: ${SYS}: pico: no program: a .py of the project (MicroPython)`]);
+});

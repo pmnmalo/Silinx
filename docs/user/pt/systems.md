@@ -20,7 +20,9 @@ ligados por UART e GPIO.
   terminal. Selecionar um nó mostra os seus processos (Ver/Editar Sistema; num nó FPGA, Verificar Sintaxe, o esquemático
   RTL, e Sintetizar, Implementar e Gerar o Ficheiro de Programação na sua própria placa, em `build/nodes/<id>/`, #5446);
   a linha do Sistema tem Ver/Editar, Verificar, Emular e Implementar o Sistema (todos os nós FPGA). Abre no
-  **editor de Sistema**: as ferramentas põem um nó FPGA, um Arduino Uno ou Nano, um terminal série; **Ligação** junta
+  **editor de Sistema**: as ferramentas põem um nó FPGA, um Arduino Uno ou Nano, uma Explorer 16/32, um Raspberry Pi
+  **Pico** (em MicroPython: o seu programa um `.py` da sua pasta, corrido no firmware do próprio MicroPython, que o servidor
+  local descarrega uma vez; o que imprime aparece num terminal próprio, o seu REPL), um terminal série; **Ligação** junta
   duas interfaces do mesmo tipo (um clique numa, depois na outra); o painel de Propriedades indica o módulo, a placa e
   os pinos de um nó, a placa e o firmware de um microcontrolador (um Intel HEX, `.hex`, ou o `.elf` do avr-gcc; um
   `.elf` na edição do browser precisa de uma pasta de trabalho, o seu armazenamento só guarda ficheiros de texto), os

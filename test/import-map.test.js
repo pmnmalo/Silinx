@@ -57,6 +57,10 @@ test('the import map of web/index.html: every target installed; the editor\'s wh
   const avr = dynamic(fs.readFileSync(path.join(ROOT, 'core/system-sim-avr.js'), 'utf8'));
   assert.deepEqual(avr, ['avr8js']);
   todo.push(...avr);
+  // (the System's RP2040, #5494: rp2040js, its ES modules importing each other by their files)
+  const rp = dynamic(fs.readFileSync(path.join(ROOT, 'core/system-sim-rp2040.js'), 'utf8'));
+  assert.deepEqual(rp, ['rp2040js']);
+  todo.push(...rp);
   const relative = src => [...src.matchAll(/(?:^|[\s;}])(?:import|export)\s*(?:[\w*{}\s,$]+\sfrom\s*)?['"](\.\.?\/[^'"]+)['"]/g)].map(m => m[1]);
   const files = new Set();
   // (a module's relative imports: files of its own package, which the server serves whole; lib0's)
@@ -82,7 +86,7 @@ test('the import map of web/index.html: every target installed; the editor\'s wh
     // y-codemirror.next's, whose ES modules are its src/ files, and Trystero's core's: each package served whole, bundled in
     // the standalone)
     const src = fs.readFileSync(fileOf(map[spec]), 'utf8');
-    if (!spec.startsWith('lib0/') && spec !== 'y-codemirror.next' && spec !== '@trystero-p2p/core' && spec !== 'avr8js') assert.deepEqual(relative(src), [], `${spec}: no relative import`);
+    if (!spec.startsWith('lib0/') && spec !== 'y-codemirror.next' && spec !== '@trystero-p2p/core' && spec !== 'avr8js' && spec !== 'rp2040js') assert.deepEqual(relative(src), [], `${spec}: no relative import`);
     load(fileOf(map[spec]), spec);
   }
   assert.deepEqual(missing, []);

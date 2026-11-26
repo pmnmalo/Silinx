@@ -12,7 +12,7 @@
 //   v.restart(); v.runFor(ps); v.pause(); v.state(); v.destroy();
 import { h } from './ui.js';
 import { t as tr } from './i18n.js';
-import { bytesText, runTimeText } from '/core/system-run.js';
+import { bytesText, runTimeText, termCaption } from '/core/system-run.js';
 import { usText, byteText } from '/core/system-decode.js';
 
 const SLICE = 5e9;        // a slice of the run between two frames (ps): 5 ms
@@ -59,7 +59,7 @@ export function mountSystemSim(host, opts) {
       const out = h('pre', { class: 'sys-term-out', 'data-term': id });
       const input = h('input', { type: 'text', class: 'asm-input sys-term-in', placeholder: 'Type a line, Enter sends it', spellcheck: 'false' });
       input.addEventListener('keydown', e => { if (e.key !== 'Enter') return; ready.send(id, [...new TextEncoder().encode(`${input.value}\n`)]); input.value = ''; if (!timer) runFor(ms() * 1e9); });
-      return h('section', { class: 'sys-term' }, h('div', { class: 'sys-term-cap' }, `${id} · ${u?.baud ?? 9600} ${u?.frame ?? '8N1'}`), out, input);
+      return h('section', { class: 'sys-term' }, h('div', { class: 'sys-term-cap' }, termCaption(id, u)), out, input);
     }));
     refresh();
   }

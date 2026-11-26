@@ -86,6 +86,11 @@ const PORTED = [
   // the Gowin's bitstream (#2303), in silinx-fpga too; its chip databases are read from YoWASP's package, not shipped
   { name: 'apicula', version: '0.32', pin: 'tag', ported: true, license: 'MIT', url: 'https://github.com/YosysHQ/apicula', fpga: true,
     note: 'packages/silinx-fpga/src/fpga/gowin/ (the Gowin\'s .fs of nextpnr-himbaechel-gowin\'s routed netlist) is a JavaScript port of its gowin_pack and of the parts of its chipdb, bslib and attrids that gowin_pack uses; the chip databases it reads are Apicula\'s, in @yowasp/nextpnr-himbaechel-gowin, not shipped by Silinx.' },
+  // a Pico's firmware (#5494): not shipped, downloaded once by the local server (server/rp2040-firmware.js)
+  { name: 'micropython', version: 'v1.24.1', ported: true, license: 'MIT', url: 'https://github.com/micropython/micropython',
+    note: 'Not in silinx-<version>.zip: the local server downloads its firmware for the Raspberry Pi Pico (RPI_PICO-20241129-v1.24.1.uf2) from micropython.org on its first use, checks its SHA-256 and keeps it in ~/.silinx/rp2040/; a System\'s Pico node runs it on rp2040js (core/system-sim-rp2040.js). The firmware also holds the Pico SDK (BSD-3-Clause) and TinyUSB (MIT), as its LICENSE says.' },
+  { name: 'pico-bootrom-rp2040', version: 'b1', ported: true, license: 'BSD-3-Clause AND GPL-2.0-only', url: 'https://github.com/raspberrypi/pico-bootrom-rp2040',
+    note: 'Not in silinx-<version>.zip: the local server downloads the RP2040\'s bootrom (revision B1, as rp2040js\'s demo/bootrom.ts has it at commit f9becba) on its first use, checks its SHA-256 and keeps it in ~/.silinx/rp2040/, to run MicroPython on rp2040js. Its float library, mufplib, is Mark Owen\'s: used under the GPL-2.0 he also gives it, as a separate program the emulator runs, not combined with Silinx\'s code.' },
 ];
 // The ported versions followed by the monthly Pins workflow (scripts/check-pins.mjs, #5649): `pin`, a commit or a tag of
 // its repository (light8080's commit is the design corpus's, the SparkFun libraries' tag the KiCad catalogue's)
