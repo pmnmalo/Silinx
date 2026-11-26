@@ -192,7 +192,7 @@ export const setPartProps = (m, id, props = {}) => edit(m, (c) => {
   if (!p) return `no part ${id} in the circuit`;
   const d = partDef(p.type);
   const levels = (d?.inputs || []).filter((x) => x.kind === 'level').length;
-  const has = ['label', ...(d?.kind === 'output' && !d.kicad ? ['color'] : []), ...(levels ? ['on'] : []), ...(d?.type === 'clock' ? ['hz'] : []), ...(d?.kind === 'sensor' ? ['temp'] : []), ...(d?.sense || []).map((s) => s.prop), ...(d?.values || []).map((s) => s.prop), ...(d?.type === 'oscilloscope' ? SCOPE_PROPS : []), ...(d?.kind === 'pir' ? ['hold', 'retrigger'] : [])];
+  const has = ['label', ...(d?.kind === 'output' && !d.kicad ? ['color'] : []), ...(levels ? ['on'] : []), ...(d?.type === 'clock' ? ['hz'] : []), ...(d?.kind === 'sensor' ? ['temp'] : []), ...(d?.sense || []).map((s) => s.prop), ...(d?.values || []).map((s) => s.prop), ...(d?.choices || []).map((s) => s.prop), ...(d?.type === 'oscilloscope' ? SCOPE_PROPS : []), ...(d?.kind === 'pir' ? ['hold', 'retrigger'] : [])];
   for (const [k, v] of Object.entries(props)) {
     const named = d?.inputs || d?.lamps || d?.kind === 'probe';   // (a probe's label: its row's name in the waveforms)
     if (!has.includes(k) || (k === 'label' && !named)) return `${p.id} (${p.type}) has no property '${k}' (${has.filter((x) => x !== 'label' || named).join(', ') || 'none'})`;
@@ -206,6 +206,10 @@ export const setPartProps = (m, id, props = {}) => edit(m, (c) => {
       const s = d.values.find((x) => x.prop === k), n = parseSi(v);
       if (!Number.isFinite(n) || n < s.min || n > s.max) return `${k}: ${s.label.replace(/ \(.*\)$/, '').toLowerCase()} from ${formatSi(s.min, s.unit)} to ${formatSi(s.max, s.unit)} (a number, or as 4.7k, 100n)`;
       p[k] = sig3(n);
+    } else if (d?.choices?.some((c) => c.prop === k)) {   // (a choice, #5384: a generator's wave)
+      const c = d.choices.find((x) => x.prop === k);
+      if (!c.options.includes(v)) return `${k}: ${c.options.join(', ')}`;
+      p[k] = v;
     } else if (d?.type === 'oscilloscope' && SCOPE_PROPS.includes(k)) {   // (an oscilloscope's settings, #5383)
       const e = scopeSettingError(k, v);
       if (e) return e;

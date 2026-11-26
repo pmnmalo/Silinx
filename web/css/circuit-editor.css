@@ -348,3 +348,11 @@ html[data-theme="dark"] .circuit-editor .circ-sim-badge { color: var(--m-success
 .circuit-editor .circ-scope-meas { font: 8px var(--asm-mono, monospace); fill: #d9dde3; pointer-events: none; }
 .circuit-editor .circ-scope-meas.circ-scope-ch1 { fill: #ffd60a; } .circuit-editor .circ-scope-meas.circ-scope-ch2 { fill: #3ad6ff; }
 .circuit-editor .circ-scope-wait { font: 11px Arial, sans-serif; fill: #8fb8a0; pointer-events: none; }
+/* a function generator, the Pmod DA2 and AD1 (#5384, web/js/circuit-draw-bench.js) */
+.circuit-editor .circ-bench-case { fill: #d9dde3; stroke: #6b7280; }
+.circuit-editor .circ-bench-wave { fill: none; stroke: #1d4f9a; stroke-width: 1.6; }
+.circuit-editor .circ-bench-text { font: 9px var(--asm-mono, monospace); fill: #1c1c1e; pointer-events: none; }
+.circuit-editor .circ-pmod-board { fill: var(--circ-pcb-green); stroke: #0f3a1c; }
+.circuit-editor .circ-pmod-header { fill: var(--circ-plastic); }
+.circuit-editor .circ-pmod-name { font: bold 10px Arial, sans-serif; fill: var(--circ-silk); pointer-events: none; }
+.circuit-editor .circ-pmod-chip { font: 8px var(--asm-mono, monospace); fill: var(--circ-silk); pointer-events: none; }

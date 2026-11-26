@@ -31,7 +31,7 @@ uiTest('#5382 Circuit editor: a potentiometer, a resistor, LEDs and a voltmeter 
   await page.waitFor((ed) => document.querySelector(`${ed} .circ-canvas [data-id=VM1] .circ-meter-body`), [ED], { what: 'the voltmeter drawn' });
   await page.eval(() => window.Silinx.active.circuitEditor.fit());
   assert.deepEqual(await page.eval((ed) => [...document.querySelectorAll(`${ed} .circ-lib-part[data-group="Analog"]`)].map((b) => b.dataset.part), ED),
-    ['resistor', 'capacitor', 'potentiometer', 'ldr', 'thermistor', 'diode', 'voltmeter', 'oscilloscope']);
+    ['resistor', 'capacitor', 'potentiometer', 'ldr', 'thermistor', 'diode', 'voltmeter', 'oscilloscope', 'function-generator', 'lm393', 'pmod-da2', 'pmod-ad1']);
   assert.equal(await page.eval((ed) => document.querySelector(`${ed} .circ-canvas [data-id=R1] .circ-label`)?.textContent, ED), 'R1  330 Ω');
   assert.equal(await meter(page), 'V', 'no reading while not trying it');
   await page.click(`${ED} .circ-check`);

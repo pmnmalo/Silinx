@@ -11,6 +11,7 @@
 import { createMna } from './analog-mna.js';
 import { partDef, onStep } from './circuit-parts.js';
 import { partLamps } from './circuit-io.js';
+import { generatorOf, generatorVolts, generatorEdge, GENERATOR_OHMS } from './circuit-analog-devices.js';
 import { OUTPUT_SPEC, INPUT_SPEC, ledModel, LED_LIT, LED_MAX, LED_RATED, DIODE_MODEL, ldrOhms, ntcOhms, readVolts, formatSi } from './circuit-analog-parts.js';
 
 const DT_MIN = 1e-9, DT_MAX = 1e-2, DT_FIRST = 1e-8;   // (s) the time steps while the capacitors move
@@ -32,6 +33,7 @@ export function createCircuitAnalog(m, nets, { byNet }) {
   const lamps = [];      // [{ part, index, d, color }]
   const inner = [];      // the inner nodes' names
   const values = new Map();   // part id → its sensed values now
+  const gens = [], sources = new Map(), watch = [];   // (#5384: the generators; the sources a device sets, '<id>:<k>'; the comparators' inputs)
   for (const p of m.parts) {
     const d = partDef(p.type);
     if (!d) continue;
@@ -48,8 +50,16 @@ export function createCircuitAnalog(m, nets, { byNet }) {
         const led = ledModel(p.color), k = `in:${inner.push(`${p.id}.${x.index}`) - 1}`;
         const dd = { kind: 'D', na: netOf(p.id, x.a), nb: k, is: led.is, n: led.n };
         els.push(dd, { kind: 'R', na: k, nb: netOf(p.id, x.k), ohms: led.rs });
-        lamps.push({ part: p.id, index: x.index, d: dd, vf: led.vf });
+        lamps.push({ part: p.id, index: x.index, d: dd, vf: led.vf, q: 0, qt: 0 });
       }
+    } else if (d.type === 'function-generator') {   // (#5384: its wave through 50 Ω)
+      const e = { kind: 'VR', na: at(1), nb: at(2), volts: 0, ohms: GENERATOR_OHMS, part: p.id };
+      const set = generatorOf(p);
+      els.push(e); gens.push({ e, set }); values.set(p.id, set);
+    } else if (d.type === 'pmod-da2') {   // (#5384: its two outputs, set by its DACs)
+      for (const [k, n] of [[0, 7], [1, 8]]) { const e = { kind: 'VR', na: at(n), nb: at(9), volts: 0, ohms: 1 }; els.push(e); sources.set(`${p.id}:${k}`, e); }
+    } else if (d.comparators) {   // (#5384: its inputs' difference watched, a crossing found within a millivolt)
+      for (const c of d.comparators) watch.push([at(c.plus), at(c.minus)]);
     } else if (d.kind === 'ic' && d.family === 'ttl') {
       // (a 74LS input sources its current: open, it floats high)
       for (const q of d.pins.filter((x) => x.dir === 'in')) els.push({ kind: 'VR', na: at(q.n), nb: null, volts: INPUT_SPEC.ttl.src.volts, ohms: INPUT_SPEC.ttl.src.ohms, input: true });
@@ -80,7 +90,7 @@ export function createCircuitAnalog(m, nets, { byNet }) {
 
   // ---- the nodes: the analog nets' digital nodes (regroup), then the inner ones
   let mna = null, nodeIndex = new Map(), els = [], drv = [], readSpec = new Map(), nodeNetsOf = new Map(), floating = new Set(), unknown = new Set();
-  let tNow = 0, dynamic = false, dtNext = DT_FIRST, lastV = null;
+  let tNow = 0, dynamic = false, dtNext = DT_FIRST, lastV = null, watchNodes = [];
   const warned = new Set(), said = [];
 
   function regroup(nodeOf) {
@@ -112,7 +122,9 @@ export function createCircuitAnalog(m, nets, { byNet }) {
       const rs = list.flatMap((net) => readersOf.get(net) ?? []);
       readSpec.set(k, rs.find((r) => r.schmitt) ?? rs[0] ?? { spec: INPUT_SPEC.default, schmitt: false });
     }
+    watchNodes = watch.map(([a, b]) => [node(a), node(b)].map((i) => (i === -1 ? null : i))).filter(([a, b]) => a != null && b != null && a >= 0 && b >= 0);
     mna = createMna(base + inner.length, els);
+    for (const g of gens) g.e.volts = generatorVolts(g.set, tNow);
     refresh(true);
   }
 
@@ -137,7 +149,7 @@ export function createCircuitAnalog(m, nets, { byNet }) {
     floating = new Set([...nodeIndex.values()].filter((i) => !fed.has(find(i))));
     mna.changed();
     mna.settle();
-    dynamic = els.some((e) => e.kind === 'C');
+    dynamic = els.some((e) => e.kind === 'C') || gens.length > 0;
     dtNext = DT_FIRST;
     lastV = snapshot();
     checkLamps();
@@ -146,21 +158,32 @@ export function createCircuitAnalog(m, nets, { byNet }) {
 
   // the circuit `seconds` on (the drivers as they were), in steps: each aiming at DV_STEP, still once slower than SETTLED
   function integrate(seconds) {
-    let left = seconds, n = 0;
-    while (left > 1e-15 && dynamic && n++ < 5000) {
-      const dt = Math.min(left, dtNext);
+    let left = seconds, n = 0, t = tNow;
+    while (left > 1e-15 && dynamic && n++ < 20000) {
+      let dt = Math.min(left, dtNext);
+      // (a generator's: a square wave's edge ends a step, its level the step's before it; a sine's at the step's end)
+      const edge = Math.min(Infinity, ...gens.map((g) => generatorEdge(g.set, t)));
+      if (edge - t < dt) dt = Math.max(edge - t, 1e-12);
+      for (const g of gens) g.e.volts = generatorVolts(g.set, g.set.wave === 'square' ? t + dt / 2 : t + dt);
       mna.step(dt);
-      left -= dt;
+      left -= dt; t += dt;
+      const jumped = Math.abs(t - edge) < 1e-12;
+      if (jumped) { for (const g of gens) g.e.volts = generatorVolts(g.set, t + 1e-12); mna.changed(); }
+      for (const x of lamps) { x.q += Math.max(0, mna.current(x.d)) * dt; x.qt += dt; }   // (each LED's charge: its mean current, #5384)
       const v = snapshot(), prev = lastV;
       let dv = 0;
       for (let i = 0; i < v.length; i++) dv = Math.max(dv, Math.abs(v[i] - lastV[i]));
       lastV = v;
-      if (dv / dt < SETTLED && dt >= DT_FIRST) dynamic = false;
+      if (dv / dt < SETTLED && dt >= DT_FIRST && !gens.length) dynamic = false;
       // (the next step: twice as long at most, half at least; a step cut short by the time asked for keeps the size)
       const f = Math.min(2, Math.max(0.5, dv ? DV_STEP / dv : 2));
-      dtNext = Math.min(DT_MAX, Math.max(DT_MIN, dt < dtNext ? Math.min(dtNext, dtNext * f) : dt * f, 0), toThreshold(v, prev, dt));
+      // (after a square wave's edge, small steps again)
+      dtNext = jumped ? DT_FIRST : Math.min(DT_MAX, Math.max(DT_MIN, dt < dtNext ? Math.min(dtNext, dtNext * f) : dt * f, 0), toThreshold(v, prev, dt), ...gens.map((g) => (g.set.wave === 'square' ? Infinity : 1 / g.set.hz / 50)));
     }
-    if (left > 1e-15 && dynamic) { mna.dc(); dynamic = false; }   // (a long wait: the circuit settled)
+    // (a long wait: the circuit settled; with a generator, the time it could not follow skipped)
+    if (left > 1e-15 && dynamic && !gens.length) { mna.dc(); dynamic = false; }
+    // (the next wake-up on a square wave's next edge)
+    if (gens.length) dtNext = Math.max(DT_MIN, Math.min(dtNext, Math.min(...gens.map((g) => generatorEdge(g.set, t))) - t));
     checkLamps();
   }
 
@@ -176,6 +199,11 @@ export function createCircuitAnalog(m, nets, { byNet }) {
         const d = (x - v[i]) / slope;
         if (d > 0) t = Math.min(t, Math.max(d / 2, 1e-3 / Math.abs(slope)));
       }
+    }
+    // (a comparator's inputs: the time their difference reaches 0)
+    for (const [i, j] of watchNodes) {
+      const d = v[i] - v[j], slope = (d - (prev[i] - prev[j])) / dt;
+      if (slope && -d / slope > 0) t = Math.min(t, Math.max(-d / slope / 2, 1e-3 / Math.abs(slope)));
     }
     return t;
   }
@@ -214,11 +242,28 @@ export function createCircuitAnalog(m, nets, { byNet }) {
     /** an LED's current (A) */
     lamp: (part, index) => { const x = lamps.find((y) => y.part === part && y.index === index); return x ? Math.max(0, mna.current(x.d)) : null; },
     lit: (i) => i >= LED_LIT,
+    /** an LED's mean current (A) since this was last asked (its own now if no time passed): what the eye sees of a PWM */
+    lampMean(part, index) {
+      const x = lamps.find((y) => y.part === part && y.index === index);
+      if (!x) return null;
+      const i = x.qt > 0 ? x.q / x.qt : Math.max(0, mna.current(x.d));
+      x.q = 0; x.qt = 0;
+      return i;
+    },
     get dynamic() { return dynamic; },
     /** the next step (ns) while the capacitors move */
     get dtNs() { return Math.max(1, Math.round(dtNext * 1e9)); },
     warnings: () => said,
-    senses: (id, prop) => values.has(id) && prop in values.get(id) && prop !== 'total',
+    /** a device's output set (#5384: a DAC's, '<id>:<k>'): its volts through its ohms (Infinity: off) */
+    setSource(key, { volts, ohms }) {
+      const e = sources.get(key);
+      if (!e || (e.volts === volts && e.ohms === ohms)) return;
+      e.volts = volts; e.ohms = ohms;
+      refresh(true);
+    },
+    /** a generator's settings now (#5384) */
+    generator: (id) => gens.find((g) => g.e.part === id)?.set ?? null,
+    senses: (id, prop) => values.has(id) && prop in values.get(id) && !['total', 'wave', 'hz', 'vhigh', 'vlow'].includes(prop),
     sensed: (id, prop) => values.get(id)[prop],
     setSensed(id, prop, v) {
       values.get(id)[prop] = v;
@@ -270,6 +315,8 @@ export function analogViews(m, an, views, { nets, netOfPin, lit, level, nodeDriv
     meters: () => Object.fromEntries(meters.map((p) => [p.id, volts(netOfPin(p.id, 1)) - volts(netOfPin(p.id, 2))])),
     /** each LED's current (mA), an analog circuit's: a part's, or its list (a display's, a bar's) */
     lampCurrents: () => (an ? Object.fromEntries(lit.map((p) => { const s = partLamps(p).map((x) => an.lamp(x.part, x.index) * 1000); return [p.id, s.length === 1 ? s[0] : s]; })) : {}),
+    /** each LED's mean current (mA) since last asked (#5384: a PWM's dimming, as the eye sees it) */
+    lampMeans: () => (an ? Object.fromEntries(lit.map((p) => { const s = partLamps(p).map((x) => an.lampMean(x.part, x.index) * 1000); return [p.id, s.length === 1 ? s[0] : s]; })) : {}),
     /** a part's resistance as set now (an LDR's, a thermistor's, a potentiometer's two sides), said */
     ohmsText: (id) => an?.ohmsText(id) ?? '',
   };

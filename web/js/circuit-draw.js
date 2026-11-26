@@ -23,6 +23,7 @@ import { drawPir } from './circuit-draw-pir.js';
 import { drawDht } from './circuit-draw-dht.js';
 import { drawAnalog } from './circuit-draw-analog.js';
 import { drawScope } from './circuit-draw-scope.js';
+import { drawBench } from './circuit-draw-bench.js';
 import { icInside, stripsSvg } from './circuit-draw-inside.js';
 import { wirePaths } from '/core/circuit-wires.js';
 import { wireHandles } from '/core/circuit-wire-edit.js';
@@ -200,7 +201,8 @@ function partSvg(turned, selected, { levels, leds, lcds = null, oleds = null, se
   const box = { x0: Math.min(...xs), x1: Math.max(...xs), y0: Math.min(...ys), y1: Math.max(...ys) };
   if (drawPart2(g, p, box, { on: inputs ? inputs[p.id] : p.on, lamps: leds?.[p.id], level: levels?.(p.id, 1) })) { /* (phase 2's parts: circuit-draw-parts.js) */ }
   else if (drawAnalog(g, p, box, analog)) { /* (the analog parts, #5382: circuit-draw-analog.js) */ }
-  else if (d.kind === 'ic') {
+  else if (drawBench(g, p, box, analog)) { /* (a generator, the Pmods, #5384: circuit-draw-bench.js) */ }
+  else if (d.kind === 'ic' || (d.comparators && !inside)) {   // (an LM393 too, #5384)
     g.append(sv('rect', { x: box.x0 - P * 0.4, y: box.y0 + P * 0.35, width: box.x1 - box.x0 + P * 0.8, height: box.y1 - box.y0 - P * 0.7, rx: 2, class: 'circ-ic-body' }));
     // its notch on pin 1's short side, its name and chip
     const p1 = pins[0], p14 = pins[pins.length - 1];
@@ -209,7 +211,7 @@ function partSvg(turned, selected, { levels, leds, lcds = null, oleds = null, se
     g.append(sv('circle', { cx: nx + Math.sign(toward[0]) * P * 0.4, cy: ny + Math.sign(toward[1]) * P * 0.4, r: P * 0.28, class: 'circ-ic-notch' }));
     // (shown inside, #4060: its gates or its pins' names in its body, its name in its tip)
     // (a project's KiCad part, #4281: its own part number)
-    const chip = d.kicad?.value ?? d.chip;
+    const chip = d.kicad?.value ?? d.chip ?? d.marking;   // (an LM393's, #5384)
     if (inside) { g.append(sv('title', {}, `${p.id}  ${chip}`)); icInside(g, d, pins, box, undefined, { hops }); }
     else g.append(sv('text', { x: (box.x0 + box.x1) / 2, y: (box.y0 + box.y1) / 2 + 4, 'text-anchor': 'middle', class: 'circ-ic-text', 'data-no-i18n': 'true' }, `${p.id}  ${chip}`));
   } else if (d.kicad) {
@@ -240,9 +242,10 @@ function partSvg(turned, selected, { levels, leds, lcds = null, oleds = null, se
     // lit in its colour)
     const r = P * 0.85, yb = cy - P * 0.9, yt = yb - P * 1.9, c = p.color || 'red';
     // (on an analog circuit, #5382: as bright as its current, 20 mA full; its current in its tip)
-    const mA = analog?.mA?.[p.id], bright = st === 'on' && Number.isFinite(mA) ? { style: `opacity: ${(0.45 + 0.55 * Math.min(1, mA / 20)).toFixed(2)}` } : {};
+    // (its mean current since the last drawing, #5384: a PWM's dimming as the eye sees it)
+    const mA = analog?.mA?.[p.id], on = Number.isFinite(mA) ? mA >= 0.1 : st === 'on', bright = on && Number.isFinite(mA) ? { style: `opacity: ${(0.45 + 0.55 * Math.min(1, mA / 20)).toFixed(2)}` } : {};
     if (Number.isFinite(mA)) g.append(sv('title', {}, `${p.id}: ${mA.toFixed(1)} mA`));
-    g.append(sv('path', { d: `M${cx - r},${yb}V${yt + r}a${r},${r} 0 0 1 ${2 * r},0V${yb}z`, class: `circ-led circ-led-${c}${st === 'on' ? ' lit' : st === 'x' ? ' unknown' : ''}`, ...bright }),
+    g.append(sv('path', { d: `M${cx - r},${yb}V${yt + r}a${r},${r} 0 0 1 ${2 * r},0V${yb}z`, class: `circ-led circ-led-${c}${on ? ' lit' : st === 'x' ? ' unknown' : ''}`, ...bright }),
       sv('path', { d: `M${box.x0},${box.y0}v${-P * 0.35}l${P * 0.3},${-P * 0.25}V${yb} M${box.x1},${box.y1}V${yb}`, class: 'circ-led-leg' }),
       sv('path', { d: `M${cx - r - P * 0.12},${yb}h${2 * r + P * 0.02}v${P * 0.22}h${-2 * r - P * 0.02}z`, class: `circ-led-rim circ-led-${c}` }),
       sv('path', { d: `M${cx - r * 0.55},${yb - P * 0.2}V${yt + r}a${r * 0.55},${r * 0.55} 0 0 1 ${r * 0.4},${-r * 0.45}`, class: 'circ-led-shine' }),
