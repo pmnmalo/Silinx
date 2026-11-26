@@ -69,7 +69,7 @@ export function circuitNodePins(sys, n, m, { ports = null } = {}) {
 
 /** (Hz) the SCK a circuit node's SPI part is taken to run at when its node gives none (#5384): 50 MHz / 16, its wires'
  *  latency a sixteenth of its period, 20 ns (an SPI link's, core/system-links.js lookahead) */
-export const CIRCUIT_SPI_HZ = 3125000;
+const CIRCUIT_SPI_HZ = 3125000;
 const isSpiPart = (d) => !!d && (d.spi || d.pins.some((q) => /^(SCK|SCLK)$/.test(q.name)));
 
 /**
