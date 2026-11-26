@@ -28,6 +28,11 @@ import { fileURLToPath } from 'node:url';
 const ROOT = path.join(path.dirname(fileURLToPath(import.meta.url)), '..');
 const HLS = path.join(ROOT, 'test', 'hls-corpus');
 export const PART = 'xc7a35tcpg236-1';
+// The Vitis HLS image run by default (scripts/vitis-hls-image: AMD's installer, which a workflow cannot download): reported
+// by the monthly Pins workflow (scripts/check-pins.mjs, #5649)
+const VITIS_IMAGE = 'xilinx/vitis-hls:2025.2';
+export const PINNED = [{ kind: 'reported', name: 'Vitis HLS and Vivado (their Docker image)', current: VITIS_IMAGE,
+  note: 'AMD\'s newest at amd.com (Vitis Unified Software Platform); the image built again (scripts/vitis-hls-image/README.md), the default here and in the scripts that read SILINX_VITIS_IMAGE / SILINX_VIVADO_IMAGE' }];
 
 /** The config Vitis runs a design with: its hls_config.cfg with the part, the Vivado flow's interfaces (ap_ctrl_hs,
  *  ap_vld, ap_memory: Silinx's) and no packaging nor Vivado run (an IP export is slow and not compared). */
@@ -207,7 +212,7 @@ async function main() {
   const { DOCKER_ISOLATION } = await import('../server/ise.js');
   const a = process.argv.slice(2);
   const filter = a.includes('--filter') ? a[a.indexOf('--filter') + 1] : '';
-  const IMAGE = process.env.SILINX_VITIS_IMAGE || 'xilinx/vitis-hls:2025.2';
+  const IMAGE = process.env.SILINX_VITIS_IMAGE || VITIS_IMAGE;
   const part = process.env.SILINX_VITIS_PART || PART;
   // the host: only from the environment or the user's config, never written in a file
   let HOST = process.env.SILINX_ISE_HOST;

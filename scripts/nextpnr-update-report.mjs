@@ -34,6 +34,16 @@ import { qualityRows, postComment, VERSION_SHAPE, githubOutputLines } from './yo
 export const PACKAGES = ['@silinx/nextpnr-himbaechel-spartan3e', '@silinx/nextpnr-himbaechel-spartan6'];
 // the repository whose releases a package may be pinned by (the fork, #2131): a release's tarball, spartan6-vX.Y.Z
 export const FORK = 'pmnmalo/nextpnr-spartan';
+// The Silinx commit the fork's chip databases are built from (SILINX_REF of its spartan3e.yml and spartan6.yml, its branch
+// silinx), followed by the monthly Pins workflow (scripts/check-pins.mjs, #5649): behind when a file they are built from
+// (the devices' graphs, the research scripts that export the timing and the unknown PIPs, the timing's modules, the
+// Spartan-6's bit database) changed on main since
+const chipdbPin = (family, research, ...more) => ({ kind: 'commit', name: `nextpnr-spartan's ${family} chip databases (its SILINX_REF)`,
+  repo: 'pmnmalo/Silinx', branch: 'main', remote: { url: `https://raw.githubusercontent.com/${FORK}/silinx/.github/workflows/${family}.yml`, match: '^  SILINX_REF: ([0-9a-f]{40})' },
+  watch: ['packages/silinx-fpga/devices', `packages/silinx-fpga/research/${research}`, ...more],
+  update: `SILINX_REF in the fork's .github/workflows/${family}.yml, a new release of its package, then a "nextpnr update" pull request here` });
+export const PINNED = [chipdbPin('spartan3e', 'nextpnr-s3e', 'packages/silinx-fpga/src/fpga/timing.js'),
+  chipdbPin('spartan6', 'nextpnr-s6', 'packages/silinx-fpga/src/fpga/s6', 'packages/silinx-fpga/bitdb/s6')];
 const RELEASE = /^https:\/\/github\.com\/pmnmalo\/nextpnr-spartan\/releases\/download\/[a-z0-9]+-v\d+\.\d+\.\d+\/[\w.-]+\.tgz$/;
 export const MARK = '<!-- silinx:nextpnr-update -->';
 // a board of each family's nextpnr, with the device of each and the package that places and routes it: the Spartan-3E's

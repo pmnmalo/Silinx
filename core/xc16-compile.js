@@ -20,6 +20,9 @@ export const XC16_OPT = '-O1';
 export const XC16_HEAP = 512;
 /** The Docker image of XC16 on the ISE machine, built from Microchip's Linux installer (never shipped): its tag XC16's version. */
 export const XC16_IMAGE = 'silinx/xc16:2.10';
+// (reported by the monthly Pins workflow, scripts/check-pins.mjs, #5649: Microchip's installer is not public to a workflow)
+export const PINNED = [{ kind: 'reported', name: 'XC16 (the PIC24 nodes\' compiler, its Docker image)', current: XC16_IMAGE,
+  note: 'Microchip\'s newest XC16 at microchip.com/xc16; the image built again from its installer' }];
 // a node's sources: its C, its headers, its assembly (.s, and .S preprocessed)
 const SOURCE = /\.(c|h|s|S)$/;
 const UNIT = /\.(c|s|S)$/;

@@ -34,10 +34,19 @@ const sha = (t) => createHash('sha256').update(t).digest('hex');
 // imported (null: its own). Their drawings are not kept: KiCad's libraries are CC-BY-SA-4.0, and a collection of their
 // parts, even changed, is ShareAlike (https://www.kicad.org/libraries/license/); only their pads' places, facts.
 const KICAD = 'https://gitlab.com/kicad/libraries';
+const KICAD_TAG = '9.0.0';
 // Arduino's boards that plug into a breadboard (#4394): the KiCad PCM's KiCad Library for Arduino Modules at a tag
 // (CC-BY-SA-4.0, as KiCad's: none of its drawings kept, only its pads' places); its raw files served with CORS
 const ARDUINO = { repo: 'Alarm-Siren/arduino-kicad-library', tag: 'v4.2.0', licence: 'CC-BY-SA-4.0', author: 'Nicholas Parks Young' };
 const ardRaw = (p) => `https://raw.githubusercontent.com/${ARDUINO.repo}/${ARDUINO.tag}/${p}`;
+// The libraries' tags, followed by the monthly Pins workflow (scripts/check-pins.mjs, #5649): KiCad's within its 9 (KiCad
+// 10 splits a library in a folder); a newer one is taken by running this script again
+const UPDATE = 'the tag above, then `node scripts/kicad-catalogue.mjs` and the KiCad catalogue\'s tests (its parts\' pins and drawings looked at)';
+export const PINNED = [
+  { kind: 'tag', name: 'KiCad catalogue: SparkFun\'s KiCad libraries', repo: SPARKFUN.repo, tag: SPARKFUN.tag, update: UPDATE },
+  { kind: 'tag', name: 'KiCad catalogue: the KiCad Library for Arduino Modules', repo: ARDUINO.repo, tag: ARDUINO.tag, update: UPDATE },
+  { kind: 'tag', name: 'KiCad catalogue: KiCad\'s footprints', repo: `${KICAD}/kicad-footprints.git`, tag: KICAD_TAG, series: '9.', update: UPDATE },
+];
 const TO92 = 'Package_TO_SOT_THT:TO-92_Inline_Wide';
 const PICKS = {
   'Device.kicad_sym': { LED: 'LED_THT:LED_D5.0mm', R: 'Resistor_THT:R_Axial_DIN0207_L6.3mm_D2.5mm_P10.16mm_Horizontal', C: 'Capacitor_THT:C_Disc_D5.0mm_W2.5mm_P5.00mm',
@@ -88,18 +97,18 @@ async function main() {
   }
   const kicadFootprints = {};
   for (const [file, picks] of Object.entries(PICKS)) {
-    const url = `${KICAD}/kicad-symbols/-/raw/9.0.0/${file}`, original = await get(url);
+    const url = `${KICAD}/kicad-symbols/-/raw/${KICAD_TAG}/${file}`, original = await get(url);
     const set = Object.fromEntries(Object.entries(picks).filter(([, f]) => f).map(([s, f]) => [s, { 'Silinx.Footprint': f }]));
     const syms = readKicadSymbols(original).symbols;
     const footprints = {};
     for (const s of Object.keys(picks)) {
       const name = picks[s] ?? syms.find((x) => x.name === s)?.properties.Footprint;
       const [lib, fp] = name.split(':'), rel = `${lib}.pretty/${fp}.kicad_mod`;
-      footprints[`parts/${rel}`] ??= { text: await get(`${KICAD}/kicad-footprints/-/raw/9.0.0/${rel}`), url: `${KICAD}/kicad-footprints/-/raw/9.0.0/${rel}` };
+      footprints[`parts/${rel}`] ??= { text: await get(`${KICAD}/kicad-footprints/-/raw/${KICAD_TAG}/${rel}`), url: `${KICAD}/kicad-footprints/-/raw/${KICAD_TAG}/${rel}` };
     }
     Object.assign(kicadFootprints, footprints);
     const base = file.replace(/\.kicad_sym$/, '');
-    add(`kicad-${base.toLowerCase().replace(/_/g, '-')}`, { name: `KiCad ${base} symbols`, version: '9.0.0', licence: 'CC-BY-SA-4.0', author: 'KiCad Libraries team', url, file },
+    add(`kicad-${base.toLowerCase().replace(/_/g, '-')}`, { name: `KiCad ${base} symbols`, version: KICAD_TAG, licence: 'CC-BY-SA-4.0', author: 'KiCad Libraries team', url, file },
       setSymbolProperties(original, set), footprints, { only: Object.keys(picks), set, original });
   }
   const files = JSON.parse(await get(`https://api.github.com/repos/${SPARKFUN.repo}/contents/symbols?ref=${SPARKFUN.tag}`)).map((f) => f.name).filter((n) => /^SparkFun-[\w-]+\.kicad_sym$/.test(n));

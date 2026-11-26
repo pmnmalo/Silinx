@@ -124,7 +124,10 @@ the code and the lessons learnt.
   **"nextpnr update" pull request** (a nextpnr package: Dependabot's, or a release of the fork pinned by hand) is
   reviewed the same way, on the comparison `nextpnr-update.yml` writes (the examples' size, period and run time on a
   board of each family with the new nextpnr and the base's), then `npm run check:open-flow` after merging. The
-  sources pinned outside npm are checked monthly (`pins.yml`: one issue lists what is behind).
+  sources pinned outside npm are checked monthly (`pins.yml`: one issue lists what is behind). A new source pinned outside
+  npm (a repository's tag or commit, a download's SHA-256, a tool's image) is declared next to the code that uses it, a
+  module's `export const PINNED` or a file's `# pinned: {…}` comment (`scripts/check-pins.mjs`'s header), so `pins.yml`
+  follows it (#5649).
 - **`main` is protected** (repository rulesets): no deletion and no force push, for anyone; a linear
   history, rebase merging only; a pull request's `related-tests` check and a code owner's approving review
   (`.github/CODEOWNERS`, #1888) required to merge, which the admin bypasses. Only the admin

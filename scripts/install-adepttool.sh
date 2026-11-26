@@ -7,6 +7,7 @@ set -euo pipefail
 ROOT="${SILINX_CONFIG_DIR:-$HOME/.silinx}/adepttool"
 REPO="https://github.com/mwkmwkmwk/adepttool.git"
 # the upstream commit installed (checked: the Silinx patch applies to it); never its moving HEAD
+# pinned: {"kind": "commit", "name": "adepttool", "repo": "mwkmwkmwk/adepttool", "match": "^COMMIT=\"(?<commit>[0-9a-f]{40})\"", "update": "COMMIT here, the Silinx patch applied to it, Program on a Basys2 with adepttool"}
 COMMIT="99ff19414bb458ea322a1eb99e74fd9d8a22c38b"
 
 PY=""
