@@ -6,6 +6,7 @@
 import { h } from './ui.js';
 import { BOARDS } from '/core/devices.js';
 import { MCU_BOARDS, mcuBoard } from '/core/system-doc.js';
+import { RUNTIME_NAMES } from '/core/rp2040-firmware.js';
 import { BAUDS } from '/core/uart.js';
 import { readUsbId, usbIdText } from '/core/usb-id.js';
 import { changeNode, changeInterface, addInterface, removeInterface, changeLink, NODE_KIND_NAMES } from '/core/system-edit.js';
@@ -64,12 +65,14 @@ export function mountSystemSide(ctx) {
         btn('+ SPI', 'Add an SPI bus, the peripheral: its SCK, MOSI, MISO and SS ports', () => take(addInterface(M(), n.id, { kind: 'spi', ...spiPorts(n) }), 'iface'), 'asm-small sys-add-spi'),
         btn('+ I²C', 'Add an I²C bus, the peripheral: its SCL port and its SDA, an inout port', () => take(addInterface(M(), n.id, { kind: 'i2c', ...i2cPorts(n) }), 'iface'), 'asm-small sys-add-i2c')));
     } else if (n.kind === 'mcu') {
-      const arch = mcuBoard(n.board)?.arch, pic = arch === 'pic24', py = arch === 'rp2040';
+      const b = mcuBoard(n.board), arch = b?.arch, pic = arch === 'pic24', py = arch === 'rp2040', cp = n.runtime === 'circuitpython';
       // (its folder's, #5488; a PIC24's .hex only, #5484; a Pico's program, its .py, #5494)
       const fw = (opts.firmwares?.(n.id) || []).filter(f => (py ? /\.py$/i.test(f) : pic ? /\.hex$/i.test(f) : /\.(hex|elf)$/i.test(f)));
       out.push(field('Board', choose(n.board, MCU_BOARDS.map(b => [b.id, b.name]), v => take(changeNode(M(), n.id, { board: v }), 'node'), 'sys-board')),
         ...usbFields(n),
-        field(py ? 'Program (.py)' : 'Firmware', choose(n.firmware || '', [['', '(none)'], ...[...new Set([...fw, ...(n.firmware ? [n.firmware] : [])])].map(f => [f, f])], v => take(changeNode(M(), n.id, { firmware: v }), 'node'), 'sys-firmware'), py ? 'a .py of the project, run by MicroPython' : pic ? 'a .hex of the project (XC16\'s)' : 'a .hex or an .elf of the project'),
+        // (a Pico's Python firmware, #5697: MicroPython or CircuitPython)
+        ...(b?.runtimes ? [field('Firmware', choose(n.runtime || b.runtimes[0], b.runtimes.map(r => [r, RUNTIME_NAMES[r]]), v => take(changeNode(M(), n.id, { runtime: v }), 'node'), 'sys-runtime'), 'the Python firmware the Pico runs')] : []),
+        field(py ? 'Program (.py)' : 'Firmware', choose(n.firmware || '', [['', '(none)'], ...[...new Set([...fw, ...(n.firmware ? [n.firmware] : [])])].map(f => [f, f])], v => take(changeNode(M(), n.id, { firmware: v }), 'node'), 'sys-firmware'), py ? (cp ? 'a .py of the project, run by CircuitPython as its code.py' : 'a .py of the project, run by MicroPython') : pic ? 'a .hex of the project (XC16\'s)' : 'a .hex or an .elf of the project'),
         // (the Explorer 16/32's SPI and I²C links: #5484's next part)
         h('div', { class: 'asm-row' }, btn('+ GPIO', 'Add GPIO wires: the board\'s pins and their direction', () => take(addInterface(M(), n.id, { kind: 'gpio' }), 'iface'), 'asm-small sys-add-gpio'),
           ...(pic || py ? [] : [btn('+ SPI', 'Add the board\'s SPI bus, the master: SCK D13, MOSI D11, MISO D12, SS D10', () => take(addInterface(M(), n.id, { kind: 'spi' }), 'iface'), 'asm-small sys-add-spi'),

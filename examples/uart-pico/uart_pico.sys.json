@@ -1,0 +1,54 @@
+{
+  "format": "silinx-system",
+  "version": 2,
+  "name": "uart_pico",
+  "nodes": [
+    {
+      "id": "pico",
+      "kind": "mcu",
+      "board": "pico",
+      "firmware": "pico/code.py",
+      "runtime": "circuitpython",
+      "lang": "micropython",
+      "interfaces": [
+        {
+          "name": "UART0",
+          "kind": "uart",
+          "baud": 9600,
+          "frame": "8N1"
+        }
+      ],
+      "x": 0,
+      "y": 0
+    },
+    {
+      "id": "fpga",
+      "kind": "fpga",
+      "module": "uart",
+      "board": "basys2",
+      "variant": "250",
+      "constraints": "fpga/uart.ucf",
+      "lang": "vhdl",
+      "interfaces": [
+        {
+          "name": "uart",
+          "kind": "uart",
+          "tx": "tx",
+          "rx": "rx",
+          "baud": 9600,
+          "frame": "8N1"
+        }
+      ],
+      "x": 320,
+      "y": 0
+    }
+  ],
+  "links": [
+    {
+      "id": "serial",
+      "kind": "uart",
+      "a": "pico.UART0",
+      "b": "fpga.uart"
+    }
+  ]
+}

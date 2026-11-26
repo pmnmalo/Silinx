@@ -22,7 +22,10 @@ ligados por UART e GPIO.
   a linha do Sistema tem Ver/Editar, Verificar, Emular e Implementar o Sistema (todos os nós FPGA). Abre no
   **editor de Sistema**: as ferramentas põem um nó FPGA, um Arduino Uno ou Nano, uma Explorer 16/32, um Raspberry Pi
   **Pico** (em MicroPython: o seu programa um `.py` da sua pasta, corrido no firmware do próprio MicroPython, que o servidor
-  local descarrega uma vez; o que imprime aparece num terminal próprio, o seu REPL), um terminal série; **Ligação** junta
+  local descarrega uma vez; o que imprime aparece num terminal próprio, o seu REPL; ou em CircuitPython, o Programa
+  (firmware) das suas Propriedades: o seu programa o `code.py` da sua unidade CIRCUITPY, com os outros ficheiros da sua
+  pasta, como na placa; Programar o Nó copia-os para a unidade CIRCUITPY de um Pico real; o exemplo **uart-pico**), um
+  terminal série; **Ligação** junta
   duas interfaces do mesmo tipo (um clique numa, depois na outra); o painel de Propriedades indica o módulo, a placa e
   os pinos de um nó, a placa e o firmware de um microcontrolador (um Intel HEX, `.hex`, ou o `.elf` do avr-gcc; um
   `.elf` na edição do browser precisa de uma pasta de trabalho, o seu armazenamento só guarda ficheiros de texto), os

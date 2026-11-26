@@ -63,7 +63,7 @@ function endOf(sys, end) {
 }
 
 // what a microcontroller node with no firmware lacks, by its board's engine
-const FIRMWARE_OF = { pic24: 'firmware: a .hex of the project (XC16\'s)', rp2040: 'program: a .py of the project (MicroPython)' };
+const FIRMWARE_OF = { pic24: 'firmware: a .hex of the project (XC16\'s)', rp2040: 'program: a .py of the project (MicroPython or CircuitPython)' };
 
 /**
  * What to simulate: { fpga: [{ id, module, clock, pins }] (each FPGA node: its module, its clock ({ port, period, hz }),
@@ -161,9 +161,12 @@ export function buildSystem(sys, plan, { fpga = {}, firmware = {} } = {}) {
       sim.addNode(n.id, new CompiledNode({ ...m, period: p.clock.period }));
     } else if (n.kind === 'mcu') {
       // (an Arduino's AVR, avr8js's; the Explorer 16/32's PIC24, silinx-pic24's behind the node contract, #5484; a Pico's
-      // RP2040, rp2040js's on MicroPython, its REPL a terminal of its own, `<id>.repl`, #5494)
+      // RP2040, rp2040js's on MicroPython, its REPL a terminal of its own, `<id>.repl`, #5494; or on CircuitPython, its
+      // program code.py on its drive with its folder's other files, #5697)
       const arch = mcuBoard(n.board)?.arch;
-      const a = sim.addNode(n.id, arch === 'pic24' ? pic24Contract({ board: n.board, firmware: firmware[n.id] }) : arch === 'rp2040' ? rp2040Contract({ board: n.board, program: firmware[n.id] }) : new AvrNode({ board: n.board, firmware: firmware[n.id] }));
+      const a = sim.addNode(n.id, arch === 'pic24' ? pic24Contract({ board: n.board, firmware: firmware[n.id] })
+        : arch === 'rp2040' ? rp2040Contract({ board: n.board, program: firmware[n.id], runtime: n.runtime, files: firmware[n.id]?.files })
+          : new AvrNode({ board: n.board, firmware: firmware[n.id] }));
       if (arch === 'rp2040') terminals.set(`${n.id}.repl`, replOf(a));
     }
     else if (n.kind === 'circuit') {

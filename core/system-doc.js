@@ -4,14 +4,15 @@
 //
 //   { format: 'silinx-system', version: 1, name,
 //     nodes: [ { id, kind: 'fpga', module, board, variant?, constraints?: <its constraints file, in its folder>, lang, interfaces, x, y }
-//              { id, kind: 'mcu', board: 'arduino-uno' | 'arduino-nano' | 'explorer-1632' | 'pico', firmware: <a .hex / .elf of the project; a Pico's .py>, lang, usb, interfaces, x, y }
+//              { id, kind: 'mcu', board: 'arduino-uno' | 'arduino-nano' | 'explorer-1632' | 'pico', firmware: <a .hex / .elf of the project; a Pico's .py>, runtime?: 'circuitpython', lang, usb, interfaces, x, y }
 //              { id, kind: 'terminal', interfaces, x, y }
 //              { id, kind: 'circuit', circuit: <a .circ.json of the project>, interfaces: [], x, y } ],
 //     links: [ { id, kind: 'uart' | 'gpio' | 'spi' | 'i2c', a: '<node>.<interface>', b: '<node>.<interface>' } ] }
 //
 // Each node's files live in its folder, `<id>/` (#5488, core/system-layout.js): its firmware, its circuit, an FPGA node's
 // module's sources; the edits refuse a file outside it. A node's `lang` is its base language (#5488, core/system-layout.js: VHDL or Verilog for an FPGA or a design node; C,
-// C++ or MicroPython for a microcontroller), written for the kinds that have one, its kind's default when not given.
+// C++ or MicroPython for a microcontroller), written for the kinds that have one, its kind's default when not given. A
+// Pico's `runtime` is its Python firmware (#5697): 'circuitpython', or none for MicroPython (its board's first).
 // An interface is declared once, on its node: a UART { name, kind: 'uart', tx, rx, baud, frame } (an FPGA node's tx and
 // rx its module's ports; a microcontroller's its board's UART, named as the board's, its pins the board's), GPIO wires
 // { name, kind: 'gpio', pins: [...], dir: 'in' | 'out' } (an FPGA node's pins its module's ports, `led<0>` a bus's bit;
@@ -29,6 +30,7 @@
 import { isName } from './ident.js';
 import { nodeLangs, baseLang, langError } from './system-layout.js';
 import { normalUsb } from './usb-id.js';
+import { RP2040_RUNTIMES } from './rp2040-firmware.js';
 
 export const SYSTEM_FORMAT = 'silinx-system';
 // (version 2, #5488: a node a folder of the project, its files in `<id>/`; version 1's projects, their files in src/ and
@@ -56,7 +58,7 @@ const picoPins = () => [...[...Array(23).keys()], 25, 26, 27, 28].map(n => `GP${
 const pic24Pins = () => Object.entries(PIC24_PINS).flatMap(([p, bits]) => bits.map(b => `R${p}${b}`));
 /** The microcontrollers' boards: their engine (`arch`: avr, avr8js's; pic24, silinx-pic24's; rp2040, rp2040js's), their pins, their I/O
  *  voltage, their firmware's kinds (`firmwares`: its files' extensions; a MicroPython board's its program's), the languages it
- *  takes (`langs`: all when none), their UARTs ({ name: { tx, rx } }), their SPI buses ({ name: { sck, mosi, miso, ss } }), their I²C buses
+ *  takes (`langs`: all when none), its Python firmwares (`runtimes`: a node's `runtime`, the first its default, #5697), their UARTs ({ name: { tx, rx } }), their SPI buses ({ name: { sck, mosi, miso, ss } }), their I²C buses
  *  ({ name: { scl, sda } }). The Explorer 16/32's UART is its USB-UART's pins (the MCP2221A's: the device's TX RF5, its
  *  RX RF4), any UART module its program maps there through PPS; its clock the 8 MHz crystal (Fcy its configuration
  *  words'). */
@@ -65,8 +67,8 @@ export const MCU_BOARDS = [
   { id: 'arduino-nano', name: 'Arduino Nano', arch: 'avr', mcu: 'ATmega328P', clockHz: 16e6, vio: 5, pins: [...digital(14), ...analog(8)], firmwares: ['hex', 'elf'], inputOnly: ['A6', 'A7'], uarts: { Serial: { tx: 'D1', rx: 'D0' } }, spis: { SPI: { sck: 'D13', mosi: 'D11', miso: 'D12', ss: 'D10' } }, i2cs: { Wire: { scl: 'A5', sda: 'A4' } } },
   { id: 'explorer-1632', name: 'Explorer 16/32', arch: 'pic24', mcu: 'PIC24FJ1024GB610', clockHz: 8e6, vio: 3.3, pins: pic24Pins(), firmwares: ['hex'], uarts: { UART: { tx: 'RF5', rx: 'RF4' } }, spis: {}, i2cs: {} },
   // (a Raspberry Pi Pico, #5494: its RP2040 under MicroPython's own firmware, its program a .py; its pins GP0..GP22, the LED's
-  // GP25, GP26..GP28; MicroPython's UART(0) and UART(1) on their default pins)
-  { id: 'pico', name: 'Raspberry Pi Pico', arch: 'rp2040', mcu: 'RP2040', clockHz: 125e6, vio: 3.3, pins: picoPins(), firmwares: ['py'], langs: ['micropython'], uarts: { UART0: { tx: 'GP0', rx: 'GP1' }, UART1: { tx: 'GP4', rx: 'GP5' } }, spis: {}, i2cs: {} },
+  // GP25, GP26..GP28; MicroPython's UART(0) and UART(1) on their default pins; or CircuitPython's firmware, #5697)
+  { id: 'pico', name: 'Raspberry Pi Pico', arch: 'rp2040', mcu: 'RP2040', clockHz: 125e6, vio: 3.3, pins: picoPins(), firmwares: ['py'], langs: ['micropython'], runtimes: RP2040_RUNTIMES, uarts: { UART0: { tx: 'GP0', rx: 'GP1' }, UART1: { tx: 'GP4', rx: 'GP5' } }, spis: {}, i2cs: {} },
 ];
 /** A microcontroller's board by its id, or null. */
 export const mcuBoard = id => MCU_BOARDS.find(b => b.id === id) || null;
@@ -108,6 +110,7 @@ function normalNode(n) {
     if (n.pins && typeof n.pins === 'object' && Object.keys(n.pins).length) out.pins = { ...n.pins };
   } else if (out.kind === 'mcu') {
     out.board = n.board ?? null; out.firmware = n.firmware ?? null;
+    if (n.runtime) out.runtime = String(n.runtime);
   } else if (out.kind === 'circuit') out.circuit = n.circuit ?? null;
   else if (out.kind === 'design') out.module = n.module ?? null;
   if (nodeLangs(out.kind).length) out.lang = baseLang(n);

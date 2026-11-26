@@ -22,7 +22,9 @@ UART and GPIO links. Its design is in [SYSTEMS.md](../../SYSTEMS.md); its roadma
   `build/nodes/<id>/`, #5446); the System's row has View/Edit, Check, Emulate and Implement System (every FPGA node). It opens
   in the **System editor**: the tools place an FPGA node, an Arduino Uno or Nano, an Explorer 16/32, a Raspberry Pi
   **Pico** (in MicroPython: its program a `.py` of its folder, run on MicroPython's own firmware, which the local server
-  downloads once; what it prints is shown in a terminal of its own, its REPL), a serial terminal; **Link** joins two
+  downloads once; what it prints is shown in a terminal of its own, its REPL; or in CircuitPython, its Properties'
+  Firmware: its program the `code.py` of its CIRCUITPY drive, with its folder's other files, as on the board; Program
+  Node copies them to a real Pico's CIRCUITPY drive; the example **uart-pico**), a serial terminal; **Link** joins two
   interfaces of one kind (a click on one, then on the other); the Properties panel sets a node's module, board and pins,
   a microcontroller's board and firmware (an Intel HEX, `.hex`, or avr-gcc's `.elf`; an `.elf` in the browser edition
   needs a workspace folder, its storage keeping text files only), an interface's TX and RX ports, baud and frame.

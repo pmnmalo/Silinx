@@ -21,6 +21,7 @@ import { checkCircuitFields, checkCircuitNodes } from './system-check-circuit.js
 import { port } from './system-ports.js';
 import { endsProblem } from './system-links.js';
 import { usbError } from './usb-id.js';
+import { RUNTIME_NAMES } from './rp2040-firmware.js';
 import { withNodePins } from './system-constraints.js';
 
 const node = id => ({ kind: 'node', id });
@@ -221,6 +222,8 @@ function checkMcu(n, at, { files }, { err, warn }) {
   if (!n.board) err(`${n.id}: a microcontroller with no board`, ref);
   else if (!b) err(`${n.id}: no microcontroller board '${n.board}' (the boards: ${MCU_BOARDS.map(m => m.id).join(', ')})`, ref);
   // (a board of one language, the Pico's MicroPython, #5494)
+  // (a Pico's Python firmware, #5697)
+  if (n.runtime && b && !b.runtimes?.includes(n.runtime)) err(`${n.id}: ${b.runtimes ? `the ${b.name}'s firmware is ${b.runtimes.map(r => RUNTIME_NAMES[r]).join(' or ')}, not ${n.runtime}` : `the ${b.name} has no Python firmware to choose (runtime ${n.runtime})`}`, ref);
   if (b?.langs && n.lang && !b.langs.includes(n.lang)) err(`${n.id}: the ${b.name} runs ${b.langs.map(l => (l === 'micropython' ? 'MicroPython' : l)).join(' or ')}, not ${n.lang === 'cpp' ? 'C++' : n.lang === 'c' ? 'C' : n.lang}`, ref);
   if (n.firmware) {
     const exts = b?.firmwares ?? ['hex', 'elf'], ext = /\.([a-z0-9]+)$/i.exec(n.firmware)?.[1]?.toLowerCase();

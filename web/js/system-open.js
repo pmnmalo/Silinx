@@ -61,6 +61,7 @@ export async function prepareHere(sys, { emulate = false, stimulus = null, model
     netlist: (m, id) => { if (models?.[id]) return netlistOf(modelDesign(models[id], m), { run }); if (!designs[m]) throw new Error(`no module '${m}' that elaborates (Check Syntax says why)`); return netlistOf(designs[m], { run }); },
     firmware: async p => (/\.elf$/i.test(p) ? api.readFileBytes(S.project.name, p) : api.readFile(S.project.name, p)),   // (an .elf's bytes, #5198)
     circuit: p => designState.viewTexts?.[p] ?? api.readFile(S.project.name, p),   // (a circuit node's, #5215)
+    nodeFiles: id => (filesState.fileTree || []).filter(f => relInNode(f, id) != null),   // (a CircuitPython node's drive's, #5697)
     regmap: m => regmapFor(designState.viewTexts, designs[m] ? hierModules(designs[m].top) : [m]),   // (a module made from a register map, or one instancing it: its accesses, #5288)
   });
   if (inputs.error) return inputs;

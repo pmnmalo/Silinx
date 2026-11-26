@@ -19,10 +19,10 @@ import { REACTIVE_KINDS, drawingKind } from './reactive-from.js';
 /** The kinds of node the plan builds or programs; the others (a terminal, a circuit, a peripheral) are the simulation's. */
 export const PLAN_KINDS = ['fpga', 'mcu'];
 /** Each programmer's name, as the console says it. */
-const PROGRAMMERS = { jtag: 'over JTAG', avrdude: 'by avrdude (arduino-cli upload)', pickit: 'by a PICkit (MPLAB IPE)', repl: 'over its raw REPL (mpremote)' };
+const PROGRAMMERS = { jtag: 'over JTAG', avrdude: 'by avrdude (arduino-cli upload)', pickit: 'by a PICkit (MPLAB IPE)', repl: 'over its raw REPL (mpremote)', circuitpy: 'onto its CIRCUITPY drive' };
 
 // what of a node's description its build depends on (its place on the canvas, its interfaces' names do not)
-const DESCRIBED = ['kind', 'board', 'variant', 'module', 'constraints', 'firmware', 'lang'];   // (its pins: its constraints file's, a source of its folder, #5581)
+const DESCRIBED = ['kind', 'board', 'variant', 'module', 'constraints', 'firmware', 'runtime', 'lang'];   // (its pins: its constraints file's, a source of its folder, #5581)
 const sorted = v => (v && typeof v === 'object' && !Array.isArray(v) ? Object.fromEntries(Object.keys(v).sort().map(k => [k, sorted(v[k])])) : v);
 
 /** The node's description as its build reads it: its kind, board, variant, module, constraints file, firmware and language. */
@@ -86,6 +86,8 @@ function mcuEntry(n, { files, hashes, records, exists }) {
   if (!b) return { ...e, state: 'not buildable', reason: `no microcontroller board '${n.board ?? ''}'` };
   if (n.lang === 'micropython' || b.arch === 'rp2040') {
     const py = files.filter(f => /\.py$/i.test(f) && relInNode(f, n.id) != null).sort();
+    // (CircuitPython's, #5697: its program copied as code.py, with its other files, to its CIRCUITPY drive)
+    if (n.runtime === 'circuitpython') return { ...e, programmer: 'circuitpy', image: n.firmware || null, sources: py, state: 'nothing to build', reason: py.length ? 'a CircuitPython program runs as it is' : `no .py in its folder ${n.id}/ yet` };
     return { ...e, programmer: 'repl', sources: py, state: 'nothing to build', reason: py.length ? 'a MicroPython program runs as it is' : `no .py in its folder ${n.id}/ yet` };
   }
   if (b.arch === 'pic24') {

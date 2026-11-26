@@ -45,5 +45,5 @@ test('#5494 refused: another SHA-256 (nothing kept), an HTTP error, no network, 
   assert.ok(!fs.existsSync(path.join(dir, 'bad.uf2')));
   await assert.rejects(rp2040Path('bad.uf2', { files: bad, fetch: fakeFetch({}, []) }), { message: 'the test\'s uf2 could not be downloaded from https://example.test/mp.uf2 (HTTP 404): the RP2040 node needs it once' });
   await assert.rejects(rp2040Path('bad.uf2', { files: bad, fetch: fakeFetch({ 'https://example.test/mp.uf2': 'down' }, []) }), { message: 'the test\'s uf2 could not be downloaded from https://example.test/mp.uf2 (getaddrinfo ENOTFOUND): the RP2040 node needs it once' });
-  await assert.rejects(rp2040Path('../etc/passwd'), { message: 'no RP2040 firmware file \'../etc/passwd\' (micropython-rpi-pico-v1.24.1.uf2, rp2040-bootrom-b1.bin)' });
+  await assert.rejects(rp2040Path('../etc/passwd'), { message: 'no RP2040 firmware file \'../etc/passwd\' (micropython-rpi-pico-v1.24.1.uf2, circuitpython-rpi-pico-v10.3.2.uf2, rp2040-bootrom-b1.bin)' });
 });

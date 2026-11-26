@@ -10,6 +10,8 @@ export const SYSTEM_PT = {
   'Click the canvas to add an Arduino Uno': 'Clique na tela para acrescentar um Arduino Uno', 'Click the canvas to add an Arduino Nano': 'Clique na tela para acrescentar um Arduino Nano',
   'Pico': 'Pico', 'Click the canvas to add a Raspberry Pi Pico: an RP2040 running MicroPython, its program a .py': 'Clique na tela para acrescentar um Raspberry Pi Pico: um RP2040 com MicroPython, o seu programa um .py',   // (#5494)
   'Program (.py)': 'Programa (.py)', 'a .py of the project, run by MicroPython': 'um .py do projeto, corrido pelo MicroPython',
+  'MicroPython': 'MicroPython', 'CircuitPython': 'CircuitPython', 'the Python firmware the Pico runs': 'o firmware de Python que o Pico corre',   // (#5697)
+  'a .py of the project, run by CircuitPython as its code.py': 'um .py do projeto, corrido pelo CircuitPython como o seu code.py',
   'Explorer 16/32': 'Explorer 16/32', 'Click the canvas to add an Explorer 16/32: a PIC24FJ1024GB610, its firmware a .hex': 'Clique na tela para acrescentar uma Explorer 16/32: um PIC24FJ1024GB610, o seu programa um .hex',
   'Click the canvas to add a serial terminal': 'Clique na tela para acrescentar um terminal série',
   'Click an interface, then an interface of another node of its kind': 'Clique numa interface e depois numa interface do mesmo tipo de outro nó',

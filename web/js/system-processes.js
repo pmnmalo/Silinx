@@ -75,6 +75,8 @@ export function systemProcesses(sel, view, { check, rtl }) {
     ...(sel.kind === 'mcu' && !firmwareRefusal({ id: sel.node, kind: sel.kind, board: sel.board, lang: sel.lang }) && !unprogrammed(nodeOf(sel)) ? [
       { id: 'node-program', label: 'Program Node', ico: 'board', run: program(sel.node) },
     ] : []),
+    // (a CircuitPython node's program copied to its Pico's CIRCUITPY drive, #5697)
+    ...(sel.kind === 'mcu' && nodeOf(sel)?.runtime === 'circuitpython' ? [{ id: 'node-program', label: 'Program Node', ico: 'board', run: program(sel.node) }] : []),
     // (a PIC24's or a MicroPython node's: not programmed by Silinx yet, said why, #5581's part 4)
     ...(sel.kind === 'mcu' && unprogrammed(nodeOf(sel)) ? [{ id: 'node-program', label: 'Program Node', ico: 'board', disabled: true, title: unprogrammed(nodeOf(sel)) }] : []),
     // (the node alone in the System Emulator, #5581; a terminal runs with what it is linked to)
