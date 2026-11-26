@@ -40,7 +40,7 @@ function ask(list) {
   const text = `${head}\n(The ${many ? 'files stay' : 'file stays'} in the project folder: Undo or Add to Project in the Files view brings ${them} back.)\n\n`
     + `${del} ${trash ? `moves ${them} to the workspace's .trash folder` : `deletes ${them} from the disk`}.`;
   return dialog({
-    title: 'Remove Source', width: 460,
+    title: 'Remove Source', width: 560,   // (its three buttons on one row, in Portuguese too, #5748)
     body: h('div', { class: 'msg msg-question' }, h('div', { class: 'msg-icon' }, '?'), h('div', { class: 'msg-text' }, text)),
     buttons: [{ label: 'Remove from Project', value: 'keep', primary: true }, { label: del, value: 'delete' }, { label: 'Cancel', value: null }],
   });
