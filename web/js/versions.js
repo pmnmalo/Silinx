@@ -15,9 +15,12 @@ import { applyChanges } from './project-watch.js';
 import { prefKey } from './prefs.js';
 import { REASONS } from '/core/versions.js';
 import { riskyReason } from './versions-risky.js';
+import { following, collab } from './collab-state.js';
 
 // (the name the user gave a shared project, as its author; none: no author)
 const author = () => { try { return localStorage.getItem(prefKey('silinx.collab.name')) || ''; } catch { return ''; } };
+// (a version saved or restored here: a project shared publishes its versions again, web/js/collab-versions.js)
+const changed = project => dispatchEvent(new CustomEvent('silinx:versions', { detail: { project } }));
 const what = v => (v.reason === 'restore' ? `restored version ${v.of}` : REASONS[v.reason]);
 const counts = v => [['+', v.changed?.added], ['~', v.changed?.changed], ['-', v.changed?.removed]].filter(([, l]) => l?.length).map(([s, l]) => `${s}${l.length}`).join(' ');
 const when = v => new Date(v.at).toLocaleString([], { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' });
@@ -40,6 +43,9 @@ export async function saveVersionDialog() {
   if (!await saveAll()) return null;
   let r;
   try { r = await api.saveVersion(name, { label, author: author(), reason: 'manual' }); } catch (e) { logError(`Save Version: ${e.message}`); return null; }
+  // (a project followed, #5742: saved by its owner, whose answer every participant's console says)
+  if (following()) return r;
+  changed(name);
   appLog(r.saved ? `Version ${r.version.id} of ${name} saved${r.version.label ? `: ${r.version.label}` : ''}.` : `Version ${r.version.id} of ${name} has it already: no version saved.`, 'ok');
   return r;
 }
@@ -50,6 +56,9 @@ async function restore(id, { path = null } = {}) {
   if (!name || !await saveAll()) return null;
   let r;
   try { r = await api.restoreVersion(name, id, { path, author: author() }); } catch (e) { logError(`Restore Version: ${e.message}`); return null; }
+  // (a project followed, #5742: restored by its owner, its writes arriving as theirs, its answer said by everyone's console)
+  if (following()) return r;
+  changed(name);
   if (!r.version) { appLog(`${path || name} is as version ${id} has it already: nothing restored.`, 'ok'); return r; }
   appLog(`Restored ${path || name} as version ${id} had it: ${r.written.length} file(s) written, ${r.removed.length} removed; the project before it kept as version ${r.before.id} (restore it to undo).`, 'ok');
   if (S.project?.name === name) {
@@ -77,7 +86,18 @@ export async function versionsDialog() {
   const files = h('div', { class: 'version-files', 'aria-live': 'polite' });
   const link = (label, cls, fn) => h('a', { href: '#', class: cls, onclick: e => { e.preventDefault(); act = fn; close?.(); } }, label);
   // the selected version's files that differ from now, read again at each selection (the last one asked shown)
+  // (a project followed, #5742: the owner keeps the versions and their texts; a version's files are what it changed, as
+  // its row says, restored by an editor's request, opened and compared in the owner's Silinx)
+  const canRestore = !following() || collab.editor;
+  const ownFiles = id => {
+    const v = list.find(x => x.id === id), c = v?.changed || {};
+    const rowsOf = (l, state) => (l || []).map(p => h('li', { 'data-path': p }, h('span', { 'data-no-i18n': '' }, p), ' (', h('span', { class: 'version-state' }, state), ') ',
+      canRestore ? link('Restore', 'version-restore', () => restore(id, { path: p })) : null));
+    files.replaceChildren(h('p', {}, `Version ${id} changed (its files are opened and compared in ${collab.owner}'s Silinx):`),
+      h('ul', { class: 'version-file-list' }, ...rowsOf(c.added, 'added in it'), ...rowsOf(c.changed, 'changed in it'), ...rowsOf(c.removed, 'removed in it')));
+  };
   const showFiles = async id => {
+    if (following()) { ownFiles(id); return; }
     const n = ++asked;
     files.replaceChildren(h('p', {}, '…'));
     let d;
@@ -106,7 +126,7 @@ export async function versionsDialog() {
   if (sel) showFiles(sel);
   const r = await dialog({
     title: `Versions of ${name}`, width: 680, body,
-    buttons: [{ label: 'Restore Project', primary: true, value: () => sel, disabled: !list.length }, { label: 'Close', value: null }],
+    buttons: [{ label: 'Restore Project', primary: true, value: () => sel, disabled: !list.length || !canRestore }, { label: 'Close', value: null }],
     onOpen: ({ close: c }) => { close = () => c(null); },
   });
   if (act) return act();

@@ -42,6 +42,7 @@ import { linkField } from './link-field.js';
 import { SHARE_WIDTH, howRow, shareTitle } from './share-how.js';
 import { hdlWarning } from './design-only.js';
 import { ownerActivity } from './collab-activity.js';
+import { shareVersions } from './collab-versions.js';
 import { TRACK_MS, soon, trackOnEvents } from '/core/collab-pace.js';
 import { collabLog } from './collab-log.js';
 import { filesState } from './state-files.js';
@@ -203,6 +204,7 @@ export async function startSharing(name, { via = api.collab ? 'relay' : 'host', 
   share.unevents = trackOnEvents(document, share.soon.poke);
   share.soon.poke();
   addEventListener('silinx:disk-changes', onDisk);
+  share.unversions = shareVersions(share);   // (its versions, an editor's requests of one: #5742)
   setPresenceCommands(commands);
   setPresenceRoles({ set: (peer, role) => setRole(peer, role), editors: () => !!share?.session.editKey });   // (#4646)
   draw();
@@ -244,6 +246,7 @@ export async function stopSharing(why = null) {
   s.soon.cancel();
   s.unevents();
   s.activity.stop();
+  s.unversions?.();
   removeEventListener('silinx:disk-changes', onDisk);
   s.unwatch();
   unbindAll(s.bound);

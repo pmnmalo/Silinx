@@ -5,6 +5,7 @@
 //                    benches, the C, the drawings' JSON), FILE_MAX at most each; build/ and hidden files never
 //   drawings Y.Map   path -> Y.Map: the drawings edited live, each as a structure of its own (#3183,
 //                    core/collab-model.js); their files' texts the owner's, written from it
+//   versions Y.Map   the owner's versions, an editor's request of one (#5742, core/collab-versions.js)
 // No other root (DOC_ROOTS, #3527): a follower leaves a room whose owner sends one, or whose bytes pass its limit.
 // The owner's Silinx writes it (publishProject, putFile, ...), a follower's reads it (docProject, docFile). A text is
 // changed by its common prefix and suffix kept, so an update carries the edit only (and phase 2's editors, bound to
@@ -149,9 +150,10 @@ export function docTooLarge(doc, limits = FOLLOW_LIMITS) {
 
 /** The parts of a shared project's document (#3527): a root of any other name is no part of one. An editor's edit
  *  changes the files, the drawings and the project's description (#4418: its sources, its top, its settings; the owner
- *  takes it as core/collab-files.js editorDescription does), never its meta. */
-export const DOC_ROOTS = Object.freeze(['meta', 'project', 'files', 'drawings']);
-export const EDIT_ROOTS = Object.freeze(['project', 'files', 'drawings']);
+ *  takes it as core/collab-files.js editorDescription does), and asks for a version saved or restored (#5742: the
+ *  owner's versions, core/collab-versions.js), never its meta. */
+export const DOC_ROOTS = Object.freeze(['meta', 'project', 'files', 'drawings', 'versions']);
+export const EDIT_ROOTS = Object.freeze(['project', 'files', 'drawings', 'versions']);
 const rootName = n => JSON.stringify(String(n).slice(0, 64));
 
 /** The bytes a document holds (#3527), whatever they are (every root, values that are no text, the updates waiting for

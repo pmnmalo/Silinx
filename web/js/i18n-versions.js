@@ -4,7 +4,8 @@ import { t } from './i18n.js';
 export const VERSIONS_PT = {
   'Save Version…': 'Guardar Versão…', 'Save Version': 'Guardar Versão', 'Versions…': 'Versões…', 'Restore Project': 'Restaurar Projeto',
   // (a version's files against now, #5741)
-  'Restore': 'Restaurar', 'changed since': 'alterado desde então', 'added since': 'acrescentado desde então', 'removed since': 'removido desde então',
+  'Restore': 'Restaurar', 'changed since': 'alterado desde então',
+  'added in it': 'acrescentado nela', 'changed in it': 'alterado nela', 'removed in it': 'removido nela', 'added since': 'acrescentado desde então', 'removed since': 'removido desde então',
   'Version name (optional):': 'Nome da versão (opcional):', 'Restore Version': 'Restaurar Versão', 'Versions': 'Versões', 'Time': 'Hora', 'Made': 'Feita',
   'No versions of this project yet: Save Version… keeps one, and one is kept as you work.': 'Ainda não há versões deste projeto: Guardar Versão… guarda uma, e é guardada uma à medida que trabalha.',
   // (what made a version: core/versions.js REASONS)
@@ -17,6 +18,10 @@ export const VERSIONS_PT_PATTERNS = [
   [/^Versions of (.+)$/, 'Versões de $1'],
   [/^restored version (\d+)$/, 'versão $1 restaurada'],
   [/^Version (\d+) against now:$/, 'A versão $1 comparada com agora:'],
+  // (a project followed, #5742)
+  [/^Version (\d+) changed \(its files are opened and compared in (.+)'s Silinx\):$/, 'A versão $1 alterou (os seus ficheiros abrem-se e comparam-se no Silinx de $2):'],
+  [/^(.+)'s Silinx did not answer$/, 'o Silinx de $1 não respondeu'],
+  [/^a version's files are opened and compared in (.+)'s Silinx, which keeps the versions$/, 'os ficheiros de uma versão abrem-se e comparam-se no Silinx de $1, que guarda as versões'],
   [/^The project is as version (\d+) has it\.$/, 'O projeto está como a versão $1 o tem.'],
   [/^Read-only, as it was in version (\d+)$/, 'Só de leitura, como estava na versão $1'],
   [/^as it was in version (\d+)$/, 'como estava na versão $1'],
