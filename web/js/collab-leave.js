@@ -15,12 +15,12 @@ import { renderPresence } from './collab-presence.js';
 import { followedCopy, copyName, unsavedFollow } from '/core/collab-keep.js';
 import { designZip } from '/core/design-link.js';
 
-let st = null;   // { session, real (api's functions before following), edited, kept, left (the project closed) }
+let st = null;   // { session, real (api's functions before following), detach (the history's, #5760), edited, kept, left (the project closed) }
 
 /** Following began (`real`: api as it was before it stood for the room): this page's changes of it watched, the tab's
  *  closing warned while they are saved nowhere. */
-export function watchLeave(session, real) {
-  st = { session, real, edited: false, kept: false, left: false };
+export function watchLeave(session, real, detach = null) {
+  st = { session, real, detach, edited: false, kept: false, left: false };
   session.doc.on('update', (_u, origin) => { if (origin !== 'remote') st.edited = true; });
   addEventListener('beforeunload', e => { if (unsaved()) { e.preventDefault(); e.returnValue = ''; } });
 }
@@ -41,6 +41,7 @@ function leave() {
   st.left = true;
   for (const k of Object.keys(api)) if (!(k in st.real)) delete api[k];
   Object.assign(api, st.real);
+  st.detach?.();   // (the project's history through this page's own backend again, #5760)
   Object.assign(collab, { role: null, session: null, editor: false });
   renderPresence();
 }

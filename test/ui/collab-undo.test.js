@@ -3,7 +3,8 @@
 // since in the same file stays, on the disk and in both editors; Redo makes the command's change again, the editor's
 // line still there; a change of the editor's in the same lines refuses the Undo, said in the console (in English and in
 // Portuguese), nothing written. The owner's save of a file its editor has open keeps the editor's change that arrived
-// meanwhile. The exact console lines; no warnings but those asserted.
+// meanwhile. An editor's own command undone on its page (#5760): its change reverted, the owner's later one kept. The
+// exact console lines; no warnings but those asserted.
 import { before, after } from 'node:test';
 import assert from 'node:assert/strict';
 import { setupUi, uiTest, makeProject, readWs } from './harness.js';
@@ -96,5 +97,48 @@ uiTest('#5739 the owner\'s Undo of a command in a project an editor edits live: 
     const untrusted = 'WARNING: Project "Undo" was changed by an editor of its shared link: it is edited, checked, simulated and implemented with the Silinx toolchain; Xilinx ISE and programming a board or a PROM run only once you trust it. Trust Project';
     assert.deepEqual([...new Set(await warnings(page))], [untrusted, refused]);
     assert.deepEqual(await warnings(ep), []);
+  } finally { await ep.close(); await page.eval(async () => (await import('/js/collab-share.js')).stopSharing()); }
+});
+
+uiTest('#5760 an editor\'s own command undone on its page: its change only, the owner\'s later one kept; Redo; Portuguese', E, async (page) => {
+  await makeProject(env, { name: 'EdUndo', top: 'top', files: { 'src/top.vhd': TOP, [P]: PASS } });
+  await page.openProject('EdUndo');
+  const edit = await page.eval(async () => { const m = await import('/js/collab-share.js'); await m.startSharing('Ana'); return m.editorsLink(); });
+  const ep = await env.newPage(env.server.url);
+  try {
+    await ep.waitFor(() => window.SilinxApp && window.Silinx?.startupChecked, [], { what: 'app boot' });
+    await ep.goto(`${new URL(edit).origin}/?f=1${new URL(edit).hash}`);
+    await ep.waitDialog('Follow a Shared Project');
+    await ep.fill('.dlg-overlay input[data-field=name]', 'Rui');
+    await ep.dialogButton('Follow');
+    await ep.waitFor(() => window.Silinx?.project?.name === 'EdUndo' && window.Silinx.startupChecked, [], { what: 'the project open', timeout: 30000 });
+    await page.waitConsole(/^Rui edits your project "EdUndo" with you\.$/m);
+    // Rui's command (recorded on his page, through the room), then Ana's line further down
+    const rui = PASS.replace('entity pass1 is\n', '-- renamed by Rui\nentity pass1 is\n');
+    await command(ep, rui);
+    await until(async () => await readWs(env, 'EdUndo', P) === rui, 'Rui\'s command on the owner\'s disk');
+    const both = rui.replace('  y <= a;\n', '  -- by Ana\n  y <= a;\n');
+    await page.eval(async (p, t) => { const { api } = await import('/js/api.js'); await api.writeFile('EdUndo', p, t); }, P, both);
+    await until(async () => await ep.eval((p) => window.Silinx.project && window.SilinxApp && (async () => { const { api } = await import('/js/api.js'); return api.readFile('EdUndo', p); })(), P) === both, 'Ana\'s line at Rui\'s');
+    // Rui's Undo (Edit ▸ Undo Rename): his line gone, Ana's kept, on the owner's disk
+    await ep.menu('Edit', 'Undo Rename');
+    await ep.waitConsole(/^Undo: Rename\.$/m);
+    const undone = PASS.replace('  y <= a;\n', '  -- by Ana\n  y <= a;\n');
+    await until(async () => await readWs(env, 'EdUndo', P) === undone, 'Rui\'s Undo merged on the owner\'s disk');
+    // Redo: his line again
+    await ep.menu('Edit', 'Redo Rename');
+    await ep.waitConsole(/^Redo: Rename\.$/m);
+    await until(async () => await readWs(env, 'EdUndo', P) === both, 'Rui\'s Redo on the owner\'s disk');
+    // in Portuguese, at Rui's: the menu's Undo of his command
+    await ep.eval(async () => (await import('/js/i18n.js')).setLanguage('pt'));
+    await ep.menu('Editar', 'Anular Mudar o Nome');
+    await ep.waitConsole(/^Anular: Mudar o Nome\.$/m);
+    await until(async () => await readWs(env, 'EdUndo', P) === undone, 'Rui\'s Undo again');
+    await ep.eval(async () => (await import('/js/i18n.js')).setLanguage('en'));
+    // no warnings at Rui's; at Ana's, the project untrusted by Rui's change only
+    assert.deepEqual(await warnings(ep), []);
+    const w = await warnings(page);
+    assert.equal(w.length, 1, w.join('\n'));
+    assert.match(w[0], /^WARNING: Project "EdUndo" was changed by an editor of its shared link/);
   } finally { await ep.close(); await page.eval(async () => (await import('/js/collab-share.js')).stopSharing()); }
 });

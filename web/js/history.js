@@ -47,14 +47,17 @@ export function createHistory(api, hooks) {
     for (const p of paths) if (!ignored(p) && !cur.files.has(p)) cur.files.set(p, await read(name, p));
   }
   const settingsOf = async name => { const pj = await raw.project(name); delete pj.fileTree; return JSON.stringify(pj); };
-  api.writeFile = async (name, p, text) => { await note(name, [p]); return raw.writeFile(name, p, text); };
-  api.deleteFile = async (name, p, opts) => { await note(name, [p, ...under(p)]); return raw.deleteFile(name, p, opts); };
-  api.renameFile = async (name, from, to) => {
-    const inside = under(from);
-    await note(name, [from, to, ...inside, ...inside.map(f => to + f.slice(from.length))]);
-    return raw.renameFile(name, from, to);
+  const wrapped = {
+    writeFile: async (name, p, text) => { await note(name, [p]); return raw.writeFile(name, p, text); },
+    deleteFile: async (name, p, opts) => { await note(name, [p, ...under(p)]); return raw.deleteFile(name, p, opts); },
+    async renameFile(name, from, to) {
+      const inside = under(from);
+      await note(name, [from, to, ...inside, ...inside.map(f => to + f.slice(from.length))]);
+      return raw.renameFile(name, from, to);
+    },
+    saveProject: async (name, pj) => raw.saveProject(name, pj),
   };
-  api.saveProject = async (name, pj) => raw.saveProject(name, pj);
+  Object.assign(api, wrapped);
 
   const serial = fn => { const r = chain.then(fn, fn); chain = r.catch(() => {}); return r; };
   const reset = () => { undoStack.length = 0; redoStack.length = 0; hooks.changed?.(); };
@@ -174,6 +177,16 @@ export function createHistory(api, hooks) {
     redoLabel: () => (live() ? redoStack.at(-1)?.label ?? null : null),
     lastAt: () => running()?.at || (live() ? undoStack.at(-1)?.at ?? 0 : 0),
     redoAt: () => (live() ? redoStack.at(-1)?.at ?? 0 : 0),
+    /** The backend api stands for now (a followed project's, whose functions replaced these: #5760) recorded too: its
+     *  functions taken as the ones written through, these put back over them; detach() gives back the ones before. The
+     *  steps of before are another backend's: forgotten, either way. */
+    attach() {
+      const before = { ...raw };
+      for (const k of Object.keys(raw)) if (typeof api[k] === 'function' && api[k] !== wrapped[k]) raw[k] = api[k];
+      Object.assign(api, wrapped);
+      reset();
+      return () => { Object.assign(raw, before); reset(); };
+    },
     undo: () => serial(() => step(undoStack, redoStack, 'before')),
     redo: () => serial(() => step(redoStack, undoStack, 'after')),
     reset,
