@@ -54,7 +54,7 @@ export function mountSchKeys(ctx) {
     if ((mod && k === 'y') || (mod && k === 'z' && e.shiftKey)) { e.preventDefault(); redo(); return; }
     if (mod && k === 'r') { e.preventDefault(); rotateSel(); return; }
     if (mod && k === 'm') { e.preventDefault(); mirrorSel(); return; }
-    if (mod && k === 'c') { e.preventDefault(); if (!readOnly) copySel(); return; }
+    if (mod && k === 'c') { e.preventDefault(); copySel(); return; }
     if (mod && k === 'x') { e.preventDefault(); copySel(true); return; }
     // (Ctrl+V: the browser's paste event below, which reads the system clipboard with no permission asked;
     // the app's own clipboard if the browser sends none)
