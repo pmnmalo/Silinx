@@ -38,6 +38,8 @@ uiTest('#5383 the Board Emulator\'s oscilloscope: a signal\'s trace, its frequen
   await page.treeRow('#procs', 'Emulate on Board', { dbl: true, exact: true });
   await page.waitFor((d) => window.Silinx.active?.id === 'emulator' && document.querySelector(d), [D], { what: 'the scope box' });
   assert.equal(await page.eval((d) => document.querySelector(`${d} h4`).textContent, D), 'Oscilloscope');
+  // the Watch first, the scope right after it (#1399, #5671)
+  assert.deepEqual(await page.eval(() => [...document.querySelectorAll('.doc:not([hidden]) .emu-side .emu-box > h4')].slice(0, 2).map((x) => x.textContent)), ['Watch', 'Oscilloscope']);
   // CH1 on tick, 100 ns a division (from 1 µs: three steps down)
   await page.eval((d) => { const s = document.querySelector(`${d} .emu-scope-ch1`); s.value = [...s.options].find((o) => /(^|\.)tick$/.test(o.textContent)).value; s.dispatchEvent(new Event('change')); }, D);
   for (let k = 0; k < 3; k++) await knob(page, 'scope-t-down');
