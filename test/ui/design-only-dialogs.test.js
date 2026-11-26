@@ -124,8 +124,8 @@ uiTest('#3891 a design project\'s drawn module: Rename…, Source Properties…,
   // Remove from Project of its module: the drawing alone named
   page.eval(async () => (await import('/js/design.js')).removeModule('src/lights.vhd')).catch(() => {});
   await page.waitDialog('Remove Source');
-  assert.equal(await msg(page), 'Remove \'src/lights.fsm.json\' from the project?\n(The file stays in the project folder: Undo or Add to Project in the Files view brings it back.)');
-  await page.dialogButton('Yes');
+  assert.equal(await msg(page), 'Remove \'src/lights.fsm.json\' from the project?\n(The file stays in the project folder: Undo or Add to Project in the Files view brings it back.)\n\nRemove and Delete File moves it to the workspace\'s .trash folder.');
+  await page.dialogButton('Remove from Project');
   await page.waitNoDialog();
   await page.waitConsole(/^Removed src\/lights\.fsm\.json from the project/m);
   assert.ok(!(await page.consoleText()).includes('lights.vhd'), 'no HDL file named');

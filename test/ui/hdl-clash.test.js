@@ -252,7 +252,7 @@ const removeInFiles = async (page, file) => {
   await page.waitForSelector('body > .menu-popup');
   await page.click('body > .menu-popup .mi', { text: 'Remove from Project' });
   await page.waitDialog('Remove Source');
-  await page.dialogButton('Yes');
+  await page.dialogButton('Remove from Project');
   await page.waitNoDialog();
   await page.leftTab('design');
 };

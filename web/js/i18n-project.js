@@ -33,6 +33,9 @@ export const PROJECT_PT_PATTERNS = [
   // Remove from Project (web/js/design.js)
   [/^Removed (\S+) and its HDL file (\S+) from the project \(the files are kept in the project folder\)\.$/, 'Removidos do projeto $1 e o seu ficheiro HDL $2 (os ficheiros ficam na pasta do projeto).'],
   [/^Removed (.+) from the project \(the file is kept in the project folder\)\.$/, 'Removido $1 do projeto (o ficheiro fica na pasta do projeto).'],
+  // (the files deleted too, #5720: core/project-entries.js removedMessage)
+  [/^Removed (\S+) and its HDL file (\S+) from the project and deleted them( \(moved to the workspace's \.trash folder\))?\.$/, (m, a, b, tr) => `Removidos do projeto ${a} e o seu ficheiro HDL ${b}, e apagados${tr ? ' (movidos para a pasta .trash da área de trabalho)' : ''}.`],
+  [/^Removed (.+) from the project and deleted it( \(moved to the workspace's \.trash folder\))?\.$/, (m, a, tr) => `Removido ${a} do projeto, e apagado${tr ? ' (movido para a pasta .trash da área de trabalho)' : ''}.`],
   // Edit ▸ Undo / Redo of a project's command (web/js/app.js): the command's name
   [/^(Undo|Redo): (.+)\.$/, (m, w, a) => `${w === 'Undo' ? 'Anular' : 'Refazer'}: ${t(a)}.`],
   // Rename… (web/js/rename.js, core/rename-module.js)

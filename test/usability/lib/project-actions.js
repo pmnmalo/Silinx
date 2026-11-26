@@ -133,7 +133,7 @@ export function projectActions(page, env) {
     /** Remove from Project of a module, Yes to its question: the question's text. */
     async remove(label) {
       await a.rowMenu(label, 'Remove from Project');
-      const [dlgL, yesL] = await L(['Remove Source', 'Yes']);
+      const [dlgL, yesL] = await L(['Remove Source', 'Remove from Project']);
       await page.waitDialog(dlgL);
       const text = await page.eval(() => [...document.querySelectorAll('.dlg-overlay')].pop().querySelector('.msg-text')?.textContent ?? '');
       await page.dialogButton(yesL);

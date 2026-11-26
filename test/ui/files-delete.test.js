@@ -72,7 +72,7 @@ uiTest('#1215 Files: Delete File… moves a file to the workspace\'s .trash (#33
   // not in the project (removed from it first): Delete File… too
   await fileMenu(page, 'src/a.vhd', 'Remove from Project');
   await page.waitDialog('Remove Source');
-  await page.dialogButton('Yes');
+  await page.dialogButton('Remove from Project');
   await page.waitFor(() => document.querySelector('#files-page tr[data-file="src/a.vhd"] td:nth-child(2)')?.textContent === 'Not in project', [], { what: 'not in the project' });
   assert.deepEqual(await fileMenu(page, 'src/a.vhd'), ['Add to Project', 'Open', 'Delete File…']);
   await page.eval(() => document.querySelector('body > .menu-popup')?.remove());
@@ -118,7 +118,7 @@ uiTest('#1214 Tasks ▸ Files: Add to Project… (the folder\'s files not in the
   // a file removed from the project: listed, chosen, added back
   await fileMenu(page, 'src/b.v', 'Remove from Project');
   await page.waitDialog('Remove Source');
-  await page.dialogButton('Yes');
+  await page.dialogButton('Remove from Project');
   await page.waitFor(() => document.querySelector('#files-page tr[data-file="src/b.v"] td:nth-child(2)')?.textContent === 'Not in project', [], { what: 'removed' });
   await page.click('#task-files-bar button:nth-child(1)');
   await page.waitDialog('Add to Project');

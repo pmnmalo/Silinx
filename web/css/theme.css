@@ -124,7 +124,7 @@ button, input, select, textarea { font: inherit; }
 .tree ul { list-style: none; margin: 0; padding-left: 16px; }
 .tree .row { display: flex; align-items: center; gap: 4px; padding: 1px 4px 1px 0; white-space: nowrap; cursor: default; }
 .tree .row:hover { background: var(--hover); }
-.tree .row.sel { background: var(--accent); color: var(--accent-fg); }
+.tree .row.sel, .tree .row.msel { background: var(--accent); color: var(--accent-fg); }
 .tree .twisty { width: 12px; text-align: center; color: var(--grey-3); font-size: 9px; flex: none; }
 .tree .ico { width: 16px; height: 16px; flex: none; display: inline-flex; }
 /* the views of a module in the Design tree (#207): [HDL] [Schematic] …, the base's solid and bold,

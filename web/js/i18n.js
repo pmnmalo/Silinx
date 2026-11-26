@@ -403,9 +403,14 @@ PT_PATTERNS.push(
   [/^Delete '(\S+)' from the disk\?\n\(It cannot be undone: Remove from Project keeps the file in the project folder\.\)$/, "Apagar '$1' do disco?\n(Não se pode anular: Remover do Projeto mantém o ficheiro na pasta do projeto.)"],
   [/^Delete '(\S+)'\?\n\(It is moved to the workspace's \.trash folder, from where you can move it back\. Remove from Project keeps the file in the project folder\.\)$/, "Apagar '$1'?\n(É movido para a pasta .trash da área de trabalho, de onde o pode repor. Remover do Projeto mantém o ficheiro na pasta do projeto.)"],
   [/^Delete the folder '(.+)' and the (\d+) file\(s\) in it from the project\?\n\(They are moved to the workspace's \.trash folder, from where you can move them back\.\)\n\n([\s\S]*)$/, "Apagar a pasta '$1' e o(s) $2 ficheiro(s) que contém do projeto?\n(São movidos para a pasta .trash da área de trabalho, de onde os pode repor.)\n\n$3"],
-  // Remove from Project: one file; a drawing with its HDL file, together (#234)
-  [/^Remove '(\S+)' from the project\?\n\(The file stays in the project folder: Undo or Add to Project in the Files view brings it back\.\)$/, "Remover '$1' do projeto?\n(O ficheiro fica na pasta do projeto: Anular ou Acrescentar ao Projeto na vista Ficheiros repõe-no.)"],
-  [/^Remove '(\S+)' and its HDL file '(\S+)' from the project\?\n\(The files stay in the project folder: Undo or Add to Project in the Files view brings them back\.\)$/, "Remover '$1' e o seu ficheiro HDL '$2' do projeto?\n(Os ficheiros ficam na pasta do projeto: Anular ou Acrescentar ao Projeto na vista Ficheiros repõe-nos.)"],
+  // Remove from Project: one file; a drawing with its HDL file, together (#234); several (#5720): the files kept or deleted
+  [/^Remove ([\s\S]+?) from the project\?\n((?:'.+\n)*)\(The (?:file stays|files stay) in the project folder: Undo or Add to Project in the Files view brings (it|them) back\.\)\n\nRemove and Delete (Files?) (?:moves (?:it|them) to the workspace's \.trash folder|deletes (?:it|them) (from the disk))\.$/, (m, what, list, them, files, disk) => {
+    const os = them === 'them' ? 'os' : 'o', named = (s) => s.replace(/^('\S+') and its HDL file ('\S+')$/, '$1 e o seu ficheiro HDL $2');
+    const head = /^these \d+ sources$/.test(what) ? `estas ${what.split(' ')[1]} fontes` : named(what);
+    return `Remover ${head} do projeto?\n${list.split('\n').filter(Boolean).map((l) => `${named(l)}\n`).join('')}(${os === 'os' ? 'Os ficheiros ficam' : 'O ficheiro fica'} na pasta do projeto: Anular ou Acrescentar ao Projeto na vista Ficheiros repõe-n${os}.)\n\n`
+      + `Remover e Apagar ${files === 'Files' ? 'Ficheiros' : 'Ficheiro'} ${disk ? `apaga-${os} do disco` : `move-${os} para a pasta .trash da área de trabalho`}.`;
+  }],
+  [/^Removed (\d+) sources from the project$/, 'Removidas $1 fontes do projeto'],
   [/^Removed (\S+) and (\S+) from the project$/, 'Removidos $1 e $2 do projeto'],
   [/^The project starts with (\S+) \(the top module 'top'\)\.$/, "O projeto começa com $1 (o módulo de topo 'top')."],
   [/^The project starts with (\S+) \(the top module 'top'\) and its HDL module, generated from it\.$/, "O projeto começa com $1 (o módulo de topo 'top') e o seu módulo HDL, gerado a partir dele."],

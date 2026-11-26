@@ -231,7 +231,7 @@ html[data-ui="silinx"] .view-select input { position: absolute; opacity: 0; poin
 html[data-ui="silinx"] .tree { padding: var(--m-tree-pad); }
 html[data-ui="silinx"] .tree .row { padding: 3px 8px 3px 2px; border-radius: var(--m-radius-sm); gap: 6px; min-height: var(--m-row-h); }
 html[data-ui="silinx"] .tree .row:hover { background: var(--m-hover); }
-html[data-ui="silinx"] .tree .row.sel { background: var(--m-accent-soft); color: var(--m-fg); }
+html[data-ui="silinx"] .tree :is(.row.sel, .row.msel) { background: var(--m-accent-soft); color: var(--m-fg); }
 html[data-ui="silinx"] .tree .row.sel .meta, html[data-ui="silinx"] .tree .row .meta { color: var(--m-muted); }
 html[data-ui="silinx"] .tree .row.disabled { color: var(--m-muted); opacity: .7; }
 html[data-ui="silinx"] .tree .empty { color: var(--m-muted); padding: 10px 12px; }

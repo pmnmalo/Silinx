@@ -48,7 +48,7 @@ const badgeRight = async (page, label, text) => {
 };
 const filesRow = (page, file) => page.waitFor((f) => { const i = [...document.querySelectorAll('#files-page tr')].findIndex((tr) => tr.cells[0]?.textContent === f); return i >= 0 ? i + 1 : 0; }, [file], { what: `${file} in the Files view` }).then((i) => i - 1);
 // the question of Remove from Project: its text; answered
-const answer = async (page, button = 'Yes', title = 'Remove Source') => {
+const answer = async (page, button = 'Remove from Project', title = 'Remove Source') => {
   await page.waitDialog(title);
   const text = await topText(page);
   await page.dialogButton(button);
@@ -63,7 +63,7 @@ const DRAWN = [
   { kind: 'ASM chart', file: 'src/seq.asm.json', mod: 'seq', ico: 'asm', badge: 'ASM', model: newModel('seq', 'vhdl') },
   { kind: 'state diagram', file: 'src/st.fsm.json', mod: 'st', ico: 'fsm', badge: 'FSM', views: ' [Schematic]', model: newFsm('st', 'vhdl') },   // (its schematic, #4910)
 ];
-const QUESTION = (d, hdl) => `Remove '${d}' and its HDL file '${hdl}' from the project?\n(The files stay in the project folder: Undo or Add to Project in the Files view brings them back.)`;
+const QUESTION = (d, hdl) => `Remove '${d}' and its HDL file '${hdl}' from the project?\n(The files stay in the project folder: Undo or Add to Project in the Files view brings them back.)\n\nRemove and Delete Files moves them to the workspace's .trash folder.`;
 const REMOVED = (d, hdl) => `Removed ${d} and its HDL file ${hdl} from the project (the files are kept in the project folder).`;
 const ROWS = (name, k) => [`project ${name}`, '  chip xc3s250e-4-cp132', `    moduleTop ${k.mod} [${k.badge}*]${k.views || ''} [VHDL] (${k.file.split('/').pop()})`];
 
@@ -134,7 +134,7 @@ uiTest('#234 Remove from Project from the drawing\'s badge and from the HDL\'s b
   assert.deepEqual(menu, own);
   assert.ok(['Open', 'View State Machine (FSM)', 'Remove from Project'].every((l) => menu.includes(l)), menu.join(' | '));
   await page.click('body > .menu-popup .mi', { text: 'Remove from Project' });
-  assert.equal(await answer(page, 'No'), QUESTION(k.file, hdl));
+  assert.equal(await answer(page, 'Cancel'), QUESTION(k.file, hdl));
   assert.deepEqual(await rows(page), ROWS('R_badges', k));
   assert.deepEqual(await pjFiles('R_badges'), [hdl]);
   // Yes: both out; the toast's Undo
@@ -160,7 +160,7 @@ uiTest('#234 Remove from Project from the drawing\'s badge and from the HDL\'s b
   await page.leftTab('files');
   await page.rightClick('#files-page tr', { index: await filesRow(page, k.file) });
   await page.click('body > .menu-popup .mi', { text: 'Remove from Project' });
-  assert.equal(await answer(page), `Remove '${k.file}' from the project?\n(The file stays in the project folder: Undo or Add to Project in the Files view brings it back.)`);
+  assert.equal(await answer(page), `Remove '${k.file}' from the project?\n(The file stays in the project folder: Undo or Add to Project in the Files view brings it back.)\n\nRemove and Delete File moves it to the workspace's .trash folder.`);
   await page.leftTab('design');
   await page.waitFor(() => !Object.keys(window.Silinx.hdlToSch || {}).length, [], { what: 'the drawing out' });
   assert.deepEqual(await rows(page), ['project R_badges', '  chip xc3s250e-4-cp132', '    moduleTop ctl [VHDL*] (ctl.vhd)']);
@@ -181,7 +181,7 @@ uiTest('#234 in Portuguese: Remover do Projeto of a drawn module (the question, 
     await page.treeRow('#hier', k.mod, { right: true, exact: true });
     assert.ok((await menuLabels(page)).includes('Remover do Projeto'));
     await page.click('body > .menu-popup .mi', { text: 'Remover do Projeto' });
-    assert.equal(await answer(page, 'Sim', 'Remover Fonte'), "Remover 'src/gate.sch.json' e o seu ficheiro HDL 'src/gate.vhd' do projeto?\n(Os ficheiros ficam na pasta do projeto: Anular ou Acrescentar ao Projeto na vista Ficheiros repõe-nos.)");
+    assert.equal(await answer(page, 'Remover do Projeto', 'Remover Fonte'), "Remover 'src/gate.sch.json' e o seu ficheiro HDL 'src/gate.vhd' do projeto?\n(Os ficheiros ficam na pasta do projeto: Anular ou Acrescentar ao Projeto na vista Ficheiros repõe-nos.)\n\nRemover e Apagar Ficheiros move-os para a pasta .trash da área de trabalho.");
     await page.waitFor(() => [...document.querySelectorAll('.toast')].some((t) => t.textContent.includes('Removidos gate.sch.json e gate.vhd do projeto')), [], { what: 'the toast in Portuguese' });
     assert.deepEqual(await pjFiles('R_pt'), []);
     assert.deepEqual(await excluded('R_pt'), [k.file]);
@@ -191,7 +191,7 @@ uiTest('#234 in Portuguese: Remover do Projeto of a drawn module (the question, 
     await page.leftTab('files');
     await page.rightClick('#files-page tr', { index: await filesRow(page, hdl) });
     await page.click('body > .menu-popup .mi', { text: 'Remover do Projeto' });
-    assert.equal(await answer(page, 'Não', 'Remover Fonte'), "Remover 'src/gate.vhd' do projeto?\n(O ficheiro fica na pasta do projeto: Anular ou Acrescentar ao Projeto na vista Ficheiros repõe-no.)");
+    assert.equal(await answer(page, 'Cancelar', 'Remover Fonte'), "Remover 'src/gate.vhd' do projeto?\n(O ficheiro fica na pasta do projeto: Anular ou Acrescentar ao Projeto na vista Ficheiros repõe-no.)\n\nRemover e Apagar Ficheiro move-o para a pasta .trash da área de trabalho.");
     assert.deepEqual(await pjFiles('R_pt'), [hdl]);
   } finally {
     await page.eval(async () => { (await import('/js/i18n.js')).setLanguage('en'); });

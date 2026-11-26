@@ -94,7 +94,7 @@ html[data-ui="ise"][data-theme="dark"] .splitter:hover { background: #3a4f70; }
 
 /* ------------------------------------------------------------------ trees */
 html[data-ui="ise"][data-theme="dark"] .tree .row .meta { color: var(--muted); }
-html[data-ui="ise"][data-theme="dark"] .tree .row.sel :is(.meta, .twisty) { color: #dde6f7; }
+html[data-ui="ise"][data-theme="dark"] .tree :is(.row.sel, .row.msel) :is(.meta, .twisty) { color: #dde6f7; }
 html[data-ui="ise"][data-theme="dark"] .tree .row.disabled { color: #858c98; }
 html[data-ui="ise"][data-theme="dark"] .tree .empty { color: var(--muted); }
 html[data-ui="ise"][data-theme="dark"] .tree .ico, html[data-ui="ise"][data-theme="dark"] .tab > .ico { filter: brightness(.92) saturate(.9); }
