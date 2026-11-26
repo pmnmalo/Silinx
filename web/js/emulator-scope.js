@@ -67,8 +67,11 @@ export function mountEmuScope({ design, sim, side, compiled }) {
     const g = sv('g', { 'data-id': 'scope' });
     drawScope(g, { id: 'Scope', type: 'oscilloscope', x: X, y: Y, ...settings }, s ? { screen: s, settings, cursors } : null);
     svg.replaceChildren(g);
+    drawnAt = sim.now;
   }
-  const tick = intervalWhileSeen(box, 100, draw);
+  // (its timer redraws only once the simulation has moved on: paused, powered off or settled, nothing drawn, no frame, #5706)
+  let drawnAt = null;
+  const tick = intervalWhileSeen(box, 100, () => { if (!box.isConnected) { tick.stop(); return; } if (sim.now !== drawnAt) draw(); });
   draw();
   return { draw };
 }
