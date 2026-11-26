@@ -942,6 +942,12 @@ The local server does the same for the MCP's `serial_terminal` (`server/serial-m
    the FPGA (the uart example's module) shows them on its LEDs. Both sides are at 3.3 V: no level shifter. Its firmware
    is `pic/lcd_uart.asm`, assembled into `pic/lcd_uart.hex` by the tests' assembler (XC16 is #5482's). It teaches
    PPS, a UART polled while it sends (its 4-byte receive buffer) and a character LCD through the PMP.
+8. **`adc-pmod`** (#5384). A Basys 2 reads a Digilent Pmod AD1 on its JA header over SPI and shows the 12-bit code in
+   hexadecimal on its four displays, its top 8 bits on its LEDs. The AD1 and a potentiometer on its A0 are a circuit
+   node, the board one of its parts; turn the potentiometer while it runs. A circuit with an SPI part makes its wires
+   answer in a sixteenth of the SPI clock (3.125 MHz by default: 20 ns, said in the console), so that the FPGA reads each
+   bit as the converter puts it out; a faster SCK is the circuit node's SPI clock, in its Properties (`spiHz`). It
+   teaches SPI, an A/D converter's code (⌊VIN × 4096 / VCC⌋) and multiplexed displays.
 
 A scenario test fits `grade` and the labs: press the Arduino's button, expect "OK" on the FPGA's UART.
 

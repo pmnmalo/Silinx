@@ -80,6 +80,10 @@ export function mountSystemSide(ctx) {
       // (its circuit, #5215: a .circ.json of the project, its boards the nodes their labels name)
       const cs = opts.circuits?.(n.id) || [];   // (its folder's, #5488)
       out.push(field('Circuit', choose(n.circuit || '', [['', '(none)'], ...[...new Set([...cs, ...(n.circuit ? [n.circuit] : [])])].map(f => [f, f])], v => take(changeNode(M(), n.id, { circuit: v }), 'node'), 'sys-circuit'), 'a .circ.json of the project: its boards are the nodes their labels name'));
+      // (its SPI parts' clock, #5384: its wires answer in a sixteenth of its period; empty: 3.125 MHz)
+      const spi = h('input', { type: 'number', class: 'asm-input sys-spi-hz', value: n.spiHz ? String(n.spiHz) : '', min: '1', placeholder: '3125000' });
+      spi.addEventListener('change', () => take(changeNode(M(), n.id, { spiHz: spi.value === '' ? null : +spi.value }), 'node'));
+      out.push(field('SPI clock (Hz)', spi, 'its SPI parts\' SCK (a Pmod AD1, DA2): its wires answer in a sixteenth of its period; empty: 3.125 MHz'));
     }
     return out;
   }

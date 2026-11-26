@@ -1,0 +1,143 @@
+{
+  "format": "silinx-circuit",
+  "version": 1,
+  "name": "bench",
+  "lang": "vhdl",
+  "parts": [
+    {
+      "id": "F1",
+      "type": "fpga-basys2",
+      "x": 0,
+      "y": 30,
+      "label": "fpga"
+    },
+    {
+      "id": "AD1",
+      "type": "pmod-ad1",
+      "x": 0,
+      "y": 20
+    },
+    {
+      "id": "RV1",
+      "type": "potentiometer",
+      "x": 10,
+      "y": 10,
+      "pos": 50,
+      "ohms": 10000
+    }
+  ],
+  "wires": [
+    {
+      "id": "w1",
+      "points": [
+        [
+          0,
+          30
+        ],
+        [
+          0,
+          20
+        ]
+      ],
+      "color": "blue"
+    },
+    {
+      "id": "w2",
+      "points": [
+        [
+          1,
+          30
+        ],
+        [
+          1,
+          20
+        ]
+      ],
+      "color": "blue"
+    },
+    {
+      "id": "w3",
+      "points": [
+        [
+          3,
+          30
+        ],
+        [
+          3,
+          20
+        ]
+      ],
+      "color": "blue"
+    },
+    {
+      "id": "w4",
+      "points": [
+        [
+          4,
+          30
+        ],
+        [
+          4,
+          20
+        ]
+      ],
+      "color": "blue"
+    },
+    {
+      "id": "w5",
+      "points": [
+        [
+          4,
+          30
+        ],
+        [
+          12,
+          10
+        ]
+      ],
+      "color": "blue"
+    },
+    {
+      "id": "w6",
+      "points": [
+        [
+          5,
+          30
+        ],
+        [
+          5,
+          20
+        ]
+      ],
+      "color": "blue"
+    },
+    {
+      "id": "w7",
+      "points": [
+        [
+          5,
+          30
+        ],
+        [
+          10,
+          10
+        ]
+      ],
+      "color": "blue"
+    },
+    {
+      "id": "w8",
+      "points": [
+        [
+          11,
+          10
+        ],
+        [
+          0,
+          15
+        ]
+      ],
+      "color": "blue"
+    }
+  ]
+}

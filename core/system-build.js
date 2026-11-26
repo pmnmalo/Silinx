@@ -24,7 +24,7 @@ import { rp2040Contract, replOf } from './system-sim-rp2040.js';
 import { BrokerNode } from './system-mqtt.js';
 import { TerminalNode } from './system-sim-terminal.js';
 import { CircuitNode } from './system-sim-circuit.js';
-import { circuitNodePins } from './system-circuit.js';
+import { circuitNodePins, circuitLatency } from './system-circuit.js';
 
 const CLOCK_NAME = /^(clk|clock|mclk|sys_?clk|clk_?in)$/i;
 const periodPs = text => { const m = /^([\d.]+)\s*ns$/i.exec(String(text || '')); return m ? Math.round(Number(m[1]) * 1000) : null; };
@@ -69,8 +69,9 @@ const FIRMWARE_OF = { pic24: 'firmware: a .hex of the project (XC16\'s)', rp2040
 
 /**
  * What to simulate: { fpga: [{ id, module, clock, pins }] (each FPGA node: its module, its clock ({ port, period, hz }),
- * the output pins its links read), circuits: [{ id, model, pins }] (each circuit node: its circuit, its pins of the
- * nodes, #5215), wires: [{ name, link, kind, from, to, baud, frame }], idle: [{ node, pin, value, held }] (held: a GPIO
+ * the output pins its links read), circuits: [{ id, model, latency, pins }] (each circuit node: its circuit, its wires'
+ * latency (circuitLatency's, #5384), its pins of the nodes, #5215), wires: [{ name, link, kind, from, to, baud, frame,
+ * latency }], idle: [{ node, pin, value, held }] (held: a GPIO
  * input held at 0, its link cut, #5581), errors: [text] }
  * (`ports`: { module: [{ name, dir, width }] }; `circuits`: { id: its circuit, read }). An error: the System cannot be
  * simulated (a node with no module, no clock, no firmware, no circuit; a circuit's board that names no node).
@@ -133,12 +134,14 @@ export function systemPlan(sys, { ports = {}, circuits = {} } = {}) {
   for (const n of sys.nodes.filter(x => x.kind === 'circuit' && circuits[x.id])) {
     const r = circuitNodePins(sys, n, circuits[n.id], { ports });
     errors.push(...r.problems.filter(x => x.severity === 'error').map(x => x.message));
+    // (its wires' latency: an SPI part's, a sixteenth of its SCK, #5384)
+    const lat = circuitLatency(n, circuits[n.id]), latency = lat.latency == null ? {} : { latency: lat.latency, said: lat.said };
     for (const q of r.pins) {
       const name = `${n.id}_${q.part}_${q.pin}`;
-      if (q.to !== 'node') { wires.push({ name, link: n.id, kind: 'wire', from: `${q.node}.${q.nodePin}`, to: `${n.id}.${q.name}` }); outs.get(q.node)?.add(q.nodePin); }
-      if (q.to !== 'circuit') { wires.push({ name: q.to === 'both' ? `${name}_back` : name, link: n.id, kind: 'wire', from: `${n.id}.${q.name}`, to: `${q.node}.${q.nodePin}` }); driven.add(`${q.node}.${q.nodePin}`); }
+      if (q.to !== 'node') { wires.push({ name, link: n.id, kind: 'wire', from: `${q.node}.${q.nodePin}`, to: `${n.id}.${q.name}`, ...latency }); outs.get(q.node)?.add(q.nodePin); }
+      if (q.to !== 'circuit') { wires.push({ name: q.to === 'both' ? `${name}_back` : name, link: n.id, kind: 'wire', from: `${n.id}.${q.name}`, to: `${q.node}.${q.nodePin}`, ...latency }); driven.add(`${q.node}.${q.nodePin}`); }
     }
-    circ.push({ id: n.id, model: circuits[n.id], pins: r.pins.map(q => ({ name: q.name, part: q.part, n: q.n, ...(q.to === 'both' ? { node: q.node, nodePin: q.nodePin } : {}) })) });
+    circ.push({ id: n.id, model: circuits[n.id], latency: lat, pins: r.pins.map(q => ({ name: q.name, part: q.part, n: q.n, ...(q.to === 'both' ? { node: q.node, nodePin: q.nodePin } : {}) })) });
   }
   // (a UART's RX no link drives: idle at 1)
   for (const n of sys.nodes) for (const f of n.interfaces) {
@@ -196,7 +199,7 @@ export function buildSystem(sys, plan, { fpga = {}, firmware = {} } = {}) {
     // (an SPI or I²C wire: a sixteenth of its clock's period, the peripheral's answer in time for the master's next edge;
     // SS and I²C's lines pulled up, #5214; a UART's line too, at rest while its transmitter is not enabled yet: an AVR's D1
     // an input before Serial.begin, #5561)
-    const latency = lookahead({ protocol: w.kind, baud: w.baud, hz: w.hz });   // (an MQTT wire's: the network's, 1 ms)
+    const latency = lookahead({ protocol: w.kind, baud: w.baud, hz: w.hz, latency: w.latency });   // (an MQTT wire's: the network's, 1 ms; a circuit's with an SPI part, #5384)
     sim.link({ name: w.name, from: w.from, to: w.to, kind: w.kind === 'uart' ? 'uart' : 'wire', baud: w.baud, latency, pull: w.line === 'ss' || w.kind === 'i2c' || w.kind === 'uart' ? 1 : null });
   }
   for (const { node, pin, value } of plan.idle) sim.nodes.get(node).setPin(pin, value);
