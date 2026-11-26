@@ -233,6 +233,12 @@ test('check-pins: the pins declared in the repository, each read with what its k
   const xdc = by('Digilent\'s master XDCs (the 7-series\' boards)');
   assert.ok(fs.readFileSync(path.join(ROOT, 'core/boards.js'), 'utf8').includes(`digilent-xdc/blob/${xdc.commit}/`));
   assert.ok(fs.readFileSync(path.join(ROOT, 'scripts/install-adepttool.sh'), 'utf8').includes(`COMMIT="${by('adepttool').commit}"`));
+  // the ESP32 node's MicroPython build (#5658): MicroPython's tag and emsdk's, each with its commit, read from the script's lines
+  const build = fs.readFileSync(path.join(ROOT, 'scripts/micropython-wasm/build.sh'), 'utf8');
+  for (const [n, repo, v] of [['MicroPython (the ESP32 node\'s JSPI build)', 'micropython/micropython', 'MICROPYTHON'], ['emsdk (the ESP32 node\'s MicroPython build)', 'emscripten-core/emsdk', 'EMSDK']]) {
+    assert.deepEqual([by(n).kind, by(n).repo, by(n).file], ['tag', repo, 'scripts/micropython-wasm/build.sh'], n);
+    assert.ok(build.includes(`${v}_TAG="${by(n).tag}" ${v}_COMMIT="${by(n).commit}"`), n);
+  }
   // nextpnr-spartan's SILINX_REF: read from the fork's workflows, behind when the files of its chip databases changed
   const chipdbs = pins.filter(p => p.remote);
   assert.deepEqual(chipdbs.map(p => p.remote.url.split('/').pop()), ['spartan3e.yml', 'spartan6.yml']);
