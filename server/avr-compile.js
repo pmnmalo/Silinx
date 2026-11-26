@@ -58,7 +58,8 @@ export async function detectAvrCompiler(cfg = null) {
 // the project's System, its document's path and text
 async function systemOf(name) {
   const pj = await P.readProject(name);
-  // (a compiler run on the project's own text, its includes read from this computer: a trusted project's only, as ISE's, #2830)
+  // (a compiler run on the project's own text, its includes read from this computer: a trusted project's only, as ISE's, #2830;
+  // a PIC24's by XC16 too, #5482)
   if (!isTrusted(pj)) throw new P.HttpError(403, untrustedMessage(name, 'arduino-cli', pj));
   const files = await P.fileTree(name);
   const file = files.find(isSystemFile);
@@ -134,32 +135,38 @@ export async function setMadeFirmwares(j, name, sys, made) {
 
 /**
  * A job compiling the firmware of the microcontroller node `node` of the project `name` (its id), or of every one of
- * its Arduino nodes ('*'), one after another. A node that fails is said and the next one goes on; the job fails when one
- * did. The nodes with no firmware get the one made (their System document written).
+ * its Arduino and PIC24 nodes ('*'), one after another: an Arduino's by arduino-cli, a PIC24's by XC16
+ * (server/xc16-compile.js, #5482). A node that fails is said and the next one goes on; the job fails when one did. The
+ * nodes with no firmware get the one made (their System document written).
  */
 export async function startFirmwareCompile(name, { node } = {}) {
   const sys = await systemOf(name);
   const mcus = sys.nodes.filter(n => n.kind === 'mcu');
   const chosen = node === '*' ? mcus.filter(n => !firmwareRefusal(n)) : sys.nodes.filter(n => n.id === node);
   if (node !== '*' && !chosen.length) throw new P.HttpError(400, `no node '${node}' in the System of '${name}' (its microcontroller nodes: ${mcus.map(n => n.id).join(', ') || 'none'})`);
-  if (!chosen.length) throw new P.HttpError(400, `the System of '${name}' has no Arduino node`);
+  if (!chosen.length) throw new P.HttpError(400, `the System of '${name}' has no Arduino or PIC24 node`);
   const why = node !== '*' && firmwareRefusal(chosen[0]);
   if (why) throw new P.HttpError(400, why);
-  const tool = await detectAvrCompiler();
-  if (!tool.available) throw new P.HttpError(400, `Compile Firmware needs arduino-cli on the local server: ${tool.reason}`);
+  const { isPic24 } = await import('../core/xc16-compile.js');
+  const pics = chosen.filter(isPic24), avrs = chosen.filter(n => !isPic24(n));
+  const tool = avrs.length ? await detectAvrCompiler() : null;
+  if (tool && !tool.available) throw new P.HttpError(400, `Compile Firmware needs arduino-cli on the local server: ${tool.reason}`);
+  const X = pics.length ? await import('./xc16-compile.js') : null;
+  const xc16 = X ? await X.detectXc16() : null;
+  if (xc16 && !xc16.available) throw new P.HttpError(400, `Compile Firmware needs XC16 on the local server or the ISE machine: ${xc16.reason}`);
   const key = name.toLowerCase();
   const was = running.get(key);
   if (was && getJob(was)?.status === 'running') throw new P.HttpError(409, `a firmware of '${name}' is already being compiled (job ${was}); wait for it or cancel it`);
   const job = createJob('firmware', async j => {
     const failed = [], made = [];
     for (const n of chosen) {
-      try { made.push(await compileOne(j, name, sys, n, tool.path)); }
+      try { made.push(isPic24(n) ? await X.compilePic24(j, name, sys, n, xc16) : await compileOne(j, name, sys, n, tool.path)); }
       catch (e) { if (e?.name === 'JobCancelled') throw e; failed.push(n.id); j.log(`ERROR: System node ${n.id}: ${e.message}`); }
     }
     await setMadeFirmwares(j, name, sys, made);
     if (failed.length) throw new Error(`the System node(s) ${failed.join(', ')} failed`);
     return { nodes: made };
-  }, { meta: { project: name, node, toolchain: 'arduino' } });
+  }, { meta: { project: name, node, toolchain: !pics.length ? 'arduino' : !avrs.length ? 'xc16' : 'arduino+xc16' } });
   running.set(key, job.id);
   return job;
 }

@@ -158,6 +158,9 @@ export const SYSTEM_PT_PATTERNS = [
   // (a node's firmware compiled in the browser edition: web/js/system-firmware-ui.js, #4695 phase 5)
   [/^(.+): a node's firmware is compiled by the local server's arduino-cli \(the browser edition has no compiler\): give the node a \.hex made elsewhere, the Arduino IDE's Export Compiled Binary$/,
     '$1: o programa (firmware) de um nó é compilado pelo arduino-cli do servidor local (a edição do browser não tem compilador): dê ao nó um .hex feito noutro lado, o Export Compiled Binary do Arduino IDE'],
+  // (a PIC24 node's in the browser edition, #5482)
+  [/^(.+): a PIC24 node's firmware is compiled by XC16, on the local server or its ISE machine \(the browser edition has no compiler\): give the node the \.hex MPLAB X built$/,
+    '$1: o programa (firmware) de um nó PIC24 é compilado pelo XC16, no servidor local ou na sua máquina do ISE (a edição do browser não tem compilador): dê ao nó o .hex que o MPLAB X construiu'],
   // (the register map's Header, its map in error: web/js/drawings-regs.js)
   [/^([^:]+): (.+): no header written$/, '$1: $2: cabeçalho não escrito'],
   [/^(\d+) registers? · (\d+) bytes?$/, (m, n, b) => `${n} ${n === '1' ? 'registo' : 'registos'} · ${b} byte${b === '1' ? '' : 's'}`],

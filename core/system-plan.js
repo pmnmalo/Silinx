@@ -1,6 +1,6 @@
 // Silinx - a System's build and programming plan (#5489, roadmap #5479's phase 2, docs/SYSTEMS.md): each node's steps,
 // the FPGA nodes first, then the microcontrollers (which leave reset once the FPGAs are configured): its build (the
-// Silinx toolchain to its bitstream, arduino-cli to its sketch's .hex), its image, its programmer, and its state: up to
+// Silinx toolchain to its bitstream, arduino-cli to its sketch's .hex, XC16 to a PIC24's C's, #5482), its image, its programmer, and its state: up to
 // date, out of date (a source changed, added or removed, or its description), not built, given (a .hex with no sketch:
 // nothing to build), or not buildable, said why. A node's build records what it was built from (`buildRecord`: its
 // description and its sources' hashes), written next to its output (server/system-plan.js) whichever process built it.
@@ -12,6 +12,7 @@
 import { mcuBoard } from './system-doc.js';
 import { relInNode } from './system-layout.js';
 import { firmwareRefusal, firmwareSources, nodeSketch } from './avr-compile.js';
+import { nodeProgram } from './xc16-compile.js';
 import { nodeRefusal } from './system-node.js';
 import { REACTIVE_KINDS, drawingKind } from './reactive-from.js';
 
@@ -88,11 +89,13 @@ function mcuEntry(n, { files, hashes, records, exists }) {
     return { ...e, programmer: 'repl', sources: py, state: 'nothing to build', reason: py.length ? 'a MicroPython program runs as it is' : `no .py in its folder ${n.id}/ yet` };
   }
   if (b.arch === 'pic24') {
+    // (its C and assembly compiled by XC16, #5482; else a .hex given, made outside Silinx)
+    const prog = nodeProgram(n, files);
+    if (!prog.error) return withState({ ...e, build: 'xc16', image: prog.hex, programmer: 'pickit', sources: prog.sources }, n, { hashes, records, exists });
     const fw = /\.hex$/i.test(n.firmware || '') ? n.firmware : null;
     if (fw && exists.has(fw)) return { ...e, image: fw, programmer: 'pickit', state: 'given', reason: `its .hex ${fw}, made outside Silinx` };
-    const c = files.filter(f => /\.(c|h|s)$/i.test(f) && relInNode(f, n.id) != null);
-    return { ...e, programmer: 'pickit', sources: c.sort(), state: 'not buildable',
-      reason: c.length ? 'its C is not compiled yet (XC16 on the local server, #5482): give it the .hex XC16 made' : `no .hex for its firmware${fw ? ` (${fw} is missing)` : ''}: give it the .hex XC16 made` };
+    return { ...e, programmer: 'pickit', state: 'not buildable',
+      reason: `no C or assembly in its folder ${n.id}/ and no .hex for its firmware${fw ? ` (${fw} is missing)` : ''}: write its C, or give it the .hex XC16 made` };
   }
   const refused = firmwareRefusal(n);
   const sketch = refused ? null : nodeSketch(n, files);
@@ -106,7 +109,7 @@ function mcuEntry(n, { files, hashes, records, exists }) {
 
 /**
  * The System `sys`'s plan: { nodes: [entry] } in the order they are built and programmed, the FPGA nodes first (in the
- * document's order), then the microcontrollers. An entry: { id, kind, board, build ('silinx' | 'arduino-cli' | null),
+ * document's order), then the microcontrollers. An entry: { id, kind, board, build ('silinx' | 'arduino-cli' | 'xc16' | null),
  * image (the bitstream or the firmware it programs, or null), programmer ('jtag' | 'avrdude' | 'pickit' | 'repl', or null), sources (the
  * files it is built from), state ('up to date' | 'out of date' | 'not built' | 'given' | 'nothing to build' | 'not
  * buildable'), reason (text, or null) }. `files`: the project's; `hashes`: their hashes; `records`: each node's
@@ -124,7 +127,7 @@ export function systemBuildPlan(sys, { files = [], hashes = {}, records = {}, ex
 /** Whether Build builds the entry: it has a build and is not up to date (`force`: up to date too, a node's own Build). */
 export const needsBuild = (e, force = false) => !!e.build && (force || e.state !== 'up to date');
 
-const BUILDS = { silinx: 'built by the Silinx toolchain', 'arduino-cli': 'compiled by arduino-cli' };
+const BUILDS = { silinx: 'built by the Silinx toolchain', 'arduino-cli': 'compiled by arduino-cli', xc16: 'compiled by XC16' };
 
 /** The console's line of a plan's entry: `<id>: <state> (<reason>): <built…> to <image>, programmed <how>`. */
 export function planLine(e) {

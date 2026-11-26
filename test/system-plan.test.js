@@ -90,12 +90,16 @@ test('#5489 an Arduino node with a .hex and no sketch: given; its firmware missi
   assert.equal(planLine(systemBuildPlan(sys({ ...UNO, board: 'nope' }), { files }).nodes[0]), 'uno: not buildable (no microcontroller board \'nope\')');
 });
 
-test('#5489 a PIC24 node: its .hex given, programmed by a PICkit; its C not compiled yet (XC16, #5482)', () => {
+test('#5489 a PIC24 node: its .hex given, programmed by a PICkit; #5482 its C and assembly compiled by XC16', () => {
   const PIC = { id: 'pic', kind: 'mcu', board: 'explorer-1632', firmware: 'pic/blink.hex', lang: 'c', interfaces: [] };
-  assert.equal(planLine(systemBuildPlan(sys(PIC), { files: ['pic/blink.hex', 'pic/main.c'] }).nodes[0]), 'pic: given (its .hex pic/blink.hex, made outside Silinx); its image pic/blink.hex, programmed by a PICkit (MPLAB IPE)');
-  assert.equal(planLine(systemBuildPlan(sys(PIC), { files: ['pic/main.c'] }).nodes[0]), 'pic: not buildable (its C is not compiled yet (XC16 on the local server, #5482): give it the .hex XC16 made); programmed by a PICkit (MPLAB IPE)');
-  assert.equal(planLine(systemBuildPlan(sys({ ...PIC, firmware: undefined }), { files: [] }).nodes[0]), 'pic: not buildable (no .hex for its firmware: give it the .hex XC16 made); programmed by a PICkit (MPLAB IPE)');
-  assert.equal(planLine(systemBuildPlan(sys(PIC), { files: [] }).nodes[0]), 'pic: not buildable (no .hex for its firmware (pic/blink.hex is missing): give it the .hex XC16 made); programmed by a PICkit (MPLAB IPE)');
+  assert.equal(planLine(systemBuildPlan(sys(PIC), { files: ['pic/blink.hex', 'pic/lcd.asm'] }).nodes[0]), 'pic: given (its .hex pic/blink.hex, made outside Silinx); its image pic/blink.hex, programmed by a PICkit (MPLAB IPE)');
+  // (a C: compiled by XC16 to its firmware's .hex, the given one replaced; its sources its C, headers and assembly)
+  const c = systemBuildPlan(sys(PIC), { files: ['pic/blink.hex', 'pic/main.c', 'pic/lcd.h', 'pic/delay.s', 'pic/build/nodes/x.c', 'pic/notes.txt'] }).nodes[0];
+  assert.deepEqual([c.build, c.image, c.programmer, c.sources], ['xc16', 'pic/blink.hex', 'pickit', ['pic/delay.s', 'pic/lcd.h', 'pic/main.c']]);
+  assert.equal(planLine(c), 'pic: out of date (its last build left no record of its sources); compiled by XC16 to pic/blink.hex, programmed by a PICkit (MPLAB IPE)');
+  assert.equal(planLine(systemBuildPlan(sys({ ...PIC, firmware: undefined }), { files: ['pic/main.c'] }).nodes[0]), 'pic: not built (no pic/pic.hex yet); compiled by XC16 to pic/pic.hex, programmed by a PICkit (MPLAB IPE)');
+  assert.equal(planLine(systemBuildPlan(sys({ ...PIC, firmware: undefined }), { files: [] }).nodes[0]), 'pic: not buildable (no C or assembly in its folder pic/ and no .hex for its firmware: write its C, or give it the .hex XC16 made); programmed by a PICkit (MPLAB IPE)');
+  assert.equal(planLine(systemBuildPlan(sys(PIC), { files: [] }).nodes[0]), 'pic: not buildable (no C or assembly in its folder pic/ and no .hex for its firmware (pic/blink.hex is missing): write its C, or give it the .hex XC16 made); programmed by a PICkit (MPLAB IPE)');
 });
 
 test('#5489 the record: the node\'s description as its build reads it, its sources\' hashes', () => {

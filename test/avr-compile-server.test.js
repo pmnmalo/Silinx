@@ -119,8 +119,8 @@ test('#5503 MCP: run_process firmware, its errors, warnings and locations as the
   assert.deepEqual(e.data.errors, ['ERROR: uno/hello.ino:2:2: #error nope', 'ERROR: System node uno: uno: its sketch did not compile (1 error(s), 0 warning(s))', 'ERROR: the System node(s) uno failed']);
   assert.deepEqual(e.data.warnings, []);
   const refused = async (args, message) => assert.rejects(tool('run_process').run({ project: name, process: 'firmware', ...args }), { message });
-  await refused({}, 'node: the firmware process compiles a System microcontroller node\'s firmware (its id, or * every Arduino node)');
-  await refused({ node: 'uno', toolchain: 'ise' }, 'toolchain: a firmware is compiled by arduino-cli (no toolchain to choose)');
+  await refused({}, 'node: the firmware process compiles a System microcontroller node\'s firmware (its id, or * every Arduino and PIC24 node)');
+  await refused({ node: 'uno', toolchain: 'ise' }, 'toolchain: a firmware is compiled by arduino-cli or XC16 (no toolchain to choose)');
   await refused({ node: 'fpga' }, 'fpga: a firmware is compiled for a microcontroller node (this one is fpga)');
   const t = await tool('toolchain_info').run({});
   assert.equal(t.text.split('\n')[2], 'Arduino (Compile Firmware): available: arduino-cli 1.6.0 with the Arduino AVR core 1.8.6.');

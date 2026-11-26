@@ -14,7 +14,7 @@ test('#5503 the nodes compiled: an Uno\'s and a Nano\'s C or C++; the others ref
   assert.equal(firmwareRefusal({ ...UNO, board: 'arduino-nano', lang: 'cpp' }), null);
   assert.deepEqual(AVR_FQBN, { 'arduino-uno': 'arduino:avr:uno', 'arduino-nano': 'arduino:avr:nano:cpu=atmega328' });
   assert.equal(firmwareRefusal({ id: 'fpga', kind: 'fpga' }), 'fpga: a firmware is compiled for a microcontroller node (this one is fpga)');
-  assert.equal(firmwareRefusal({ ...UNO, id: 'pic', board: 'explorer-1632' }), 'pic: its Explorer 16/32\'s firmware is XC16\'s .hex, compiled outside Silinx for now');
+  assert.equal(firmwareRefusal({ ...UNO, id: 'pic', board: 'explorer-1632' }), null, 'a PIC24\'s by XC16 (#5482)');
   assert.equal(firmwareRefusal({ ...UNO, board: 'esp32' }), 'uno: no compiler for its board esp32');
   assert.equal(firmwareRefusal({ ...UNO, lang: 'micropython' }), 'uno: a MicroPython node\'s program is not compiled (it runs as it is, #5487)');
 });

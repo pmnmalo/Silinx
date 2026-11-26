@@ -1,0 +1,8 @@
+#!/usr/bin/env node
+// A stand-in for XC16's xc16-bin2hex (#5482): `<x>.elf -a -omf=elf` writes <x>.hex (the stand-in .elf is a .hex already).
+// Its arguments are written to xc16-bin2hex.json in its folder.
+import fs from 'node:fs';
+const a = process.argv.slice(2);
+fs.writeFileSync('xc16-bin2hex.json', JSON.stringify(a));
+if (!/\.elf$/.test(a[0] || '') || !fs.existsSync(a[0])) { console.error(`xc16-bin2hex: cannot open ${a[0]}`); process.exit(1); }
+fs.writeFileSync(a[0].replace(/\.elf$/, '.hex'), fs.readFileSync(a[0]));

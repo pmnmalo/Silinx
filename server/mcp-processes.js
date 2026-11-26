@@ -54,7 +54,7 @@ export const REPORT_FILES = {
     drc: top => `build/${top}_drc.rpt`,
   },
 };
-const TOOLCHAIN_NAMES = { silinx: 'Silinx toolchain', ise: 'Xilinx ISE', vivado: 'AMD Vivado', arduino: 'arduino-cli', system: 'its nodes\' toolchains' };
+const TOOLCHAIN_NAMES = { silinx: 'Silinx toolchain', ise: 'Xilinx ISE', vivado: 'AMD Vivado', arduino: 'arduino-cli', xc16: 'XC16', 'arduino+xc16': 'arduino-cli and XC16', system: 'its nodes\' toolchains' };
 // the map and par reports of a Silinx toolchain run, from its Design Summary (build/reports.json); the router's passes
 // only when the engine counts them (nextpnr's do not, #2420)
 export const OPEN_REPORTS = {
@@ -99,7 +99,8 @@ export function processMessageList({ errors, warnings, head, ok, process, paths 
  *  warnings, whether it ended well, its toolchain. Errors: tool errors. */
 export async function runProcess(name, proc, { toolchain, node, timeoutS = 1800, signal, progress } = {}) {
   const pj = await readProject(name);
-  // (a System's Arduino node's firmware compiled by arduino-cli, #5503: server/avr-compile.js, the node's Compile Firmware)
+  // (a System's Arduino node's firmware compiled by arduino-cli, #5503, a PIC24's by XC16, #5482: server/avr-compile.js, the
+  // node's Compile Firmware)
   if (proc === 'firmware') return runFirmware(name, { toolchain, node, timeoutS, signal, progress });
   // (a System built by its plan, the nodes not up to date, the FPGAs first, #5489: server/system-build-all.js, Build All)
   if (proc === 'build') return runBuild(name, { toolchain, node, timeoutS, signal, progress });
@@ -123,17 +124,17 @@ export async function runProcess(name, proc, { toolchain, node, timeoutS = 1800,
   return { top: node === undefined ? pj.top : node === '*' ? 'System' : `node ${node}`, lines, errors, warnings, locations, paths, ok: job.status === 'ok', silinx: tc === 'silinx', toolchain: tc };
 }
 
-// a node's firmware compiled (node: its id, or * every Arduino node): run_process firmware's result, as a flow's
+// a node's firmware compiled (node: its id, or * every Arduino and PIC24 node): run_process firmware's result, as a flow's
 async function runFirmware(name, { toolchain, node, timeoutS, signal, progress }) {
-  if (node === undefined) throw toolError('node: the firmware process compiles a System microcontroller node\'s firmware (its id, or * every Arduino node)');
-  if (toolchain !== undefined) throw toolError('toolchain: a firmware is compiled by arduino-cli (no toolchain to choose)');
+  if (node === undefined) throw toolError('node: the firmware process compiles a System microcontroller node\'s firmware (its id, or * every Arduino and PIC24 node)');
+  if (toolchain !== undefined) throw toolError('toolchain: a firmware is compiled by arduino-cli or XC16 (no toolchain to choose)');
   let job;
   try { job = await (await import('./avr-compile.js')).startFirmwareCompile(name, { node }); } catch (e) { throw toolError(e.message); }
   const lines = await waitFor(job, 'firmware', { timeoutS, signal, progress });
   // (the node's sources: its sketch's files, the messages' locations)
   const paths = await P.fileTree(name).catch(() => []);
   const { errors, warnings, locations } = processMessages(lines, paths);
-  return { top: node === '*' ? 'System' : `node ${node}`, lines, errors, warnings, locations, paths, ok: job.status === 'ok', silinx: false, toolchain: 'arduino' };
+  return { top: node === '*' ? 'System' : `node ${node}`, lines, errors, warnings, locations, paths, ok: job.status === 'ok', silinx: false, toolchain: job.meta?.toolchain || 'arduino' };
 }
 
 // a System built (node: its id, or * every node not up to date): run_process build's result, as a flow's
@@ -170,11 +171,11 @@ const PROCESS_LIMITS = Object.freeze({ timeoutS: 7200, logLines: 1000 });
 export const PROCESS_TOOLS = [
   {
     name: 'run_process', title: 'Run a process',
-    description: 'Run a process and wait for it: synthesize, implement, bitstream (Generate Programming File), timing, power, pins (Back-annotate Pin Locations), post_synthesis_model / post_translate_model / post_map_model / post_par_model (then simulate with model); firmware: an Arduino node\'s sketch to its .hex (arduino-cli); build: a System\'s nodes not up to date, by its plan. The Silinx toolchain by default; toolchain ise (Xilinx ISE, when configured) or vivado (AMD Vivado, a 7-series device; no simulation models; the Artix-7 and the Zynq-7000\'s logic also silinx, on trial). Returns the errors, the warnings (their files and lines) and the log\'s end.',
+    description: 'Run a process and wait for it: synthesize, implement, bitstream (Generate Programming File), timing, power, pins (Back-annotate Pin Locations), post_synthesis_model / post_translate_model / post_map_model / post_par_model (then simulate with model); firmware: an MCU node\'s C to its .hex (arduino-cli, XC16); build: a System\'s nodes not up to date, by its plan. The Silinx toolchain by default; toolchain ise (Xilinx ISE, when configured) or vivado (AMD Vivado, a 7-series device; no simulation models; the Artix-7 and the Zynq-7000\'s logic also silinx, on trial). Returns the errors, the warnings (their files and lines) and the log\'s end.',
     inputSchema: { type: 'object', properties: {
       project: PROJECT, process: { type: 'string', enum: [...Object.keys(PROCESSES), 'firmware', 'build'], description: 'The process.' },
       toolchain: { type: 'string', enum: ['silinx', 'ise', 'vivado'], description: 'The toolchain (default: the project\'s synthesis tool, else Toolchain Settings).' },
-      node: STR('A System node\'s id (* all): an FPGA\'s; firmware: an Arduino\'s; build: any.'),
+      node: STR('A System node\'s id (* all): an FPGA\'s; firmware: an MCU\'s; build: any.'),
       log_lines: { type: 'integer', description: `The lines of the end of the log returned (default 40; from 1 to ${PROCESS_LIMITS.logLines}).` },
       timeout_s: { type: 'integer', description: `How long to wait, in seconds (default 1800; from 1 to ${PROCESS_LIMITS.timeoutS}): then the process is stopped.` },
     }, required: ['project', 'process'], additionalProperties: false },

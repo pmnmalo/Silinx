@@ -679,7 +679,7 @@ export function runDocker(job, cfg, gen, steps, onLine) {
 }
 
 /** ssh target + base options. */
-function sshParts(cfg) {
+export function sshParts(cfg) {
   const s = cfg.ssh;
   const target = s.user ? `${s.user}@${s.host}` : s.host;
   const opts = ['-o', 'BatchMode=yes'];
@@ -744,7 +744,7 @@ export function remoteFlowCommand(cfg, rdir, steps, { dockerArgs = [], env: vars
 }
 
 /** Run `a | b`, logging stderr of both; resolves with the first non-zero exit code. */
-function runPipe(job, [cmdA, argsA], [cmdB, argsB]) {
+export function runPipe(job, [cmdA, argsA], [cmdB, argsB]) {
   return new Promise((resolve, reject) => {
     if (job.cancelled) return reject(new JobCancelled());
     job.log(`$ ${[cmdA, ...argsA].map(shQuote).join(' ')} | ${[cmdB, ...argsB].map(shQuote).join(' ')}`);
