@@ -287,6 +287,13 @@ export const THIRD_PARTY = [
     "standalone": false
   },
   {
+    "name": "eecircuit-engine",
+    "version": "1.9.0",
+    "license": "MIT AND BSD-3-Clause AND LGPL-2.0-only AND LGPL-2.0-or-later AND MPL-2.0 AND Apache-2.0",
+    "url": "https://github.com/eelab-dev/EEcircuit-engine",
+    "ported": true
+  },
+  {
     "name": "elkjs",
     "version": "0.12.1",
     "license": "EPL-2.0 OR GPL-3.0-or-later",
