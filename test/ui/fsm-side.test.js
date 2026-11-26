@@ -174,7 +174,7 @@ uiTest('#405 FSM side panel: the machine (its name shown, not edited, #5718; a p
     const r = {};
     side.renderSide();
     const nameIn = field(B, 'Module name');   // (#5718: renamed by the Design pane's Rename… only)
-    r.nameField = [nameIn.disabled, nameIn.value, nameIn.closest('.asm-field').querySelector('.asm-fhint')?.textContent];
+    r.nameField = [nameIn.disabled, nameIn.value, nameIn.title, nameIn.closest('.asm-field').querySelector('.asm-fhint')];
     B.querySelector('.fsm-add-in').click();
     B.querySelector('.fsm-add-out').click();
     r.ports = [M.inputs.map((p) => p.name), M.outputs.map((p) => `${p.name}=${p.default}`)];
@@ -190,7 +190,7 @@ uiTest('#405 FSM side panel: the machine (its name shown, not edited, #5718; a p
   });
   assert.deepEqual(out.ports, [['x', 'x1'], ['z=0', 'z1=0']]);
   assert.deepEqual(out.removed, ['x1']);
-  assert.deepEqual(out.nameField, [true, 'fsm', 'renamed with Rename… in the Design pane']);
+  assert.deepEqual(out.nameField, [true, 'fsm', 'Renamed with Rename… in the Design pane', null]);
   assert.deepEqual(out.machine, ['fsm', 'low', 'counts']);
   assert.equal(out.noDesc, false);
   assert.deepEqual(out.commits, ['', '', '', '', '', '']);

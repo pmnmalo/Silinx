@@ -11,7 +11,7 @@ import { lutFunction } from '/core/fpga/techview.js';
 import { getLanguage } from './i18n.js';
 import { dialog } from './ui.js';
 import { h } from './dom.js';
-import { moduleNameInput, MODULE_NAME_NOTE } from './module-name-field.js';
+import { moduleNameInput } from './module-name-field.js';
 import { reservedError } from '/core/reserved.js';
 import { naturalCompare } from '/core/hier-order.js';
 import { designKind } from './project-kind-flag.js';
@@ -135,7 +135,7 @@ export function mountProps(ctx) {
   }
   function sheetProps() {
     propBody.append(h('div', { class: 'se-ptitle', text: 'Schematic sheet' }));
-    propBody.append(field('Module name', moduleNameInput(doc().name), MODULE_NAME_NOTE));   // (renamed by the Design pane's Rename… only, #5718)
+    propBody.append(field('Module name', moduleNameInput(doc().name)));   // (renamed by the Design pane's Rename… only, #5718)
     if (!designKind()) propBody.append(field('Language', selBox(doc().lang, [['vhdl', 'VHDL'], ['verilog', 'Verilog']], v => { doc().lang = v; setGenLang(v); })));
     propBody.append(field('Description', ta(doc().description || '', v => { if (String(v).trim()) doc().description = v; else delete doc().description; }, 2), designKind() ? 'shown on the sheet' : 'shown on the sheet and as a comment in the HDL'));   // (a design project's: no HDL, #3891)
     propBody.append(field('Sheet size', h('div', { class: 'se-row' },
