@@ -58,7 +58,7 @@ uiTest('#5376 Design Properties: the DE boards, experimental; the DE0-CV\'s pins
   await page.setView('impl');
   await page.treeRow('#hier', 'top');
   const labels = await procLabels(page);
-  for (const present of ['User Constraints', 'View RTL Schematic', 'Check Syntax', 'Emulate on Board']) assert.ok(labels.includes(present), `${present}: ${labels}`);
+  for (const present of ['I/O Pin Planning', 'View RTL Schematic', 'Check Syntax', 'Emulate on Board']) assert.ok(labels.includes(present), `${present}: ${labels}`);
   for (const absent of ['Synthesize - Yosys', 'Synthesize - XST', 'Implement Design', 'Generate Programming File', 'Configure Target Device']) assert.ok(!labels.some(l => l.startsWith(absent)), `${absent}: ${labels}`);
   // Implement asked anyway (the toolbar's step, a lab's task): refused with the message
   await page.eval(async () => (await import('/js/implement.js')).runImpl('top', ['synth']));
