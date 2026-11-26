@@ -2,8 +2,9 @@
 // Program All and Program Node over the build plan (core/system-plan.js: the FPGA nodes first, then the microcontrollers)
 // and the boards matched by their USB id (core/system-usb.js), or the board the user picks instead (`chosen`: { id: a
 // connected board's serial number or port }). Each node's step: an FPGA node's bitstream over JTAG, an Arduino's .hex by
-// avrdude (arduino-cli upload) on its board's serial port; a PIC24's and a MicroPython node's are not programmed by Silinx
-// yet, said. A node not built, or with no board, is refused with its message; one out of date is programmed, warned.
+// avrdude (arduino-cli upload) on its board's serial port, a CircuitPython node's program copied to its CIRCUITPY drive
+// (#5697: the local server's, the drive mounted, no board to match); a PIC24's and a MicroPython node's are not
+// programmed by Silinx yet, said. A node not built, or with no board, is refused with its message; one out of date is programmed, warned.
 //
 //   const steps = programSteps(plan, match, devices, { node, chosen });
 //   steps.map(stepLine)
@@ -18,6 +19,7 @@ export const deviceByKey = (devices, key) => devices.find(d => d.serial === key)
 export function programRefusal(e) {
   if (e.programmer === 'pickit') return `a PIC24 is not programmed by Silinx yet: load its ${e.image || '.hex'} with MPLAB IPE`;
   if (e.programmer === 'repl') return 'a MicroPython node is not programmed by Silinx yet: copy its .py files with mpremote';
+  if (e.programmer === 'circuitpy' && !e.image) return 'it has no program (a .py of its folder, its Program)';
   if (!e.programmer) return `it has nothing to program (${e.reason || e.state})`;
   if (e.state === 'not built') return `not built yet (${e.reason}): Build All first`;
   if (e.state === 'not buildable') return `it cannot be programmed: ${e.reason}`;
@@ -37,6 +39,8 @@ export function programSteps(plan, match, devices = [], { node = '*', chosen = {
     const s = { id: e.id, kind: e.kind, programmer: e.programmer, image: e.image, device: null, warning: null, refused: programRefusal(e) };
     out.push(s);
     if (s.refused) continue;
+    // (a CircuitPython node's: its drive found when it is copied, its files the plan's, #5697)
+    if (e.programmer === 'circuitpy') { s.sources = e.sources; continue; }
     const m = match.nodes.find(x => x.id === e.id);
     const pick = Object.hasOwn(chosen, e.id) ? chosen[e.id] : null;
     if (pick != null) {
@@ -55,6 +59,7 @@ export function programSteps(plan, match, devices = [], { node = '*', chosen = {
 /** The console's line of a step before it runs: `<id>: <image> on <device> (<how>)`, or its refusal. */
 export function stepLine(s) {
   if (s.refused) return `${s.id}: not programmed: ${s.refused}`;
+  if (s.programmer === 'circuitpy') return `${s.id}: ${s.image} as code.py onto the Pico's CIRCUITPY drive`;
   return `${s.id}: ${s.image} on ${deviceText(s.device)}, ${s.programmer === 'jtag' ? 'over JTAG' : 'by avrdude (arduino-cli upload)'}`;
 }
 

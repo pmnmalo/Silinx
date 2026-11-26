@@ -59,7 +59,7 @@ async function overWebSerial(name, ids, images, refused = {}) {
 }
 
 // the browser edition's Program All / Program Node: the Arduino nodes over Web Serial, the others refused (an FPGA's by
-// the local server for now; a PIC24's and a MicroPython node's not by Silinx yet)
+// the local server for now; a PIC24's and a MicroPython node's not by Silinx yet; a CircuitPython node's copied by hand, #5697)
 async function inBrowser(name, node) {
   const sys = shownSystem()?.system;
   if (!sys) { logError(`${name}: the System is not open`); return false; }
@@ -68,7 +68,8 @@ async function inBrowser(name, node) {
   if (!steps.length) { logError(`${name}: no node '${node}' to program in the System`); return false; }
   const refused = {}, ids = [], images = {};
   for (const e of steps) {
-    const why = e.kind === 'fpga' ? 'an FPGA node of a System is programmed by the local server for now (the browser edition programs an FPGA project\'s board)' : programRefusal(e);
+    const why = e.kind === 'fpga' ? 'an FPGA node of a System is programmed by the local server for now (the browser edition programs an FPGA project\'s board)'
+      : e.programmer === 'circuitpy' ? programRefusal(e) || `the browser edition writes no drive: copy ${e.image} as code.py, with its folder's other .py files, to the Pico's CIRCUITPY drive` : programRefusal(e);
     if (why) refused[e.id] = why; else { ids.push(e.id); images[e.id] = e.image; }
   }
   return overWebSerial(name, ids, images, refused);

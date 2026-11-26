@@ -32,9 +32,9 @@ projects), Yosys (YoWASP, ISC),
 nextpnr with the Spartan-3E, the Spartan-6 and the 7-series (nextpnr-spartan, ISC, its 7-series chip databases from Project X-Ray's, CC0; with Boost, BSL-1.0, and Eigen, MPL-2.0: source code at
 https://gitlab.com/libeigen/eigen), a port of adepttool (MIT), avr8js (MIT: the the Systems' AVR), rp2040js (MIT: the Systems' RP2040), MicroPython's WebAssembly port (MIT: the Systems' ESP32) and elkjs (Eclipse Public License 2.0, or GNU GPL 3.0 or later; source code:
 https://github.com/kieler/elkjs). The micro80 example includes light8080 (LGPL-2.1, https://github.com/jaruiz/light8080).
-A System's Raspberry Pi Pico runs MicroPython's firmware (MIT) and the RP2040's bootrom (Raspberry Pi's, BSD-3-Clause;
-its float library mufplib for the RP2040 alone, or GPL-2.0): Silinx does not ship them, the local server downloads them
-on their first use.
+A System's Raspberry Pi Pico runs MicroPython's firmware (MIT) or CircuitPython's (Adafruit's, MIT) and the RP2040's
+bootrom (Raspberry Pi's, BSD-3-Clause; its float library mufplib for the RP2040 alone, or GPL-2.0): Silinx does not ship
+them, the local server downloads them on their first use.
 A circuit's analog side can run on ngspice, through eecircuit-engine (its wrapper MIT; ngspice Modified BSD, with its KLU
 solver under LGPL-2.0 and numparam under LGPL-2.0 or later compiled in, OSDI MPL-2.0, XSPICE public domain; the model
 cards it bundles Apache-2.0, PTM's with no licence given, not used): Silinx does not ship it, the local server downloads

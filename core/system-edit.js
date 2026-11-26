@@ -6,6 +6,7 @@ import { NODE_KINDS, INTERFACE_KINDS, FRAME_RE, MCU_BOARDS, SPI_HZ, I2C_HZ, mcuB
 import { isName } from './ident.js';
 import { nodeLangs, langError, LANG_NAMES, relInNode, renamedPath } from './system-layout.js';
 import { usbError } from './usb-id.js';
+import { RUNTIME_NAMES } from './rp2040-firmware.js';
 
 const lc = s => String(s).toLowerCase();
 const copy = sys => normalizeSystem(JSON.parse(JSON.stringify(sys)));
@@ -36,12 +37,13 @@ const outside = (id, what, f) => (f && relInNode(f, id) == null ? `${id}: its ${
 const reaching = (sys, node, iface = null) => sys.links.filter(l => [l.a, l.b].some(e => { const x = linkEnd(e); return x?.node === node && (iface == null || x.iface === iface); }));
 
 /**
- * A node added ({ kind, id?, board?, module?, lang?, x?, y? }, lang its base language, its kind's default when not given): an FPGA node with its module and board (no interface yet: its
+ * A node added ({ kind, id?, board?, module?, lang?, runtime?, x?, y? }, lang its base language, its kind's default when not
+ * given; runtime a Pico's Python firmware, #5697): an FPGA node with its module and board (no interface yet: its
  * ports are named in its UART's or GPIO's fields), a microcontroller with its board's UART (`Serial`), a serial terminal
  * with its UART (`serial`), a circuit (#5215) with its circuit (a .circ.json of the project; no interface: its boards'
  * pins are its links). Returns { system, id } or { error }.
  */
-export function addNode(sys, { kind, id = null, board = null, module = null, circuit = null, lang = null, x = 0, y = 0 } = {}) {
+export function addNode(sys, { kind, id = null, board = null, module = null, circuit = null, lang = null, runtime = null, x = 0, y = 0 } = {}) {
   if (!NODE_KINDS.includes(kind)) return { error: `no node kind '${kind}': ${NODE_KINDS.join(', ')}` };
   if (lang != null && langError(kind, lang)) return { error: langError(kind, lang) };
   const out = copy(sys);
@@ -56,8 +58,9 @@ export function addNode(sys, { kind, id = null, board = null, module = null, cir
     // (a board of one language: in it, the Pico's MicroPython, #5494)
     if (b.langs && lang != null && !b.langs.includes(lang)) return { error: `the ${b.name} runs ${b.langs.join(', ')}, not ${lang}` };
     if (b.langs && lang == null) lang = b.langs[0];
+    if (runtime && !b.runtimes?.includes(runtime)) return { error: b.runtimes ? `the ${b.name}'s firmware is ${b.runtimes.join(' or ')}, not ${runtime}` : `the ${b.name} has no Python firmware to choose` };
     // (a Pico W's network: its MQTT interface, #5500)
-    n = { id: nid, kind, board: b.id, firmware: null, interfaces: [...Object.keys(b.uarts).map(name => ({ name, kind: 'uart', ...UART_DEFAULTS })), ...(b.network ? [{ name: 'mqtt', kind: 'mqtt' }] : [])] };
+    n = { id: nid, kind, board: b.id, firmware: null, ...(runtime && runtime !== b.runtimes[0] ? { runtime } : {}), interfaces: [...Object.keys(b.uarts).map(name => ({ name, kind: 'uart', ...UART_DEFAULTS })), ...(b.network ? [{ name: 'mqtt', kind: 'mqtt' }] : [])] };
   } else if (kind === 'circuit') {
     const why = outside(nid, 'circuit', circuit);
     if (why) return { error: why };
@@ -79,14 +82,15 @@ function renameEnds(sys, { node, to, iface = null, toIface = null }) {
 }
 
 /**
- * A node's fields changed ({ id, board, module, variant, firmware, lang, usb, x, y, pins }: those given; a firmware or a
+ * A node's fields changed ({ id, board, module, variant, firmware, runtime, lang, usb, x, y, pins }: those given; a
+ * Pico's runtime its Python firmware (#5697: 'micropython', its default, or 'circuitpython'); a firmware or a
  * circuit in the node's folder, renamed with it; `pins` merged, a port's pin
  * null or '' removing it; a variant or a firmware null removing it). Its id renamed in its links' ends too.
  */
 export function changeNode(sys, id, fields = {}) {
   const out = copy(sys), n = nodeOf(out, id);
   if (!n) return { error: `no node '${id}' in the System` };
-  const allowed = [...({ fpga: ['id', 'module', 'board', 'variant', 'pins', 'constraints', 'usb', 'x', 'y'], mcu: ['id', 'board', 'firmware', 'usb', 'x', 'y'], terminal: ['id', 'x', 'y'], circuit: ['id', 'circuit', 'x', 'y'] }[n.kind] || ['id', 'x', 'y']),
+  const allowed = [...({ fpga: ['id', 'module', 'board', 'variant', 'pins', 'constraints', 'usb', 'x', 'y'], mcu: ['id', 'board', 'firmware', 'runtime', 'usb', 'x', 'y'], terminal: ['id', 'x', 'y'], circuit: ['id', 'circuit', 'x', 'y'] }[n.kind] || ['id', 'x', 'y']),
     ...(nodeLangs(n.kind).length ? ['lang'] : [])];
   for (const k of Object.keys(fields)) if (!allowed.includes(k)) return { error: `${id}: a ${NODE_KIND_NAMES[n.kind] || n.kind} node has no field '${k}' (${allowed.join(', ')})` };
   if (fields.id != null && fields.id !== n.id) {
@@ -111,6 +115,13 @@ export function changeNode(sys, id, fields = {}) {
     n.board = b.id;
   } else if (fields.board !== undefined) n.board = fields.board || null;
   if (fields.module !== undefined) n.module = fields.module || null;
+  // (its Python firmware, #5697: one of its board's, its first not written; another board's dropped with it)
+  const runs = mcuBoard(n.board)?.runtimes;
+  if (fields.runtime !== undefined) {
+    const r = fields.runtime || null;
+    if (r && !runs?.includes(r)) return { error: `${id}: ${runs ? `the ${mcuBoard(n.board).name}'s firmware is ${runs.join(' or ')}, not ${r}` : `the ${mcuBoard(n.board)?.name ?? n.board} has no Python firmware to choose`}` };
+    if (!r || r === runs[0]) delete n.runtime; else n.runtime = r;
+  } else if (n.runtime && !runs?.includes(n.runtime)) delete n.runtime;
   if (fields.lang !== undefined) {
     const why = langError(n.kind, fields.lang);
     if (why) return { error: `${id}: ${why}` };
@@ -329,8 +340,9 @@ export function describeSystem(sys) {
   const lines = [`System ${sys.name}: ${sys.nodes.length} node${sys.nodes.length === 1 ? '' : 's'}, ${sys.links.length} link${sys.links.length === 1 ? '' : 's'}`];
   for (const n of sys.nodes) {
     const what = n.kind === 'fpga' ? `FPGA, module ${n.module ?? '(none)'} on ${n.board ?? '(no board)'}${n.variant ? `-${n.variant}` : ''}`
-      : n.kind === 'mcu' ? `${mcuBoard(n.board)?.name ?? n.board}, ${['rp2040', 'esp32'].includes(mcuBoard(n.board)?.arch) ? 'program' : 'firmware'} ${n.firmware ?? '(none)'}` : n.kind === 'circuit' ? `circuit ${n.circuit ?? '(none)'}` : NODE_KIND_NAMES[n.kind] || n.kind;
-    lines.push(`node ${n.id}: ${what}${n.lang ? `, in ${LANG_NAMES[n.lang] ?? n.lang}` : ''}`);
+      : n.kind === 'mcu' ? `${mcuBoard(n.board)?.name ?? n.board}, ${['rp2040', 'esp32'].includes(mcuBoard(n.board)?.arch) ? `${n.runtime ? `${RUNTIME_NAMES[n.runtime] ?? n.runtime}, ` : ''}program` : 'firmware'} ${n.firmware ?? '(none)'}` : n.kind === 'circuit' ? `circuit ${n.circuit ?? '(none)'}` : NODE_KIND_NAMES[n.kind] || n.kind;
+    // (a CircuitPython node's language its firmware's, said, #5697)
+    lines.push(`node ${n.id}: ${what}${n.lang && !n.runtime ? `, in ${LANG_NAMES[n.lang] ?? n.lang}` : ''}`);
     for (const f of n.interfaces) lines.push(`  ${ifaceText(n, f)}`);
   }
   for (const l of sys.links) lines.push(`link ${l.id}: ${l.kind === 'i2c' ? 'I²C' : String(l.kind).toUpperCase()} ${l.a} ↔ ${l.b}`);

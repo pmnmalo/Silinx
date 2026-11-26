@@ -4,7 +4,8 @@
 // the board the user picks (`chosen`), give the steps (core/system-program.js), in the plan's order: the FPGA nodes
 // first, each node's bitstream over JTAG by the board's programmer (server/programmer.js programJob, its board picked by
 // its serial number where the tool can), then the Arduinos, each .hex by arduino-cli upload (avrdude) on its board's
-// serial port. Only on the user's action, a trusted project's; a node refused or failed is said, the next goes on.
+// serial port; a CircuitPython node's program copied to the Pico's CIRCUITPY drive (server/circuitpy-copy.js, #5697).
+// Only on the user's action, a trusted project's; a node refused or failed is said, the next goes on.
 import * as P from './projects.js';
 import { createJob, getJob, runCommand } from './jobs.js';
 import { loadConfig } from './toolchain.js';
@@ -52,6 +53,20 @@ async function uploadMcu(j, name, n, s) {
   if (code !== 0) throw new Error(`arduino-cli upload failed (exit code ${code}): ${text.filter(l => l.trim()).slice(-3).join(' ').slice(0, 300) || 'no message'}`);
 }
 
+// a CircuitPython node's program as code.py, and its folder's other .py files, onto the Pico's CIRCUITPY drive (#5697)
+async function copyCircuitpy(j, name, n, s) {
+  const { circuitpyDrives, copyToDrive, copyHint } = await import('./circuitpy-copy.js');
+  const { relInNode } = await import('../core/system-layout.js');
+  // (another code.py of its folder not written over its program)
+  const others = (s.sources || []).filter(f => f !== s.image && relInNode(f, n.id) !== 'code.py');
+  const drives = circuitpyDrives();
+  if (drives.length !== 1) throw new Error(`${drives.length ? `${drives.length} CIRCUITPY drives mounted (${drives.join(', ')}): connect only the node's Pico` : 'no CIRCUITPY drive mounted'}: ${copyHint(s.image, others)}`);
+  const files = [];
+  for (const f of others) files.push({ name: relInNode(f, n.id), data: await P.readFileBytes(name, f) });
+  const wrote = copyToDrive(drives[0], { program: { data: await P.readFileBytes(name, s.image) }, files });
+  j.log(`System node ${s.id}: ${wrote.join(', ')} written on ${drives[0]}: CircuitPython runs code.py again.`);
+}
+
 /**
  * A job programming the System of the project `name`: every node (`node` '*', Program All) or the node `node`, on its
  * board (`chosen`: the boards picked by hand). Its result: { programmed: [ids], failed: [ids], refused: [ids] }; the
@@ -74,6 +89,7 @@ export async function startSystemProgram(name, { node = '*', chosen = {} } = {})
       j.log(`System node ${s.id}: programming ${s.image}.`);
       try {
         if (s.kind === 'fpga') await programFpga(j, name, n, s);
+        else if (s.programmer === 'circuitpy') await copyCircuitpy(j, name, n, s);
         else await uploadMcu(j, name, n, s);
         programmed.push(s.id);
         j.log(`System node ${s.id}: programmed.`);
