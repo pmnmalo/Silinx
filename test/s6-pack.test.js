@@ -277,18 +277,19 @@ const EXAMPLE_PACK = {
   traffic: { slices: 34, X: 14, L: 20, M: 0, luts: 96, ffs: 58, warnings: 0 },
   blinky: { slices: 41, X: 22, L: 19, M: 0, luts: 93, ffs: 94, warnings: 0 },   // (#3710: 53, 29, 130 with 20-bit debouncers; #3922: 102, 132 with 21-bit, 55, 31, 103, 134 with 22-bit; #4377: 2-bit, in ticks)
   pong: { slices: 108, X: 54, L: 54, M: 0, luts: 258, ffs: 256, warnings: 0 },
-  stopwatch: { slices: 86, X: 43, L: 42, M: 1, luts: 183, ffs: 202, warnings: 0 },
+  stopwatch: { slices: 87, X: 44, L: 42, M: 1, luts: 185, ffs: 202, warnings: 0 },   // (#5654: 86, 43, 183 with one register of to_decimal's value)
   clock: { slices: 81, X: 35, L: 46, M: 0, luts: 152, ffs: 158, warnings: 0 },
   vga: { slices: 52, X: 22, L: 30, M: 0, luts: 129, ffs: 56, warnings: 0 },
   isqrt: { slices: 30, X: 17, L: 13, M: 0, luts: 74, ffs: 86, warnings: 0 },
   uart: { slices: 52, X: 33, L: 19, M: 0, luts: 140, ffs: 138, warnings: 0 },
   micro80: { slices: 65, X: 45, L: 18, M: 2, luts: 180, ffs: 185, warnings: 0 },   // (#3710: 63, 43, 172 before its CLK_HZ)
-  lock: { slices: 58, X: 31, L: 27, M: 0, luts: 134, ffs: 175, warnings: 0 },
+  lock: { slices: 55, X: 30, L: 25, M: 0, luts: 128, ffs: 175, warnings: 0 },   // (#5654: 58, 31, 27, 134 with typed.cpp's 16-bit register)
 };
 // with LUT combining (combine: 'area'): the slices, never more than without, and the same warnings (isqrt: 29 when
 // the combining came before the storage elements, which then filled the slices it emptied again, #2636)
 // (blinky: 54 with 21-bit debouncers, #3922, 55 with 22-bit; 40 with 2-bit, in ticks, #4377)
-const EXAMPLE_AREA = { gates: 1, breadboard: 2, traffic: 31, blinky: 40, pong: 102, stopwatch: 82, clock: 76, vga: 49, isqrt: 28, uart: 49, micro80: 63, lock: 57 };
+// (#5654: stopwatch 82 with one register of to_decimal's value, lock 57 with typed.cpp's 16-bit register)
+const EXAMPLE_AREA = { gates: 1, breadboard: 2, traffic: 31, blinky: 40, pong: 102, stopwatch: 83, clock: 76, vga: 49, isqrt: 28, uart: 49, micro80: 63, lock: 55 };
 // the SLICELs and SLICEMs of night 1's netlists where an example changed since (blinky's 21-bit debouncers, #3710: 31
 // now; pong's and stopwatch's registers for the Zynq's 125 MHz, #4877)
 const NIGHT1 = { blinky: { L: 29 }, pong: { L: 53 }, stopwatch: { M: 0 } };

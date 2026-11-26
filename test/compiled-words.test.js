@@ -177,13 +177,13 @@ const EXPECTED = {
   traffic: { chains: 2, registers: 2, cells: [312, 156] },
   blinky: { chains: 3, registers: 3, cells: [473, 325] },
   pong: { chains: 7, registers: 7, cells: [1192, 671] },
-  stopwatch: { chains: 9, registers: 9, cells: [938, 372] },
+  stopwatch: { chains: 8, registers: 8, cells: [931, 431] },   // (#5654: 9, 9, [938, 372] with one register of to_decimal's value)
   clock: { chains: 6, registers: 6, cells: [891, 469] },
   vga: { chains: 2, registers: 2, cells: [457, 385] },
   isqrt: { chains: 1, registers: 1, cells: [342, 289] },
   uart: { chains: 3, registers: 3, cells: [588, 445] },
   micro80: { chains: 2, registers: 2, cells: [762, 628] },
-  lock: { chains: 4, registers: 4, cells: [737, 453] },
+  lock: { chains: 4, registers: 4, cells: [736, 452] },   // (#5654: [737, 453] with typed.cpp's 16-bit register)
 };
 // (#659, #670: the equalities with a constant; the tables (their inputs at most, their words, their outputs), the
 // cells before and after; the registers wordLevel made again of the flip-flops the tables feed)
@@ -193,13 +193,13 @@ const TABLES = {
   traffic: [5, { tables: 13, inputs: 12, words: 14816, outputs: 43, cells: [144, 56] }, 5],
   blinky: [3, { tables: 24, inputs: 12, words: 11752, outputs: 61, cells: [321, 129] }, 10],
   pong: [7, { tables: 83, inputs: 11, words: 41472, outputs: 178, cells: [639, 311] }, 12],
-  stopwatch: [7, { tables: 40, inputs: 12, words: 10864, outputs: 70, cells: [334, 225] }, 4],
+  stopwatch: [8, { tables: 46, inputs: 12, words: 30120, outputs: 82, cells: [392, 252] }, 5],   // (#5654: 7, 40, 10864, 70, [334, 225], 4 before)
   clock: [8, { tables: 28, inputs: 12, words: 28248, outputs: 81, cells: [439, 144] }, 4],
   vga: [2, { tables: 20, inputs: 12, words: 38368, outputs: 54, cells: [383, 107] }, 3],
   isqrt: [1, { tables: 35, inputs: 12, words: 22512, outputs: 78, cells: [285, 131] }, 6],
   uart: [6, { tables: 50, inputs: 11, words: 23536, outputs: 96, cells: [433, 222] }, 6],
   micro80: [2, { tables: 119, inputs: 10, words: 51752, outputs: 196, cells: [617, 439] }, 5],
-  lock: [4, { tables: 78, inputs: 12, words: 18936, outputs: 110, cells: [429, 227] }, 8],
+  lock: [4, { tables: 78, inputs: 12, words: 18936, outputs: 110, cells: [428, 227] }, 9],   // (#5654: 429, 8 before)
 };
 // (#670: the part of its operations a step evaluates at most, as the profile estimates it: clock's and vga's models,
 // their display's and their pixel clock's logic changing at every other step, unguarded; blinky's display refresh

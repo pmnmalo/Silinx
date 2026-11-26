@@ -5,6 +5,9 @@
 -- Each digit is then a quotient minus ten times the next one, of which only the last 4 bits count
 -- (a digit is less than 16). Three clock cycles: the value registered (the multipliers' input
 -- register, so that a block RAM's output and a multiplier are not in one cycle), the quotients, then the digits.
+-- Each multiplier has its own copy of the value (x1, x2, x3), which ISE's XST moves into the multiplier
+-- (its input register) whole, and the last 4 bits theirs (x0): one register shared by the three and the
+-- last 4 bits would leave its other bits behind, unconnected (Xst:2677, #5654).
 ----------------------------------------------------------------------------------
 library IEEE;
 use IEEE.STD_LOGIC_1164.ALL;
@@ -18,7 +21,8 @@ end to_decimal;
 
 architecture Behavioral of to_decimal is
     -- the last 4 bits of the quotients and of the value (registered)
-    signal x : UNSIGNED (13 downto 0) := (others => '0');   -- the value, registered
+    signal x1, x2, x3 : UNSIGNED (13 downto 0) := (others => '0');   -- the value, registered: a multiplier's each
+    signal x0 : UNSIGNED (3 downto 0) := (others => '0');               -- its last 4 bits
     signal q1, q2, q3, v : UNSIGNED (3 downto 0) := (others => '0');
     signal d0, d1, d2, d3 : UNSIGNED (3 downto 0) := (others => '0');
 
@@ -40,12 +44,15 @@ begin
     begin
         if rising_edge(clk) then
             -- the value
-            x <= value;
+            x1 <= value;
+            x2 <= value;
+            x3 <= value;
+            x0 <= value(3 downto 0);
             -- the quotients' and the value's last 4 bits
-            q1 <= quotient(x, 6554, 16);
-            q2 <= quotient(x, 5243, 19);
-            q3 <= quotient(x, 8389, 23);
-            v  <= x(3 downto 0);
+            q1 <= quotient(x1, 6554, 16);
+            q2 <= quotient(x2, 5243, 19);
+            q3 <= quotient(x3, 8389, 23);
+            v  <= x0;
             -- the digits
             d0 <= v - times10(q1);
             d1 <= q1 - times10(q2);
