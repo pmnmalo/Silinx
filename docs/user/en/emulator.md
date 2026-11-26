@@ -17,7 +17,10 @@ interface) opens it on the project's top module.
 The Basys2, Nexys2, Nexys3, Atlys, Basys 3, Nexys A7, Spartan-3E Starter Kit, iCEBreaker, ULX3S, Tang Nano 9K, Zybo Z7
 and Arty Z7 (among others) are drawn as they are, their PCB's colour included; the other boards (the GateMate evaluation
 board, the Arty S7…) get a generic panel. On the Zybo Z7 and the Arty Z7 the processing system's parts (the MIO LED and
-buttons, PS-SRST) are drawn but not emulated.
+buttons, PS-SRST) are drawn but not emulated. What an example needs and such a board lacks (the Zybo Z7's, the Arty Z7's
+and the Arty S7's 4-digit display, LEDs and switches past their own), which the constraints put on its Pmods, is drawn
+on a breadboard under the board, each module named with its Pmods, and emulated as the board's own parts; the toolbar's
+menu hides it (*Modules on the headers*).
 
 | A Nexys3 and its VGA monitor (the vga example) | An iCEBreaker and its Pmods (the clock example) |
 |---|---|

@@ -5,6 +5,7 @@
 // drawn, not wired (#4679's phase b).
 import { ledNumbers } from '/core/emulate.js';
 import { holes4, boardFrame, svgText as text, ic, POWER_V_CSS } from './emulator-pcb.js';
+import { pmodBlocks, pmodArt, putPmods, PMOD_CSS } from './emulator-pmods.js';
 
 const W = 900, H = 614;
 const pinsOf = (board, res) => board.resources.find((r) => r.name === res)?.pins ?? [];
@@ -42,7 +43,9 @@ const RGB = [[574, 404, 'LD6'], [626, 404, 'LD5']];       // LD6 (the Z7-10's on
  *  middle (the Z7-20's: the fan connector over it), the DDR3L under it; the MIO LED LD4 and the MIO buttons BTN5 and
  *  BTN4 on the left, LD3..LD0 over SW3..SW0; the boot mode jumper JP5, PGOOD, DONE, the red PS-SRST and PROG buttons,
  *  the RGB LEDs LD6 and LD5 and BTN3..BTN0 on the right. */
-export function zyboZ7Layout({ board, title, h, mkLed, mkSwitch, mkButton, portLabel, bitFor, clockNote, mkPower }) {
+export function zyboZ7Layout({ board, title, h, mkDigit, mkLed, mkSwitch, mkButton, portLabel, bitFor, clockNote, mkPower }) {
+  // (the modules on its Pmods, under it, #5641)
+  const mods = pmodBlocks(board, W, H);
   const z20 = !/xc7z010/i.test(board.device?.part || '');
   const art = `
     <defs><linearGradient id="zypcb" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#16574a"/><stop offset="1" stop-color="#0f4438"/></linearGradient></defs>
@@ -79,7 +82,9 @@ export function zyboZ7Layout({ board, title, h, mkLed, mkSwitch, mkButton, portL
     ${jack(231, '#1a1a1a', 'HPH OUT')}${jack(301, '#e06a7a', 'MIC IN')}${jack(370, '#3d7fd6', 'LINE IN')}
     ${pmodSide(true, 490, 'JA')}${text(W - 78, 414, 'XADC', { size: 9, anchor: 'end' })}
     ${Array.from({ length: 4 }, (_, i) => `<rect x="${BTN_X(i) - 20}" y="${BTN_Y - 20}" width="40" height="40" rx="2" fill="#c9ccd1" stroke="#7b8088"/>`).join('')}`;
-  const { put, wrap } = boardFrame({ h, W, H, art, board, title, clockNote });
+  const { pcb, put, wrap } = boardFrame({ h, W, H: H + mods.room, art: art + pmodArt(mods), board, title, clockNote });
+  // (#2522: given back when the modules are hidden; under the board, the board staying where it is)
+  if (mods.room) { pcb.dataset.moduleRoom = mods.room; pcb.classList.add('emu-room-below'); }
   const part = (w, name) => { w.dataset.part = name; return w; };
   const silkText = (t, x, y) => put(h('span', { class: 'emu-silk zy-silk' }, t), x, y);
   const port = (res, k, x, y) => put(h('span', { class: `emu-port${bitFor(res, k) ? '' : ' nc'}` }, portLabel(res, k)), x, y);
@@ -112,11 +117,12 @@ export function zyboZ7Layout({ board, title, h, mkLed, mkSwitch, mkButton, portL
       part(put(l, x - 8 + i * 8, y - 3), `led6_${c}`);
     });
   }
+  putPmods(mods, { board, h, put, mkDigit, mkLed, mkSwitch, mkButton, portLabel, bitFor, silk: 'zy-silk', swCls: 'emu-sw bs2-sw zy-sw', btnCls: 'emu-btn nx2-btn' });
   return wrap;
 }
 // its parts' look: the upright power switch (PGOOD its LED), the RGB LED's three small LEDs; the switches are the
 // Basys2's (emulator-basys2.js), the buttons the Nexys2's (emulator-nexys2.js)
-zyboZ7Layout.css = `${POWER_V_CSS}
+zyboZ7Layout.css = `${POWER_V_CSS}${PMOD_CSS}
 .zy-power .emu-power-led { left: 574px; top: 145px; width: 10px; height: 7px; border-radius: 0; }
 .zy-silk { font-size: 8px; }
 .zy-sw { width: 34px; height: 62px; }

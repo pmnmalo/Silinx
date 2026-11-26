@@ -5,6 +5,7 @@
 // (#4679's phase b).
 import { ledNumbers } from '/core/emulate.js';
 import { holes4, boardFrame, svgText as text, ic, POWER_V_CSS } from './emulator-pcb.js';
+import { pmodBlocks, pmodArt, putPmods } from './emulator-pmods.js';
 
 const W = 900, H = 675;
 const pinsOf = (board, res) => board.resources.find((r) => r.name === res)?.pins ?? [];
@@ -37,7 +38,9 @@ const LED_Y = 580, BTN_Y = 622;
  *  boot mode jumper JP4 (SD / QSPI / JTAG) and the board's name; the Zynq in the middle, the DDR3 right of it; the shield
  *  headers over and under them, the SPI header on the right; the RGB LEDs LD5 and LD4 over the switches SW1 and SW0,
  *  LD3..LD0 over BTN3..BTN0 along the bottom edge. */
-export function artyZ7Layout({ board, title, h, mkLed, mkSwitch, mkButton, portLabel, bitFor, clockNote, mkPower }) {
+export function artyZ7Layout({ board, title, h, mkDigit, mkLed, mkSwitch, mkButton, portLabel, bitFor, clockNote, mkPower }) {
+  // (the modules on its Pmods, under it, #5641)
+  const mods = pmodBlocks(board, W, H);
   const art = `
     <defs><linearGradient id="azpcb" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fbfbf8"/><stop offset="1" stop-color="#eeeeea"/></linearGradient></defs>
     <rect x="4" y="4" width="${W - 8}" height="${H - 8}" rx="10" fill="url(#azpcb) #fbfbf8" stroke="#b9bab4" stroke-width="3"/>
@@ -63,7 +66,9 @@ export function artyZ7Layout({ board, title, h, mkLed, mkSwitch, mkButton, portL
     ${header(805, 330, 3, 2)}${tag(828, 384, 'SPI', 8)}${tag(842, 428, 'SD CARD', 8)}${text(842, 446, 'On Back', { size: 7, fill: '#111', weight: 'normal' })}
     ${RGB.map(([, name, x]) => rgbAt(x, RGB_Y, name)).join('')}
     ${Array.from({ length: 4 }, (_, i) => `<rect x="${COL_X(i) - 20}" y="${BTN_Y - 20}" width="40" height="40" rx="2" fill="#d5d7da" stroke="#8a8e94"/>`).join('')}`;
-  const { put, wrap } = boardFrame({ h, W, H, art, board, title, clockNote });
+  const { pcb, put, wrap } = boardFrame({ h, W, H: H + mods.room, art: art + pmodArt(mods), board, title, clockNote });
+  // (#2522: given back when the modules are hidden; under the board, the board staying where it is)
+  if (mods.room) { pcb.dataset.moduleRoom = mods.room; pcb.classList.add('emu-room-below'); }
   const part = (w, name) => { w.dataset.part = name; return w; };
   const silkText = (t, x, y) => put(h('span', { class: 'emu-silk az-silk' }, t), x, y);
   const port = (res, k, x, y) => put(h('span', { class: `emu-port az-port${bitFor(res, k) ? '' : ' nc'}` }, portLabel(res, k)), x, y);
@@ -97,6 +102,7 @@ export function artyZ7Layout({ board, title, h, mkLed, mkSwitch, mkButton, portL
     silkText(`BTN${k}(${pinsOf(board, 'btn')[k] ?? ''})`, x, BTN_Y + 22);
     port('btn', k, x, BTN_Y + 33);
   }
+  putPmods(mods, { board, h, put, mkDigit, mkLed, mkSwitch, mkButton, portLabel, bitFor, silk: 'az-silk', swCls: 'emu-sw bs2-sw az-sw', btnCls: 'emu-btn nx2-btn' });
   return wrap;
 }
 // its parts' look: the names dark on the white board, the upright power switch (LD13 its LED), the RGB LEDs' three

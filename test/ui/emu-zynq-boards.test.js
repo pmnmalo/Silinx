@@ -163,3 +163,71 @@ uiTest('#4684 the Zybo Z7 and the Arty Z7 in Portuguese: the controls\' tips tra
   }
   noWarnings(page);
 });
+
+// the modules on the Pmods (#5641): an example's display, LEDs and switches the board lacks, drawn under it on a
+// breadboard, wired and shown; hidden as a module, the board's room given back
+async function exampleOn(page, name, board, part) {
+  const pname = `Emu-${name}-${board}`, api = env.server.api, device = { ...resolveBoard(board).device, ...(part ? { part } : {}) };
+  await makeProject(env, { name: pname, template: name, board, device });
+  const pj = await api('GET', `/api/projects/${encodeURIComponent(pname)}`);
+  delete pj.fileTree;
+  await api('PUT', `/api/projects/${encodeURIComponent(pname)}`, { ...pj, board, device });
+  await page.openProject(pname);
+  assert.equal(await page.eval(() => window.SilinxApp.regenerateUcf()), true);
+  await page.eval(() => window.SilinxApp.openFile(window.SilinxApp.S.project.files.find((f) => /\.(vhd|v)$/.test(f.path)).path));
+  await page.menu('Tools', 'Board Emulator');
+  await page.waitFor(() => window.Silinx.active?.id === 'emulator' && window.Silinx.active.view?.outputs, [], { what: 'emulator running' });
+}
+const moduleTexts = (page) => page.eval(() => [...document.querySelectorAll('.doc:not([hidden]) .emu-pcb-art g[data-module="io"] text')].map((t) => t.textContent));
+
+uiTest('#5641 stopwatch on the Zybo Z7: its display and LD4..LD7 on a breadboard under the board, named with their Pmods, wired; hidden as a module, the room given back', E, async (page) => {
+  await exampleOn(page, 'stopwatch', 'zybo-z7');
+  const g = await geometry(page);
+  assert.deepEqual([g.W, g.H], [900, 614 + 186]);
+  // the 4 digits (AN3..AN0) and LD7..LD4 left to right under the board, the board's own parts as they were
+  assert.ok(leftToRight(g, ['an3', 'an2', 'an1', 'an0', 'ld7', 'ld6', 'ld5', 'ld4']), JSON.stringify(g));
+  assert.ok(['an3', 'an0', 'ld7', 'ld4'].every((p) => g[p].y > 614) && g.sw0.y < 614 && g.led0.y < 614);
+  assert.deepEqual(await moduleTexts(page), ['4-DIGIT DISPLAY (JA, JC)', 'LEDS (JA)']);
+  const silk = await silkOf(page, 'emu-pmod-silk');
+  for (const t of ['AN3', 'AN0', 'LD7', 'LD4']) assert.ok(silk.includes(t), t);
+  // wired: the design's ports under them, nothing "not emulated"
+  assert.deepEqual(await page.eval(() => [...document.querySelectorAll('.doc:not([hidden]) .emu-pmod-port')].map((p) => p.textContent)),
+    ['an<3>', 'an<2>', 'an<1>', 'an<0>', 'led<7>', 'led<6>', 'led<5>', 'led<4>']);
+  assert.doesNotMatch(await page.eval(() => document.querySelector('.doc:not([hidden]) .emu-board-note').textContent), /not emulated/);
+  // hidden as a module (the toolbar menu's item): the breadboard and its parts gone, the board where it was and 614 high
+  const at = () => page.eval(() => {
+    const pcb = document.querySelector('.doc:not([hidden]) .emu-pcb');
+    return { h: pcb.offsetHeight, an: pcb.querySelector('[data-part="an0"]').offsetHeight > 0, power: Math.round(pcb.querySelector('[data-part="power"]').getBoundingClientRect().top - pcb.getBoundingClientRect().top) };
+  });
+  const before = await at();
+  assert.deepEqual(await page.eval(() => [...document.querySelectorAll('.doc:not([hidden]) [data-module-toggle]')].map((c) => [c.dataset.moduleToggle, c.textContent.replace(/^✓/, '')])), [['io', 'Modules on the headers']]);
+  await page.eval(() => document.querySelector('.doc:not([hidden]) [data-module-toggle="io"]').click());
+  const after = await at();
+  assert.deepEqual([before.h, before.an, after.h, after.an, after.power], [800, true, 614, false, before.power]);
+  await page.eval(() => document.querySelector('.doc:not([hidden]) [data-module-toggle="io"]').click());
+  assert.deepEqual((await at()).h, 800);
+  noWarnings(page);
+});
+
+uiTest('#5641 micro80 on the Arty Z7: its display, LD4..LD7 and SW2..SW7 on the breadboard, each on its Pmods', E, async (page) => {
+  await exampleOn(page, 'micro80', 'arty-z7');
+  const g = await geometry(page);
+  assert.deepEqual([g.W, g.H], [900, 675 + 186]);
+  assert.ok(leftToRight(g, ['an3', 'an0', 'ld7', 'ld4', 'sw7', 'sw2']) && g.sw7.h > 1.5 * g.sw7.w && g.sw7.y > 675, JSON.stringify(g));
+  const t = await moduleTexts(page);
+  assert.deepEqual(t.map((x) => x.replace(/ \(.*/, '')), ['4-DIGIT DISPLAY', 'LEDS', 'SWITCHES']);
+  assert.ok(t.every((x) => /\((J[AB]|SHIELD)(, (J[AB]|SHIELD))*\)$/.test(x)), JSON.stringify(t));
+  // a module's switch is the design's input: its tip names its port's bit, a click turns it on
+  assert.deepEqual(await page.eval(() => { const s = document.querySelector('.doc:not([hidden]) [data-part="sw7"] .emu-sw'); s.click(); return [s.classList.contains('on'), /sw<7>/.test(s.title)]; }), [true, true]);
+  noWarnings(page);
+});
+
+uiTest('#5641 stopwatch on the Arty S7 (no drawing: rows of parts): its display and LD4..LD7 on its Pmods shown, named as the board\'s', E, async (page) => {
+  await exampleOn(page, 'stopwatch', 'arty-s7');
+  assert.deepEqual(await page.eval(() => {
+    const b = document.querySelector('.doc:not([hidden]) .emu-board');
+    return [b.querySelectorAll('svg[viewBox="0 0 44 64"]').length, [...b.querySelectorAll('.emu-cell .res')].map((r) => r.textContent).filter((t) => /^LD[4-7]$/.test(t))];
+  }), [4, ['LD7', 'LD6', 'LD5', 'LD4']]);
+  assert.doesNotMatch(await page.eval(() => document.querySelector('.doc:not([hidden]) .emu-board').textContent), /not emulated/);
+  noWarnings(page);
+});

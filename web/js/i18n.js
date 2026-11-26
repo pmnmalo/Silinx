@@ -206,7 +206,7 @@ Object.assign(PT, {
   'Starting the Board Emulator…': 'A iniciar o Emulador de Placa…',
   'VGA monitor (640×480)': 'Monitor VGA (640×480)', 'VGA monitor': 'Monitor VGA', 'Serial terminal': 'Terminal série', 'Send': 'Enviar',
   'Type a line, Enter sends it with CR': 'Escreva uma linha; Enter envia-a com CR', 'The baud rate (8 data bits, no parity, 1 stop bit)': 'A taxa de transmissão (8 bits de dados, sem paridade, 1 bit de paragem)',
-  'Display': 'Mostrador', 'Switches': 'Interruptores',
+  'Display': 'Mostrador', 'Switches': 'Interruptores', 'Modules on the headers': 'Módulos nos conectores',
   'Show or hide this module: the design goes on running': 'Mostrar ou esconder este módulo: o projeto continua a executar', 'No signal': 'Sem sinal',
   'The VGA monitor needs the compiled engine (the event-driven one is too slow for a frame)': 'O monitor VGA precisa do motor compilado (o motor por eventos é demasiado lento para uma imagem)',
   'HSYNC active high: 640×480 at 60 Hz has it active low': 'HSYNC ativo a 1: em 640×480 a 60 Hz é ativo a 0',

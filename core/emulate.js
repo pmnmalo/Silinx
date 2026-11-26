@@ -3,6 +3,7 @@
 // board would show (LED brightness, 7-segment digits with persistence of vision).
 //
 // Isomorphic ES module (browser + Node), no DOM.
+import { withHeaderModules } from './emulate-headers.js';
 
 /** Index of bit `i` of a port (as written in the UCF, e.g. opcode<3>) inside its value (bit 0 = LSB). */
 function bitPos(t, i) {
@@ -28,6 +29,9 @@ function kindOf(res) {
   if (res.group === 'Clock') return 'clk';
   if (/^btn_/.test(res.name)) return 'btn';       // e.g. btn_north on the Spartan-3E Starter Kit
   if (res.group === 'LEDs' && res.dir === 'out') return 'led';   // e.g. the iCEBreaker's red and green LEDs (#2511)
+  // a module on a board's headers (core/emulate-headers.js, #5641): its switches and buttons
+  if (res.extra?.module && res.group === 'Switches' && res.dir === 'in') return 'sw';
+  if (res.extra?.module && res.group === 'Buttons' && res.dir === 'in') return 'btn';
   return KIND[res.name] || 'other';
 }
 /** The number of each LED resource's first LED among the board's LEDs: led's from 0, then the others (the iCEBreaker's
@@ -54,10 +58,13 @@ const periodPs = (p) => {
  * @param ports        design.top.ports ({ name, dir, sig })
  * @param assignments  parseUcf(...).assignments: { 'opcode<3>': { loc: 'B4' }, ... }
  * @param board        board definition with `resources` ({ name, group, pins, dir, extra })
- * @returns {{ bits: Array, clocks: Array, unmapped: Array, resources: Array }}
- *   bits: every port bit on a board resource { port, sig, pos, bit, res, kind, idx, loc } (an LED's: its number, led)
+ * @returns {{ bits: Array, clocks: Array, unmapped: Array, board }}
+ *   bits: every port bit on a board resource { port, sig, pos, bit, res, kind, idx, loc } (an LED's: its number, led);
+ *   board: the board with the modules on its headers (core/emulate-headers.js withHeaderModules), the one to draw
  */
-export function boardWiring({ ports, assignments = {}, board }) {
+export function boardWiring({ ports, assignments = {}, board: given }) {
+  // (the modules the design's ports make on the board's headers, #5641: the board the emulator draws, wiring.board)
+  const board = withHeaderModules(given, ports, assignments);
   const byPin = new Map();
   for (const r of board?.resources || []) r.pins.forEach((pin, idx) => byPin.set(String(pin).toUpperCase(), { res: r, idx }));
   const asg = new Map(Object.entries(assignments).map(([k, v]) => [k.toLowerCase(), v]));
@@ -76,7 +83,7 @@ export function boardWiring({ ports, assignments = {}, board }) {
       if (entry.kind === 'clk' && port.dir === 'in') clocks.push({ ...entry, period: periodPs(hit.res.extra?.period) });
     }
   }
-  return { bits, clocks, unmapped };
+  return { bits, clocks, unmapped, board };
 }
 
 /**

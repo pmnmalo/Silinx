@@ -105,6 +105,7 @@ export function injectStyle() {
 .emu-pcb-art { position: absolute; left: 0; top: 0; }
 /* the room for a board's modules given back, none being shown (#2522) */
 .emu-no-room > * { translate: 0 calc(-1 * var(--emu-room)); }
+.emu-no-room.emu-room-below > * { translate: none; }
 .emu-no-room > .emu-pcb-art { pointer-events: none; }
 .emu-at { position: absolute; transform: translateX(-50%); display: flex; justify-content: center; }
 .emu-silk { color: #e8edf7; font: bold 10px Arial, sans-serif; white-space: nowrap; }
