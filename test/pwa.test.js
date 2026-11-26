@@ -10,7 +10,7 @@ import os from 'node:os';
 import path from 'node:path';
 import vm from 'node:vm';
 import { fileURLToPath } from 'node:url';
-import { SHELL, pageCacheName, route, staleCaches } from '../web/js/sw-policy.js';
+import { SHELL, isolatedHeaders, pageCacheName, route, staleCaches } from '../web/js/sw-policy.js';
 import { serviceWorkerOf, registerServiceWorker } from '../web/js/pwa.js';
 import { ICONS, THEME, webManifest, withManifestLink, writePwa } from '../scripts/pwa.mjs';
 
@@ -153,7 +153,7 @@ async function loadWorker(scope, label) {
       registration: { scope }, addEventListener: (t, f) => { on[t] = f; },
       skipWaiting: async () => { state.skipped = true; }, clients: { claim: async () => { state.claimed = true; } },
     };
-    vm.runInNewContext(code, { self, caches, fetch, Request, Response, URL, console });
+    vm.runInNewContext(code, { self, caches, fetch, Request, Response, Headers, URL, console });
     const fire = async (type, init = {}) => {
       let wait = null, answer = null;
       on[type]?.({ ...init, waitUntil: (p) => { wait = p; }, respondWith: (p) => { answer = p; } });
@@ -180,7 +180,10 @@ test('#1051 the worker: installed keeps the page and SHELL; the page from the ne
   const req = (url, mode = 'cors') => ({ request: { url, mode, method: 'GET' } });
   // the page: the network's, kept
   w.net.files.set(SITE, 'v2 page');
-  assert.equal(await (await w.fire('fetch', req(SITE, 'navigate'))).text(), 'v2 page');
+  const pg = await w.fire('fetch', req(SITE, 'navigate'));
+  assert.equal(await pg.text(), 'v2 page');
+  // (cross-origin isolated, #5648: GitHub Pages sends no COOP nor COEP)
+  assert.deepEqual([pg.headers.get('cross-origin-opener-policy'), pg.headers.get('cross-origin-embedder-policy')], ['same-origin', 'require-corp']);
   assert.equal(await (await w.stores.get(CACHE).match(SITE)).text(), 'v2 page');
   // a 404 is not kept (a deployment under way): answered as it is
   w.net.files.delete(SITE);
@@ -217,4 +220,9 @@ test('#1051 the worker\'s install fails when the site lacks a file it keeps (the
   w.net.files.set(SITE, 'page');
   await assert.rejects(w.fire('install'), /addAll: .*manifest\.webmanifest 404/);
   assert.equal(w.state.skipped, false);
+});
+
+test('#5648 cross-origin isolation: the headers the worker adds to the page', () => {
+  const h = isolatedHeaders({ 'content-type': 'text/html' });
+  assert.deepEqual([...h.entries()].sort(), [['content-type', 'text/html'], ['cross-origin-embedder-policy', 'require-corp'], ['cross-origin-opener-policy', 'same-origin']]);
 });

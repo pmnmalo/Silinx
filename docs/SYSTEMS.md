@@ -262,6 +262,16 @@ drawing's badge first (the base), its node's language's last, `[C]` (or `[C++]`,
 its C is not made (the drawing has errors: its tip says them) or not made again since. A drawing with no C gets it when
 the project is opened, as the MCP's tools give it (`adoptDrawing`); its C has no row of its own, the node's sketch has.
 
+### The page cross-origin isolated
+
+An ESP32 node's Worker + Atomics back end (#5495) needs a SharedArrayBuffer, so the page is cross-origin isolated
+(#5648, `core/cross-origin.js`): the local server sends `Cross-Origin-Opener-Policy: same-origin` and
+`Cross-Origin-Embedder-Policy: require-corp` with every response; the browser edition's service worker adds them to the
+page it serves (GitHub Pages sends none): isolated from its second load on (a first load is not reloaded under the
+user's work; the message asks for a reload). What the app loads
+from other origins is CORS `fetch`, WebSockets or WebRTC, which these headers allow. A page that is not isolated (the
+downloaded Silinx.html, opened from a file) says why.
+
 ### The PIC24
 
 The PIC24 comes first (#5479's phase 1): a course uses the Explorer 16/32 with the PIC24FJ1024GB610 next semester, and

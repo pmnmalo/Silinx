@@ -748,6 +748,8 @@ test('pages carry a Content-Security-Policy: scripts only from the server and th
     assert.equal(h.get('x-content-type-options'), 'nosniff', u);
     assert.equal(h.get('referrer-policy'), 'no-referrer', u);
     assert.equal(h.get('x-powered-by'), null, u);
+    // (#5648: the page cross-origin isolated, its workers given SharedArrayBuffer)
+    assert.deepEqual([h.get('cross-origin-opener-policy'), h.get('cross-origin-embedder-policy')], ['same-origin', 'require-corp'], u);
   }
   // not on the API, the scripts, nor a path outside web/
   assert.equal((await fetch(app.origin + '/api/templates')).headers.get('content-security-policy'), null);
