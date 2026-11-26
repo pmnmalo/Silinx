@@ -428,6 +428,7 @@ export async function openCircuit(path) {
         onCheck: (diags) => problems.log(diags),
         onMessage: (text, err) => log(err ? `WARNING: ${path.split('/').pop()}: ${t(text)}` : `${path.split('/').pop()}: ${t(text)}`, err ? 'warn' : 'info'),   // (in the page's language, #5164)
         hdl: circuitModules,   // (a KiCad part modelled by a module of the project, #4283, #4284)
+        ngspice: api.standalone ? null : (netlist) => api.ngspice(netlist),   // (ngspice, #5386: the local server's)
         importKicad: K.importKicadDialog, browseKicad: KB.canBrowseKicad() ? KB.browseKicadDialog : null, importCatalogue: KC.importCatalogue, kicadExport: { ics: KX.exportIcsDialog, pkg: KX.exportPackageDialog },   // (Import KiCad Part…, #4281;
         // Browse KiCad Libraries…, #4285; the KiCad catalogue, #4305; the ⋮ menu's KiCad exports, #4282)
         ...followOnly(path, model),

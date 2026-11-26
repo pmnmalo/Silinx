@@ -83,7 +83,10 @@ export function measure(tr, t0, t1) {
   const sub = { t: w.t.map((x) => Math.min(t1, Math.max(t0, x))), v: w.v, step: tr.step };
   const vs = sub.v.filter(Number.isFinite);
   if (!vs.length) return { min: null, max: null, vpp: null, mean: null, period: null, frequency: null, duty: null, rise: null, fall: null };
-  const min = Math.min(...vs), max = Math.max(...vs), vpp = max - min;
+  // (a loop, not Math.min(...vs): a screen may hold more samples than a call takes arguments, #5705)
+  let min = Infinity, max = -Infinity;
+  for (const v of vs) { if (v < min) min = v; if (v > max) max = v; }
+  const vpp = max - min;
   // the mean: the trace's integral over the window (a step's held, a line's trapezoid) over its length
   let area = 0;
   for (let i = 0; i < sub.t.length; i++) {

@@ -96,7 +96,7 @@ export function spiceNetlist(rec, { title = 'Silinx circuit' } = {}) {
         points += pts.length;
         lines.push(`VC${id} c${id} 0 ${pwl(pts)}`, `B${id} ${a} ${b} I=${vd(a, b)}*V(c${id})`);
       }
-    } else if (e.kind === 'C') lines.push(`C${id} ${a} ${b} ${num(e.farads)}`);
+    } else if (e.kind === 'C') lines.push(`C${id} ${a} ${b} ${num(e.farads)} IC=${num(rec.ic?.get(e) ?? 0)}`);
     else if (e.kind === 'D') {
       const key = `${num(e.is)} ${num(e.n)}`;
       if (!models.has(key)) models.set(key, `D${models.size}`);
@@ -118,8 +118,9 @@ export function spiceNetlist(rec, { title = 'Silinx circuit' } = {}) {
     if (points > SPICE_MAX_POINTS) throw new Error(`the run is too long for ngspice's sources (more than ${SPICE_MAX_POINTS} points): record a shorter one`);
   }
   for (const [key, name] of models) { const [is, n] = key.split(' '); lines.push(`.model ${name} D(IS=${is} N=${n})`); }
-  // (steps: a thousandth of the run, at most a digital edge apart where the sources change; ngspice's own control)
-  lines.push(`.tran ${num(tstop / 1000)} ${num(tstop)}`, '.end');
+  // (steps: a thousandth of the run, ngspice's own control between; from the capacitors' voltages when the recording
+  // started, as the circuit's simulation had them, not from a DC operating point: UIC)
+  lines.push(`.tran ${num(tstop / 1000)} ${num(tstop)} UIC`, '.end');
   if (rec.regrouped != null) warnings.push(`the circuit's connections changed at ${num((rec.regrouped - rec.t0) * 1e3)} ms (a switch, a wire): ngspice ran on them as they are now`);
   return { text: lines.join('\n') + '\n', nodes: rec.nodes.map((nets, i) => ({ name: `n${i}`, nets })), tstop, points, warnings };
 }
@@ -154,4 +155,27 @@ export function waveAt({ t }, values, at) {
 }
 
 /** The one-way co-simulation, said in the console when ngspice runs (#5386). */
-export const SPICE_NOTE = 'ngspice: one way — the digital outputs, as Silinx simulated them, drive ngspice\'s analog circuit; ngspice\'s waveforms change nothing of the digital side';
+const SPICE_NOTE = 'ngspice: one way — the digital outputs, as Silinx simulated them, drive ngspice\'s analog circuit; ngspice\'s waveforms change nothing of the digital side';
+
+/**
+ * What ngspice's waveforms (readSpiceResult's) say of a circuit's meters and scopes, against its own solver's now (sim:
+ * the circuit's simulation, at its run's end): { lines (the console's), meters: { id: { ngspice, silinx } } (V: its +
+ * against its COM at the end), scopes: { id: [{ min, max, end } or null] } (each channel's voltage over the run) }. A
+ * lead on a net that is not analog (no analog part on it): not ngspice's, null.
+ */
+export function spiceReadings(m, sim, w) {
+  const wave = (id, n) => w.byNet.get(sim.nets.pinNet.get(`${id}.${n}`)) ?? null;
+  const end = (vs) => vs[vs.length - 1];
+  const v3 = (v) => `${Number(v).toFixed(3)} V`;
+  const lines = [SPICE_NOTE], meters = {}, scopes = {};
+  for (const p of m.parts.filter((x) => x.type === 'voltmeter')) {
+    const a = wave(p.id, 1), b = wave(p.id, 2), own = sim.meters()[p.id];
+    meters[p.id] = { ngspice: a ? end(a) - (b ? end(b) : 0) : null, silinx: Number.isFinite(own) ? own : null };
+    lines.push(`ngspice: ${p.label || p.id} ${a ? v3(meters[p.id].ngspice) : 'not on an analog net'} (Silinx: ${meters[p.id].silinx == null ? '—' : v3(meters[p.id].silinx)})`);
+  }
+  for (const p of m.parts.filter((x) => x.type === 'oscilloscope')) {
+    scopes[p.id] = [1, 2].map((n) => { const vs = wave(p.id, n); return vs ? { min: Math.min(...vs), max: Math.max(...vs), end: end(vs) } : null; });
+    scopes[p.id].forEach((x, k) => lines.push(`ngspice: ${p.label || p.id} CH${k + 1} ${x ? `from ${v3(x.min)} to ${v3(x.max)}, ${v3(x.end)} at the end` : 'not on an analog net'}`));
+  }
+  return { lines, meters, scopes };
+}

@@ -161,6 +161,7 @@ export const api = {
   kicadImport: (name, body) => req('POST', `/api/projects/${enc(name)}/kicad/import`, body),
   kicadCataloguePart: (name, body) => req('POST', `/api/projects/${enc(name)}/kicad/catalogue`, body),
   // a synthesis test of the project's exercise, graded on the server (#3216, server/grade-routes.js): { result }
+  ngspice: (netlist) => req('POST', '/api/ngspice', { netlist }),   // (#5386, server/ngspice-routes.js)
   gradeSynthesis: (name, exercise, test) => req('POST', `/api/projects/${enc(name)}/grade/synthesis`, { exercise, test }),
   // a short link's gist (#3223): made by the server with its GitHub token
   gistAvailable: () => req('GET', '/api/gist').then(r => !!r.available, () => false),

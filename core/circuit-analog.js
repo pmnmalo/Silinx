@@ -271,11 +271,11 @@ export function createCircuitAnalog(m, nets, { byNet }) {
     get dtNs() { return Math.max(1, Math.round(dtNext * 1e9)); },
     warnings: () => said,
     /** (#5386) from now on, every value the analog side takes kept, for ngspice (core/circuit-spice.js) */
-    record() { rec = { t0: tNow, series: new Map(), regrouped: null }; mark(); },
+    record() { rec = { t0: tNow, series: new Map(), regrouped: null, ic: new Map(els.filter((e) => e.kind === 'C').map((e) => [e, e.vc ?? 0])) }; mark(); },
     /** (#5386) the analog side now and what was recorded: { nodes (each node's nets), inner (the inner nodes' names),
      *  els (each element: its kind, a, b (a node, -1 the ground) and values), series (an element's or a generator's values
-     *  as they changed: [{ t, v }]), gens ([{ e, set }]), t0, t, regrouped (the time the connections changed, or null) } */
-    recorded: () => (rec ? { nodes: [...nodeNetsOf.values()], inner: [...inner], els: [...els], series: rec.series, gens: [...gens], t0: rec.t0, t: tNow, regrouped: rec.regrouped } : null),
+     *  as they changed: [{ t, v }]), ic (each capacitor's voltage when the recording started), gens ([{ e, set }]), t0, t, regrouped (the time the connections changed, or null) } */
+    recorded: () => (rec ? { nodes: [...nodeNetsOf.values()], inner: [...inner], els: [...els], series: rec.series, ic: rec.ic, gens: [...gens], t0: rec.t0, t: tNow, regrouped: rec.regrouped } : null),
     /** a device's output set (#5384: a DAC's, '<id>:<k>'): its volts through its ohms (Infinity: off) */
     setSource(key, { volts, ohms }) {
       const e = sources.get(key);

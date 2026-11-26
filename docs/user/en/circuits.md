@@ -421,6 +421,25 @@ From the Analog group too (#5384):
   sets its duty cycle by its id; circuit_parts lists each part's values, what it senses, its choices and a scope's
   settings.
 
+## ngspice (optional)
+
+Silinx's own solver is the default; ngspice is a second opinion on a circuit's analog side (#5386). While trying an
+analog circuit, the Try it bar's **ngspice** simulates the run so far again with ngspice, from time 0, and says in the
+console each voltmeter's reading (with Silinx's beside it) and each oscilloscope channel's range.
+
+- **One way.** The digital outputs (an IC's, a board's pin, a DAC's) go into ngspice's netlist as they were in Silinx's
+  run: each a source of its volts through its resistance, piecewise linear in time. ngspice computes the analog
+  waveforms that follow; nothing it computes changes the digital side. The console says so at each run.
+- The netlist starts from the capacitors' voltages as the run had them (UIC), not from a DC operating point. A switch or
+  a wire that changed while running: ngspice runs on the connections as they are at the end, and says so.
+- **Where it runs:** on the local server (`silinx serve`, the app), not in the browser-only editions. ngspice is
+  eecircuit-engine 1.9.0 (ngspice in WebAssembly), downloaded from npm the first time (about 11 MB, its SHA-256 checked)
+  and kept in `~/.silinx/ngspice/`; Silinx does not ship it. Its licences are in THIRD-PARTY-NOTICES.md (its wrapper
+  MIT; ngspice Modified BSD, with its KLU solver and numparam under the LGPL).
+- **The MCP server:** simulate_drawing's `ngspice: true` runs the circuit's steps, then ngspice on them, and answers
+  the same lines and, in its data, each voltmeter (ngspice's and Silinx's) and each scope channel (its minimum,
+  maximum and last value).
+
 ## The checks
 
 A circuit's Check (and every change, as the other drawings') says in the console, a click on a message selecting the
@@ -536,7 +555,8 @@ What the interface does, the MCP server does (CLAUDE.md, #2674):
 - `run_process`: a circuit as a project's top synthesized, implemented and its bitstream made, as any top;
 - `check_drawing`: the circuit's check (its errors and warnings, as the console's);
 - `simulate_drawing`: a sequence of steps, each setting switches and buttons and running until quiet (or a given time),
-  answering the LEDs, the nets asked for, the time and the warnings (a short, an oscillation);
+  answering the LEDs, the nets asked for, the time and the warnings (a short, an oscillation); with `ngspice: true`, an
+  analog circuit's run again by ngspice (#5386);
 - `read_file` / `write_file` for the JSON itself, the HDL regenerated after a write.
 
 ## The file format

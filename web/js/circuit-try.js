@@ -10,12 +10,14 @@ import { encoderTurn, ENCODER_STEP_NS } from '/core/circuit-encoder.js';
 import { isAnalogCircuit } from '/core/circuit-analog.js';
 import { createScopeRecorder, scopeSettings } from '/core/circuit-scope.js';
 import { turnKnob } from '/core/scope.js';
+import { spiceNetlist, readSpiceResult, spiceReadings } from '/core/circuit-spice.js';
 
 /**
  * Its Try it: ctx { M() (the circuit), opts (the editor's: hdl), root, status(msg, err), render(), destroyed() }; returns
  * { sim() (the simulation, or null), startSim, stopSim, stopTicks, setInput, runSim, tryState, setTryState, toggleSim, turn(id,
  * dir) (an encoder's detent, #5451), detents() (its turns), scopes() (each oscilloscope's screen, settings and cursors,
- * #5383), scopeInput(id, input, at) (a knob of its, a click on its screen at `at`, 0 to 1) }.
+ * #5383), scopeInput(id, input, at) (a knob of its, a click on its screen at `at`, 0 to 1), ngspice() (the run so far by
+ * ngspice, #5386) }.
  */
 export function mountCircuitTry({ M, opts, root, status, render, destroyed }) {
   let sim = null, steps = null, saidServo = 0, detents = {};
@@ -29,6 +31,8 @@ export function mountCircuitTry({ M, opts, root, status, render, destroyed }) {
     let made = null;
     made = createCircuitSim(M(), { runner: opts.hdl?.()?.runner, onUpdate: (t) => made && rec.sample(made, t) });
     rec.sample(made, made.time);
+    // (its analog side recorded from time 0, for ngspice: #5386)
+    if (made.analog && opts.ngspice) made.recordSpice();
     return made;
   }
   function startSim() {
@@ -125,5 +129,23 @@ export function mountCircuitTry({ M, opts, root, status, render, destroyed }) {
   }
 
 
-  return { sim: () => sim, startSim, stopSim, stopTicks, setInput, runSim, tryState, setTryState, toggleSim, turn, detents: () => (sim ? detents : null), scopes, scopeInput };
+  // the run so far simulated again by ngspice (#5386, the local server's: server/ngspice-routes.js), one way: its lines in
+  // the console, as simulate_drawing's (core/circuit-spice.js spiceReadings)
+  let spicing = false;
+  async function ngspice() {
+    if (!sim?.analog || !opts.ngspice || spicing) return;
+    const at = sim, base = M().name || 'circuit';
+    let n;
+    try { n = spiceNetlist(at.spiceRecord(), { title: base }); } catch (e) { status(`ngspice: ${e.message}`, true); return; }
+    spicing = true;
+    status(`ngspice: running ${base}'s ${(n.tstop * 1e3).toPrecision(3)} ms…`);
+    try {
+      const r = await opts.ngspice(n.text);
+      for (const l of r.said ?? []) status(l);
+      for (const w of [...n.warnings, ...(r.errors ?? []).map((e) => `ngspice: ${e}`)]) status(w, true);
+      for (const l of spiceReadings(M(), at, readSpiceResult(r.result, n.nodes)).lines) status(l);
+    } catch (e) { status(`ngspice: ${e.message}`, true); } finally { spicing = false; }
+  }
+
+  return { sim: () => sim, ngspice, startSim, stopSim, stopTicks, setInput, runSim, tryState, setTryState, toggleSim, turn, detents: () => (sim ? detents : null), scopes, scopeInput };
 }

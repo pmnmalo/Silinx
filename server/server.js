@@ -317,6 +317,9 @@ export async function createApp({ host = '127.0.0.1', token = null, codes = crea
   // automatic grading's synthesis tests (#3216)
   const { registerGradeRoutes } = await import('./grade-routes.js');
   registerGradeRoutes(api, { wrap, projects: P });
+  // ngspice (#5386): a circuit's analog side, its Try it's run again
+  const { registerNgspiceRoutes } = await import('./ngspice-routes.js');
+  registerNgspiceRoutes(api, { wrap, projects: P });
   // Open in VS Code (#4017): a project's file in the user's editor, on this computer only
   const { registerEditorRoutes } = await import('./open-editor.js');
   registerEditorRoutes(api, { wrap });

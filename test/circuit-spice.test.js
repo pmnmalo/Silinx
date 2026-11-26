@@ -36,9 +36,9 @@ test('a 74LS14\'s RC oscillator recorded: its resistor, its capacitor; its outpu
   const lines = n.text.trim().split('\n');
   assert.equal(lines[0], '* osc');
   assert.equal(lines.at(-1), '.end');
-  assert.equal(lines.at(-2), `.tran ${Number((n.tstop / 1000).toPrecision(9))} ${Number(n.tstop.toPrecision(9))}`);
+  assert.equal(lines.at(-2), `.tran ${Number((n.tstop / 1000).toPrecision(9))} ${Number(n.tstop.toPrecision(9))} UIC`);
   assert.equal(lines.filter((l) => /^R\d+ n\d+ n\d+ 1000$/.test(l)).length, 1, 'R1');
-  assert.equal(lines.filter((l) => /^C\d+ n\d+ n\d+ \S+$/.test(l) && Number(l.split(' ')[3]) === 1e-6).length, 1, 'C1 (to the supply\'s GND, a node driven at 0 V)');
+  assert.equal(lines.filter((l) => /^C\d+ n\d+ n\d+ \S+ IC=\S+$/.test(l) && Number(l.split(' ')[3]) === 1e-6).length, 1, 'C1 (to the supply\'s GND, a node driven at 0 V)');
   // (the 7414's output, recorded: its volts and its conductance each a PWL source, a behavioural source between them)
   const b = lines.filter((l) => /^B\d+ /.test(l));
   assert.ok(b.length >= 1, 'a driver in time');
