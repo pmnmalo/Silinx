@@ -10,7 +10,7 @@ import assert from 'node:assert/strict';
 import { prepareSystem, systemReport, disposeSystem } from '../core/system-run.js';
 import { esp32Problem } from '../core/system-sim-esp32.js';
 import { esp32Buffer, hostLink } from '../core/esp32-link.js';
-import { LINE_PS, esp32Prelude } from '../core/esp32-python.js';
+import { LINE_PS, esp32Prelude, timeWhileLoops } from '../core/esp32-python.js';
 import { checkSystem } from '../core/system-check.js';
 import { addNode } from '../core/system-edit.js';
 import { newSystem, normalizeSystem } from '../core/system-doc.js';
@@ -70,6 +70,36 @@ test('#5495 deterministic: the same run twice the same; a blinking LED\'s edges 
   assert.ok(a[0][0] >= 5e6 && a[0][0] <= 8e6, `${a[0][0]}`);
   for (let i = 1; i < a.length; i++) { const d = a[i][0] - a[i - 1][0]; assert.ok(d >= 2001e6 && d <= 2005e6, `${i}: ${d}`); assert.equal(d % 1e6, 0); }
   assert.deepEqual(await edges(), a);
+});
+
+test('#5751 a while loop\'s header: its condition through _silinx_loop with its line, on the same lines; strings, comments, brackets, for loops left as they are', () => {
+  const t = (...l) => timeWhileLoops(l.join('\n'));
+  assert.equal(t('while k < 5:', '    pass'), 'while _silinx_loop(1, ( k < 5)):\n    pass');
+  // (a condition over two lines, a slice's colon, a comment's; a walrus; an inline body; a string's colon)
+  assert.equal(t('x = 1', 'while (a and', '   b) or c[1:2]:  # wait: here', '    while x := f(): y()', 'while "a:b" in s: pass'),
+    ['x = 1', 'while _silinx_loop(2, ( (a and', '   b) or c[1:2])):  # wait: here', '    while _silinx_loop(4, ( x := f())): y()', 'while _silinx_loop(5, ( "a:b" in s)): pass'].join('\n'));
+  // (a while in a string, a name that starts with while, a for loop, a tab's indent, a continued line)
+  assert.equal(t('s = """while no:', 'while"""', 'whileX = 3', 'for i in range(3): pass', 'def f():', '\twhile(1): return 2', 'while\\', '  z: pass'),
+    ['s = """while no:', 'while"""', 'whileX = 3', 'for i in range(3): pass', 'def f():', '\twhile _silinx_loop(6, ((1))): return 2', 'while _silinx_loop(7, (\\', '  z)): pass'].join('\n'));
+  // (an assignment for a condition still the syntax error it was, not a keyword argument)
+  assert.equal(t('while x = 1:', '  pass'), 'while _silinx_loop(1, ( x = 1)):\n  pass');
+  assert.ok(esp32Prelude('while 1:\n  pass\n').includes('exec("while _silinx_loop(1, ( 1)):\\n  pass\\n", {"__name__": "__main__"})'));
+});
+
+test('#5751 a busy wait whose body is one line takes time and ends: on the time, on a byte typed; an inline loop a line a check', async () => {
+  // (each check of its condition a line, 1 µs: the loop ends once ticks_us() reaches 900, its print's line 2 µs later
+  // (the last check's and its own); it took no time and the node stopped after 30 s, "start" never said)
+  let { rep } = await run(['import time', 'print("start")', 'while time.ticks_us() < 900:', '    pass', 'print("B", time.ticks_us())', ''].join('\n'), 2);
+  assert.deepEqual([rep.warnings, rep.errors, rep.terminals['esp.repl']], [[], [], 'start\nB 902\n']);
+  ({ rep } = await run(['from machine import UART', 'import time', 'u = UART(2, 9600)', 'while not u.any():', '    pass', 'print("got", u.read(1), time.ticks_us() > 1000)', ''].join('\n'), 1, 'x'));
+  assert.deepEqual([rep.warnings, rep.errors, rep.terminals['esp.repl']], [[], [], 'got b\'x\' True\n']);
+  // (an inline loop: its first check the line's own, then a line a check: 5 µs, after the 3 lines before and with the
+  // print's own, a line's time charged at its start)
+  ({ rep } = await run(['import time', 'k = 0', 'while k < 5: k += 1', 'print(k, time.ticks_us())', ''].join('\n'), 1));
+  assert.deepEqual([rep.errors, rep.terminals['esp.repl']], [[], '5 9\n']);
+  // (a Timer's callback inside the wait, its flag the loop's condition: run at its time, 1 ms after its line's 5 µs)
+  ({ rep } = await run(['from machine import Timer', 'import time', 'done = []', 'Timer(0, mode=Timer.ONE_SHOT, period=1, callback=lambda t: done.append(time.ticks_us()))', 'while not done:', '    pass', 'print("tick", done, time.ticks_us())', ''].join('\n'), 3));
+  assert.deepEqual([rep.warnings, rep.errors, rep.terminals['esp.repl']], [[], [], 'tick [1005] 1007\n']);
 });
 
 test('#5495 a traceback: its error, the program\'s own lines; a line typed to its REPL once the program ended', async () => {
