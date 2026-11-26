@@ -11,6 +11,7 @@ import { execFileSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { importMapPackages } from '../server/import-map.js';
 import { DOWNLOADED_PACKAGES } from './downloaded-packages.mjs';
+import { NGSPICE } from '../server/ngspice.js';
 
 const root = path.join(path.dirname(fileURLToPath(import.meta.url)), '..');
 // embedded in the standalone Silinx.html (scripts/build-standalone.mjs): elkjs and the editor's
@@ -86,6 +87,9 @@ const PORTED = [
   // the Gowin's bitstream (#2303), in silinx-fpga too; its chip databases are read from YoWASP's package, not shipped
   { name: 'apicula', version: '0.32', pin: 'tag', ported: true, license: 'MIT', url: 'https://github.com/YosysHQ/apicula', fpga: true,
     note: 'packages/silinx-fpga/src/fpga/gowin/ (the Gowin\'s .fs of nextpnr-himbaechel-gowin\'s routed netlist) is a JavaScript port of its gowin_pack and of the parts of its chipdb, bslib and attrids that gowin_pack uses; the chip databases it reads are Apicula\'s, in @yowasp/nextpnr-himbaechel-gowin, not shipped by Silinx.' },
+  // ngspice (#5386): not shipped, downloaded once by the local server (server/ngspice.js)
+  { name: 'eecircuit-engine', version: NGSPICE.version, ported: true, license: 'MIT AND BSD-3-Clause AND LGPL-2.0-only AND LGPL-2.0-or-later AND MPL-2.0 AND Apache-2.0', url: 'https://github.com/eelab-dev/EEcircuit-engine',
+    note: 'Not in silinx-<version>.zip: the local server downloads it (ngspice compiled to WebAssembly, its JavaScript wrapper) from npm\'s registry on its first use, checks its SHA-256 and keeps it in ~/.silinx/ngspice/; it runs a circuit\'s analog side when ngspice is chosen (#5386). ngspice is under the Modified BSD licence, but for its parts its COPYING lists: the KLU solver (LGPL-2.0) and numparam (LGPL-2.0 or later), compiled into the package, OSDI (MPL-2.0), XSPICE (public domain). The model cards the package bundles (Apache-2.0, PTM\'s with no licence given) are not used by Silinx.' },
   // a Pico's firmware (#5494): not shipped, downloaded once by the local server (server/rp2040-firmware.js)
   { name: 'micropython', version: 'v1.24.1', ported: true, license: 'MIT', url: 'https://github.com/micropython/micropython',
     note: 'Not in silinx-<version>.zip: the local server downloads its firmware for the Raspberry Pi Pico (RPI_PICO-20241129-v1.24.1.uf2) from micropython.org on its first use, checks its SHA-256 and keeps it in ~/.silinx/rp2040/; a System\'s Pico node runs it on rp2040js (core/system-sim-rp2040.js). The firmware also holds the Pico SDK (BSD-3-Clause) and TinyUSB (MIT), as its LICENSE says.' },
