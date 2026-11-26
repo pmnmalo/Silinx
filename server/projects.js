@@ -282,6 +282,12 @@ export async function writeAtomic(full, text, dir = null) {
 
 // Atomic write (temp file + rename): a concurrent reader never sees a half-written silinx.json.
 // The top and simulation top must be identifiers (#1431): build/<top>.bit and the like are paths of the project.
+// what changed a project's files or description (#5740: its automatic versions, server/versions.js): fn(name) after
+// each write, deletion, rename and description written (never for build/'s files)
+const changeHooks = new Set();
+export const onProjectChange = fn => { changeHooks.add(fn); return () => changeHooks.delete(fn); };
+const changed = name => { for (const fn of changeHooks) { try { fn(name); } catch { /* a hook's own */ } } };
+
 async function writeProjectUnlocked(name, pj) {
   const dir = projectDir(name);
   const badTop = topNameError(pj);
@@ -306,6 +312,7 @@ async function writeProjectUnlocked(name, pj) {
   const out = ct ? { ...clean, trusted: false, ...(ct.madeBy ? { madeBy: ct.madeBy } : {}) }
     : unrecorded ? { ...clean, trusted: false, madeBy: UNRECORDED } : clean;
   etags.set(out, descriptionEtag(text));
+  changed(name);
   return out;
 }
 
@@ -689,6 +696,7 @@ export async function writeFile(name, rel0, text) {
     const pj = await readProject(name);
     if (registerWritten(pj, rel)) await writeProjectUnlocked(name, pj);
   });
+  if (!inBuild) changed(name);
 }
 
 
@@ -753,6 +761,7 @@ export async function deleteFile(name, rel, { trash = false, mustExist = false }
     const pj = await readProject(name);
     if (deleteEntries(pj, key)) await writeProjectUnlocked(name, pj);
   });
+  changed(name);
   return { trashed };
 }
 // a project's file or folder into the workspace's .trash, at .trash/<project>-<time>/<its path> -> that path (the

@@ -12,6 +12,7 @@ import { importMapPackages } from './import-map.js';
 import { contentSecurityPolicy, inlineScriptHashes, relaySources } from './csp.js';
 import { configDir, relayConfig } from './toolchain.js';
 import { createProjectWatcher } from './project-watch.js';
+import { startAutoVersions } from './versions.js';
 import { listJobs } from './jobs.js';
 import { createOpenCodes, tokenProof } from './open-code.js';
 import { launchTarget } from './open-page.js';
@@ -136,7 +137,8 @@ export async function createApp({ host = '127.0.0.1', token = null, codes = crea
   // first time, a copy's origin, #4205: its own, not told to the page as a change made outside Silinx, #5252)
   const WRITING_GET = /^\/projects\/[^/]+\/(?:fpga-view|export\.zip)$/;
   // (a pull writes what GitHub had, not what the page sent: told to the page, its open documents read again, #3195)
-  const TOLD = /^\/projects\/[^/]+\/git\/pull$/;
+  // (a version restored too, #5740)
+  const TOLD = /^\/projects\/[^/]+\/(?:git\/pull|versions\/[^/]+\/restore)$/;
   // (the requests whose writes are all recorded, server/own-writes.js: another process's changes meanwhile told, #4726)
   const KNOWN = /^(PUT \/projects\/[^/]+(\/file)?|DELETE \/projects\/[^/]+\/file|POST \/projects\/[^/]+\/(rename|trust)|GET \/projects\/[^/]+\/export\.zip)$/;
   // (an import's project is the one it makes, ?name=, never a project named import-zip, #4754; import-xise's name is in its
@@ -408,6 +410,8 @@ export async function startServer({ port = 8642, host = '127.0.0.1', tls = null,
     const srv = tls ? app.locals.serveOn(https.createServer({ cert: tls.cert, key: tls.key }, app)).listen(port, host, () => onListening())
       : app.listen(port, host, onListening);
     srv.on('error', reject);
+    // (the projects' automatic versions, #5740)
+    srv.on('close', startAutoVersions(P));
   });
 }
 

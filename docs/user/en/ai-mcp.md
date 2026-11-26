@@ -44,7 +44,10 @@ can be moved back), `rename_project` (a project's name: its folder renamed, as R
 `export_project` and `import_project` (a Xilinx ISE or a Silinx project, as a .zip; a .xise or a project folder too;
 only in the exchange folder: your Downloads, or the folder `SILINX_MCP_FOLDER` names), `merge_preview`, `merge_contribution` and
 `undo_merge` (another person's copy of a project merged into it, as *Merge Contribution…*: three-way through the copy's
-ancestor, a drawing by its objects, a text file by its lines, its conflicts chosen per hunk; and undone), `import_source` (files of the exchange
+ancestor, a drawing by its objects, a text file by its lines, its conflicts chosen per hunk; and undone), `save_version`,
+`list_versions` and `restore_version` (the project's versions, as *Save Version…* and *Versions…*: one kept by hand, with
+a name; those kept on their own, as the project is saved and before every tool that replaces or removes files; the
+whole project or one file restored, the project before it kept as a version), `import_source` (files of the exchange
 folder copied into a project, as *Import Source* / *Add Copy of Source* / *Import Test Bench*), `find_in_project` (*Find in
 Project*: every source's lines and every drawing's texts; its Replace All), `open_in_editor` (*Open in VS Code*: a file at a
 line, or the project's folder, in the user's editor on this computer), `project_link` and `open_link` (a project's

@@ -144,6 +144,9 @@ export function setupMenus() {
       // (another person's copy of the project merged into it, and undone, #4206)
       { label: 'Merge Contribution…', action: () => import('./merge-dialog.js').then(m => m.mergeContributionDialog()), disabled: hasPj },
       { label: 'Undo Merge', action: () => import('./merge-dialog.js').then(m => m.undoMerge()), disabled: hasPj },
+      // (the project's versions, #5740)
+      { label: 'Save Version…', action: () => import('./versions.js').then(m => m.saveVersionDialog()), disabled: hasPj },
+      { label: 'Versions…', action: () => import('./versions.js').then(m => m.versionsDialog()), disabled: hasPj },
       '-',
       // the implementation top (the Simulation view has none: Simulate runs the selected module)
       // (the selected module the top: Unset as Top Module, #1220)
