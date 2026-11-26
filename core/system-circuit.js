@@ -66,3 +66,27 @@ export function circuitNodePins(sys, n, m, { ports = null } = {}) {
   }
   return { boards, pins: pins.map(({ net, ...x }) => x), problems };
 }
+
+/** (Hz) the SCK a circuit node's SPI part is taken to run at when its node gives none (#5384): 50 MHz / 16, its wires'
+ *  latency a sixteenth of its period, 20 ns (an SPI link's, core/system-links.js lookahead) */
+export const CIRCUIT_SPI_HZ = 3125000;
+const isSpiPart = (d) => !!d && (d.spi || d.pins.some((q) => /^(SCK|SCLK)$/.test(q.name)));
+
+/**
+ * The latency of a circuit node's wires (#5384): { latency (ps; null: a wire's own, 1 µs), hz (the SCK it is taken from),
+ * parts (its SPI parts' ids), set (whether its node's spiHz gave it), said (the console's line) }. A part with an SPI's clock (the Pmod AD1, the DA2,
+ * a part with an SCK or SCLK pin) makes its wires answer within a sixteenth of the SCK's period, as an SPI link's do, so
+ * that a converter's bit is read on the clock edge that asks for it: the node's spiHz (the bus's SCK, set in its
+ * Properties), else CIRCUIT_SPI_HZ. A circuit with no such part keeps a wire's 1 µs (unless its spiHz is set).
+ */
+export function circuitLatency(n, m) {
+  const parts = (m?.parts ?? []).filter((p) => isSpiPart(partDef(p.type))).map((p) => p.id);
+  const set = Number(n.spiHz) > 0;
+  if (!parts.length && !set) return { latency: null, hz: null, parts, set };
+  const hz = set ? Number(n.spiHz) : CIRCUIT_SPI_HZ;
+  const latency = Math.max(1, Math.round(1e12 / hz / 16));
+  const said = `${n.id}: its wires answer in ${nsText(latency)}, a sixteenth of ${set ? 'its SPI clock' : `an SPI clock of ${hzText(hz)}`}${set ? ` (${hzText(hz)})` : `, for its SPI part${parts.length > 1 ? 's' : ''} ${parts.join(', ')}`}${set ? '' : ': a faster one, its SPI clock in its Properties'}`;
+  return { latency, hz, parts, set, said };
+}
+const nsText = (ps) => (ps >= 1e6 ? `${+(ps / 1e6).toPrecision(3)} µs` : ps >= 1e3 ? `${+(ps / 1e3).toPrecision(3)} ns` : `${ps} ps`);
+const hzText = (hz) => (hz >= 1e6 ? `${+(hz / 1e6).toPrecision(4)} MHz` : hz >= 1e3 ? `${+(hz / 1e3).toPrecision(4)} kHz` : `${hz} Hz`);

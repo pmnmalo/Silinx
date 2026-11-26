@@ -101,6 +101,8 @@ export function systemReport({ sim, wires, terminals, regmaps = {} }) {
   const errors = sim.messages('error');
   const term = Object.fromEntries([...terminals].map(([id, n]) => [id, bytesText(n.received)]));
   const lines = [`Simulate System: ${runTimeText(sim.now)} simulated${sim.finished ? `, stopped by ${sim.finished.node} (${sim.finished.why})` : ''}.`];
+  // (a circuit node's wires' latency, its SPI parts', #5384)
+  for (const said of new Set(wires.map(w => w.said).filter(Boolean))) lines.push(`circuit ${said}`);
   for (const t of traffic) {
     if (t.kind !== 'uart') { lines.push(`${t.wire} (${t.from} → ${t.to}): ${t.changes} change(s)`); continue; }
     lines.push(`${t.wire} (${t.from} → ${t.to}, ${t.baud} ${t.frame}): ${t.bytes.length} byte(s)${t.bytes.length ? `, the first at ${usText(t.bytes[0].t)}: ${JSON.stringify(bytesText(t.bytes))}` : ''}`);

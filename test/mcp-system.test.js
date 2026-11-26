@@ -246,6 +246,14 @@ test('#5215 a circuit node by edit_system, checked and simulated: the Uno\'s D2 
   assert.ok(c.text.split('\n').includes('node bench: circuit bench/bench.circ.json'));
   assert.deepEqual(c.text.split('\n').slice(-2), [`WARNING: ${HOT}`, 'Process "Check System" of bench.sys.json completed successfully with 1 warning(s).']);
   assert.deepEqual(c.data.warnings, [{ message: HOT, item: 'bench' }]);
+  // its SPI clock (#5384): set, described; not a frequency, refused; emptied (its SPI parts' default)
+  await ok('edit_system', { project: 'u', file: 'bench.sys.json', edits: [{ action: 'change_node', node: 'bench', fields: { spiHz: 1e6 } }] });
+  assert.ok((await ok('check_system', { project: 'u', file: 'bench.sys.json' })).text.split('\n').includes('node bench: circuit bench/bench.circ.json, its SPI clock 1000000 Hz'));
+  const bad = await call('edit_system', { project: 'u', file: 'bench.sys.json', edits: [{ action: 'change_node', node: 'bench', fields: { spiHz: 'fast' } }] });
+  assert.equal(bad.isError, true);
+  assert.match(bad.text, /bench: its SPI clock is a frequency from 1 Hz to 100 MHz, not 'fast'/);
+  await ok('edit_system', { project: 'u', file: 'bench.sys.json', edits: [{ action: 'change_node', node: 'bench', fields: { spiHz: null } }] });
+  assert.ok((await ok('check_system', { project: 'u', file: 'bench.sys.json' })).text.split('\n').includes('node bench: circuit bench/bench.circ.json'));
   // simulated: A echoed, then the button's message (pressed by the Uno's D2 through the circuit); both LEDs lit
   const r = await ok('simulate', { project: 'u', top: 'bench.sys.json', time_ns: 60e6, type: { term: 'A' } });
   assert.equal(r.data.terminals.term, 'AHello from Silinx!\r\n');

@@ -451,7 +451,7 @@ test('the examples: every end, endcase, endmodule… and every ";" at the end of
   let n = 0;
   const none = [];
   // (the System examples': uart-avr's the uart example's, tested there, #4702; spi-avr's by test/system-spi.test.js, i2c-avr's by test/system-i2c.test.js, #5214; regs-avr's by test/system-example.test.js, #5288; uart-pic24's there too, #5484)
-  for (const ex of readdirSync(dir).filter(e => !['uart-avr', 'spi-avr', 'i2c-avr', 'regs-avr', 'uart-pic24'].includes(e))) {
+  for (const ex of readdirSync(dir).filter(e => !['uart-avr', 'spi-avr', 'i2c-avr', 'regs-avr', 'uart-pic24', 'adc-pmod'].includes(e))) {
     for (const sub of ['src', 'sim']) {
       let names = [];
       try { names = readdirSync(new URL(`${ex}/${sub}/`, dir)).filter(f => /\.(vhd|v)$/.test(f)); } catch { continue; }
