@@ -1,0 +1,199 @@
+// Silinx - a System's ESP32 node (#5495, roadmap #4695's phase 4; the scheduler: core/system-sim.js): an ESP32 DevKitC
+// in MicroPython, behavioural and said so: MicroPython's WebAssembly port (MIT) runs the node's .py with Silinx's
+// `machine` and `time` (core/esp32-python.js), no Xtensa instruction emulated, each line of Python 1 µs. The back end
+// here is the Worker + Atomics one (its engine: core/esp32-engine.js, in a Worker of its own; their shared memory:
+// core/esp32-link.js): advanceTo(t) asks the engine to run to t and blocks until it has, so the node is in lockstep with
+// the scheduler, deterministic. Its pins are the DevKitC's GPIOs at 3.3 V: a pin the program drives (Pin.OUT) its
+// value, an input its link's level; a UART's TX its frames at the program's baud, its RX sampled back into bytes. What it
+// prints is its REPL's console, a terminal of its own (`<id>.repl`), and a line typed there runs once the program ended.
+// Its Worker is made before the run (prepareEsp32: a browser starts a Worker only while its creator is not blocked).
+//
+//   await prepareEsp32(['esp']);   // in Node, or in a cross-origin isolated page (#5648)
+//   const node = new Esp32Node({ id: 'esp', program: { name: 'esp/main.py', data } });
+//
+// Isomorphic ES module, no DOM.
+import { mcuBoard } from './system-doc.js';
+import { UartLinkDecoder } from './system-decode.js';
+import { esp32Buffer, hostLink } from './esp32-link.js';
+import { isolationProblem } from './cross-origin.js';
+
+// the UARTs' default pins in MicroPython's ESP32 port (UART(n) with no tx nor rx)
+const UART_PINS = { 0: { tx: 1, rx: 3 }, 1: { tx: 10, rx: 9 }, 2: { tx: 17, rx: 16 } };
+const workers = new Map();   // (a node's Worker made before its run: { sab, terminate })
+const isNode = typeof process !== 'undefined' && !!process.versions?.node && typeof window === 'undefined' && !globalThis.WorkerGlobalScope;
+
+// a Worker running the engine on `sab`, once its MicroPython is loaded: a page's or a worker's (web/js/esp32-worker.js),
+// else the one setEsp32Spawner gave (Node's worker_threads: server/esp32-worker.js)
+let spawn = async (sab) => {
+  const w = new Worker('/js/esp32-worker.js', { type: 'module' });
+  await new Promise((ok, fail) => { w.onmessage = ok; w.onerror = e => fail(new Error(e.message || 'its Worker did not start')); w.postMessage({ sab }); });
+  return { terminate: () => w.terminate() };
+};
+/** Where an ESP32 node's engine runs in Node: `fn(sab)` -> { terminate } once its MicroPython is loaded. */
+export function setEsp32Spawner(fn) { spawn = fn; }
+
+/** Why an ESP32 node cannot run here (its Worker + Atomics back end needs SharedArrayBuffer: the page cross-origin
+ *  isolated; `node`: in Node, always), or null. */
+export function esp32Problem(g = globalThis, node = isNode) {
+  if (typeof g.SharedArrayBuffer === 'function' && (node || g.crossOriginIsolated)) return null;
+  return `an ESP32 node runs in a page cross-origin isolated: ${isolationProblem(g) ?? 'no SharedArrayBuffer here'}`;
+}
+
+/** The Workers of the ESP32 nodes `ids` made, each its MicroPython loaded (before the System's run is built). */
+export async function prepareEsp32(ids) {
+  const why = esp32Problem();
+  if (why) throw new Error(why);
+  await Promise.all(ids.map(async id => {
+    workers.get(id)?.terminate();   // (one made for a run that was not built)
+    const sab = esp32Buffer();
+    workers.set(id, { sab, ...(await spawn(sab)) });
+  }));
+}
+
+const gpOf = name => { const m = /^GPIO(\d+)$/.exec(String(name).toUpperCase()); return m ? Number(m[1]) : null; };
+
+/** What the behavioural ESP32 models and what it does not (the node contract's fidelity notes, #5499). */
+const ESP32_FIDELITY = [
+  { kind: 'models', text: 'an ESP32 DevKitC in MicroPython, behavioural: MicroPython\'s WebAssembly port runs the program with Silinx\'s machine (Pin, UART) and time; each line of Python 1 µs, a sleep its time' },
+  { kind: 'approximates', text: 'the timing of the program (a line\'s time, not the Xtensa\'s), a UART\'s pins as its frames\' bits at the program\'s baud' },
+  { kind: 'omits', text: 'interrupts (Pin.irq, Timer), PWM, ADC, SPI and I²C, Wi-Fi but through the System\'s network links, the real firmware (Espressif\'s QEMU, later)' },
+];
+
+export class Esp32Node {
+  /** id: the node's (its Worker, made by prepareEsp32); board: the ESP32 DevKitC; program: { name, data } (a .py). */
+  constructor({ id, board = 'esp32-devkitc', program }) {
+    const b = mcuBoard(board);
+    if (b?.arch !== 'esp32') throw new Error(`no ESP32 board '${board}'`);
+    const w = workers.get(id);
+    if (!w) throw new Error(`${id}: its MicroPython not started (prepareEsp32 first)`);
+    workers.delete(id);
+    this.worker = w;
+    this.link = hostLink(w.sab);
+    this.board = b;
+    this.fidelity = ESP32_FIDELITY;   // (the node contract's notes, #5499)
+    this.pins = b.pins;
+    this.inputs = [...this.pins];
+    this.outputs = [...this.pins];
+    this.now = 0;
+    this.out = [];
+    this.queue = [];
+    this.log = [];
+    this.logN = 0;
+    this.finished = null;
+    this.inVals = new Map(this.pins.map(p => [p, null]));
+    this.drive = new Map();      // (a pin the program drives: its value)
+    this.last = new Map(this.pins.map(p => [p, null]));
+    this.uarts = new Map();      // (id -> { tx, rx, baud, frame, decoder, bits: [{ t, value }], end })
+    this.pending = [];           // (the inputs since the last window)
+    this.received = [];          // (its REPL's console)
+    this.program = String(program?.data ?? '');
+    this.name = String(program?.name ?? 'main.py').split('/').pop();
+    this.started = false;
+    if (!/\.py$/i.test(String(program?.name ?? ''))) { this.finished = 'error'; this.log.push({ kind: 'error', time: 0, text: `its program ${program?.name ?? '(none)'} is not a .py` }); }
+  }
+
+  /** A pin's value now: as the program drives it, else as it was set. */
+  value(name) {
+    const P = String(name).toUpperCase();
+    if (!this.inVals.has(P)) throw new Error(`no pin '${name}'`);
+    return this.levelOf(P, this.now) ?? this.inVals.get(P);
+  }
+
+  // what the program drives on a pin at t (a UART's TX: its frames), or null
+  levelOf(P, t) {
+    for (const u of this.uarts.values()) if (u.tx === P) { let v = u.level; for (const b of u.bits) if (b.t <= t) v = b.value; return v; }
+    return this.drive.has(P) ? this.drive.get(P) : null;
+  }
+
+  /** An input pin's value from now on; a UART's RX sampled into bytes. */
+  setPin(name, value) {
+    const P = String(name).toUpperCase();
+    if (!this.inVals.has(P)) throw new Error(`'${name}' is not a pin of the ${this.board.name}`);
+    const v = value == null ? null : Number(value) ? 1 : 0;
+    this.inVals.set(P, v);
+    const u = [...this.uarts.values()].find(x => x.rx === P);
+    if (u) u.decoder.feed([this.now, v ?? 1]);
+    else this.pending.push({ pin: P, t: this.now, value: v });
+  }
+
+  /** A line typed to its REPL (run once the program ended). */
+  send(bytes) {
+    for (const line of new TextDecoder().decode(Uint8Array.from(bytes)).split(/\r?\n/).filter(Boolean)) this.pending.push({ repl: line, t: this.now });
+  }
+
+  at(t, fn) {
+    let i = this.queue.length;
+    while (i && this.queue[i - 1].t > t) i--;
+    this.queue.splice(i, 0, { t: Math.max(t, this.now), fn });
+  }
+
+  nextEventTime() { return this.queue.length ? this.queue[0].t : Infinity; }
+
+  // a UART the program set up: its pins (its defaults when none), its frame, its receiver
+  uartInit(e) {
+    const d = UART_PINS[e.id] ?? {}, tx = `GPIO${e.tx >= 0 ? e.tx : d.tx}`, rx = `GPIO${e.rx >= 0 ? e.rx : d.rx}`;
+    const frame = `${e.bits}${e.parity < 0 ? 'N' : e.parity ? 'O' : 'E'}${e.stop}`;
+    const u = { id: e.id, tx, rx, baud: e.baud, frame, level: 1, bits: [], end: 0, decoder: new UartLinkDecoder({ baud: e.baud, frame }) };
+    u.decoder.feed([e.t, this.inVals.get(rx) ?? 1]);
+    this.uarts.set(e.id, u);
+    this.drive.delete(tx);
+    if (this.last.get(tx) !== 1) { this.last.set(tx, 1); this.out.push({ pin: tx, t: Math.max(e.t, this.now), value: 1 }); }
+  }
+
+  // bytes the program wrote: their frames on the UART's TX from their time (after the one being sent)
+  transmit(e) {
+    const u = this.uarts.get(e.id);
+    if (!u) { this.log.push({ kind: 'warning', time: e.t, text: `UART(${e.id}).write before its init` }); return; }
+    const bit = 1e12 / u.baud, n = Number(u.frame[0]);
+    let t = Math.max(e.t, u.end);
+    for (const byte of e.bytes) {
+      const data = Array.from({ length: n }, (_, i) => (byte >> i) & 1);
+      const parity = u.frame[1] === 'N' ? [] : [data.reduce((a, x) => a ^ x, u.frame[1] === 'O' ? 1 : 0)];
+      for (const v of [0, ...data, ...parity, ...Array(Number(u.frame[2])).fill(1)]) { u.bits.push({ t, value: v }); t += bit; }
+    }
+    u.end = t;
+  }
+
+  // what the engine said the program did up to its time
+  took(out) {
+    for (const e of out) {
+      if (e.kind === 'pin') {
+        this.drive.set(e.pin, e.value);
+        if (e.value !== this.last.get(e.pin)) { this.last.set(e.pin, e.value); this.out.push({ pin: e.pin, t: e.t, value: e.value }); }
+      } else if (e.kind === 'mode') {
+        if (!e.out && this.drive.has(e.pin)) { this.drive.delete(e.pin); if (this.last.get(e.pin) !== null) { this.last.set(e.pin, null); this.out.push({ pin: e.pin, t: e.t, value: null }); } }
+      } else if (e.kind === 'uart') this.uartInit(e);
+      else if (e.kind === 'tx') this.transmit(e);
+      else if (e.kind === 'console') for (const byte of e.bytes) this.received.push({ t: e.t, byte });
+      else if (e.kind === 'error') { const text = e.text.trim().split(/\r?\n/).filter(Boolean).join(' | '); this.log.push({ kind: 'error', time: e.t, text: `its program: ${text}` }); for (const byte of new TextEncoder().encode(`${e.text.trim()}\n`)) this.received.push({ t: e.t, byte }); }
+    }
+  }
+
+  advanceTo(t) {
+    if (t < this.now) throw new Error(`the node is at ${this.now} ps, not back at ${t}`);
+    while (this.queue.length && this.queue[0].t <= t) { const e = this.queue.shift(); this.now = e.t; e.fn(this); }
+    if (!this.finished) {
+      // (its UARTs' bytes received up to t, to the program at their stop bit)
+      const inputs = this.pending.splice(0);
+      for (const u of this.uarts.values()) { u.decoder.flush(t); for (const r of u.decoder.take()) { if (r.error) this.log.push({ kind: 'warning', time: r.t, text: `UART(${u.id}) RX: a ${r.error} error at ${u.baud} baud` }); else inputs.push({ uart: u.id, t: r.t + (1 + Number(u.frame[0]) + (u.frame[1] === 'N' ? 0 : 1)) * 1e12 / u.baud, byte: r.byte }); } }
+      let r;
+      try { r = this.link.command(t, { inputs, ...(this.started ? {} : { program: this.program, name: this.name }) }); } catch (e) { this.finished = 'error'; this.log.push({ kind: 'error', time: t, text: e.message }); return this.out.splice(0); }
+      this.started = true;
+      this.took(r.out);
+    }
+    this.now = t;
+    // (the UARTs' TX frames' bits up to t)
+    for (const u of this.uarts.values()) while (u.bits.length && u.bits[0].t <= t) {
+      const b = u.bits.shift();
+      u.level = b.value;
+      if (b.value !== this.last.get(u.tx)) { this.last.set(u.tx, b.value); this.out.push({ pin: u.tx, t: b.t, value: b.value }); }
+    }
+    return this.out.splice(0).sort((a, b) => a.t - b.t);
+  }
+
+  messages() { return this.log.slice(this.logN, (this.logN = this.log.length)); }
+
+  /** Its Worker ended (the run over). */
+  dispose() { this.worker.terminate(); }
+}
+

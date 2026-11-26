@@ -9,6 +9,7 @@ import { compiledNodeModel } from './system-sim-compiled.js';
 import { loadAvr8js } from './system-sim-avr.js';
 import { loadRp2040 } from './system-sim-rp2040.js';
 import { BrokerNode, messageText } from './system-mqtt.js';
+import { prepareEsp32 } from './system-sim-esp32.js';
 import { mcuBoard } from './system-doc.js';
 import { linkTraffic, usText, decodeSpi, spiWarnings, decodeI2c, i2cWarnings, wiredAnd } from './system-decode.js';
 import { regAccesses, accessText } from './regmap-decode.js';
@@ -62,7 +63,13 @@ export async function loadEngines(sys) {
   const arch = new Set(sys.nodes.filter(n => n.kind === 'mcu').map(n => mcuBoard(n.board)?.arch));
   if (arch.has('avr')) await loadAvr8js();
   if (arch.has('rp2040')) await loadRp2040();
+  // (an ESP32's MicroPython, each in a Worker made now, before the run, #5495)
+  const esp = sys.nodes.filter(n => n.kind === 'mcu' && mcuBoard(n.board)?.arch === 'esp32').map(n => n.id);
+  if (esp.length) await prepareEsp32(esp);
 }
+
+/** A run's nodes' resources freed (an ESP32's Worker), the run over. */
+export function disposeSystem(run) { for (const n of run?.sim?.nodes?.values() ?? []) n.dispose?.(); }
 
 /** The System ready to run here: systemInputs, then systemFromInputs. */
 export async function prepareSystem(sys, opts) {

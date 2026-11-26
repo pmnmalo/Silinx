@@ -22,6 +22,7 @@ import { AvrNode } from './system-sim-avr.js';
 import { pic24Contract } from './system-sim-pic24.js';
 import { rp2040Contract, replOf } from './system-sim-rp2040.js';
 import { BrokerNode } from './system-mqtt.js';
+import { Esp32Node } from './system-sim-esp32.js';
 import { TerminalNode } from './system-sim-terminal.js';
 import { CircuitNode } from './system-sim-circuit.js';
 import { circuitNodePins } from './system-circuit.js';
@@ -65,7 +66,7 @@ function endOf(sys, end) {
 }
 
 // what a microcontroller node with no firmware lacks, by its board's engine
-const FIRMWARE_OF = { pic24: 'firmware: a .hex of the project (XC16\'s)', rp2040: 'program: a .py of the project (MicroPython)' };
+const FIRMWARE_OF = { pic24: 'firmware: a .hex of the project (XC16\'s)', rp2040: 'program: a .py of the project (MicroPython)', esp32: 'program: a .py of the project (MicroPython)' };
 
 /**
  * What to simulate: { fpga: [{ id, module, clock, pins }] (each FPGA node: its module, its clock ({ port, period, hz }),
@@ -172,8 +173,11 @@ export function buildSystem(sys, plan, { fpga = {}, firmware = {} } = {}) {
       // RP2040, rp2040js's on MicroPython, its REPL a terminal of its own, `<id>.repl`, #5494)
       const arch = mcuBoard(n.board)?.arch;
       const network = !!mcuBoard(n.board)?.network && n.interfaces.some(f => f.kind === 'mqtt');   // (a Pico W's MQTT, #5500)
-      const a = sim.addNode(n.id, arch === 'pic24' ? pic24Contract({ board: n.board, firmware: firmware[n.id] }) : arch === 'rp2040' ? rp2040Contract({ board: n.board, program: firmware[n.id], network }) : new AvrNode({ board: n.board, firmware: firmware[n.id] }));
+      // (an ESP32's MicroPython in a Worker of its own, #5495: its console a terminal too)
+      const a = sim.addNode(n.id, arch === 'pic24' ? pic24Contract({ board: n.board, firmware: firmware[n.id] }) : arch === 'rp2040' ? rp2040Contract({ board: n.board, program: firmware[n.id], network })
+        : arch === 'esp32' ? new Esp32Node({ id: n.id, board: n.board, program: firmware[n.id] }) : new AvrNode({ board: n.board, firmware: firmware[n.id] }));
       if (arch === 'rp2040') terminals.set(`${n.id}.repl`, replOf(a));
+      if (arch === 'esp32') terminals.set(`${n.id}.repl`, a);
     }
     else if (n.kind === 'broker') {
       // (an MQTT broker, #5500: a pin pair for each client its links join)

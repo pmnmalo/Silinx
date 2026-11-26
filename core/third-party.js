@@ -93,6 +93,13 @@ export const THIRD_PARTY = [
     "standalone": true
   },
   {
+    "name": "@micropython/micropython-webassembly-pyscript",
+    "version": "1.29.0-6",
+    "license": "MIT",
+    "url": "https://github.com/micropython/micropython",
+    "standalone": false
+  },
+  {
     "name": "@silinx/nextpnr-himbaechel-spartan3e",
     "version": "1.5.2",
     "license": "ISC",

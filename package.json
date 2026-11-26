@@ -45,6 +45,7 @@
     "@codemirror/state": "^6.7.6",
     "@codemirror/view": "^6.43.15",
     "@lezer/highlight": "^1.2.5",
+    "@micropython/micropython-webassembly-pyscript": "^1.29.0-6",
     "@silinx/nextpnr-himbaechel-spartan3e": "1.5.2",
     "@silinx/nextpnr-himbaechel-spartan6": "0.5.2",
     "@silinx/nextpnr-himbaechel-xc7": "0.5.0",

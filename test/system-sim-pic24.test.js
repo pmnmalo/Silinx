@@ -27,7 +27,7 @@ test('#5484 the Explorer 16/32 among the microcontrollers\' boards: its PIC24, i
   assert.deepEqual(b.pins, pic.pic.device.ports.names);
   assert.equal(b.pins.length, 84);
   assert.ok(b.pins.every(p => Ports.parse(p)));
-  assert.deepEqual(MCU_BOARDS.map(m => [m.id, m.arch, m.firmwares]), [['arduino-uno', 'avr', ['hex', 'elf']], ['arduino-nano', 'avr', ['hex', 'elf']], ['explorer-1632', 'pic24', ['hex']], ['pico', 'rp2040', ['py']], ['pico-w', 'rp2040', ['py']]]);
+  assert.deepEqual(MCU_BOARDS.map(m => [m.id, m.arch, m.firmwares]), [['arduino-uno', 'avr', ['hex', 'elf']], ['arduino-nano', 'avr', ['hex', 'elf']], ['explorer-1632', 'pic24', ['hex']], ['pico', 'rp2040', ['py']], ['pico-w', 'rp2040', ['py']], ['esp32-devkitc', 'esp32', ['py']]]);
 });
 
 test('#5484 the PIC24 on its board: S3 pressed lights D3 (RA0); RA1 follows RD13 from outside, at the instruction that reads it', () => {
@@ -112,7 +112,7 @@ test('#5484 the check: a PIC24\'s firmware a .hex, its UART the board\'s, a 5 V 
   const msgs = s => checkSystem(normalizeSystem(s), { files: ['pic/echo.hex', 'pic/echo.elf'] }).map(d => [d.severity, d.message]);
   const pic = (over) => ({ ...sys, nodes: [{ ...sys.nodes[0], ...over }, sys.nodes[1]] });
   assert.deepEqual(msgs(pic({ firmware: 'pic/echo.elf' })), [['error', 'pic: its firmware pic/echo.elf is not a .hex (XC16\'s Intel HEX)']]);
-  assert.deepEqual(msgs(pic({ board: 'pic24' })), [['error', 'pic: no microcontroller board \'pic24\' (the boards: arduino-uno, arduino-nano, explorer-1632, pico, pico-w)']]);
+  assert.deepEqual(msgs(pic({ board: 'pic24' })), [['error', 'pic: no microcontroller board \'pic24\' (the boards: arduino-uno, arduino-nano, explorer-1632, pico, pico-w, esp32-devkitc)']]);
   assert.deepEqual(msgs({ ...pic({ interfaces: [{ name: 'Serial', kind: 'uart', baud: 9600, frame: '8N1' }] }), links: [{ id: 'usb', kind: 'uart', a: 'pic.Serial', b: 'term.serial' }] }),
     [['error', 'pic: the Explorer 16/32 has no UART Serial (its UART: UART)']]);
   assert.deepEqual(msgs(pic({ interfaces: [...sys.nodes[0].interfaces, { name: 'SPI', kind: 'spi' }] })), [['error', 'pic: the Explorer 16/32 has no SPI bus SPI (its SPI: none)']]);
@@ -134,7 +134,7 @@ test('#5484 the edits: an Explorer 16/32 added with its UART; an Uno changed int
   assert.deepEqual([c.error, c.system.nodes[1].board, c.system.nodes[1].interfaces.map(f => f.name), c.system.links.map(l => [l.a, l.b])], [undefined, 'explorer-1632', ['UART'], [['uno.UART', 'term.serial']]]);
   const back = changeNode(c.system, 'uno', { board: 'arduino-nano' });
   assert.deepEqual([back.system.nodes[1].interfaces.map(f => f.name), back.system.links.map(l => l.a)], [['Serial'], ['uno.Serial']]);
-  assert.deepEqual(addNode(r.system, { kind: 'mcu', board: 'pic24' }), { error: 'no microcontroller board \'pic24\': arduino-uno, arduino-nano, explorer-1632, pico, pico-w' });
+  assert.deepEqual(addNode(r.system, { kind: 'mcu', board: 'pic24' }), { error: 'no microcontroller board \'pic24\': arduino-uno, arduino-nano, explorer-1632, pico, pico-w, esp32-devkitc' });
 });
 
 test('#5484 a drawing in a PIC24 node: its C not made yet (only an Arduino\'s sketch is), said', () => {
