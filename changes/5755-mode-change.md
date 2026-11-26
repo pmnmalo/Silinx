@@ -17,5 +17,5 @@ In detail:
 - **Project ▸ Change Mode…** (`web/js/mode-change-ui.js`): the three mode cards, what the change does said as it is
   chosen (a loss in the warning's colour), the board or the node kept to choose; each loss a WARNING in the console. A
   version of the project is kept before it (#5740). Portuguese: Mudar o Modo.
-- **MCP:** `set_mode` (mode, board, variant, keep, confirm): going down is refused without `confirm`, the refusal saying
+- **MCP:** `set_design_properties` takes `mode` (with board, variant, keep, confirm; a field, not a tool of its own: the tools' list's budget, #5520): going down is refused without `confirm`, the refusal saying
   what would be lost; with it, each loss a WARNING line. A version is kept before it.

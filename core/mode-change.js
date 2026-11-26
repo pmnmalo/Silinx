@@ -1,6 +1,6 @@
 // Silinx - Copyright 2026 Pedro Maló - AGPL-3.0-only
 // A project's mode changed (roadmap #5753, its phase 2 #5755: core/project-mode.js), the plan of it, one for Project ▸
-// Change Mode… and the MCP's set_mode. Going up loses nothing: Circuit → Board gives it a board (or a device), as Design
+// Change Mode… and the MCP's set_design_properties mode. Going up loses nothing: Circuit → Board gives it a board (or a device), as Design
 // Properties' board does; Board (or Circuit) → System makes its one node the System's first: its files moved into the
 // node's folder (a System builds each node from its own folder, #5488), its System document written with that node (its
 // board, device, top module, constraints). Going down is allowed with a warning that says what is lost, each item: System
@@ -166,5 +166,5 @@ export function modeChangeText(name, to, plan) {
   return [head, ...plan.done.map(d => `  ${d}`), ...plan.lost.map(l => `WARNING: lost: ${l}`)].join('\n');
 }
 
-/** Why a change down is refused unconfirmed (the MCP's set_mode without confirm): what would be lost, each said. */
+/** Why a change down is refused unconfirmed (the MCP's set_design_properties mode without confirm): what would be lost, each said. */
 export const confirmText = (name, to, plan) => `going down to ${modeById(to).label} loses, in '${name}': ${plan.lost.join('; ')}. Give confirm true to do it (nothing is deleted from the disk).`;

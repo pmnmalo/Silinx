@@ -20,6 +20,8 @@ import { TOP_TYPES, topType, topTypeRefusal } from '../core/top-types.js';
 import { SYSTEM_TOP } from '../core/system-top.js';
 import { makeSystemTop } from './mcp-system-top.js';
 import { makeDesignProject } from './mcp-design-only.js';
+import { setMode } from './mcp-mode.js';
+import { MODES } from '../core/project-mode.js';
 
 // the project `name` (`pj`) given the profile `to` (#5440): its System's nodes read, the change refused with the
 // interface's message, or written; nothing else changes
@@ -143,9 +145,14 @@ export const SETTINGS_TOOLS = [
       update_constraints: { type: 'boolean', description: 'With a new board: write its pins into the constraints file (default false).' },
       top_source_type: { type: 'string', enum: TOP_TYPES.map(t => t.id), description: 'The Top-Level Source Type: a setting of the project, saved, nothing made (tt: Boolean algebra; a design and simulation project\'s is a drawing).' },
       profile: { type: 'string', enum: PROFILES.map(p => p.id), description: 'Its profile (Design Properties\' Project Kind): logic (Digital Logic: no board, HDL hidden; refused with HDL or C of its own), fpga (with a board or a device), embedded, system (narrower refused while a node is not allowed).' },
+      mode: { type: 'string', enum: MODES.map(m => m.id), description: 'Change Mode: up loses nothing; down needs confirm, else refused saying what is lost.' },
+      keep: STR('Mode down from a System: the node kept.'), confirm: { type: 'boolean', description: 'Mode down: do it.' },
     }, required: ['project'], additionalProperties: false },
     annotations: { readOnlyHint: false, destructiveHint: true, idempotentHint: true },
     async run(args) {
+      // (its mode, #5755: Project ▸ Change Mode…, server/mcp-mode.js)
+      if (args.mode !== undefined) return setMode(args);
+      if (args.keep !== undefined || args.confirm !== undefined) throw toolError('keep, confirm: given with mode only');
       const { project: name, board, variant, part, package: pkg, speed, synth_tool: synthTool, preferred_language: language, update_constraints: constraints = false } = args;
       let pj = await readProject(name);
       // (the project's kind, #3780, #4103: kind (design_only, its deprecated name: server/mcp-aliases.js); a design and

@@ -10,7 +10,6 @@ import assert from 'node:assert/strict';
 const mcp = await import('../server/mcp.js');
 const { PROJECT_TOOLS } = await import('../server/mcp-projects.js');
 const { SETTINGS_TOOLS } = await import('../server/mcp-settings.js');
-const { MODE_TOOLS } = await import('../server/mcp-mode.js');
 const { NEW_SOURCE_TOOLS } = await import('../server/mcp-new-source.js');
 const { WIZARD_TOOLS } = await import('../server/mcp-wizards.js');
 const { CONSTRAINTS_TOOLS } = await import('../server/mcp-constraints.js');
@@ -61,7 +60,6 @@ test('server/mcp.js exports what it did before the split, and its requests\' ord
 test('the tools: those of the areas, the ones of before the split in their order', () => {
   assert.deepEqual(names(PROJECT_TOOLS), ['list_examples', 'list_projects', 'new_project_from_example', 'new_project', 'set_top', 'project_info', 'read_file', 'write_file']);
   assert.deepEqual(names(SETTINGS_TOOLS), ['list_devices', 'set_design_properties', 'set_process_properties', 'set_source_properties']);
-  assert.deepEqual(names(MODE_TOOLS), ['set_mode']);   // (a project's mode changed, #5755)
   assert.deepEqual(names(NEW_SOURCE_TOOLS), ['new_source']);
   assert.deepEqual(names(WIZARD_TOOLS), ['clock_manager', 'xadc_wizard', 'block_memory', 'constraints_wizard']);
   assert.deepEqual(names(CONSTRAINTS_TOOLS), ['check_constraints']);   // (Check Constraints, #2296)
@@ -99,7 +97,7 @@ test('the tools: those of the areas, the ones of before the split in their order
   assert.deepEqual(names(TIMING_TOOLS), ['timing_paths']);
   assert.deepEqual(names(LAB_TOOLS), ['lab']);   // (the guided labs, #3179)
   assert.deepEqual(names(GRADE_TOOLS), ['grade']);   // (automatic grading, #3192)
-  assert.deepEqual(mcp.TOOLS, [...PROJECT_TOOLS, ...SETTINGS_TOOLS, ...MODE_TOOLS, ...NEW_SOURCE_TOOLS, ...WIZARD_TOOLS, ...CONSTRAINTS_TOOLS, ...TEST_BENCH_TOOLS, ...CONVERT_TOOLS, ...VIEW_TOOLS, ...TABLE_TOOLS, ...NOTATION_TOOLS, ...CHECK_TOOLS, ...SYSTEM_TOOLS, ...FSM_TOOLS, ...CIRCUIT_TOOLS, ...KICAD_TOOLS, ...SCHEMATIC_TOOLS, ...SYMBOL_TOOLS, ...SYMBOL_INFO_TOOLS, ...SIMULATE_DRAWING_TOOLS, ...SOURCE_TOOLS, ...FIND_TOOLS, ...EDITOR_TOOLS, ...TRANSFER_TOOLS, ...MERGE_TOOLS, ...VERSION_TOOLS, ...LINK_TOOLS, ...GIT_TOOLS, ...COLLAB_TOOLS, ...RELAY_TOOLS, ...HDL_TOOLS, ...VERIFY_TOOLS, ...WCFG_TOOLS, ...HLS_TOOLS, ...PROCESS_TOOLS, ...BOARD_TOOLS, ...CAPTURE_TOOLS, ...TIMING_TOOLS, ...LAB_TOOLS, ...GRADE_TOOLS]);
+  assert.deepEqual(mcp.TOOLS, [...PROJECT_TOOLS, ...SETTINGS_TOOLS, ...NEW_SOURCE_TOOLS, ...WIZARD_TOOLS, ...CONSTRAINTS_TOOLS, ...TEST_BENCH_TOOLS, ...CONVERT_TOOLS, ...VIEW_TOOLS, ...TABLE_TOOLS, ...NOTATION_TOOLS, ...CHECK_TOOLS, ...SYSTEM_TOOLS, ...FSM_TOOLS, ...CIRCUIT_TOOLS, ...KICAD_TOOLS, ...SCHEMATIC_TOOLS, ...SYMBOL_TOOLS, ...SYMBOL_INFO_TOOLS, ...SIMULATE_DRAWING_TOOLS, ...SOURCE_TOOLS, ...FIND_TOOLS, ...EDITOR_TOOLS, ...TRANSFER_TOOLS, ...MERGE_TOOLS, ...VERSION_TOOLS, ...LINK_TOOLS, ...GIT_TOOLS, ...COLLAB_TOOLS, ...RELAY_TOOLS, ...HDL_TOOLS, ...VERIFY_TOOLS, ...WCFG_TOOLS, ...HLS_TOOLS, ...PROCESS_TOOLS, ...BOARD_TOOLS, ...CAPTURE_TOOLS, ...TIMING_TOOLS, ...LAB_TOOLS, ...GRADE_TOOLS]);
   assert.equal(new Set(names(mcp.TOOLS)).size, mcp.TOOLS.length);
   for (const t of mcp.TOOLS) {
     assert.equal(typeof t.run, 'function', t.name);
