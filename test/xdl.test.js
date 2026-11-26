@@ -206,3 +206,21 @@ test('#2011 parseXdl: a quoted string with no closing quote is an error, at once
   assert.ok(performance.now() - t < 1000);
   assert.throws(() => parseXdl('design "top xc3s100ecp132-4 v3.2 ;'), /XDL: a quoted string with no closing quote: "top xc3s100ecp132-4 v3\.2 ;/);
 });
+
+// #5592: the tokenizer is a scanner of characters: a regexp over the whole text, its quoted strings' (?:[^"\\]|\\.)* in
+// particular, used a backtracking stack the length of a string and failed in Firefox's flow worker with "too much
+// recursion" after nextpnr's run (and in Node with "Maximum call stack size exceeded" on a string of 10 million characters)
+test('#5592 parseXdl: a string of 10 million characters is read, no stack overflow; the tokens as the regexp read them', () => {
+  const long = 'a'.repeat(5e6) + '\\"' + 'b'.repeat(5e6);
+  const d = parseXdl(`design "top" xc3s100ecp132-4 v3.2 ;\ninst "u1" "SLICE" , placed R1C1 SLICE_X0Y0 , cfg "${long}" ;\n`);
+  assert.equal(d.insts.length, 1);
+  assert.equal(d.insts[0].cfgRaw.length, 1e7 + 2);
+  assert.deepEqual([d.name, d.part, d.insts[0].name, d.insts[0].tile, d.insts[0].site], ['top', 'xc3s100ecp132-4', 'u1', 'R1C1', 'SLICE_X0Y0']);
+  // comment lines, every separator and white space (a tab, a form feed, a no-break space), escapes and an empty string
+  const x = parseXdl('# a comment\n  # another\ndesign "t\\"op" xc3s100ecp132-4,\fv3.2 ;\tnet "n\u00a0x" wire,outpin "u1" X ,pip R1C1 A -> B;net "" ;');
+  assert.deepEqual([x.name, x.part, x.nets.map((n) => n.name)], ['t"op', 'xc3s100ecp132-4', ['n\u00a0x', '']]);
+  assert.deepEqual(x.nets[0].outpins, [{ inst: 'u1', pin: 'X' }]);
+  assert.deepEqual(x.nets[0].pips, [{ tile: 'R1C1', from: 'A', dir: '->', to: 'B' }]);
+  // a string that ends in a lone backslash: no closing quote
+  assert.throws(() => parseXdl('design "top\\'), /XDL: a quoted string with no closing quote: "top$/);
+});
