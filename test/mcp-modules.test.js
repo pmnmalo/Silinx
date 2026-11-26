@@ -60,7 +60,7 @@ test('the tools: those of the areas, the ones of before the split in their order
   assert.deepEqual(names(PROJECT_TOOLS), ['list_examples', 'list_projects', 'new_project_from_example', 'new_project', 'set_top', 'project_info', 'read_file', 'write_file']);
   assert.deepEqual(names(SETTINGS_TOOLS), ['list_devices', 'set_design_properties', 'set_process_properties', 'set_source_properties']);
   assert.deepEqual(names(NEW_SOURCE_TOOLS), ['new_source']);
-  assert.deepEqual(names(WIZARD_TOOLS), ['clock_manager', 'block_memory', 'constraints_wizard']);
+  assert.deepEqual(names(WIZARD_TOOLS), ['clock_manager', 'xadc_wizard', 'block_memory', 'constraints_wizard']);
   assert.deepEqual(names(CONSTRAINTS_TOOLS), ['check_constraints']);   // (Check Constraints, #2296)
   assert.deepEqual(names(TEST_BENCH_TOOLS), ['test_bench_wizard']);
   assert.deepEqual(names(CONVERT_TOOLS), ['convert_module', 'convert_drawing']);
