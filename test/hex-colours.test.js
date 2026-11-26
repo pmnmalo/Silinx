@@ -20,7 +20,7 @@ const LIMITS = {
   'emulator-icebreaker.js': 65, 'emulator-mimas-v2.js': 57, 'emulator-nexys-a7.js': 40, 'emulator-nexys2.js': 46,
   'emulator-nexys3.js': 45, 'emulator-papilio-one.js': 25, 'emulator-pmods.js': 6, 'emulator-pcb.js': 7,
   'emulator-s3-starter.js': 44, 'emulator-s3a.js': 69, 'emulator-s3e.js': 59, 'emulator-tangnano9k.js': 47,
-  'emulator-ulx3s.js': 58, 'emulator-zybo-z7.js': 54, 'emulator.js': 2, 'fpgaview.js': 22, 'fsm-look.js': 1, 'icons.js': 191,
+  'emulator-ulx3s.js': 58, 'emulator-zybo-z7.js': 54, 'emulator.js': 2, 'fpgaview.js': 22, 'fsm-look.js': 1, 'icons.js': 190,
   'isim-colors.js': 25, 'isim-draw-wave.js': 1, 'isim-draw.js': 16, 'isim-print.js': 21, 'isim-stimuli.js': 2,
   'isim.js': 73, 'print.js': 1, 'schematic-export.js': 1, 'schematic-view.js': 13, 'truthtable.js': 10,
   'wizards.js': 2,

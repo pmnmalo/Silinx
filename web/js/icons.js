@@ -23,7 +23,8 @@ export const icons = {
   schematic: S('<path d="M1 5h4M1 11h4M11 8h4" stroke="#000080"/><path d="M5 3h3.5a5 5 0 010 10H5z" fill="#fffff0" stroke="#000080"/>'),
   wave: S('<rect x="0.5" y="1.5" width="15" height="13" fill="#000"/><path d="M1.5 11h3V5h3v6h3V5h4" fill="none" stroke="#0f0" stroke-width="1.3"/>'),
   sim: S('<rect x="0.5" y="1.5" width="15" height="13" rx="1" fill="#1b2a44"/><path d="M2 10h2.5V5H7v5h2.5V5H12" fill="none" stroke="#0f0"/><path d="M10 9l5 3-5 3z" fill="#2ecc40"/>'),
-  chip: S('<rect x="3" y="3" width="10" height="10" fill="#444" stroke="#111"/><path d="M5 1v2M8 1v2M11 1v2M5 13v2M8 13v2M11 13v2M1 5h2M1 8h2M1 11h2M13 5h2M13 8h2M13 11h2" stroke="#888"/><text x="8" y="10.5" font-size="5" fill="#fff" text-anchor="middle" font-family="Arial">X</text>'),
+  // (a plain chip: no "X" inside, which read as an error's mark, #5777)
+  chip: S('<rect x="3" y="3" width="10" height="10" fill="#444" stroke="#111"/><path d="M5 1v2M8 1v2M11 1v2M5 13v2M8 13v2M11 13v2M1 5h2M1 8h2M1 11h2M13 5h2M13 8h2M13 11h2" stroke="#888"/>'),
   project: S('<rect x="2" y="1.5" width="12" height="13" fill="#fff" stroke="#556"/><path d="M4 5h8M4 8h8M4 11h5" stroke="#6a8fc8"/><rect x="2" y="1.5" width="12" height="2.5" fill="#6a8fc8"/>'),
   module: S('<rect x="3" y="3" width="10" height="10" fill="#e8f0ff" stroke="#000080"/><path d="M1 6h2M1 10h2M13 8h2" stroke="#000080"/>'),
   moduleTop: S('<rect x="3" y="3" width="10" height="10" fill="#cfe8cf" stroke="#006000"/><path d="M1 6h2M1 10h2M13 8h2" stroke="#006000"/><rect x="5.5" y="5.5" width="5" height="5" fill="#2a2"/>'),

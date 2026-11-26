@@ -1,7 +1,7 @@
 // UI: the Design pane's rows of device primitives (#4188): a primitive placed in a schematic (RAMB16_S9, BUFG) or
 // instantiated in HDL (Verilog's BUFG, VHDL's DCM_SP) is a leaf marked "(primitive)" with the chip's icon, on a Basys2's
 // Spartan-3E and a Nexys3's Spartan-6; a module that is not in the project stays "(missing)", with the error's icon;
-// in Portuguese too; no warnings.
+// the chip's icon, the device's row's too, with no "X" in it (#5777); in Portuguese too; no warnings.
 import { before, after } from 'node:test';
 import assert from 'node:assert/strict';
 import { setupUi, uiTest, makeProject } from './harness.js';
@@ -51,7 +51,14 @@ for (const [board, device] of [
     for (const [k, v] of Object.entries(look)) {
       assert.equal(v.leaf, '', `${k}: a leaf`);
       assert.equal(v.ico.includes('fill="#444"'), k !== 'ux - gone', `${k}: its icon`);
+      // (#5777: the chip's icon has no "X" in it, which read as an error's mark; the missing module keeps its cross)
+      if (k !== 'ux - gone') assert.ok(!/<text\b/.test(v.ico), `${k}: no "X" in the chip's icon`);
+      else assert.ok(v.ico.includes('fill="#d42020"') && v.ico.includes('M5.3 5.3l5.4 5.4'), `${k}: the error's red cross`);
     }
+    // (#5777: the device's row, the same plain chip)
+    const devIco = await page.eval((p) => [...document.querySelectorAll('#hier .row')].find((r) => r.querySelector('.lbl')?.textContent.startsWith(p))?.children[1]?.outerHTML, device.part);
+    assert.ok(devIco?.includes('fill="#444"'), 'the device\'s row: the chip\'s icon');
+    assert.ok(!/<text\b/.test(devIco), 'the device\'s row: no "X" in its icon');
     assert.deepEqual((await warnings(page)).slice(before), []);   // (no warnings)
     await page.eval(async () => (await import('/js/i18n.js')).setLanguage('pt'));
     try {
