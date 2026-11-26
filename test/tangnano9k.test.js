@@ -34,7 +34,7 @@ test('the Tang Nano 9K in the board data: its own pins, the breadboard\'s on its
 });
 
 test('the Gowin in the device database: after the ECP5, the GW1NR-9C of nextpnr\'s devices here, its figures', () => {
-  assert.deepEqual(FAMILIES.slice(-4).map(f => f.id), ['ice40', 'ecp5', 'gowin', 'gatemate']);
+  assert.deepEqual(FAMILIES.slice(-7).map(f => f.id), ['ice40', 'ecp5', 'gowin', 'gatemate', 'max10', 'cyclone4e', 'cyclone5']);   // (the Intel families last, #5376)
   assert.deepEqual(partsOfFamily('gowin').map(p => p.part), GOWIN_PARTS);
   const p = findPart('gw1nr-9c');
   assert.deepEqual([p.luts, p.ffs, p.brams, p.multipliers, p.plls, p.packages.qn88.userIo, p.speeds], [8640, 6480, 26, 20, 2, 71, ['-6']]);

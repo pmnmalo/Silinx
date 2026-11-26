@@ -35,7 +35,9 @@ test('the voltages of the I/O standards', () => {
 });
 
 test('what each format writes of a pin', () => {
-  assert.deepEqual(Object.keys(PIN_ATTRS), ['ucf', 'xdc', 'pcf', 'lpf', 'cst', 'ccf']);
+  assert.deepEqual(Object.keys(PIN_ATTRS), ['ucf', 'xdc', 'pcf', 'lpf', 'cst', 'ccf', 'qsf']);
+  // (the Intel families' QSF, #5376: the family's I/O standards, a weak pull-up only)
+  assert.deepEqual(pinAttrsOf({ part: '5ceba4' }), { iostandard: 'family', drive: null, slew: null, pull: ['up'], clock: true });
   assert.deepEqual(pinAttrsOf({ part: 'ice40up5k' }), { iostandard: null, drive: null, slew: null, pull: ['up'], clock: true });
   assert.deepEqual(pinAttrsOf({ part: 'lfe5u-85f' }).drive, ['4', '8', '12', '16']);
   assert.deepEqual(pinAttrsOf({ part: 'gw1nr-9c' }).slew, null);
