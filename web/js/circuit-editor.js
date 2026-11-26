@@ -67,6 +67,8 @@ export function mountCircuitEditor(container, opts = {}) {
   const simBar = h('div', { class: 'circ-simbar', hidden: true },
     h('span', { class: 'circ-sim-badge' }, 'Try it'),
     btn('Reset', 'Start the simulation again from time 0', () => { if (tryIt.sim()) startSim(); }, 'circ-reset'),
+    // (ngspice, #5386: an analog circuit's run so far, on the local server; its lines in the console)
+    btn('ngspice', 'Simulate the run so far again with ngspice, from time 0: one way (the digital outputs as Silinx simulated them); its voltmeters and oscilloscope channels in the console', () => tryIt.ngspice(), 'circ-ngspice'),
     h('span', { class: 'asm-spacer' }),
     btn('Stop', 'Stop trying it out and go back to editing the circuit (Esc)', () => stopSim(), 'circ-stop'));
   const world = sv('g', { class: 'circ-world' });
@@ -149,6 +151,7 @@ export function mountCircuitEditor(container, opts = {}) {
     rotBtn.disabled = sel?.kind !== 'part' || !!sim;
     simBtn.classList.toggle('active', !!sim);
     simBar.hidden = !sim;
+    simBar.querySelector('.circ-ngspice').hidden = !sim?.analog || !opts.ngspice;   // (an analog circuit, on the local server: #5386)
     root.classList.toggle('circ-simulating', !!sim);
     side.classList.toggle('try-it-body', !!sim);   // (tried out: its Properties the Try it's body, a lighter green, #3924)
     info.set([circuitCounts(M), sim ? { text: `t = ${sim.time} ns`, cls: 'circ-time', noI18n: true } : null].filter(Boolean));

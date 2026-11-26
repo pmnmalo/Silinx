@@ -97,9 +97,10 @@ export const SIMULATE_DRAWING_TOOLS = [
     inputSchema: { type: 'object', properties: {
       project: PROJECT, file: STR('The drawing, a path in the project (src/ctl.asm.json).'),
       cycles: { type: 'array', maxItems: MAX_CYCLES, items: { type: 'object', additionalProperties: { type: ['integer', 'string'] } }, description: 'Each clock cycle\'s inputs (a circuit: each step) from reset: { name: value }, an integer ≥ 0 or binary digits; a circuit\'s 0 or 1 (one not given kept); a sensor or a potentiometer by id (°C, cm, %, lux), after_us: µs waited.' },
+      ngspice: { type: 'boolean', description: 'A circuit with analog parts: its run simulated again by ngspice (downloaded on first use), one way (the digital outputs as Silinx simulated them); its voltmeters and oscilloscope channels by ngspice and by Silinx.' },
     }, required: ['project', 'file', 'cycles'], additionalProperties: false },
     annotations: { readOnlyHint: true },
-    async run({ project: name, file, cycles }) {
+    async run({ project: name, file, cycles, ngspice = false }) {
       const asm = /\.asm\.json$/i.test(file), fsm = /\.fsm\.json$/i.test(file), sch = /\.sch\.json$/i.test(file), circ = /\.circ\.json$/i.test(file);
       if (!asm && !fsm && !sch && !circ) throw toolError(`'${file}' is not an ASM chart, a state diagram, a schematic or a circuit (.asm.json, .fsm.json, .sch.json, .circ.json)`);
       if (sch) {
@@ -115,8 +116,8 @@ export const SIMULATE_DRAWING_TOOLS = [
         await (await import('../core/circuit-kicad.js')).useProjectParts(await import('./projects.js'), name);   // (#4280)
         const { simulateCircuitFile } = await import('./mcp-simulate-circuit.js');
         // (its KiCad parts modelled by a module of the project run live, #4284)
-        const { lines, rows, warnings } = await simulateCircuitFile(m, cycles, base, await (await import('./drawing-sync.js')).projectHdl(await import('./projects.js'), name));
-        return { text: clip(lines.join('\n')), data: { project: name, file, kind: 'circuit', warnings, steps: rows }, isError: false };
+        const { lines, rows, warnings, spice } = await simulateCircuitFile(m, cycles, base, await (await import('./drawing-sync.js')).projectHdl(await import('./projects.js'), name), { ngspice: !!ngspice });
+        return { text: clip(lines.join('\n')), data: { project: name, file, kind: 'circuit', warnings, steps: rows, ...(spice ? { ngspice: spice } : {}) }, isError: false };
       }
       const { lines, rows } = asm ? await simulateAsmFile(m, cycles, base) : await simulateFsmFile(m, cycles, base);
       return { text: clip(lines.join('\n')), data: { project: name, file, kind: asm ? 'asm' : 'fsm', cycles: rows }, isError: false };

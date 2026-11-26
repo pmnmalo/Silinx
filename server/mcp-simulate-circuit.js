@@ -8,7 +8,7 @@ import { toolError } from './mcp-util.js';
 
 /** The steps of a circuit `m` (its JSON) simulated: { lines, rows, warnings }; `hdl`: the project's { modules, runner }
  *  (core/drawing-sync.js projectHdl), its KiCad parts modelled by a module run live (#4284). */
-export async function simulateCircuitFile(m0, steps, base, hdl = {}) {
+export async function simulateCircuitFile(m0, steps, base, hdl = {}, { ngspice = false } = {}) {
   const { normalizeCircuit, circuitPorts } = await import('../core/circuit.js');
   const { checkCircuit } = await import('../core/circuit-check.js');
   const { createCircuitSim, runMessages } = await import('../core/circuit-sim.js');
@@ -26,6 +26,8 @@ export async function simulateCircuitFile(m0, steps, base, hdl = {}) {
   let sim = null;
   sim = createCircuitSim(m, { runner: hdl.runner ?? null, onUpdate: (t) => sim && rec.sample(sim, t) });
   rec.sample(sim, sim.time);
+  // (its analog side recorded from time 0 for ngspice, #5386)
+  if (ngspice) { if (!sim.analog) throw toolError('ngspice: the circuit has no analog part (a resistor, a capacitor, an LED…): nothing for it to simulate'); sim.recordSpice(); }
   const scopeData = () => Object.fromEntries(rec.scopes.map((s) => { const sc = rec.screen(s.id, s.part, sim.time * 1e-9); return [s.id, sc.m.map((x, k) => (x && sc.ch[k].on ? x : null))]; }));
   const scopeText = () => Object.entries(scopeData()).map(([id, ms]) => ms.map((x, k) => { if (!x) return ''; const t = measureText(x); return `; ${id} CH${k + 1} f ${t.frequency}, T ${t.period}, D ${t.duty}, Vpp ${t.vpp}, Vavg ${t.mean}`; }).join('')).join('');
   const leds = () => sim.outputs();
@@ -112,5 +114,19 @@ export async function simulateCircuitFile(m0, steps, base, hdl = {}) {
     const oleds = Object.fromEntries(Object.entries(sim.oleds()).map(([id, s]) => [id, s.on ? { lit: s.lit, rows: s.rows } : null]));
     rows.push({ step: k, time: r.time, quiet: r.quiet, inputs: Object.fromEntries(inputs.map((i) => [i.name, at(i)])), leds: Object.fromEntries(Object.entries(outs).map(([a, b]) => [a, Number(b)])), ...(probeName.size ? { probes: probes() } : {}), ...(Object.keys(meters()).length ? { volts: meters() } : {}), ...(rec.scopes.length ? { scopes: scopeData() } : {}), ...(sim.analog ? { mA: Object.fromEntries(Object.entries(sim.lampCurrents()).map(([id, v]) => [id, mA(v)])) } : {}), ...(Object.keys(lcds).length ? { lcds } : {}), ...(Object.keys(oleds).length ? { oleds } : {}) });
   }
-  return { lines, rows, warnings };
+  // (ngspice, #5386: the run's analog side again, one way, the digital outputs as Silinx simulated them)
+  let spice = null;
+  if (ngspice) {
+    const { spiceNetlist, readSpiceResult, spiceReadings } = await import('../core/circuit-spice.js');
+    const { runNgspice } = await import('./ngspice.js');
+    const n = spiceNetlist(sim.spiceRecord(), { title: base });
+    const r = await runNgspice(n.text, { log: (l) => lines.push(l) });
+    const said = [...n.warnings, ...r.errors.map((e) => `ngspice: ${e}`)];
+    for (const x of said) lines.push(`WARNING: ${x}`);
+    warnings.push(...said);
+    const read = spiceReadings(m, sim, readSpiceResult(r.result, n.nodes));
+    lines.push(...read.lines);
+    spice = { meters: read.meters, scopes: read.scopes, points: r.result.data[0]?.values.length ?? 0 };
+  }
+  return { lines, rows, warnings, ...(spice ? { spice } : {}) };
 }

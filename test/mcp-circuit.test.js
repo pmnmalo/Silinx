@@ -510,3 +510,23 @@ test('#5384 edit_circuit: a function generator\'s PWM (its frequency, duty cycle
   assert.deepEqual(parts.data.parts.find((p) => p.type === 'function-generator').choices, [{ prop: 'wave', options: ['square', 'sine', 'triangle'], default: 'square' }]);
   assert.deepEqual(parts.data.parts.find((p) => p.type === 'oscilloscope').settings, ['tdiv', 'vdiv', 'source', 'level', 'edge', 'mode']);
 });
+
+test('#5386 simulate_drawing with ngspice: the 74LS14 oscillator\'s scope and the PWM\'s voltmeter by ngspice as by Silinx, one way, said; a circuit with no analog part refused', async () => {
+  const r = await ok('simulate_drawing', { project: 'c', file: 'src/osc.circ.json', cycles: [{ after_us: 5000 }], ngspice: true });
+  const lines = r.text.split('\n'), at = lines.indexOf('ngspice: one way — the digital outputs, as Silinx simulated them, drive ngspice\'s analog circuit; ngspice\'s waveforms change nothing of the digital side');
+  assert.ok(at > 0, lines.join('\n'));
+  assert.deepEqual(r.data.warnings, []);
+  // (its CH2 the capacitor, from 0 V at time 0 up to the Schmitt trigger's 1.6 V; its CH1 the 74LS14's output, to its 3.4 V)
+  const [out, cap] = r.data.ngspice.scopes.OSC1;
+  assert.ok(Math.abs(cap.max - 1.6) < 0.02 && cap.min < 0.01, JSON.stringify(cap));
+  assert.ok(Math.abs(out.max - 3.4) < 0.15, JSON.stringify(out));
+  assert.match(lines[at + 1], /^ngspice: OSC1 CH1 from [\d.]+ V to 3\.\d\d\d V, [\d.]+ V at the end$/);
+  assert.match(lines[at + 2], /^ngspice: OSC1 CH2 from 0\.000 V to 1\.6\d\d V, [\d.]+ V at the end$/);
+  // (the PWM through its RC: the capacitor's mean, 20 % of 3.3 V, by both)
+  const p = await ok('simulate_drawing', { project: 'c', file: 'src/pwm.circ.json', cycles: [{ after_us: 100000 }], ngspice: true });
+  const vm = p.data.ngspice.meters.VM1;
+  assert.ok(Math.abs(vm.ngspice - vm.silinx) < 0.02 && Math.abs(vm.ngspice - 0.66) < 0.03, JSON.stringify(vm));
+  assert.match(p.text.split('\n').at(-1), /^ngspice: VM1 0\.6\d\d V \(Silinx: 0\.6\d\d V\)$/);
+  await ok('write_file', { project: 'c', path: 'src/plain.circ.json', text: JSON.stringify({ format: 'silinx-circuit', version: 1, name: 'plain', lang: 'vhdl', parts: [{ id: 'P1', type: 'supply', x: -10, y: -10 }], wires: [] }) });
+  await fails('simulate_drawing', { project: 'c', file: 'src/plain.circ.json', cycles: [{}], ngspice: true }, 'ngspice: the circuit has no analog part (a resistor, a capacitor, an LED…): nothing for it to simulate');
+});

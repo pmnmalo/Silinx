@@ -88,14 +88,18 @@ export async function createNgspice(o = {}) {
   const worker = new Worker(new URL('./ngspice-worker.js', import.meta.url), { workerData: { module: pathToFileURL(mod).href } });
   const waiting = new Map();
   let next = 0, failed = null;
+  // (the thread holds the process only while a run waits for it: a server's or a test's kept idle lets it end)
+  worker.unref();
+  const settle = () => { if (!waiting.size) worker.unref(); };
   const fail = (e) => { failed = e; for (const w of waiting.values()) w.reject(e); waiting.clear(); };
-  worker.on('message', ({ id, error, ...out }) => { const w = waiting.get(id); waiting.delete(id); if (error) w?.reject(new Error(`ngspice: ${error}`)); else w?.resolve(out); });
+  worker.on('message', ({ id, error, ...out }) => { const w = waiting.get(id); waiting.delete(id); settle(); if (error) w?.reject(new Error(`ngspice: ${error}`)); else w?.resolve(out); });
   worker.on('error', (e) => fail(new Error(`ngspice: ${e.message}`)));
   worker.on('exit', (code) => fail(new Error(`ngspice stopped (${code})`)));
   return {
     run(netlist) {
       if (failed) return Promise.reject(failed);
       const id = ++next;
+      worker.ref();
       return new Promise((resolve, reject) => { waiting.set(id, { resolve, reject }); worker.postMessage({ id, netlist }); });
     },
     close: () => { worker.removeAllListeners('exit'); return worker.terminate(); },

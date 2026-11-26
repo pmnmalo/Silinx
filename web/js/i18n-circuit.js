@@ -41,6 +41,7 @@ export const CIRCUIT_PT = {
   'Check the circuit: short circuits, unpowered ICs, floating inputs, parts and wires that join nothing': 'Verificar o circuito: curto-circuitos, CIs sem alimentação, entradas no ar, peças e fios que não ligam nada',
   'Try it: click a switch to flip it, press a button to hold it; the LEDs and each pin\'s level show the circuit working': 'Experimentar: clique num interruptor para o mudar, carregue num botão para o manter premido; os LEDs e o nível de cada pino mostram o circuito a funcionar',
   'Start the simulation again from time 0': 'Recomeçar a simulação no instante 0',
+  'ngspice': 'ngspice', 'Simulate the run so far again with ngspice, from time 0: one way (the digital outputs as Silinx simulated them); its voltmeters and oscilloscope channels in the console': 'Simular de novo com o ngspice o que já correu, desde o instante 0: num só sentido (as saídas digitais como o Silinx as simulou); os seus voltímetros e canais de osciloscópio na consola',
   'Moving or turning a part: its wires\' ends follow its pins and holes, or stay where they are (a breadboard always carries the parts on it)': 'Ao mover ou rodar uma peça: as pontas dos fios seguem os seus pinos e furos, ou ficam onde estão (uma placa de ensaio leva sempre as peças que tem)',
   // side panel
   'Parts': 'Peças', 'Search parts…': 'Procurar peças…', '☰ Parts': '☰ Peças', 'Show / hide the parts panel': 'Mostrar / esconder o painel das peças',
@@ -311,6 +312,13 @@ const OTHER = { LED: 'o LED', 'Slide switch (SPDT)': 'o comutador deslizante (SP
 const OTHERS = `(${Object.keys(OTHER).map((t) => t.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|')})`;
 const BY = { symbol: 'pelo seu símbolo', 'Silinx.Model': 'pelo seu Silinx.Model' };
 export const CIRCUIT_PT_PATTERNS = [
+  // (ngspice, #5386: Try it's console lines, core/circuit-spice.js)
+  [/^ngspice: one way — the digital outputs, as Silinx simulated them, drive ngspice's analog circuit; ngspice's waveforms change nothing of the digital side$/, 'ngspice: num só sentido — as saídas digitais, como o Silinx as simulou, comandam o circuito analógico do ngspice; as formas de onda do ngspice não mudam nada do lado digital'],
+  [/^ngspice: running (.+)'s ([\d.]+) ms…$/, 'ngspice: a simular $2 ms de $1…'],
+  [/^ngspice: (\S+) (-?[\d.]+) V \(Silinx: (-?[\d.]+ V|—)\)$/, 'ngspice: $1 $2 V (Silinx: $3)'],
+  [/^ngspice: (\S+) (CH[12]) from (-?[\d.]+) V to (-?[\d.]+) V, (-?[\d.]+) V at the end$/, 'ngspice: $1 $2 de $3 V a $4 V, $5 V no fim'],
+  [/^ngspice: (\S+)((?: CH[12])?) not on an analog net$/, 'ngspice: $1$2 não está numa rede analógica'],
+  [/^ngspice: downloading eecircuit-engine ([\d.]+) \(about (\d+) MB, from (\S+): once, then kept in (.+)\)…$/, 'ngspice: a descarregar o eecircuit-engine $1 (cerca de $2 MB, de $3: uma vez, depois guardado em $4)…'],
   // a KiCad part behaving as the library's LED, slide switch or push button (#4349)
   [new RegExp(`^(.+), as the ${OTHERS} of the library: click it, then the drawing \\(Esc: done\\)$`), (m, v, t) => `${v}, como ${OTHER[t]} da biblioteca: clique nela e depois no desenho (Esc: terminar)`],
   [new RegExp(`^(.+), as the ${OTHERS} of the library \\((.+), (.+)\\): click it to import it into the project$`), (m, v, t, lib, lic) => `${v}, como ${OTHER[t]} da biblioteca (${lib}, ${lic}): clique para a importar para o projeto`],

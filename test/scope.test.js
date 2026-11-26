@@ -133,3 +133,12 @@ test('#5383 the knobs (turnKnob): the time base and the scale by their lists\' s
   assert.deepEqual(tr.v.map((x) => (Number.isNaN(x) ? 'X' : x)), [3.3, 0, 'X', 3.3]);
   assert.equal(waveTrace(null, 0).t.length, 0);
 });
+
+test('#5705 a screen of a million samples measured: no stack overflow, its Vpp and frequency right', () => {
+  // (a 1 kHz sine of 2 V peak to peak, a sample every 10 ns: 10 ms, a million samples, all on one screen)
+  const tr = createTrace({ keep: 2e6 });
+  for (let k = 0; k <= 1e6; k++) tr.add(k * 1e-8, Math.sin(2 * Math.PI * 1000 * k * 1e-8));
+  const m = measure(tr, 0, 0.01);
+  assert.ok(Math.abs(m.vpp - 2) < 1e-6, `Vpp ${m.vpp}`);
+  assert.ok(Math.abs(m.frequency - 1000) < 1, `f ${m.frequency}`);
+});
