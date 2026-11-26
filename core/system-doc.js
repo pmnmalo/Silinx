@@ -6,7 +6,7 @@
 //     nodes: [ { id, kind: 'fpga', module, board, variant?, constraints?: <its constraints file, in its folder>, lang, interfaces, x, y }
 //              { id, kind: 'mcu', board: 'arduino-uno' | 'arduino-nano' | 'explorer-1632' | 'pico', firmware: <a .hex / .elf of the project; a Pico's .py>, lang, usb, interfaces, x, y }
 //              { id, kind: 'terminal', interfaces, x, y }
-//              { id, kind: 'circuit', circuit: <a .circ.json of the project>, interfaces: [], x, y } ],
+//              { id, kind: 'circuit', circuit: <a .circ.json of the project>, spiHz?: <its SPI parts' SCK (Hz), #5384>, interfaces: [], x, y } ],
 //     links: [ { id, kind: 'uart' | 'gpio' | 'spi' | 'i2c', a: '<node>.<interface>', b: '<node>.<interface>' } ] }
 //
 // Each node's files live in its folder, `<id>/` (#5488, core/system-layout.js): its firmware, its circuit, an FPGA node's
@@ -108,7 +108,11 @@ function normalNode(n) {
     if (n.pins && typeof n.pins === 'object' && Object.keys(n.pins).length) out.pins = { ...n.pins };
   } else if (out.kind === 'mcu') {
     out.board = n.board ?? null; out.firmware = n.firmware ?? null;
-  } else if (out.kind === 'circuit') out.circuit = n.circuit ?? null;
+  } else if (out.kind === 'circuit') {
+    out.circuit = n.circuit ?? null;
+    // (its SPI parts' clock, #5384: its wires' latency a sixteenth of its period; none: core/system-circuit.js's default)
+    if (Number(n.spiHz) > 0) out.spiHz = Number(n.spiHz);
+  }
   else if (out.kind === 'design') out.module = n.module ?? null;
   if (nodeLangs(out.kind).length) out.lang = baseLang(n);
   // (its board told apart by its USB id, #5489: an FPGA's or a microcontroller's)

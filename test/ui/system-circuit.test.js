@@ -18,7 +18,7 @@ const BENCH = { format: 'silinx-circuit', version: 1, name: 'bench', lang: 'vhdl
 const consoleLines = (page) => page.eval(() => [...document.querySelectorAll('#console-log .ln')].map((l) => l.textContent.trim()).filter(Boolean));
 const HOT = 'WARNING: serial: uno\'s D1, a 5 V output, drives fpga\'s rx (pin J3), a 3.3 V input of the FPGA (LVCMOS33): a level shifter or a divider on the real boards';
 
-uiTest('#5215 a circuit node: placed with the project\'s circuit, its Properties, checked, tried (the LED on the Uno\'s D8); Portuguese', E, async (page) => {
+uiTest('#5215 a circuit node: placed with the project\'s circuit, its Properties (its SPI clock, #5384), checked, tried (the LED on the Uno\'s D8); Portuguese', E, async (page) => {
   await makeProject(env, { name: 'CoCirc', template: 'uart-avr', files: { 'circuit/bench.circ.json': JSON.stringify(BENCH, null, 2) } });
   await page.openProject('CoCirc');
   await page.eval(() => window.SilinxApp.openFile('uart_avr.sys.json'));
@@ -37,6 +37,14 @@ uiTest('#5215 a circuit node: placed with the project\'s circuit, its Properties
   await page.click(`${ED} .sys-node[data-id="circuit"] .sys-head`);
   await page.waitFor((ed) => document.querySelector(`${ed} .sys-selection h3`)?.textContent === 'Circuit circuit', [ED], { what: 'its properties' });
   assert.deepEqual(await page.eval((ed) => { const s = document.querySelector(`${ed} .sys-circuit`); return [s.value, [...s.options].map((o) => o.value)]; }, ED), ['circuit/bench.circ.json', ['', 'circuit/bench.circ.json']]);
+  // its SPI clock (#5384): empty (3.125 MHz, its SPI parts'), set, then emptied again (this circuit has no SPI part)
+  const spi = (ed) => { const i = document.querySelector(`${ed} .sys-spi-hz`); return [i.value, i.placeholder, i.closest('.asm-field').querySelector('.asm-label').textContent]; };
+  assert.deepEqual(await page.eval(spi, ED), ['', '3125000', 'SPI clock (Hz)']);
+  const setSpi = (v) => page.eval((ed, x) => { const i = document.querySelector(`${ed} .sys-spi-hz`); i.value = x; i.dispatchEvent(new Event('change')); }, ED, v);
+  await setSpi('1000000');
+  await page.waitFor(() => window.Silinx.active.systemEditor.getModel().nodes.at(-1).spiHz === 1e6, [], { what: 'its SPI clock set' });
+  await setSpi('');
+  await page.waitFor(() => !('spiHz' in window.Silinx.active.systemEditor.getModel().nodes.at(-1)), [], { what: 'its SPI clock emptied' });
   // Check: the example's warning only (the Uno reached by the circuit)
   await page.click(`${ED} .sys-check`);
   await page.waitFor(() => [...document.querySelectorAll('#console-log .ln')].filter((l) => l.textContent.trim() === 'Process "Check System" completed successfully with 1 warning(s)').length === 2, [], { what: 'Check' });
@@ -59,6 +67,8 @@ uiTest('#5215 a circuit node: placed with the project\'s circuit, its Properties
   await page.waitFor((ed) => document.querySelector(`${ed} .sys-add-circuit`)?.textContent === 'Circuito', [ED], { what: 'Portuguese' });
   assert.deepEqual(await page.eval((ed) => [document.querySelector(`${ed} .sys-add-circuit`).title, document.querySelector(`${ed} .sys-selection h3`)?.textContent], ED),
     ['Clique na tela para acrescentar um nó circuito: um circuito do projeto entre as placas, as suas placas os nós que as suas etiquetas nomeiam', 'Circuito circuit']);
+  await page.click(`${ED} .sys-node[data-id="circuit"] .sys-head`);
+  await page.waitFor((ed) => document.querySelector(`${ed} .sys-spi-hz`)?.closest('.asm-field').querySelector('.asm-label').textContent === 'Relógio SPI (Hz)', [ED], { what: 'its SPI clock in Portuguese' });
   await page.eval(async () => (await import('/js/i18n.js')).setLanguage('en'));
   assert.deepEqual(page.console.filter((c) => c.type === 'error').map((c) => c.text), []);
 }, { timeout: 180000 });

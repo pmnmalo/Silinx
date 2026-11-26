@@ -1,0 +1,28 @@
+{
+  "format": "silinx-system",
+  "version": 2,
+  "name": "adc_pmod",
+  "nodes": [
+    {
+      "id": "fpga",
+      "kind": "fpga",
+      "module": "adc_display",
+      "board": "basys2",
+      "variant": "250",
+      "constraints": "fpga/adc_display.ucf",
+      "lang": "vhdl",
+      "interfaces": [],
+      "x": 0,
+      "y": 0
+    },
+    {
+      "id": "bench",
+      "kind": "circuit",
+      "circuit": "bench/bench.circ.json",
+      "interfaces": [],
+      "x": 320,
+      "y": 0
+    }
+  ],
+  "links": []
+}

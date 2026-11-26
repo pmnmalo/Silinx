@@ -99,7 +99,8 @@ export const SYSTEM_PT = {
   'no interface': 'sem interface', 'Serial terminal': 'Terminal série', 'no circuit': 'sem circuito',
   // (a circuit node, #5215)
   'Circuit': 'Circuito', 'Click the canvas to add a circuit node: a circuit of the project between the boards, its boards the nodes their labels name': 'Clique na tela para acrescentar um nó circuito: um circuito do projeto entre as placas, as suas placas os nós que as suas etiquetas nomeiam',
-  'a .circ.json of the project: its boards are the nodes their labels name': 'um .circ.json do projeto: as suas placas são os nós que as suas etiquetas nomeiam', 'no module': 'sem módulo', 'no firmware': 'sem firmware', 'no board': 'sem placa',
+  'a .circ.json of the project: its boards are the nodes their labels name': 'um .circ.json do projeto: as suas placas são os nós que as suas etiquetas nomeiam',
+  'SPI clock (Hz)': 'Relógio SPI (Hz)', 'its SPI parts\' SCK (a Pmod AD1, DA2): its wires answer in a sixteenth of its period; empty: 3.125 MHz': 'o SCK das suas peças SPI (um Pmod AD1, DA2): os seus fios respondem num dezasseis avos do seu período; vazio: 3,125 MHz', 'no module': 'sem módulo', 'no firmware': 'sem firmware', 'no board': 'sem placa',
   // (a removed node's folder, #5488: web/js/system-folders-ui.js)
   'Remove Node': 'Remover Nó',
   'Not made: its file is not in the project folder': 'Não gerado: o seu ficheiro não está na pasta do projeto',

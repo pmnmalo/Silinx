@@ -84,7 +84,7 @@ function renameEnds(sys, { node, to, iface = null, toIface = null }) {
 export function changeNode(sys, id, fields = {}) {
   const out = copy(sys), n = nodeOf(out, id);
   if (!n) return { error: `no node '${id}' in the System` };
-  const allowed = [...({ fpga: ['id', 'module', 'board', 'variant', 'pins', 'constraints', 'usb', 'x', 'y'], mcu: ['id', 'board', 'firmware', 'usb', 'x', 'y'], terminal: ['id', 'x', 'y'], circuit: ['id', 'circuit', 'x', 'y'] }[n.kind] || ['id', 'x', 'y']),
+  const allowed = [...({ fpga: ['id', 'module', 'board', 'variant', 'pins', 'constraints', 'usb', 'x', 'y'], mcu: ['id', 'board', 'firmware', 'usb', 'x', 'y'], terminal: ['id', 'x', 'y'], circuit: ['id', 'circuit', 'spiHz', 'x', 'y'] }[n.kind] || ['id', 'x', 'y']),
     ...(nodeLangs(n.kind).length ? ['lang'] : [])];
   for (const k of Object.keys(fields)) if (!allowed.includes(k)) return { error: `${id}: a ${NODE_KIND_NAMES[n.kind] || n.kind} node has no field '${k}' (${allowed.join(', ')})` };
   if (fields.id != null && fields.id !== n.id) {
@@ -130,6 +130,13 @@ export function changeNode(sys, id, fields = {}) {
     const why = fields.usb !== null && (typeof fields.usb !== 'object' || Array.isArray(fields.usb)) ? usbError(fields.usb) : usbError(usb);
     if (why) return { error: `${id}: ${why}` };
     if (Object.keys(usb).length) n.usb = usb; else delete n.usb;
+  }
+  // (a circuit node's SPI clock, #5384: its wires' latency a sixteenth of its period; null or '' the default's)
+  if (fields.spiHz !== undefined) {
+    const hz = Number(fields.spiHz);
+    if (fields.spiHz == null || fields.spiHz === '') delete n.spiHz;
+    else if (!(hz >= 1 && hz <= 100e6)) return { error: `${id}: its SPI clock is a frequency from 1 Hz to 100 MHz, not '${fields.spiHz}'` };
+    else n.spiHz = hz;
   }
   for (const k of ['x', 'y']) if (fields[k] !== undefined) n[k] = Math.round(+fields[k] || 0);
   return { system: normalizeSystem(out), id: n.id };
@@ -321,7 +328,7 @@ export function describeSystem(sys) {
   const lines = [`System ${sys.name}: ${sys.nodes.length} node${sys.nodes.length === 1 ? '' : 's'}, ${sys.links.length} link${sys.links.length === 1 ? '' : 's'}`];
   for (const n of sys.nodes) {
     const what = n.kind === 'fpga' ? `FPGA, module ${n.module ?? '(none)'} on ${n.board ?? '(no board)'}${n.variant ? `-${n.variant}` : ''}`
-      : n.kind === 'mcu' ? `${mcuBoard(n.board)?.name ?? n.board}, ${mcuBoard(n.board)?.arch === 'rp2040' ? 'program' : 'firmware'} ${n.firmware ?? '(none)'}` : n.kind === 'circuit' ? `circuit ${n.circuit ?? '(none)'}` : NODE_KIND_NAMES[n.kind] || n.kind;
+      : n.kind === 'mcu' ? `${mcuBoard(n.board)?.name ?? n.board}, ${mcuBoard(n.board)?.arch === 'rp2040' ? 'program' : 'firmware'} ${n.firmware ?? '(none)'}` : n.kind === 'circuit' ? `circuit ${n.circuit ?? '(none)'}${n.spiHz ? `, its SPI clock ${n.spiHz} Hz` : ''}` : NODE_KIND_NAMES[n.kind] || n.kind;
     lines.push(`node ${n.id}: ${what}${n.lang ? `, in ${LANG_NAMES[n.lang] ?? n.lang}` : ''}`);
     for (const f of n.interfaces) lines.push(`  ${ifaceText(n, f)}`);
   }
