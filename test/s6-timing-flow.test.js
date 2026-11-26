@@ -60,13 +60,14 @@ test('s6/timing: a design routed by the open flow timed: its clock\'s period and
   const x = placedXdlS6(d.nl, d.packed, d.phys, await s6PlaceNextpnr(d, part), { part, device });
   const design = parseXdl(writeXdl(await s6RouteNextpnr(x, part)));
   const r = analyzeTimingS6(design, device);
-  // one clock: a period of a few ns (an 8-bit adder), its path from a clock-to-out through nets and logic to a setup
+  // one clock: a period of a few ns (an 8-bit adder), its path from a clock-to-out through nets and logic to a setup (the logic a
+  // step of its own, or the slice's LUT in the setup arc from a LUT's pin: Yosys 0.71's netlist's critical path, #5634)
   assert.equal(r.clocks.length, 1);
   const c = r.clocks[0];
   assert.ok(c.period > 1 && c.period < 10, String(c.period));
   assert.equal(c.path[0].kind, 'clock-to-out');
   assert.equal(c.path.at(-1).kind, 'setup');
-  assert.ok(c.path.some(p => p.kind === 'net') && c.path.some(p => p.kind === 'logic'));
+  assert.ok(c.path.some(p => p.kind === 'net') && (c.path.some(p => p.kind === 'logic') || /^[A-D][1-6]$/.test(c.path.at(-1).pin)), JSON.stringify(c.path));
   // every connection's delay from its routed path, none below 0; the clock's arrivals at each flip-flop
   assert.ok(r.conns.length > 10 && r.conns.every(k => Number.isFinite(k.delay) && k.delay >= 0));
   const clk = clockArrivalsS6(design, device);
