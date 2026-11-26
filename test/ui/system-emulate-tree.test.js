@@ -68,7 +68,7 @@ uiTest('#5581 a System\'s Emulate: its tree, a node emulated alone (its link\'s 
   await page.waitFor((e) => document.querySelector(`${e} [data-node=fpga] .emu-pcb`) && document.querySelector(`${e} .sys-term-in`), [EMU], { what: 'the FPGA alone', timeout: 60000 });
   assert.deepEqual([await nodes(page), await title(page)], [['fpga'], 'Emulate (uart_avr: fpga)']);
   assert.deepEqual((await lines(page)).filter((l) => /^(WARNING|ERROR)/.test(l)), [WARN]);
-  assert.equal(await page.eval((e) => document.querySelector(`${e} .sys-term-cap`)?.textContent, EMU), 'serial · 9600 8N1');
+  assert.equal(await page.eval((e) => document.querySelector(`${e} .sys-term-cap span`)?.textContent, EMU), 'serial · 9600 8N1');
   await page.waitFor((e) => document.querySelector(`${e} .sysemu-run`)?.textContent === '⏸ Pause', [EMU], { what: 'running once ready (#5619)', timeout: 60000 });
   await page.click(`${EMU} .sys-term-in`);
   await page.type('A');
