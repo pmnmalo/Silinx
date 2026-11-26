@@ -118,6 +118,7 @@ function checkNodes(sys, ctx, { err, warn }) {
     if (n.kind === 'fpga') checkFpga(n, at, ctx, { err, warn });
     else if (n.kind === 'mcu') checkMcu(n, at, ctx, { err, warn });
     else if (n.kind === 'circuit') checkCircuitFields(n, ctx, { err, warn });
+    else if (n.kind === 'broker') checkBroker(n, at, { err });
     else if (n.kind === 'design') { if (n.interfaces.length) err(`${n.id}: a design node has no interfaces (its drawings are simulated, on no board)`, node(n.id)); }
     else for (const f of n.interfaces) {
       if (!checkInterface(n, f, at, { err, warn })) continue;
@@ -126,6 +127,12 @@ function checkNodes(sys, ctx, { err, warn }) {
     }
   }
   return nodes;
+}
+
+// an MQTT broker (#5500): one MQTT interface, which every client's link joins
+function checkBroker(n, at, { err }) {
+  if (n.interfaces.length !== 1 || n.interfaces[0].kind !== 'mqtt') { err(`${n.id}: an MQTT broker has one interface, an MQTT one, its clients' links' end`, node(n.id)); return; }
+  if (checkInterface(n, n.interfaces[0], at, { err })) at.ifaces.set(lc(n.interfaces[0].name), { f: n.interfaces[0], mqtt: true });
 }
 
 // an interface's own fields: true when it can be resolved
@@ -153,6 +160,7 @@ function checkInterface(n, f, at, { err, warn }) {
     if (!(Number(f.hz) > 0)) { err(`${n.id}.${f.name}: its SCL rate '${f.hz ?? ''}' is not a rate (Hz)`, ref); return false; }
     return true;
   }
+  if (f.kind === 'mqtt') return true;   // (#5500: its name only)
   err(`${n.id}.${f.name}: no interface kind '${f.kind}' (the kinds: ${INTERFACE_KINDS.join(', ')})`, ref);
   return false;
 }
@@ -241,6 +249,12 @@ function checkMcu(n, at, { files }, { err, warn }) {
       at.ifaces.set(lc(f.name), { f, tx: pin(tx, 'out'), rx: pin(rx, 'in') });
       continue;
     }
+    if (f.kind === 'mqtt') {
+      // (an MQTT client: a board with a network, #5500; a client with no broker said)
+      if (b && !b.network) { err(`${n.id}.${f.name}: the ${b.name} has no network (an MQTT client is a Pico W's)`, ref); continue; }
+      at.ifaces.set(lc(f.name), { f, mqtt: true });
+      continue;
+    }
     if (f.kind === 'spi') {
       // (the master, on its board's SPI pins, #5214)
       if (!b) continue;
@@ -266,8 +280,8 @@ function checkMcu(n, at, { files }, { err, warn }) {
 }
 
 // a kind's name in a sentence: a GPIO link, an I²C link
-const KIND_NAME = { uart: 'UART', gpio: 'GPIO', spi: 'SPI', i2c: 'I²C' };
-const KIND_A = { uart: 'a', gpio: 'a', spi: 'an', i2c: 'an' };
+const KIND_NAME = { uart: 'UART', gpio: 'GPIO', spi: 'SPI', i2c: 'I²C', mqtt: 'MQTT' };
+const KIND_A = { uart: 'a', gpio: 'a', spi: 'an', i2c: 'an', mqtt: 'an' };
 
 // the links: their ends, their settings, the wires they make; the nodes they reach
 function checkLinks(sys, nodes, { err, warn }, wiresOut) {
@@ -287,7 +301,7 @@ function checkLinks(sys, nodes, { err, warn }, wiresOut) {
       const f = at.n.interfaces.find(i => lc(i.name) === lc(x.iface));
       if (!f) { err(`${l.id}: ${x.node} has no interface ${x.iface}`, ref); return null; }
       if (f.kind !== l.kind) { err(`${l.id}: ${KIND_A[l.kind]} ${KIND_NAME[l.kind]} link, ${e} is ${f.kind === 'uart' ? 'a UART' : `${KIND_A[f.kind] ?? 'a'} ${KIND_NAME[f.kind] ?? String(f.kind).toUpperCase()} interface`}`, ref); return null; }
-      const prev = byIface.get(`${lc(x.node)}.${lc(x.iface)}`);
+      const prev = at.n.kind !== 'broker' && byIface.get(`${lc(x.node)}.${lc(x.iface)}`);   // (a broker's: every client's)
       if (prev) { err(`${l.id}: ${e} is already ${prev}'s`, ref); return null; }
       byIface.set(`${lc(x.node)}.${lc(x.iface)}`, l.id);
       return { at, name: `${at.n.id}.${f.name}`, r: at.ifaces.get(lc(f.name)) };
@@ -296,6 +310,8 @@ function checkLinks(sys, nodes, { err, warn }, wiresOut) {
     const [a, b] = ends;
     if (a.at === b.at) { err(`${l.id}: both ends on ${a.at.n.id}: a link joins two nodes`, ref); continue; }
     if (!a.r || !b.r) continue;   // (an interface in error: said)
+    // (an MQTT link: a client and its broker, #5500; messages, no wires)
+    if (l.kind === 'mqtt') { if ((a.at.n.kind === 'broker') === (b.at.n.kind === 'broker')) err(`${l.id}: an MQTT link joins a client and a broker`, ref); continue; }
     const wires = l.kind === 'uart' ? uartWires(l, a, b, { err }) : l.kind === 'spi' ? spiWires(l, a, b, { err }) : l.kind === 'i2c' ? i2cWires(l, a, b, { err }) : gpioWires(l, a, b, { err });
     for (const [x, y, signal] of wires) {
       const said = [], level = { err, warn: (m, r) => { said.push(m); warn(m, r); } };

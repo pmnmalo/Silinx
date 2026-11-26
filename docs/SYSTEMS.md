@@ -282,6 +282,28 @@ A Raspberry Pi Pico (`board: 'pico'`, #5494, `core/system-sim-rp2040.js`) is a m
 - **What it does not model yet:** the second core (`_thread`), the ADC's inputs, SPI and I²C links, and the file system kept
   between runs. Its drawing in the System Emulator and an example come next.
 
+### Network links and the MQTT broker
+
+A System's nodes talk over a network (#5500, `core/system-mqtt.js`, `core/micropython-net.js`):
+
+- **An MQTT link** (`kind: 'mqtt'`) joins a client's MQTT interface to a broker's. Its messages are values of two of the
+  scheduler's wires (`<link>_up`, `<link>_down`), each delivered after the network's latency, 1 ms: exact and
+  deterministic, whatever the quantum.
+- **A broker node** (`kind: 'broker'`, one MQTT interface that every client's link joins) is a JS model of an MQTT 3.1.1
+  broker: connect, subscribe and unsubscribe with `+` and `#`, publish to every client subscribed to a matching filter (the
+  publisher too), retained messages, QoS 0. Its traffic is its view in Try it and Emulate (a terminal's, a line a message);
+  a line typed there (`topic message`) is published by the broker itself, as `you`. A filter nobody published to so far
+  is said in the run's report (the MCP's text); a client's message before its connect, a wildcard in a published topic, a filter that is none,
+  each a warning.
+- **A Pico W** (`board: 'pico-w'`, the Pico's engine) is a client. Its MicroPython gets Silinx's `network` (a WLAN that
+  connects at once) and `umqtt.simple` (MicroPython's MQTT client's API), put into its `sys.modules` before its program
+  runs (rp2040js gives it no file system). A message goes out as a frame on its USB serial port (RS, JSON, LF), which
+  its adapter takes off its console and puts on its link; the broker's come back as frames read from `sys.stdin`. The same
+  program runs on a real Pico W or ESP32 with MicroPython's own modules. With no broker linked, `connect` raises
+  `MQTTException: no broker answered`.
+- **The check:** an MQTT link joins a client and a broker; an MQTT interface is a board with a network's (a Pico W's).
+- The ESP32 node (#5495) will use the same modules.
+
 ### The page cross-origin isolated
 
 An ESP32 node's Worker + Atomics back end (#5495) needs a SharedArrayBuffer, so the page is cross-origin isolated

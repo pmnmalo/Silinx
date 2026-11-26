@@ -11,7 +11,7 @@ import { isName } from './ident.js';
 
 /** The base languages of each node kind, its default first (a kind with none has no sources of its own: a terminal, a
  *  circuit, whose drawing is its own). */
-export const NODE_LANGS = { fpga: ['vhdl', 'verilog'], design: ['vhdl', 'verilog'], mcu: ['c', 'cpp', 'micropython'], terminal: [], circuit: [] };
+export const NODE_LANGS = { fpga: ['vhdl', 'verilog'], design: ['vhdl', 'verilog'], mcu: ['c', 'cpp', 'micropython'], terminal: [], circuit: [], broker: [] };
 /** The languages' names, as the interface and the MCP server say them. */
 export const LANG_NAMES = { vhdl: 'VHDL', verilog: 'Verilog', c: 'C', cpp: 'C++', micropython: 'MicroPython', asm: 'assembly' };
 // what a base language joins in its node (the toolchain's own joins: mixed HDL; gcc's C, C++ and assembly)

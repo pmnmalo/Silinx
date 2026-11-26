@@ -76,7 +76,7 @@ test('#4700 a node\'s fields: by its kind, its pins merged and removed, a varian
   s = ok(changeNode(s, 'mcu', { firmware: 'mcu/echo.hex', board: 'arduino-nano' })).system;
   assert.deepEqual([s.nodes[1].firmware, s.nodes[1].board], ['mcu/echo.hex', 'arduino-nano']);
   assert.equal(ok(changeNode(s, 'mcu', { firmware: '' })).system.nodes[1].firmware, null);
-  assert.deepEqual(changeNode(s, 'mcu', { board: 'esp32' }), { error: "no microcontroller board 'esp32': arduino-uno, arduino-nano, explorer-1632, pico" });
+  assert.deepEqual(changeNode(s, 'mcu', { board: 'esp32' }), { error: "no microcontroller board 'esp32': arduino-uno, arduino-nano, explorer-1632, pico, pico-w" });
   assert.deepEqual(changeNode(s, 'mcu', { module: 'uart' }), { error: "mcu: a Microcontroller node has no field 'module' (id, board, firmware, usb, x, y, lang)" });
   assert.deepEqual(changeNode(s, 'term', { board: 'basys2' }), { error: "term: a Serial terminal node has no field 'board' (id, x, y)" });
   assert.deepEqual(changeNode(s, 'fpga', { firmware: 'a.hex' }), { error: "fpga: a FPGA node has no field 'firmware' (id, module, board, variant, pins, constraints, usb, x, y, lang)" });
@@ -85,11 +85,11 @@ test('#4700 a node\'s fields: by its kind, its pins merged and removed, a varian
 
 test('#4700 nodes added: every kind, an unknown kind or board refused', () => {
   const s = newSystem('x');
-  assert.deepEqual(addNode(s, { kind: 'pico' }), { error: "no node kind 'pico': fpga, mcu, terminal, circuit, design" });
-  assert.deepEqual(addNode(s, { kind: 'mcu', board: 'esp32' }), { error: "no microcontroller board 'esp32': arduino-uno, arduino-nano, explorer-1632, pico" });
+  assert.deepEqual(addNode(s, { kind: 'pico' }), { error: "no node kind 'pico': fpga, mcu, terminal, circuit, design, broker" });
+  assert.deepEqual(addNode(s, { kind: 'mcu', board: 'esp32' }), { error: "no microcontroller board 'esp32': arduino-uno, arduino-nano, explorer-1632, pico, pico-w" });
   const f = ok(addNode(s, { kind: 'fpga' }));
   assert.deepEqual(f.system.nodes[0], { id: 'fpga', kind: 'fpga', module: null, board: 'basys2', lang: 'vhdl', interfaces: [], x: 0, y: 0 });
-  assert.deepEqual(Object.keys(NODE_KIND_NAMES), ['fpga', 'mcu', 'terminal', 'circuit']);
+  assert.deepEqual(Object.keys(NODE_KIND_NAMES), ['fpga', 'mcu', 'terminal', 'circuit', 'broker']);
   assert.deepEqual(UART_DEFAULTS, { baud: 9600, frame: '8N1' });
 });
 
@@ -118,7 +118,7 @@ test('#4700 interfaces: added, changed, renamed in the links, removed with their
   assert.deepEqual(changeInterface(s, 'fpga', 'serial', { baud: 0 }), { error: "fpga.serial: the baud is a whole number of bits a second, not '0'" });
   assert.deepEqual(changeInterface(s, 'fpga', 'serial', { frame: '9N1' }), { error: "fpga.serial: the frame is its data bits (5 to 8), its parity (N, E, O) and its stop bits (1, 2), as 8N1, not '9N1'" });
   assert.deepEqual(changeInterface(s, 'fpga', 'nope', {}), { error: "fpga: no interface 'nope'" });
-  assert.deepEqual(addInterface(s, 'fpga', { kind: 'can' }), { error: "fpga.can1: no interface kind 'can': uart, gpio, spi, i2c" });
+  assert.deepEqual(addInterface(s, 'fpga', { kind: 'can' }), { error: "fpga.can1: no interface kind 'can': uart, gpio, spi, i2c, mqtt" });
   assert.deepEqual(addInterface(s, 'fpga', { kind: 'gpio', name: 'g', dir: 'both' }), { error: "fpga.g: a GPIO's direction is in or out, not 'both'" });
   assert.deepEqual(addInterface(s, 'fpga', { name: 'Serial' }), { error: "fpga: an interface named 'Serial' is there already" });
   assert.deepEqual(addInterface(s, 'fpga', { name: 'a b' }), { error: "fpga: 'a b' is not an interface's name: a letter, then letters, digits and _" });

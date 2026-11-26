@@ -17,6 +17,7 @@ import { ContractNode } from './system-contract.js';
 import { mcuBoard } from './system-doc.js';
 import { UartLinkDecoder } from './system-decode.js';
 import { RP2040_FILES } from './rp2040-firmware.js';
+import { FRAME_END, FRAME_START, NETWORK_SETUP, frameText } from './micropython-net.js';
 
 /** The RP2040's clock under MicroPython (Hz), and a cycle's time (ns). */
 const RP2040_HZ = 125e6;
@@ -64,9 +65,10 @@ const UART_FUNC = 2;
 const BANNER_END = 'Type "help()" for more information.\r\n';
 
 class Rp2040Node {
-  /** board: the Pico; program: { name, data } (a .py's text). A program in error: the node finished at once, its
-   *  message logged. */
-  constructor({ board = 'pico', program } = {}) {
+  /** board: the Pico; program: { name, data } (a .py's text); network: its network link's pins too (net_tx, net_rx:
+   *  Silinx's network and umqtt.simple written into its file system first, #5500). A program in error: the node
+   *  finished at once, its message logged. */
+  constructor({ board = 'pico', program, network = false } = {}) {
     if (!lib || !assets) throw new Error('rp2040js is not loaded: await loadRp2040() first');
     const b = mcuBoard(board);
     if (b?.arch !== 'rp2040') throw new Error(`no RP2040 board '${board}'`);
@@ -87,14 +89,18 @@ class Rp2040Node {
     loadUf2(assets.uf2, mcu.flash);
     mcu.core.PC = FLASH;
     this.pins = b.pins;
-    this.inputs = [...this.pins];
-    this.outputs = [...this.pins];
+    this.network = !!network;
+    this.inputs = [...this.pins, ...(network ? ['net_rx'] : [])];
+    this.outputs = [...this.pins, ...(network ? ['net_tx'] : [])];
+    this.netOut = null;
+    this.netIn = null;
+    this.frame = null;   // (a network frame being read off its console)
     this.inVals = new Map(this.pins.map(p => [p, null]));
     this.last = new Map();
     // its USB serial port: MicroPython's REPL (`repl`: what it said and what was typed, as a terminal's)
     this.received = [];
     this.typing = [];   // (the bytes to type, waiting for the USB FIFO)
-    this.stage = 'boot';   // boot → run (the program typed into its raw REPL) → banner → repl (its friendly REPL)
+    this.stage = 'boot';   // boot → setup (its network's modules, #5500) → run (the program typed into its raw REPL) → banner → repl
     this.said = '';
     const cdc = this.cdc = new USBCDC(mcu.usbCtrl);
     cdc.onDeviceConnected = () => { if (this.stage === 'boot' && !this.finished) this.type('\r\x03\x03\x01'); };
@@ -107,6 +113,7 @@ class Rp2040Node {
       return s;
     });
     for (const p of this.pins) { this.last.set(p, this.driven(p)); mcu.gpio[gpOf(p)].addListener(() => this.pinChanged(p)); }
+    this.last.set('net_tx', null);
   }
 
   // rp2040js raises a UART's TX interrupt again as soon as it is cleared (its TX FIFO not modelled): MicroPython's
@@ -141,6 +148,8 @@ class Rp2040Node {
 
   /** A pin's value now: as the RP2040 drives it (or its pull), else as it was set (an input). */
   value(name) {
+    if (name === 'net_tx' && this.network) return this.netOut;
+    if (name === 'net_rx' && this.network) return this.netIn;
     if (gpOf(name) == null || !this.inVals.has(String(name).toUpperCase())) throw new Error(`no pin '${name}'`);
     const P = String(name).toUpperCase(), d = this.driven(P);
     const pulled = d != null && this.mcu.gpio[gpOf(P)].value >= this.S.Input;
@@ -181,6 +190,12 @@ class Rp2040Node {
 
   /** An input pin's value from now on (null: floating: its pull, or 0). */
   setPin(name, value) {
+    // (a message from its network link: typed to the program as a frame, #5500)
+    if (name === 'net_rx' && this.network) {
+      if (value && typeof value === 'object' && value !== this.netIn) this.type(frameText(value));
+      this.netIn = value;
+      return;
+    }
     const P = String(name).toUpperCase(), gp = gpOf(P);
     if (gp == null || !this.inVals.has(P)) throw new Error(`'${name}' is not a pin of the ${this.board.name}`);
     const v = value == null ? null : Number(value) ? 1 : 0;
@@ -214,13 +229,27 @@ class Rp2040Node {
       data = [...this.said.slice(k + BANNER_END.length)].map(c => c.charCodeAt(0));
       this.said = '';
     }
-    for (const byte of data) { if (this.skip > 0 && this.stage === 'run') this.skip--; else this.received.push({ t, byte }); }
+    for (const byte of data) {
+      if (this.skip > 0 && this.stage === 'run') { this.skip--; continue; }
+      // (a network frame: off the console, onto its link)
+      if (this.network && (this.frame || byte === FRAME_START)) { this.frameByte(byte, t); continue; }
+      this.received.push({ t, byte });
+    }
     if (this.stage === 'boot' && this.said.includes('raw REPL; CTRL-B to exit\r\n>')) {
-      this.stage = 'run';
       this.said = '';
       this.received.length = 0;   // (the console from the program on: the banner and the raw REPL's prompt not shown)
-      this.skip = 2;              // (nor the raw REPL's OK)
-      this.type(`${this.program}\x04`);
+      // (its network's modules written first, in an exec of their own, #5500)
+      if (this.network) { this.stage = 'setup'; this.type(`${NETWORK_SETUP}\x04`); return; }
+      this.startProgram();
+      return;
+    }
+    if (this.stage === 'setup') {
+      const m = /^OK([\s\S]*?)\x04([\s\S]*?)\x04>/.exec(this.said);
+      if (!m) return;
+      if (m[2].trim()) this.log.push({ kind: 'error', time: t, text: `its network's modules not written: ${m[2].trim().split(/\r?\n/).filter(Boolean).join(' | ')}` });
+      this.said = '';
+      this.received.length = 0;
+      this.startProgram();
       return;
     }
     if (this.stage === 'run') {
@@ -231,9 +260,28 @@ class Rp2040Node {
       this.said = '';
       const err = m[2].trim();
       if (err) this.log.push({ kind: 'error', time: t, text: `its program: ${err.split(/\r?\n/).filter(Boolean).join(' | ')}` });
-      this.received.splice(0, this.received.length, ...[...m[1]].map(c => ({ t, byte: c.charCodeAt(0) })), ...[...(err ? `${err}\r\n` : '')].map(c => ({ t, byte: c.charCodeAt(0) })));
+      this.received.splice(0, this.received.length, ...[...m[1].replace(/\x1e[^\n]*\n/g, '')].map(c => ({ t, byte: c.charCodeAt(0) })), ...[...(err ? `${err}\r\n` : '')].map(c => ({ t, byte: c.charCodeAt(0) })));
       this.type('\x02');   // (its friendly REPL, >>>, for what is typed)
     }
+  }
+
+  // the program typed into the raw REPL and run (its console from then on: the raw REPL's OK not shown)
+  startProgram() {
+    this.stage = 'run';
+    this.skip = 2;
+    this.type(`${this.program}\x04`);
+  }
+
+  // a byte of a network frame (RS, its JSON, LF): the message on net_tx at its time, once whole
+  frameByte(byte, t) {
+    if (byte === FRAME_START) { this.frame = []; return; }
+    if (byte !== FRAME_END) { this.frame.push(byte); return; }
+    const text = new TextDecoder().decode(Uint8Array.from(this.frame));
+    this.frame = null;
+    let m;
+    try { m = JSON.parse(text); } catch { this.log.push({ kind: 'warning', time: t, text: `its network: a frame that is no message: ${text.slice(0, 80)}` }); return; }
+    this.netOut = m;
+    this.out.push({ pin: 'net_tx', t: Math.max(t, this.now), value: m });
   }
 
   // bytes to the REPL over USB, as its 512 bytes' FIFO takes them (rp2040js drops what overflows it)

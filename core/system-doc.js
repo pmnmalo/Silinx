@@ -37,9 +37,9 @@ export const SYSTEM_VERSION = 2;
 /** Why a System document of version 1 is not read (#5488), the interface's and the MCP's words. */
 export const OLD_SYSTEM = 'a System document of version 1, made before each node was a folder of its project (#5488): this Silinx does not read it; make the System again in a new System project, each node\'s files in its folder';
 // (a design node: a design and simulation project's drawings, no board: the Digital Logic profile's, #5440)
-export const NODE_KINDS = ['fpga', 'mcu', 'terminal', 'circuit', 'design'];
-export const LINK_KINDS = ['uart', 'gpio', 'spi', 'i2c'];
-export const INTERFACE_KINDS = ['uart', 'gpio', 'spi', 'i2c'];
+export const NODE_KINDS = ['fpga', 'mcu', 'terminal', 'circuit', 'design', 'broker'];
+export const LINK_KINDS = ['uart', 'gpio', 'spi', 'i2c', 'mqtt'];
+export const INTERFACE_KINDS = ['uart', 'gpio', 'spi', 'i2c', 'mqtt'];
 /** An SPI bus's default SCK rate (Hz): the Arduino's SPI_CLOCK_DIV128, 125 kHz. */
 export const SPI_HZ = 125000;
 /** An I²C bus's default SCL rate (Hz): the Arduino's Wire, 100 kHz. */
@@ -55,7 +55,7 @@ const PIC24_PINS = { A: [0, 1, 2, 3, 4, 5, 6, 7, 9, 10, 14, 15], B: [...Array(16
 const picoPins = () => [...[...Array(23).keys()], 25, 26, 27, 28].map(n => `GP${n}`);
 const pic24Pins = () => Object.entries(PIC24_PINS).flatMap(([p, bits]) => bits.map(b => `R${p}${b}`));
 /** The microcontrollers' boards: their engine (`arch`: avr, avr8js's; pic24, silinx-pic24's; rp2040, rp2040js's), their pins, their I/O
- *  voltage, their firmware's kinds (`firmwares`: its files' extensions; a MicroPython board's its program's), the languages it
+ *  voltage, their network (`network`: an MQTT interface it may have), their firmware's kinds (`firmwares`: its files' extensions; a MicroPython board's its program's), the languages it
  *  takes (`langs`: all when none), their UARTs ({ name: { tx, rx } }), their SPI buses ({ name: { sck, mosi, miso, ss } }), their I²C buses
  *  ({ name: { scl, sda } }). The Explorer 16/32's UART is its USB-UART's pins (the MCP2221A's: the device's TX RF5, its
  *  RX RF4), any UART module its program maps there through PPS; its clock the 8 MHz crystal (Fcy its configuration
@@ -67,6 +67,8 @@ export const MCU_BOARDS = [
   // (a Raspberry Pi Pico, #5494: its RP2040 under MicroPython's own firmware, its program a .py; its pins GP0..GP22, the LED's
   // GP25, GP26..GP28; MicroPython's UART(0) and UART(1) on their default pins)
   { id: 'pico', name: 'Raspberry Pi Pico', arch: 'rp2040', mcu: 'RP2040', clockHz: 125e6, vio: 3.3, pins: picoPins(), firmwares: ['py'], langs: ['micropython'], uarts: { UART0: { tx: 'GP0', rx: 'GP1' }, UART1: { tx: 'GP4', rx: 'GP5' } }, spis: {}, i2cs: {} },
+  // (a Pico W, #5500: the same, and a network, Silinx's behavioural `network` and `umqtt.simple` over its USB)
+  { id: 'pico-w', name: 'Raspberry Pi Pico W', arch: 'rp2040', mcu: 'RP2040', clockHz: 125e6, vio: 3.3, pins: picoPins(), firmwares: ['py'], langs: ['micropython'], network: true, uarts: { UART0: { tx: 'GP0', rx: 'GP1' }, UART1: { tx: 'GP4', rx: 'GP5' } }, spis: {}, i2cs: {} },
 ];
 /** A microcontroller's board by its id, or null. */
 export const mcuBoard = id => MCU_BOARDS.find(b => b.id === id) || null;
@@ -92,7 +94,7 @@ function normalInterface(f) {
   } else if (out.kind === 'i2c') {
     for (const k of ['scl', 'sda']) if (f[k] != null) out[k] = String(f[k]);
     out.hz = f.hz ?? I2C_HZ;
-  } else Object.assign(out, f, out);
+  } else if (out.kind !== 'mqtt') Object.assign(out, f, out);   // (an MQTT interface, #5500: its name and kind only)
   return out;
 }
 

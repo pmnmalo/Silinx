@@ -8,6 +8,7 @@ import { systemPlan, buildSystem, wireFrames } from './system-build.js';
 import { compiledNodeModel } from './system-sim-compiled.js';
 import { loadAvr8js } from './system-sim-avr.js';
 import { loadRp2040 } from './system-sim-rp2040.js';
+import { BrokerNode, messageText } from './system-mqtt.js';
 import { mcuBoard } from './system-doc.js';
 import { linkTraffic, usText, decodeSpi, spiWarnings, decodeI2c, i2cWarnings, wiredAnd } from './system-decode.js';
 import { regAccesses, accessText } from './regmap-decode.js';
@@ -72,7 +73,7 @@ export async function prepareSystem(sys, opts) {
 }
 
 /** A terminal's caption: its id and its UART's baud and frame (`u`: its interface); a Pico's REPL (`<id>.repl`) its USB's. */
-export const termCaption = (id, u) => (/\.repl$/.test(id) ? `${id.slice(0, -5)} · MicroPython REPL (USB)` : `${id} · ${u?.baud ?? 9600} ${u?.frame ?? '8N1'}`);
+export const termCaption = (id, u) => (/\.repl$/.test(id) ? `${id.slice(0, -5)} · MicroPython REPL (USB)` : u?.kind === 'mqtt' ? `${id} · MQTT broker` : `${id} · ${u?.baud ?? 9600} ${u?.frame ?? '8N1'}`);
 
 /** Bytes as a terminal shows them: the printable characters, CR LF and tab as they are, the others as \xNN. */
 export const bytesText = bytes => bytes.map(({ byte: b }) => (b >= 0x20 && b < 0x7f) || b === 10 || b === 13 || b === 9 ? String.fromCharCode(b) : `\\x${b.toString(16).padStart(2, '0')}`).join('');
@@ -82,7 +83,9 @@ export const bytesText = bytes => bytes.map(({ byte: b }) => (b >= 0x20 && b < 0
  * { id: { lamp: { on, times } } } (#5215), warnings, errors, lines } (lines: the console's, a wire's bytes as its text).
  */
 export function systemReport({ sim, wires, terminals, regmaps = {} }) {
-  const traffic = linkTraffic(sim, { frames: wireFrames(wires) }).map((t, i) => ({ wire: t.link, link: wires[i].link, from: wires[i].from, to: wires[i].to, baud: wires[i].baud ?? null, frame: wires[i].frame ?? null, kind: t.kind, bytes: t.bytes, decoded: t.warnings, changes: t.changes }));
+  // (an MQTT link's wires: their messages are its broker's traffic, #5500)
+  const traffic = linkTraffic(sim, { frames: wireFrames(wires) }).map((t, i) => ({ wire: t.link, link: wires[i].link, from: wires[i].from, to: wires[i].to, baud: wires[i].baud ?? null, frame: wires[i].frame ?? null, kind: t.kind, bytes: t.bytes, decoded: t.warnings, changes: t.changes, mqtt: wires[i].kind === 'mqtt' })).filter(t => !t.mqtt).map(({ mqtt, ...t }) => t);
+  const brokers = [...sim.nodes].filter(([, a]) => a instanceof BrokerNode);
   // (an SPI link's transfers, from its four wires, #5214)
   const spi = spiTraffic(sim, wires), i2c = i2cTraffic(sim, wires);
   // (a link to an FPGA node made from a register map: its accesses, #5288)
@@ -98,7 +101,10 @@ export function systemReport({ sim, wires, terminals, regmaps = {} }) {
   for (const s of spi) lines.push(`${s.link} (SPI ${s.from} → ${s.to}, ${s.hz} Hz mode ${s.mode}): ${s.transfers.length} transfer(s)${s.transfers.length ? `: MOSI ${s.transfers.slice(0, 16).map(x => hexByte(x.mosi)).join(' ')}; MISO ${s.transfers.slice(0, 16).map(x => hexByte(x.miso)).join(' ')}` : ''}`);
   for (const s of i2c) lines.push(`${s.link} (I²C ${s.from} → ${s.to}, ${s.hz} Hz): ${s.transfers.length} transfer(s)${s.transfers.length ? `: ${s.transfers.slice(0, 16).map(i2cText).join('; ')}` : ''}`);
   for (const r of regs) lines.push(`${r.link} (registers of ${r.map}): ${r.accesses.length} access(es)${r.accesses.length ? `: ${r.accesses.slice(0, 16).map(a => a.text).join('; ')}` : ''}`);
-  for (const [id, text] of Object.entries(term)) lines.push(`terminal ${id}: ${JSON.stringify(text)}`);
+  for (const [id, text] of Object.entries(term)) if (!brokers.some(([b]) => b === id)) lines.push(`terminal ${id}: ${JSON.stringify(text)}`);
+  // (an MQTT broker's traffic, #5500: each message, its time)
+  const mqtt = Object.fromEntries(brokers.map(([id, b]) => [id, b.traffic.map(e => ({ t: e.t, client: e.client, dir: e.dir, ...e.message }))]));
+  for (const [id, b] of brokers) lines.push(`broker ${id}: ${b.traffic.length} message(s)${b.traffic.length ? `: ${b.traffic.slice(0, 24).map(e => `${usText(e.t)} ${messageText(e)}`).join('; ')}` : ''}`, ...b.unheard().map(u => `broker ${id}: ${u.replace(/^MQTT: /, '')}`));   // (a filter nobody published to so far: said with the run, not warned at each step of it)
   // (a circuit node's lamps: lit now or not, the times each lit, #5215)
   const circuits = Object.fromEntries([...sim.nodes].filter(([, a]) => a.lamps).map(([id, a]) => [id, a.lamps()]));
   // (its character LCDs' lines, #5330)
@@ -124,7 +130,7 @@ export function systemReport({ sim, wires, terminals, regmaps = {} }) {
   for (const [id, ls] of Object.entries(circuits)) lines.push(`circuit ${id}: ${Object.entries(ls).map(([k, l]) => `${k} ${l.on ? 'on' : 'off'}${l.times ? `, lit ${l.times} time(s)` : ', never lit'}`).join('; ') || 'no lamps'}`);
   for (const w of warnings) lines.push(`WARNING: ${w}`);
   for (const e of errors) lines.push(`ERROR: ${e}`);
-  return { now: sim.now, traffic, spi, i2c, regs, terminals: term, circuits, warnings, errors, lines };
+  return { now: sim.now, traffic, spi, i2c, regs, terminals: term, circuits, ...(brokers.length ? { mqtt } : {}), warnings, errors, lines };
 }
 
 const hexByte = b => b.toString(16).toUpperCase().padStart(2, '0');
