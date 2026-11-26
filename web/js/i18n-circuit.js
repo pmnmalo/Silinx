@@ -122,6 +122,11 @@ export const CIRCUIT_PT = {
   'Temperature and humidity sensor (DHT22)': 'Sensor de temperatura e humidade (DHT22)',
   'Humidity (%)': 'Humidade (%)',
   // (the analog parts, #5382)
+  // (an oscilloscope, #5383)
+  'Oscilloscope': 'Osciloscópio', 'Time base (per division)': 'Base de tempo (por divisão)', 'Scale (per division)': 'Escala (por divisão)', 'Trigger source': 'Fonte do disparo',
+  'Trigger edge': 'Flanco do disparo', 'Trigger level (V)': 'Nível do disparo (V)', 'Trigger mode': 'Modo do disparo', 'Rising': 'Ascendente', 'Falling': 'Descendente',
+  'Auto': 'Automático', 'Normal': 'Normal', 'Single': 'Único', 'Waiting for the trigger': 'À espera do disparo',
+  'Two channels, CH1 and CH2, each the voltage of the net its lead touches against GND, drawn against time while trying the circuit: from its trigger (its source\'s edge through its level; auto shows the last screen without one, normal waits for one, single keeps the first), over its time base and its scale (each its − and +). A click on its screen sets a cursor, then a second: their Δt. Under it, each channel\'s frequency, period, duty cycle, Vpp and mean. Not a port of the HDL.': 'Dois canais, CH1 e CH2, cada um a tensão da rede em que toca a sua ponta em relação a GND, desenhada ao longo do tempo ao experimentar o circuito: a partir do seu disparo (o flanco da sua fonte através do seu nível; automático mostra o último ecrã sem ele, normal espera por um, único guarda o primeiro), na sua base de tempo e na sua escala (cada uma com o seu − e +). Um clique no seu ecrã põe um cursor, depois um segundo: o seu Δt. Por baixo, a frequência, o período, o ciclo de trabalho, o Vpp e a média de cada canal. Não é um porto do HDL.',
   'Analog': 'Analógico', 'Light-dependent resistor (LDR)': 'Resistência dependente da luz (LDR)',
   'Thermistor (NTC, 10 kΩ)': 'Termístor (NTC, 10 kΩ)', 'Diode (1N4148)': 'Díodo (1N4148)', 'Voltmeter': 'Voltímetro', 'terminal': 'terminal',
   'Resistance (Ω)': 'Resistência (Ω)', 'Capacitance (F)': 'Capacidade (F)', 'Position (%)': 'Posição (%)', 'Light (lux)': 'Luz (lux)',

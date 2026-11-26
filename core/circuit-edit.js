@@ -8,6 +8,7 @@ import { clone } from './util.js';
 import { LM75_TEMP } from './circuit-lm75.js';
 import { PIR_HOLD } from './circuit-pir.js';
 import { parseSi, formatSi, sig3 } from './circuit-analog-parts.js';
+import { SCOPE_PROPS, scopeSettingError } from './circuit-scope.js';
 import { systemsOn, SYSTEMS_OFF } from './build-channel.js';
 import { WIRE_STYLES, isWireStyle, setWireStyle as setStyleOf } from './wire-style.js';
 
@@ -184,14 +185,14 @@ export function addWire(m, { from, to, via = [], color, id } = {}) {
  * a DIP switch's list of its levers, or { lever: k, on }), a clock's frequency (`hz`, in real time), a temperature sensor's
  * temperature (`temp`, °C, #5342), a part's sensed values (its `sense`'s props: an ultrasonic sensor's `cm`, #5456), a
  * motion sensor's hold time (`hold`, s) and jumper (`retrigger`, #5463), an analog part's values (its `values`' props: a
- * resistor's `ohms`, a capacitor's `farads`, #5382).
+ * resistor's `ohms`, a capacitor's `farads`, #5382), an oscilloscope's settings (`tdiv`, `vdiv`, `source`, `level`, `edge`, `mode`, #5383).
  */
 export const setPartProps = (m, id, props = {}) => edit(m, (c) => {
   const p = partIn(c, id);
   if (!p) return `no part ${id} in the circuit`;
   const d = partDef(p.type);
   const levels = (d?.inputs || []).filter((x) => x.kind === 'level').length;
-  const has = ['label', ...(d?.kind === 'output' && !d.kicad ? ['color'] : []), ...(levels ? ['on'] : []), ...(d?.type === 'clock' ? ['hz'] : []), ...(d?.kind === 'sensor' ? ['temp'] : []), ...(d?.sense || []).map((s) => s.prop), ...(d?.values || []).map((s) => s.prop), ...(d?.kind === 'pir' ? ['hold', 'retrigger'] : [])];
+  const has = ['label', ...(d?.kind === 'output' && !d.kicad ? ['color'] : []), ...(levels ? ['on'] : []), ...(d?.type === 'clock' ? ['hz'] : []), ...(d?.kind === 'sensor' ? ['temp'] : []), ...(d?.sense || []).map((s) => s.prop), ...(d?.values || []).map((s) => s.prop), ...(d?.type === 'oscilloscope' ? SCOPE_PROPS : []), ...(d?.kind === 'pir' ? ['hold', 'retrigger'] : [])];
   for (const [k, v] of Object.entries(props)) {
     const named = d?.inputs || d?.lamps || d?.kind === 'probe';   // (a probe's label: its row's name in the waveforms)
     if (!has.includes(k) || (k === 'label' && !named)) return `${p.id} (${p.type}) has no property '${k}' (${has.filter((x) => x !== 'label' || named).join(', ') || 'none'})`;
@@ -205,6 +206,10 @@ export const setPartProps = (m, id, props = {}) => edit(m, (c) => {
       const s = d.values.find((x) => x.prop === k), n = parseSi(v);
       if (!Number.isFinite(n) || n < s.min || n > s.max) return `${k}: ${s.label.replace(/ \(.*\)$/, '').toLowerCase()} from ${formatSi(s.min, s.unit)} to ${formatSi(s.max, s.unit)} (a number, or as 4.7k, 100n)`;
       p[k] = sig3(n);
+    } else if (d?.type === 'oscilloscope' && SCOPE_PROPS.includes(k)) {   // (an oscilloscope's settings, #5383)
+      const e = scopeSettingError(k, v);
+      if (e) return e;
+      p[k] = ['edge', 'mode'].includes(k) ? v : Number(v);
     } else if (k === 'hold') { const h = Number(v); if (!Number.isFinite(h) || h < PIR_HOLD.min || h > PIR_HOLD.max) return `hold: a time from ${PIR_HOLD.min} to ${PIR_HOLD.max} s`; p.hold = Math.round(h); }
     else if (k === 'retrigger') p.retrigger = !!v;
     else if (k === 'temp') { const t = Number(v); if (!Number.isFinite(t) || t < LM75_TEMP.min || t > LM75_TEMP.max) return `temp: a temperature from ${LM75_TEMP.min} to ${LM75_TEMP.max} °C`; p.temp = Math.round(t * 2) / 2; }

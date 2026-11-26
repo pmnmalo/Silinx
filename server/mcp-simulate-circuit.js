@@ -19,7 +19,15 @@ export async function simulateCircuitFile(m0, steps, base, hdl = {}) {
   const { inputs } = circuitPorts(m);
   const at = (i) => { const v = sim.inputs()[i.part]; return (Array.isArray(v) ? v[i.index] : v) ? 1 : 0; };
   const byName = new Map(inputs.map((x) => [x.name.toLowerCase(), x]));
-  const sim = createCircuitSim(m, { runner: hdl.runner ?? null });
+  // (its oscilloscopes recording it, #5383: each step their measurements over their screen, from its trigger)
+  const { createScopeRecorder } = await import('../core/circuit-scope.js');
+  const { measureText } = await import('../core/scope.js');
+  const rec = createScopeRecorder(m);
+  let sim = null;
+  sim = createCircuitSim(m, { runner: hdl.runner ?? null, onUpdate: (t) => sim && rec.sample(sim, t) });
+  rec.sample(sim, sim.time);
+  const scopeData = () => Object.fromEntries(rec.scopes.map((s) => { const sc = rec.screen(s.id, s.part, sim.time * 1e-9); return [s.id, sc.m.map((x, k) => (x && sc.ch[k].on ? x : null))]; }));
+  const scopeText = () => Object.entries(scopeData()).map(([id, ms]) => ms.map((x, k) => { if (!x) return ''; const t = measureText(x); return `; ${id} CH${k + 1} f ${t.frequency}, T ${t.period}, D ${t.duty}, Vpp ${t.vpp}, Vavg ${t.mean}`; }).join('')).join('');
   const leds = () => sim.outputs();
   // (a modelled part whose module cannot run live: said, its pins driving nothing, #4284)
   const notLive = checked.filter((d) => d.severity === 'warning' && /cannot run in Try it/.test(d.message)).map((d) => d.message);
@@ -31,7 +39,7 @@ export async function simulateCircuitFile(m0, steps, base, hdl = {}) {
   // (the logic probes' levels, by label or id: 0, 1, Z open, X; said when the circuit has any, #3900)
   const probeName = new Map(m.parts.filter((p) => p.type === 'probe').map((p) => [p.id, p.label || p.id]));
   const probes = () => Object.fromEntries(Object.entries(sim.probes()).map(([id, v]) => [probeName.get(id), v]));
-  const probeText = () => (probeName.size ? `; probes ${Object.entries(probes()).map(([k, v]) => `${k}=${v}`).join(' ')}` : '') + lcdText() + oledText() + sensorText() + servoText() + encoderText() + buzzerText() + stepperText() + sdText() + sonarText() + pirText() + dhtText() + analogText();
+  const probeText = () => (probeName.size ? `; probes ${Object.entries(probes()).map(([k, v]) => `${k}=${v}`).join(' ')}` : '') + lcdText() + oledText() + sensorText() + servoText() + encoderText() + buzzerText() + stepperText() + sdText() + sonarText() + pirText() + dhtText() + analogText() + scopeText();
   // (an analog circuit, #5382: each voltmeter's reading, each LED's current, an LDR's or a thermistor's resistance now)
   const { formatSi } = await import('../core/circuit-analog-parts.js');
   const mA = (v) => (Array.isArray(v) ? v.map(mA) : Math.round(v * 100) / 100);
@@ -102,7 +110,7 @@ export async function simulateCircuitFile(m0, steps, base, hdl = {}) {
     lines.push(`step ${k}: inputs ${inputs.map((i) => `${i.name}=${at(i)}`).join(' ') || 'none'}; t = ${r.time} ns${r.quiet ? '' : ' (still changing)'}; LEDs ${Object.entries(outs).map(([a, b]) => `${a}=${b}`).join(' ') || 'none'}${probeText()}`, ...note(r));
     const lcds = Object.fromEntries(Object.entries(sim.lcds()).map(([id, s]) => [id, s.on ? s.lines : null]));
     const oleds = Object.fromEntries(Object.entries(sim.oleds()).map(([id, s]) => [id, s.on ? { lit: s.lit, rows: s.rows } : null]));
-    rows.push({ step: k, time: r.time, quiet: r.quiet, inputs: Object.fromEntries(inputs.map((i) => [i.name, at(i)])), leds: Object.fromEntries(Object.entries(outs).map(([a, b]) => [a, Number(b)])), ...(probeName.size ? { probes: probes() } : {}), ...(Object.keys(meters()).length ? { volts: meters() } : {}), ...(sim.analog ? { mA: Object.fromEntries(Object.entries(sim.lampCurrents()).map(([id, v]) => [id, mA(v)])) } : {}), ...(Object.keys(lcds).length ? { lcds } : {}), ...(Object.keys(oleds).length ? { oleds } : {}) });
+    rows.push({ step: k, time: r.time, quiet: r.quiet, inputs: Object.fromEntries(inputs.map((i) => [i.name, at(i)])), leds: Object.fromEntries(Object.entries(outs).map(([a, b]) => [a, Number(b)])), ...(probeName.size ? { probes: probes() } : {}), ...(Object.keys(meters()).length ? { volts: meters() } : {}), ...(rec.scopes.length ? { scopes: scopeData() } : {}), ...(sim.analog ? { mA: Object.fromEntries(Object.entries(sim.lampCurrents()).map(([id, v]) => [id, mA(v)])) } : {}), ...(Object.keys(lcds).length ? { lcds } : {}), ...(Object.keys(oleds).length ? { oleds } : {}) });
   }
   return { lines, rows, warnings };
 }

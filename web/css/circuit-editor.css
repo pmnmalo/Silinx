@@ -332,3 +332,19 @@ html[data-theme="dark"] .circuit-editor .circ-sim-badge { color: var(--m-success
 .circuit-editor .circ-an-val { font: bold 9px var(--asm-mono, monospace); fill: var(--asm-fg); cursor: default; }
 .circuit-editor .circ-meter-body { fill: #f2c200; stroke: #7a6300; }
 .circuit-editor .circ-meter-text { font: bold 11px var(--asm-mono, monospace); fill: #111; }
+/* an oscilloscope (#5383, web/js/circuit-draw-scope.js): its case, its screen and grid, its traces (CH1 yellow, CH2 cyan) */
+.circuit-editor .circ-scope-case { fill: #2b2f36; stroke: #14171b; }
+.circuit-editor .circ-scope-title { font: bold 10px Arial, sans-serif; fill: #d9dde3; }
+.circuit-editor .circ-scope-screen { fill: #0b1a12; stroke: #4a5560; cursor: crosshair; }
+.circuit-editor .circ-scope-grid { stroke: #2f5040; stroke-width: .6; stroke-dasharray: 2 3; pointer-events: none; }
+.circuit-editor .circ-scope-grid.mid { stroke: #44705a; stroke-dasharray: none; }
+.circuit-editor .circ-scope-trace { fill: none; stroke-width: 1.6; pointer-events: none; }
+.circuit-editor .circ-scope-trace.circ-scope-ch1, .circuit-editor .circ-scope-lead.circ-scope-ch1 { stroke: #ffd60a; }
+.circuit-editor .circ-scope-trace.circ-scope-ch2, .circuit-editor .circ-scope-lead.circ-scope-ch2 { stroke: #3ad6ff; }
+.circuit-editor .circ-scope-lead { stroke-width: 4; }
+.circuit-editor .circ-scope-mark.circ-scope-ch1 { fill: #ffd60a; } .circuit-editor .circ-scope-mark.circ-scope-ch2 { fill: #3ad6ff; }
+.circuit-editor .circ-scope-cursor { stroke: #f2f4f2; stroke-width: 1; stroke-dasharray: 4 2; pointer-events: none; }
+.circuit-editor .circ-scope-text { font: 10px var(--asm-mono, monospace); fill: #d9dde3; pointer-events: none; }
+.circuit-editor .circ-scope-meas { font: 8px var(--asm-mono, monospace); fill: #d9dde3; pointer-events: none; }
+.circuit-editor .circ-scope-meas.circ-scope-ch1 { fill: #ffd60a; } .circuit-editor .circ-scope-meas.circ-scope-ch2 { fill: #3ad6ff; }
+.circuit-editor .circ-scope-wait { font: 11px Arial, sans-serif; fill: #8fb8a0; pointer-events: none; }

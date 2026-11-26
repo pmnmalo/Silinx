@@ -22,6 +22,7 @@ import { drawSonar } from './circuit-draw-sonar.js';
 import { drawPir } from './circuit-draw-pir.js';
 import { drawDht } from './circuit-draw-dht.js';
 import { drawAnalog } from './circuit-draw-analog.js';
+import { drawScope } from './circuit-draw-scope.js';
 import { icInside, stripsSvg } from './circuit-draw-inside.js';
 import { wirePaths } from '/core/circuit-wires.js';
 import { wireHandles } from '/core/circuit-wire-edit.js';
@@ -35,7 +36,7 @@ const px = (v) => v * P;
 
 /** The circuit drawn: a <g> of its breadboards, wires and parts. `levels(partId, pin)`: a pin's level while simulating;
  *  `inside`: the ICs' gates or pin names and the breadboards' strips shown (#4060); `hops`: the wires' hop-overs (#4064). */
-export function drawCircuit(m, { sel = null, levels = null, leds = null, lcds = null, oleds = null, sensors = null, servos = null, buzzers = null, steppers = null, sds = null, sonars = null, pirs = null, dhts = null, analog = null, inputs = null, encoders = null, draft = null, ghost = null, inside = false, hops = false, handles = false } = {}) {
+export function drawCircuit(m, { sel = null, levels = null, leds = null, lcds = null, oleds = null, sensors = null, servos = null, buzzers = null, steppers = null, sds = null, sonars = null, pirs = null, dhts = null, analog = null, scopes = null, inputs = null, encoders = null, draft = null, ghost = null, inside = false, hops = false, handles = false } = {}) {
   const g = sv('g', { class: `circ-drawing${inside ? ' circ-inside' : ''}` });
   const isSel = (id) => sel?.id === id;
   for (const p of m.parts) if (partDef(p.type)?.kind === 'breadboard') g.append(breadboardSvg(p, isSel(p.id), inside));
@@ -44,7 +45,7 @@ export function drawCircuit(m, { sel = null, levels = null, leds = null, lcds = 
   // (direct, orthogonal or curved, hopping over the wires drawn before them: core/circuit-wires.js)
   const d = wirePaths(m.wires.map((w) => ({ id: w.id, pts: w.points.map(([x, y]) => [px(x), px(y)]) })), { style: wireStyleOf(m, 'direct'), hops });
   for (const w of m.wires) g.append(wireSvg(w, isSel(w.id), d[w.id]));
-  for (const p of m.parts) if (partDef(p.type) && !['breadboard', 'board'].includes(partDef(p.type).kind)) g.append(partSvg(p, isSel(p.id), { levels, leds, lcds, oleds, sensors, servos, buzzers, steppers, sds, sonars, pirs, dhts, analog, inputs, encoders, inside, hops }));
+  for (const p of m.parts) if (partDef(p.type) && !['breadboard', 'board'].includes(partDef(p.type).kind)) g.append(partSvg(p, isSel(p.id), { levels, leds, lcds, oleds, sensors, servos, buzzers, steppers, sds, sonars, pirs, dhts, analog, scopes, inputs, encoders, inside, hops }));
   // (the selected wire's handles while editing, #4930, #4931: over the parts, an end on a pin)
   const hw = handles && sel?.kind === 'wire' ? m.wires.find((w) => w.id === sel.id) : null;
   if (hw) g.append(handlesSvg(hw));
@@ -191,7 +192,7 @@ export function drawnPartSvg(d) {
 }
 
 // (turned, #4114: drawn unturned, then turned whole about its place)
-function partSvg(turned, selected, { levels, leds, lcds = null, oleds = null, sensors = null, servos = null, buzzers = null, steppers = null, sds = null, sonars = null, pirs = null, dhts = null, analog = null, inputs, encoders = null, inside = false, hops = false }) {
+function partSvg(turned, selected, { levels, leds, lcds = null, oleds = null, sensors = null, servos = null, buzzers = null, steppers = null, sds = null, sonars = null, pirs = null, dhts = null, analog = null, scopes = null, inputs, encoders = null, inside = false, hops = false }) {
   const p = { ...turned, rot: 0 }, d = partDef(p.type);
   const pins = partPins(p);
   const g = sv('g', { class: `circ-part circ-${d.kind}${selected ? ' circ-sel' : ''}`, 'data-kind': 'part', 'data-id': p.id });
@@ -257,6 +258,7 @@ function partSvg(turned, selected, { levels, leds, lcds = null, oleds = null, se
   else if (d.kind === 'sonar') drawSonar(g, p, sonars?.[p.id]);   // (#5456)
   else if (d.kind === 'pir') drawPir(g, p, pirs?.[p.id]);   // (#5463)
   else if (d.kind === 'dht') drawDht(g, p, dhts?.[p.id]);   // (#5470)
+  else if (d.type === 'oscilloscope') drawScope(g, p, scopes?.[p.id]);   // (#5383)
   else if (d.type === 'keypad-4x4') drawKeypad(g, p, d, inputs?.[p.id]);   // (#5364)
   else if (d.type === 'rotary-encoder') drawEncoder(g, p, d, inputs?.[p.id], encoders?.[p.id]);   // (#5451)
   else if (d.kind === 'supply') {

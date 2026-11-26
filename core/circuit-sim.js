@@ -21,9 +21,9 @@ const SETTLE_NS = 1000;   // a circuit still changing after this long is said to
  * A circuit's simulation, at time 0 with its switches as saved and its buttons released (run() settles it).
  * nets: its nets (circuitNets), onLevel(net, level, time): each change of a net's level; runner(module): a KiCad part
  * modelled by a module of the project, run live (core/circuit-live-model.js modelRunners, #4284; none: not run);
- * external: pins ('A1.5') driven from outside (a board's, by its System's node, #5215: drive()), nothing at first.
+ * onUpdate(time): after each update of the levels (an oscilloscope's samples, #5383); external: pins ('A1.5') driven from outside (a board's, by its System's node, #5215: drive()), nothing at first.
  */
-export function createCircuitSim(m, { nets = circuitNets(m), onLevel = null, runner = null, external = [] } = {}) {
+export function createCircuitSim(m, { nets = circuitNets(m), onLevel = null, onUpdate = null, runner = null, external = [] } = {}) {
   const N = nets.nets.length;
   const drivers = [];                       // { net, value, strength, pending, gen, tpd, elec } (elec: its volts and output
                                             // resistance on an analog net, #5382: core/circuit-analog-parts.js)
@@ -196,6 +196,7 @@ export function createCircuitSim(m, { nets = circuitNets(m), onLevel = null, run
     }
     for (const ic of touched) evaluate(ic);
     scheduleAnalog();
+    onUpdate?.(time);
   }
 
   regroup();
