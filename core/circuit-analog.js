@@ -92,6 +92,7 @@ export function createCircuitAnalog(m, nets, { byNet }) {
   let mna = null, nodeIndex = new Map(), els = [], drv = [], readSpec = new Map(), nodeNetsOf = new Map(), floating = new Set(), unknown = new Set();
   let tNow = 0, dynamic = false, dtNext = DT_FIRST, lastV = null, watchNodes = [];
   const warned = new Set(), said = [];
+  let rec = null;   // (#5386: a run recorded for ngspice: each element's values as they changed, the generators' settings)
 
   function regroup(nodeOf) {
     nodeIndex = new Map(); nodeNetsOf = new Map();
@@ -124,6 +125,7 @@ export function createCircuitAnalog(m, nets, { byNet }) {
     }
     watchNodes = watch.map(([a, b]) => [node(a), node(b)].map((i) => (i === -1 ? null : i))).filter(([a, b]) => a != null && b != null && a >= 0 && b >= 0);
     mna = createMna(base + inner.length, els);
+    if (rec && tNow > rec.t0) rec.regrouped = tNow;   // (#5386: a switch changed the connections while recorded)
     for (const g of gens) g.e.volts = generatorVolts(g.set, tNow);
     refresh(true);
   }
@@ -139,6 +141,7 @@ export function createCircuitAnalog(m, nets, { byNet }) {
       if (x.e.volts !== volts || x.e.ohms !== ohms) { x.e.volts = volts; x.e.ohms = ohms; changed = true; }
     }
     if (!changed) return;
+    mark();
     unknown = new Set(drv.filter((x) => x.d.value === 'X' && x.d.strength === 's').map((x) => x.e.a));
     // (floating: no source reaches it through the parts)
     const N = mna.size, parent = Array.from({ length: N + 1 }, (_, i) => i);
@@ -185,6 +188,19 @@ export function createCircuitAnalog(m, nets, { byNet }) {
     // (the next wake-up on a square wave's next edge)
     if (gens.length) dtNext = Math.max(DT_MIN, Math.min(dtNext, Math.min(...gens.map((g) => generatorEdge(g.set, t))) - t));
     checkLamps();
+  }
+
+  // (#5386) the values of the sources, the resistors and the generators now, kept where they changed
+  function mark() {
+    if (!rec) return;
+    const add = (key, v) => {
+      if (!rec.series.has(key)) rec.series.set(key, []);
+      const s = rec.series.get(key), last = s[s.length - 1];
+      if (last?.t === tNow) last.v = v;   // (several changes at one instant: the last)
+      else if (!last || JSON.stringify(last.v) !== JSON.stringify(v)) s.push({ t: tNow, v });
+    };
+    for (const e of els) if (e.kind === 'VR') add(e, [e.volts, e.ohms]); else if (e.kind === 'R') add(e, e.ohms);
+    for (const g of gens) add(g, { ...g.set });
   }
 
   // the time to the nearest threshold a node is moving to (half of it, the step's at most: a crossing found within a
@@ -254,6 +270,12 @@ export function createCircuitAnalog(m, nets, { byNet }) {
     /** the next step (ns) while the capacitors move */
     get dtNs() { return Math.max(1, Math.round(dtNext * 1e9)); },
     warnings: () => said,
+    /** (#5386) from now on, every value the analog side takes kept, for ngspice (core/circuit-spice.js) */
+    record() { rec = { t0: tNow, series: new Map(), regrouped: null }; mark(); },
+    /** (#5386) the analog side now and what was recorded: { nodes (each node's nets), inner (the inner nodes' names),
+     *  els (each element: its kind, a, b (a node, -1 the ground) and values), series (an element's or a generator's values
+     *  as they changed: [{ t, v }]), gens ([{ e, set }]), t0, t, regrouped (the time the connections changed, or null) } */
+    recorded: () => (rec ? { nodes: [...nodeNetsOf.values()], inner: [...inner], els: [...els], series: rec.series, gens: [...gens], t0: rec.t0, t: tNow, regrouped: rec.regrouped } : null),
     /** a device's output set (#5384: a DAC's, '<id>:<k>'): its volts through its ohms (Infinity: off) */
     setSource(key, { volts, ohms }) {
       const e = sources.get(key);
@@ -317,6 +339,9 @@ export function analogViews(m, an, views, { nets, netOfPin, lit, level, nodeDriv
     lampCurrents: () => (an ? Object.fromEntries(lit.map((p) => { const s = partLamps(p).map((x) => an.lamp(x.part, x.index) * 1000); return [p.id, s.length === 1 ? s[0] : s]; })) : {}),
     /** each LED's mean current (mA) since last asked (#5384: a PWM's dimming, as the eye sees it) */
     lampMeans: () => (an ? Object.fromEntries(lit.map((p) => { const s = partLamps(p).map((x) => an.lampMean(x.part, x.index) * 1000); return [p.id, s.length === 1 ? s[0] : s]; })) : {}),
+    /** (#5386) the analog side's values recorded from now on, for ngspice; recorded(): what was (core/circuit-spice.js) */
+    recordSpice: () => an?.record(),
+    spiceRecord: () => an?.recorded() ?? null,
     /** a part's resistance as set now (an LDR's, a thermistor's, a potentiometer's two sides), said */
     ohmsText: (id) => an?.ohmsText(id) ?? '',
   };
