@@ -59,10 +59,13 @@ const DESIGNS = {
     + '  TLVDS_IOBUF u (.I(c[0]), .OEN(c[1]), .O(o), .IO(p), .IOB(n));\nendmodule\n',
 };
 
-test('the flow: a CLKDIV2 before a CLKDIV built, no warning; to a serialiser or the fabric, or a TLVDS_IOBUF, refused before nextpnr', { timeout: 300000 }, async () => {
+test('the flow: a CLKDIV2 before a CLKDIV built, nextpnr\'s one fallback; to a serialiser or the fabric, or a TLVDS_IOBUF, refused before nextpnr', { timeout: 300000 }, async () => {
   const ok = await build('clkdiv2', { text: DESIGNS.clkdiv2, cst: CST });
   assert.ok(ok.r.ok, ok.r.error);
-  assert.deepEqual(ok.log.filter(l => /warning/i.test(l)), []);
+  // (nextpnr routes the PLL's clock to the CLKDIV2 through the general routing where its dedicated routing did not reach: placed
+  // so with Yosys 0.71's netlist, none with 0.70's, #5634)
+  assert.deepEqual(ok.log.filter(l => /warning/i.test(l)),
+    ["WARNING:Place - Failed to route net 'fclk' from X44Y9/F4 to X46Y18/CLKDIV2_HCLK0_SECT1_HCLKIN using dedicated routing."]);
   assert.deepEqual(cellCounts(ok.files['open/routed.json'], ['CLKDIV2', 'CLKDIV', 'rPLL']), { CLKDIV2: 1, CLKDIV: 1, rPLL: 1 });
   assert.ok(ok.files['clkdiv2.fs'].length > 0);
   const refused = async (name, cst = CST) => {
