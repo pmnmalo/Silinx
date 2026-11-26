@@ -466,8 +466,9 @@ uiTest('board emulator: a design with a combinational loop runs on the event-dri
   await emulatorProject(page, 'EmuLoop', 'basys2', { 'src/lp.vhd': EMU_LOOP }, 'lp');
   const b = await bar(page);
   assert.deepEqual([b.view, b.engine, b.compiledDisabled, b.speed], ['event', 'event', true, 'max']);
-  assert.deepEqual(b.hints.slice(1, 2), ["not compiled (combinational loop through 'b': not compiled): the event-driven simulator runs the design."]);
-  await page.waitFor(() => document.getElementById('console-warnings').textContent.includes("Board Emulator: not compiled (combinational loop through 'b'"), [], { what: 'a warning' });
+  // (the loop's first net in Yosys's netlist: a with Yosys 0.71, b with 0.70, #5634)
+  assert.deepEqual(b.hints.slice(1, 2), ["not compiled (combinational loop through 'a': not compiled): the event-driven simulator runs the design."]);
+  await page.waitFor(() => document.getElementById('console-warnings').textContent.includes("Board Emulator: not compiled (combinational loop through 'a'"), [], { what: 'a warning' });
   // SW0 on, SW1 off: a = 1, b = 0
   await widget(page, 'SW0 = sw<0>');
   await waitLed(page, 1, true);

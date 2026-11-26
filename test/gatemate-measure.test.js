@@ -113,11 +113,12 @@ test('blinky on the CCGM1A1: clk on the clock pin, the other 26 ports placed by 
   assert.equal(n.error, undefined);
   assert.equal(n.mhz, 25);
   const r = await build(n, 26);
-  assert.deepEqual(r.synth.size, { luts: 205, muxes: 53, ffs: 92, carry: 103, bram: 0, mult: 0, other: [] });
+  // (Yosys 0.71's netlist: with 0.70 205 LUTs, 53 muxes, 298 CPE_LT and a bitstream of 22122 bytes, 5193 settings, #5634)
+  assert.deepEqual(r.synth.size, { luts: 250, muxes: 42, ffs: 92, carry: 103, bram: 0, mult: 0, other: [] });
   assert.equal(r.synth.cells.CC_BUFG, 1);
-  assert.deepEqual([r.par.util.CPE_LT, r.par.util.CPE_FF, r.par.util.GPIO, r.par.util.GLBOUT], [[298, 40960], [92, 40960], [27, 162], [1, 1]]);
+  assert.deepEqual([r.par.util.CPE_LT, r.par.util.CPE_FF, r.par.util.GPIO, r.par.util.GLBOUT], [[338, 40960], [92, 40960], [27, 162], [1, 1]]);
   assert.equal(r.par.fmax.length, 1);
   assert.equal(r.par.fmax[0].constraint, 25);
   assert.ok(r.par.fmax[0].achieved > 25, JSON.stringify(r.par.fmax));
-  assert.deepEqual([r.bit.size, r.bit.readBack.settings], [22122, 5193]);
+  assert.deepEqual([r.bit.size, r.bit.readBack.settings], [23950, 5667]);
 });

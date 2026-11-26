@@ -330,8 +330,8 @@ end rtl;
 `;
   const r = await synthesizeOpen(elaborate(compile([{ path: 't.vhd', lang: 'vhdl', text: V }]), 't'), { run: yosysNode });
   assert.deepEqual(r.warnings, []);
-  // Yosys keeps the escape of these names in its JSON (\\Mixed\): the port is \Mixed\
-  assert.deepEqual(Object.keys(JSON.parse(r.files['t.json']).modules.t.ports), ['\\\\Mixed\\', '\\\\a.b\\', '\\\\Bus\\', 'y']);
+  // Yosys 0.71 writes these names as they are in its JSON (\Mixed\; 0.70 kept their escape, \\Mixed\, #5605)
+  assert.deepEqual(Object.keys(JSON.parse(r.files['t.json']).modules.t.ports), ['\\Mixed\\', '\\a.b\\', '\\Bus\\', 'y']);
   const nl = readYosysJson(r.files['t.json']);
   assert.deepEqual(nl.ports.map(p => [p.name, p.bits.map(b => b.name)]), [
     ['\\Mixed\\', ['_Mixed_']], ['\\a.b\\', ['_a_b_']], ['\\Bus\\', ['_Bus_<0>', '_Bus_<1>']], ['y', ['y<0>', 'y<1>']],
