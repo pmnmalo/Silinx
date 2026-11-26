@@ -34,6 +34,10 @@ menu hides it (*Modules on the headers*).
 - A **watch list** of internal signals, and the clock rate, real time or slower.
 - Two engines: the design **compiled** (tens of millions of cycles per second), or the **event-driven** simulation of
   the HDL, to debug.
+- An **oscilloscope** (#5383): two channels, each a one-bit signal of the design (a port, an internal signal) at the
+  board's 3.3 V, with the circuits' oscilloscope's time base (from 10 ns a division), scale, trigger, cursors and
+  measurements (frequency, period, duty cycle, Vpp, mean); a channel's waveform recorded from when it is chosen. It needs
+  the event-driven engine (the compiled one keeps no waveforms, as its box says).
 - **Analog inputs (XADC)** (#5385): a 7-series design that instantiates the XADC gets a box of the side panel, its die
   temperature (°C) and an analog input's voltage (VP / VN or VAUX0..15, 0 to 1 V, as a potentiometer on the Basys 3's
   JXADC), set while it runs and kept through a power cycle. Such a design runs on the event-driven engine (the compiled

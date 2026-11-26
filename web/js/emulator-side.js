@@ -8,6 +8,7 @@ import { h } from './dom.js';
 import { vgaPixels } from '/core/vga.js';
 import { mountSideFold } from './side-fold.js';
 import { mountEmuXadc } from './emulator-xadc.js';
+import { mountEmuScope } from './emulator-scope.js';
 
 /** { logEl, side, watched, xadc } of mountEmulator (compiled(), engineNote(), powered(), running(), vgaView(): its current values). */
 export function mountEmuSide(ctx) {
@@ -106,5 +107,7 @@ export function mountEmuSide(ctx) {
 
   // (a design's XADC: its analog inputs, #5385, emulator-xadc.js)
   const xadc = mountEmuXadc({ design, sim, side, compiled, refresh });
+  // (an oscilloscope on the design's signals, #5383, emulator-scope.js)
+  mountEmuScope({ design, sim, side, compiled });
   return { logEl, side, watched, xadc };
 }
