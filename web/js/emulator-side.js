@@ -75,7 +75,7 @@ export function mountEmuSide(ctx) {
     sim.watch(watched.map((w) => w.s));
     if (!running()) after(sim.advance(0));
   }
-  side.append(h('div', { class: 'emu-box' }, h('h4', {}, 'Watch'), sigSel, h('table', {}, watchBody)));
+  side.append(h('div', { class: 'emu-box emu-watch' }, h('h4', {}, 'Watch'), sigSel, h('table', {}, watchBody)));
   if (timing?.gens?.length) {
     const used = new Map((design.top.params || []).map((p) => [p.name, Number(p.value?.v ?? 0)]));
     side.append(h('div', { class: 'emu-box' }, h('h4', {}, timing.scale > 1 ? `Timing ÷${timing.scale.toLocaleString()} (emulation only)` : 'Timing generics'),

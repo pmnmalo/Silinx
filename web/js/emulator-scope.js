@@ -27,7 +27,8 @@ export function mountEmuScope({ design, sim, side, compiled }) {
   const svg = sv('svg', { class: 'emu-scope-svg', viewBox: '-4 4 272 360', width: '100%' });
   const note = h('div', { class: 'hint emu-scope-note' });
   const box = h('div', { class: 'emu-box emu-scope circuit-editor' }, h('h4', {}, 'Oscilloscope'), pick(0), pick(1), note, svg);
-  side.querySelector('.emu-box')?.before(box);
+  const watch = side.querySelector('.emu-watch');   // the Watch stays the side panel's first box (#1399, #5671)
+  if (watch) watch.after(box); else side.append(box);
   svg.addEventListener('pointerdown', (e) => {
     const i = e.target.closest?.('[data-input]');
     if (!i) return;
