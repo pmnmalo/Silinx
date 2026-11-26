@@ -32,6 +32,7 @@ import { addNode, changeNode, removeNode, removeLink, removeInterface, addLink, 
 import { mountSystemDraw, NODE_W, nodeHeight } from './system-draw.js';
 import { mountSystemSide } from './system-side.js';
 import { drawWiring } from './system-wiring.js';
+import { lockFields } from './lock-fields.js';
 
 const GRID = 20;
 const snap = v => Math.round(v / GRID) * GRID;
@@ -186,7 +187,7 @@ export function mountSystemEditor(container, opts = {}) {
       const k = (n, one, many) => `${n} ${n === 1 ? one : many}`;
       info.set([{ text: `${k(c.wires, 'wire', 'wires')} · ${k(c.links, 'link', 'links')}`, cls: 'asm-info' }]);
     } else draw();
-    if (readOnly) for (const x of side.querySelectorAll('input, select, button:not(.asm-fold)')) x.disabled = true;
+    if (readOnly) lockFields(side.querySelectorAll('input, select, button:not(.asm-fold)'));
     check();
   }
 

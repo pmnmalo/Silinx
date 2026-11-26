@@ -53,7 +53,7 @@ export function mountRegmapEditor(container, opts = {}) {
   const num = s => { const v = Number(String(s).trim()); return String(s).trim() !== '' && Number.isInteger(v) ? v : String(s).trim(); };
   const setReg = (name, fields) => edit({ ...M, registers: M.registers.map(r => (r.name === name ? { ...r, ...fields } : r)) }, fields.name != null && sel === name ? fields.name : sel);
   const cell = (r, key, value, onChange, cls = '') => {
-    const i = h('input', { type: 'text', class: `asm-input mono regs-${key} ${cls}`, value: String(value ?? ''), disabled: readOnly });
+    const i = h('input', { type: 'text', class: `asm-input mono regs-${key} ${cls}`, value: String(value ?? ''), readOnly });
     i.addEventListener('change', () => onChange(i.value));
     i.addEventListener('focus', () => select(r.name, false));
     return h('td', {}, i);

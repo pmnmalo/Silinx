@@ -11,6 +11,7 @@ import { TIMEBASES, VSCALES } from '/core/scope.js';
 import { setPartProps, setWireProps } from '/core/circuit-edit.js';
 import { portName } from '/core/circuit.js';
 import { partInfo } from '/core/circuit-part-info.js';
+import { lockFields } from './lock-fields.js';
 
 // the selected part's details (#4126, core/circuit-part-info.js): what it does; an IC's chip, family, package, supply,
 // logic, delay, outputs, an input left open; a part's pins' roles (an IC's: its pinout above)
@@ -125,7 +126,7 @@ export function mountCircuitSide(ctx) {
 
   function renderCircuit() {
     // (its HDL's language: Source Properties', #4240)
-    circBody.replaceChildren(field('Name', h('input', { type: 'text', value: M().name, disabled: true })));
+    circBody.replaceChildren(field('Name', h('input', { type: 'text', value: M().name, readOnly: true })));
   }
 
   function renderSide() {
@@ -134,7 +135,7 @@ export function mountCircuitSide(ctx) {
     // (a part or a wire selected: its section only, the circuit's hidden, #4303)
     circBody.parentElement.hidden = selSection.childElementCount > 0;
     // (read only; while trying it, #5365: its fields not edited)
-    if (readOnly || trying()) for (const x of [selSection, circBody].flatMap((e) => [...e.querySelectorAll('input, select, button')])) x.disabled = true;
+    if (readOnly || trying()) lockFields([selSection, circBody].flatMap((e) => [...e.querySelectorAll('input, select, button')]));
   }
   return { renderSide };
 }

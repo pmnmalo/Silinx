@@ -3,6 +3,7 @@
 // played and analysed; nothing changed: the drawing tools, Delete, Check (#5248) and Import PNML hidden, the side panel's fields
 // disabled, no node moved, no key that edits; a change that still comes is undone at once (petri-editor.js `commit`).
 // Its notice, `banner`, at the right end of the toolbar (docs/UI-GUIDELINES.md).
+import { lockFields } from './lock-fields.js';
 
 /** The editor's chrome made read only, once. */
 export function petriReadOnlyChrome({ root, toolbar, banner }) {
@@ -15,5 +16,5 @@ export function petriReadOnlyChrome({ root, toolbar, banner }) {
 
 /** The side panel, as each rendering makes it, locked: its fields and buttons disabled (its folds apart). */
 export function lockPetriSide(readOnly, side) {
-  if (readOnly) for (const x of side.querySelectorAll('input, textarea, select, button:not(.asm-fold)')) x.disabled = true;
+  if (readOnly) lockFields(side.querySelectorAll('input, textarea, select, button:not(.asm-fold)'));
 }

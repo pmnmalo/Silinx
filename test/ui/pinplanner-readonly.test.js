@@ -29,7 +29,7 @@ const state = (page) => page.eval((s) => {
       return [b.textContent, [...bar.children].filter((e) => e !== b && shown(e)).every((e) => { const o = e.getBoundingClientRect(); return o.right <= r.left + 0.5 || o.bottom <= r.top + 0.5 || o.top >= r.bottom - 0.5; })];
     }),
     editing: [...bar.querySelectorAll('button')].filter(shown).map((b) => b.textContent.trim()).filter((t) => /Auto-assign|Clear All/.test(t)),
-    fields: [...root.querySelectorAll('.pp-table :is(input, select)')].filter((x) => !x.disabled).length,
+    fields: [...root.querySelectorAll('.pp-table :is(input, select)')].filter((x) => !x.disabled && !x.readOnly).length,
     status: root.querySelector('.pp-status').textContent,
     dirty: !!window.SilinxApp.findDoc('pins').dirty,
   };

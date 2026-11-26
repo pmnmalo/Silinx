@@ -22,7 +22,7 @@ export function mountSymbolSide(ctx) {
   };
   // (a number, or empty: automatic, when `auto`)
   const number = (value, { min, max, step = 10, auto = false }, onChange, cls) => {
-    const i = h('input', { type: 'number', class: `asm-input ${cls}`, value: value == null ? '' : String(value), min: String(min), max: String(max), step: String(step), disabled: readOnly, ...(auto ? { placeholder: 'auto' } : {}) });
+    const i = h('input', { type: 'number', class: `asm-input ${cls}`, value: value == null ? '' : String(value), min: String(min), max: String(max), step: String(step), readOnly, ...(auto ? { placeholder: 'auto' } : {}) });
     i.addEventListener('change', () => {
       if (auto && i.value.trim() === '') return onChange(null);
       const n = Math.round(+i.value / step) * step;
