@@ -30,6 +30,7 @@ import { sv } from './dom.js';
 import { drawCircuit } from './circuit-draw.js';
 import { encoderTurn } from '/core/circuit-encoder.js';
 import { partDef, nudged, sensePin } from '/core/circuit-parts.js';
+import { realBoardControl } from './system-serial-ui.js';
 
 const MAX_STEP = 50e9;     // the most one run goes ahead (ps): 50 ms
 const STEP_PS = 100e6;     // Step in a System of several FPGA nodes or none: one step of its scheduler (ps), 100 µs
@@ -40,6 +41,7 @@ const BEHIND = 200e9;      // behind real time by more (ps): the backlog dropped
 export function mountSystemEmulator(host, opts) {
   injectStyle();
   let ready = null, boards = [], views = new Map(), shown = {}, report = null, running = false, busy = false, destroyed = false;
+  const reals = new Map();   // (each terminal's Real Board, #5449)
   let wall0 = 0, sim0 = 0, rate = null, rateAt = { wall: 0, sim: 0 }, saidLog = 0, factor = 1;   // (factor: the run's rate against real time, #5613)
   const say = (text, level = 'info') => opts.onMessage?.(text, level);
   // (a button let go held down until the design saw a real press, as the Board Emulator's, #3109; the boards' time)
@@ -152,14 +154,22 @@ export function mountSystemEmulator(host, opts) {
       const u = opts.system().nodes.find(n => n.id === id)?.interfaces[0];
       const out = h('pre', { class: 'sys-term-out', 'data-term': id });
       const input = h('input', { type: 'text', class: 'asm-input sys-term-in', placeholder: 'Type a line, Enter sends it', spellcheck: 'false' });
-      input.addEventListener('keydown', e => { if (e.key !== 'Enter') return; ready.send(id, [...new TextEncoder().encode(`${input.value}\n`)]); input.value = ''; });
-      return h('section', { class: 'sys-term' }, h('div', { class: 'sys-term-cap' }, `${id} · ${u?.baud ?? 9600} ${u?.frame ?? '8N1'}`), out, input);
+      // (joined to a real board, #5449: its port's text, the line typed sent to the board)
+      const rb = realBoardControl({ id, system: opts.system, out, say });
+      reals.set(id, rb);
+      input.addEventListener('keydown', e => {
+        if (e.key !== 'Enter') return;
+        const bytes = [...new TextEncoder().encode(`${input.value}\n`)];
+        if (rb.connected()) rb.send(bytes); else ready.send(id, bytes);
+        input.value = '';
+      });
+      return h('section', { class: 'sys-term' }, h('div', { class: 'sys-term-cap' }, h('span', {}, `${id} · ${u?.baud ?? 9600} ${u?.frame ?? '8N1'}`), rb.el), out, input);
     }));
     paint();
   }
   function paint() {
     for (const [id, v] of views) v.paint(shown[id]);
-    for (const [id, text] of Object.entries(report?.terminals || {})) { const el = terms.querySelector(`[data-term="${CSS.escape(id)}"]`); if (el && el.textContent !== text) { el.textContent = text; el.scrollTop = el.scrollHeight; } }
+    for (const [id, text] of Object.entries(report?.terminals || {})) { if (reals.get(id)?.connected()) continue; const el = terms.querySelector(`[data-term="${CSS.escape(id)}"]`); if (el && el.textContent !== text) { el.textContent = text; el.scrollTop = el.scrollHeight; } }
     info.set([report && `t = ${runTimeText(report.now)}`, rate != null && running && { text: `${Math.round(rate * 100)}% of real time`, cls: 'sysemu-rate' },
       ...boards.filter(b => b.kind === 'fpga').map(b => ({ text: `${b.id}: ${modelName(b.id)}`, cls: 'sysemu-model' }))]);
     const said = [...(report?.errors || []).map(e => ['ERROR', e, 'error']), ...(report?.warnings || []).map(w => ['WARNING', w, 'warn'])];
@@ -232,11 +242,12 @@ export function mountSystemEmulator(host, opts) {
     holds.tick(clock.now, { settled: true });
     paint();
   }
+  function closeReals() { for (const rb of reals.values()) rb.close(); reals.clear(); }
   // (Power cycle: running again if it was, as the Board Emulator's)
   async function restart() {
     const was = running;
     // (a run in flight on the old worker never answers: not busy with it any more)
-    pause(); holds.flush(); ready?.close(); ready = null; report = null; shown = {}; busy = false; clock.busy = false; boardsEl.replaceChildren(); terms.replaceChildren();
+    pause(); holds.flush(); ready?.close(); ready = null; report = null; shown = {}; busy = false; clock.busy = false; boardsEl.replaceChildren(); terms.replaceChildren(); closeReals();
     if (await prepare() && was && !destroyed) run();
   }
   // (running once ready, as the Board Emulator: a button let go is held until the design saw a real press, and paused it
@@ -254,6 +265,6 @@ export function mountSystemEmulator(host, opts) {
     state: () => (report ? { now: report.now, running, boards: shown, terminals: report.terminals, warnings: report.warnings, errors: report.errors } : null),
     /** Held while not seen (#5276). */
     held: () => running && seen.held(),
-    destroy() { destroyed = true; running = false; next?.(); seen.destroy(); ready?.close(); host.replaceChildren(); },
+    destroy() { destroyed = true; running = false; next?.(); seen.destroy(); ready?.close(); closeReals(); host.replaceChildren(); },
   };
 }

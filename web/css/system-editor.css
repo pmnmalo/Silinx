@@ -35,6 +35,9 @@
 :is(.system-editor, .sys-emu) .sys-term-cap, .system-editor .sys-wire-cap { font: 600 12px system-ui, -apple-system, "Segoe UI", sans-serif; margin-bottom: 4px; }
 :is(.system-editor, .sys-emu) .sys-term-out { margin: 0 0 4px; min-height: 4em; max-height: 12em; overflow: auto; font: 12px var(--asm-mono); white-space: pre-wrap; overflow-wrap: anywhere; background: var(--asm-bg); padding: 4px; }
 :is(.system-editor, .sys-emu) .sys-term-in { width: 100%; box-sizing: border-box; }
+.sys-emu .sys-term-cap { display: flex; align-items: center; justify-content: space-between; gap: 6px; }
+.sys-emu .sys-term-real { font-weight: normal; }
+.sys-emu .sys-term-out.sys-term-real-on { outline: 2px solid var(--asm-accent); outline-offset: -2px; }
 .system-editor .sys-wire-text { font: 12px var(--asm-mono); white-space: pre-wrap; overflow-wrap: anywhere; margin-bottom: 4px; }
 .system-editor .sys-wire-bytes { display: flex; flex-wrap: wrap; gap: 3px; max-height: 8em; overflow: auto; }
 .system-editor .sys-byte { font: 11px var(--asm-mono); padding: 0 3px; border-radius: 3px; background: color-mix(in srgb, var(--asm-accent) 14%, transparent); }

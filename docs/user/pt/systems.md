@@ -120,6 +120,11 @@ emulador do Sistema num separador próprio:
 - os LEDs e os displays de uma placa FPGA acendem como o seu módulo os comanda;
 - os pinos de uma Arduino mostram o seu nível (aceso alto, escuro baixo, vazio flutuante) e o seu LED L acende com o D13;
 - cada terminal série está no painel **Terminais**: escreva uma linha, Enter envia-a.
+- a **Placa Real…** de um terminal liga-o à porta série USB de uma placa real pelo Web Serial (Chrome e Edge; não o
+  Safari, nem o iPad): a de um Arduino, escolhida entre os identificadores USB da sua placa, ou o adaptador USB-UART de
+  uma placa FPGA. A porta abre com o baud e a trama da ligação; o terminal mostra o que a placa envia, como a simulação o
+  mostra, e a linha escrita vai para a placa. **Desligar** devolve o terminal à emulação. O `serial_terminal` do
+  servidor MCP faz o mesmo no servidor local, pelo monitor do arduino-cli.
 
 A linha de estado mostra o tempo e a rapidez com que as placas correm face ao tempo real.
 

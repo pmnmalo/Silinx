@@ -159,4 +159,23 @@ export const BOARD_TOOLS = [
         `Arduino (Compile Firmware): ${arduino.available ? 'available' : 'not available'}: ${arduino.reason}.`].join('\n'), data: { ise, vivado, arduino } };
     },
   },
+  {
+    name: 'serial_terminal', title: 'A real board\'s serial terminal',
+    description: 'A real board\'s USB serial port, as a System terminal\'s Real Board: send text, read the answer for listen_ms (default 2000). The port: given, or a System node\'s board by USB id (a terminal: its link\'s board), at its UART\'s baud and frame. Through arduino-cli\'s monitor.',
+    inputSchema: { type: 'object', properties: {
+      project: PROJECT, node: STR('A System node.'), port: STR('A port address (COM3).'), baud: { type: 'integer', minimum: 1 }, frame: { type: 'string', pattern: '^[5-8][NEOneo][12]$' },
+      send: STR('Text sent (\\n: Enter).'), send_after_ms: { type: 'integer', minimum: 0, maximum: 30000 }, listen_ms: { type: 'integer', minimum: 0, maximum: 30000 },
+    }, additionalProperties: false },
+    annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: true },
+    async run({ project, node, port, baud, frame, send = '', send_after_ms: after = 0, listen_ms: listen = 2000 }) {
+      const { serialPortOf, serialSession } = await import('./serial-monitor.js');
+      let at, r;
+      try { at = await serialPortOf({ project, node, port, baud, frame }); } catch (e) { throw toolError(e.message); }
+      try { r = await serialSession({ port: at.port, link: at.link, send: [...Buffer.from(send, 'utf8')], sendAfterMs: after, listenMs: listen }); } catch (e) { throw toolError(e.message); }
+      const head = `Serial port ${at.port}${at.node ? ` (the board of ${at.node})` : ''} at ${at.link.baud} baud, ${at.link.frame}: ${r.bytes.length} byte(s) received in ${listen} ms, ${r.sent} sent.`;
+      return { text: [head, '', r.text].join('\n'),
+        data: { port: at.port, node: at.node, baud: at.link.baud, frame: at.link.frame, sent: r.sent, received: r.bytes.length, text: r.text, warnings: [] },
+        untrusted: 'what the board sent on its serial port' };
+    },
+  },
 ];
