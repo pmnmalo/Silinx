@@ -29,35 +29,35 @@ uiTest('#4749 an application\'s line drawn in the language, its message English;
       const stop = c.onLogLine((line) => got.push(line));
       c.clearConsole();
       c.logInfo('No quick fix here.');
-      c.logError('Use Ctrl+V to paste');
+      c.logError('Select the top module first');
       c.commandWarning('Rename Project', 'No quick fix here.');
-      c.appLog('Use Ctrl+V to paste', '', { action: { label: 'Trust Project', run: () => false } });
-      c.logLine('WARNING:Xst:737 - Use Ctrl+V to paste');   // (a tool's line: never translated)
+      c.appLog('Select the top module first', '', { action: { label: 'Trust Project', run: () => false } });
+      c.logLine('WARNING:Xst:737 - Select the top module first');   // (a tool's line: never translated)
       stop();
       return got;
     }));
     await settled(page);
     const pt = [
       ['INFO: Não há aqui nenhuma correção rápida.', 'INFO: No quick fix here.'],
-      ['ERROR: Use Ctrl+V para colar', 'ERROR: Use Ctrl+V to paste'],
+      ['ERROR: Selecione primeiro o módulo de topo', 'ERROR: Select the top module first'],
       ['WARNING: Mudar o Nome do Projeto: Não há aqui nenhuma correção rápida.', 'WARNING: Rename Project: No quick fix here.'],
-      ['Use Ctrl+V para colar', 'Use Ctrl+V to paste'],
-      ['WARNING:Xst:737 - Use Ctrl+V to paste', 'WARNING:Xst:737 - Use Ctrl+V to paste'],
+      ['Selecione primeiro o módulo de topo', 'Select the top module first'],
+      ['WARNING:Xst:737 - Select the top module first', 'WARNING:Xst:737 - Select the top module first'],
     ];
     assert.deepEqual(await lines(page), pt);
     // (the watchers, a follower's runs: the English)
     assert.deepEqual(watched, pt.map(([, en]) => en));
     assert.equal(await page.eval(() => document.querySelector('#console-log .ln-action').textContent), 'Confiar no Projeto');
     // the entries in the language, their messages English
-    assert.deepEqual(await rows(page, 'errors'), ['ERROR:Silinx - Use Ctrl+V para colar']);
-    assert.deepEqual(await rows(page, 'warnings'), ['WARNING:Silinx - Mudar o Nome do Projeto: Não há aqui nenhuma correção rápida.', 'WARNING:Xst:737 - Use Ctrl+V to paste']);
-    assert.deepEqual(await page.eval(() => window.Silinx.diags.map((d) => d.message)), ['Use Ctrl+V to paste', 'Rename Project: No quick fix here.', 'Use Ctrl+V to paste']);
+    assert.deepEqual(await rows(page, 'errors'), ['ERROR:Silinx - Selecione primeiro o módulo de topo']);
+    assert.deepEqual(await rows(page, 'warnings'), ['WARNING:Silinx - Mudar o Nome do Projeto: Não há aqui nenhuma correção rápida.', 'WARNING:Xst:737 - Select the top module first']);
+    assert.deepEqual(await page.eval(() => window.Silinx.diags.map((d) => d.message)), ['Select the top module first', 'Rename Project: No quick fix here.', 'Select the top module first']);
     // English again: every line drawn again from its English, its button too
     await setLanguage(page, 'en');
     await settled(page);
     assert.deepEqual(await lines(page), pt.map(([, en]) => [en, en]));
     assert.equal(await page.eval(() => document.querySelector('#console-log .ln-action').textContent), 'Trust Project');
-    assert.deepEqual(await rows(page, 'errors'), ['ERROR:Silinx - Use Ctrl+V to paste']);
+    assert.deepEqual(await rows(page, 'errors'), ['ERROR:Silinx - Select the top module first']);
     // and Portuguese again
     await setLanguage(page, 'pt');
     await settled(page);
