@@ -153,6 +153,23 @@ viewer of its own:
 - A dialog says what is wrong with its own fields beside them, as long as it is open.
 - A toast only says an action was done, carrying its Undo when it can be undone.
 
+## A board drawn
+
+The Board Emulator's boards (`web/js/emulator-<board>.js`, registered in `BOARD_LAYOUTS` of `web/js/emulator-layouts.js`;
+I/O Pin Planning's Board view draws them too) are **as faithful to the real board as they can be** (#5636):
+
+- its PCB's colour (and its shade), its shape, its corners and its mounting holes, as on the board's photos;
+- every part where it is on the board, as it is turned, in proportion (the LEDs, the switches, the buttons, the displays,
+  the connectors on their edges, the chips, the jumpers), with the silkscreen's names;
+- the parts' own look: a slide switch, a push button, an LED's colour, a seven-segment display as the board's;
+- our own drawing, after the board's photos and its reference manual: never a photo or the maker's artwork, no maker's
+  logo;
+- what the board lacks and an example needs (a display, LEDs, switches) on the connectors the board's data puts them
+  on, drawn beside the board (a Pmod's module, a breadboard on its header), not on it.
+
+A board with no drawing yet is drawn as rows of parts (`web/js/emulator-board.js`) until it has one; a new board's
+drawing comes with a UI test of its size, its parts and their places (`test/ui/emu-boards.test.js`).
+
 ## Everywhere
 
 - **Both interfaces** (Silinx and ISE style), **light and dark themes**, **narrow screens** (a tablet in portrait)

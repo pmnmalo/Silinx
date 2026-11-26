@@ -64,7 +64,9 @@ the code and the lessons learnt.
   end of the toolbar, no Undo / Redo / Print in a document's toolbar (the main toolbar's), every side panel foldable
   and, on a narrow screen, over the canvas behind a `☰` button of the toolbar, every message (information, warning,
   error) in the console, never in the editor's or viewer's window, no hint line, and one status line, its last line
-  (the Schematic editor's: a drawing's counts, the Board Emulator's time and rate).
+  (the Schematic editor's: a drawing's counts, the Board Emulator's time and rate). A board is drawn as faithful to the
+  real one as it can be (#5636): its PCB's colour, every part where it is, as it is turned, in proportion, with its
+  silkscreen's names.
 - Every label of the interface has a Portuguese translation in `web/js/i18n.js` (anchored patterns,
   `^…$`); `test/web-i18n.test.js` checks it.
 - **What the interface does, the MCP server does too** (#2674): every action of the interface is a tool of the MCP
