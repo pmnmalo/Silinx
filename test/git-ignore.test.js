@@ -8,17 +8,17 @@ import * as G from '../server/git.js';
 test('server/git.js exports the same .gitignore as before the move', () => {
   assert.equal(G.GITIGNORE, GITIGNORE);
   assert.ok(GITIGNORE.startsWith('# Silinx (#3195)'));
-  for (const p of ['build/', 'xst/', '_xmsgs/', 'iseconfig/', 'isim/', '.Xil/', '*.bit', '*.ncd', '*.ngc', '*.ngd', '*.xdl', '*.xdlrc', '*.wdb', '.DS_Store']) assert.ok(GITIGNORE.split('\n').includes(p), p);
+  for (const p of ['build/', 'xst/', '_xmsgs/', 'iseconfig/', 'isim/', '.Xil/', '*.bit', '*.ncd', '*.ngc', '*.ngd', '*.xdl', '*.xdlrc', '*.wdb', '.DS_Store', '.silinx/']) assert.ok(GITIGNORE.split('\n').includes(p), p);
 });
 
 test('the outputs: a folder of a tool at the top, a file by its extension anywhere', () => {
-  assert.equal(OUTPUTS.length, 13);
+  assert.equal(OUTPUTS.length, 14);   // (Silinx's own hidden folder too: its versions, #5740)
   assert.equal(GLOBS.length, OUTPUTS.length);
   assert.deepEqual(GLOBS.slice(0, 2), ['build/**', 'xst/**']);
   assert.equal(GLOBS.at(-1), '**/*.wdb');
   assert.deepEqual(EXCLUDE.slice(0, 1), [':(exclude,glob)build/**']);
-  for (const p of ['build/open/top.bit', 'xst/x', '_xmsgs/a.xmsgs', 'isim/w', '.Xil/a', 'top.bit', 'sub/top.BIT', 'a/b.ncd', 'x.wdb']) assert.ok(isOutput(p), p);
-  for (const p of ['src/top.vhd', 'silinx.json', 'src/build/x.vhd', 'constraints/top.ucf', 'bit.vhd', '.gitignore']) assert.ok(!isOutput(p), p);
+  for (const p of ['build/open/top.bit', 'xst/x', '_xmsgs/a.xmsgs', 'isim/w', '.Xil/a', '.silinx/versions/index.json', 'top.bit', 'sub/top.BIT', 'a/b.ncd', 'x.wdb']) assert.ok(isOutput(p), p);
+  for (const p of ['src/top.vhd', 'silinx.json', 'src/build/x.vhd', 'constraints/top.ucf', 'bit.vhd', '.gitignore', 'src/.silinx/x']) assert.ok(!isOutput(p), p);
 });
 
 test('#5016 a write\'s temporary file: hidden, the pid and a random part, .tmp', () => {

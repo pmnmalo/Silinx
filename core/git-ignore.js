@@ -2,8 +2,9 @@
 // repository's .gitignore says, and the .gitignore Silinx writes into a project. The server's git (server/git.js) and
 // the browser's GitHub back end (core/git-rest.js) share them. Isomorphic.
 
-// the tools' outputs, never committed whatever the repository's .gitignore says (pathspecs, relative to the project)
-export const OUTPUTS = ['build', 'xst', '_xmsgs', 'iseconfig', 'isim', '.Xil', '*.bit', '*.ncd', '*.ngc', '*.ngd', '*.xdl', '*.xdlrc', '*.wdb'];
+// the tools' outputs, never committed whatever the repository's .gitignore says (pathspecs, relative to the project);
+// and Silinx's own hidden folder (its versions, snapshots, a merge's backup: .silinx/, #5740)
+export const OUTPUTS = ['build', 'xst', '_xmsgs', 'iseconfig', 'isim', '.Xil', '.silinx', '*.bit', '*.ncd', '*.ngc', '*.ngd', '*.xdl', '*.xdlrc', '*.wdb'];
 export const GLOBS = OUTPUTS.map(p => (p.startsWith('*') ? `**/${p}` : `${p}/**`));
 export const EXCLUDE = GLOBS.map(g => `:(exclude,glob)${g}`);
 export const isOutput = rel => {
@@ -33,4 +34,5 @@ isim/
 *.xdlrc
 *.wdb
 .DS_Store
+.silinx/
 `;
