@@ -4,7 +4,7 @@
 //
 //   { format: 'silinx-system', version: 1, name,
 //     nodes: [ { id, kind: 'fpga', module, board, variant?, constraints?: <its constraints file, in its folder>, lang, interfaces, x, y }
-//              { id, kind: 'mcu', board: 'arduino-uno' | 'arduino-nano' | 'explorer-1632', firmware: <a .hex / .elf of the project>, lang, usb, interfaces, x, y }
+//              { id, kind: 'mcu', board: 'arduino-uno' | 'arduino-nano' | 'explorer-1632' | 'pico', firmware: <a .hex / .elf of the project; a Pico's .py>, lang, usb, interfaces, x, y }
 //              { id, kind: 'terminal', interfaces, x, y }
 //              { id, kind: 'circuit', circuit: <a .circ.json of the project>, interfaces: [], x, y } ],
 //     links: [ { id, kind: 'uart' | 'gpio' | 'spi' | 'i2c', a: '<node>.<interface>', b: '<node>.<interface>' } ] }
@@ -52,9 +52,11 @@ const analog = n => Array.from({ length: n }, (_, i) => `A${i}`);
 // the PIC24FJ1024GB610's port pins (100 pins: PORTA to PORTG, those its package has)
 const PIC24_PINS = { A: [0, 1, 2, 3, 4, 5, 6, 7, 9, 10, 14, 15], B: [...Array(16).keys()], C: [1, 2, 3, 4, 12, 13, 14, 15],
   D: [...Array(16).keys()], E: [...Array(10).keys()], F: [0, 1, 2, 3, 4, 5, 7, 8, 12, 13], G: [0, 1, 2, 3, 6, 7, 8, 9, 12, 13, 14, 15] };
+const picoPins = () => [...[...Array(23).keys()], 25, 26, 27, 28].map(n => `GP${n}`);
 const pic24Pins = () => Object.entries(PIC24_PINS).flatMap(([p, bits]) => bits.map(b => `R${p}${b}`));
-/** The microcontrollers' boards: their engine (`arch`: avr, avr8js's; pic24, silinx-pic24's), their pins, their I/O
- *  voltage, their firmware's kinds (`firmwares`: its files' extensions), their UARTs ({ name: { tx, rx } }), their SPI buses ({ name: { sck, mosi, miso, ss } }), their I²C buses
+/** The microcontrollers' boards: their engine (`arch`: avr, avr8js's; pic24, silinx-pic24's; rp2040, rp2040js's), their pins, their I/O
+ *  voltage, their firmware's kinds (`firmwares`: its files' extensions; a MicroPython board's its program's), the languages it
+ *  takes (`langs`: all when none), their UARTs ({ name: { tx, rx } }), their SPI buses ({ name: { sck, mosi, miso, ss } }), their I²C buses
  *  ({ name: { scl, sda } }). The Explorer 16/32's UART is its USB-UART's pins (the MCP2221A's: the device's TX RF5, its
  *  RX RF4), any UART module its program maps there through PPS; its clock the 8 MHz crystal (Fcy its configuration
  *  words'). */
@@ -62,6 +64,9 @@ export const MCU_BOARDS = [
   { id: 'arduino-uno', name: 'Arduino Uno', arch: 'avr', mcu: 'ATmega328P', clockHz: 16e6, vio: 5, pins: [...digital(14), ...analog(6)], firmwares: ['hex', 'elf'], uarts: { Serial: { tx: 'D1', rx: 'D0' } }, spis: { SPI: { sck: 'D13', mosi: 'D11', miso: 'D12', ss: 'D10' } }, i2cs: { Wire: { scl: 'A5', sda: 'A4' } } },
   { id: 'arduino-nano', name: 'Arduino Nano', arch: 'avr', mcu: 'ATmega328P', clockHz: 16e6, vio: 5, pins: [...digital(14), ...analog(8)], firmwares: ['hex', 'elf'], inputOnly: ['A6', 'A7'], uarts: { Serial: { tx: 'D1', rx: 'D0' } }, spis: { SPI: { sck: 'D13', mosi: 'D11', miso: 'D12', ss: 'D10' } }, i2cs: { Wire: { scl: 'A5', sda: 'A4' } } },
   { id: 'explorer-1632', name: 'Explorer 16/32', arch: 'pic24', mcu: 'PIC24FJ1024GB610', clockHz: 8e6, vio: 3.3, pins: pic24Pins(), firmwares: ['hex'], uarts: { UART: { tx: 'RF5', rx: 'RF4' } }, spis: {}, i2cs: {} },
+  // (a Raspberry Pi Pico, #5494: its RP2040 under MicroPython's own firmware, its program a .py; its pins GP0..GP22, the LED's
+  // GP25, GP26..GP28; MicroPython's UART(0) and UART(1) on their default pins)
+  { id: 'pico', name: 'Raspberry Pi Pico', arch: 'rp2040', mcu: 'RP2040', clockHz: 125e6, vio: 3.3, pins: picoPins(), firmwares: ['py'], langs: ['micropython'], uarts: { UART0: { tx: 'GP0', rx: 'GP1' }, UART1: { tx: 'GP4', rx: 'GP5' } }, spis: {}, i2cs: {} },
 ];
 /** A microcontroller's board by its id, or null. */
 export const mcuBoard = id => MCU_BOARDS.find(b => b.id === id) || null;

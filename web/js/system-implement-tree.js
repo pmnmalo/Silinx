@@ -48,7 +48,7 @@ const MARK = { 'up to date': 'ok', given: 'ok', 'out of date': 'stale' };
 const boardName = n => (n.kind === 'mcu' ? mcuBoard(n.board)?.name : S.devices?.boards?.find(b => b.id === n.board)?.name) || n.board;
 
 // what a microcontroller node is programmed by: its plan's entry's programmer, else its board's and language's
-const programmerOf = (n, e) => e?.programmer || (n.lang === 'micropython' ? 'repl' : mcuBoard(n.board)?.arch === 'pic24' ? 'pickit' : 'avrdude');
+const programmerOf = (n, e) => e?.programmer || (n.lang === 'micropython' || mcuBoard(n.board)?.arch === 'rp2040' ? 'repl' : mcuBoard(n.board)?.arch === 'pic24' ? 'pickit' : 'avrdude');
 
 /** Why Silinx does not program the node `n` yet (a PIC24's, a MicroPython node's: core/system-program.js), its plan's
  *  entry `e` if known, or null: its Program Node disabled, its tip this. */

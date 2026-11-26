@@ -203,6 +203,12 @@ export async function createApp({ host = '127.0.0.1', token = null, codes = crea
   for (const pkg of importMapPackages()) {
     app.use(`/vendor/npm/${pkg}`, asset(path.join(ROOT, 'node_modules', pkg)));
   }
+  // a Pico's firmware (#5494): MicroPython's .uf2 and the RP2040's bootrom, downloaded once by the local server
+  // (server/rp2040-firmware.js), not shipped
+  app.get('/vendor/rp2040/:file', async (req, res) => {
+    const { rp2040Path } = await import('./rp2040-firmware.js');
+    try { res.sendFile(await rp2040Path(req.params.file)); } catch (e) { res.status(/^no RP2040 firmware file/.test(e.message) ? 404 : 502).type('text/plain').send(e.message); }
+  });
   // Yosys compiled to WebAssembly (YoWASP): the open synthesis runs in the browser (web/js/yosys-worker.js)
   app.use('/vendor/yowasp-yosys', asset(path.join(ROOT, 'node_modules/@yowasp/yosys')));
   // nextpnr in WebAssembly, its chip databases beside its bundle (the browser edition's nextpnr engine, #2136)

@@ -7,6 +7,7 @@
 import { systemPlan, buildSystem, wireFrames } from './system-build.js';
 import { compiledNodeModel } from './system-sim-compiled.js';
 import { loadAvr8js } from './system-sim-avr.js';
+import { loadRp2040 } from './system-sim-rp2040.js';
 import { mcuBoard } from './system-doc.js';
 import { linkTraffic, usText, decodeSpi, spiWarnings, decodeI2c, i2cWarnings, wiredAnd } from './system-decode.js';
 import { regAccesses, accessText } from './regmap-decode.js';
@@ -54,12 +55,24 @@ export function systemFromInputs(sys, { plan, netlists, firmware, regmaps = {} }
   try { return { plan, regmaps, ...buildSystem(sys, plan, { fpga, firmware }) }; } catch (e) { return { error: e.message }; }
 }
 
+/** The microcontrollers' engines of the System `sys` loaded here (avr8js for an Arduino; rp2040js and MicroPython's
+ *  firmware for a Pico, #5494). */
+export async function loadEngines(sys) {
+  const arch = new Set(sys.nodes.filter(n => n.kind === 'mcu').map(n => mcuBoard(n.board)?.arch));
+  if (arch.has('avr')) await loadAvr8js();
+  if (arch.has('rp2040')) await loadRp2040();
+}
+
 /** The System ready to run here: systemInputs, then systemFromInputs. */
 export async function prepareSystem(sys, opts) {
   const inputs = await systemInputs(sys, opts);
-  if (sys.nodes.some(n => n.kind === 'mcu' && mcuBoard(n.board)?.arch !== 'pic24')) await loadAvr8js();
-  return inputs.error ? inputs : systemFromInputs(sys, inputs);
+  if (inputs.error) return inputs;
+  try { await loadEngines(sys); } catch (e) { return { error: e.message }; }
+  return systemFromInputs(sys, inputs);
 }
+
+/** A terminal's caption: its id and its UART's baud and frame (`u`: its interface); a Pico's REPL (`<id>.repl`) its USB's. */
+export const termCaption = (id, u) => (/\.repl$/.test(id) ? `${id.slice(0, -5)} · MicroPython REPL (USB)` : `${id} · ${u?.baud ?? 9600} ${u?.frame ?? '8N1'}`);
 
 /** Bytes as a terminal shows them: the printable characters, CR LF and tab as they are, the others as \xNN. */
 export const bytesText = bytes => bytes.map(({ byte: b }) => (b >= 0x20 && b < 0x7f) || b === 10 || b === 13 || b === 9 ? String.fromCharCode(b) : `\\x${b.toString(16).padStart(2, '0')}`).join('');

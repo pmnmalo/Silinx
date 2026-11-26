@@ -84,7 +84,7 @@ function mcuEntry(n, { files, hashes, records, exists }) {
   const b = mcuBoard(n.board);
   const e = { id: n.id, kind: 'mcu', board: n.board || null, build: null, image: null, programmer: null, sources: [] };
   if (!b) return { ...e, state: 'not buildable', reason: `no microcontroller board '${n.board ?? ''}'` };
-  if (n.lang === 'micropython') {
+  if (n.lang === 'micropython' || b.arch === 'rp2040') {
     const py = files.filter(f => /\.py$/i.test(f) && relInNode(f, n.id) != null).sort();
     return { ...e, programmer: 'repl', sources: py, state: 'nothing to build', reason: py.length ? 'a MicroPython program runs as it is' : `no .py in its folder ${n.id}/ yet` };
   }

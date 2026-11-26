@@ -4,11 +4,11 @@
 // terminals' text, the warnings, and the System's waves written as a VCD (build/<name>.vcd).
 import * as P from './projects.js';
 import { toolError, projectText, elaborateView } from './mcp-util.js';
-import { readSystem, isSystemFile, mcuBoard } from '../core/system-doc.js';
+import { readSystem, isSystemFile } from '../core/system-doc.js';
 import { systemsOn, SYSTEMS_OFF } from '../core/build-channel.js';
-import { prepareSystem, systemReport, runTimeText, systemInputs, systemFromInputs } from '../core/system-run.js';
+import { prepareSystem, systemReport, runTimeText, systemInputs, systemFromInputs, loadEngines } from '../core/system-run.js';
+import './rp2040-firmware.js';   // (a Pico's firmware read from the local server's copy, #5494)
 import { emulationBoards, withBoards, watchBoards, boardStates, setBoardInput } from '../core/system-emu.js';
-import { loadAvr8js } from '../core/system-sim-avr.js';
 import { systemVcd } from '../core/system-waves.js';
 import { ucfPort } from '../core/board-constraints.js';
 import { normalizeCircuit } from '../core/circuit.js';
@@ -142,7 +142,7 @@ export async function simulateSystem(name, top, { ms, type = {}, controls = null
 async function emulated(sys, how) {
   const inputs = await systemInputs(sys, how);
   if (inputs.error) return { ready: inputs };
-  if (sys.nodes.some(n => n.kind === 'mcu' && mcuBoard(n.board)?.arch !== 'pic24')) await loadAvr8js();
+  try { await loadEngines(sys); } catch (e) { return { ready: { error: e.message } }; }
   const boards = emulationBoards(sys, inputs);
   const ready = systemFromInputs(sys, withBoards(inputs, boards));
   if (!ready.error) watchBoards(ready.sim, boards);
