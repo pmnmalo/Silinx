@@ -28,6 +28,11 @@ test('a valid system: no warnings; with no modules nor files known, none either'
   assert.deepEqual(systemCheckLines('src/demo.sys.json', checkSystem(normalizeSystem(base()), CTX)), ['Process "Check System" of demo.sys.json completed successfully.']);
 });
 
+test('#5756 a System of one node (a processor board\'s Board project): no "joins nothing" warning; two nodes unlinked, both said', () => {
+  assert.deepEqual(run(s => { s.nodes = [N(s, 'uno')]; s.links = []; }), []);
+  assert.deepEqual(run(s => { s.nodes = [N(s, 'uno'), N(s, 'term')]; s.links = []; }), ['warning: uno joins nothing: no link reaches it [node:uno]', 'warning: term joins nothing: no link reaches it [node:term]']);
+});
+
 test('an Arduino and the FPGA by UART: a 5 V output on the FPGA\'s 3.3 V input, a warning', () => {
   assert.deepEqual(run(s => { s.links[0].a = 'uno.Serial'; }), [
     'warning: console: uno\'s D1, a 5 V output, drives fpga\'s rx (pin J3), a 3.3 V input of the FPGA (LVCMOS33): a level shifter or a divider on the real boards [link:console]',

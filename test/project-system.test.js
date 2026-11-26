@@ -42,7 +42,7 @@ function expectedFpga(pj) {
   if (!pj.top) out.push('error: fpga: an FPGA node with no module');
   if (!pj.board) out.push('error: fpga: an FPGA node with no board');
   else if (!resolveBoard(pj.board, { part: pj.device?.part })) out.push(`error: fpga: no FPGA board '${pj.board}'`);
-  return [...out, 'warning: fpga joins nothing: no link reaches it'];
+  return out;   // (alone, it joins nothing, and that is no warning since #5756: a System of one node)
 }
 
 test('#5685 the corpus\'s files as the stores give them: a Windows path\'s folders joined by /, as the constraints\' paths are', () => {
@@ -119,8 +119,8 @@ test('#5416 phase 3: an ISE project imported (.xise): its System implicit, its d
 test('#5416 phase 3: a design and simulation project; the old kind id, a profile, a module as the top; a System project with no or a damaged document', () => {
   const d = projectSystem({ name: 'dl', kind: 'design', top: 'adder', board: 'basys2' });
   assert.deepEqual(d.model.nodes, [{ id: 'design', kind: 'design', module: 'adder', board: null, device: null, constraints: null, lang: 'vhdl', pins: {}, interfaces: [], x: 0, y: 0, implicit: true }]);
-  // (a design node a node kind of a System document since #5440, the Digital Logic profile's: alone, it joins nothing)
-  assert.deepEqual(checkSystem(d.model).map(said), ['warning: design joins nothing: no link reaches it']);
+  // (a design node a node kind of a System document since #5440, the Digital Logic profile's: alone, no warning, #5756)
+  assert.deepEqual(checkSystem(d.model).map(said), []);
   // the old kind id of #5411: no System project's since #5440 (an FPGA project's implicit System); the profile's
   const { pj, files, texts } = project('examples/uart-avr/silinx.json');
   assert.equal(projectSystem({ ...pj, kind: 'codesign' }, { files, texts }).implicit, true);

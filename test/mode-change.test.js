@@ -96,7 +96,8 @@ test('#5755 System → Board: the uart-avr example keeps its FPGA node; the Ardu
   assert.deepEqual(r.project.files.map(f => f.path), pj.files.map(f => f.path));
   // (a node to keep that is not, or is no FPGA node: refused, named)
   assert.deepEqual(modeChange(pj, 'board', { files, texts, keep: 'nope' }), { error: 'the System has no node \'nope\' (its nodes: uno, fpga)' });
-  assert.deepEqual(modeChange(pj, 'board', { files, texts, keep: 'uno' }), { error: 'uno is a mcu node: only an FPGA or a design node can be kept' });
+  // (its Arduino kept instead: a processor board's project, #5756: test/processor-board.test.js)
+  assert.equal(modeChange(pj, 'board', { files, texts, keep: 'uno' }).project.board, 'arduino-uno');
 });
 
 test('#5755 Board → System → Board: the same board, device, top module, constraints and sources', () => {

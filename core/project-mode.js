@@ -7,6 +7,7 @@
 // in a release (#5202). Isomorphic module (browser + Node).
 import { systemsOn, SYSTEMS_OFF } from './build-channel.js';
 import { profileById, profileOf } from './project-profile.js';
+import { mcuBoard } from './system-doc.js';
 
 /** The modes, each with: its label (the interface's), the profiles it covers, a new project's profile, the kind New Project
  *  creates (core/project-kind.js: 'design', 'fpga', 'system'), what it is for (New Project's card) and `short`, the MCP
@@ -16,7 +17,7 @@ export const MODES = [
     about: 'Elementary components with no board: gates, flip-flops, circuits on a breadboard, schematics, truth tables and state machines, drawn and simulated.',
     short: 'drawings and circuits, no board' },
   { id: 'board', label: 'Board', profiles: ['fpga'], profile: 'fpga', kind: 'fpga',
-    about: 'One board, with its flow, its emulator and its programming: HDL sources and drawings synthesized, implemented and programmed on the FPGA, or emulated.',
+    about: 'One board, with its flow, its emulator and its programming: an FPGA\'s HDL and drawings synthesized and programmed, or a processor board\'s firmware built and run; or emulated.',
     short: 'one board, the default' },
   { id: 'system', label: 'System', profiles: ['embedded', 'system'], profile: 'system', kind: 'system',
     about: 'Several devices linked (UART, SPI, Pmods): FPGA boards and microcontrollers in one System document, simulated as one.',
@@ -26,8 +27,9 @@ export const MODES = [
 export const modeById = id => MODES.find(m => m.id === id) || null;
 /** The mode of the profile `id` (Board for an unknown one, as profileOf reads a project with none). */
 export const profileMode = id => MODES.find(m => m.profiles.includes(id))?.id ?? 'board';
-/** A project's mode (its silinx.json): its profile's. */
-export const modeOf = pj => profileMode(profileOf(pj));
+/** A project's mode (its silinx.json): its profile's; a System of one processor board with its board named, Board (#5756:
+ *  core/processor-board.js). */
+export const modeOf = pj => (profileMode(profileOf(pj)) === 'system' && mcuBoard(pj?.board) ? 'board' : profileMode(profileOf(pj)));
 /** Whether the mode `id` is offered in this build (System: not in a release, #5202). */
 export const modeOn = id => !!modeById(id) && (id !== 'system' || systemsOn());
 

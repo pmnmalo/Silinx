@@ -71,7 +71,7 @@ test('#5755 set_design_properties mode: blinky Board → System → Board, its b
 
 test('#5755 set_design_properties mode: the uart-avr System down to Board, the Arduino node and the link said lost; to Circuit, its own HDL too', async () => {
   await ok('new_project_from_example', { name: 's1', example: 'uart-avr' });
-  await fails('set_design_properties', { project: 's1', mode: 'board', keep: 'uno', confirm: true }, 'uno is a mcu node: only an FPGA or a design node can be kept');
+  await fails('set_design_properties', { project: 's1', mode: 'board', keep: 'nope', confirm: true }, 'the System has no node \'nope\' (its nodes: uno, fpga)');
   const d = await ok('set_design_properties', { project: 's1', mode: 'board', confirm: true });
   assert.deepEqual(lines(d.text).filter(l => l.startsWith('WARNING')), [
     'WARNING: lost: the node uno (mcu, arduino-uno) leaves the project: its folder uno/ stays on the disk',

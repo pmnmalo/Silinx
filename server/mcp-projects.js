@@ -16,6 +16,8 @@ import { withPlaces } from './project-places.js';
 import { TOP_TYPES, topTypeRefusal } from '../core/top-types.js';
 import { topSourceFiles } from '../core/top-source.js';
 import { designProjectInfo } from './mcp-design-only.js';
+import { newProcessorProject } from './mcp-processor.js';
+import { isProcessorBoard } from '../core/processor-board.js';
 import { flowFiles } from '../core/flow-files.js';
 import { topRefusal } from '../core/project-entries.js';
 import { makeSystemTop, makeNodeTop } from './mcp-system-top.js';
@@ -135,9 +137,13 @@ export const PROJECT_TOOLS = [
     inputSchema: { type: 'object', properties: { name: STR('The new project\'s name: a letter, then up to 63 letters, digits, - and _.'), board: STR('The board (list_devices).'), variant: STR('The board\'s variant (default: the board\'s), e.g. 100 or 250 for the Basys2.'), mode: { type: 'string', enum: MODES.map(m => m.id), description: `Its mode, New Project's first page: ${MODES.map(m => `${m.id} (${m.short})`).join(', ')}.` },
       profile: { type: 'string', enum: PROFILES.map(p => p.id), description: `Its profile, finer than its mode: ${PROFILES.map(p => `${p.id} (${p.label}: ${PROFILE_SHORT[p.id]})`).join(', ')}.` },
       top_source_type: { type: 'string', enum: TOP_TYPES.map(t => t.id), description: 'Its Top-Level Source Type, as New Project\'s (tt: Boolean algebra; a design project\'s: a drawing; system: a System project); saved, its top document made.' },
-      language: { type: 'string', enum: ['vhdl', 'verilog'], description: 'Its Preferred Language, as New Project\'s (default vhdl): the top document\'s HDL module\'s.' } }, required: ['name'], additionalProperties: false },
+      language: { type: 'string', enum: ['vhdl', 'verilog'], description: 'Its Preferred Language, as New Project\'s (default vhdl): the top document\'s HDL module\'s.' },
+      runtime: { type: 'string', enum: ['micropython', 'circuitpython'], description: 'A Pico\'s Python.' } }, required: ['name'], additionalProperties: false },
     annotations: { readOnlyHint: false, destructiveHint: false },
-    async run({ name, board, variant, mode, profile: given0, top_source_type: type, language }) {
+    async run({ name, board, variant, mode, profile: given0, top_source_type: type, language, runtime }) {
+      // (a processor board, #5756: a Board project of it alone, core/processor-board.js)
+      if (isProcessorBoard(board) && (mode === undefined || mode === 'board')) return newProcessorProject(name, board, { runtime, variant, type, language, profile: given0 });
+      if (runtime !== undefined) throw toolError('runtime: a Raspberry Pi Pico\'s Python firmware: give a processor board (board pico or pico-w)');
       // (its mode, #5754: its profile, or the finer one given if it is of the mode, core/project-mode.js)
       let profile = given0;
       if (mode !== undefined) { const r = newProjectProfile(mode, profile); if (r.error) throw toolError(r.error); profile = r.profile; }

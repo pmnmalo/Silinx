@@ -17,6 +17,7 @@ import { relInNode } from './system-layout.js';
 import { resolveBoard } from './devices.js';
 import { VIEW_RE } from './view-hdl.js';
 import { SYSTEMS_OFF } from './build-channel.js';
+import { mcuBoard, writeSystem as systemText } from './system-doc.js';
 
 const RANK = Object.fromEntries(MODES.map((m, i) => [m.id, i]));
 /** Whether going from the mode `from` to `to` goes down (a warning: something is lost). */
@@ -90,7 +91,7 @@ function fromSystem(pj, files, texts, keep) {
   const kept = keep ? nodes.find(n => n.id === keep) : nodes.find(n => n.kind === 'fpga') ?? nodes.find(n => n.kind === 'design');
   if (keep && !kept) return { error: `the System has no node '${keep}' (its nodes: ${nodes.map(n => n.id).join(', ') || 'none'})` };
   if (!kept) return { error: `the System of '${pj.name}' has no FPGA nor design node to keep: its nodes are ${nodes.map(n => `${n.id} (${n.kind})`).join(', ') || 'none'}` };
-  if (kept.kind !== 'fpga' && kept.kind !== 'design') return { error: `${kept.id} is a ${kept.kind} node: only an FPGA or a design node can be kept` };
+  if (!['fpga', 'design', 'mcu'].includes(kept.kind)) return { error: `${kept.id} is a ${kept.kind} node: only an FPGA, a design or a microcontroller node can be kept` };
   const others = nodes.filter(n => n !== kept);
   const theirs = p => others.some(n => relInNode(p, n.id) != null);
   const out = { ...structuredClone(pj), files: (pj.files || []).filter(f => !theirs(f.path)), top: kept.module || '', topSourceType: 'hdl' };
@@ -102,6 +103,12 @@ function fromSystem(pj, files, texts, keep) {
     `its System document ${r.system} (it stays in the folder, out of the flow)`,
     ...(dropped.length ? [`the sources of the other nodes leave the project's list: ${dropped.join(', ')}`] : []),
   ];
+  // (a microcontroller kept: a processor board's project, #5756: its System that one node, rewritten; its board named)
+  if (kept.kind === 'mcu') {
+    const one = { ...r.model, nodes: [{ ...kept, x: 0, y: 0, interfaces: kept.interfaces }], links: [] };
+    return { project: { ...out, board: kept.board, top: '', topSourceType: 'system' }, kept: kept.id, write: { path: r.system, text: systemText(one) },
+      lost: lost.map(l => l.replace(/^its System document (\S+) \(it stays in the folder, out of the flow\)$/, 'its System document $1 rewritten with the node alone')) };
+  }
   if (kept.kind === 'design') return { project: { ...asDesignProject(withProfile(out, 'logic')), top: kept.module || '' }, kept: kept.id, lost };
   const b = kept.board ? resolveBoard(kept.board, { variant: kept.variant }) : null;
   const project = { ...withProfile(out, 'fpga'), board: kept.board ?? null, device: b?.device ?? pj.device, constraints: kept.constraints ?? null };
@@ -137,6 +144,12 @@ export function modeChange(pj, to, { files = [], texts = {}, generated = [], boa
   if (keep && from !== 'system') return { error: 'keep: the node a System keeps going down; this project has no System' };
   if ((board || device) && !(from === 'circuit' && to === 'board')) return { error: 'a board or a device is given going from Circuit to Board only' };
   const base = { moves: [], write: null, relink: false, down: goesDown(from, to), lost: [], done: [], kept: null };
+  // (a processor board's project, #5756: a System of its one node already; up, its board's name dropped; down to Circuit,
+  // refused: a firmware is no drawing; Circuit to a processor board refused: its drawings are an FPGA's)
+  const proc = from === 'board' && mcuBoard(pj.board) ? pj.board : null;
+  if (proc && to === 'system') return { ...base, project: { ...pj, board: null }, done: [`its board the System's first node, ${processorNode(pj, files, texts) ?? 'its node'} (${proc}), its files in its folder already`] };
+  if (proc && to === 'circuit') return { error: `the project '${pj.name}' is a processor board's (${mcuBoard(proc).name}): its firmware is no drawing, so it cannot be a Circuit project` };
+  if (mcuBoard(board)) return { error: `${board} is a processor board: a Circuit project's drawings go to an FPGA board (a processor board's project: New Project ▸ Board)` };
   if (to === 'system') {
     // (Circuit: its drawings the design node; Board: its board the FPGA node)
     const r = toSystem(pj, files);
@@ -145,6 +158,8 @@ export function modeChange(pj, to, { files = [], texts = {}, generated = [], boa
   if (from === 'system') {
     const r = fromSystem(pj, files, texts, keep);
     if (r.error) return r;
+    if (r.write && to === 'circuit') return { error: `the node ${r.kept} is a microcontroller: its firmware is no drawing, so it cannot be a Circuit project's` };
+    if (r.write) return { ...base, project: r.project, kept: r.kept, write: r.write, lost: r.lost, done: [`the node ${r.kept} the project's (${r.project.board})`] };
     if (to === 'board' && modeOf(r.project) === 'circuit') return { error: `the node ${r.kept} is a design node: going down to Circuit keeps it (a Board needs an FPGA node)` };
     if (to === 'circuit' && modeOf(r.project) === 'board') {
       const c = toCircuit(r.project, generated);
@@ -159,6 +174,9 @@ export function modeChange(pj, to, { files = [], texts = {}, generated = [], boa
   const c = toCircuit(pj, generated);
   return { ...base, project: c.project, lost: c.lost };
 }
+
+// a processor board's project's node (its System's one node), or null
+const processorNode = (pj, files, texts) => projectSystem(pj, { files, texts }).model?.nodes?.[0]?.id ?? null;
 
 /** What a mode change does, said: its first line, then a WARNING line for each thing lost, a line for each done. */
 export function modeChangeText(name, to, plan) {

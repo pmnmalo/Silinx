@@ -49,9 +49,9 @@ export async function changeModeDialog() {
   const { constraintsExtOf } = await import('/packages/silinx-fpga/src/parts.js');
   const db = S.devices || (S.devices = await api.devices().catch(() => null));
   let to = from;
-  // (System down: the FPGA and design nodes, one kept)
+  // (System down: the FPGA, design and microcontroller nodes, one kept)
   const sys = Object.values(ctx.texts)[0];
-  const nodes = sys ? (readSystem(sys).system?.nodes ?? []).filter(n => n.kind === 'fpga' || n.kind === 'design') : [];
+  const nodes = sys ? (readSystem(sys).system?.nodes ?? []).filter(n => ['fpga', 'design', 'mcu'].includes(n.kind)) : [];   // (a microcontroller: a processor board's project, #5756)
   const boardSel = h('select', {}, ...(db ? boardOptions(db) : [['', 'None Specified']]).map(([v, l]) => h('option', { value: v }, l)));
   const keepSel = h('select', {}, ...nodes.map(n => h('option', { value: n.id }, `${n.id} (${n.kind}${n.board ? `, ${n.board}` : ''})`)));
   const boardRow = h('div', { class: 'form-grid mode-board' }, h('label', {}, 'Evaluation Development Board:'), boardSel);

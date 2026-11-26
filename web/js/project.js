@@ -19,6 +19,8 @@ import { gitAvailable } from './git.js';
 import { refreshSteps } from './menus.js';
 import { setKindFlag } from './project-kind-flag.js';
 import { isDesignOnly, isSystemProject } from '/core/project-kind.js';
+import { processorBoardOf } from '/core/processor-board.js';
+import { mcuBoard } from '/core/system-doc.js';
 import { reopenWaiting, forgetWaiting } from './storage-late.js';
 import { afterOpening } from './prefetch-schedule.js';
 import { resetSync } from './state-sync.js';
@@ -87,7 +89,9 @@ async function openProjectNow(name, { startup = false } = {}) {
   await reloadProject();
   await fixMissingTops();   // (a project saved with a top it no longer has, #253)
   // (a design project's: no device, #3891)
-  appLog(isDesignOnly(S.project) ? `Project "${name}" opened (a design and simulation project, no FPGA).` : `Project "${name}" opened (${S.project.device.part}${S.project.device.speed}-${S.project.device.package}).`, 'info');
+  // (a processor board's Board project, #5756: its board, not the internal device)
+  const proc = mcuBoard(processorBoardOf(S.project));
+  appLog(isDesignOnly(S.project) ? `Project "${name}" opened (a design and simulation project, no FPGA).` : proc ? `Project "${name}" opened (the ${proc.name} board).` : `Project "${name}" opened (${S.project.device.part}${S.project.device.speed}-${S.project.device.package}).`, 'info');
   // a project from outside (#2830): what waits for the user's trust, and the button that gives it
   if (!isTrusted(S.project)) appLog(untrustedNotice(name, S.project), 'info', { action: trustAction(name) });   // (shown under every filter and task, #4729)
   // (the browser edition: a project kept only in the browser's storage and not backed up for days, said once, #4971)
