@@ -235,3 +235,31 @@ test('a shared project: Undo / Redo revert the command\'s own changes only, the 
   assert.ok(h.canUndo() && !h.canRedo());
   assert.equal(h.undoLabel(), 'Rename');
 });
+
+// (#5760) a followed project: api's functions replaced by the room's backend (web/js/collab-follow.js Object.assign);
+// attach() records the commands through it and writes its Undo there, the steps of before forgotten; detach(), with
+// the page's own functions back (collab-leave.js), records through the page's backend again
+test('attach / detach: the commands recorded and undone through the backend api stands for now, then the one before again', async () => {
+  const { api, files, h } = setup();
+  const own = { ...api };   // (the page's own: history's recording functions)
+  await h.run('Rename…', async () => { await api.writeFile('P', 'src/a.vhd', 'A2'); });
+  assert.ok(h.canUndo());
+  // the room's backend, as followApi stands for it
+  const room = backend();
+  room.files.set('src/a.vhd', 'R');
+  Object.assign(api, { readFile: room.api.readFile, writeFile: room.api.writeFile, deleteFile: room.api.deleteFile, renameFile: room.api.renameFile, saveProject: room.api.saveProject, project: room.api.project });
+  const detach = h.attach();
+  assert.equal(h.canUndo(), false);   // (the page's own step: another backend's, forgotten)
+  await h.run('New Source…', async () => { await api.writeFile('P', 'src/new.vhd', 'N'); await api.writeFile('P', 'src/a.vhd', 'R2'); });
+  assert.deepEqual([room.files.get('src/new.vhd'), room.files.get('src/a.vhd'), files.has('src/new.vhd'), files.get('src/a.vhd')], ['N', 'R2', false, 'A2']);
+  assert.equal(h.undoLabel(), 'New Source');
+  await h.undo();
+  assert.deepEqual([room.files.has('src/new.vhd'), room.files.get('src/a.vhd'), files.get('src/a.vhd')], [false, 'R', 'A2']);
+  // following ended: the page's own functions back, its history through them again
+  Object.assign(api, own);
+  detach();
+  assert.equal(h.canUndo() || h.canRedo(), false);
+  await h.run('Rename…', async () => { await api.writeFile('P', 'src/a.vhd', 'A3'); });
+  await h.undo();
+  assert.deepEqual([files.get('src/a.vhd'), room.files.get('src/a.vhd')], ['A2', 'R']);
+});
