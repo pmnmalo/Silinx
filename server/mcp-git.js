@@ -9,8 +9,7 @@ import * as P from './projects.js';
 import * as backupStore from './backup-store.js';
 import { toolError, clip, readProject, STR, PROJECT, projectText } from './mcp-util.js';
 import { mcpRemotes } from './toolchain.js';
-import { drawingKind, diffDrawings } from '../core/drawing-merge.js';
-import { unifiedDiff } from '../core/text-diff.js';
+import { fileDiff } from './mcp-file-diff.js';
 import { checkChoices } from '../core/git-resolve.js';
 import { checksLines } from '../core/github-checks.js';
 import { IF_EXISTS, openedText, replacedText, keptBothText } from '../core/git-clone-exists.js';
@@ -183,19 +182,7 @@ export const GIT_TOOLS = [
       const b = to ? await run(() => at(to)) : await projectText(project, rel, `no file '${rel}' in the project '${project}'`).catch(() => null);
       const fromL = from ? short(from) : 'the last commit', toL = to ? short(to) : 'now';
       if (a === null && b === null) throw toolError(`no file '${rel}' in ${fromL} nor ${toL}`);
-      if (drawingKind(rel)) {
-        let A = null, Bm = null;
-        try { A = a === null ? {} : JSON.parse(a); Bm = b === null ? {} : JSON.parse(b); } catch { A = null; }
-        if (A) {
-          const d = diffDrawings(A, Bm);
-          const name = (coll, key) => { const o = [...(Bm[coll] || []), ...(A[coll] || [])].find(x => String(x?.id ?? x?.name) === key); return o?.name && o.name !== key ? ` (${o.name})` : ''; };
-          const lines = [...d.added.map(x => `added ${x.coll}/${x.key}${name(x.coll, x.key)}`), ...d.removed.map(x => `removed ${x.coll}/${x.key}${name(x.coll, x.key)}`),
-            ...d.moved.map(x => `moved ${x.coll}/${x.key}${name(x.coll, x.key)}`), ...d.changed.map(x => `changed ${x.coll}/${x.key}${name(x.coll, x.key)}${x.fields.length ? `: ${x.fields.join(', ')}` : ''}`), ...d.props.map(p => `changed ${p}`)];
-          return { text: [`${rel}, ${fromL} to ${toL}: ${lines.length ? `${lines.length} change(s)` : 'no change'}.`, ...lines.map(l => `  ${l}`)].join('\n'), data: { project, path: rel, from: from || null, to: to || null, diff: d }, untrusted: `the changes of ${rel}` };
-        }
-      }
-      const u = unifiedDiff(a ?? '', b ?? '', { from: `${rel} (${fromL})`, to: `${rel} (${toL})` });
-      return { text: u ? clip(u) : `${rel}, ${fromL} to ${toL}: no change.`, data: { project, path: rel, from: from || null, to: to || null, changed: !!u }, untrusted: u ? `the changes of ${rel}` : undefined };
+      return fileDiff(rel, a, b, { fromL, toL, data: { project, path: rel, from: from || null, to: to || null } });
     },
   },
   {

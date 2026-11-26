@@ -89,3 +89,63 @@ uiTest('#5740 Save Version…, Versions…, Restore Project; a version before Re
   await page.eval(async () => (await import('/js/i18n.js')).setLanguage('en'));
   assert.deepEqual(await warnings(page), []);
 });
+
+// (#5741) the version selected: its files that differ from now, each opened as it was (read only), compared with now,
+// restored alone
+const fileRows = (page) => page.waitFor(() => { const r = [...document.querySelectorAll('.dlg-overlay .version-file-list li')]; return r.length ? r.map((l) => l.textContent.replace(/\s+/g, ' ').trim()) : null; }, [], { what: 'the version\'s files' });
+// (its link clicked once the version's files are shown: they are read after the dialog opens)
+const fileLink = (page, path, cls) => page.waitFor((p, c) => { const a = [...document.querySelectorAll('.dlg-overlay .version-file-list li')].find((l) => l.dataset.path === p)?.querySelector(`a.${c}`); if (!a) return false; a.click(); return true; }, [path, cls], { what: `${path}'s ${cls}` });
+const pickVersion = (page, id) => page.eval((v) => document.querySelector(`.dlg-overlay tr[data-version="${v}"]`).click(), id);
+async function versionsOf(page, name, id) {
+  await page.menu('Project', 'Versions…');
+  await page.waitDialog(`Versions of ${name}`);
+  await pickVersion(page, id);
+}
+
+uiTest('#5741 Versions…: a version\'s files against now; Open (read only), Compare, Restore one file; Portuguese', E, async (page) => {
+  const name = 'History';
+  await makeProject(env, { name, top: 'a', files: { 'src/a.vhd': A, 'src/b.vhd': B } });
+  await page.openProject(name);
+  await page.menu('Project', 'Save Version…');
+  await page.waitDialog('Save Version');
+  await page.dialogButton('OK');
+  await page.waitConsole(/^Version 1 of History saved\.$/m);
+  // a.vhd changed, a new file: version 1 against now
+  await page.eval(async () => { const { api } = await import('/js/api.js'); await api.writeFile('History', 'src/a.vhd', '-- changed\n'); await api.writeFile('History', 'src/c.vhd', '-- new\n'); });
+  await versionsOf(page, name, '1');
+  assert.deepEqual(await fileRows(page), ['src/a.vhd (changed since) Open Compare Restore', 'src/c.vhd (added since) Compare Restore', 'silinx.json (changed since)']);
+  // Compare: version 1's text and now's, side by side
+  await fileLink(page, 'src/a.vhd', 'version-compare');
+  await page.waitNoDialog();
+  await page.waitFor(() => window.Silinx.active?.title === 'a.vhd (compare)' || document.querySelector('#tabs .tab.active')?.textContent.includes('a.vhd (compare)'), [], { what: 'the compare document' });
+  // Open: as version 1 had it, read only, its notice at the right of its toolbar
+  await versionsOf(page, name, '1');
+  await fileLink(page, 'src/a.vhd', 'version-open');
+  await page.waitNoDialog();
+  await page.waitFor((t) => window.Silinx.active?.editor?.getValue() === t, [A], { what: 'a.vhd as version 1 had it' });
+  assert.equal(await page.eval(() => window.Silinx.active.editor.readOnly()), true);
+  assert.equal(await page.eval(() => window.Silinx.active.el.querySelector('.gen-banner.read-only').textContent), 'Read-only, as it was in version 1');
+  // Restore one file: a.vhd as it was, c.vhd left as it is
+  await versionsOf(page, name, '1');
+  await fileLink(page, 'src/a.vhd', 'version-restore');
+  await page.waitConsole(/^Restored src\/a\.vhd as version 1 had it: 1 file\(s\) written, 0 removed; the project before it kept as version 2 \(restore it to undo\)\.$/m);
+  assert.equal(await readWs(env, name, 'src/a.vhd'), A);
+  assert.equal(await readWs(env, name, 'src/c.vhd'), '-- new\n');
+  // the file added since, restored alone: removed
+  await versionsOf(page, name, '1');
+  assert.deepEqual(await fileRows(page), ['src/c.vhd (added since) Compare Restore', 'silinx.json (changed since)']);
+  await fileLink(page, 'src/c.vhd', 'version-restore');
+  await page.waitConsole(/^Restored src\/c\.vhd as version 1 had it: 0 file\(s\) written, 1 removed; the project before it kept as version \d+ \(restore it to undo\)\.$/m);
+  // the project as version 1 has it now; in Portuguese
+  await page.eval(async () => (await import('/js/i18n.js')).setLanguage('pt'));
+  await page.menu('Projeto', 'Versões…');
+  await page.waitDialog('Versões de History');
+  await pickVersion(page, '1');
+  await page.waitFor(() => document.querySelector('.dlg-overlay .version-files p')?.textContent === 'O projeto está como a versão 1 o tem.', [], { what: 'the project as version 1' });
+  await pickVersion(page, '2');
+  assert.deepEqual(await fileRows(page), ['src/a.vhd (alterado desde então) Abrir Comparar Restaurar', 'src/c.vhd (removido desde então) Abrir Comparar Restaurar', 'silinx.json (alterado desde então)']);
+  assert.equal(await page.eval(() => document.querySelector('.dlg-overlay .version-files p').textContent), 'A versão 2 comparada com agora:');
+  await page.dialogButton('Fechar');
+  await page.eval(async () => (await import('/js/i18n.js')).setLanguage('en'));
+  assert.deepEqual(await warnings(page), []);
+});

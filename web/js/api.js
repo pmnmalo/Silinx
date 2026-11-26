@@ -239,6 +239,7 @@ export const api = {
   listVersions: name => req('GET', `/api/projects/${enc(name)}/versions`),
   saveVersion: (name, opts = {}) => req('POST', `/api/projects/${enc(name)}/versions`, opts),
   readVersion: (name, id) => req('GET', `/api/projects/${enc(name)}/versions/${enc(id)}`),
+  versionDiff: (name, id) => req('GET', `/api/projects/${enc(name)}/versions/${enc(id)}/diff`),   // (#5741)
   restoreVersion: (name, id, opts = {}) => req('POST', `/api/projects/${enc(name)}/versions/${enc(id)}/restore`, opts),
   // what another process changes in the project (#2843): onEvent({ project, changes: [{ path, kind }] }) for each,
   // until the stream ends or `signal` aborts (server-sent events read through fetch: the token in a header, not in the URL)

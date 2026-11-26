@@ -77,6 +77,7 @@ reload (#4754).
 | GET | /projects/:p/versions | `{ versions }`: the project's versions, newest first (#5740) |
 | POST | /projects/:p/versions | `{ label?, author?, reason? }` -> `{ version, saved }`: Save Version… (`reason`: `manual`, or `before-…` before one of the page's risky commands) |
 | GET | /projects/:p/versions/:id | `{ version, json, files }`: a version's project |
+| GET | /projects/:p/versions/:id/diff | `{ version, files: [{ path, state }], json }`: what differs between a version and the project now (#5741) |
 | POST | /projects/:p/versions/:id/restore | `{ path?, author? }` -> `{ written, removed, json, version, before }`: the whole project or one file restored, the project before it kept as a version |
 | POST | /jtag/scan | `{ tool?, cable? }` -> `{ job }` |
 | GET | /jobs/:id?since=N | `{ id, kind, status:'running'|'ok'|'error', lines:[...since N], next, result }` |

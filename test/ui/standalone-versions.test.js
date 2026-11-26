@@ -1,7 +1,7 @@
 // UI: a project's versions in the browser edition (#5740: kept in the browser's IndexedDB, web/js/versions-local.js),
 // the site over HTTP: Save Version… keeps one; a file changed and saved; Versions… lists it; Restore Project puts it
-// back (the open editor reads it again), the project before it kept as a version; the page loaded again, the versions
-// are still there. The exact console lines; no warnings, no error of the page's scripts. (The interface:
+// back (the open editor reads it again), the project before it kept as a version, the version's file that differs from
+// now listed first (#5741); the page loaded again, the versions are still there. The exact console lines; no warnings, no error of the page's scripts. (The interface:
 // SILINX_UI_INTERFACE.)
 import { before, after } from 'node:test';
 import assert from 'node:assert/strict';
@@ -49,17 +49,11 @@ uiTest('#5740 browser edition: Save Version…, a change, Versions… and Restor
   await page.eval(() => window.SilinxApp.saveAll());
   await page.menu('Project', 'Versions…');
   await page.waitDialog('Versions of Kept');
-  const n = (await rows(page)).length;
   assert.equal((await rows(page)).at(-1).replace(/\| \+\d+$/, '| +N'), '1 | saved by hand | as made | +N');
+  // version 1 selected (a newer one, the page's own save, may be first): its file that differs from now (#5741)
+  await page.eval(() => document.querySelector('.dlg-overlay tr[data-version="1"]').click());
+  await page.waitFor((f) => [...document.querySelectorAll('.dlg-overlay .version-file-list li')].some((l) => l.dataset.path === f && l.textContent.includes('(changed since)')), [file], { what: 'the file changed since version 1' });
   await page.dialogButton('Restore Project');
-  await page.waitConsole(/^Restored Kept as version \d+ had it|^Kept is as version \d+ has it already/m);
-  // (the newest version selected: the save's own, if the page kept one since; restored from version 1 then)
-  if (n > 1) {
-    await page.menu('Project', 'Versions…');
-    await page.waitDialog('Versions of Kept');
-    await page.click('.dlg-overlay table.versions tbody tr', { index: (await rows(page)).length - 1 });
-    await page.dialogButton('Restore Project');
-  }
   await page.waitConsole(/^Restored Kept as version 1 had it: 1 file\(s\) written, 0 removed; the project before it kept as version \d+ \(restore it to undo\)\.$/m);
   await page.waitFor((t) => window.Silinx.active?.editor.getValue() === t, [orig], { what: 'the editor read again' });
   // the page loaded again: the versions still there

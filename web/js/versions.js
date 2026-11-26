@@ -1,9 +1,10 @@
 // A project's versions in the interface (#5740, phase 2 of #5743; core/versions.js, kept by the server or the browser:
 // api.listVersions…): Project ▸ Save Version… (one kept by hand, with a name), Project ▸ Versions… (the versions kept,
-// newest first: what made each, its author, what it changed; Restore Project puts the one selected back, the project as
+// newest first: what made each, its author, what it changed; the one selected's files that differ from now, each opened
+// as it was, compared with now or restored alone, #5741; Restore Project puts the one selected back, the project as
 // it was kept first as a version, so that a restore can be undone), and the version kept before each of the page's
 // risky commands (versionBefore: Remove from Project, Delete, a conversion, an import, a merge, a git pull or merge).
-// What they do is said in the console; the MCP's save_version, list_versions and restore_version do the same.
+// What they do is said in the console; the MCP's save_version, list_versions, version_diff and restore_version do the same.
 import { api } from './api.js';
 import { h, dialog, promptDlg } from './ui.js';
 import { appLog, logError, logWarning } from './console.js';
@@ -59,21 +60,58 @@ async function restore(id, { path = null } = {}) {
   return r;
 }
 
-/** Project ▸ Versions…: the versions kept, newest first; Restore Project puts the one selected back. */
+// what a file of a version is now (core/versions.js versionChanges), as the dialog says it
+const STATE = { changed: 'changed since', added: 'added since', removed: 'removed since' };
+
+/** Project ▸ Versions…: the versions kept, newest first; the one selected (the newest at first) with the files that
+ *  differ from now (#5741): each one opened as the version had it (read only), compared with now, or restored alone;
+ *  Restore Project puts the whole version back. */
 export async function versionsDialog() {
   if (!S.project) return null;
   const name = S.project.name;
   let list;
   try { list = (await api.listVersions(name)).versions; } catch (e) { logError(`Versions: ${e.message}`); return null; }
-  let sel = list[0]?.id ?? null;
+  let sel = list[0]?.id ?? null, act = null, close = null, asked = 0;
   const rows = list.map(v => h('tr', { 'data-version': v.id, tabindex: '0', 'aria-selected': String(v.id === sel), class: v.id === sel ? 'sel' : '' },
     h('td', {}, v.id), h('td', {}, when(v)), h('td', {}, v.author), h('td', {}, what(v)), h('td', { 'data-no-i18n': '' }, v.label), h('td', {}, counts(v))));
-  const pick = id => { sel = id; for (const r of rows) { const on = r.dataset.version === id; r.classList.toggle('sel', on); r.setAttribute('aria-selected', String(on)); } };
+  const files = h('div', { class: 'version-files', 'aria-live': 'polite' });
+  const link = (label, cls, fn) => h('a', { href: '#', class: cls, onclick: e => { e.preventDefault(); act = fn; close?.(); } }, label);
+  // the selected version's files that differ from now, read again at each selection (the last one asked shown)
+  const showFiles = async id => {
+    const n = ++asked;
+    files.replaceChildren(h('p', {}, '…'));
+    let d;
+    try { d = await api.versionDiff(name, id); } catch (e) { if (n === asked) files.replaceChildren(); logError(`Versions: ${e.message}`); return; }
+    if (n !== asked) return;
+    const item = f => h('li', { 'data-path': f.path },
+      h('span', { 'data-no-i18n': '' }, f.path), ' (', h('span', { class: 'version-state' }, STATE[f.state]), ') ',   // (its word translated alone)
+      f.state !== 'added' ? link('Open', 'version-open', () => openVersion(id, f.path)) : null, ' ',
+      link('Compare', 'version-compare', () => compareVersion(id, f.path)), ' ',
+      link('Restore', 'version-restore', () => restore(id, { path: f.path })));
+    files.replaceChildren(
+      h('p', {}, d.files.length || d.json ? `Version ${id} against now:` : `The project is as version ${id} has it.`),
+      h('ul', { class: 'version-file-list' }, ...d.files.map(item), ...(d.json ? [h('li', {}, h('span', { 'data-no-i18n': '' }, 'silinx.json'), ' (', h('span', { class: 'version-state' }, STATE.changed), ')')] : [])));
+  };
+  const pick = id => {
+    sel = id;
+    for (const r of rows) { const on = r.dataset.version === id; r.classList.toggle('sel', on); r.setAttribute('aria-selected', String(on)); }
+    showFiles(id);
+  };
   for (const r of rows) { r.onclick = () => pick(r.dataset.version); r.onkeydown = e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); pick(r.dataset.version); } }; }
   const body = list.length
-    ? h('div', { style: { maxHeight: '50vh', overflow: 'auto' } }, h('table', { class: 'grid versions', role: 'grid', style: { width: '100%' } },
-      h('thead', {}, h('tr', {}, ...['Version', 'Time', 'Author', 'Made', 'Name', 'Files'].map(t => h('th', {}, t)))), h('tbody', {}, ...rows)))
+    ? h('div', {}, h('div', { style: { maxHeight: '40vh', overflow: 'auto' } }, h('table', { class: 'grid versions', role: 'grid', style: { width: '100%' } },
+      h('thead', {}, h('tr', {}, ...['Version', 'Time', 'Author', 'Made', 'Name', 'Files'].map(t => h('th', {}, t)))), h('tbody', {}, ...rows))),
+    h('div', { style: { maxHeight: '25vh', overflow: 'auto', marginTop: '8px' } }, files))
     : h('p', {}, 'No versions of this project yet: Save Version… keeps one, and one is kept as you work.');
-  const r = await dialog({ title: `Versions of ${name}`, width: 680, body, buttons: [{ label: 'Restore Project', primary: true, value: () => sel, disabled: !list.length }, { label: 'Close', value: null }] });
+  if (sel) showFiles(sel);
+  const r = await dialog({
+    title: `Versions of ${name}`, width: 680, body,
+    buttons: [{ label: 'Restore Project', primary: true, value: () => sel, disabled: !list.length }, { label: 'Close', value: null }],
+    onOpen: ({ close: c }) => { close = () => c(null); },
+  });
+  if (act) return act();
   return r === null ? null : restore(r);
 }
+
+const openVersion = (id, path) => import('./versions-files.js').then(m => m.openVersionFile(id, path));
+const compareVersion = (id, path) => import('./versions-files.js').then(m => m.compareVersionFile(id, path));

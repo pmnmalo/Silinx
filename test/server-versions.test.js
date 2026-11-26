@@ -100,6 +100,9 @@ test('the routes: listed, one by hand (the page\'s reasons only), read, restored
     const r1 = await app.call('GET', '/projects/rt/versions/1');
     assert.equal(r1.body.files[T], fs.readFileSync(path.join(import.meta.dirname, '..', 'examples', 'traffic', T), 'utf8'));
     assert.equal((await app.call('GET', '/projects/rt/versions/7')).status, 404);
+    // (#5741) what differs from now
+    assert.deepEqual((await app.call('GET', '/projects/rt/versions/1/diff')).body.files, [{ path: T, state: 'changed' }]);
+    assert.equal((await app.call('GET', '/projects/rt/versions/7/diff')).status, 404);
     // (path null: the whole project, as the page sends it)
     const r = await app.call('POST', '/projects/rt/versions/1/restore', { path: null, author: 'Ana' });
     assert.deepEqual([r.status, r.body.written, r.body.removed, r.body.before.id, r.body.version.of], [200, [T], [], '2', '1']);
@@ -137,4 +140,34 @@ test('the folder\'s texts by their hash only: a name that is no hash refused', a
   await assert.rejects(b.putText('fb', '../../x', 't'), /not a text's hash/);
   assert.equal(await b.getText('fb', 'a'.repeat(64)), null);
   assert.equal(await b.readIndex('fb'), null);
+});
+
+test('#5741 version_diff: the files that differ from now; one file\'s change, a text file\'s lines, a drawing\'s objects', async () => {
+  await P.createProject({ name: 'vd', template: 'traffic' });
+  const F = 'src/traffic.fsm.json';
+  await call('save_version', { project: 'vd', name: 'v1' });
+  assert.equal(plain((await call('version_diff', { project: 'vd', version: '1' })).text), "'vd' is as version 1 has it.");
+  await P.writeFile('vd', T, file('vd', T).replace(/^/, '-- a line\n'));
+  const m = JSON.parse(file('vd', F));
+  m.states[0].x += 40;
+  await P.writeFile('vd', F, `${JSON.stringify(m, null, 2)}\n`);
+  await P.writeFile('vd', 'src/extra.vhd', '-- extra\n');
+  const all = await call('version_diff', { project: 'vd', version: '1' });
+  assert.equal(plain(all.text), [
+    "'vd' against version 1: 4 file(s) differ.",
+    '  src/extra.vhd: added since',
+    `  ${T}: changed since`,
+    `  ${F}: changed since`,
+    '  silinx.json: changed since',
+  ].join('\n'));
+  assert.deepEqual(all.data.files.map(f => f.state), ['added', 'changed', 'changed']);
+  const text = await call('version_diff', { project: 'vd', version: '1', path: T });
+  assert.match(plain(text.text), /^--- src\/timer\.vhd \(version 1\)\n\+\+\+ src\/timer\.vhd \(now\)\n@@ [^\n]+\n\+-- a line\n/);
+  const id = JSON.parse(file('vd', F)).states[0].id;
+  assert.equal(plain((await call('version_diff', { project: 'vd', version: '1', path: F })).text), `${F}, version 1 to now: 1 change(s).\n  moved states/${id} (${m.states[0].name})`);
+  assert.equal(plain((await call('version_diff', { project: 'vd', version: '1', path: 'src/sevenseg.v' })).text), 'src/sevenseg.v, version 1 to now: no change.');
+  const no = await call('version_diff', { project: 'vd', version: '1', path: 'src/none.vhd' });
+  assert.deepEqual([no.isError, no.text], [true, "version_diff: 'src/none.vhd' is in neither version 1 nor the project"]);
+  const bad = await call('version_diff', { project: 'vd', version: '9' });
+  assert.deepEqual([bad.isError, bad.text], [true, "version_diff: no version 9 of 'vd' (list_versions: the versions kept)"]);
 });

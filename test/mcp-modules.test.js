@@ -82,7 +82,7 @@ test('the tools: those of the areas, the ones of before the split in their order
   assert.deepEqual(names(EDITOR_TOOLS), ['open_in_editor']);   // (Open in VS Code, #4017)
   assert.deepEqual(names(TRANSFER_TOOLS), ['export_project', 'import_project', 'import_source']);
   assert.deepEqual(names(MERGE_TOOLS), ['merge_preview', 'merge_contribution', 'undo_merge']);   // (Merge Contribution…, #4206)
-  assert.deepEqual(names(VERSION_TOOLS), ['save_version', 'list_versions', 'restore_version']);   // (the project's versions, #5740)
+  assert.deepEqual(names(VERSION_TOOLS), ['save_version', 'list_versions', 'version_diff', 'restore_version']);   // (the project's versions, #5740)
   assert.deepEqual(names(LINK_TOOLS), ['project_link', 'open_link', 'short_links', 'delete_short_link']);
   assert.deepEqual(names(COLLAB_TOOLS), ['share_project', 'follow_project']);
   assert.deepEqual(names(RELAY_TOOLS), ['live_relay']);   // (the Cloudflare relay of one's own, #4574)

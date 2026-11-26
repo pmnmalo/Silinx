@@ -610,6 +610,7 @@ export const api = {
   listVersions: async name => { await ops.project(name); return { versions: await (await versionsOf()).list(name) }; },
   saveVersion: async (name, { label = '', author = '', reason = 'manual' } = {}) => { await ops.project(name); return (await versionsOf()).save(name, { label, author, reason }); },
   readVersion: async (name, id) => (await versionsOf()).read(name, id),
+  versionDiff: async (name, id) => (await versionsOf()).diff(name, id),   // (#5741)
   restoreVersion: async (name, id, { path = null, author = '' } = {}) => { await ops.project(name); return (await versionsOf()).restore(name, id, { path, author }); },
   importZip: async (name, file) => {
     if (file.size > GATE_LIMITS.maxArchive) fail(`the zip is larger than ${GATE_LIMITS.maxArchive >> 20} MB, the most an import takes`);
