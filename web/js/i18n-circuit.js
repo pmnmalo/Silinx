@@ -314,7 +314,7 @@ const BY = { symbol: 'pelo seu símbolo', 'Silinx.Model': 'pelo seu Silinx.Model
 export const CIRCUIT_PT_PATTERNS = [
   // (ngspice, #5386: Try it's console lines, core/circuit-spice.js)
   [/^ngspice: one way — the digital outputs, as Silinx simulated them, drive ngspice's analog circuit; ngspice's waveforms change nothing of the digital side$/, 'ngspice: num só sentido — as saídas digitais, como o Silinx as simulou, comandam o circuito analógico do ngspice; as formas de onda do ngspice não mudam nada do lado digital'],
-  [/^ngspice: running (.+)'s ([\d.]+) ms…$/, 'ngspice: a simular $2 ms de $1…'],
+  [/^ngspice: running (.+)'s ([\d.]+ m?s)…$/, 'ngspice: a simular $2 de $1…'],
   [/^ngspice: (\S+) (-?[\d.]+) V \(Silinx: (-?[\d.]+ V|—)\)$/, 'ngspice: $1 $2 V (Silinx: $3)'],
   [/^ngspice: (\S+) (CH[12]) from (-?[\d.]+) V to (-?[\d.]+) V, (-?[\d.]+) V at the end$/, 'ngspice: $1 $2 de $3 V a $4 V, $5 V no fim'],
   [/^ngspice: (\S+)((?: CH[12])?) not on an analog net$/, 'ngspice: $1$2 não está numa rede analógica'],

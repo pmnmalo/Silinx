@@ -17,6 +17,8 @@ export const SPICE_MAX_POINTS = 200000;
 const SINE_POINTS = 64;   // (points a period of a sine)
 
 const num = (v) => (v === 0 ? '0' : Number(v).toPrecision(9).replace(/\.?0+(e|$)/, '$1'));
+// (a time: to the picosecond, whatever the run's length; a PWL's points are a tenth of an edge apart at least, #5386)
+const sec = (t) => (t === 0 ? '0' : t.toFixed(12).replace(/\.?0+$/, ''));
 const conductance = (ohms) => (Number.isFinite(ohms) ? 1 / Math.max(ohms, 1e-9) : 0);
 
 /** A list of values as they changed, [{ t, v }] (t: s from the run's start), as a PWL's points: each change a step of
@@ -64,7 +66,7 @@ export function generatorPoints(series, t0, t1) {
   return increasing(pts);
 }
 
-const pwl = (pts) => `PWL(${pts.map(([t, v]) => `${num(t)} ${num(v)}`).join(' ')})`;
+const pwl = (pts) => `PWL(${pts.map(([t, v]) => `${sec(t)} ${num(v)}`).join(' ')})`;
 
 /**
  * The netlist of a recorded run (core/circuit-analog.js's recorded()): { text, nodes ([{ name, nets }], a node's SPICE
