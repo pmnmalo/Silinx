@@ -86,7 +86,8 @@ export async function openSummary({ background = false, wanted } = {}) {
   if (wanted && !wanted()) return;
   // another document brought to the front meanwhile (by the user, or the project's opened with it): it stays in front,
   // the summary opened behind it, not over it (#4021: over the UCF just opened, a simulation just started)
-  const keep = docsState.active && docsState.active !== was && docsState.active.id !== 'summary' ? docsState.active : null;
+  // (background, the project's own opening: the document already in front stays there too, #5627)
+  const keep = docsState.active && (docsState.active !== was || background) && docsState.active.id !== 'summary' && docsState.docs.includes(docsState.active) ? docsState.active : null;
   const old = findDoc('summary');
   if (keep && old) { await old.refresh?.(); return; }
   const d = openDoc({ id: 'summary', title: 'Design Summary', icon: 'summary', background: background || !!keep, create: el => mountSummary(el) });
