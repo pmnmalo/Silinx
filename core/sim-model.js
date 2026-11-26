@@ -202,10 +202,18 @@ class Structure {
     return o;
   }
   xor(a, b, base, d = {}) {
-    if (a.c === 0) return b;
-    if (b.c === 0) return a;
+    // (an input the constant 0: the other one passes, its delay through the gate kept on a buffer, the slice's XOR still on
+    // the path: the carry chain's first XORF, its CIN the constant CYINIT, Topx from the LUT's pin to X, #5702)
+    if (a.c === 0) return this.delayed(b, base, d.I1);
+    if (b.c === 0) return this.delayed(a, base, d.I0);
     const o = this.signal(base);
     this.inst('X_XOR2', base, [], [['I0', a], ['I1', b], ['O', o]], arcsOf(d));
+    return o;
+  }
+  delayed(r, base, ns) {
+    if (!ns || r.c !== undefined) return r;
+    const o = this.signal(base);
+    this.inst('X_BUF', base, [], [['I', r], ['O', o]], { iopath: [['I', 'O', ns]] });
     return o;
   }
   and(a, b, base) {

@@ -6,7 +6,7 @@
 // test/vivado/examples.test.js), its two timing warnings expected (#4877, test/zynq-examples-lib.mjs). (The Z7-20's stopwatch had a hold
 // violation, the model's: its clock's tree balanced since nextpnr-himbaechel-xc7 0.5.0, #4878.) The Arty Z7's: test/open-flow-arty-z7-server.test.js (#4682).
 import { xc7ExampleTests } from './xc7-examples-lib.mjs';
-import { zynqTargets, zynqParts, SLOW_ONES } from './zynq-examples-lib.mjs';
+import { zynqTargets, zynqParts, SLOW_ONES, FMAX, SLOW } from './zynq-examples-lib.mjs';
 
 // each example's LUTs, registers and frequency (MHz, nextpnr's estimate, router2, seed 1) on each board, measured with
 // @silinx/nextpnr-himbaechel-xc7 0.5.0 (#4681, #4878), held as the Artix-7's are (#3147: 15 % more LUTs, the registers 10 % apart,
@@ -20,7 +20,9 @@ const QUALITY = {
     isqrt: [68, 87, 186.88], uart: [104, 143, 175.01], micro80: [151, 187, 106.04], lock: [110, 181, 145.62] },
 };
 // the warnings of the examples below the 125 MHz clock (#4877); no hold violation (the Z7-20's stopwatch's, its clock's tree
-// balanced in nextpnr-himbaechel-xc7 0.5.0, #4878)
-const EXPECTED = { 'zybo-z7-20': SLOW_ONES, 'zybo-z7-10': SLOW_ONES };
+// balanced in nextpnr-himbaechel-xc7 0.5.0, #4878). Since Yosys 0.71 (#5634) pong too (119-124 MHz), and traffic on the Z7-20
+// (124.7 MHz): its netlists' cells in another order, which moves the examples' placement by as much (#5634's comparison)
+const SLOW_Z7 = { traffic: [FMAX, SLOW], pong: [FMAX, SLOW], ...SLOW_ONES };
+const EXPECTED = { 'zybo-z7-20': SLOW_Z7, 'zybo-z7-10': { pong: [FMAX, SLOW], ...SLOW_ONES } };
 
 xc7ExampleTests(zynqTargets('zybo-z7'), { parts: zynqParts('zybo-z7'), quality: QUALITY, expected: EXPECTED });

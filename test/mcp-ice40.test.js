@@ -75,7 +75,7 @@ test('run_process post_synthesis_model and post_par_model on the icebreaker: the
     "WARNING:Place - IO 'led[7]' is unconstrained in PCF and will be automatically placed", "WARNING:Place - IO 'led[6]' is unconstrained in PCF and will be automatically placed",
     "WARNING:Place - IO 'led[5]' is unconstrained in PCF and will be automatically placed"], []]);
   assert.match(par.text, /^Placing and routing the design synthesized with the test bench's generics \(nextpnr\), for its model\.$/m);
-  assert.match(par.text, /^Post-Place & Route Simulation Model: build\/netgen\/par\/top_timesim\.v \(Verilog, the iCE40 cells\), 170 cells$/m);
+  assert.match(par.text, /^Post-Place & Route Simulation Model: build\/netgen\/par\/top_timesim\.v \(Verilog, the iCE40 cells\), 169 cells$/m);
   for (const model of ['postsynth', 'postpar']) {
     const s = await ok('simulate', { project: 'models', model, time_ns: 2000000, signals: [] });
     assert.deepEqual([s.data.log.map(l => l.text).slice(-1), s.data.warnings, s.data.failed, s.data.notes], [['Simulation finished OK'], [], false, []], model);

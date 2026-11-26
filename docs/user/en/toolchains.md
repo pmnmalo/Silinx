@@ -50,7 +50,7 @@ checks reported as timing violations); *Generate Text Power Report* writes an es
 (`build/<top>.pwr`, laid out as XPower's report and said to be an estimate): the device's static
 power and the dynamic power of the routed design's clocks, logic, signals and I/Os at the switching
 rates of XPower's vectorless estimate, with coefficients fitted to XPower 14.7 on the examples
-(there its total is within 10 % of XPower's, its dynamic power alone within 0.35 to 2.2 times;
+(there its total is within 10 % of XPower's, its dynamic power alone within 0.3 to 2.2 times;
 `node scripts/measure-power.mjs --compare`). No process needs ISE in that mode. Besides logic, carry chains, wide multiplexers and flip-flops it takes block
 RAMs, multipliers, distributed RAMs, shift registers (SRL16) and DCMs (any DCM site, more than one
 per design, each clock output on a global buffer its dedicated path reaches; `INST "u" LOC =

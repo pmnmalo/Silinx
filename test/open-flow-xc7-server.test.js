@@ -88,14 +88,16 @@ test('openSteps: the 7-series\' list (nextpnr maps in its Place & Route); the Sp
 // to 15 % more LUTs, its registers 10 % apart (an example's counters sized from its clock, #3710), its frequency 15 %
 // lower (and 100 MHz, the boards' clock, at least). The LUTs nextpnr's (each 6LUT and 5LUT, the
 // feed-throughs included); Vivado's on the same netlists in #3160. (blinky: 93, 134, 158.86 and 153.99 MHz with its
-// debouncers' 22-bit counters, #3922; their 2 bits counting ticks since #4377)
+// debouncers' 22-bit counters, #3922; their 2 bits counting ticks since #4377). Measured again with Yosys 0.71's netlists
+// (#5634: their cells in another order, which moves nextpnr's placement; pong on the Basys 3 133.07 -> 102.08 MHz, still
+// past the board's 100 MHz; the comparison of #5634 has pong's spread on Yosys 0.70 alone)
 const QUALITY = {
-  basys3: { gates: [1, 0, null], breadboard: [4, 8, 241.02], traffic: [79, 60, 142.63], blinky: [79, 96, 167.7],
-    pong: [235, 266, 133.07], stopwatch: [164, 208, 158.4], clock: [141, 164, 132.75], vga: [115, 58, 136.72],
-    isqrt: [69, 87, 154.68], uart: [105, 142, 161.76], micro80: [157, 187, 112.91], lock: [108, 179, 134.86] },
-  'nexys-a7': { gates: [1, 0, null], breadboard: [4, 8, 249.81], traffic: [81, 60, 142.61], blinky: [79, 96, 176.71],
-    pong: [236, 266, 128.9], stopwatch: [166, 208, 152.6], clock: [141, 164, 133.9], vga: [115, 58, 131.8],
-    isqrt: [69, 87, 157.93], uart: [107, 142, 156.27], micro80: [157, 187, 113.83], lock: [108, 179, 139.61] },
+  basys3: { gates: [1, 0, null], breadboard: [4, 8, 241.02], traffic: [74, 60, 130.38], blinky: [79, 96, 175.99],
+    pong: [243, 266, 102.08], stopwatch: [157, 208, 153.59], clock: [145, 164, 147.91], vga: [116, 58, 137.55],
+    isqrt: [67, 87, 185.7], uart: [104, 142, 153.07], micro80: [153, 187, 110.27], lock: [107, 179, 134.88] },
+  'nexys-a7': { gates: [1, 0, null], breadboard: [4, 8, 249.81], traffic: [74, 60, 130.77], blinky: [79, 96, 180.28],
+    pong: [243, 266, 117.14], stopwatch: [156, 208, 160.82], clock: [147, 164, 141.74], vga: [117, 58, 130.33],
+    isqrt: [67, 87, 178.03], uart: [103, 142, 154.68], micro80: [153, 187, 109.37], lock: [107, 179, 145.31] },
 };
 
 xc7ExampleTests(XC7_TARGETS, { parts: PARTS, quality: QUALITY });

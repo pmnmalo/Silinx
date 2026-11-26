@@ -6,7 +6,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { yosysNode } from '../packages/silinx-fpga/src/synth-open-node.js';
 import { verifyEquivalence, verifyMessages } from '../core/verify.js';
-import { structuralScript, readStructural, abcScript, readAbc, parseAag, parseSymbols, parseMap, parseWitness, replayWitness,
+import { structuralScript, readStructural, abcScript, abcFiles, readAbc, readAbcStatus, parseAag, parseSymbols, parseMap, parseWitness, replayWitness,
   PDR_SECONDS, AIG_MAP, ALL, BMC_CEX } from '../core/verify-abc.js';
 import { counterexampleBench, benchName } from '../core/verify-bench.js';
 import { simulate, compile, elaborate } from '../core/compile.js';
@@ -25,7 +25,7 @@ test('the scripts: the structural proof (its base case, then the induction), ABC
   const s = abcScript(20, 30.7);
   assert.match(s, /^read_verilog -sv silinx_ref\.sv silinx_uut\.sv; proc; memory; opt_clean; async2sync; miter -equiv -flatten -make_outputs silinx_ref silinx_uut silinx_miter; /);
   assert.match(s, /write_aiger -ascii -symbols -zinit silinx_all\.aag; delete -output w:gold_\* w:gate_\*; opt_clean; write_aiger -zinit -map silinx_miter\.aim silinx_miter\.aig; /);
-  assert.ok(s.endsWith('abc -script +strash;&get,-n;read_aiger,silinx_miter.aig;print_stats;dsat;write_cex,-a,silinx_sat.aiw;bmc3,-F,20,-T,30;write_cex,-a,silinx_bmc.aiw;pdr,-T,10;write_cex,-a,silinx_pdr.aiw;&put'), s);
+  assert.ok(s.endsWith('abc -script +strash;&get,-n;read_aiger,silinx_miter.aig;print_stats;dsat;write_cex,-a,silinx_sat.aiw;write_status,silinx_sat.sts;bmc3,-F,20,-T,30;write_cex,-a,silinx_bmc.aiw;write_status,silinx_bmc.sts;pdr,-T,10;write_cex,-a,silinx_pdr.aiw;write_status,silinx_pdr.sts;&put'), s);
   assert.equal(PDR_SECONDS, 10);
   assert.match(abcScript(5, 0.2), /bmc3,-F,5,-T,1;.*pdr,-T,1;/, 'a second at least');
 });
@@ -78,6 +78,36 @@ test('an AIG with every output, its symbols, a map, a witness: parsed, and the w
 
 const V = (name, body, ports = 'input clk, en, output [3:0] q') => ({ path: `src/${name}.v`, lang: 'verilog', text: `module ${name} (${ports});\n${body}\nendmodule\n` });
 const UP = V('up_ref', '  reg [3:0] c = 0;\n  assign q = c;\n  always @(posedge clk) if (en) c <= c + 1;');
+
+test('#5604 ABC\'s results from its status files (write_status after dsat, bmc3 and pdr) as from its log', () => {
+  const st = (sat, bmc, pdr, latches = 20) => ({ 'silinx_sat.sts': `${sat}\nNULL\nNULL\n`, 'silinx_bmc.sts': `${bmc}\nNULL\nNULL\n`,
+    'silinx_pdr.sts': `${pdr}\nNULL\nNULL\n`, 'silinx_miter.aig': `aig 50 2 ${latches} 1 30\n\x01\x02` });
+  const UNK = 'snl_UNK -1 unknown';
+  // (ABC's lines and files, Yosys 0.70: the same counters as the tests below)
+  assert.deepEqual(readAbcStatus(st(UNK, 'snl_UNK 19 unknown', 'snl_UNSAT 4 unknown')), { latches: 20, bmc: { checked: 20 }, pdr: 'proved', sat: null });
+  assert.deepEqual(readAbcStatus(st(UNK, 'snl_SAT 2 unknown 0 3', 'snl_SAT 2 unknown 0 3')), { latches: 20, bmc: { frame: 3 }, pdr: null, sat: null });
+  assert.deepEqual(readAbcStatus(st(UNK, 'snl_UNSAT 6 unknown', 'snl_UNSAT 6 unknown', 3)), { latches: 3, bmc: { reached: true }, pdr: null, sat: null });
+  assert.deepEqual(readAbcStatus(st(UNK, 'snl_UNK 19 unknown', 'snl_SAT 2 unknown 0 25')), { latches: 20, bmc: { checked: 20 }, pdr: { frame: 25 }, sat: null });
+  assert.deepEqual(readAbcStatus(st(UNK, 'snl_UNK 7 unknown', UNK)), { latches: 20, bmc: { checked: 8 }, pdr: null, sat: null });
+  assert.deepEqual(readAbcStatus(st('snl_UNSAT 0 unknown', 'snl_UNSAT 0 unknown', 'snl_UNSAT 0 unknown', 0)), { latches: 0, bmc: { checked: 0 }, pdr: null, sat: 'proved' });
+  assert.deepEqual(readAbcStatus(st('snl_SAT 0 unknown 0 0', 'snl_SAT 0 unknown 0 0', 'snl_SAT 0 unknown 0 0', 0)), { latches: 0, bmc: { checked: 0 }, pdr: null, sat: { frame: 0 } });
+  // a file missing (a run that stopped): none
+  const part = st(UNK, UNK, UNK);
+  delete part['silinx_pdr.sts'];
+  assert.equal(readAbcStatus(part), null);
+  assert.equal(readAbcStatus(undefined), null);
+});
+
+test('#5604 a real ABC run: its status files say what its log says (when the log has ABC\'s lines: Yosys 0.70)', async () => {
+  const wrap = V('wrapx', '  reg [19:0] c = 0;\n  assign q = c == 7;\n  always @(posedge clk) if (en) c <= (c == 5) ? 0 : c + 1;', 'input clk, en, output q');
+  const zero = V('zero_ref', '  assign q = 1\'b0;', 'input clk, en, output q');
+  const files = { 'silinx_ref.sv': zero.text.replace('zero_ref', 'silinx_ref'), 'silinx_uut.sv': wrap.text.replace('wrapx', 'silinx_uut'), ...abcFiles() };
+  const lines = [];
+  const out = await run(['-p', abcScript(20, 10)], files, l => lines.push(l));
+  const fromFiles = readAbcStatus(out);
+  assert.deepEqual(fromFiles, { latches: 20, bmc: { checked: 20 }, pdr: 'proved', sat: null });
+  if (lines.some(l => l.startsWith('ABC: '))) assert.deepEqual(readAbc(lines), fromFiles);
+});
 
 test('a counter stored inverted: proved structurally, its outputs\' equality inductive (equiv_induct)', async () => {
   const down = V('down', '  reg [3:0] n = 4\'hf;\n  assign q = ~n;\n  always @(posedge clk) if (en) n <= n - 1;');

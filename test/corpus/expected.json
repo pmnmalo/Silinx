@@ -117,7 +117,7 @@
  "asicworld/code_verilog_tutorial_decoder.v:decoder (synth)": "pass",
  "asicworld/code_verilog_tutorial_decoder_always.v:decoder_always": "pass",
  "asicworld/code_verilog_tutorial_decoder_always.v:decoder_always (synth)": "pass",
- "asicworld/code_verilog_tutorial_escape_id.v:1dff": "error: netlist: netlist: no module '1dff'",
+ "asicworld/code_verilog_tutorial_escape_id.v:1dff": "pass",
  "asicworld/code_verilog_tutorial_escape_id.v:1dff (synth)": "pass",
  "asicworld/code_verilog_tutorial_explicit.v:explicit": "unsupported: stimulus: no outputs",
  "asicworld/code_verilog_tutorial_explicit.v:explicit (synth)": "unsupported: stimulus: no outputs",
