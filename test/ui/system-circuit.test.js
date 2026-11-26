@@ -45,9 +45,17 @@ uiTest('#5215 a circuit node: placed with the project\'s circuit, its Properties
   await page.waitFor(() => window.Silinx.active.systemEditor.getModel().nodes.at(-1).spiHz === 1e6, [], { what: 'its SPI clock set' });
   await setSpi('');
   await page.waitFor(() => !('spiHz' in window.Silinx.active.systemEditor.getModel().nodes.at(-1)), [], { what: 'its SPI clock emptied' });
+  // (the edits saved, and checked again: the example's warning once more)
+  const DONE = 'Process "Check System" completed successfully with 1 warning(s)';
+  const checks = () => page.eval((d) => [...document.querySelectorAll('#console-log .ln')].filter((l) => l.textContent.trim() === d).length, DONE);
+  await page.eval(() => window.SilinxApp.saveAll());
+  await page.waitFor((d) => !window.SilinxApp.findDoc('sys:uart_avr.sys.json').dirty && [...document.querySelectorAll('#console-log .ln')].filter((l) => l.textContent.trim() === d).length >= 2, [DONE], { what: 'its SPI clock saved, checked' });
+  // (no check still to come: its count the same for 1.5 s)
+  await page.waitFor((d) => { const n = [...document.querySelectorAll('#console-log .ln')].filter((l) => l.textContent.trim() === d).length, w = window.__checks; if (!w || w.n !== n) { window.__checks = { n, t: Date.now() }; return false; } return Date.now() - w.t > 1500; }, [DONE], { timeout: 15000, what: 'no check pending' });
+  const before = await checks();
   // Check: the example's warning only (the Uno reached by the circuit)
   await page.click(`${ED} .sys-check`);
-  await page.waitFor(() => [...document.querySelectorAll('#console-log .ln')].filter((l) => l.textContent.trim() === 'Process "Check System" completed successfully with 1 warning(s)').length === 2, [], { what: 'Check' });
+  await page.waitFor((d, n) => [...document.querySelectorAll('#console-log .ln')].filter((l) => l.textContent.trim() === d).length === n + 1, [DONE, before], { what: 'Check' });
   const run = await page.eval(() => { const ls = [...document.querySelectorAll('#console-log .ln')].map((l) => l.textContent.trim()).filter(Boolean); const i = ls.lastIndexOf('Started : "Check System" of uart_avr.sys.json.'); return ls.slice(i, i + 3); });
   assert.deepEqual(run, ['Started : "Check System" of uart_avr.sys.json.', HOT, 'Process "Check System" completed successfully with 1 warning(s)']);
   // Try it, 100 ms: the LED on D8 (the bit 0 of each byte the FPGA echoes) lit and dark; its line when the run stops
@@ -61,7 +69,7 @@ uiTest('#5215 a circuit node: placed with the project\'s circuit, its Properties
   assert.deepEqual(s.traffic.filter((t) => t.link === 'circuit').map((t) => [t.wire, t.from, t.to]), [['circuit_A1_D8', 'uno.D8', 'circuit.A1:D8'], ['circuit_A1_D8_back', 'circuit.A1:D8', 'uno.D8']]);
   const lines = await consoleLines(page);
   assert.ok(lines.some((l) => /^Simulate System: circuit circuit: D1 (on|off), lit \d+ time\(s\)$/.test(l)), lines.join('\n'));
-  assert.deepEqual(lines.filter((l) => /^(WARNING|ERROR)/.test(l)), [HOT, HOT], 'saved, then Check');
+  assert.deepEqual(lines.filter((l) => /^(WARNING|ERROR)/.test(l)), Array(before + 1).fill(HOT), 'each save, then Check');
   // in Portuguese: the tool, its tip, the Properties
   await page.eval(async () => (await import('/js/i18n.js')).setLanguage('pt'));
   await page.waitFor((ed) => document.querySelector(`${ed} .sys-add-circuit`)?.textContent === 'Circuito', [ED], { what: 'Portuguese' });
