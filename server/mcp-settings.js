@@ -149,7 +149,7 @@ export const SETTINGS_TOOLS = [
       update_constraints: { type: 'boolean', description: 'With a new board: write its pins into the constraints file (default false).' },
       top_source_type: { type: 'string', enum: TOP_TYPES.map(t => t.id), description: 'The Top-Level Source Type: a setting of the project, saved, nothing made (tt: Boolean algebra; a design and simulation project\'s is a drawing).' },
       profile: { type: 'string', enum: PROFILES.map(p => p.id), description: 'Its profile (Design Properties\' Project Kind): logic (Digital Logic: no board, HDL hidden; refused with HDL or C of its own), fpga (with a board or a device), embedded, system (narrower refused while a node is not allowed).' },
-      mode: { type: 'string', enum: MODES.map(m => m.id), description: 'Change Mode: up loses nothing; down needs confirm, else refused saying what is lost.' },
+      mode: { type: 'string', enum: MODES.map(m => m.id), description: 'Change Mode; down: confirm.' },
       keep: STR('Mode down from a System: the node kept.'), confirm: { type: 'boolean', description: 'Mode down: do it.' },
     }, required: ['project'], additionalProperties: false },
     annotations: { readOnlyHint: false, destructiveHint: true, idempotentHint: true },

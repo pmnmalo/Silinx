@@ -46,13 +46,13 @@ test('#4702 the kinds\' rules: a System project empty or from a System example; 
   assert.equal(createRefusal(null, 'uart'), null);
   assert.equal(createRefusal('system', 'uart'), 'a System project starts empty or from a System example (uart-avr, spi-avr, i2c-avr, regs-avr, uart-pic24, adc-pmod, uart-pico, uart-esp32)');
   assert.equal(createRefusal(null, 'uart-avr'), null);   // (the example's kind)
-  assert.equal(createRefusal('design', 'uart-avr'), 'a design and simulation project starts empty: no example');
+  assert.equal(createRefusal('design', 'uart-avr'), 'a design and simulation project starts empty or from a Circuit example (gates, breadboard)');
   // (fpga a profile's id, #5440: an FPGA project, never from a System example)
   assert.equal(createRefusal('fpga', 'uart-avr'), 'an FPGA project starts from an FPGA example: uart-avr is a System example');
   assert.equal(createRefusal('fpga', 'uart'), null);
   assert.equal(boardRefusal({ name: 'uart-avr', kind: 'system' }, { board: 'basys2' }), 'uart-avr: a System project has no board: its System names each FPGA node\'s');
   assert.equal(boardRefusal({ name: 'uart', board: 'basys2' }, { board: 'nexys2' }), null);
-  assert.equal(createRefusal('design', 'uart'), 'a design and simulation project starts empty: no example');
+  assert.equal(createRefusal('design', 'uart'), 'a design and simulation project starts empty or from a Circuit example (gates, breadboard)');
   assert.equal(createRefusal('pico', 'empty'), 'unknown project kind \'pico\'');
   const j = newProjectJson('sys1', { kind: 'system' });
   assert.deepEqual([j.kind, j.profile, j.board, j.constraints, j.top, isSystemProject(j)], [undefined, 'system', null, null, '', true]);   // (its profile, #5440)
@@ -64,7 +64,7 @@ test('#4702 uart-avr made with the MCP server: its System checked (the 5 V warni
   // (listed after the FPGA examples, as the System ones: uart-avr, spi-avr, i2c-avr, regs-avr, uart-pic24, adc-pmod, uart-pico, uart-esp32)
   const ex = await ok('list_examples', {});
   assert.deepEqual(ex.text.split('\n').slice(-8, -4), ['uart-avr: a System example (FPGA and microcontroller nodes in a System), 5 file(s)', 'spi-avr: a System example (FPGA and microcontroller nodes in a System), 1 file(s)', 'i2c-avr: a System example (FPGA and microcontroller nodes in a System), 1 file(s)', 'regs-avr: a System example (FPGA and microcontroller nodes in a System), 2 file(s)']);
-  assert.deepEqual(ex.data.examples.at(-8), { name: 'uart-avr', kind: 'system', top: null, simTop: null, board: null, device: null, files: 5 });
+  assert.deepEqual(ex.data.examples.at(-8), { name: 'uart-avr', kind: 'system', modes: ['system'], top: null, simTop: null, board: null, device: null, files: 5 });
   await ok('new_project_from_example', { name: 'ua', example: 'uart-avr' });
   const warn = "serial: uno's D1, a 5 V output, drives fpga's rx (pin J3), a 3.3 V input of the FPGA (LVCMOS33): a level shifter or a divider on the real boards";
   const c = await ok('check_system', { project: 'ua', file: 'uart_avr.sys.json' });

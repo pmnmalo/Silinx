@@ -21,7 +21,7 @@ import { filePath, gateMessages, normalizePath, requireGated } from '../../core/
 import { markUntrusted } from '../../core/trust.js';
 import * as trustRecords from './trust-records.js';
 import { ANCESTOR_FILE, isProjectId, originOf } from '../../core/project-rev.js';
-import { SYSTEM_KIND, DESIGN_KIND, boardRefusal, createRefusal, isDesignOnly, isSystemProject, newSystemKind } from '../../core/project-kind.js';
+import { SYSTEM_KIND, DESIGN_KIND, boardRefusal, circuitExample, createRefusal, isDesignOnly, isSystemProject, newSystemKind } from '../../core/project-kind.js';
 import { profileOf } from '../../core/project-profile.js';
 import { newSystemFile } from '../../core/system-doc.js';
 import { foldName, foldsToProjectFile, PROJECT_FILE, sameNameIn, spelledAs } from '../../core/fold-name.js';
@@ -608,6 +608,14 @@ export function projectOps(getStore, examples = {}) {
         const json = { ...clone(ex.json), name }, fromBoard = json.board;
         const noBoard = boardRefusal(json, { board, device });   // (a System example, #4702)
         if (noBoard) fail(noBoard);
+        // (a Circuit example, #5757: a design project, no board, its constraints file left out, as the server's)
+        if (kind === DESIGN_KIND) {
+          const c = circuitExample(json), files = clone(ex.files);
+          for (const f of c.drop) delete files[f];
+          await recordOwn(name);
+          await S().create(name, c.project, files);
+          return clone(c.project);
+        }
         if (device) json.device = device;
         if (board !== undefined) json.board = board;
         json.files ||= [];

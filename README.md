@@ -45,7 +45,8 @@ The Silinx toolchain builds for the **Basys2**, **Nexys2**, **Nexys3**, **Atlys*
 and **GateMate evaluation** boards (and the 7-series' Basys 3 and Nexys A7, an experimental family) with nothing else installed; Xilinx
 ISE 14.7 and AMD Vivado, which you install yourself, add the other boards (Vivado: the Arty S7 and Zybo Z7 too). Terasic's Intel
 boards (DE10-Lite, DE0-CV, DE1-SoC, DE10-Nano, DE0-Nano, DE2-115) are there too, each an experimental family: their pins and constraints (QSF),
-built by Intel Quartus Prime Lite, which you install yourself, and programmed with openFPGALoader. A design and simulation project needs no board at all. [Boards and toolchains](docs/user/en/boards.md)
+built by Intel Quartus Prime Lite, which you install yourself, and programmed with openFPGALoader. A project is a **Circuit** (no board at all), a **Board** (one FPGA board, or a processor board alone: an
+Arduino, a Pico, an ESP32) or a **System** of linked devices: [Project modes](docs/user/en/modes.md). [Boards and toolchains](docs/user/en/boards.md)
 
 | Basys2 (Spartan-3E) | Nexys3 (Spartan-6) |
 |---|---|

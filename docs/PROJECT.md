@@ -38,6 +38,14 @@ A project is a directory under the workspace (default `~/Silinx-projects`, overr
   no `board`: each FPGA node is a module of the project on a board of its own (`board`, `variant`, its ports' `pins`).
   Widening the profile converts nothing; narrowing it is refused while a node would not be allowed
   (`core/profile-change.js`).
+* The project's **mode** (roadmap #5753, `core/project-mode.js`): Circuit, Board or System, read from the fields above,
+  never written: Circuit is the Digital Logic profile, Board the FPGA profile, System the Embedded / SoC and System
+  profiles, except a **processor board's Board project** (#5756, `core/processor-board.js`): a System of its one
+  microcontroller node whose silinx.json names that board in `board` (an Arduino, the Explorer 16/32, a Pico, an
+  ESP32: `core/system-doc.js` MCU_BOARDS), which no other System project has (theirs is `null`). Project ▸ Change Mode…
+  and the MCP's `set_design_properties` `mode` change it (`core/mode-change.js`): up loses nothing (Board → System moves the project's files
+  into its node's folder and writes its System document), down drops what the lower mode has not (said first), and
+  nothing is deleted from the disk.
 * `topSourceType`: the Top-Level Source Type (#4105): `hdl` (absent too), `sch`, `fsm`, `asm`, `tt`, `petri`, `circuit`,
   `c` or `cpp` (`core/top-types.js`); a design and simulation project's is a drawing's.
 * `impl.optMode` and `impl.optLevel`: ISE's Optimization Goal and Effort, and the project's Optimization (#2470):

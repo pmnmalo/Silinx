@@ -15,13 +15,13 @@ import { mcuBoard } from './system-doc.js';
 export const MODES = [
   { id: 'circuit', label: 'Circuit', profiles: ['logic'], profile: 'logic', kind: 'design',
     about: 'Elementary components with no board: gates, flip-flops, circuits on a breadboard, schematics, truth tables and state machines, drawn and simulated.',
-    short: 'drawings and circuits, no board' },
+    short: 'no board' },
   { id: 'board', label: 'Board', profiles: ['fpga'], profile: 'fpga', kind: 'fpga',
     about: 'One board, with its flow, its emulator and its programming: an FPGA\'s HDL and drawings synthesized and programmed, or a processor board\'s firmware built and run; or emulated.',
     short: 'one board, the default' },
   { id: 'system', label: 'System', profiles: ['embedded', 'system'], profile: 'system', kind: 'system',
     about: 'Several devices linked (UART, SPI, Pmods): FPGA boards and microcontrollers in one System document, simulated as one.',
-    short: 'devices linked in a System' },
+    short: 'devices linked' },
 ];
 /** A mode by its id, or null. */
 export const modeById = id => MODES.find(m => m.id === id) || null;

@@ -176,7 +176,7 @@ export async function newProjectWizard({ template = 'empty' } = {}) {
       : { location: 'this browser: ', browser: true, hint: kept.supported ? "Projects are kept in this browser's storage (File ▸ Open Workspace Folder… keeps them in a folder on the disk)." : "Projects are kept in this browser's storage (a folder on the disk needs Chrome or Edge)." };
   const name = h('input', { type: 'text', value: st.name, placeholder: 'project name' });
   const tplSel = select([['empty', 'Empty project'], ...templates.map(t => [t, `Example: ${t}`])], template);
-  syncTemplates(tplSel, false);   // (the FPGA kind's first: no System example, #4702)
+  syncTemplates(tplSel, 'board');   // (the Board mode's first: no System example, #4702)
   // the project's kind, asked first (#5041, #3780): with no FPGA (a design and simulation project: no board, no device, no
   // HDL), with an FPGA, or a System (not yet); an example's an FPGA project (Start from not shown with no FPGA)
   const kinds = kindStep('fpga', () => syncKind());
@@ -233,15 +233,12 @@ export async function newProjectWizard({ template = 'empty' } = {}) {
   };
   topType.addEventListener('change', syncTop);
   const catSel = select(['All'], 'All'), simSel = select(['SSim (VHDL/Verilog; Silinx Simulator)'], ''), stdSel = select(['VHDL-93', 'VHDL-2008'], 'VHDL-93');
-  const isDesign = () => kinds.design() && tplSel.value === 'empty';
+  const isDesign = () => kinds.design();   // (from a Circuit example too, #5757)
   const fpgaList = [boardSel, catSel, dp.famSel, dp.partSel, dp.pkgSel, dp.spdSel, synthSel, simSel, langSel, stdSel];
   const fpgaFields = kindFields(() => isDesign() || kinds.system(), fpgaList, topType);
   const syncKind = () => {
-    if (kinds.design()) tplSel.value = 'empty';
-    for (const x of tplField) x.style.display = kinds.design() ? 'none' : '';
-    syncTemplates(tplSel, kinds.system());   // (a System project's examples its own, #4702)
-    // (a processor's Board Type: no example, #5756)
-    if (kinds.boardType() !== 'fpga') { for (const o of tplSel.options) o.hidden = o.disabled = o.value !== 'empty'; tplSel.value = 'empty'; }
+    // (each mode its examples, #4702, #5757: a Circuit project's the drawings-only ones; a processor's Board Type none, #5756)
+    syncTemplates(tplSel, kinds.design() ? 'circuit' : kinds.system() ? 'system' : kinds.boardType() !== 'fpga' ? 'processor' : 'board');
     fpgaFields();
     for (const x of [topType, topType.previousElementSibling, topNote, systemNote]) if (x) x.style.display = kinds.system() === (x === systemNote) ? '' : 'none';
     proc.sync([...fpgaList, topType, topNote], kinds.boardType());
@@ -301,14 +298,14 @@ export async function newProjectWizard({ template = 'empty' } = {}) {
     if (st.replace) await removeExistingProject(name.value.trim());
     if (proc.chosen()) { await createProcessorProject(name.value.trim(), proc.chosen(), proc.runtimeSel.value); countEvent('new-project'); app.showLeftPage('design'); toast(`Project ${name.value.trim()} created`, 'ok'); return; }
     const design = isDesign(), asSystem = kinds.system() || topType.value === SYSTEM_TOP;   // (a System's top: a System project, #5402)
-    const pj = await api.createProject(asSystem ? { name: name.value.trim(), template: tplSel.value, kind: kinds.system() ? kinds.kind() : SYSTEM_KIND } : design ? { name: name.value.trim(), template: 'empty', kind: DESIGN_KIND } : {
+    const pj = await api.createProject(asSystem ? { name: name.value.trim(), template: tplSel.value, kind: kinds.system() ? kinds.kind() : SYSTEM_KIND } : design ? { name: name.value.trim(), template: tplSel.value, kind: DESIGN_KIND } : {
       name: name.value.trim(), template: tplSel.value,
       device: dp.value(),
       board: boardSel.value || (tplSel.value !== 'empty' ? undefined : null),
     });
     countEvent('new-project');
     pj.preferredLanguage = design ? 'vhdl' : langSel.value;
-    pj.topSourceType = asSystem ? SYSTEM_TOP : topType.value;
+    pj.topSourceType = asSystem ? SYSTEM_TOP : design && tplSel.value !== 'empty' ? pj.topSourceType : topType.value;   // (a Circuit example's its own, #5757)
     if (!design && !asSystem) pj.synthTool = synthSel.value;
     await api.saveProject(pj.name, pj);
     // a diagram / table top: its document and its synchronized HDL module 'top'

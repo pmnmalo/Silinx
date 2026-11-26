@@ -7,7 +7,7 @@
 // MCP server. Isomorphic module (browser + Node).
 
 import { systemsOn, SYSTEMS_OFF } from './build-channel.js';
-import { SYSTEM_ORDER } from './examples.js';
+import { SYSTEM_ORDER, CIRCUIT_EXAMPLES } from './examples.js';
 import { profileOf, systemProfile, withProfile } from './project-profile.js';
 
 export const DESIGN_KIND = 'design';
@@ -37,7 +37,8 @@ export function createRefusal(given, template = 'empty') {
   // (a profile's id too, #5440: logic a design project's, fpga none, embedded a System project's)
   const kind = given === 'logic' ? DESIGN_KIND : given === 'fpga' ? null : newSystemKind(given) ? SYSTEM_KIND : given;
   if (kind != null && kind !== DESIGN_KIND && kind !== SYSTEM_KIND) return `unknown project kind '${given}'`;
-  if (kind === DESIGN_KIND && !empty) return 'a design and simulation project starts empty: no example';
+  // (a Circuit example, #5757: drawings only, made with no board)
+  if (kind === DESIGN_KIND && !empty && !CIRCUIT_EXAMPLES.includes(template)) return `a design and simulation project starts empty or from a Circuit example (${CIRCUIT_EXAMPLES.join(', ')})`;
   if (given === 'fpga' && SYSTEM_EXAMPLES.includes(template)) return `an FPGA project starts from an FPGA example: ${template} is a System example`;
   // (Systems not in a release yet, #5202: core/build-channel.js)
   if ((kind === SYSTEM_KIND || SYSTEM_EXAMPLES.includes(template)) && !systemsOn()) return SYSTEMS_OFF;
@@ -82,6 +83,10 @@ export const DESIGN_ONLY_MESSAGES = {
 
 /** Why `path` cannot be added to the project `pj` (an HDL-side file in a design project), or null. */
 export const addRefusal = (pj, path) => (isDesignOnly(pj) && hdlSideFile(path) ? DESIGN_ONLY_MESSAGES.hdl(path) : null);
+
+/** A Circuit example made a design project (#5757): its silinx.json with no board nor constraints, and the files to leave
+ *  out of the copy (its constraints file: a new project's, nothing lost). */
+export const circuitExample = json => ({ project: asDesignProject(json), drop: json.constraints ? [json.constraints] : [] });
 
 /** A new project's silinx.json made a design project: no board, no constraints (the device kept, internal). */
 export const asDesignProject = json => ({ ...withProfile(json, 'logic'), board: null, constraints: null });
