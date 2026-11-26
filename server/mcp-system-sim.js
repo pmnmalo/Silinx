@@ -114,6 +114,7 @@ export async function simulateSystem(name, top, { ms, type = {}, controls = null
     },
     firmware: async p => (/\.elf$/i.test(p) ? P.readFileBytes(name, p) : P.readFile(name, p)),   // (the page's reads, #5198)
     circuit: p => P.readFile(name, p),   // (a circuit node's, #5215)
+    nodeFiles: async () => P.fileTree(name),   // (a CircuitPython node's drive's: its folder's, #5697)
     regmap: async m => regmapFor(await mapTexts(name), designs[m] ? hierModules(designs[m].top) : [m]),   // (a module made from a register map, or one instancing it: its accesses, #5288)
   };
   // (a stimulus that sets a board's controls: the boards emulated, their steps set as the run goes, #5581)

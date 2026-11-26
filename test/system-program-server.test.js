@@ -3,7 +3,8 @@
 // (test/fixtures/arduino-cli-stub, test/fixtures/usb-devices-stub). The uart-avr example built: Program All, the FPGA
 // node first by djtgcfg on its board by its serial number, then the Uno by arduino-cli upload on its port, their exact
 // lines; two Unos: the Uno refused, the FPGA programmed; the board chosen by hand; a programmer failing, the next node
-// going on; an untrusted project refused; the MCP's program_board with node and connected.
+// going on; an untrusted project refused; the MCP's program_board with node and connected. A CircuitPython node's program
+// copied to a CIRCUITPY drive (a folder of the test's, SILINX_CIRCUITPY, #5697).
 import { test, before, after, afterEach } from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
@@ -140,6 +141,33 @@ test('#5581 the Implement tree\'s, by the MCP: each node\'s plan state (its mark
   assert.equal(r.isError, true);
   assert.deepEqual(r.data.errors, ['System node pic: not programmed: a PIC24 is not programmed by Silinx yet: load its pic/lcd_uart.hex with MPLAB IPE', 'the System node(s) pic not programmed']);
   assert.deepEqual(r.data.warnings, []);
+});
+
+test('#5697 a CircuitPython node: its program as code.py and its folder\'s other .py files onto the Pico\'s CIRCUITPY drive; none mounted: how to copy them; MCP: program_board', { skip: POSIX_ONLY }, async () => {
+  await P.createProject({ name: 'cpy', template: 'uart-pico' });
+  await P.writeFile('cpy', 'pico/lib/util.py', 'def double(x):\n    return 2 * x\n');
+  const drive = path.join(tmp, 'CIRCUITPY');
+  fs.mkdirSync(drive, { recursive: true });
+  process.env.SILINX_CIRCUITPY = drive;
+  try {
+    // (no CircuitPython drive there yet: its boot_out.txt not CircuitPython's)
+    const none = await run('cpy', { node: 'pico' });
+    assert.deepEqual(none.lines.filter(l => /^(ERROR|WARNING)/.test(l)), ['ERROR: System node pico: no CIRCUITPY drive mounted: copy pico/code.py as code.py, and pico/lib/util.py at their places in its folder, to the Pico\'s CIRCUITPY drive (the Pico running CircuitPython, connected by USB)', 'ERROR: the System node(s) pico not programmed']);
+    fs.writeFileSync(path.join(drive, 'boot_out.txt'), 'Adafruit CircuitPython 10.3.2 on 2026-11-11; Raspberry Pi Pico with rp2040\r\n');
+    fs.writeFileSync(path.join(drive, 'code.py'), 'print("the old program")\n');
+    const j = await run('cpy', { node: 'pico' });
+    assert.equal(j.status, 'ok', j.lines.join('\n'));
+    assert.deepEqual(own(j), ['Program plan (the FPGA nodes first, then the microcontrollers):', '  pico: pico/code.py as code.py onto the Pico\'s CIRCUITPY drive', 'System node pico: programming pico/code.py.',
+      `System node pico: code.py, lib/util.py written on ${drive}: CircuitPython runs code.py again.`, 'System node pico: programmed.', 'Program: 1 node(s) programmed (pico), 0 failed, 0 not programmed.']);
+    assert.deepEqual(j.lines.filter(l => /^(WARNING|ERROR)/.test(l)), [], 'no warning');
+    assert.equal(fs.readFileSync(path.join(drive, 'code.py'), 'utf8'), fs.readFileSync(path.join(P.projectDir('cpy'), 'pico/code.py'), 'utf8'));
+    assert.equal(fs.readFileSync(path.join(drive, 'lib/util.py'), 'utf8'), 'def double(x):\n    return 2 * x\n');
+    assert.deepEqual(fs.readdirSync(drive).sort(), ['boot_out.txt', 'code.py', 'lib']);
+    // MCP: the same
+    const r = await TOOLS.find(t => t.name === 'program_board').run({ project: 'cpy', node: 'pico' });
+    assert.equal(r.isError, false, r.text);
+    assert.deepEqual([r.data.programmed, r.data.warnings, r.data.errors], [['pico'], [], []]);
+  } finally { delete process.env.SILINX_CIRCUITPY; }
 });
 
 test('#5489 openFPGALoader\'s board by its FTDI serial number; one that is no value refused', async () => {

@@ -60,7 +60,7 @@ export function mountSystemSim(host, opts) {
       const out = h('pre', { class: 'sys-term-out', 'data-term': id });
       const input = h('input', { type: 'text', class: 'asm-input sys-term-in', placeholder: 'Type a line, Enter sends it', spellcheck: 'false' });
       input.addEventListener('keydown', e => { if (e.key !== 'Enter') return; ready.send(id, [...new TextEncoder().encode(`${input.value}\n`)]); input.value = ''; if (!timer) runFor(ms() * 1e9); });
-      return h('section', { class: 'sys-term' }, h('div', { class: 'sys-term-cap' }, termCaption(id, u)), out, input);
+      return h('section', { class: 'sys-term' }, h('div', { class: 'sys-term-cap' }, termCaption(id, u, opts.system())), out, input);
     }));
     refresh();
   }

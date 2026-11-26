@@ -163,7 +163,7 @@ export function mountSystemEmulator(host, opts) {
         if (rb.connected()) rb.send(bytes); else ready.send(id, bytes);
         input.value = '';
       });
-      return h('section', { class: 'sys-term' }, h('div', { class: 'sys-term-cap' }, h('span', {}, termCaption(id, u)), rb.el), out, input);
+      return h('section', { class: 'sys-term' }, h('div', { class: 'sys-term-cap' }, h('span', {}, termCaption(id, u, opts.system())), rb.el), out, input);
     }));
     paint();
   }

@@ -14,6 +14,8 @@ export const SYSTEM_PT = {
   'MQTT Broker': 'Broker MQTT', 'MQTT broker': 'broker MQTT', "Click the canvas to add an MQTT broker: the Pico Ws' messages, published and subscribed": 'Clique na tela para acrescentar um broker MQTT: as mensagens dos Pico W, publicadas e subscritas',   // (#5500)
   'Every client\'s MQTT link ends here': 'A ligação MQTT de cada cliente termina aqui', "Its link to an MQTT broker: its program's network and umqtt.simple": 'A sua ligação a um broker MQTT: o network e o umqtt.simple do seu programa',
   '+ MQTT': '+ MQTT', 'Add its MQTT interface: its link to a broker': 'Acrescentar a sua interface MQTT: a sua ligação a um broker',
+  'MicroPython': 'MicroPython', 'CircuitPython': 'CircuitPython', 'the Python firmware the Pico runs': 'o firmware de Python que o Pico corre',   // (#5697)
+  'a .py of the project, run by CircuitPython as its code.py': 'um .py do projeto, corrido pelo CircuitPython como o seu code.py',
   'Explorer 16/32': 'Explorer 16/32', 'Click the canvas to add an Explorer 16/32: a PIC24FJ1024GB610, its firmware a .hex': 'Clique na tela para acrescentar uma Explorer 16/32: um PIC24FJ1024GB610, o seu programa um .hex',
   'Click the canvas to add a serial terminal': 'Clique na tela para acrescentar um terminal série',
   'Click an interface, then an interface of another node of its kind': 'Clique numa interface e depois numa interface do mesmo tipo de outro nó',

@@ -231,6 +231,13 @@ export const THIRD_PARTY = [
     "standalone": false
   },
   {
+    "name": "circuitpython",
+    "version": "10.3.2",
+    "license": "MIT",
+    "url": "https://github.com/adafruit/circuitpython",
+    "ported": true
+  },
+  {
     "name": "content-disposition",
     "version": "2.0.1",
     "license": "MIT",
