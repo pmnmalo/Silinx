@@ -27,6 +27,12 @@ export const TT_PT = {
   // editor body
   'Truth table': 'Tabela de verdade', 'Notes': 'Notas', 'Notes (saved with the table)': 'Notas (guardadas com a tabela)',
   'Click an output cell to change it: 0 → 1 → X (don\'t care).': 'Clique numa célula de saída para a mudar: 0 → 1 → X (indiferente).',
+  // a column's right-click menu (#5869)
+  'Insert Input Before': 'Inserir Entrada Antes', 'Insert Input After': 'Inserir Entrada Depois', 'Delete Input': 'Apagar Entrada',
+  'Insert Output Before': 'Inserir Saída Antes', 'Insert Output After': 'Inserir Saída Depois', 'Delete Output': 'Apagar Saída',
+  'Move Left': 'Mover para a Esquerda', 'Move Right': 'Mover para a Direita', 'Rename Input': 'Mudar o Nome da Entrada',
+  'Rename Output': 'Mudar o Nome da Saída', 'Rename Input…': 'Mudar o Nome da Entrada…', 'Rename Output…': 'Mudar o Nome da Saída…',
+  'Duplicate Output': 'Duplicar Saída', 'The rows where it is 0 are kept': 'Ficam as linhas em que ela é 0',
   'Select this output': 'Selecionar esta saída', 'An input: the first is the most significant bit of a row': 'Uma entrada: a primeira é o bit mais significativo de cada linha', 'Expression': 'Expressão', 'Fill Table': 'Preencher Tabela',
   'Fill the column of this output from the expression': 'Preencher a coluna desta saída a partir da expressão',
   'Karnaugh map': 'Mapa de Karnaugh',
@@ -91,6 +97,7 @@ export const TT_PT_PATTERNS = [
   [/^— the truth table has errors: (.+)$/, '— a tabela de verdade tem erros: $1'],
   [/^— (.+) has errors$/, '— $1 tem erros'],
   [/^(.+) is read only: its columns are not moved\.$/, '$1 é só de leitura: as suas colunas não são movidas.'],   // (#5863)
+  [/^The name '(.+)' is used already$/, "O nome '$1' já está a ser usado"],   // (#5869)
   // the status line (#2763)
   [/^(\d+) inputs? · (\d+) outputs? · (\d+) rows$/, (m, i, o, r) => `${i} entrada${i === '1' ? '' : 's'} · ${o} saída${o === '1' ? '' : 's'} · ${r} linhas`],
 ];

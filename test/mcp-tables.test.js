@@ -3,13 +3,14 @@
 // (traffic's lamps: its VHDL module follows); related_view's results say them; the errors. Its inputs and outputs set as its
 // Inputs and Outputs boxes set them (core/logic.js shapeTable): one name changed in place a rename, its
 // column or its rows kept (#5165), names added or removed following their names, reordered as the editor's headers dragged
-// (#5863: moveColumn); its refusals, nothing written.
+// (#5863: moveColumn), an output duplicated (#5869: duplicateOutput); its refusals, nothing written.
 import { test, before, after } from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
 import { scratchEnv } from './server-helpers.js';
 import { newTable, normalizeTable, setOutputLogic, generateTableHdl, shapeTable, moveColumn } from '../core/logic.js';
+import { duplicateOutput, insertColumn, deleteColumn } from '../core/logic-columns.js';
 
 let tmp;
 const { handle } = await import('../server/mcp.js');
@@ -76,7 +77,7 @@ test('set_output_logic refuses: not a table, nothing to set, an output, a form o
   await call('new_project_from_example', { name: 'b', example: 'traffic' });
   const before = read('b', 'src/lamps.bool.json');
   await fails({ project: 'b', path: 'src/top.vhd', output: 'f', form: 'sop' }, 'src/top.vhd: a truth table (.bool.json, .tt.json) has outputs');
-  await fails({ project: 'b', path: 'src/lamps.bool.json', output: 'car_r' }, 'form or solution (or inputs, outputs): what to set');
+  await fails({ project: 'b', path: 'src/lamps.bool.json', output: 'car_r' }, 'form or solution (or inputs, outputs, duplicate): what to set');
   await fails({ project: 'b', path: 'src/lamps.bool.json', form: 'sop' }, 'output: the output whose logic to set');
   await fails({ project: 'b', path: 'src/lamps.bool.json', output: 'f', form: 'sop' }, "src/lamps.bool.json: no output 'f' (outputs: car_r, car_y, car_g, walk_r, walk_g)");
   await fails({ project: 'b', path: 'src/lamps.bool.json', output: 'car_r', form: 'esop' }, 'form: one of sop, pos, qsop, qpos, xor, nand, nor, gates, delay, csop, cpos');
@@ -133,6 +134,21 @@ test('set_output_logic, inputs and outputs reordered: the rows sorted again as t
   for (let i = 0; i < moved.outputs.length - 1; i++) doc = moveColumn(doc, 'outputs', moved.outputs.length - 1, i);
   assert.deepEqual(normalizeTable(JSON.parse(read('o', 'src/lamps.bool.json'))), doc);
   assert.deepEqual(doc.table, moved.table);
+});
+
+test('set_output_logic, duplicate: an output copied after it as its header\'s menu copies it (duplicateOutput, #5869); refused', async () => {
+  await call('write_file', { project: 'p', path: 'src/m.bool.json', text: JSON.stringify({ ...TABLE, generatedFile: 'src/m.vhd' }) });   // (its module linked)
+  const r = await call('set_output_logic', { project: 'p', path: 'src/m.bool.json', duplicate: 'f' });
+  assert.equal(r.isError, false, r.text);
+  assert.equal(r.text.split('\n')[0], 'src/m.bool.json: inputs a, b; outputs f, f2, g');
+  const { generatedFile, ...doc } = table();
+  assert.deepEqual(doc, duplicateOutput(normalizeTable(TABLE), 0));
+  assert.deepEqual([doc.table.f2, doc.exprs.f2], ['0111', 'a + b']);
+  assert.match(read('p', r.data.hdl.file), /f, f2, g\s*:\s*out/i);
+  // a column inserted and one deleted, by their names: the menu's Insert and Delete (an input's outputs independent of it)
+  await portsOk(['a', 'c', 'b'], ['f', 'g']);
+  assert.deepEqual(table().table, insertColumn(deleteColumn(doc, 'outputs', 1), 'inputs', 1, 'c').table);
+  await fails({ project: 'p', path: 'src/m.bool.json', duplicate: 'h' }, "src/m.bool.json: no output 'h'");
 });
 
 test('set_output_logic: an output renamed and its logic set at once, the logic of the new name', async () => {

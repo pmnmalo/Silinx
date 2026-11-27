@@ -2,7 +2,8 @@
 // editor's tick box on a result (an output's HDL logic, #2951) and its Karnaugh map's solution selector (the minimal
 // solution used, #2950) do, through the same function (core/logic-choice.js setOutputLogic), and what its Inputs and
 // Outputs boxes do (core/logic.js shapeTable: one name changed in place a rename, #5165; the names reordered, its columns'
-// headers dragged, #5863: an input's rows sorted again, as moveColumn; one tool for both, within
+// headers dragged, #5863: an input's rows sorted again, as moveColumn; an output duplicated, its header's menu's, #5869:
+// core/logic-columns.js duplicateOutput; one tool for both, within
 // tools/list's budget, #4752); the table written and its HDL file made again, as write_file does.
 import * as P from './projects.js';
 import { toolError, readProject, STR, PROJECT, projectText } from './mcp-util.js';
@@ -14,19 +15,19 @@ const FORMS_TEXT = 'sop, pos (minimal: Karnaugh\'s, past 6 inputs Quine-McCluske
 export const TABLE_TOOLS = [
   {
     name: 'set_output_logic', title: 'Set a truth table\'s ports, an output\'s HDL logic or solution',
-    description: `Set a truth table's (.bool.json, .tt.json) output's HDL logic, as its editor's tick box on a result (${FORMS_TEXT}; a new output: gates), and / or the minimal solution its SOP or POS uses (k from 0, as related_view lists them); or its inputs and outputs, as its Inputs and Outputs boxes (columns follow their names, reordered as its headers dragged; one name changed in place: a rename). The table and its HDL written.`,
+    description: `Set a truth table's (.bool.json, .tt.json) output's HDL logic, as its editor's tick box on a result (${FORMS_TEXT}; a new output: gates), and / or the minimal solution its SOP or POS uses (k from 0, as related_view lists them); or its inputs and outputs, as its Inputs and Outputs boxes (columns follow their names, reordered as its headers dragged; one name changed in place: a rename); or duplicate an output. The table and its HDL written.`,
     inputSchema: { type: 'object', properties: {
       project: PROJECT, path: STR('The truth table (.bool.json or .tt.json).'), output: STR('The output\'s name.'),
-      inputs: NAMES('Its inputs, MSB first.'), outputs: NAMES('Its outputs.'),
+      inputs: NAMES('Its inputs, MSB first.'), outputs: NAMES('Its outputs.'), duplicate: STR('An output copied (column, expression, form): f → f2.'),
       form: { type: 'string', enum: ['sop', 'pos', 'qsop', 'qpos', 'xor', 'nand', 'nor', 'gates', 'delay', 'csop', 'cpos'], description: 'The output\'s HDL logic.' },
       solution: { type: 'object', properties: { sop: { type: 'integer', minimum: 0 }, pos: { type: 'integer', minimum: 0 } }, additionalProperties: false, description: 'The minimal solution used, from 0: { "sop": k } and / or { "pos": k }.' },
     }, required: ['project', 'path'], additionalProperties: false },
     annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true },
-    async run({ project: name, path: rel, output, form, solution, inputs, outputs }) {
+    async run({ project: name, path: rel, output, form, solution, inputs, outputs, duplicate }) {
       await readProject(name);
       if (!/\.(tt|bool)\.json$/i.test(rel)) throw toolError(`${rel}: a truth table (.bool.json, .tt.json) has outputs`);
       const logic = form !== undefined || solution !== undefined;
-      if (!logic && !inputs && !outputs) throw toolError('form or solution (or inputs, outputs): what to set');
+      if (!logic && !inputs && !outputs && duplicate === undefined) throw toolError('form or solution (or inputs, outputs, duplicate): what to set');
       if (logic && output === undefined) throw toolError('output: the output whose logic to set');
       const text = await projectText(name, rel, `no file '${rel}' in the project '${name}'`);
       const L = await import('../core/logic.js');
@@ -34,6 +35,11 @@ export const TABLE_TOOLS = [
       try {
         doc = L.normalizeTable(JSON.parse(text));
         if (inputs || outputs) doc = L.shapeTable(doc, inputs || doc.inputs, outputs || doc.outputs);   // (the editor's checks)
+        if (duplicate !== undefined) {   // (its header's Duplicate, #5869)
+          const i = doc.outputs.indexOf(duplicate);
+          if (i < 0) throw new L.LogicError(`no output '${duplicate}'`);
+          doc = (await import('../core/logic-columns.js')).duplicateOutput(doc, i);
+        }
         if (logic) doc = L.setOutputLogic(doc, output, { form, solution });
       } catch (e) { throw toolError(`${rel}: ${e.message}`); }
       const errs = L.validateTable(doc).filter(x => x.severity === 'error');

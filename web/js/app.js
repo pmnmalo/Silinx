@@ -277,7 +277,7 @@ export function instancesOf(mod) {
 // ---- Undo / Redo of the project's commands (web/js/history.js): every menu, context menu and
 // command palette command is recorded (what it changes in the project folder and settings); the
 // processes (runs, simulations) are not commands that change the project
-const NOT_RECORDED = /^(Implement|Generate Programming File|Synthesize|Simulate|Run|Rerun|Re-run|Emulate|Configure Target|Program|Initialize Chain|Check Syntax|View RTL|Analyze|Undo|Redo|Open|Find|Replace|Go to|Print|Download|Export|Help|About|Check for Updates|Language|Theme|Interface|Zoom|Close|New Project|Open Project|Recent|(?:Cut|Copy|Paste|Delete)$)/;
+const NOT_RECORDED = /^(Implement|Generate Programming File|Synthesize|Simulate|Run|Rerun|Re-run|Emulate|Configure Target|Program|Initialize Chain|Check Syntax|View RTL|Analyze|Undo|Redo|Open|Find|Replace|Go to|Print|Download|Export|Help|About|Check for Updates|Language|Theme|Interface|Zoom|Close|New Project|Open Project|Recent|(?:Cut|Copy|Paste|Delete)$|(?:Rename (?:Input|Output)…|Duplicate Output|Insert (?:Input|Output) (?:Before|After)|Delete (?:Input|Output)|Move (?:Left|Right))$)/;   // (a truth table column's menu: the document's own edits, its Undo's, #5869)
 const docPath = d => d.path || (/^(file|sch|asm|tt|fsm):/.test(String(d.id || '')) ? String(d.id).replace(/^[a-z]+:/, '') : null);
 export const history = createHistory(api, {
   project: () => S.project?.name,
