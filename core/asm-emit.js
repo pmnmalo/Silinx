@@ -314,8 +314,25 @@ export function vhLitP(v, p) {
   return v < 2n ** 31n ? `std_logic_vector(to_unsigned(${v}, ${p}))` : `std_logic_vector(resize(unsigned'("${bits(v, bitlen(v))}"), ${p}))`;
 }
 
+/** A don't care (an action's, core/asm-expr.js dontCareConst, #4895) at `w` bits: { v, x } (v's don't-care bits 0). */
+export function dcAt(dc, w) {
+  const all = (1n << BigInt(w)) - 1n, x = dc.x === -1n ? all : dc.x & all;
+  return { v: dc.v & all & ~x, x };
+}
+const dcBits = (v, x, w, d) => [...bits(v, w)].map((c, i) => ((x >> BigInt(w - 1 - i)) & 1n ? d : c)).join('');
+/** A value with don't-care bits x as VHDL's std_logic ('-') and Verilog's (x) literals. */
+export const vhDcW = (v, x, w) => (w === 1 ? `'${dcBits(v, x, 1, '-')}'` : `"${dcBits(v, x, w, '-')}"`);
+export const vlDcW = (v, x, w) => `${w}'b${dcBits(v, x, w, 'x')}`;
+// a don't care assigned: its literal, at the target's width (a combinational output's: of a fixed width)
+function dcAssign(sig, w, dc, ctx, vhdl) {
+  if (dc.x !== -1n && ((dc.v | dc.x) >> BigInt(w)) !== 0n) ctx.warn(`value ${dc.text} is truncated to ${w} bit(s)`);
+  const { v, x } = dcAt(dc, w);
+  return [{ s: 'raw', text: `${sig} ${vhdl ? '<=' : '='} ${vhdl ? vhDcW(v, x, w) : vlDcW(v, x, w)};` }];
+}
+
 /** VHDL statements assigning `ast` to signal `sig` of width `w` (p: a width given by generics, its code; w its value). */
 export function vhAssign(sig, w, ast, ctx, p = null) {
+  if (ast.k === 'dc') return dcAssign(sig, w, ast, ctx, true);
   // a right shift sees the bits above the target: evaluate at the full Verilog context width
   const wide = ctxSensitive(ast, ASSIGN_SENSITIVE) ? Math.max(w, vlSelfWidth(ast, ctx.peek)) : w;
   ctx.targetW = wide;
@@ -407,6 +424,7 @@ export function vlNot(c) {
 }
 /** Verilog statements assigning `ast` to `sig` of width `w` (p: a width given by generics: a literal as written). */
 export function vlAssign(sig, w, ast, ctx, p = null) {
+  if (ast.k === 'dc') return dcAssign(sig, w, ast, ctx, false);
   if (ast.k === 'lit') return [{ s: 'raw', text: `${sig} = ${p ? vlLit(ast) : vlLitW(ast.v, w, ast.base)};` }];
   return [{ s: 'raw', text: `${sig} = ${stripParens(vlExpr(ast, ctx))};` }];
 }

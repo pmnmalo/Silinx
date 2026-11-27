@@ -115,7 +115,7 @@ export const CONVERT_TOOLS = [
       const dir = dirOf(rel);
       if (to === 'asm') {
         const f = F.normalizeFsm(m);
-        const errs = [...F.fsmErrors(f), ...F.asmDontCares(f)];   // (a don't care: no ASM chart, #4891)
+        const errs = F.fsmErrors(f);
         if (errs.length) throw toolError(errs.map(x => x.message).join('\n'));
         const n = await freeName(name, dir, `${f.name}_asm`, '.asm.json');
         const asm = { ...F.fsmToAsm(f), name: n };

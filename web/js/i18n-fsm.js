@@ -74,6 +74,9 @@ export const FSM_PT = {
   'Apply clock edges at the chosen rate': 'Aplicar flancos de relógio ao ritmo escolhido', 'Clock edges per second of Run': 'Flancos de relógio por segundo de Correr',
   '↶ Back': '↶ Recuar', 'Undo the last clock edge': 'Desfazer o último flanco de relógio',
   'Apply one rising clock edge: the machine follows the path shown in color': 'Aplicar um flanco ascendente de relógio: a máquina segue o caminho mostrado a cores',
+  // (an ASM chart's actions, a don't care too: #4895)
+  'Syntax: out = 1, out = 4\'b1010, out = X or "1X0" (a don\'t care), cnt = cnt + 1 (registered), or just "out" for out = 1':
+    'Sintaxe: out = 1, out = 4\'b1010, out = X ou "1X0" (indiferente), cnt = cnt + 1 (registada), ou apenas "out" para out = 1',
   'Registered output: its present value': 'Saída registada: o seu valor presente', 'Its default value': 'O seu valor por omissão',
   'Assigned by an every-cycle block': 'Atribuída por um bloco de cada ciclo', 'Mealy output (a conditional output box)': 'Saída de Mealy (uma caixa de saída condicional)',
   'Its value now → its value after the next clock edge': 'O seu valor agora → o seu valor depois do próximo flanco de relógio',
@@ -128,9 +131,6 @@ export const FSM_PT_PATTERNS = [
   [/^(State .+|Transition .+ → .+): '(.*)' is not an output$/, (m, w, o) => `${where(w)}: '${o}' não é uma saída`],
   [/^(State .+|Transition .+ → .+): the value '(.*)' of (\S+) must be a constant \(e\.g\. 0, 1, 4'b1010, 5\)$/, (m, w, v, o) => `${where(w)}: o valor '${v}' de ${o} tem de ser uma constante (p.ex. 0, 1, 4'b1010, 5)`],
   [/^(State .+|Transition .+ → .+): the value (.*) of (\S+) does not fit in (\d+) bit\(s\)$/, (m, w, v, o, k) => `${where(w)}: o valor ${v} de ${o} não cabe em ${k} bit(s)`],
-  // (a don't care, which an ASM chart does not have: core/fsm-asm.js asmDontCares, #4891)
-  [/^(State .+|Transition .+ → .+): (\S+) = (.*) is a don't care \(X\), which an ASM chart does not have$/, (m, w, o, v) => `${where(w)}: ${o} = ${v} é um valor indiferente (X), que um fluxograma ASM não tem`],
-  [/^Output '(.*)': its default value (.*) is a don't care \(X\), which an ASM chart does not have$/, "Saída '$1': o seu valor por omissão $2 é um valor indiferente (X), que um fluxograma ASM não tem"],
   // (the codes of the user's, core/fsm-codes.js, #4908)
   [/^State (.+) has no code: in the encoding of the user's each state has its own$/, 'O estado $1 não tem código: na codificação definida pelo utilizador cada estado tem o seu'],
   [/^State (.+): its code '(.*)' must be binary digits \(0 and 1\)$/, "Estado $1: o seu código '$2' tem de ser dígitos binários (0 e 1)"],

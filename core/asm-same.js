@@ -2,6 +2,7 @@
 // decisions, outputs and paths, whatever their ids, positions and spellings.
 import { exitsOf } from './asm-layout.js';
 import { exprToString, normalizeModel, parseAction, parseCondition } from './asm.js';
+import { dcAt } from './asm-emit.js';
 import {
   canon
 } from './asm-from-hdl.js';
@@ -139,5 +140,7 @@ function atomOf(cond, wOf) {
 function actKey(text, wOf) {
   const p = parseAction(text);
   if (p.error) return `${text}\u0000`;
+  // (a don't care, #4895: by its bits at the target's width, whatever its spelling)
+  if (p.ast.k === 'dc') { const { v, x } = dcAt(p.ast, wOf(p.target)); return `${p.target}\u0000dc:${v}:${x}`; }
   return `${p.target}\u0000${exprToString(canon(p.ast, wOf))}`;
 }

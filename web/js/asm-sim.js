@@ -9,11 +9,12 @@ import { asmResetActive, asmSimEval, asmSimReset, asmSimStep, prepareAsmSim } fr
 import { simInputControls, simTraceTable } from './sim-panel.js';
 import { inputValues, traceRows } from '/core/collab-try.js';
 import { intervalWhileSeen } from './when-hidden.js';
+import { bitsText } from '/core/fsm-value.js';
 
 const RATES = [1, 2, 5, 10];   // clock edges per second of Run
 
-/** A value as the panel shows it: a bit 0 / 1, a vector in binary. */
-const text = (v, w) => (w === 1 ? String(v) : v.toString(2).padStart(w, '0'));
+/** A value as the panel shows it: a bit 0 / 1, a vector in binary; X its don't-care bits (x, #4895). */
+const text = (v, w, x = 0n) => (x ? bitsText(v, x, w) : w === 1 ? String(v) : v.toString(2).padStart(w, '0'));
 
 /**
  * { panel (its element), isOpen(), toggle(), show(open), refresh(), view(), stop() } of an ASM chart editor:
@@ -73,7 +74,7 @@ export function mountAsmSim({ M, btn, render, layout, destroyed, onErrors, simBt
     if (sim.past.length > 200) sim.past.shift();
     sim.trace.push({ cycle: sim.cycle, state: name(r.cycle.state), next: name(r.st.state),
       inputs: Object.fromEntries(M().inputs.map((i) => [i.name, sim.inputs[i.name]])),
-      outputs: Object.fromEntries(M().outputs.map((o) => [o.name, text(r.cycle.outputs[o.name], o.width)])) });
+      outputs: Object.fromEntries(M().outputs.map((o) => [o.name, text(r.cycle.outputs[o.name], o.width, r.cycle.dontCares[o.name])])) });
     if (sim.trace.length > 200) sim.trace.shift();
     sim.st = r.st; sim.cycle++;
     update();
@@ -149,8 +150,8 @@ export function mountAsmSim({ M, btn, render, layout, destroyed, onErrors, simBt
       if (!n) return 'Its default value';
       return n.type === 'state' ? `Moore output (state ${n.name})` : n.type === 'always' || cur.blocks.some((b) => b.outputs.includes(n.id)) ? 'Assigned by an every-cycle block' : 'Mealy output (a conditional output box)';
     };
-    outs.replaceChildren(...m.outputs.map((o) => h('span', { class: `fsm-led${cur.outputs[o.name] ? ' on' : ''}`, 'data-output': o.name, title: why(o) },
-      `${o.name} = ${text(cur.outputs[o.name], o.width)}`)));
+    outs.replaceChildren(...m.outputs.map((o) => h('span', { class: `fsm-led${cur.outputs[o.name] && !cur.dontCares[o.name] ? ' on' : ''}`, 'data-output': o.name, title: why(o) },
+      `${o.name} = ${text(cur.outputs[o.name], o.width, cur.dontCares[o.name])}`)));
     const rs = prep.regs;
     regsRow.hidden = !rs.length;
     regs.replaceChildren(...rs.map((r) => {
@@ -181,7 +182,7 @@ export function mountAsmSim({ M, btn, render, layout, destroyed, onErrors, simBt
     const m = M(), name = (id) => m.nodes.find((n) => n.id === id)?.name ?? null;
     const sum = { state: name(cur.state), steps: sim.cycle,
       inputs: Object.fromEntries([...m.inputs, { name: m.reset.name, width: 1 }].map((i) => [i.name, text(BigInt(sim.inputs[i.name] ?? 0), i.width)])),
-      outputs: Object.fromEntries([...m.outputs.map((o) => [o.name, text(cur.outputs[o.name], o.width)]), ...prep.regs.map((r) => [r.name, text(sim.st.regs[r.name], r.width)])]) };
+      outputs: Object.fromEntries([...m.outputs.map((o) => [o.name, text(cur.outputs[o.name], o.width, cur.dontCares[o.name])]), ...prep.regs.map((r) => [r.name, text(sim.st.regs[r.name], r.width)])]) };
     return { kind: 'asm', sum, snap: { st: sim.st, inputs: { ...sim.inputs }, cycle: sim.cycle, rate: sim.rate, trace: traceRows(sim.trace) } };
   }
   function setTryState(o) {
