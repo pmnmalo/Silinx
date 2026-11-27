@@ -163,13 +163,19 @@ export async function adoptDrawing(P, name, path) {
   if (!kindOf(path)) return null;
   let m;
   try { m = JSON.parse(await P.readFile(name, path)); } catch { return null; }
-  if (!m || typeof m !== 'object' || m.base === 'hdl' || m.generatedFile) return null;
+  if (!m || typeof m !== 'object' || m.base === 'hdl') return null;
+  const tree = await P.fileTree(name);
   const at = await nodeOfDrawing(P, name, path);
+  if (m.generatedFile) {
+    // (its HDL file gone, never made or removed from the project, is one without it, as the interface's, #231, #5764)
+    const pj = await P.readProject(name);
+    if (isCpuLang(at?.lang) || (tree.includes(m.generatedFile) && (isCodeFile(m.generatedFile) || (pj.files || []).some(f => f.path === m.generatedFile)))) return null;
+  }
+  const lost = m.generatedFile || null;
   if (isCpuLang(at?.lang)) return withMain(P, name, at, await adoptCode(P, name, path, m, at));   // (in a CPU node: its C, #5486)
   const r = viewHdl(path, JSON.stringify(m), { modules: kindOf(path) === 'sch' ? await projectModules(P, name) : {}, linked: () => false });
   if (!r || r.errors.length || !r.module || !r.text) return null;
   const target = drawnHdlPath(path, r.module, r.lang);
-  const tree = await P.fileTree(name);
   const hdl = (await P.readSources(name)).filter(s => !s.missing && (s.lang === 'vhdl' || s.lang === 'verilog'));
   const elsewhere = hdl.find(s => s.path !== target && definesModule(s.text, r.module, s.path));
   const text = tree.includes(target) ? (hdl.find(s => s.path === target)?.text ?? await P.readFile(name, target).catch(() => null)) : null;
@@ -177,12 +183,14 @@ export async function adoptDrawing(P, name, path) {
   if (c) {
     // (its module is another drawing's, that file the other drawing's HDL: not replaced, one is renamed)
     const other = c.kind === 'same' ? await drawingOfHdl(P, name, tree, c.file, path) : null;
-    const clash = other ? { ...c, kind: 'drawn', other } : c;
+    // (#231: that file its own HDL file, removed from the project: made again from it once the user says so)
+    const clash = other ? { ...c, kind: 'drawn', other } : c.kind === 'same' && c.file === lost ? { ...c, kind: 'removed' } : c;
     return { target: null, written: null, removed: null, stale: null, clash, messages: [clashWarning(clash, await designProject(P, name))] };
   }
   await P.writeFile(name, target, r.text);
   await P.writeFile(name, path, JSON.stringify({ ...m, generatedFile: target }, null, indent(path)));
-  return { target, written: target, removed: null, stale: null, messages: await designProject(P, name) ? [] : [`${target} generated from ${path}`] };
+  const why = lost ? ` (its HDL file ${lost} ${tree.includes(lost) ? 'was removed from the project' : 'is no longer in the project folder'})` : '';
+  return { target, written: target, removed: null, stale: null, messages: await designProject(P, name) ? [] : [`${target} generated from ${path}${why}`] };
 }
 
 // the drawing (other than `path`) whose HDL file is `file` (its generatedFile), or null
@@ -200,11 +208,14 @@ export function clashWarning(c, designOnly = false) {
   const own = `, or the drawing written with "generatedFile": "${c.file}",`;
   if (designOnly) {
     return `WARNING: ${c.path}: ${c.kind === 'same' ? `Not made: another file of the project folder defines its module ${c.module}. Make Module… (right-click)${own} replaces it with the drawing's.`
+      : c.kind === 'removed' ? 'Not made: its module was removed from the project. Make Module… (right-click) makes it again from the drawing.'
       : c.kind === 'drawn' ? `Not made: its module ${c.module} is the module of ${c.other}. Rename one of them.`
         : 'Not made: another file of the project folder has its name. Make Module… (right-click) makes it under another name.'}`;
   }
   return c.kind === 'same'
     ? `WARNING: ${c.path} has no HDL file: ${c.file} exists already and defines its module ${c.module}. Generate HDL File… (its right-click menu in the Design pane)${own} replaces ${c.file} with the HDL generated from it.`
+    : c.kind === 'removed'
+      ? `WARNING: ${c.path} has no HDL file: its HDL file ${c.file} was removed from the project (it is still in the project folder). Generate HDL File… (its right-click menu in the Design pane) makes it again from ${c.path}; Add to Project (Files) brings it back as it is.`
     : c.kind === 'drawn'
       ? `WARNING: ${c.path} has no HDL file: its module ${c.module} is the module of ${c.other} (${c.file}). Rename one of them.`
       : `WARNING: ${c.path} has no HDL file: ${c.target} exists already and holds something else. Generate HDL File… (its right-click menu in the Design pane) writes its HDL to ${c.free}.`;
