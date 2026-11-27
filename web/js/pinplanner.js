@@ -6,6 +6,9 @@
 // text (#5642): the constraints file in the text editor (Edit Constraints (Text) of before), the table's changes written
 // into it as the format writes them, its own read back into the table. Check (#5642, before Clear All): Check Constraints
 // of the file, its lines the console's (web/js/implement.js checkUcfFile).
+// One model (#5788): the assignments, the clocks and the file's other lines; the three views drawn from it on every
+// change (the text as it is typed), and it read again from the file when its text editor saves it, when it changes
+// outside the page (web/js/project-watch.js: fileOf, fileText) and, opened, from the file's editor's text not saved yet.
 // Read only (#5247), as the other editors: a followed project's (#3181; but an editor's link that edits its constraints)
 // and a phone's (#5121): its notice at the right end of its toolbar, the assignments shown, nothing changed (Auto-assign
 // and Clear All hidden, the table's fields disabled, no port dragged nor taken off its pin).
@@ -16,6 +19,7 @@ import { mountSideFold } from './side-fold.js';
 import { mountPinBoard } from './pinplanner-board.js';
 import { mountPinPorts } from './pinplanner-ports.js';
 import { checkPins, mountPinText } from './pinplanner-text.js';
+import { followPinFile } from './pinplanner-file.js';
 import { panelToggle, PORTS_KEY, RESOURCES_KEY } from './narrow.js';
 import { api } from './api.js';
 import { icons } from './icons.js';
@@ -80,8 +84,8 @@ export function mountPinPlanner(el, doc, top, target = null, { view: first = 'ta
   // Undo / Redo of the assignments (Edit menu, Ctrl+Z / Ctrl+Y on the page)
   const hist = [];
   let hi = -1;
-  const snap = () => { const t = JSON.stringify({ asg, clocks }); if (t === hist[hi]) return; hist.length = hi + 1; hist.push(t); if (hist.length > 200) hist.shift(); hi = hist.length - 1; };
-  const restore = i => { hi = i; ({ asg, clocks } = JSON.parse(hist[hi])); textView.tableChanged(); render(); setDirty(doc, true); };
+  const snap = () => { const t = JSON.stringify({ asg, clocks, other }); if (t === hist[hi]) return; hist.length = hi + 1; hist.push(t); if (hist.length > 200) hist.shift(); hi = hist.length - 1; };   // (the file's other lines too, #5788)
+  const restore = i => { hi = i; ({ asg, clocks, other } = JSON.parse(hist[hi])); textView.tableChanged(); render(); setDirty(doc, true); };
   const changed = () => { snap(); textView.tableChanged(); setDirty(doc, true); };
   // (the Text view: its editor's own Undo / Redo, #5642)
   const textEd = () => (view === 'text' ? textView.editor() : null);
@@ -97,21 +101,25 @@ export function mountPinPlanner(el, doc, top, target = null, { view: first = 'ta
     else if (mod && (k === 'y' || (k === 'z' && e.shiftKey))) { e.preventDefault(); e.stopPropagation(); doc.pinPlanner.redo(); }
   });
   // the bits of the buses written x[1] or x(1) become x<1>; any other name stays as written (#63)
-  const parse = text => {
+  const parse = (text, quiet = false) => {   // (quiet: as it is typed, a line half written its diagnostics', #5788)
     try {
       const u = readPins(pj.device, text, { ports });
       asg = u.assignments || {}; clocks = u.clocks || []; other = u.other || [];
-    } catch (e) { logError(`cannot parse ${pj.constraints}: ${e.message}`); }
+    } catch (e) { if (!quiet) logError(`cannot parse ${pj.constraints}: ${e.message}`); }
   };
   const load = async () => {
-    if (pj.constraints && filesState.fileTree.includes(pj.constraints)) {
+    const open = follow.openText();   // (the file's text editor's, open: its edits not saved yet too, #5788)
+    if (open != null) { parse(open); textView.load(open); }
+    else if (pj.constraints && filesState.fileTree.includes(pj.constraints)) {
       let text = null;
       try { text = await api.readFile(pj.name, pj.constraints); } catch (e) { logError(`cannot open ${pj.constraints}: ${e.message}`); }
-      if (text != null) { parse(text); textView.saved(text); }
+      if (text != null) { parse(text); textView.load(text); }
     }
     snap();
     render();
   };
+  // the file's text, written by its text editor or outside the page: the model read again from it, undoable (#5788)
+  const follow = followPinFile({ doc, file: () => pj.constraints, text: () => textView.text(), reload: text => { parse(text); snap(); textView.load(text); render(); } });
 
   const tableHost = h('div', { class: 'pp-table' });
   const boardHost = h('div', { class: 'pp-board', hidden: true });
@@ -120,7 +128,7 @@ export function mountPinPlanner(el, doc, top, target = null, { view: first = 'ta
   const checkTarget = target ? { top, board: target.board, device: target.device } : null;
   const textView = mountPinText({
     host: textHost, file: () => pj.constraints, text: null, readOnly, generate: () => pinsText(),
-    read: text => { parse(text); snap(); render(); }, edited: () => setDirty(doc, true),
+    read: (text, { live = false } = {}) => { parse(text, live); if (!live) snap(); render(); }, edited: () => setDirty(doc, true),
     diagnostics: async text => (await import('./implement.js')).ucfDiagnostics(text, pj.constraints || `constraints/top${constraintsExt(pj.device)}`, checkTarget),
   });
   // the board's view: the ports on its left (folded to a strip, remembered), dragged onto it
@@ -327,5 +335,5 @@ export function mountPinPlanner(el, doc, top, target = null, { view: first = 'ta
   }
 
   load().then(() => { if (first !== 'table') setView(first); });
-  return { save, destroy: () => textView.destroy(), pinView: () => view, setPinView: setView, pinText: () => textView.editor() };
+  return { save, destroy: () => { follow.destroy(); textView.destroy(); }, pinView: () => view, setPinView: setView, pinText: () => textView.editor(), ...follow.doc };
 }

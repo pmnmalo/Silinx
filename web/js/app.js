@@ -481,6 +481,7 @@ export async function flushDoc(doc, opts) {
     if (doc._saveFailed) { doc._saveFailed = false; log(`${doc.path || doc.title} saved.`, 'ok'); }
     // edited while it was being saved (the save marked it clean): those edits are saved next
     if (doc._edits !== edits) setDirty(doc, true);
+    dispatchEvent(new CustomEvent('silinx:doc-saved', { detail: { doc } }));   // (I/O Pin Planning follows its file's editor, #5788)
     // a drawn source without an HDL file: its module follows (#177), and it gets its HDL file as soon
     // as it has no errors (#207)
     const vp = docPath(doc);

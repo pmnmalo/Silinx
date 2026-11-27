@@ -1,8 +1,8 @@
 // The open project kept as it is on disk (#2843): what another process changes in its folder (the MCP server,
 // `silinx mcp`, working in the same workspace) the local server tells (GET /api/projects/:p/events,
 // server/project-watch.js), and the page reloads it: the Design pane's rows, the processes' marks, the Design
-// Summary, and an open document with no changes of its own in the editor. A document changed in the editor and on
-// disk asks which to keep. The page's own writes are not told back to it. The browser edition has no events.
+// Summary, and an open document with no changes of its own in the editor (I/O Pin Planning too, its constraints file's:
+// fileOf, fileText, #5788). A document changed in the editor and on disk asks which to keep. The page's own writes are not told back to it. The browser edition has no events.
 import { api } from './api.js';
 import { h, dialog } from './ui.js';
 import { appLog as log } from './console.js';   // (the application's lines, under every filter, #4729)
@@ -19,6 +19,8 @@ import { procState } from './state-proc.js';
 const REPORTS = 'build/reports.json', STATUS = 'build/silinx-status.json';
 // (a drawing's document: its path in its id, as app.js's docPath)
 const docPath = d => d.path || (/^(file|sch|asm|tt|fsm|pn|circ|regs):/.test(String(d.id || '')) ? String(d.id).replace(/^[a-z]+:/, '') : null);
+// (a document that shows a file it has no path of: I/O Pin Planning's constraints file, #5788)
+const showsFile = (d, path) => docPath(d) === path || d.fileOf?.() === path;
 const wait = ms => new Promise(r => setTimeout(r, ms));
 
 let watching = null;   // { name, ctl }
@@ -57,7 +59,7 @@ export async function applyChanges({ project, changes = [], by = null, tab = fal
   const run = changes.some(c => c.path === REPORTS);
   if (files.length) {
     log(`${by ? `Changed by ${by}` : where ? `Changed ${where}` : 'Changed outside Silinx'}: ${files.map(c => `${c.path}${c.kind === 'changed' ? '' : ` (${c.kind})`}`).join(', ')}.`, 'info');
-    for (const c of files) for (const d of docsState.docs.filter(o => docPath(o) === c.path)) await reloadDoc(d, c, by, where);
+    for (const c of files) for (const d of docsState.docs.filter(o => showsFile(o, c.path))) await reloadDoc(d, c, by, where);
     await reloadProject();
   }
   if (by) return;   // (a project followed: its runs are its owner's, not shared)
@@ -73,6 +75,7 @@ export async function applyChanges({ project, changes = [], by = null, tab = fal
 // whether an open text editor of `path` shows its file's text already (a drawing an editor's link edits: bound live to
 // its structure, #3183)
 async function shownLive(path) {
+  if (docsState.docs.some(o => o.fileOf?.() === path)) return false;   // (I/O Pin Planning's file: its views follow it, #5788)
   if (editsDrawingHere(path) && docsState.docs.some(o => docPath(o) === path && editorOf(o))) return true;
   const d = docsState.docs.find(o => docPath(o) === path && o.editor);
   if (!d) return false;
@@ -82,15 +85,16 @@ async function shownLive(path) {
 // an open document whose file changed on disk: reloaded, or the user asked when it has changes of its own
 async function reloadDoc(d, { path, kind }, by = null, where = null) {
   const gone = kind === 'deleted';
+  const ed = d.editor || d.fileText;   // (a text editor's, or I/O Pin Planning's model of its file, #5788)
   let text = null;
   if (!gone) { try { text = await api.readFile(S.project.name, path); } catch { return; } }
   // its own save on its way (two tabs saving at once, #4859: the server told this one the other's write first): waited
   // for, and the disk read again; its write the later one, nothing left to reload or ask
-  if (d._saving && !gone && !(d.editor && d.editor.getValue() === text)) {
+  if (d._saving && !gone && !(ed && ed.getValue() === text)) {
     await d._saving.catch(() => {});
     try { text = await api.readFile(S.project.name, path); } catch { return; }
   }
-  if (d.editor && !gone && d.editor.getValue() === text) { if (d.dirty) { d.editor.markClean(); setDirty(d, false); } return; }
+  if (ed && !gone && ed.getValue() === text) { if (d.dirty) { ed.markClean(); setDirty(d, false); } return; }
   if (d.dirty || d._saving) {
     // (not saved over the disk's while the user chooses)
     clearTimeout(d._autosave);
@@ -102,9 +106,9 @@ async function reloadDoc(d, { path, kind }, by = null, where = null) {
     d.dirty = false;
   }
   if (gone) { log(by ? `${path} was deleted by ${by}: closed.` : `${path} was deleted ${where || 'outside Silinx'}: closed.`, 'warn'); await closeDoc(d); return; }
-  if (d.editor) {
-    d.editor.setValue(text);
-    d.editor.markClean();
+  if (ed) {
+    ed.setValue(text);
+    ed.markClean();
     setDirty(d, false);
     d.liveCheck?.();
   } else if (!(api.following && inPlace(d, text))) {
