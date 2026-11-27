@@ -37,6 +37,8 @@ uiTest('#4686 a Board project on the Zybo Z7: New Source\'s PS Program, its star
   await waitNewSourcePage(page, 'Summary');
   await page.dialogButton('Finish');
   await page.waitNoDialog();
+  // (New Source's line, after the project's save and reload: silinx.json written, not only the page's project)
+  await page.waitConsole(/^Created PS Program \(Zynq\) 'ps\/main\.c'\.$/m);
   await page.waitFor(() => window.SilinxApp.S.fileTree.includes('ps/main.c') && window.SilinxApp.S.project.ps === 'ps/main.c', [], { what: 'ps/main.c, the project\'s PS program' });
   assert.match(await readWs(env, 'ZyboPs2', 'ps/main.c'), /Hello from the Cortex-A9 of Digilent Zybo Z7/);
   assert.equal(JSON.parse(await readWs(env, 'ZyboPs2', 'silinx.json')).ps, 'ps/main.c');
