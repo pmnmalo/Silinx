@@ -2,7 +2,8 @@
 // from the boards' descriptions (core/boards-vivado.js `ps`) checked, write by write, against the boards' ps7_init of
 // Vivado as independent references: the Zybo Z7's (U-Boot's board/xilinx/zynq/zynq-zybo-z7/ps7_init_gpl.c, from
 // Digilent's Zybo Z7-20 preset, Vivado 2018.2) and the PYNQ-Z1's (a Vivado 2018.1 design of the Arty Z7's twin: its
-// 50 MHz PS_CLK, UART0 on MIO 14 / 15), their addresses, masks and values; the writes Silinx leaves out of them (the DDR,
+// 50 MHz PS_CLK, UART0 on MIO 14 / 15), their addresses, masks and values (register facts only, no text or code of theirs:
+// both GPL-2.0-or-later, in THIRD-PARTY-NOTICES.md); the writes Silinx leaves out of them (the DDR,
 // the other peripherals) and its own AMBA clocks (the UART's and the GPIO's only) said; the refusals.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
