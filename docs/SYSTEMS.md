@@ -1172,8 +1172,8 @@ changelog fragment.
 ## Decided
 
 - The System is a System project's top, its one System document (#5041); its FPGA nodes are modules of that project.
-  A System made the top of an FPGA project (Top-Level Source Type System, Set as Top Module on it, the MCP's `set_top`,
-  `set_design_properties`, `new_project`) makes it a System project, its board kept in `fpga` (`core/system-top.js`,
+  A System made the top of an FPGA project (Set as Top Module on it, the MCP's `set_top`; a new System project: New
+  Project's System mode, `new_project mode system`) makes it a System project, its board kept in `fpga` (`core/system-top.js`,
   #5402). A top module is a device's, not the System's (Pedro, #5583): Set as Top Module (the MCP's `set_top`) on a
   module of an FPGA node's folder makes it that node's top module (its `module`, which Build Node, Implement and
   Program Node use), and the System stays the project's top. A module in no node's folder, or in a microcontroller's, is

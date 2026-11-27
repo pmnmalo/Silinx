@@ -414,8 +414,6 @@ PT_PATTERNS.push(
   }],
   [/^Removed (\d+) sources from the project$/, 'Removidas $1 fontes do projeto'],
   [/^Removed (\S+) and (\S+) from the project$/, 'Removidos $1 e $2 do projeto'],
-  [/^The project starts with (\S+) \(the top module 'top'\)\.$/, "O projeto começa com $1 (o módulo de topo 'top')."],
-  [/^The project starts with (\S+) \(the top module 'top'\) and its HDL module, generated from it\.$/, "O projeto começa com $1 (o módulo de topo 'top') e o seu módulo HDL, gerado a partir dele."],
   [/^(\S+) already exists\.\n\nReplace it\? Its current contents will be lost\.$/, '$1 já existe.\n\nSubstituir? O conteúdo atual perde-se.'],
   [/^(\S+) already exists: choose another name\.$/, '$1 já existe: escolha outro nome.'],
   // Convert to Schematic (editable) of any HDL module (#225)

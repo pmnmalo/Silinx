@@ -44,7 +44,7 @@ test('#5756 each processor board\'s project: a System of its one node, its board
   assert.match(cp.writes[1].text, /digitalio\.DigitalInOut\(board\.LED\)/);
   // (its silinx.json: Embedded / SoC's profile, its System its top, no constraints)
   const r = processorProject(fresh('p'), 'pico');
-  assert.deepEqual([r.project.profile, r.project.top, r.project.topSourceType, r.project.constraints, r.project.kind], ['embedded', '', 'system', null, undefined]);
+  assert.deepEqual([r.project.profile, r.project.top, 'topSourceType' in r.project, r.project.constraints, r.project.kind], ['embedded', '', false, null, undefined]);
   // (its nodes, as the Design pane and project_info read them)
   assert.deepEqual(projectNodes(r.project, { files: ['p.sys.json', 'pico/main.py'], texts: { 'p.sys.json': r.writes[0].text } }).nodes.map(n => [n.id, n.kind, n.files]), [['pico', 'mcu', ['pico/main.py']]]);
   // (refused: no such board, an FPGA board, another board's runtime)

@@ -1,7 +1,7 @@
-// The MCP server's System as a project's top (#5402, server/mcp-system-top.js), as the interface's: set_design_properties'
-// top_source_type system and set_top with a System document make the project a System project, its System its top;
-// set_top with one of its modules sets its FPGA node's top module, the System still its top (#5583); new_project's top_source_type
-// system makes a System project; refused in a release and in a design project, with the interface's messages.
+// The MCP server's System as a project's top (#5402, server/mcp-system-top.js), as the interface's: set_top with a System
+// document makes the project a System project, its System its top; set_top with one of its modules sets its FPGA node's
+// top module, the System still its top (#5583); new_project mode system makes a System project (no Top-Level Source
+// Type since #5786); refused in a release, with the interface's messages.
 import { test, before, after } from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
@@ -29,14 +29,11 @@ async function call(name, args = {}) {
 const ok = async (name, args) => { const r = await call(name, args); assert.equal(r.isError, false, r.text); return r; };
 const fails = async (name, args, message) => { const r = await call(name, args); assert.equal(r.isError, true, r.text); assert.equal(r.text, `${name}: ${message}`); };
 
-test('#5402 set_design_properties top_source_type system: an FPGA project made a System project, its new System its top', async () => {
+test('#5786 the Top-Level Source Type gone: set_design_properties\' and new_project\'s top_source_type unknown; a System project by its mode', async () => {
   await ok('new_project', { name: 's1', board: 'nexys2' });
-  const r = await ok('set_design_properties', { project: 's1', top_source_type: 'system' });
-  assert.equal(r.text, 's1: a System project now, its System s1.sys.json its top (its board kept).');
-  const pj = await P.readProject('s1');
-  assert.deepEqual([pj.kind, pj.profile, pj.board, pj.topSourceType, pj.fpga.board], [undefined, 'system', null, 'system', 'nexys2']);   // (its profile, #5440)
-  assert.ok(fs.existsSync(path.join(P.projectDir('s1'), 's1.sys.json')));
-  await fails('set_design_properties', { project: 's1', top_source_type: 'system', board: 'basys2' }, 'top_source_type system: give it alone (a System project has no board of its own)');
+  await fails('set_design_properties', { project: 's1', top_source_type: 'system' }, 'unknown top_source_type');
+  await fails('new_project', { name: 's1b', top_source_type: 'system' }, 'unknown top_source_type');
+  assert.equal((await P.readProject('s1')).board, 'nexys2', 'not changed');
 });
 
 test('#5583 set_top / unset_top in a System project: a module of an FPGA node\'s folder that node\'s top, the System still the project\'s top; refused outside it', async () => {
@@ -69,16 +66,13 @@ test('#5583 set_top / unset_top in a System project: a module of an FPGA node\'s
   await fails('set_top', { project: 's2', top: 'none.sys.json' }, 'none.sys.json: no such file in the project \'s2\'');
 });
 
-test('#5402 new_project top_source_type system: a System project; refused in a design project and in a release', async () => {
-  const r = await ok('new_project', { name: 's3', top_source_type: 'system' });
+test('#5402 #5786 new_project mode system: a System project, its System its top; refused in a release', async () => {
+  const r = await ok('new_project', { name: 's3', mode: 'system' });
   assert.deepEqual([r.data.kind, r.data.system], ['system', 's3.sys.json']);
-  assert.equal((await P.readProject('s3')).topSourceType, 'system');
-  await fails('new_project', { name: 's4', profile: 'logic', top_source_type: 'system' }, 'top_source_type system: a design and simulation project\'s top is a drawing: a System is a System project\'s top (New Project ▸ System)');
-  await ok('new_project', { name: 's5', board: 'basys2' });
+  assert.equal('topSourceType' in await P.readProject('s3'), false);
   setBuildChannel('release');
   try {
-    await fails('set_design_properties', { project: 's5', top_source_type: 'system' }, `top_source_type system: ${SYSTEMS_OFF}`);
-    await fails('new_project', { name: 's6', top_source_type: 'system' }, SYSTEMS_OFF);
+    await fails('new_project', { name: 's6', mode: 'system' }, SYSTEMS_OFF);
   } finally { setBuildChannel('dev'); }
 });
 

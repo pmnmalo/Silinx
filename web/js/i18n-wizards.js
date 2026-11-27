@@ -40,8 +40,6 @@ export const WIZARDS_PT = {
   'A System project has no board of its own: each FPGA node of its System names its board and pins, each microcontroller its firmware.':
     'Um projeto de Sistema não tem placa própria: cada nó FPGA do seu Sistema indica a sua placa e os pinos, cada microcontrolador o seu firmware.',
   // a System as the top (#5402, core/system-top.js)
-  'The project is a System project: its System is its top, each FPGA node on a board of its own (the board above is not used).':
-    'O projeto é um projeto de Sistema: o seu Sistema é o topo, cada nó FPGA numa placa própria (a placa acima não é usada).',
   'Replace Project': 'Substituir Projeto',   // (New Project's and the imports', #3538)
   // Rename Project… (#4641)
   'Rename Project…': 'Mudar o Nome do Projeto…', 'Rename Project': 'Mudar o Nome do Projeto',

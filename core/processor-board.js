@@ -101,7 +101,7 @@ export function processorProject(pj, board, { runtime = null } = {}) {
   if (r.error) return { error: r.error };
   const start = starterFiles(board, id, runtime);
   const system = { ...r.system, nodes: r.system.nodes.map(n => ({ ...n, firmware: start.firmware })) };
-  const project = { ...withProfile(pj, 'embedded'), board, constraints: null, top: '', topSourceType: 'system' };
+  const project = { ...withProfile(pj, 'embedded'), board, constraints: null, top: '' };
   return { project, node: id, firmware: start.firmware, writes: [{ path: `${pj.name}.sys.json`, text: writeSystem(system) }, ...start.files] };
 }
 

@@ -27,9 +27,10 @@ export function newProjectJson(name, { device, board, kind = null } = {}) {
 }
 
 /** silinx.json's text (#4766, as both stores write it): 2-space JSON and a final newline, its name the project's, no
- *  fileTree (the interface's, never stored). */
+ *  fileTree (the interface's, never stored), no Top-Level Source Type (a project's of before #5786: dropped). */
 export function projectJsonText(name, pj) {
   const clean = { ...pj, name };
   delete clean.fileTree;
+  delete clean.topSourceType;
   return JSON.stringify(clean, null, 2) + '\n';
 }

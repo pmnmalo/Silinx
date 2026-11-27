@@ -1,6 +1,5 @@
-// A System as a project's top (#5402): Top-Level Source Type "System" (New Project, Design Properties, the MCP's
-// new_project and set_design_properties) and Set as Top Module on a System document (the MCP's set_top) make the
-// project a System project, the System its top (core/project-kind.js asSystemProject: no board of its own, each
+// A System as a project's top (#5402): Set as Top Module on a System document (the MCP's set_top) makes the project a
+// System project (a new one: New Project's System mode, #5786), the System its top (core/project-kind.js asSystemProject: no board of its own, each
 // FPGA node names its own). Set as Top Module on a module of a System project sets the top module of the FPGA node whose
 // folder holds it, the System staying the project's top (#5583: before, it made the project an FPGA project again).
 // Off in a release, as Systems are (#5202). One rule and one set of messages for the interface and the MCP server.
@@ -11,8 +10,6 @@ import { newSystemFile } from './system-doc.js';
 import { changeNode, NODE_KIND_NAMES } from './system-edit.js';
 import { nodeOfPath } from './system-layout.js';
 
-/** The Top-Level Source Type of a System. */
-export const SYSTEM_TOP = 'system';
 
 /** Why a process of the FPGA flow is refused in the project `name` whose top is its System (#5443): its FPGA nodes are
  *  implemented each on its own board, not yet (docs/SYSTEMS.md's phase 3). The interface offers none; the MCP says it. */

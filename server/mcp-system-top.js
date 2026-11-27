@@ -1,6 +1,5 @@
 // The MCP server's System as a project's top (#5402, core/system-top.js), as the interface's (web/js/system-top-ui.js):
-// set_top with a System document, set_design_properties' and new_project's top_source_type system make the project a
-// System project, its System its top; set_top with a module of a System project sets the top module of the FPGA node
+// set_top with a System document makes the project a System project (a new one: new_project mode system, #5786), its System its top; set_top with a module of a System project sets the top module of the FPGA node
 // whose folder holds it, the System staying the project's top (#5583). Off in a release, as Systems are.
 import fsp from 'node:fs/promises';
 import path from 'node:path';

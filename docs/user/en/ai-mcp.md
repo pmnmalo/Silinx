@@ -27,11 +27,11 @@ warnings."* Files go in and out of the projects only through an exchange folder:
 
 `node bin/silinx.js mcp` serves the projects of the Silinx workspace to an AI assistant (Claude
 Desktop, Claude Code, any client of the Model Context Protocol) over stdin / stdout. Its tools:
-`list_examples` (the examples, as New Project's Start from, each with its modes), `new_project_from_example` (`mode: circuit` for a Circuit example), `new_project` (an empty one: `mode` circuit, board or system, as New Project's cards; for an FPGA board, or a processor board alone; `top_source_type`, its top document as New Project's Top-Level Source Type), `set_top` (the top
+`list_examples` (the examples, as New Project's Start from, each with its modes), `new_project_from_example` (`mode: circuit` for a Circuit example), `new_project` (an empty one: `mode` circuit, board or system, as New Project's cards; for an FPGA board, or a processor board alone), `set_top` (the top
 module and the test bench, as *Set as Top Module*; the constraints from the board's pins, as *Update
 Constraints*; `unset_top`, as *Unset as Top Module*), `list_projects`, `project_info`, `read_file`, `write_file` (a drawing's HDL file made again from it, as its editor does),
-`list_devices` (the boards and devices), `set_design_properties` (its `mode`, as Project ▸ Change Mode…, down with `confirm`, [Project modes](modes.md); the board, the device, the synthesis tool, the Preferred Language, the Project Kind, the
-Top-Level Source Type, as *Design Properties*), `set_source_properties` (a drawing's language), `new_source` (every type of *New Source*: a module with its ports, a test
+`list_devices` (the boards and devices), `set_design_properties` (its `mode`, as Project ▸ Change Mode…, down with `confirm`, [Project modes](modes.md); the board, the device, the synthesis tool, the Preferred Language, the Project Kind, as
+*Design Properties*), `set_source_properties` (a drawing's language), `new_source` (every type of *New Source*: a module with its ports, a test
 bench, a package, constraints, a .mem, a C / C++ function, an empty drawing), `clock_manager` and `block_memory` (the Clocking Wizard's DCM / PLL, the
 Block Memory wizard's RAM or ROM; a module of theirs made again with other settings), `xadc_wizard` (the XADC Wizard's module on a 7-series device, #5385), `test_bench_wizard` (a self-checking
 test bench: its vectors, their expected outputs given or from the design) and `constraints_wizard` (a UCF on the board's pins; a PCF, LPF, CST or XDC on the other families' boards), `check_constraints` (*Check Constraints*, in the device's format), `convert_module` (an HDL module to a schematic, ASM chart or state

@@ -46,8 +46,9 @@ A project is a directory under the workspace (default `~/Silinx-projects`, overr
   and the MCP's `set_design_properties` `mode` change it (`core/mode-change.js`): up loses nothing (Board → System moves the project's files
   into its node's folder and writes its System document), down drops what the lower mode has not (said first), and
   nothing is deleted from the disk.
-* `topSourceType`: the Top-Level Source Type (#4105): `hdl` (absent too), `sch`, `fsm`, `asm`, `tt`, `petri`, `circuit`,
-  `c` or `cpp` (`core/top-types.js`); a design and simulation project's is a drawing's.
+* `topSourceType`: none since #5786 (a project of before saved its Top-Level Source Type there: it is dropped when the
+  project is read and when it is saved). ISE's `.xise` export says the Top-Level Source Type from the top's file
+  (Schematic for a schematic's, HDL otherwise).
 * `impl.optMode` and `impl.optLevel`: ISE's Optimization Goal and Effort, and the project's Optimization (#2470):
   `Speed` and 1 **Fast** (one mapping, its critical LUTs made shallower, one placement: a project with none is Fast too), `Area` and 2 **Area** (the
   default of a new project: the smaller of the usual mapping's netlist and Speed's, one placement), `Speed` and 2 **Speed** (every mapping for speed, the state machines of 8 states or more one-hot, the

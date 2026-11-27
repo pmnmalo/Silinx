@@ -50,7 +50,7 @@ A project is a folder with `silinx.json`: its sources, its top, its device and b
 ([PROJECT.md](PROJECT.md); `server/projects.js` on disk, `web/js/project-store.js` in the browser; `web/js/project.js`
 opens and closes it). Its profile says which node kinds its System may hold (the next part); its kind, as kept, is an FPGA project or a design and simulation project, with no board, no flow and no
 HDL shown (`core/project-kind.js`, `web/js/design-only.js`; New Project's first page, `web/js/project-kind-step.js`, #5041, and Design Properties' Project Kind, #3780,
-#3891, #4103), and its Top-Level Source Type what a new project's top is made of (`core/top-types.js`, #4105). The Design pane shows one row per module: a drawing is the module's base and its HDL file is always
+#3891, #4103). A new project is empty, its top added as any module (#5786: no Top-Level Source Type). The Design pane shows one row per module: a drawing is the module's base and its HDL file is always
 generated from it (CLAUDE.md). ISE's project files are read and written too (`server/xise.js`, ISE's schematics:
 `core/isesch.js`).
 

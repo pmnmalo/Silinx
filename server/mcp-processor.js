@@ -9,9 +9,9 @@ import { processorProject, processorProjectText } from '../core/processor-board.
 import { systemsOn, SYSTEMS_OFF } from '../core/build-channel.js';
 
 /** A new Board project `name` for the processor board `board` (`runtime`: a Pico's Python firmware): its result. */
-export async function newProcessorProject(name, board, { runtime, variant, type, language, profile } = {}) {
+export async function newProcessorProject(name, board, { runtime, variant, language, profile } = {}) {
   if (!systemsOn()) throw toolError(SYSTEMS_OFF);
-  const extra = [['variant', variant], ['top_source_type', type], ['language', language], ['profile', profile]].filter(([, v]) => v !== undefined).map(([k]) => k);
+  const extra = [['variant', variant], ['language', language], ['profile', profile]].filter(([, v]) => v !== undefined).map(([k]) => k);
   if (extra.length) throw toolError(`${extra.join(', ')}: a processor board's project has none (its firmware is its program)`);
   // (checked before anything is made: the board, the runtime)
   const check = processorProject({ name, files: [] }, board, { runtime });

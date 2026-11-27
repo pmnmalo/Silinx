@@ -144,7 +144,7 @@ test('#5754 new_project mode: circuit, board, system, each its profile and its k
   await fails('new_project', { name: 'm5', mode: 'circuit', profile: 'fpga' }, 'profile fpga (FPGA) is not of the mode circuit (Circuit: logic)');
   await fails('new_project', { name: 'm6', mode: 'fpga' }, 'mode: one of circuit, board, system');
   await fails('new_project', { name: 'm7', mode: 'circuit', board: 'basys2' }, 'a Digital Logic project (profile logic) has no board: give profile logic or a board, not both');
-  await fails('new_project', { name: 'm8', mode: 'board', top_source_type: 'system' }, 'top_source_type system makes a System project: give mode system, not board');
+  await fails('new_project', { name: 'm8', mode: 'board', top_source_type: 'system' }, 'unknown top_source_type');   // (#5786)
   await fails('new_project', { name: 'm9', mode: 'system', board: 'basys2' }, 'a System project (profile system or embedded) has no board nor top document: its System (edit_system) names each FPGA node\'s board');
   const names = (await P.listProjects()).map(p => p.name);
   for (const n of ['m5', 'm6', 'm7', 'm8', 'm9']) assert.ok(!names.includes(n), `${n} not made`);

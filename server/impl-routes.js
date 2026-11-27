@@ -455,7 +455,7 @@ export async function importXiseProject(P, name, xiseText, provided) {
   }
   const saved = await P.updateProject(name, pj => Object.assign(pj, {
     device: parsed.device.part ? parsed.device : pj.device,
-    top: parsed.top || '', simTop: parsed.simTop || '', topSourceType: parsed.topSourceType || 'hdl', files, constraints,
+    top: parsed.top || '', simTop: parsed.simTop || '', files, constraints,
     impl: { ...pj.impl, ...parsed.impl },
     trusted: false,   // (a project from outside: trusted only once the user says so, #2830)
   }));

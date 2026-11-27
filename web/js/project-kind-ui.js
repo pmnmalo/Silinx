@@ -11,8 +11,6 @@ import { changeProfile } from '/core/profile-change.js';
 import { filesState } from './state-files.js';
 import { isSystemFile } from '/core/system-doc.js';
 import { api } from './api.js';
-import { HDL_TOP_TYPES } from '/core/top-types.js';
-import { SYSTEM_TOP } from '/core/system-top.js';
 import { S, app } from './app.js';
 import { h } from './ui.js';
 import { appLog, logError } from './console.js';
@@ -57,18 +55,13 @@ export function kindNote(kindSel, pj) {
 
 /**
  * Shows the fields of an FPGA project (`fpga`: the inputs of a form-grid, each after its label) only when `isDesign()`
- * says no (nor `isSystem()`, a System's profile chosen), and a Top-Level Source Type (`topType`) without HDL nor C / C++
- * then (a Schematic instead). Returns the function that
- * applies it (called again when the choice changes).
+ * says no (nor `isSystem()`, a System's profile chosen). Returns the function that applies it (called again when the
+ * choice changes).
  */
-export function kindFields(isDesign, fpga, topType = null, isSystem = () => false) {
+export function kindFields(isDesign, fpga, isSystem = () => false) {
   const apply = () => {
-    const d = isDesign(), off = d || isSystem();   // (a System's profile, #5440: its nodes name their boards)
+    const off = isDesign() || isSystem();   // (a System's profile, #5440: its nodes name their boards)
     for (const el of fpga) for (const x of [el, el.previousElementSibling]) if (x) x.style.display = off ? 'none' : '';
-    if (!topType) return;
-    // (no HDL nor C / C++ top: a drawing's, #4105; nor a System, a System project's, #5402)
-    for (const o of topType.options) if (HDL_TOP_TYPES.includes(o.value) || o.value === SYSTEM_TOP) o.hidden = o.disabled = d;
-    if (d && HDL_TOP_TYPES.includes(topType.value)) { topType.value = 'sch'; topType.dispatchEvent(new Event('change')); }
   };
   apply();
   return apply;

@@ -56,7 +56,7 @@ export function boardRefusal(json, { board, device } = {}) {
 
 /** A new System project's silinx.json: no board, no constraints, no top module (its System is its top); its profile
  *  System, or Embedded / SoC if it had that one (#5440). */
-export const asSystemProject = json => ({ ...withProfile(json, isSystemProject(json) ? profileOf(json) : 'system'), board: null, constraints: null, top: '', topSourceType: 'system' });   // (its top type System, core/system-top.js SYSTEM_TOP, #5402)
+export const asSystemProject = json => ({ ...withProfile(json, isSystemProject(json) ? profileOf(json) : 'system'), board: null, constraints: null, top: '' });
 
 /** Whether a project (its silinx.json) is a design and simulation project: its profile Digital Logic (#5440). */
 export const isDesignOnly = pj => profileOf(pj) === 'logic';

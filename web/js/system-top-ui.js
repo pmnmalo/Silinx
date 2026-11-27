@@ -1,6 +1,5 @@
 // A System as the project's top in the interface (#5402, core/system-top.js): Set as Top Module on a System document
-// (its file's menu in an FPGA project) and Design Properties' Top-Level Source Type "System" make the project a
-// System project, its System its top (the project saved and opened again); Set as Top Module on a module of a System
+// (its file's menu in an FPGA project) makes the project a System project, its System its top (the project saved and opened again); Set as Top Module on a module of a System
 // project sets the top module of the FPGA node whose folder holds it, the System staying the project's top (#5583).
 // A line in the console.
 import { S, app, findDoc, setDirty } from './app.js';

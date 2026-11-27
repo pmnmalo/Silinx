@@ -30,7 +30,7 @@ test('a project ISE created: device, top, roles, ISE\'s defaults, no warnings', 
 test('an exported project saved by ISE: mixed languages, a Spartan-6, the property changed in ISE, no warnings', () => {
   const p = importXise(fixture('traffic-saved-by-ise.xise'));
   assert.deepEqual(p.device, { family: 'spartan6', part: 'xc6slx16', package: 'csg324', speed: '-3' });
-  assert.deepEqual([p.top, p.simTop, p.lang, p.topSourceType], ['top', 'tb_traffic', 'vhdl', 'hdl']);
+  assert.deepEqual([p.top, p.simTop, p.lang, 'topSourceType' in p], ['top', 'tb_traffic', 'vhdl', false]);   // (its Top-Level Source Type not kept, #5786)
   assert.deepEqual(p.files.map(f => f.lang), ['vhdl', 'vhdl', 'vhdl', 'verilog', 'vhdl', 'vhdl']);
   assert.equal(p.impl.optMode, 'Area');
   assert.deepEqual(p.warnings, []);
@@ -47,7 +47,7 @@ test('a schematic project saved by ISE: the schematic listed with both associati
 test('what ISE saved, exported again, reads the same', () => {
   for (const f of ['stopwatch-created-by-ise.xise', 'traffic-saved-by-ise.xise']) {
     const p = importXise(fixture(f));
-    const again = importXise(exportXise({ ...p, topSourceType: p.topSourceType }));
+    const again = importXise(exportXise(p));
     for (const k of ['device', 'top', 'files', 'constraints', 'impl', 'warnings']) assert.deepEqual(again[k], p[k], `${f}: ${k}`);
   }
 });

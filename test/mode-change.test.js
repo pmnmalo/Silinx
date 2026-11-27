@@ -51,7 +51,7 @@ test('#5755 Board → System: the blinky example\'s board its first node, its fi
   const sys = readSystem(r.write.text).system;
   assert.deepEqual(sys.nodes.map(n => [n.id, n.kind, n.module, n.board, n.variant, n.constraints, n.lang]), [['fpga', 'fpga', 'top', 'basys2', '250', 'fpga/constraints/top.ucf', 'vhdl']]);
   assert.deepEqual(sys.links, []);
-  assert.deepEqual([modeOf(r.project), r.project.profile, r.project.board, r.project.constraints, r.project.top, r.project.topSourceType, r.project.simTop], ['system', 'system', null, null, '', 'system', 'tb_top']);
+  assert.deepEqual([modeOf(r.project), r.project.profile, r.project.board, r.project.constraints, r.project.top, 'topSourceType' in r.project, r.project.simTop], ['system', 'system', null, null, '', false, 'tb_top']);
   assert.deepEqual(r.project.files.map(f => f.path).sort(), pj.files.map(f => `fpga/${f.path}`).sort());
   assert.deepEqual([r.down, r.lost], [false, []]);
   assert.equal(modeChangeText('blinky', 'system', r), 'blinky: System now (nothing lost).\n  its board the System\'s first node, fpga (basys2)\n  its files moved into the node\'s folder, fpga/ (constraints, sim, src)\n  its System document blinky.sys.json written');
