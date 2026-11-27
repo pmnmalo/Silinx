@@ -7,13 +7,13 @@ import { test, before, after } from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
-import { scratchEnv, waitJob, writeConfig, ROOT } from './server-helpers.js';
+import { scratchEnv, waitJob, writeConfig, makeFakes, isolatedPath, ROOT } from './server-helpers.js';
 import { PS_LINKER_SCRIPT, PS_STARTUP } from '../core/zynq-ps-compile.js';
 
 const STUB = path.join(ROOT, 'test/fixtures/arm-gcc-stub/arm-none-eabi-gcc');
 const WIN = process.platform === 'win32' ? 'the stand-in for arm-none-eabi-gcc is a script run by its #! line, not on Windows' : false;
-let tmp;
-before(async () => { tmp = await scratchEnv('silinx-ps-compile-'); await writeConfig({ mode: 'silinx', paths: { 'arm-none-eabi-gcc': STUB } }); });
+let tmp, fakes;
+before(async () => { tmp = await scratchEnv('silinx-ps-compile-'); fakes = await makeFakes(tmp); await writeConfig({ mode: 'silinx', paths: { 'arm-none-eabi-gcc': STUB } }); });
 after(() => tmp && fs.rmSync(tmp, { recursive: true, force: true }));
 const P = await import('../server/projects.js');
 const jobs = await import('../server/jobs.js');
@@ -45,10 +45,26 @@ async function systemProject(files = { 'zybo/ps/main.c': MAIN }) {
 const run = async (name, node) => waitJob(jobs, (await startPsCompile(name, node === undefined ? {} : { node })).id);
 const at = (name, f) => path.join(P.projectDir(name), f);
 
-test('#4687 the compiler found: arm-none-eabi-gcc\'s version; not found, said why; Arm\'s installer\'s folder', { skip: WIN }, async () => {
-  assert.deepEqual(await detectArmGcc(), { available: true, path: STUB, version: '14.2.1', reason: 'arm-none-eabi-gcc 14.2.1 found' });
-  assert.deepEqual(await detectArmGcc({ paths: { 'arm-none-eabi-gcc': path.join(tmp, 'none') } }),
-    { available: false, path: null, version: null, reason: 'arm-none-eabi-gcc not found (the Arm GNU Toolchain: on the PATH or in config.json\'s paths[\'arm-none-eabi-gcc\'])' });
+const NONE = 'arm-none-eabi-gcc not found (the Arm GNU Toolchain: on the PATH or in config.json\'s paths[\'arm-none-eabi-gcc\'])';
+const NO_MACHINE = 'no ISE machine (no ssh host in the toolchain settings)';
+
+test('#4687 the compiler found: this computer\'s (its version), else the ISE machine\'s image over ssh; which one and why not the other; Arm\'s installer\'s folder', { skip: WIN }, async () => {
+  const local = { available: true, reason: 'arm-none-eabi-gcc 14.2.1 installed here' };
+  assert.deepEqual(await detectArmGcc(), { available: true, via: 'local', path: STUB, version: '14.2.1', image: null, reason: 'arm-none-eabi-gcc 14.2.1 installed here',
+    local, remote: { available: false, reason: NO_MACHINE } });
+  const gone = { 'arm-none-eabi-gcc': path.join(tmp, 'none') };
+  assert.deepEqual(await detectArmGcc({ paths: gone }), { available: false, via: null, path: null, version: null, image: null, reason: `${NONE}; ${NO_MACHINE}`,
+    local: { available: false, reason: NONE }, remote: { available: false, reason: NO_MACHINE } });
+  const ssh = { host: 'mini', user: 'dev', remoteDir: 'silinx-build' };
+  const both = await detectArmGcc({ paths: { 'arm-none-eabi-gcc': STUB }, ssh });
+  assert.deepEqual([both.via, both.reason, both.remote], ['local', 'arm-none-eabi-gcc 14.2.1 installed here (the ISE machine\'s image not used)', { available: true, reason: 'the image silinx/arm-none-eabi:12.2 on the ISE machine, over ssh' }]);
+  const r = await detectArmGcc({ paths: gone, ssh });
+  assert.deepEqual([r.available, r.via, r.image, r.version, r.reason], [true, 'ssh', 'silinx/arm-none-eabi:12.2', '12.2', `arm-none-eabi-gcc in the image silinx/arm-none-eabi:12.2 on the ISE machine, over ssh (${NONE})`]);
+  const forced = await detectArmGcc({ paths: { 'arm-none-eabi-gcc': STUB }, ssh, armGcc: { mode: 'ssh', image: 'me/arm:13.2' } });
+  assert.deepEqual([forced.via, forced.version, forced.reason], ['ssh', '13.2', 'arm-none-eabi-gcc in the image me/arm:13.2 on the ISE machine, over ssh (not used (config.json\'s armGcc.mode is ssh))']);
+  const only = await detectArmGcc({ paths: { 'arm-none-eabi-gcc': STUB }, ssh, armGcc: { mode: 'local' } });
+  assert.deepEqual([only.via, only.remote.reason], ['local', 'not used (config.json\'s armGcc.mode is local)']);
+  assert.equal((await detectArmGcc({ paths: gone, ssh, armGcc: { image: 'bad image;' } })).remote.reason, 'config.json\'s armGcc.image is not an image\'s name');
   const apps = path.join(tmp, 'ArmGNUToolchain'), bin = path.join(apps, '14.2.rel1', 'arm-none-eabi', 'bin');
   fs.mkdirSync(bin, { recursive: true });
   fs.copyFileSync(STUB, path.join(bin, 'arm-none-eabi-gcc')); fs.chmodSync(path.join(bin, 'arm-none-eabi-gcc'), 0o755);
@@ -116,7 +132,7 @@ test('#4687 the refusals: no node in a System, a node in a Board project, a boar
   await assert.rejects(startPsCompile(zb, {}), (e) => e.status === 403 && /arm-none-eabi-gcc/.test(e.message));
   await writeConfig({ mode: 'silinx', paths: { 'arm-none-eabi-gcc': path.join(tmp, 'none') } });
   try {
-    await refused(await boardProject(), {}, 'Compile PS Program needs arm-none-eabi-gcc on the local server: arm-none-eabi-gcc not found (the Arm GNU Toolchain: on the PATH or in config.json\'s paths[\'arm-none-eabi-gcc\'])');
+    await refused(await boardProject(), {}, `Compile PS Program needs arm-none-eabi-gcc on the local server or the ISE machine: ${NONE}; ${NO_MACHINE}`);
   } finally { await writeConfig({ mode: 'silinx', paths: { 'arm-none-eabi-gcc': STUB } }); }
 });
 
@@ -134,6 +150,55 @@ test('#4687 MCP: run_process ps, its warnings and locations; its refusals; toolc
   await assert.rejects(tool('run_process').run({ project: name, process: 'ps', toolchain: 'ise' }), { message: 'toolchain: a PS program is compiled by arm-none-eabi-gcc (no toolchain to choose)' });
   await assert.rejects(tool('run_process').run({ project: sys, process: 'ps' }), { message: 'node: the System node whose PS program is compiled (its Zynq nodes: zybo)' });
   const t = await tool('toolchain_info').run({});
-  assert.equal(t.text.split('\n').at(-1), 'arm-none-eabi-gcc (a Zynq\'s Compile PS Program): available: arm-none-eabi-gcc 14.2.1 found.');
-  assert.deepEqual(t.data.armGcc, { available: true, version: '14.2.1', reason: 'arm-none-eabi-gcc 14.2.1 found' });
+  assert.equal(t.text.split('\n').at(-1), 'arm-none-eabi-gcc 14.2.1 (a Zynq\'s Compile PS Program): available, on this computer: arm-none-eabi-gcc 14.2.1 installed here.');
+  assert.deepEqual(t.data.armGcc, { available: true, via: 'local', version: '14.2.1', reason: 'arm-none-eabi-gcc 14.2.1 installed here', local: 'arm-none-eabi-gcc 14.2.1 installed here', remote: NO_MACHINE });
+});
+
+test('#4687 arm-none-eabi-gcc in its image on the ISE machine: the build folder sent over ssh, build.sh run in the image, its ELF brought back; the remote folder removed', { skip: WIN }, async () => {
+  const home = path.join(tmp, 'remote-home'), log = path.join(tmp, 'ssh.log'), dlog = path.join(tmp, 'docker.log');
+  const was = process.env.PATH;
+  // (the stand-in found in the "image" on its PATH: the fake docker runs it here)
+  process.env.PATH = isolatedPath(fakes.ssh, fakes.docker, path.dirname(STUB), path.dirname(process.execPath));
+  Object.assign(process.env, { FAKE_SSH_HOME: home, FAKE_SSH_LOG: log, FAKE_DOCKER_LOG: dlog });
+  await writeConfig({ mode: 'silinx', ssh: { host: 'mini', user: 'dev', remoteDir: 'silinx-build' }, armGcc: { mode: 'ssh' } });
+  try {
+    const name = await systemProject({ 'zybo/ps/main.c': '#warning check the clock\n' + MAIN });
+    const j = await run(name, 'zybo');
+    assert.equal(j.status, 'ok', j.lines.join('\n'));
+    assert.deepEqual(j.lines, [
+      'System node zybo: its PS program (1 C and assembly file(s) of zybo/ps/) for the Cortex-A9, by arm-none-eabi-gcc in the image silinx/arm-none-eabi:12.2 on the ISE machine, with Silinx\'s startup code and Silinx\'s linker script (the on-chip memory), in build/nodes/zybo/ps/.',
+      'WARNING: zybo/ps/main.c:1:2: #warning check the clock',
+      'System node zybo: its PS program build/nodes/zybo/ps/out/zybo.elf, 8 bytes loaded in the on-chip memory (16392 of its 192 KB used, its .bss and stack included), its entry 0x00000000.',
+    ]);
+    const rdir = `silinx-build/${name}.zybo.arm`;
+    const calls = fs.readFileSync(log, 'utf8').trim().split('\n');
+    assert.equal(calls.length, 4, calls.join('\n'));
+    assert.ok(calls.every((c) => c.startsWith('dev@mini ')));
+    assert.ok(calls[0].includes(`mkdir -p ${rdir} && tar -C ${rdir} -xf -`));
+    assert.ok(calls[1].includes(`cd ${rdir} && docker run --rm --pull=never --network none`) && calls[1].endsWith('silinx/arm-none-eabi:12.2 bash build.sh'), calls[1]);
+    assert.ok(calls[2].endsWith(`tar -C ${rdir} -cf - out`) && calls[3].endsWith(`rm -rf ${rdir}`));
+    assert.ok(!fs.existsSync(path.join(home, rdir)), 'the remote folder removed');
+    assert.deepEqual(fs.readFileSync(at(name, 'build/nodes/zybo/ps/build.sh'), 'utf8').split('\n').slice(-2),
+      [`arm-none-eabi-gcc ${FLAGS.join(' ')} -T silinx/ps.ld silinx/startup.S src/main.c -o out/zybo.elf -Wl,-Map=out/zybo.map`, '']);
+    // (a Board project's remote folder: <project>.ps.arm)
+    const zb = await boardProject();
+    assert.equal((await run(zb)).status, 'ok');
+    assert.ok(fs.readFileSync(log, 'utf8').includes(`silinx-build/${zb}.ps.arm`));
+    // (the image not on the ISE machine: said so)
+    const none = path.join(tmp, 'docker-none');
+    fs.mkdirSync(none, { recursive: true });
+    fs.writeFileSync(path.join(none, 'docker'), '#!/bin/sh\necho "docker: Error response from daemon: No such image: silinx/arm-none-eabi:12.2." >&2\nexit 125\n', { mode: 0o755 });
+    process.env.PATH = isolatedPath(fakes.ssh, none, path.dirname(process.execPath));
+    const e = await run(name, 'zybo');
+    assert.deepEqual(e.lines.slice(1), ['ERROR: the image silinx/arm-none-eabi:12.2 is not on the ISE machine (build it there from Debian\'s gcc-arm-none-eabi and libnewlib-arm-none-eabi)',
+      'ERROR: its PS program did not compile (1 error(s), 0 warning(s))']);
+    // (the ISE machine refuses the connection)
+    process.env.FAKE_SSH_FAIL = '1';
+    const f = await run(name, 'zybo');
+    assert.deepEqual(f.lines.slice(1, 2), ['ERROR: zybo: its sources could not be sent to the ISE machine (exit code 255)']);
+  } finally {
+    process.env.PATH = was;
+    for (const k of ['FAKE_SSH_HOME', 'FAKE_SSH_LOG', 'FAKE_DOCKER_LOG', 'FAKE_SSH_FAIL']) delete process.env[k];
+    await writeConfig({ mode: 'silinx', paths: { 'arm-none-eabi-gcc': STUB } });
+  }
 });
