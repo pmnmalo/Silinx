@@ -15,7 +15,7 @@ const E = () => env;
 const TOP = 'library ieee;\nuse ieee.std_logic_1164.all;\n\nentity top is\n  port (a : in std_logic; y : out std_logic);\nend top;\n\narchitecture rtl of top is\nbegin\n  y <= not a;\nend rtl;\n';
 const P = 'src/top.vhd';
 const warnings = async (page) => (await page.consoleText()).split('\n').map((l) => l.trim()).filter((l) => /^(WARNING|AVISO|ERROR|ERRO)/.test(l));
-const until = async (fn, what, ms = 10000) => { for (let t = Date.now(); Date.now() - t < ms;) { if (await fn()) return; await new Promise((r) => setTimeout(r, 100)); } assert.fail(`timed out: ${what}`); };
+const until = async (fn, what, ms = 20000) => { for (let t = Date.now(); Date.now() - t < ms;) { if (await fn()) return; await new Promise((r) => setTimeout(r, 100)); } assert.fail(`timed out: ${what}`); };
 const rows = (page) => page.waitFor(() => { const r = [...document.querySelectorAll('.dlg-overlay table.versions tbody tr')]; return r.length ? r.map((t) => [...t.cells].filter((_, i) => i !== 1).map((c) => c.textContent).join(' | ')) : null; }, [], { what: 'the versions' });
 const fileRows = (page) => page.waitFor(() => { const r = [...document.querySelectorAll('.dlg-overlay .version-file-list li')]; return r.length ? r.map((l) => l.textContent.replace(/\s+/g, ' ').trim()) : null; }, [], { what: 'the version\'s files' });
 const name = (page, n) => page.eval((v) => { for (const k of Object.keys(localStorage).filter((x) => x.endsWith('silinx.collab.name'))) localStorage.setItem(k, v); }, n);
@@ -40,9 +40,9 @@ uiTest('#5742 an editor\'s Versions…: the owner\'s versions; Restore of a file
     await page.waitConsole(/^Rui edits your project "Shared" with you\.$/m);
     await name(ep, 'Rui');
     // Rui's edit, on the owner's disk
-    await ep.eval((p) => window.SilinxApp.openFile(p), P);
-    await ep.waitFor((p) => window.Silinx.active?.path === p, [P], { what: 'the file open' });
-    await new Promise((r) => setTimeout(r, 700));
+    // (the file opened at Ana's: following brings it to Rui's, bound there before he types; a state, not a timer, #5790)
+    await page.eval((p) => window.SilinxApp.openFile(p), P);
+    await ep.waitFor((p) => window.Silinx.active?.path === p && window.Silinx.active.liveBound, [P], { what: 'the file open at Rui\'s, bound', timeout: 30000 });
     await ep.eval(() => { const ed = window.Silinx.active.editor; ed.setCursor({ line: 0, ch: 0 }); ed.replaceSelection('-- by Rui\n'); });
     await until(async () => await readWs(env, 'Shared', P) === `-- by Rui\n${TOP}`, 'Rui\'s edit on the disk');
     // the editor's Versions…: the owner's; a version's files are what it changed

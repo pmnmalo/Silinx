@@ -19,6 +19,10 @@ const warnings = async (page) => (await page.consoleText()).split('\n').filter((
 // the Versions… dialog's rows: [number, author, made, name, files], the selected one marked *
 const rows = (page) => page.waitFor(() => { const r = [...document.querySelectorAll('.dlg-overlay table.versions tbody tr')]; return r.length ? r.map((t) => [...t.cells].filter((_, i) => i !== 1).map((c) => c.textContent).join(' | ') + (t.getAttribute('aria-selected') === 'true' ? ' *' : '')) : null; }, [], { what: 'the versions' });
 const heads = (page) => page.eval(() => [...document.querySelectorAll('.dlg-overlay table.versions th')].map((t) => t.textContent));
+// (#5790: waits on state, never on a timer) the file's text on the disk; the version's files read (the dialog's buttons
+// and rows at their place: a click by position lands on them)
+const onDisk = async (name, rel, text) => { for (let t = Date.now(); Date.now() - t < 20000; await new Promise((r) => setTimeout(r, 100))) if (await readWs(env, name, rel) === text) return; assert.equal(await readWs(env, name, rel), text, `${rel} on the disk`); };
+const loaded = (page) => page.waitFor(() => !document.querySelector('.dlg-overlay [data-loading]'), [], { what: 'the version\'s files read' });
 const author = (page, n) => page.eval((v) => localStorage.setItem(Object.keys(localStorage).find((k) => k.endsWith('silinx.collab.name')) || 'silinx.collab.name', v), n);
 
 uiTest('#5740 Save Version…, Versions…, Restore Project; a version before Remove from Project; Portuguese', E, async (page) => {
@@ -42,7 +46,7 @@ uiTest('#5740 Save Version…, Versions…, Restore Project; a version before Re
   await page.waitFor(() => window.Silinx.active?.path === 'src/a.vhd', [], { what: 'a.vhd open' });
   await page.eval(() => window.Silinx.active.editor.setValue('-- broken\n'));
   await page.eval(() => window.SilinxApp.saveAll());
-  for (let t = Date.now(); Date.now() - t < 5000 && await readWs(env, name, 'src/a.vhd') !== '-- broken\n';) await new Promise((r) => setTimeout(r, 100));
+  await onDisk(name, 'src/a.vhd', '-- broken\n');
   await page.menu('Project', 'Versions…');
   await page.waitDialog('Versions of Versions');
   assert.deepEqual(await heads(page), ['Version', 'Time', 'Author', 'Made', 'Name', 'Files']);
@@ -54,7 +58,7 @@ uiTest('#5740 Save Version…, Versions…, Restore Project; a version before Re
   // a.vhd changed again, then Remove from Project (the Design pane's menu): a version kept before it
   await page.eval(() => window.Silinx.active.editor.setValue('-- second\n'));
   await page.eval(() => window.SilinxApp.saveAll());
-  for (let t = Date.now(); Date.now() - t < 5000 && await readWs(env, name, 'src/a.vhd') !== '-- second\n';) await new Promise((r) => setTimeout(r, 100));
+  await onDisk(name, 'src/a.vhd', '-- second\n');
   await page.leftTab('design');
   const i = await page.waitFor(() => [...document.querySelectorAll('#hier .row .lbl')].findIndex((x) => x.textContent === 'b') + 1, [], { what: 'row b' });
   await page.click('#hier .row .lbl', { index: i - 1, button: 'right' });
@@ -71,6 +75,7 @@ uiTest('#5740 Save Version…, Versions…, Restore Project; a version before Re
     '1 | Ana | saved by hand | before the lab | +2',
   ]);
   // a row selected by a click; Close restores nothing
+  await loaded(page);
   await page.click('.dlg-overlay table.versions tbody tr', { index: 3 });
   assert.deepEqual((await rows(page)).map((r) => r.endsWith('*')), [false, false, false, true]);
   await page.dialogButton('Close');

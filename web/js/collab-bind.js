@@ -68,12 +68,15 @@ function bindEditor(editor, ytext, { mine = false } = {}) {
  *  unbind }); one whose document closed, whose file's Y.Text changed (a rename, the project published again) or that
  *  may no longer be edited, unbound. */
 export function keepBound(bound, docs, files, editable, { mine = false } = {}) {
-  for (const [d, b] of bound) if (!docs.includes(d) || files.get(d.path) !== b.yt || !editable(d.path)) { b.unbind(); bound.delete(d); }
+  for (const [d, b] of bound) if (!docs.includes(d) || files.get(d.path) !== b.yt || !editable(d.path)) { b.unbind(); bound.delete(d); d.liveBound = false; }
   for (const d of docs) {
     if (bound.has(d) || !d.editor?.view || !d.path || !editable(d.path)) continue;
     const yt = files.get(d.path);
-    if (yt instanceof Y.Text) bound.set(d, { yt, unbind: bindEditor(d.editor, yt, { mine }) });
+    // (d.liveBound: its editor bound now, what it types shared; the UI tests wait for it, #5790)
+    // (the owner's text put into the shared one only when it holds changes not saved; else it is the disk's as it was
+    // read, which may not have an editor's latest change yet: the shared text taken, #5792, as a drawing's is)
+    if (yt instanceof Y.Text) { bound.set(d, { yt, unbind: bindEditor(d.editor, yt, { mine: mine && !!d.dirty }) }); d.liveBound = true; }
   }
 }
 /** Every editor unbound. */
-export function unbindAll(bound) { for (const b of bound.values()) b.unbind(); bound.clear(); }
+export function unbindAll(bound) { for (const [d, b] of bound) { b.unbind(); d.liveBound = false; } bound.clear(); }
