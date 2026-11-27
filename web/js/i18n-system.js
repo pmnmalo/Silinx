@@ -30,7 +30,7 @@ export const SYSTEM_PT = {
   'Connected Boards': 'Placas Ligadas', 'USB id': 'Identificador USB', 'USB serial': 'Número de série USB',   // (its nodes' boards by their USB id, #5489)
   "vendor:product, hexadecimal (empty: the board's)": 'fabricante:produto, em hexadecimal (vazio: o da placa)',
   'its board told apart from another of the same kind': 'distingue a sua placa de outra do mesmo tipo',
-  'Compile PS Program': 'Compilar o Programa do PS',   // (a Zynq's, #4687)
+  'Compile PS Program': 'Compilar o Programa do PS', 'Run PS Program': 'Correr o Programa do PS',   // (a Zynq's, #4687)
   'Compile Firmware': 'Compilar Firmware', 'A process is already running (use Stop to cancel it)': 'Já está um processo em curso (use Parar para o cancelar)',   // (an Arduino node's sketch to its .hex, #5503)
   'Id': 'Identificador', 'Module': 'Módulo', 'Board': 'Placa', 'Variant': 'Variante', "(the board's)": '(a da placa)',
   'Firmware': 'Programa (firmware)', 'a .hex or an .elf of the project': 'um .hex ou um .elf do projeto', "a .hex of the project (XC16's)": 'um .hex do projeto (do XC16)', '(none)': '(nenhum)',
@@ -182,6 +182,8 @@ export const SYSTEM_PT_PATTERNS = [
   [/^(.+): a PIC24 node's firmware is compiled by XC16, on the local server or its ISE machine \(the browser edition has no compiler\): give the node the \.hex MPLAB X built$/,
     '$1: o programa (firmware) de um nó PIC24 é compilado pelo XC16, no servidor local ou na sua máquina do ISE (a edição do browser não tem compilador): dê ao nó o .hex que o MPLAB X construiu'],
   // (a Zynq's PS program in the browser edition, #4687)
+  [/^(.+): a Zynq's PS program is loaded and started by the local server's OpenOCD for now \(the browser edition has no compiler\): run Silinx's server$/,
+    '$1: o programa do PS de um Zynq é carregado e arrancado pelo OpenOCD do servidor local, por agora (a edição do browser não tem compilador): use o servidor do Silinx'],
   [/^(.+): a Zynq's PS program is compiled by arm-none-eabi-gcc on the local server or its ISE machine \(the browser edition has no compiler\): run Silinx's server$/,
     '$1: o programa do PS de um Zynq é compilado pelo arm-none-eabi-gcc no servidor local ou na sua máquina do ISE (a edição do browser não tem compilador): use o servidor do Silinx'],
   // (the register map's Header, its map in error: web/js/drawings-regs.js)

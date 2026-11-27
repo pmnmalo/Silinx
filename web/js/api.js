@@ -196,6 +196,7 @@ export const api = {
   implement: (name, body) => req('POST', `/api/projects/${enc(name)}/implement`, body),
   firmware: (name, node) => req('POST', `/api/projects/${enc(name)}/firmware`, { node }),   // (an Arduino node's, #5503)
   psProgram: (name, node) => req('POST', `/api/projects/${enc(name)}/ps`, node ? { node } : {}),   // (a Zynq's PS program, #4687)
+  psRun: (name, node) => req('POST', `/api/projects/${enc(name)}/ps-run`, node ? { node } : {}),   // (… loaded over JTAG and started)
   buildPlan: name => req('GET', `/api/projects/${enc(name)}/build-plan`),   // (a System's, #5489)
   connectedBoards: name => req('GET', `/api/projects/${enc(name)}/boards`),   // (a System's nodes and their boards, #5489)
   programPlan: (name, node) => req('GET', `/api/projects/${enc(name)}/program-plan?node=${enc(node)}`),   // (a System's, #5489)

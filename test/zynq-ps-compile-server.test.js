@@ -150,7 +150,7 @@ test('#4687 MCP: run_process ps, its warnings and locations; its refusals; toolc
   await assert.rejects(tool('run_process').run({ project: name, process: 'ps', toolchain: 'ise' }), { message: 'toolchain: a PS program is compiled by arm-none-eabi-gcc (no toolchain to choose)' });
   await assert.rejects(tool('run_process').run({ project: sys, process: 'ps' }), { message: 'node: the System node whose PS program is compiled (its Zynq nodes: zybo)' });
   const t = await tool('toolchain_info').run({});
-  assert.equal(t.text.split('\n').at(-1), 'arm-none-eabi-gcc 14.2.1 (a Zynq\'s Compile PS Program): available, on this computer: arm-none-eabi-gcc 14.2.1 installed here.');
+  assert.equal(t.text.split('\n').find((l) => l.startsWith('arm-none-eabi-gcc')), 'arm-none-eabi-gcc 14.2.1 (a Zynq\'s Compile PS Program): available, on this computer: arm-none-eabi-gcc 14.2.1 installed here.');
   assert.deepEqual(t.data.armGcc, { available: true, via: 'local', version: '14.2.1', reason: 'arm-none-eabi-gcc 14.2.1 installed here', local: 'arm-none-eabi-gcc 14.2.1 installed here', remote: NO_MACHINE });
 });
 
