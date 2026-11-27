@@ -8,7 +8,7 @@ import path from 'node:path';
 import { execFileSync, spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { readTimings } from '../scripts/test-shard.mjs';
-import { imports, dataPaths, relatedTests, reexportsOnly, reexported, pageImports, shardOf, planShards, PART_MINUTES, MAX_PARTS, sources, REPO_WIDE, withRepoWide, UNTESTED_DEPTH, HUBS, HUB_IMPORTERS } from '../scripts/related-tests.mjs';
+import { imports, dataPaths, relatedTests, reexportsOnly, reexported, pageImports, shardOf, planShards, PART_MINUTES, MAX_PARTS, sources, REPO_WIDE, withRepoWide, mcpTools, UNTESTED_DEPTH, HUBS, HUB_IMPORTERS } from '../scripts/related-tests.mjs';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 
@@ -339,8 +339,9 @@ test('#3461 related tests: the repository\'s checks, for every change — each o
   for (const f of REPO_WIDE) {
     assert.match(f, /^test\/[^/]+\.test\.js$/, f);
     assert.ok(fs.existsSync(path.join(ROOT, f)), `${f} is there`);
-    // it reads the tracked files or a folder of the repository, not one module; or every MCP tool (#5096)
-    assert.match(fs.readFileSync(path.join(ROOT, f), 'utf8'), /\breaddirSync\(|'ls-files'|\bscanRepo\(|import \{ TOOLS \} from '\.\.\/server\/mcp\.js'/, f);
+    // it reads the tracked files or a folder of the repository, not one module; or every MCP tool (#5096); every pin the
+    // tracked files declare, every workflow (#5951)
+    assert.match(fs.readFileSync(path.join(ROOT, f), 'utf8'), /\breaddirSync\(|'ls-files'|\bscanRepo\(|import \{ TOOLS \} from '\.\.\/server\/mcp\.js'|\bcollectPins\(ROOT\)|\bworkflowFiles\(DIR\)/, f);
   }
   // added to the tests of a change, each once; those not in the repository left out
   const files = { 'test/a.test.js': '', 'test/old-name.test.js': '', 'test/docs.test.js': '' };
@@ -365,6 +366,46 @@ test('#5096 related tests: a change to one MCP tool\'s module selects mcp-tools-
   assert.ok(!relatedTests(repo, ['server/mcp-board.js']).unit.includes('test/mcp-tools-size.test.js'), 'not through its imports');
 });
 
+// #5951: the checks of the whole repository that broke main on 2026-11-27 though no pull request's tests selected them
+test('#5951 related tests: the repository\'s checks of #5951 run for every change', () => {
+  for (const f of ['test/i18n-templates.test.js', 'test/hex-colours.test.js', 'test/check-pins.test.js', 'test/docs-images.test.js',
+    'test/build-docs-site.test.js', 'test/workflows.test.js', 'test/workflows-permissions.test.js', 'test/code-size.test.js',
+    'test/web-i18n.test.js', 'test/unused-exports.test.js', 'test/mcp-tools-size.test.js']) assert.ok(REPO_WIDE.includes(f), f);
+  // a new workflow, named by no test, runs the workflows' checks
+  const repo = sources();
+  const all = withRepoWide(relatedTests(repo, ['.github/workflows/new.yml']), repo);
+  for (const f of ['test/workflows.test.js', 'test/workflows-permissions.test.js']) assert.ok(all.unit.includes(f), f);
+});
+
+// #5951: a change to an MCP tool's module selects the MCP tests that call its tools by name, through server/mcp.js
+test('#5951 related tests: an MCP tool module\'s change selects the MCP tests that call its tools', () => {
+  assert.deepEqual(mcpTools("export const T = [{\n    name: 'new_source', title: 'New Source',\n  }, { name: 'a_b2',\n title: 'A' }];\n"
+    + "const ports = [{ name: 'clk', dir: 'in' }];\n"), ['new_source', 'a_b2']);
+  assert.deepEqual(mcpTools('export const x = 1;\n'), []);
+  const files = {
+    'server/mcp.js': "import { T } from './mcp-new-source.js';\nexport const TOOLS = [...T];\n",
+    'server/mcp-new-source.js': "export const T = [{ name: 'new_source', title: 'New Source' }];\n",
+    'server/mcp-util.js': 'export const u = 1;\n',
+    'test/mcp-a.test.js': "import { TOOLS } from '../server/mcp.js';\nawait call('new_source', {});\n",
+    'test/mcp-b.test.js': "import { TOOLS } from '../server/mcp.js';\nawait call('new_sources', {});\n",
+    'test/mcp-c.test.js': "import { T } from '../server/mcp-new-source.js';\n",
+    'test/other.test.js': "await call('new_source', {});\n",
+  };
+  // the test that calls it, the one that imports it; not a tool of a longer name, nor a test of another family
+  assert.deepEqual(relatedTests(files, ['server/mcp-new-source.js']).unit, ['test/mcp-a.test.js', 'test/mcp-c.test.js']);
+  // a module of no tool, a deleted one: through their imports only
+  assert.deepEqual(relatedTests(files, ['server/mcp-util.js']).unit, []);
+  assert.deepEqual(relatedTests(files, ['server/mcp-gone.js']).unit, []);
+  // the repository: New Source's change selects the MCP tests that create a source (five broke on 2026-11-27)
+  const repo = sources();
+  const unit = relatedTests(repo, ['server/mcp-new-source.js']).unit;
+  for (const t of ['test/mcp-design-only.test.js', 'test/mcp-wizards.test.js', 'test/mcp-system-folders.test.js']) {
+    assert.ok(unit.includes(t), t);
+    assert.doesNotMatch(repo[t], /mcp-new-source\.js/, `${t}: by its call, not an import`);
+  }
+  assert.ok(!unit.includes('test/circuit-modules.test.js'), 'the MCP tests only');
+});
+
 test('PR tests: every pull request, its parts planned (#1982), the related-tests verdict main requires', () => {
   const yml = fs.readFileSync(path.join(ROOT, '.github/workflows/pr-tests.yml'), 'utf8');
   assert.match(yml, /^on:\n {2}pull_request:\n {4}types: \[opened, synchronize, reopened, ready_for_review, converted_to_draft\]\npermissions:\n {2}contents: read\n/m);
@@ -374,14 +415,14 @@ test('PR tests: every pull request, its parts planned (#1982), the related-tests
   assert.match(yml, /\n {2}plan:\n {4}needs: \[draft\]\n {4}if: needs\.draft\.outputs\.draft == 'false'\n {4}runs-on: ubuntu-latest\n {4}timeout-minutes: 10\n {4}outputs:\n {6}parts: \$\{\{ steps\.plan\.outputs\.parts \}\}\n {6}shards: \$\{\{ steps\.plan\.outputs\.shards \}\}\n/);
   assert.match(yml, /- id: plan\n\s+run: node scripts\/related-tests\.mjs "origin\/\$BASE" HEAD --plan >> "\$GITHUB_OUTPUT"\n\s+env:\n\s+BASE: \$\{\{ github\.base_ref \}\}\n/);
   // the parts: one job each, none when no test is related; a part's limit well past its planned 20 minutes
-  assert.match(yml, /\n {2}tests:\n {4}needs: \[plan\]\n {4}if: needs\.plan\.outputs\.parts != '0'\n {4}strategy:\n {6}fail-fast: false\n(?: {6}#[^\n]*\n)+ {6}max-parallel: 6\n {6}matrix:\n {8}shard: \$\{\{ fromJSON\(needs\.plan\.outputs\.shards\) \}\}\n {4}runs-on: ubuntu-latest\n {4}# [^\n]*#1982\)\n {4}timeout-minutes: 60\n {4}name: tests \(\$\{\{ matrix\.shard \}\}\/\$\{\{ needs\.plan\.outputs\.parts \}\}\)\n/);
+  assert.match(yml, /\n {2}tests:\n {4}needs: \[plan\]\n {4}if: needs\.plan\.outputs\.parts != '0'\n {4}strategy:\n {6}fail-fast: false\n(?: {6}#[^\n]*\n)+ {6}max-parallel: 12\n {6}matrix:\n {8}shard: \$\{\{ fromJSON\(needs\.plan\.outputs\.shards\) \}\}\n {4}runs-on: ubuntu-latest\n {4}# [^\n]*#1982\)\n {4}timeout-minutes: 60\n {4}name: tests \(\$\{\{ matrix\.shard \}\}\/\$\{\{ needs\.plan\.outputs\.parts \}\}\)\n/);
   assert.match(yml, /fetch-depth: 0\n\s+- uses: \.\/\.github\/actions\/setup\n\s+- run: >-\n\s+node scripts\/related-tests\.mjs "origin\/\$BASE" HEAD --shard "\$SHARD\/\$PARTS"\n\s+--test-reporter=tap --test-reporter-destination=stdout\n\s+env:\n\s+BASE: \$\{\{ github\.base_ref \}\}\n\s+SHARD: \$\{\{ matrix\.shard \}\}\n\s+PARTS: \$\{\{ needs\.plan\.outputs\.parts \}\}\n/);
   // the verdict: a failed plan or part fails it, no part passes it
   assert.match(yml, /\n {2}related-tests:\n {4}if: always\(\)\n {4}needs: \[draft, plan, tests\]\n[\s\S]*- if: contains\(needs\.\*\.result, 'failure'\) \|\| contains\(needs\.\*\.result, 'cancelled'\)\n\s+run: exit 1\n/);
   for (const f of ['CLAUDE.md', 'ONBOARDING.md']) assert.match(fs.readFileSync(path.join(ROOT, f), 'utf8'), /related-tests/, f);
 });
 
-test('#4166 PR tests: a draft runs no test and fails the check main requires; at most 6 parts at once, each under its limit', () => {
+test('#4166 PR tests: a draft runs no test and fails the check main requires; at most 12 parts at once, each under its limit', () => {
   const yml = fs.readFileSync(path.join(ROOT, '.github/workflows/pr-tests.yml'), 'utf8');
   // a draft: no plan (so no part), and the verdict fails first, never green nor missing (an admin's merge would pass it)
   assert.match(yml, /\n {2}plan:\n {4}needs: \[draft\]\n {4}if: needs\.draft\.outputs\.draft == 'false'\n/);
@@ -393,13 +434,14 @@ test('#4166 PR tests: a draft runs no test and fails the check main requires; at
   assert.match(yml, /^permissions:\n {2}contents: read\n(?! )/m);
   assert.equal(yml.match(/persist-credentials: false/g).length, 2);
   for (const u of yml.match(/uses: [^\s]+/g)) assert.match(u, /^uses: (?:\.\/\.github\/actions\/setup|[\w-]+\/[\w-]+@[0-9a-f]{40})$/, u);
-  // the cap: max-parallel rather than fewer, longer parts, which the whole suite would take past the part's 60 minutes
+  // the cap: max-parallel rather than fewer, longer parts, which the whole suite would take past the part's 60 minutes;
+  // 12 since #5951 (6 since #4166), under the account's 20 runners
   const parallel = Number(yml.match(/max-parallel: (\d+)/)[1]);
-  assert.equal(parallel, 6);
+  assert.equal(parallel, 12);
   const timings = JSON.parse(fs.readFileSync(path.join(ROOT, 'test/timings.json'), 'utf8'));
   const all = { unit: Object.keys(timings).filter((f) => !f.startsWith('test/ui/')), ui: Object.keys(timings).filter((f) => f.startsWith('test/ui/')) };
   const limit = Number(yml.match(/\n {2}tests:[\s\S]*?timeout-minutes: (\d+)/)[1]);
-  assert.ok(planShards(all, timings, { max: parallel }).minutes / parallel > limit * 0.75, 'six parts of the whole suite would near the limit');
+  assert.ok(planShards(all, timings, { max: 6 }).minutes / 6 > limit * 0.75, 'six parts of the whole suite would near the limit');
   const plan = planShards(all, timings);
   assert.ok(plan.minutes / plan.n < limit / 2, `${plan.minutes} / ${plan.n}`);
   // the sessions open their pull request as a draft and mark it ready when it is done

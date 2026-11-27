@@ -64,10 +64,10 @@ jobs:
     if: needs.plan.outputs.parts != '0'
     strategy:
       fail-fast: false
-      # at most 6 parts of a pull request at once (#4166): the account's runners are about 20, and a big change's 15
-      # parts took most of them; the parts stay planned at 20 minutes, under their limit (6 parts of the whole suite's
-      # ~350 minutes would be 58 each)
-      max-parallel: 6
+      # at most 12 parts of a pull request at once (#5951; 6 since #4166): the account's runners are about 20, and a big
+      # change's 18 parts took about 67 minutes in three waves of 6; the parts stay planned at 20 minutes, under their
+      # limit (6 parts of the whole suite's ~350 minutes would be 58 each)
+      max-parallel: 12
       matrix:
         shard: ${{ fromJSON(needs.plan.outputs.shards) }}
     runs-on: ubuntu-latest

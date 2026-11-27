@@ -39,8 +39,8 @@ npm start          # prints the address to open: http://127.0.0.1:8642/#token=â€
    history. **CI runs at a release, and nightly on main when it changed** (#607, #3423), not on pull requests nor
    on pushes to main. A pull
    request runs the whole test file of every module it changes (`pr-tests.yml`, #637; in parts of about 20
-   minutes, as many as the tests' measured time needs, #1982, at most 6 at once; a hub such as `web/js/i18n.js`
-   or `app.js` selects only its own UI test, #4166). **Open it as a draft** (`gh pr create --draft`) and mark it
+   minutes, as many as the tests' measured time needs, #1982, at most 12 at once, #5951; a hub such as `web/js/i18n.js`
+   or `app.js` selects only its own UI test, #4166; the repository-wide checks, `REPO_WIDE`, run on every one, #3461). **Open it as a draft** (`gh pr create --draft`) and mark it
    ready when it is done (`gh pr ready <N>`): a draft runs no test and its `related-tests` fails, so that the
    runners stay free for the pull requests that are ready (#4166). Pedro (or a
    session of Pedro's) merges when its check `related-tests` is green (`gh pr checks <N> --required`), with
