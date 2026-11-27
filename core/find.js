@@ -2,6 +2,8 @@
 // its document: names, labels, expressions, notes), and the text with the matches replaced. No DOM: the page, its
 // sources and its documents are web/js/find-project.js's.
 import { escRegExp } from './escape.js';
+import { CONSTRAINTS_FILE } from './flow-files.js';
+import { sourceLang } from './system-layout.js';
 
 /** The expression of a search: { text, matchCase, word, regex } → a global RegExp, or null (nothing to find, or a
  *  regular expression with an error: `error` its message). */
@@ -59,9 +61,12 @@ export function findInDrawing(json, re, { max = 1000 } = {}) {
 }
 
 // ------------------------------------------------------------------ Find in Project (#3546: the page's and the MCP's)
-/** The text sources Find in Project searches (their lines) and its drawings (their texts). */
-const FIND_TEXT_FILE = /\.(vhdl?|v|sv|ucf|mem|hex|coe|txt)$/i;
-const FIND_DRAWING = /\.(sch|asm|tt|bool|fsm|pn)\.json$/i;
+/** The text sources Find in Project searches (their lines): an HDL, C, C++, assembly or Python source (a node's too,
+ *  core/system-layout.js sourceLang), a constraints file of any family's format, a memory's or a firmware's file; and
+ *  its drawings (their texts), a circuit's and a register map's too (#5911). */
+const FIND_TEXT_FILE = /\.(mem|hex|coe|txt)$/i;
+const findText = p => FIND_TEXT_FILE.test(p) || CONSTRAINTS_FILE.test(p) || sourceLang(p) != null;
+export const FIND_DRAWING = /\.(sch|asm|tt|bool|fsm|pn|circ|regs)\.json$/i;
 /** The results of one file at most. */
 export const FIND_MAX = 2000;
 
@@ -69,7 +74,7 @@ export const FIND_MAX = 2000;
  *  constraints, once each, sorted; its text sources and its drawings only: [{ path, drawing }]. */
 export function findPaths(tree = [], files = [], constraints = null) {
   const paths = [...new Set([...tree, ...files.map(f => f.path), constraints].filter(Boolean))].sort((a, b) => a.localeCompare(b));
-  return paths.filter(p => FIND_DRAWING.test(p) || FIND_TEXT_FILE.test(p)).map(path => ({ path, drawing: FIND_DRAWING.test(path) }));
+  return paths.filter(p => FIND_DRAWING.test(p) || findText(p)).map(path => ({ path, drawing: FIND_DRAWING.test(path) }));
 }
 
 /** Find in Project's results: the texts ([{ path, text, drawing, generated }]) with their matches (`hits`: findInText's

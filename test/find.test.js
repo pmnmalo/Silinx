@@ -49,7 +49,7 @@ test('findInDrawing: the string values of a drawing\'s document, where each is; 
 });
 
 test('findPaths: the project\'s files, its sources and its constraints once each, sorted; its text sources and drawings only (#3546)', () => {
-  const tree = ['src/top.vhd', 'src/ctl.fsm.json', 'src/ctl.vhd', 'build/x.bit', 'notes.pdf', 'src/rom.mem', 'src/c.c'];
+  const tree = ['src/top.vhd', 'src/ctl.fsm.json', 'src/ctl.vhd', 'build/x.bit', 'notes.pdf', 'src/rom.mem'];
   const files = [{ path: 'src/top.vhd' }, { path: 'sim/tb.v' }];
   assert.deepEqual(findPaths(tree, files, 'constraints/top.ucf'), [
     { path: 'constraints/top.ucf', drawing: false }, { path: 'sim/tb.v', drawing: false }, { path: 'src/ctl.fsm.json', drawing: true },
@@ -71,4 +71,13 @@ test('findInProject: each text\'s matches (its lines, or its drawing\'s texts), 
   assert.equal(FIND_MAX, 2000);
   assert.equal(findInProject([{ path: 'x.txt', text: 'a'.repeat(3000), drawing: false }], findPattern({ text: 'a' }).re)[0].hits.length, FIND_MAX);
   assert.equal(findInProject([{ path: 'x.txt', text: 'aaa', drawing: false }], findPattern({ text: 'a' }).re, { max: 2 })[0].hits.length, 2);
+});
+
+test('#5911 findPaths: a circuit, a register map, every family\'s constraints, C, C++, assembly and Python sources searched too', () => {
+  const tree = ['src/bb.circ.json', 'src/regs.regs.json', 'top.xdc', 'top.pcf', 'top.lpf', 'top.cst', 'top.ccf', 'top.qsf', 'src/f.c', 'src/f.h',
+    'src/g.cpp', 'uno/s.ino', 'pic/lcd.asm', 'uno/a.s', 'pico/code.py', 'src/m.asm.json', 'u.sys.json', 'x.json', 'b.bit', 'n.pdf', 'h.vh'];
+  // (not a binary, a PDF, a System document, another JSON file)
+  assert.deepEqual(findPaths(tree).map(p => `${p.path}${p.drawing ? ' (drawing)' : ''}`), ['h.vh', 'pic/lcd.asm', 'pico/code.py',
+    'src/bb.circ.json (drawing)', 'src/f.c', 'src/f.h', 'src/g.cpp', 'src/m.asm.json (drawing)', 'src/regs.regs.json (drawing)', 'top.ccf', 'top.cst',
+    'top.lpf', 'top.pcf', 'top.qsf', 'top.xdc', 'uno/a.s', 'uno/s.ino']);
 });

@@ -22,11 +22,11 @@ function bounded(fn, limitS = SEARCH_LIMIT_S) {
 // the project's texts to search: [{ path, text, drawing, generated }] (the drawings' HDL files: generated, as the
 // interface reads them when it opens the project, web/js/project.js)
 async function projectTexts(name, pj) {
-  const { findPaths } = await import('../core/find.js');
+  const { findPaths, FIND_DRAWING } = await import('../core/find.js');
   const tree = await P.fileTree(name);
   const read = p => P.readFile(name, p).catch(() => null);
   const generated = new Set();
-  for (const f of tree.filter(f => /\.(sch|asm|tt|bool|fsm|pn)\.json$/.test(f))) {
+  for (const f of tree.filter(f => FIND_DRAWING.test(f))) {
     try { const d = JSON.parse(await read(f)); if (d.generatedFile && tree.includes(d.generatedFile)) generated.add(d.generatedFile); } catch { /* unreadable */ }
   }
   const out = [];
