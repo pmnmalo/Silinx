@@ -69,7 +69,7 @@ uiTest('#3891 a design project\'s wizards: no Language, no HDL in their hints an
   } finally {
     await page.eval(async () => (await import('/js/i18n.js')).setLanguage('en'));
   }
-  // New Project, a design project: its note without the HDL module
+  // New Project, a design project: no note of its top nor of an HDL module
   await page.menu('File', 'New Project…');
   await page.waitDialog('New Project Wizard');
   await page.click('.dlg-overlay .kind-card[data-kind=design] input');   // (its kind first: Digital Logic, #5041, #5133)
@@ -77,7 +77,8 @@ uiTest('#3891 a design project\'s wizards: no Language, no HDL in their hints an
   await page.fill('.dlg-overlay .wiz-main input[type=text]', 'Drawn2');
   await page.dialogButton('Next >');
   await page.waitFor(() => document.querySelector('.dlg-overlay .wiz-main h3')?.textContent === 'Project Settings');
-  assert.equal(await page.eval(() => document.querySelector('.dlg-overlay .wiz-main .hint[style*="grid-column"]')?.textContent), 'The project starts with src/top.sch.json (the top module \'top\').');
+  // (no note of the project's top: a new project starts empty, its top added as any module, #5786)
+  assert.deepEqual(await page.eval(() => [...document.querySelectorAll('.dlg-overlay .wiz-main .hint')].filter((h) => h.offsetParent !== null).map((h) => h.textContent)), ['Select the device and design flow for the project.']);
   await cancel(page);
   assert.deepEqual(await warnings(page), []);
 });
