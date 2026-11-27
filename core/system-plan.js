@@ -11,7 +11,7 @@
 // Isomorphic ES module, no DOM.
 import { mcuBoard } from './system-doc.js';
 import { relInNode } from './system-layout.js';
-import { firmwareRefusal, firmwareSources, nodeSketch } from './avr-compile.js';
+import { firmwareRefusal, firmwareSources, nodeAssembly, nodeSketch } from './avr-compile.js';
 import { nodeProgram } from './xc16-compile.js';
 import { nodeRefusal } from './system-node.js';
 import { REACTIVE_KINDS, drawingKind } from './reactive-from.js';
@@ -40,6 +40,9 @@ export const fpgaSources = (files, id) => files.filter(f => {
 }).sort();
 
 /** The files an Arduino node is built from: its sketch's (`files` the project's) and the drawings that make it (#5486). */
+/** An assembly node's sources (#5933): its folder's .asm files (its build folder's left out). */
+export const asmSources = (files, id) => files.filter(f => /\.asm$/i.test(f) && relInNode(f, id) != null && !/^build\//.test(relInNode(f, id))).sort();
+
 export const sketchSources = (files, id) => [...new Set([...firmwareSources(files, id),
   ...files.filter(f => relInNode(f, id) != null && REACTIVE_KINDS.includes(drawingKind(f)))])].sort();
 
@@ -101,6 +104,9 @@ function mcuEntry(n, { files, hashes, records, exists }) {
       reason: `no C or assembly in its folder ${n.id}/ and no .hex for its firmware${fw ? ` (${fw} is missing)` : ''}: write its C, or give it the .hex XC16 made` };
   }
   const refused = firmwareRefusal(n);
+  // (an assembly program, its folder's .asm with no sketch: Silinx's AVR assembler, #5933)
+  const asm = refused ? null : nodeAssembly(n, files);
+  if (asm) return withState({ ...e, build: 'avr-asm', image: asm.hex, programmer: 'avrdude', sources: asmSources(files, n.id) }, n, { hashes, records, exists });
   const sketch = refused ? null : nodeSketch(n, files);
   if (sketch && !sketch.error) {
     return withState({ ...e, build: 'arduino-cli', image: sketch.hex, programmer: 'avrdude', sources: sketchSources(files, n.id) }, n, { hashes, records, exists });
@@ -112,7 +118,7 @@ function mcuEntry(n, { files, hashes, records, exists }) {
 
 /**
  * The System `sys`'s plan: { nodes: [entry] } in the order they are built and programmed, the FPGA nodes first (in the
- * document's order), then the microcontrollers. An entry: { id, kind, board, build ('silinx' | 'arduino-cli' | 'xc16' | null),
+ * document's order), then the microcontrollers. An entry: { id, kind, board, build ('silinx' | 'arduino-cli' | 'avr-asm' | 'xc16' | null),
  * image (the bitstream or the firmware it programs, or null), programmer ('jtag' | 'avrdude' | 'pickit' | 'repl', or null), sources (the
  * files it is built from), state ('up to date' | 'out of date' | 'not built' | 'given' | 'nothing to build' | 'not
  * buildable'), reason (text, or null) }. `files`: the project's; `hashes`: their hashes; `records`: each node's
@@ -130,7 +136,7 @@ export function systemBuildPlan(sys, { files = [], hashes = {}, records = {}, ex
 /** Whether Build builds the entry: it has a build and is not up to date (`force`: up to date too, a node's own Build). */
 export const needsBuild = (e, force = false) => !!e.build && (force || e.state !== 'up to date');
 
-const BUILDS = { silinx: 'built by the Silinx toolchain', 'arduino-cli': 'compiled by arduino-cli', xc16: 'compiled by XC16' };
+const BUILDS = { silinx: 'built by the Silinx toolchain', 'arduino-cli': 'compiled by arduino-cli', 'avr-asm': 'assembled by Silinx\'s AVR assembler', xc16: 'compiled by XC16' };
 
 /** The console's line of a plan's entry: `<id>: <state> (<reason>): <built…> to <image>, programmed <how>`. */
 export function planLine(e) {

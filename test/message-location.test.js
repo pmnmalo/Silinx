@@ -62,3 +62,10 @@ test('run_process\'s locations: the errors\' and warnings\' that name a file of 
   ]);
   assert.deepEqual(processMessages(lines).locations, []);   // (no project's paths: none)
 });
+
+test('#5933 an assembly program\'s messages: an AVR .asm\'s, a PIC24\'s .s and .S, by file and line', () => {
+  assert.deepEqual(messageLocation('ERROR: uno/hello.asm:2: no instruction frob'), { file: 'uno/hello.asm', line: 2 });
+  assert.deepEqual(messageLocation('WARNING: pic/main.s:14: a warning'), { file: 'pic/main.s', line: 14 });
+  assert.deepEqual(messageLocation('ERROR: core/wiring_pulse.S:7:3: oops'), { file: 'core/wiring_pulse.S', line: 7, col: 3 });
+  assert.equal(messageLocation('it took 12:30 s'), null);
+});

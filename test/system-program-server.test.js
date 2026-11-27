@@ -43,6 +43,8 @@ after(() => { process.env.PATH = oldPath; fs.rmSync(tmp, { recursive: true, forc
 // the uart-avr example with its FPGA node built (a bitstream of its device, its build's record)
 async function built(name, opts = {}) {
   await P.createProject({ name, template: 'uart-avr', ...opts });
+  // (its Uno's .hex given: no .asm to assemble, #5933, the programming these tests are about)
+  await P.deleteFile(name, 'uno/hello.asm');
   const dir = path.join(P.projectDir(name), 'build/nodes/fpga/build');
   fs.mkdirSync(dir, { recursive: true });
   fs.writeFileSync(path.join(dir, 'uart.bit'), makeBit({ design: 'uart.ncd;UserID=0xFFFFFFFF' }));

@@ -1,5 +1,5 @@
 // A System built by its plan (#5489, server/system-plan.js, server/system-build-all.js): the uart-avr example's plan (its
-// FPGA node not built, its Arduino's .hex given); Build All with a sketch in the Arduino's folder (arduino-cli's
+// FPGA node not built, its Arduino's .asm assembled by Silinx, #5933; a .hex alone given); Build All with a sketch in the Arduino's folder (arduino-cli's
 // stand-in, test/fixtures/arduino-cli-stub): the FPGA node first, then the Arduino, their records written; built again,
 // both up to date and skipped; a sketch changed, only its node built; the FPGA's constraints file changed, only the FPGA's out of
 // date; the refusals and their exact messages; a build at a time; an untrusted project's Arduino not compiled; the MCP's
@@ -32,13 +32,22 @@ const UNO = 'compiled by arduino-cli to uno/hello.hex, programmed by avrdude (ar
 // (the job's own lines: its plan, its nodes' and its end; the toolchain's in between are the flows' own tests')
 const own = j => j.lines.filter(l => /^(Build|  [a-z]+: |System node \w+: (building|built)|ERROR: System node)/.test(l));
 
-test('#5489 the uart-avr example\'s plan: its FPGA node not built, its Arduino\'s .hex given; the refusals', { skip: WIN }, async () => {
+test('#5489 the uart-avr example\'s plan: its FPGA node not built, its Arduino\'s .asm assembled (#5933), a .hex alone given; the refusals', { skip: WIN }, async () => {
   await P.createProject({ name: 'ex', template: 'uart-avr' });
+  const ASM = 'assembled by Silinx\'s AVR assembler to uno/hello.hex, programmed by avrdude (arduino-cli upload)';
   assert.deepEqual(await lines('ex'), [
     'fpga: not built (no build/nodes/fpga/build/uart.bit yet); built by the Silinx toolchain to build/nodes/fpga/build/uart.bit, programmed over JTAG',
-    'uno: given (its firmware uno/hello.hex, no sketch to compile); its image uno/hello.hex, programmed by avrdude (arduino-cli upload)',
+    `uno: out of date (its last build left no record of its sources); ${ASM}`,
   ]);
   await assert.rejects(startSystemBuild('ex', { node: 'term' }), { status: 400, message: 'no node \'term\' to build in the System of \'ex\' (fpga, uno)' });
+  // (its .asm assembled, by Build: up to date then)
+  const j = await run('ex', 'uno');
+  assert.equal(j.status, 'ok', j.lines.join('\n'));
+  assert.deepEqual(own(j).slice(-3), ['System node uno: building (out of date).', 'System node uno: built, uno/hello.hex.', 'Build: 1 node(s) built (uno), 0 failed, 1 left as they were (fpga).']);
+  assert.equal((await lines('ex'))[1], `uno: up to date; ${ASM}`);
+  // (its .hex alone, no program: given, nothing to build)
+  await P.deleteFile('ex', 'uno/hello.asm');
+  assert.equal((await lines('ex'))[1], 'uno: given (its firmware uno/hello.hex, no sketch to compile); its image uno/hello.hex, programmed by avrdude (arduino-cli upload)');
   await assert.rejects(startSystemBuild('ex', { node: 'uno' }), { status: 400, message: 'uno: nothing to build: given (its firmware uno/hello.hex, no sketch to compile); its image uno/hello.hex, programmed by avrdude (arduino-cli upload)' });
   await P.createProject({ name: 'bl', template: 'blinky' });
   await assert.rejects(readBuildPlan('bl'), { status: 400, message: 'the project \'bl\' has no System as its top: a build plan is a System\'s' });

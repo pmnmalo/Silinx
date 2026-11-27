@@ -64,7 +64,7 @@ export const REPORT_FILES = {
     drc: null,
   },
 };
-const TOOLCHAIN_NAMES = { silinx: 'Silinx toolchain', ise: 'Xilinx ISE', vivado: 'AMD Vivado', quartus: 'Intel Quartus Prime', arduino: 'arduino-cli', xc16: 'XC16', 'arm-gcc': 'arm-none-eabi-gcc', 'arduino+xc16': 'arduino-cli and XC16', system: 'its nodes\' toolchains' };
+const TOOLCHAIN_NAMES = { silinx: 'Silinx toolchain', ise: 'Xilinx ISE', vivado: 'AMD Vivado', quartus: 'Intel Quartus Prime', arduino: 'arduino-cli', 'avr-asm': 'Silinx\'s AVR assembler', xc16: 'XC16', 'arm-gcc': 'arm-none-eabi-gcc', 'arduino+xc16': 'arduino-cli and XC16', system: 'its nodes\' toolchains' };
 // the map and par reports of a Silinx toolchain run, from its Design Summary (build/reports.json); the router's passes
 // only when the engine counts them (nextpnr's do not, #2420)
 export const OPEN_REPORTS = {

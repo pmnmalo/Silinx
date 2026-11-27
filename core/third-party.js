@@ -204,6 +204,14 @@ export const THIRD_PARTY = [
     "ported": true
   },
   {
+    "name": "avr-libc",
+    "version": "2.0.0",
+    "license": "BSD-3-Clause",
+    "url": "https://github.com/avrdudes/avr-libc",
+    "standalone": true,
+    "ported": true
+  },
+  {
     "name": "avr8js",
     "version": "0.21.1",
     "license": "MIT",

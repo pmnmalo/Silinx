@@ -63,8 +63,9 @@ export function log(text, cls = '', { diag = true, action = null, src = null, go
   const msgAction = refused ? trustAction(refused) : winUsb ? winUsbAction() : [action].flat().find(Boolean) ?? null;
   if ((refused && !shared) || winUsb) action = msgAction;
   const lines = String(text).split('\n'), divs = [];
-  // (the design's sources, and a CPU node's sketch files, which are none of its sources: an Arduino node's, #5503)
-  const paths = [...(designState.sources || []).map(s => s.path), ...(filesState.fileTree || []).filter(f => /\.(ino|c|cc|cpp|h|hpp)$/.test(f))];
+  // (the design's sources, and a CPU node's sketch files, which are none of its sources: an Arduino node's, #5503; its
+  // assembly program's, #5933)
+  const paths = [...(designState.sources || []).map(s => s.path), ...(filesState.fileTree || []).filter(f => /\.(ino|c|cc|cpp|h|hpp|asm|s|S)$/.test(f))];
   const drawn = draw || (src === 'app' ? appText : null);
   const at = Number.isSafeInteger(time) && time >= 0 ? time : Date.now();
   lines.forEach((line, i) => {

@@ -38,6 +38,8 @@ const FPGA_ROWS = ['  fpga (Digilent Basys2)', '    I/O Pin Planning',
 
 uiTest('#5581 a System\'s Implement: its tree, each node\'s plan state its mark, its bar\'s Build All and Program All, Build Plan; a PIC24\'s Program Node off, said why; Portuguese; the ISE style\'s', E, async (page) => {
   await makeProject(env, { name: 'SysImplTree', template: 'uart-avr' });
+  // (its Uno's firmware given: its .asm, which Silinx assembles (#5933, test/ui/system-firmware-asm), left out)
+  fs.rmSync(path.join(env.server.workspace, 'SysImplTree/uno/hello.asm'));
   await makeProject(env, { name: 'SysImplPic', template: 'uart-pic24' });
   // (the FPGA node built before, its build's record lost: out of date)
   const built = path.join(env.server.workspace, 'SysImplTree/build/nodes/fpga');

@@ -1,49 +1,17 @@
-// Test helper (not a test file): a few AVR instructions assembled into a program (the flash's words), and that program
-// written as an Intel HEX and as an ELF, for the AVR node's tests (test/system-sim-avr.test.js, test/avr-firmware.test.js)
-// with no compiler. The instructions: ldi, sts, lds, out, in, sbrs, sbrc, rjmp, rcall, ret, inc, dec, brne, add, adc, eor
-// (#5477: a sum, a register cleared); a label: 'name:'.
+// Test helper (not a test file): an AVR program assembled (the flash's words) by Silinx's assembler (#5933,
+// core/avr-asm.js; the helper's own assembler of #5477 before), and that program written as an Intel HEX and as an
+// ELF, for the AVR node's tests (test/system-sim-avr.test.js, test/avr-firmware.test.js) with no compiler.
 //
 //   const words = avrAssemble(['ldi r16, 0xff', 'out 0x04, r16', 'loop:', 'rjmp loop']);
 
-const reg = (s) => { const m = /^r(\d+)$/i.exec(s.trim()); if (!m || +m[1] > 31) throw new Error(`not a register: ${s}`); return +m[1]; };
-const num = (s, labels) => { const t = s.trim(); if (t in labels) return labels[t]; const v = /^'(.)'$/.exec(t) ? t.charCodeAt(1) : Number(t); if (!Number.isInteger(v)) throw new Error(`not a number: ${s}`); return v; };
-const SIZE = { sts: 2, lds: 2 };
+import { avrAssemble as assemble, avrMessage } from '../core/avr-asm.js';
 
-/** The program's words (a Uint16Array of the flash's words from 0). */
+/** The program's words (a Uint16Array of the flash's words from 0): Silinx's AVR assembler's (#5933,
+ *  core/avr-asm.js), its first error thrown. */
 export function avrAssemble(lines) {
-  const labels = {}, code = [];
-  let pc = 0;
-  for (const l of lines) {
-    const s = l.replace(/;.*/, '').trim();
-    if (!s) continue;
-    if (s.endsWith(':')) { labels[s.slice(0, -1)] = pc; continue; }
-    const [op, rest = ''] = s.split(/\s+(.*)/);
-    code.push({ pc, op: op.toLowerCase(), args: rest ? rest.split(',') : [] });
-    pc += SIZE[op.toLowerCase()] || 1;
-  }
-  const out = [];
-  for (const { pc: at, op, args: a } of code) {
-    const rel = (k) => (num(k, labels) - at - 1) & 0xfff;
-    switch (op) {
-      case 'ldi': { const d = reg(a[0]), k = num(a[1], labels) & 0xff; if (d < 16) throw new Error('ldi: r16..r31'); out.push(0xe000 | ((k & 0xf0) << 4) | ((d - 16) << 4) | (k & 0x0f)); break; }
-      case 'sts': out.push(0x9200 | (reg(a[1]) << 4), num(a[0], labels)); break;
-      case 'lds': out.push(0x9000 | (reg(a[0]) << 4), num(a[1], labels)); break;
-      case 'out': { const A = num(a[0], labels), r = reg(a[1]); out.push(0xb800 | ((A & 0x30) << 5) | (r << 4) | (A & 0x0f)); break; }
-      case 'in': { const r = reg(a[0]), A = num(a[1], labels); out.push(0xb000 | ((A & 0x30) << 5) | (r << 4) | (A & 0x0f)); break; }
-      case 'sbrs': out.push(0xfe00 | (reg(a[0]) << 4) | num(a[1], labels)); break;
-      case 'sbrc': out.push(0xfc00 | (reg(a[0]) << 4) | num(a[1], labels)); break;
-      case 'inc': out.push(0x9403 | (reg(a[0]) << 4)); break;
-      case 'dec': out.push(0x940a | (reg(a[0]) << 4)); break;
-      case 'brne': { const k = num(a[0], labels) - at - 1; if (k < -64 || k > 63) throw new Error('brne: a branch of -64..63 words'); out.push(0xf401 | ((k & 0x7f) << 3)); break; }
-      case 'rjmp': out.push(0xc000 | rel(a[0])); break;
-      case 'rcall': out.push(0xd000 | rel(a[0])); break;
-      case 'ret': out.push(0x9508); break;
-      // (two registers: Rd, Rr; #5477)
-      case 'add': case 'adc': case 'eor': { const d = reg(a[0]), r = reg(a[1]); out.push({ add: 0x0c00, adc: 0x1c00, eor: 0x2400 }[op] | ((r & 0x10) << 5) | (d << 4) | (r & 0x0f)); break; }
-      default: throw new Error(`no instruction ${op}`);
-    }
-  }
-  return Uint16Array.from(out);
+  const r = assemble(lines);
+  if (r.errors.length) throw new Error(avrMessage(r.errors[0]));
+  return r.words;
 }
 
 const hex2 = (v) => v.toString(16).toUpperCase().padStart(2, '0');
