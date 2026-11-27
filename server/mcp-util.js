@@ -191,8 +191,9 @@ export async function elaborateView(name, { top, sim = false, lint = true, hiera
   // (an HDL file its drawing cannot make again, #303: an error of the file, the drawing's errors in it, as Check Syntax's)
   const { staleDrawings } = await import('./drawing-sync.js');
   const inView = new Set(srcs.map(s => s.path));
+  // (a design project's: its drawing named, never its HDL file, as the interface's, #3891, #5809)
   const stale = (await staleDrawings(P, name)).filter(s => inView.has(s.target)).map(({ target, from, why }) => ({ severity: 'error', file: target, line: 1, col: 1, tool: 'Silinx',
-    message: `${target} is not up to date: ${from} cannot generate it, ${why}. Fix ${from} (its HDL is then generated again).` }));
+    message: isDesignOnly(project) ? `${from}: its module is not up to date: ${why}. Fix ${from}.` : `${target} is not up to date: ${from} cannot generate it, ${why}. Fix ${from} (its HDL is then generated again).` }));
   const seen = new Set();
   const diags = withDrawingErrors([...lib.errors, ...(design?.diags || []), ...extra, ...stale, ...cErrs, ...bbWarn]
     .filter(d => { const k = `${d.file}:${d.line}:${d.message}`; if (seen.has(k)) return false; seen.add(k); return true; }), failed.filter(v => !isC(v)), { top: mod, design: isDesignOnly(project) })

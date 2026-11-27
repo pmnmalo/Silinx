@@ -81,8 +81,9 @@ test('a design project\'s messages: a drawing made without its HDL named, one wi
   bad.states[1].name = bad.states[0].name;
   await ok('write_file', { project: 'c1', path: 'src/traffic.fsm.json', text: JSON.stringify(bad, null, 2) });
   const chk = await call('check_syntax', { project: 'c1' });
-  // (its errors on the drawing, #3934)
-  assert.equal(chk.text, 'ERROR:Silinx - "src/traffic.fsm.json": its module is not made: Two states are named \'CARS\' (letter case does not count). Fix src/traffic.fsm.json.\nProcess "Check Design" of <traffic> failed (1 error(s), 0 warning(s)).');
+  // (its errors on the drawing, #3934; its HDL file made when it was written, #5764, now out of date: the drawing named,
+  // as the interface's Check Design says it, #5809)
+  assert.equal(chk.text, 'ERROR:Silinx - "src/traffic.fsm.json": src/traffic.fsm.json: its module is not up to date: it has errors: Two states are named \'CARS\' (letter case does not count). Fix src/traffic.fsm.json.\nProcess "Check Design" of <traffic> failed (1 error(s), 0 warning(s)).');
   assert.doesNotMatch(chk.text, /HDL|\.vhd/);
 });
 
