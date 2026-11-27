@@ -17,7 +17,9 @@ export function mountVersionRoutes({ P, api, wrap, bad }) {
   const rethrow = e => { if (e.status && e.status < 500) throw bad(e.message, e.status); throw e; };
   api.get('/projects/:p/versions', wrap(async req => {
     await P.readProject(req.params.p);
-    return { versions: await serverVersions(P).list(req.params.p) };
+    // (a damaged index's repair said, #5908: the History's console)
+    const v = serverVersions(P), warning = await v.warning(req.params.p);
+    return { versions: await v.list(req.params.p), ...(warning ? { warning } : {}) };
   }));
   api.post('/projects/:p/versions', json, wrap(async req => {
     await P.readProject(req.params.p);

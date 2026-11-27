@@ -3,10 +3,10 @@
 // author, what made it, its name, what it changed), the first one selected; Restore Project puts the one selected back
 // (the open editor reads it again), the project as it was kept first, and says how to undo it; Remove from Project keeps
 // a version before it; nothing new to keep, said; in Portuguese, the menu, the dialog and the console's line. The exact
-// console lines; no warnings.
+// console lines; no warnings, but a damaged versions' index's (#5908), said and repaired.
 import { before, after } from 'node:test';
 import assert from 'node:assert/strict';
-import { setupUi, uiTest, makeProject, readWs } from './harness.js';
+import { setupUi, uiTest, makeProject, readWs, writeWs } from './harness.js';
 
 let env;
 before(async () => { env = await setupUi(); });
@@ -153,4 +153,45 @@ uiTest('#5741 Versions…: a version\'s files against now; Open (read only), Com
   await page.dialogButton('Fechar');
   await page.eval(async () => (await import('/js/i18n.js')).setLanguage('en'));
   assert.deepEqual(await warnings(page), []);
+});
+
+// #5908: the versions' index damaged on the disk (cut short): Versions… lists the versions from their own records and
+// says it in the console's warnings; the next Save Version… sets the damaged index aside and rebuilds it, said once;
+// in Portuguese
+uiTest('#5908 a damaged versions index: listed from the records, said; set aside and rebuilt by the next save; Portuguese', E, async (page) => {
+  const name = 'Damaged';
+  await makeProject(env, { name, top: 'a', files: { 'src/a.vhd': A } });
+  await page.openProject(name);
+  await author(page, 'Ana');
+  await page.menu('Project', 'Save Version…');
+  await page.waitDialog('Save Version');
+  await page.fill('.dlg-overlay input[type=text]', 'first');
+  await page.dialogButton('OK');
+  await page.waitConsole(/^Version 1 of Damaged saved: first\.$/m);
+  const ix = '.silinx/versions/index.json';
+  await writeWs(env, name, ix, '{"version":1,"next":2,"vers');
+  await page.menu('Project', 'Versions…');
+  await page.waitDialog('Versions of Damaged');
+  assert.deepEqual(await rows(page), ['1 | Ana | saved by hand | first | +1 *'], 'from its record');
+  await page.waitConsole(/^WARNING: the versions' index of 'Damaged' was damaged \(not JSON\): rebuilt, 1 version\(s\) taken from their own records; no version that could be read is lost$/m);
+  await page.dialogButton('Close');
+  await page.menu('Project', 'Save Version…');
+  await page.waitDialog('Save Version');
+  await page.fill('.dlg-overlay input[type=text]', 'second');
+  await page.dialogButton('OK');
+  await page.waitConsole(/^WARNING: the versions' index of 'Damaged' was damaged \(not JSON\): set aside as \.silinx\/versions\/index\.json\.damaged-[\dTZ-]+ and rebuilt, 1 version\(s\) taken from their own records; no version that could be read is lost$/m);
+  await page.waitConsole(/^Version 2 of Damaged saved: second\.$/m);
+  assert.equal(JSON.parse(await readWs(env, name, ix)).next, 3, 'rebuilt, its numbers kept');
+  assert.equal((await warnings(page)).filter((l) => /versions' index/.test(l)).length, 2, 'said once each: no more');
+  // in Portuguese
+  await writeWs(env, name, ix, '[]');
+  await page.eval(async () => (await import('/js/i18n.js')).setLanguage('pt'));
+  try {
+    await page.menu('Projeto', 'Versões…');
+    await page.waitDialog('Versões de Damaged');
+    await page.waitConsole(/^(WARNING|AVISO): o índice das versões de 'Damaged' estava danificado \(não é JSON\): refeito, 2 versão\(ões\) tirada\(s\) dos seus próprios registos; nenhuma versão que se pudesse ler se perdeu$/m);
+    await page.dialogButton('Fechar');
+  } finally {
+    await page.eval(async () => (await import('/js/i18n.js')).setLanguage('en'));
+  }
 });

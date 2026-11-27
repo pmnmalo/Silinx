@@ -609,7 +609,7 @@ export const api = {
   },
   undoMerge: async name => { const m = await mergeOf(); return m.apply.undoMerge(m.storage, name); },
   // the project's versions (#5740): as the server's routes, in this browser's IndexedDB
-  listVersions: async name => { await ops.project(name); return { versions: await (await versionsOf()).list(name) }; },
+  listVersions: async name => { await ops.project(name); const v = await versionsOf(), warning = await v.warning(name); return { versions: await v.list(name), ...(warning ? { warning } : {}) }; },
   saveVersion: async (name, { label = '', author = '', reason = 'manual' } = {}) => { await ops.project(name); return (await versionsOf()).save(name, { label, author, reason }); },
   readVersion: async (name, id) => (await versionsOf()).read(name, id),
   versionDiff: async (name, id) => (await versionsOf()).diff(name, id),   // (#5741)
