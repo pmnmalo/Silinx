@@ -41,7 +41,7 @@ export const VERSION_TOOLS = [
       await readProject(name);
       let r;
       try { r = await saveVersion(P, name, { reason: 'manual', label, author: AUTHOR }); } catch (e) { throw toolError(e.message); }
-      const text = r.saved ? `Version ${r.version.id} of '${name}' saved${label ? '' : ' (no name)'}: ${versionLine(r.version)}` : `Version ${r.version.id} of '${name}' has it already: no version saved.`;
+      const text = `${r.warning ? `WARNING: ${r.warning}\n` : ''}${r.saved ? `Version ${r.version.id} of '${name}' saved${label ? '' : ' (no name)'}: ${versionLine(r.version)}` : `Version ${r.version.id} of '${name}' has it already: no version saved.`}`;
       return { text, data: { project: name, ...r }, untrusted: label ? UNTRUSTED : undefined };
     },
   },
@@ -53,8 +53,10 @@ export const VERSION_TOOLS = [
     async run({ project: name }) {
       await readProject(name);
       const list = await serverVersions(P).list(name);
-      const text = list.length ? [`${list.length} version(s) of '${name}', newest first:`, ...list.map(v => `  ${versionLine(v)}`)].join('\n') : `No versions of '${name}' yet (save_version keeps one).`;
-      return { text, data: { project: name, versions: list }, untrusted: list.length ? UNTRUSTED : undefined };
+      // (a damaged index's repair said first, as the History's console says it, #5908)
+      const warning = await serverVersions(P).warning(name);
+      const text = [...(warning ? [`WARNING: ${warning}`] : []), list.length ? [`${list.length} version(s) of '${name}', newest first:`, ...list.map(v => `  ${versionLine(v)}`)].join('\n') : `No versions of '${name}' yet (save_version keeps one).`].join('\n');
+      return { text, data: { project: name, versions: list, ...(warning ? { warning } : {}) }, untrusted: list.length ? UNTRUSTED : undefined };
     },
   },
   {

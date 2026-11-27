@@ -32,7 +32,7 @@ export async function versionBefore(label) {
   const reason = riskyReason(label);
   // (a project followed, an editor's command: the owner keeps the project's versions, never this page, #5761)
   if (!reason || !S.project || following()) return;
-  try { await api.saveVersion(S.project.name, { reason, author: author() }); } catch (e) { logWarning(`${String(label).replace(/…$/, '')}: no version of the project kept before it: ${e.message}.`); }
+  try { const r = await api.saveVersion(S.project.name, { reason, author: author() }); if (r?.warning) logWarning(r.warning); } catch (e) { logWarning(`${String(label).replace(/…$/, '')}: no version of the project kept before it: ${e.message}.`); }
 }
 
 /** Project ▸ Save Version…: a version of the project kept, with a name. */
@@ -44,6 +44,7 @@ export async function saveVersionDialog() {
   if (!await saveAll()) return null;
   let r;
   try { r = await api.saveVersion(name, { label, author: author(), reason: 'manual' }); } catch (e) { logError(`Save Version: ${e.message}`); return null; }
+  if (r.warning) logWarning(r.warning);   // (a damaged index's repair, #5908)
   // (a project followed, #5742: saved by its owner, whose answer every participant's console says)
   if (following()) return r;
   changed(name);
@@ -80,7 +81,7 @@ export async function versionsDialog() {
   if (!S.project) return null;
   const name = S.project.name;
   let list;
-  try { list = (await api.listVersions(name)).versions; } catch (e) { logError(`Versions: ${e.message}`); return null; }
+  try { const r = await api.listVersions(name); list = r.versions; if (r.warning) logWarning(r.warning); } catch (e) { logError(`Versions: ${e.message}`); return null; }   // (a damaged index's repair said, #5908)
   let sel = list[0]?.id ?? null, act = null, close = null, asked = 0;
   const rows = list.map(v => h('tr', { 'data-version': v.id, tabindex: '0', 'aria-selected': String(v.id === sel), class: v.id === sel ? 'sel' : '' },
     h('td', {}, v.id), h('td', {}, when(v)), h('td', {}, v.author), h('td', {}, what(v)), h('td', { 'data-no-i18n': '' }, v.label), h('td', {}, counts(v))));

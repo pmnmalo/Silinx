@@ -31,6 +31,12 @@ export const VERSIONS_PT_PATTERNS = [
   [/^Restored (.+) as version (\d+) had it: (\d+) file\(s\) written, (\d+) removed; the project before it kept as version (\d+) \(restore it to undo\)\.$/,
     'Restaurado $1 como a versão $2 o tinha: $3 ficheiro(s) escrito(s), $4 removido(s); o projeto antes disso guardado como versão $5 (restaure-a para anular).'],
   [/^(.+) is as version (\d+) has it already: nothing restored\.$/, '$1 já está como a versão $2 o tem: nada restaurado.'],
+  // (a damaged index repaired, #5908: core/versions.js indexWarning)
+  [/^the versions' index of '(.+)' was damaged \((not JSON|not a versions' index)\): (?:set aside as (.+) and )?rebuilt, (\d+) version\(s\) taken from their own records; no version that could be read is lost$/,
+    (m, p, why, aside, n) => `o índice das versões de '${p}' estava danificado (${why === 'not JSON' ? 'não é JSON' : 'não é um índice de versões'}): ${aside ? `posto de parte como ${aside} e ` : ''}refeito, ${n} versão(ões) tirada(s) dos seus próprios registos; nenhuma versão que se pudesse ler se perdeu`],
+  [/^the versions' index of '(.+)' was repaired: (.+); the others kept$/, (m, p, what) => `o índice das versões de '${p}' foi reparado: ${what
+    .replace(/(\d+) entry\(ies\) that could not be read left out \(([^)]*)\)/, '$1 entrada(s) que não se puderam ler deixada(s) de fora ($2)')
+    .replace(/(\d+) version\(s\) taken from their own records/, '$1 versão(ões) tirada(s) dos seus próprios registos')}; as outras mantidas`],
   // (an error's own message: the server's or the browser's, in English)
   [/^(Save Version|Restore Version|Versions): ([\s\S]+)$/, (m, w, e) => `${t(w)}: ${e}`],
   [/^(.+): no version of the project kept before it: ([\s\S]+)\.$/, (m, c, e) => `${t(c)}: nenhuma versão do projeto guardada antes: ${e}.`],
