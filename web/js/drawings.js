@@ -11,7 +11,7 @@ import { modelRunners } from '/core/circuit-live-model.js';
 import { S, activateDoc, closeDocByPath, compileProject, findDoc, flushDoc, hdlInProject, moduleInfo, openDoc,
   openFile, setDirty, status } from './app.js';
 import { appLog, commandError, commandWarning, dropRun, log, logError, logWarning } from './console.js';
-import { newerDrawing } from '/core/doc-format.js';
+import { newerDrawing, olderDrawing } from '/core/doc-format.js';
 import { designOnly, hdlStatus, hdlWarning } from './design-only.js';
 import { getNotation } from './notation.js';
 import { editorProblems } from './editor-problems.js';
@@ -51,6 +51,9 @@ const followOnly = (path = null, model = null) => {
 };
 export function newerOnly(path, model) {
   const n = path && newerDrawing(path, model);
+  // (one in an older format, #5906: read in the new one, said; written so on its next save, a version kept first)
+  const older = !n && path && olderDrawing(path, model);
+  if (older) appLog(older, 'info');
   if (!n) return {};
   logWarning(n.message);
   return { readOnly: true, simulate: true, banner: h('span', { class: 'gen-banner read-only', 'data-newer-notice': '' }, 'Read-only, saved by a newer Silinx') };

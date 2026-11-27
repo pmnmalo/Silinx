@@ -25,6 +25,7 @@ import { projectSystem } from '../core/project-system.js';
 import { toolError, clip, projectPath, readProject, cpuRefusal, viewSourcesOf, STR, PROJECT, deviceName, boardDevice, redactor } from './mcp-util.js';
 import { backupOfDir } from './backup-store.js';
 import { lastBackup, BACKUP_HOW } from '../core/backup.js';
+import { documentNotices, formatVersion, newerProject } from '../core/doc-format.js';
 
 // a project the MCP server makes is untrusted (#2981): its tools' results say so
 /** project_info's result with where the project is stored and its last back-up (#4971). */
@@ -32,6 +33,15 @@ function withBackup(name, r) {
   const folder = P.projectDir(name), last = lastBackup(backupOfDir(folder));
   return { ...r, text: `${r.text}\n  stored in the folder ${folder} on the disk; last back-up: ${last ? `${last.at}, ${BACKUP_HOW[last.how]}` : 'none recorded'}`,
     data: { ...r.data, stored: { kind: 'folder', folder }, lastBackup: last } };
+}
+// project_info's result with what its documents' formats say (#5906, core/doc-format.js; the interface's as each opens): a
+// description or a document a newer Silinx saved (read only), one in an older format (written in the new one on its next
+// save, a version kept first), one this Silinx does not read; data.documents, a line of the text each
+async function withFormats(name, pj, r) {
+  const texts = {};
+  for (const f of await P.fileTree(name)) if (!/^build\//.test(f) && formatVersion(f) !== null) { const t = await P.readFile(name, f).catch(() => null); if (t !== null) texts[f] = t; }
+  const notes = [...(newerProject(pj) ? [{ path: 'silinx.json', state: 'newer', message: newerProject(pj) }] : []), ...documentNotices(texts)];
+  return notes.length ? { ...r, text: `${r.text}\n${notes.map(n => `  ${n.message}`).join('\n')}`, data: { ...r.data, documents: notes } } : r;
 }
 const UNTRUSTED = ' It is untrusted, as every project an assistant makes: Xilinx ISE and programming a board or a PROM wait until the user trusts it in the interface (Trust Project); the Silinx toolchain runs.';
 
@@ -204,7 +214,7 @@ export const PROJECT_TOOLS = [
   },
   {
     name: 'project_info', title: 'A project\'s settings and files',
-    description: 'Where a project is stored (stored: its folder) and its last back-up (lastBackup: { at, how: export or github }, null when none was recorded); its nodes and System, top module, test bench, device, board, constraints file, its files (path, language, role: design, sim or impl), the roots of its hierarchy in the Implementation and Simulation views as the Design pane lists them, and the files the implementation and the Board Emulator read beside the HDL (flowFiles: its constraints, then the memory images); when shared live by share_project: sharing, its mode and its followers (each p2p or relay).',
+    description: 'Where a project is stored (stored: its folder) and its last back-up (lastBackup: { at, how: export or github }, null when none was recorded); its nodes and System, top module, test bench, device, board, constraints file, its files (path, language, role: design, sim or impl), the roots of its hierarchy in the Implementation and Simulation views as the Design pane lists them, and the files the implementation and the Board Emulator read beside the HDL (flowFiles: its constraints, then the memory images); when shared live by share_project: sharing, its mode and its followers (each p2p or relay); documents: its documents\' formats (newer: read only; older: migrated on the next save).',
     inputSchema: { type: 'object', properties: { project: PROJECT }, required: ['project'], additionalProperties: false },
     annotations: { readOnlyHint: true },
     async run({ project: name }) {
@@ -212,7 +222,7 @@ export const PROJECT_TOOLS = [
       // (a design and simulation project, #3780: its HDL not shown, nor its internal device)
       // (shared live by share_project, #4643: its mode, its followers and their paths)
       // (where it is kept and its last back-up, #4971: the application's own, as its Start page's)
-      const shared = async r => (await import('./mcp-collab.js')).withSharing(name, withBackup(name, r));
+      const shared = async r => (await import('./mcp-collab.js')).withSharing(name, withBackup(name, await withFormats(name, pj, r)));
       // (its nodes, #5414, #5416: one, implicit, for an FPGA or a design project; a System's, each with its files; and its
       // System, the model of a System document, implicit for those: #5416's phase 3)
       const { system, nodes } = await systemOf(name, pj);

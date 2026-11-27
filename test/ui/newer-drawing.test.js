@@ -1,6 +1,7 @@
 // UI: a drawing a newer Silinx saved (#4756, core/doc-format.js): opened read-only, its notice at the end of its toolbar
 // ("Read-only, saved by a newer Silinx"), why in the console's warnings; never saved in the older format; a project
-// a newer Silinx saved, said when it opens; in both interfaces (SILINX_UI_INTERFACE); in Portuguese.
+// a newer Silinx saved, said when it opens; one in an older format said, written in the new one on its next save, a
+// version kept first (#5906); in both interfaces (SILINX_UI_INTERFACE); in Portuguese.
 import { before, after } from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
@@ -62,6 +63,44 @@ uiTest('#4756 #5737 a schematic, a state diagram and a register map a newer Sili
     await page.eval(() => import('/js/drawings-regs.js').then((m) => m.openRegs('src/r.regs.json')));
     await page.waitFor(() => /r\.regs\.json foi guardado por um Silinx mais recente/.test(document.getElementById('console-log').textContent));
     assert.match(await logText(page), /r\.regs\.json foi guardado por um Silinx mais recente \(o seu formato 99; este lê até ao 1\): aberto só de leitura/);
+  } finally {
+    await page.eval(async () => (await import('/js/i18n.js')).setLanguage('en'));
+  }
+});
+
+// #5906: a schematic in an older format (core/doc-envelope.js): opened editable, said in the console's information, the
+// file as it was until it is saved; its first save writes the new format, a version of the project ('before a document's
+// new format', the old form in it) kept first; in Portuguese
+uiTest('#5906 a schematic in an older format: said, not written on open; its first save in the new one, a version kept first; Portuguese', E, async (page) => {
+  const old = `${JSON.stringify({ version: 4, name: 'old', lang: 'vhdl', sheet: { w: 1700, h: 1100 }, symbols: [], wires: [], labels: [], ports: [] }, null, 1)}\n`;
+  await makeProject(env, { name: 'Older', files: { 'src/old.sch.json': old } });
+  const file = path.join(env.server.workspace, 'Older', 'src', 'old.sch.json');
+  const index = path.join(env.server.workspace, 'Older', '.silinx', 'versions', 'index.json');
+  const migrations = () => (fs.existsSync(index) ? JSON.parse(fs.readFileSync(index, 'utf8')).versions : []).filter(v => v.reason === 'before-migrate');
+  await page.openProject('Older');
+  await page.eval(() => window.SilinxApp.openSch('src/old.sch.json'));
+  await page.waitFor(() => /old\.sch\.json is in an older format/.test(document.getElementById('console-log').textContent));
+  assert.ok((await logText(page)).includes('old.sch.json is in an older format (4; this Silinx writes 7): it is read in the new one and written so on its next save, a version of the project kept first'));
+  assert.ok(!(await logText(page)).includes('WARNING: old.sch.json'), 'information, not a warning');
+  assert.equal(await notice(page), null, 'editable');
+  // (linked to its HDL as the project opens: its generatedFile; its format as it was)
+  const was = fs.readFileSync(file, 'utf8');
+  const { generatedFile, ...rest } = JSON.parse(was);
+  assert.deepEqual({ rest, generatedFile }, { rest: JSON.parse(old), generatedFile: 'src/old.vhd' }, 'not written in the new format on open');
+  assert.deepEqual(migrations(), [], 'no version yet');
+  await page.eval(() => { const d = window.Silinx.active, m = d.schEditor.getDoc(); m.name = 'old'; d.schEditor.setDoc(m); window.SilinxApp.setDirty(d, true); return window.SilinxApp.saveAll(); });
+  await page.waitFor(() => !window.Silinx.active?.dirty);
+  assert.equal(JSON.parse(fs.readFileSync(file, 'utf8')).version, 7, 'saved in the new format');
+  const [v, ...more] = migrations();
+  assert.equal(more.length, 0, 'one');
+  assert.equal(fs.readFileSync(path.join(path.dirname(index), 'texts', v.files['src/old.sch.json']), 'utf8'), was, 'the old form kept');
+  await page.eval(async () => (await import('/js/i18n.js')).setLanguage('pt'));
+  try {
+    fs.writeFileSync(file, old);
+    await page.openProject('Older');
+    await page.eval(() => window.SilinxApp.openSch('src/old.sch.json'));
+    await page.waitFor(() => /old\.sch\.json está num formato antigo/.test(document.getElementById('console-log').textContent));
+    assert.match(await logText(page), /old\.sch\.json está num formato antigo \(4; este Silinx escreve o 7\): é lido no novo e escrito assim ao guardá-lo, guardada antes uma versão do projeto/);
   } finally {
     await page.eval(async () => (await import('/js/i18n.js')).setLanguage('en'));
   }
