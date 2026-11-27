@@ -1,7 +1,8 @@
 // Boolean Algebra / Karnaugh Map editor (#2017: it was Truth Table; documents <name>.bool.json, <name>.tt.json before #2065). The inputs (1–16,
 // #3939: a large table's rows drawn as they scroll into view, web/js/tt-rows.js) and outputs (any number: the table scrolls, one output at a time
 // in the tabs) are named in the toolbar; the truth table is edited by clicking its output cells (0 → 1 → X) or by typing an expression per
-// output, its columns reordered by dragging their headers (#5863, web/js/tt-col-drag.js), the results
+// output, its columns reordered by dragging their headers (#5863, web/js/tt-col-drag.js) and edited from their right-click
+// menu (#5869, web/js/tt-col-menu.js), the results
 // (web/js/tt-results.js): the forms of the fewest gates and of the least delay (#1427), the Karnaugh map's
 // (up to 6 inputs) and Quine-McCluskey's simplified function (SOP or POS as clicked, #3939), the map under its result when its
 // Show K-map button is pressed (its groups, the minimal solution used chosen there when it has several, #2950, #4057) and
@@ -28,7 +29,7 @@ import { ICON } from './editor-icons.js';
 import { setChoice, toolbarMenu } from './toolbar-menu.js';
 import {
   normalizeTable, shapeTable, analyzeOutput, parseExpr, exprColumn,
-  kmapLayout, kmapRects, MAX_EDIT_INPUTS, MAX_KMAP_INPUTS, setOutputLogic, formOf, moveColumn,
+  kmapLayout, kmapRects, MAX_EDIT_INPUTS, MAX_KMAP_INPUTS, setOutputLogic, formOf,
 } from '/core/logic.js';
 import { cellText, placeKmap } from './tt-kmap3d.js';
 import { domSnapshot } from './print-view.js';
@@ -42,7 +43,7 @@ import { showExpr } from '/core/expr-notation.js';
 import { ttReadOnlyChrome, lockTt } from './tt-readonly.js';
 import { renderTtLink } from './tt-link.js';
 import { ttLook } from './tt-look.js';
-import { wireColumnDrag } from './tt-col-drag.js';
+import { wireColumns } from './tt-col-menu.js';
 
 const NEXT = { 0: '1', 1: 'X', X: '0' };
 const COLORS = ['#d62728', '#1f77b4', '#2ca02c', '#9467bd', '#ff7f0e', '#17becf', '#e377c2', '#8c564b', '#bcbd22', '#7f7f7f'];
@@ -227,10 +228,9 @@ export function mountTtEditor(container, opts = {}) {
     changed();
   };
 
-  const renderTable = () => renderTtTable(tableHost, { M, out, select: o => { out = o; render(); }, cycle, readOnly });
-  // a column's header dragged or moved by Alt+Shift+← / → (#5863): an input's rows sorted again in the new order
-  wireColumnDrag(tableHost, { readOnly: () => readOnly, move: (kind, from, to) => { try { M = moveColumn(M, kind, from, to); } catch (e) { refuse(e.message); return; } changed(); },
-    refuse: () => message(`${M.name} is read only: its columns are not moved.`, 'warn') });   // (a large one: its rows in view, #3939)
+  const renderTable = () => renderTtTable(tableHost, { M, out, select: o => { out = o; render(); }, cycle, readOnly });   // (a large one: its rows in view, #3939)
+  // its columns' headers dragged, Alt+Shift+← / → (#5863), their right-click menu (#5869): web/js/tt-col-menu.js
+  wireColumns(tableHost, { readOnly, model: () => M, refuse, set: (m, o, user) => { M = m; if (o) out = o; changed(user); } });
 
   function renderTabs() {
     tabs.innerHTML = '';
