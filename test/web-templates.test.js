@@ -6,6 +6,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { example } from './examples-lib.mjs';
+import { PROCESSOR_ORDER } from '../core/examples.js';
 import * as T from '../web/js/templates.js';
 import { compile, elaborate } from '../core/compile.js';
 import { Simulator } from '../core/simulator.js';
@@ -139,7 +140,8 @@ test('UCF template: comments only, valid constraints file', () => {
 
 test('example projects (New Project ▸ Start from): sources compile, top and test bench elaborate, the test bench simulates', () => {
   const dir = path.join(ROOT, 'examples');
-  const examples = fs.readdirSync(dir).filter((e) => fs.existsSync(path.join(dir, e, 'silinx.json')));
+  // (a processor board's example has no HDL, its firmware its program: test/processor-examples.test.js runs it, #5874)
+  const examples = fs.readdirSync(dir).filter((e) => fs.existsSync(path.join(dir, e, 'silinx.json')) && !PROCESSOR_ORDER.includes(e));
   assert.ok(examples.length >= 1);
   for (const ex of examples) {
     const pj = JSON.parse(fs.readFileSync(path.join(dir, ex, 'silinx.json'), 'utf8'));

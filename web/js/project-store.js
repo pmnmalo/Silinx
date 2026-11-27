@@ -29,6 +29,7 @@ import { langOfPath } from '../../core/file-kinds.js';
 import { registerWritten, renameEntries, deleteEntries } from '../../core/project-entries.js';
 import { expiredTrash } from '../../core/trash.js';
 import { downgradeRefusal, migratingWrite } from '../../core/doc-format.js';
+import { processorBoardOf } from '../../core/processor-board.js';
 
 export const NAME_RE = PROJECT_NAME_RE;   // (core/project-name.js, #3538)
 // the site's development edition (https://pmnmalo.github.io/Silinx/dev/, built from main): its
@@ -111,7 +112,8 @@ export function normalizeProjectJson(saved, name) {
   if (typeof saved.synthTool === 'string') json.synthTool = saved.synthTool;
   if (isDesignOnly(saved)) Object.assign(json, { kind: DESIGN_KIND, board: null });   // (a design and simulation project, #3780)
   // (a System project, #4702: its profile, #5440; one of before #5440, kind system)
-  if (isSystemProject(saved)) Object.assign(json, saved.kind === SYSTEM_KIND ? { kind: SYSTEM_KIND, board: null } : { profile: profileOf(saved), ...(saved.top ? {} : { board: null }) });
+  // (a processor board's Board project keeps its board, #5756, #5883: core/processor-board.js processorBoardOf)
+  if (isSystemProject(saved)) Object.assign(json, saved.kind === SYSTEM_KIND ? { kind: SYSTEM_KIND, board: null } : { profile: profileOf(saved), ...(saved.top || processorBoardOf(saved) ? {} : { board: null }) });
   if (saved.trusted === false) json.trusted = false;   // (a project from outside, #2830: never made trusted by its description)
   // (its id and the origin of a copy, #4205)
   if (isProjectId(saved.id)) json.id = saved.id;

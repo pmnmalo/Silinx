@@ -53,7 +53,8 @@ uiTest('#5756 New Project: the Board card\'s Board Type; a Raspberry Pi Pico alo
   await page.dialogButton('Next >');
   await page.waitFor(() => document.querySelectorAll('.dlg-overlay .wiz-main select').length > 6, [], { what: 'Project Settings' });
   assert.ok((await offered(page)).includes('basys2') && !(await offered(page)).some(v => ['pico', 'arduino-uno'].includes(v)));
-  // (back to the Board Type, Raspberry Pi Pico: the Picos alone, the first chosen; the FPGA's fields hidden; no example)
+  // (back to the Board Type, Raspberry Pi Pico: the Picos alone, the first chosen; the FPGA's fields hidden; no example
+  // yet: they come with its shield, #5874)
   await page.dialogButton('< Back');
   await page.dialogButton('< Back');
   await page.fill('.dlg-overlay .board-type', 'rp2040');
