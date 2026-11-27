@@ -34,7 +34,7 @@ WebAssembly tools into the single file; `scripts/pwa.mjs` adds the site's servic
                      │
  The front end    packages/silinx-hdl    VHDL and Verilog: parsers, elaboration, simulator, flat Verilog
  The toolchain    packages/silinx-fpga   synthesis to bitstream (TOOLCHAIN.md)
- (possible)       packages/silinx-pic24  a PIC24 emulator of Silinx's own (MIT; if #5480 chooses it)
+ The emulator     packages/silinx-pic24  the PIC24's emulator, Silinx's own (MIT, #5480)
                      │
  Outside tools    Yosys and nextpnr (WebAssembly, npm) │ Xilinx ISE 14.7, AMD Vivado (the user's) │ programmers (openFPGALoader…)
 ```
@@ -69,7 +69,7 @@ Where each part sits, what exists today and what is planned (its phase and issue
 | Part | `core/` | `server/` | `web/js/` | Status |
 |---|---|---|---|---|
 | The model: the document, its edits and check, the profiles | `system-doc.js`, `system-edit.js`, `system-check*.js`, `project-profile.js`, `project-system.js`, `project-nodes.js` | `mcp-system.js` (`edit_system`, `check_system`) | `system-editor.js`, `system-draw.js`, `system-side.js`, `system-wiring.js` | exists |
-| The scheduler: ps time, windows bounded by the links' lookahead | `system-sim.js`, `system-build.js`, `system-run.js`, `system-host.js`, `system-sim-remote.js` | `mcp-system-sim.js` (`simulate`) | `system-worker.js`, `system-sim-view.js`, `system-waves-view.js` | exists |
+| The scheduler: ps time, windows bounded by the links' lookahead | `system-sim.js`, `system-build.js`, `system-run.js`, `system-host.js` | `mcp-system-sim.js` (`simulate`) | `system-worker.js`, `system-sim-view.js`, `system-waves-view.js` | exists |
 | **The node contract** (`run(t1, inputEvents)`) | `system-contract.js` (the contract, `ContractNode`, `StimulusNode`), `system-ports.js` (the typed ports); each engine's adapter: `system-sim-compiled.js`, `system-sim-event.js`, `system-sim-avr*.js`, `system-sim-circuit.js`, `system-sim-terminal.js` | — | — | exists as the scheduler's interface; formalised (typed ports and levels, lookahead, save / restore): phase 2, #5485 |
 | **The link kinds** | `system-links.js` (the kinds as types, their protocols and lookahead); pins and transaction buses: the adapters above, the decoders `system-decode.js`, `uart.js`; the register map `regmap*.js` (a memory-mapped bus's both sides) | — | `regmap-editor.js` | GPIO, UART, SPI, I²C exist; the kinds formalised: #5485; AXI on the Zynq: #5412; analog: #5387; networks: #4695's phase 4 |
 | The engines | FPGA: `compiled-sim.js`, `simulator.js`; AVR: avr8js (npm) and `avr-firmware.js`; circuit: `circuit-sim.js` | — | the System Emulator: `system-emu-view.js`, `emulator-arduino.js` (core: `system-emu.js`) | exist; RP2040 and ESP32: #4695's phase 4, not started (#5494, #5495); **the PIC24's emulator**: phase 1, #5480, #5481, its node #5484 |
@@ -78,11 +78,10 @@ Where each part sits, what exists today and what is planned (its phase and issue
 | **Per-node toolchains** | — | FPGA: the three flows, a node at a time (`system-implement.js`, `system-node.js` in core); XC16: `toolchain.js`'s way, found and run | `system-implement-ui.js`, `system-processes.js` | FPGA nodes exist (#5446); avr-gcc / arduino-cli: #4695's phase 5; XC16: phase 1, #5482; XC16 in WebAssembly: an experiment, #5491 |
 | **Per-node programmers** and the plan (Program All, Program Node) | the plan; WebUSB JTAG (`usb-program.js`); Web Serial's STK500 / raw REPL | `programmer.js`; a PICkit through MPLAB IPE | `impact.js`; the System's rows | FPGA exists; the plan, Web Serial, the PICkit: phase 2, #5489 (with #4695's phase 3) |
 
-- **The PIC24 emulator**: LabWired's dsPIC33 model (MIT, Rust, through WebAssembly) or one of Silinx's own in JS, being
-  evaluated (#5480). Its adapter sits in `core/` as the other engines' adapters do, behind the node contract. If
-  Silinx writes its own, it is a monorepo package of its own, `packages/silinx-pic24`, as `silinx-fpga` is (its own
-  changelog and npm releases, importing nothing from `core/` or `web/`), under the MIT licence (decided, Pedro,
-  2026-11-24).
+- **The PIC24 emulator** is Silinx's own in JS (#5480): a monorepo package of its own, `packages/silinx-pic24`, as
+  `silinx-fpga` is (its own changelog and npm releases, importing nothing from `core/` or `web/`), under the MIT
+  licence (decided, Pedro, 2026-11-24). Its adapter sits in `core/` (`system-sim-pic24.js`) as the other engines'
+  adapters do, behind the node contract.
 - **XC16** is the user's (proprietary, as ISE is): the local server runs it; in the browser alone the student gives a
   `.hex`. Built from its GPL source for WebAssembly (`cc1`, `as`, `ld` with Emscripten and a driver of Silinx's own,
   as Yosys is) it would run in the browser too: an experiment first (#5491), a phase of its own if it succeeds.

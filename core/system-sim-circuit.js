@@ -136,8 +136,10 @@ export class CircuitNode {
 /** What the circuit's simulation models and what it does not (the node contract's fidelity notes, #5499). */
 export const CIRCUIT_FIDELITY = [
   { kind: 'models', text: 'the circuit\'s digital parts, event by event in ns, each IC with its delay' },
+  // (a circuit with an analog part: its analog nodes solved in time, core/circuit-analog.js, #5382, #5913)
+  { kind: 'models', text: 'an analog part\'s nodes: their voltages solved as a circuit, its capacitors stepped in time' },
   { kind: 'approximates', text: 'a pin pulled up is a weak 1; a short is said once a net' },
-  { kind: 'omits', text: 'analog behaviour: voltages, currents, rise and fall times' },
+  { kind: 'omits', text: 'a digital net\'s voltages, currents, rise and fall times: its levels only' },
 ];
 
 /** A circuit node behind the node contract (core/system-contract.js): `opts` CircuitNode's ({ model, pins }). */
