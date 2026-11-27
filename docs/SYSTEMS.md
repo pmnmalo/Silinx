@@ -856,6 +856,23 @@ WebAssembly: #5904).
 - Its errors and warnings are the job's ERROR and WARNING lines, by the project's file and line; the OCM overflowed is said
   as such.
 
+### Loading a Zynq board's PS program over JTAG
+
+A PS program's ELF is loaded into the on-chip memory and started over the board's JTAG (#4687, part 3:
+`core/arm-dap.js`, `core/zynq-ps-load.js`), through the Zynq's ARM DAP, the device of the chain beside the PL's TAP:
+
+- CPU 0 is halted through the APB-AP's debug registers (DBGLAR and the OS lock opened, halting debug on), its MMU and
+  caches turned off, the instruction cache and the branch predictor invalidated;
+- Silinx's ps7_init (`core/zynq-ps7.js`: the MIO, the PLLs, the clocks) is run through the AHB-AP, its PLLs' locks polled;
+- the ELF's segments are written to the OCM 1 KB at a time (the MEM-AP's address wraps there) and read back;
+- CPU 0 is started at the entry, in the Supervisor mode with its interrupts off (CPSR 0x1D3).
+
+The writes are bounded twice. The plan (`psLoadPlan`) is checked whole before the first JTAG transaction: every ps7_init
+write must be a register of the SLCR, every segment 4-aligned in the OCM's low 192 KB, the entry there. Every write the
+DAP makes then goes through the plan's guard, which refuses any other address: on the AHB-AP only ps7_init's registers
+and the OCM, on the APB-AP only CPU 0's debug registers. A WAIT is retried with more idle clocks, a FAULT clears its
+sticky error and is said. The tests run it on a simulated Zybo Z7 chain (`test/fixtures/zynq-dap-sim.js`).
+
 ### The build and programming plan
 
 A System has a **build plan** (#5489, `core/system-plan.js`): each FPGA and microcontroller node's steps, the FPGA nodes
