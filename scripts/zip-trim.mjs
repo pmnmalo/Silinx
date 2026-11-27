@@ -2,7 +2,8 @@
 // within its budget (test/release/release.test.js) as the shared projects' packages came in (#3214, #3263).
 // - of every package: its source maps and its type declarations (nothing loads them when the app runs);
 // - of the shared projects' packages: their tests, demos and coverage, which their own npm packages ship;
-// - of CodeMirror's legacy modes: all but the editor's (VHDL, Verilog, C).
+// - of CodeMirror's legacy modes: all but the editor's (VHDL, Verilog, C);
+// - of the ESP32 node's MicroPython: its builds but the one Silinx loads, with settrace (#5816).
 // Their entry points, the import map's targets (web/index.html) and their licences stay (test/zip-trim.test.js).
 //   leaveOutUnused(app) -> { files, bytes }: what was removed from app/node_modules
 import fs from 'node:fs';
@@ -17,6 +18,8 @@ const UNUSED_IN = Object.freeze({
   'y-codemirror.next': [/^dist\/(demo|test)\.(cjs|js|mjs)$/],
   // (the editor's three modes of the hundred: web/js/editor.js, the import map)
   '@codemirror/legacy-modes': [/^mode\/(?!(vhdl|verilog|clike)\.)/],
+  // (server/esp32-worker.js and web/js/esp32-worker.js: micropython.mjs and micropython-settrace.wasm, the URL given)
+  '@micropython/micropython-webassembly-pyscript': [/^micropython(-ulab|-settrace-ulab)?\.wasm$/],
 });
 
 // the packages of a node_modules folder: [{ name, dir }], scoped ones too, nested node_modules apart

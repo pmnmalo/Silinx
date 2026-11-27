@@ -32,7 +32,10 @@ const VERSION = JSON.parse(fs.readFileSync(path.join(ROOT, 'package.json'), 'utf
 // zipMB 44 → 46 and appMB 142 → 148 (#5303): the Zynq-7000's bit databases (#4680, 0.7 MB of gzip, which zip does
 // not compress), the Systems' AVR simulator (avr8js) and its editors, the new circuit parts and the CHANGELOG took it from
 // 43.2 MB (2026-11-20) to 44.3 MB, unzipped 142.3 MB; nothing in it the app does not use (the chipdbs still downloaded)
-const BUDGET = { zipMB: 46, appMB: 148 };
+// zipMB 46 → 48 and appMB 148 → 156 (#5816, Pedro's decision): Yosys 0.71's WebAssembly (#5634: 15.6 → 17.2 MB zipped,
+// 68.9 → 74.9 MB), the ESP32 node's MicroPython (#5495; its three builds the app never loads left out, scripts/zip-trim.mjs,
+// 0.7 MB zipped) and the Pico's emulator (rp2040js) took it to 47.5 MB, unzipped 152.5 MB (2026-11-28)
+const BUDGET = { zipMB: 48, appMB: 156 };
 
 const has = (cmd) => { try { execFileSync(cmd, ['-v'], { stdio: 'ignore' }); return true; } catch { return false; } };
 const SKIP = process.platform === 'win32' ? 'the release is packaged on Linux (zip): not on Windows'
@@ -96,11 +99,11 @@ test('release zip: the app with its production dependencies only, Yosys\'s WebAs
   const { THIRD_PARTY } = await import(pathToFileURL(path.join(APP, 'core/third-party.js')).href);
   // (code ported into Silinx, e.g. adepttool, is listed but is not a package)
   // (and a package downloaded on its first use, the iCE40's, the ECP5's, the Gowin's and the GateMate's nextpnr, is not
-  // in it: #2444, #2570, #2302, #2303, #2431, #4545)
+  // in it: #2444, #2570, #2302, #2303, #2431, #4545; the Cyclone V's, nextpnr-mistral, #5958)
   const listed = THIRD_PARTY.filter((c) => !c.ported && !c.downloaded).map((c) => `${c.name}@${c.version}`).sort();
   assert.deepEqual(packages(path.join(APP, 'node_modules')), listed, 'node_modules of the zip = THIRD-PARTY-NOTICES.md (node scripts/third-party.mjs)');
   const downloaded = THIRD_PARTY.filter((c) => c.downloaded).map((c) => c.name);
-  assert.deepEqual(downloaded, ['@yowasp/nextpnr-ecp5', '@yowasp/nextpnr-himbaechel-gatemate', '@yowasp/nextpnr-himbaechel-gowin', '@yowasp/nextpnr-ice40']);
+  assert.deepEqual(downloaded, ['@silinx/nextpnr-mistral', '@yowasp/nextpnr-ecp5', '@yowasp/nextpnr-himbaechel-gatemate', '@yowasp/nextpnr-himbaechel-gowin', '@yowasp/nextpnr-ice40']);
   for (const name of downloaded) assert.ok(!fs.existsSync(path.join(APP, 'node_modules', name)), `${name} left out of the zip`);
   const notices = fs.readFileSync(path.join(APP, 'THIRD-PARTY-NOTICES.md'), 'utf8');
   for (const c of listed) assert.ok(notices.includes(`## ${c.replace(/@(?=[^@]+$)/, ' ')} `), `${c} in THIRD-PARTY-NOTICES.md`);
