@@ -38,16 +38,16 @@ async function designProject(name) {
 
 test('new_project profile: logic, fpga (its default); kind and design_only its deprecated aliases; refused with a board, or with both', async () => {
   assert.deepEqual((await ok('new_project', { name: 'k1', profile: 'logic' })).data.kind, 'design');
-  assert.equal((await P.readProject('k1')).kind, 'design');
-  assert.equal((await P.readProject((await ok('new_project', { name: 'k2', profile: 'fpga' })).data.project)).kind, undefined);
-  assert.equal((await P.readProject((await ok('new_project', { name: 'k3', design_only: true })).data.project)).kind, 'design');
+  assert.equal((await P.readProject('k1')).profile, 'logic');   // (written as its profile, #5907)
+  assert.equal((await P.readProject((await ok('new_project', { name: 'k2', profile: 'fpga' })).data.project)).profile, 'fpga');
+  assert.equal((await P.readProject((await ok('new_project', { name: 'k3', design_only: true })).data.project)).profile, 'logic');
   await fails('new_project', { name: 'k4', profile: 'logic', board: 'basys2' }, 'a Digital Logic project (profile logic) has no board: give profile logic or a board, not both');
   await fails('new_project', { name: 'k5', profile: 'logic', design_only: true }, 'give profile, not design_only too (design_only is profile\'s deprecated alias)');
   await fails('new_project', { name: 'k6', kind: 'none' }, 'kind: one of fpga, design, system');
   await fails('new_project', { name: 'k7', profile: 'none' }, 'profile: one of logic, fpga, embedded, system');
   // (kind, its name of before #5440: design the Digital Logic profile, said)
   const k8 = await ok('new_project', { name: 'k8', kind: 'design' });
-  assert.equal((await P.readProject('k8')).kind, 'design');
+  assert.equal((await P.readProject('k8')).profile, 'logic');
   assert.ok(k8.text.split('\n').includes('WARNING: kind is deprecated (#5440): give profile (design is profile logic, fpga and system the same).'), k8.text);
 });
 
@@ -77,7 +77,7 @@ test('set_design_properties kind design: a design project made, as Design Proper
   await ok('write_file', { project: 's1', path: 'src/traffic.fsm.json', text: FSM });
   const r = await ok('set_design_properties', { project: 's1', profile: 'logic' });
   assert.match(r.text, /^s1: a design and simulation project now \(no FPGA\): no board, no constraints/);
-  assert.deepEqual([(await P.readProject('s1')).kind, (await P.readProject('s1')).board], ['design', null]);
+  assert.deepEqual([(await P.readProject('s1')).profile, (await P.readProject('s1')).board], ['logic', null]);
   await fails('set_design_properties', { project: 's1', profile: 'logic' }, 'the project \'s1\' is a design and simulation project already');
   await ok('new_project', { name: 's2' });
   await fails('set_design_properties', { project: 's2', profile: 'logic', board: 'basys2' }, 'kind: a design and simulation project has no board');
@@ -85,7 +85,7 @@ test('set_design_properties kind design: a design project made, as Design Proper
   // (an HDL source of its own: refused, the interface's message)
   await ok('write_file', { project: 's2', path: 'src/top.v', text: 'module top(input a, output b);\n  assign b = a;\nendmodule\n' });
   await fails('set_design_properties', { project: 's2', profile: 'logic' }, 'the project \'s2\' cannot become a design and simulation project: its HDL and C sources are not drawings (src/top.v)');
-  assert.equal((await P.readProject('s2')).kind, undefined);
+  assert.equal((await P.readProject('s2')).profile, 'fpga');
 });
 
 test('set_design_properties kind fpga: a design project an FPGA project, no board (its device the default) or with one; an FPGA project already one', async () => {
@@ -93,11 +93,11 @@ test('set_design_properties kind fpga: a design project an FPGA project, no boar
   const r = await ok('set_design_properties', { project: 'f1', profile: 'fpga' });
   assert.match(r.text, /f1: an FPGA project now: its HDL and its implementation shown\./);
   const pj = await P.readProject('f1');
-  assert.deepEqual([pj.kind, pj.board, pj.device.part, pj.constraints], [undefined, null, 'xc3s250e', 'constraints/top.ucf']);
+  assert.deepEqual([pj.kind, pj.profile, pj.board, pj.device.part, pj.constraints], [undefined, 'fpga', null, 'xc3s250e', 'constraints/top.ucf']);
   await fails('set_design_properties', { project: 'f1', profile: 'fpga' }, 'the project \'f1\' is an FPGA project already');
   await ok('new_project', { name: 'f2', profile: 'logic' });
   await ok('set_design_properties', { project: 'f2', profile: 'fpga', board: 'nexys2' });
-  assert.deepEqual([(await P.readProject('f2')).kind, (await P.readProject('f2')).board], [undefined, 'nexys2']);
+  assert.deepEqual([(await P.readProject('f2')).profile, (await P.readProject('f2')).board], ['fpga', 'nexys2']);
   // (design_only false: kind fpga's deprecated alias)
   await ok('new_project', { name: 'f3', profile: 'logic' });
   await ok('set_design_properties', { project: 'f3', design_only: false });
@@ -116,9 +116,9 @@ test('#5440 set_design_properties profile: an FPGA project widened to Embedded /
   const pj = await P.readProject('w1');
   assert.deepEqual([pj.profile, pj.kind, pj.board, pj.top, pj.constraints], ['embedded', undefined, before.board, before.top, before.constraints]);
   await fails('set_design_properties', { project: 'w1', profile: 'embedded' }, 'the project \'w1\' is Embedded / SoC already');
-  // (back to FPGA: its silinx.json as it was)
+  // (back to FPGA: its profile written as every one, #5907; no kind)
   await ok('set_design_properties', { project: 'w1', profile: 'fpga' });
-  assert.equal(fs.readFileSync(path.join(P.projectDir('w1'), 'silinx.json'), 'utf8').includes('"profile"'), false);
+  assert.deepEqual([JSON.parse(fs.readFileSync(path.join(P.projectDir('w1'), 'silinx.json'), 'utf8')).profile, fs.readFileSync(path.join(P.projectDir('w1'), 'silinx.json'), 'utf8').includes('"kind"')], ['fpga', false]);
   // a System example: its System its top, an MCU node
   await ok('new_project_from_example', { name: 'w2', example: 'uart-avr' });
   await fails('set_design_properties', { project: 'w2', profile: 'fpga' }, 'the project \'w2\' cannot be FPGA: its node uno (mcu) is not allowed (FPGA allows design, circuit, fpga)');
@@ -133,9 +133,9 @@ test('#5754 new_project mode: circuit, board, system, each its profile and its k
   assert.deepEqual(np.inputSchema.properties.mode, { type: 'string', enum: ['circuit', 'board', 'system'], description: 'Its mode: circuit (no board), board (one board, the default), system (devices linked).' });
   const c = await ok('new_project', { name: 'm1', mode: 'circuit' });
   assert.equal(c.text, 'Empty Digital Logic project \'m1\' made (a design and simulation project). Add its drawings with new_source, then set_top.');
-  assert.deepEqual([c.data.mode, c.data.kind, (await P.readProject('m1')).kind, (await P.readProject('m1')).board], ['circuit', 'design', 'design', null]);
+  assert.deepEqual([c.data.mode, c.data.kind, (await P.readProject('m1')).profile, (await P.readProject('m1')).board], ['circuit', 'design', 'logic', null]);
   const b = await ok('new_project', { name: 'm2', mode: 'board', board: 'nexys2' });
-  assert.deepEqual([b.data.mode, (await P.readProject('m2')).kind, (await P.readProject('m2')).profile, (await P.readProject('m2')).board], ['board', undefined, undefined, 'nexys2']);
+  assert.deepEqual([b.data.mode, (await P.readProject('m2')).kind, (await P.readProject('m2')).profile, (await P.readProject('m2')).board], ['board', undefined, 'fpga', 'nexys2']);
   const s = await ok('new_project', { name: 'm3', mode: 'system' });
   assert.deepEqual([s.data.mode, s.data.profile, (await P.readProject('m3')).profile, fs.existsSync(path.join(P.projectDir('m3'), 'm3.sys.json'))], ['system', 'system', 'system', true]);
   const e = await ok('new_project', { name: 'm4', mode: 'system', profile: 'embedded' });
@@ -167,7 +167,7 @@ test('#5757 the examples by mode: list_examples\' modes; new_project_from_exampl
   const r = await ok('new_project_from_example', { name: 'ce1', example: 'gates', mode: 'circuit' });
   assert.match(r.text, /^Circuit project 'ce1' made from the example gates: top gates, no board\. It is untrusted/);
   const pj = await P.readProject('ce1');
-  assert.deepEqual([pj.kind, pj.board, pj.constraints, (await ok('project_info', { project: 'ce1' })).data.mode], ['design', null, null, 'circuit']);
+  assert.deepEqual([pj.profile, pj.board, pj.constraints, (await ok('project_info', { project: 'ce1' })).data.mode], ['logic', null, null, 'circuit']);
   assert.ok(!fs.existsSync(path.join(P.projectDir('ce1'), 'constraints')) || !fs.readdirSync(path.join(P.projectDir('ce1'), 'constraints')).length, 'its constraints file not copied');
   // (its test bench runs as the example's)
   const s = await ok('simulate', { project: 'ce1' });

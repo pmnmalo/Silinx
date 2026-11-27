@@ -45,7 +45,7 @@ test('#5583 set_top / unset_top in a System project: a module of an FPGA node\'s
   const r = await ok('set_top', { project: 's2', top: 'other' });
   assert.deepEqual([r.text.split('\n')[0], unlabelled(r.data)], ['s2: \'other\' is now fpga\'s top module (the System uart_avr stays the project\'s top).', { project: 's2', top: 'uart_avr.sys.json', node: 'fpga', nodeTop: 'other', changed: true }]);
   let pj = await P.readProject('s2');
-  assert.deepEqual([pj.kind, pj.board, pj.top || ''], ['system', null, '']);   // (the example's: a System project, as it was)
+  assert.deepEqual([pj.profile, pj.board, pj.top || ''], ['system', null, '']);   // (the example's: a System project, as it was)
   assert.deepEqual(sysText().nodes.map(n => [n.id, n.module ?? null]), [['uno', null], ['fpga', 'other']]);
   // (its top already: nothing written)
   const again = await ok('set_top', { project: 's2', top: 'OTHER' });
@@ -59,7 +59,7 @@ test('#5583 set_top / unset_top in a System project: a module of an FPGA node\'s
   const u = await ok('unset_top', { project: 's2', simulation: true });
   assert.equal(u.text, 'The project \'s2\' has no test bench: nothing to unset.');
   pj = await P.readProject('s2');
-  assert.deepEqual([pj.kind, pj.top || '', sysText().nodes[1].module], ['system', '', 'uart']);
+  assert.deepEqual([pj.profile, pj.top || '', sysText().nodes[1].module], ['system', '', 'uart']);
   // (its System its top: as it is)
   const b = await ok('set_top', { project: 's2', top: 'uart_avr.sys.json' });
   assert.deepEqual([b.data.kind, b.data.system, b.data.made], ['system', 'uart_avr.sys.json', false]);

@@ -38,7 +38,7 @@ test('#5757 the Circuit examples: gates and breadboard, then the Circuit version
   // (each a Circuit project's as it is shipped: no board, no constraints, no HDL or C of its own)
   for (const n of CIRCUIT_ORDER) {
     const pj = JSON.parse(fs.readFileSync(new URL(`../examples/${n}/silinx.json`, import.meta.url), 'utf8'));
-    assert.deepEqual([pj.kind, pj.board, pj.constraints, pj.trusted, pj.madeBy], ['design', null, null, undefined, undefined], n);
+    assert.deepEqual([pj.kind, pj.board, pj.constraints, pj.trusted, pj.madeBy], ['design', null, null, undefined, undefined], n);   // (as shipped, version 1: read as its profile, #5907)
     const drawn = fs.readdirSync(new URL(`../examples/${n}/src`, import.meta.url)).filter(f => /\.json$/.test(f)).map(f => JSON.parse(fs.readFileSync(new URL(`../examples/${n}/src/${f}`, import.meta.url), 'utf8')).generatedFile);
     assert.deepEqual(ownSources(pj, drawn), [], `${n}: an HDL file no drawing makes`);
   }
@@ -49,7 +49,7 @@ for (const [n, [top, simTop, counts, passed]] of Object.entries(VERSIONS)) {
     const r = await ok('new_project_from_example', { name: n, example: n });
     assert.deepEqual([r.data.mode, r.data.top, r.data.simTop, r.data.board], ['circuit', top, simTop, null]);
     const pj = await P.readProject(n);
-    assert.deepEqual([pj.kind, pj.board, pj.constraints, (await ok('project_info', { project: n })).data.mode], ['design', null, null, 'circuit']);
+    assert.deepEqual([pj.profile, pj.board, pj.constraints, (await ok('project_info', { project: n })).data.mode], ['logic', null, null, 'circuit']);
     const c = await ok('check_syntax', { project: n });
     assert.equal(c.text, `Process "Check Design" of <${top}> completed successfully (${counts}).`);
     const s = await ok('simulate', { project: n, time_ns: 5000 });

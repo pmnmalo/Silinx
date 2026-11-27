@@ -30,6 +30,7 @@ import { registerWritten, renameEntries, deleteEntries } from '../../core/projec
 import { expiredTrash } from '../../core/trash.js';
 import { downgradeRefusal, migratingWrite } from '../../core/doc-format.js';
 import { changedMeanwhile, textTag } from '../../core/text-tag.js';
+import { migrateProject, olderProject, parseDescription, sameDescription } from '../../core/project-json.js';
 
 export const NAME_RE = PROJECT_NAME_RE;   // (core/project-name.js, #3538)
 // the site's development edition (https://pmnmalo.github.io/Silinx/dev/, built from main): its
@@ -110,9 +111,10 @@ export function normalizeProjectJson(saved, name) {
   if (saved.preferredLanguage === 'vhdl' || saved.preferredLanguage === 'verilog') json.preferredLanguage = saved.preferredLanguage;
   if (plain(saved.sourceLanguage)) json.sourceLanguage = saved.sourceLanguage;
   if (typeof saved.synthTool === 'string') json.synthTool = saved.synthTool;
-  if (isDesignOnly(saved)) Object.assign(json, { kind: DESIGN_KIND, board: null });   // (a design and simulation project, #3780)
-  // (a System project, #4702: its profile, #5440; one of before #5440, kind system)
-  if (isSystemProject(saved)) Object.assign(json, saved.kind === SYSTEM_KIND ? { kind: SYSTEM_KIND, board: null } : { profile: profileOf(saved), ...(saved.top ? {} : { board: null }) });
+  // (its profile, #5440, written whichever it is, #5907; a design and simulation project has no board, #3780; a System
+  // project of before #5440, kind system, none; one since, none unless it has a top: a processor board's, #5756)
+  json.profile = profileOf(saved);
+  if (isDesignOnly(saved) || (isSystemProject(saved) && (saved.kind === SYSTEM_KIND || !saved.top))) json.board = null;
   if (saved.trusted === false) json.trusted = false;   // (a project from outside, #2830: never made trusted by its description)
   // (its id and the origin of a copy, #4205)
   if (isProjectId(saved.id)) json.id = saved.id;
@@ -366,7 +368,8 @@ export function folderStore(root) {
     if (projectNameError(name)) fail(projectNameError(name));
     try { return await root.getDirectoryHandle(name, { create }); } catch (e) { if (notFound(e)) fail(`project '${name}' not found`); throw e; }
   };
-  const readJson = async dir => JSON.parse(await (await (await dir.getFileHandle(PROJECT_FILE)).getFile()).text());
+  // (as stored, its byte order mark skipped as the local server's, #5914; its migration is projectOps', #5907)
+  const readJson = async dir => parseDescription(await (await (await dir.getFileHandle(PROJECT_FILE)).getFile()).text(), { migrate: false });
   async function read(name) {
     const dir = await projectDir(name);
     let json;
@@ -584,6 +587,18 @@ export async function readBuildResults(store, name, { modelVersion }) {
 /** The API's project calls on the store `getStore()` returns (the one in use). */
 export function projectOps(getStore, examples = {}, { beforeMigrate = null } = {}) {
   const S = () => getStore();
+  // silinx.json read through its migrations (#5907: in memory) and written in this Silinx's version, a version of the
+  // project kept before its first save in it (beforeMigrate, as a document's, #5906)
+  const loaded = async (name, opts) => { const p = await S().load(name, opts); return p && plain(p.json) ? { ...p, json: migrateProject(p.json) } : p; };
+  const saveJson = async (name, json) => {
+    const was = await S().load(name).catch(() => null);
+    if (olderProject(was?.json)) {
+      // (nothing changed but its version's form: kept as it is, as the local server's)
+      if (sameDescription({ ...was.json, name }, { ...json, name })) return undefined;
+      if (beforeMigrate) await Promise.resolve().then(() => beforeMigrate(name, { json: was.json })).catch(() => {});
+    }
+    return S().saveJson(name, migrateProject(json));
+  };
   // (#4735: a folder on the disk's projects: the user's own recorded as trusted, the migration first; none in the
   // browser's own storage, which nothing but Silinx writes)
   const folder = () => (S().kind === 'folder' ? S().label : null);
@@ -594,7 +609,7 @@ export function projectOps(getStore, examples = {}, { beforeMigrate = null } = {
   };
   const ops = {
     list: async () => (await S().list()).map(j => ({ name: j.name, device: j.device, top: j.top, board: j.board, modified: j.modified || 0 })),
-    load: name => S().load(name),
+    load: name => loaded(name),
     create: async ({ name, template = 'empty', device, board, kind = null }) => {
       if (projectNameError(name)) fail(projectNameError(name));
       // (a design and simulation project, #3780: empty, no board, no constraints; the server's rule and messages)
@@ -614,7 +629,7 @@ export function projectOps(getStore, examples = {}, { beforeMigrate = null } = {
           const c = circuitExample(json), files = clone(ex.files);
           for (const f of c.drop) delete files[f];
           await recordOwn(name);
-          await S().create(name, c.project, files);
+          await S().create(name, migrateProject(c.project), files);
           return clone(c.project);
         }
         if (device) json.device = device;
@@ -635,7 +650,7 @@ export function projectOps(getStore, examples = {}, { beforeMigrate = null } = {
           if (top) files[top.path] = top.text;
         }
         await recordOwn(name);
-        await S().create(name, json, files);
+        await S().create(name, migrateProject(json), files);
         return clone(json);
       }
       const json = newProjectJson(name, { device, board, kind });   // (core/project-defaults.js, as the server's, #4766)
@@ -651,15 +666,15 @@ export function projectOps(getStore, examples = {}, { beforeMigrate = null } = {
       const clean = normalizeProjectJson(json, name).json;
       const out = {};
       for (const [k, v] of Object.entries(files)) { const p = cleanPath(k); if (!isDescriptor(p)) out[p] = v; }
-      await S().create(name, clean, out);
+      await S().create(name, migrateProject(clean), out);
       return clone(clean);
     },
     project: async name => {
-      const p = await S().load(name, { fresh: true });
+      const p = await loaded(name, { fresh: true });
       return { ...clone(p.json), fileTree: Object.keys(p.files).sort() };
     },
     saveProject: async (name, pj) => {
-      const cur = await S().load(name);
+      const cur = await loaded(name);
       const clean = { ...clone(pj), name };
       delete clean.fileTree;
       // a project from outside stays so until the user trusts it (trustProject, #2830), as the server's writeProject
@@ -669,18 +684,18 @@ export function projectOps(getStore, examples = {}, { beforeMigrate = null } = {
       delete clean.id; delete clean.origin;
       if (cur.json?.id !== undefined) clean.id = cur.json.id;
       if (cur.json?.origin !== undefined) clean.origin = cur.json.origin;
-      await S().saveJson(name, clean);
+      await saveJson(name, clean);
       return clone(clean);
     },
     // the user trusts a project from outside (#2830): Xilinx ISE and programming may run for it
     trustProject: async (name) => {
-      const { trusted, madeBy, ...json } = (await S().load(name)).json;   // eslint-disable-line no-unused-vars
+      const { trusted, madeBy, ...json } = (await loaded(name)).json;   // eslint-disable-line no-unused-vars
       if (folder() !== null) trustRecords.record(folder(), name, typeof json.id === 'string' ? json.id : null);
-      await S().saveJson(name, json);
+      await saveJson(name, json);
       return clone({ ...json, name });
     },
     readFile: async (name, path) => {
-      const p = await S().load(name);
+      const p = await loaded(name);
       const t = p.files[await spelled(p, cleanPath(path))];
       if (t === undefined) fail(`file '${path}' not found`);
       return t;
@@ -688,7 +703,7 @@ export function projectOps(getStore, examples = {}, { beforeMigrate = null } = {
     // a file's bytes (a firmware's .elf, #5198), as the local server's readFileBytes: a workspace folder's file; the
     // browser's storage keeps text only
     readFileBytes: async (name, path) => {
-      const p = await S().load(name);
+      const p = await loaded(name);
       const key = await spelled(p, cleanPath(path));
       if (p.files[key] === undefined) fail(`file '${path}' not found`);
       const b = await S().readBinary(name, key);
@@ -696,7 +711,7 @@ export function projectOps(getStore, examples = {}, { beforeMigrate = null } = {
       return b;
     },
     writeFile: async (name, path, text, { ifMatch = null } = {}) => {
-      const p = await S().load(name);
+      const p = await loaded(name);
       // written again: back in the project
       path = notDescriptor(await spelled(p, cleanPath(path)));
       // (over the text the writer read only, its tag given, as the local server's, #5915)
@@ -713,11 +728,11 @@ export function projectOps(getStore, examples = {}, { beforeMigrate = null } = {
       if (beforeMigrate && migratingWrite(path, p.files[path] ?? null, text)) await Promise.resolve().then(() => beforeMigrate(name)).catch(() => {});
       await S().writeFile(name, path, text);
       const json = clone(p.json);
-      if (registerWritten(json, path)) await S().saveJson(name, json);   // (core/project-entries.js, as the server's, #4733)
+      if (registerWritten(json, path)) await saveJson(name, json);   // (core/project-entries.js, as the server's, #4733)
       return { ok: true, tag: textTag(text) };
     },
     renameFile: async (name, from, to) => {
-      const p = await S().load(name);
+      const p = await loaded(name);
       from = notDescriptor(await spelled(p, cleanPath(from))); to = notDescriptor(await spelled(p, cleanPath(to), { last: false }));
       // the new name by the import gate's rules for a name, as the local server's Rename (#2973)
       const gated = normalizePath(to);
@@ -743,17 +758,17 @@ export function projectOps(getStore, examples = {}, { beforeMigrate = null } = {
       // project (#1228) and the sources' languages follow (core/project-entries.js renameEntries, as the server's, #4766)
       await move();
       renameEntries(json, from, to);
-      await S().saveJson(name, json);
+      await saveJson(name, json);
       return clone(json);
     },
     // (trash: into the folder's .trash, where the store keeps one, the folder's: keepsTrash, #3364)
     deleteFile: async (name, path, { trash = false } = {}) => {
-      const p = await S().load(name);
+      const p = await loaded(name);
       path = notDescriptor(await spelled(p, cleanPath(path)));
       const trashed = (await S().removePath(name, path, { trash })) || null;
       const json = clone(p.json);
       deleteEntries(json, path);   // (core/project-entries.js, as the server's, #4766)
-      await S().saveJson(name, json);
+      await saveJson(name, json);
       return { ok: true, ...(trashed ? { trashed } : {}) };
     },
     deleteProject: async name => { await S().deleteProject(name); if (folder() !== null) trustRecords.forget(folder(), name); return { ok: true }; },
@@ -767,7 +782,7 @@ export function projectOps(getStore, examples = {}, { beforeMigrate = null } = {
       return { name: to };
     },
     sources: async name => {
-      const p = await S().load(name);
+      const p = await loaded(name);
       return p.json.files.map(f => ({ ...f, text: p.files[f.path] ?? '', missing: p.files[f.path] === undefined }));
     },
   };

@@ -46,7 +46,7 @@ test('#5446 a node\'s constraints from its pins: the uart example\'s UCF on the 
   assert.ok(c.text.includes('NET "clk"    CLOCK_DEDICATED_ROUTE = FALSE ;'), 'the board\'s clock pin\'s route');
   // (the derived project: an FPGA project, its top the module, the board's device; the project's own fields kept)
   const pj = nodeProject({ name: 'p', profile: 'system', board: null, top: '', files: [{ path: 'fpga/uart.vhd' }, { path: 'uno/a.c' }, { path: 'fpga2/x.vhd' }] }, NODE, c.path);
-  assert.deepEqual([pj.profile, pj.kind, pj.top, pj.board, pj.device.part, pj.constraints, pj.files.length], [undefined, undefined, 'uart', 'basys2', 'xc3s250e', 'fpga.ucf', 1]);
+  assert.deepEqual([pj.profile, pj.kind, pj.top, pj.board, pj.device.part, pj.constraints, pj.files.length], ['fpga', undefined, 'uart', 'basys2', 'xc3s250e', 'fpga.ucf', 1]);
   assert.deepEqual(pj.files, [{ path: 'fpga/uart.vhd' }], 'its folder\'s files only (#5488)');
 });
 

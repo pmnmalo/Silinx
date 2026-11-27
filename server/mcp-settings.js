@@ -35,8 +35,8 @@ async function changeProfileOf(name, pj, to) {
     data: { project: name, profile: to, nodes: p.nodes } };
 }
 
-// the project's kind dropped when a design and simulation project is given a board or a device (#3780)
-const withoutKind = (pj, drop) => { if (drop) delete pj.kind; return pj; };
+// a design and simulation project given a board or a device: an FPGA project (#3780; its profile written, #5907)
+const withoutKind = (pj, drop) => { if (drop) { delete pj.kind; pj.profile = 'fpga'; } return pj; };
 
 // the device database (server/devices.js) and the toolchain package's checks, loaded on first use
 // a System project's Emulation and Simulation Properties (#5581, core/system-alone.js): the nodes Emulate System runs (none:

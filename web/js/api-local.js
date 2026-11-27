@@ -62,7 +62,7 @@ async function giveCopyLocal(name, p) {
 }
 // (a new project from an example; not from a test design, not offered by New Project: #5108)
 // (a version before a document's first save in a newer format, #5906)
-const ops = projectOps(() => store, EXAMPLES, { beforeMigrate: name => versionsOf().then(v => v.save(name, { reason: 'before-migrate' })) });
+const ops = projectOps(() => store, EXAMPLES, { beforeMigrate: (name, { json } = {}) => versionsOf().then(v => v.save(name, { reason: 'before-migrate', json })) });
 // the projects' versions (#5740: web/js/versions-local.js, loaded when first used; a write's automatic version too)
 let versionsMod = null;
 const versionsOf = async () => (versionsMod ||= (await import('./versions-local.js')).localVersions({ store: () => store, ops, snapshots: snapshotsOf }));

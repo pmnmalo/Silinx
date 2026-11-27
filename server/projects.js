@@ -34,7 +34,7 @@ import { noteWritten, noteRemoved, noteMoving } from './own-writes.js';
 import { UNRECORDED } from '../core/trust.js';
 import * as trustStore from './trust-store.js';
 import * as backupStore from './backup-store.js';
-import { parseDescription } from '../core/project-json.js';
+import { parseDescription, olderProject, sameDescription } from '../core/project-json.js';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 export const EXAMPLES_DIR = path.join(HERE, '..', 'examples');
@@ -300,6 +300,19 @@ async function writeProjectUnlocked(name, pj) {
   const unrecorded = clean.madeBy === UNRECORDED;
   if (unrecorded) { delete clean.trusted; delete clean.madeBy; }
   const file = path.join(dir, PROJECT_FILE);
+  // (its first save in this Silinx's version, #5907: the project as it was kept first, a version; its error never stops
+  // the save, as a document's, #5906)
+  const wasText = await fs.readFile(file, 'utf8').catch(() => null);
+  let was = null, asIs = null;
+  try { if (wasText !== null) { was = parseDescription(wasText, { migrate: false }); asIs = JSON.parse(wasText.replace(/^\uFEFF/, '')); } } catch { /* damaged: written over, as before */ }
+  // (nothing changed but its version's form: its text kept as it is, nothing written, #5907; a field of before, #5786's,
+  // still dropped by a save)
+  if (olderProject(was) && sameDescription({ ...asIs, name }, clean)) {
+    const kept = ct ? { ...clean, trusted: false, ...(ct.madeBy ? { madeBy: ct.madeBy } : {}) } : unrecorded ? { ...clean, trusted: false, madeBy: UNRECORDED } : clean;
+    etags.set(kept, descriptionEtag(wasText));
+    return kept;
+  }
+  if (olderProject(was)) await (await import('./versions.js')).versionBefore(await import('./projects.js'), name, 'before-migrate', { json: was });
   const tmp = path.join(dir, `.${PROJECT_FILE}.${process.pid}.${Math.random().toString(36).slice(2)}.tmp`);
   const text = JSON.stringify(clean, null, 2) + '\n';
   try {
@@ -580,7 +593,7 @@ export async function renameProject(from, to) {
       }
       failAt('files');
       const file = path.join(dst, PROJECT_FILE), text = await fs.readFile(file, 'utf8');
-      await writeAtomic(file, JSON.stringify({ ...parseDescription(text), name: to }, null, 2) + '\n');
+      await writeAtomic(file, JSON.stringify({ ...parseDescription(text, { migrate: false }), name: to }, null, 2) + '\n');   // (its name only: migrated on its next save, #5907)
       undo.unshift({ what: `${rel(file)}'s name`, run: () => writeAtomic(file, text) });
       failAt('json');
       await trustStore.move(key, dst);

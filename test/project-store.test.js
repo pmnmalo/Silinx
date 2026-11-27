@@ -54,15 +54,16 @@ test('#3780 a design and simulation project: the server\'s (silinx.json text, sr
   assert.deepEqual(under(await dump(root), 'Drawn'), sorted(server));
   assert.deepEqual(Object.keys(server).sort(), ['silinx.json', 'sim/', 'src/']);
   assert.equal(server['silinx.json'], projectJsonText('Drawn', pj));
-  assert.deepEqual([pj.kind, pj.board, pj.constraints], ['design', null, null]);
+  assert.deepEqual([pj.kind, pj.profile, pj.board, pj.constraints], [undefined, 'logic', null, null]);
   // (the same refusals, the same messages)
   for (const [args, message] of [[{ name: 'D2', kind: 'other' }, 'unknown project kind \'other\''], [{ name: 'D3', kind: 'design', template: 'blinky' }, 'a design and simulation project starts empty or from a Circuit example (gates, breadboard, traffic-circuit, blinky-circuit, stopwatch-circuit, lock-circuit)']]) {
     await assert.rejects(ops.create(args), { message });
     await assert.rejects(P.createProject(args), { message });
   }
   const { normalizeProjectJson } = await import('../web/js/project-store.js');
-  assert.deepEqual(['kind', 'board'].map(k => normalizeProjectJson({ ...pj, board: 'basys2' }, 'Drawn').json[k]), ['design', null]);
-  assert.equal(normalizeProjectJson({ ...pj, kind: 'other' }, 'Drawn').json.kind, undefined);
+  assert.deepEqual(['profile', 'board', 'kind'].map(k => normalizeProjectJson({ ...pj, board: 'basys2' }, 'Drawn').json[k]), ['logic', null, undefined]);
+  assert.deepEqual(['profile', 'board'].map(k => normalizeProjectJson({ kind: 'design', board: 'basys2' }, 'Old').json[k]), ['logic', null], 'a description of before: its kind as its profile');
+  assert.equal(normalizeProjectJson({ ...pj, profile: undefined, kind: 'other' }, 'Drawn').json.profile, 'fpga');
 });
 
 test('#5757 a Circuit project from a Circuit example: the server\'s (no board, no constraints, its constraints file not copied)', async () => {
@@ -72,7 +73,7 @@ test('#5757 a Circuit project from a Circuit example: the server\'s (no board, n
   const server = diskTree(P.projectDir('GatesC'));
   assert.deepEqual(under(await dump(root), 'GatesC'), sorted(server));
   assert.equal(server['silinx.json'], projectJsonText('GatesC', pj));
-  assert.deepEqual([pj.kind, pj.board, pj.constraints, pj.top], ['design', null, null, 'gates']);
+  assert.deepEqual([pj.kind, pj.profile, pj.board, pj.constraints, pj.top], [undefined, 'logic', null, null, 'gates']);
   assert.ok(!Object.keys(server).some(k => /\.ucf$/.test(k)), Object.keys(server).join(' '));
 });
 
@@ -389,6 +390,7 @@ test('browser storage: a build\'s results are not kept (this session only), noth
 import { safePath, cleanPath, normalizeProjectJson, projectFromZip, emptyProjectJson, bundleEntries } from '../web/js/project-store.js';
 import { gateEntries } from '../core/import-gate.js';
 import { textOf } from '../core/zip.js';
+import { migrateProject } from '../core/project-json.js';
 
 test('#483 safePath / cleanPath: hostile paths refused, odd but harmless ones normalised', () => {
   const bad = ['', '/etc/passwd', '//host/share/x', '\\\\host\\share\\x', 'C:\\Windows\\x.v', 'c:/x.v', '../out.v', 'src/../../out.v', 'src/..', '..', 'src/a\u0000.v', 'src/a\n.v', null, undefined, 42, ['src/a.v'], { path: 'src/a.v' }, '.', './', 'src/./..'];
@@ -402,10 +404,10 @@ test('#483 safePath / cleanPath: hostile paths refused, odd but harmless ones no
   for (const [p, n] of Object.entries({ 'src\\sub\\x.v': 'src/sub/x.v', 'C:x.v': 'C:x.v' })) { assert.equal(safePath(p), n); assert.throws(() => cleanPath(p), /invalid path/); }
 });
 
-test('#483 normalizeProjectJson: the examples\' descriptions unchanged; a broken one in shape, what was dropped said', () => {
+test('#483 normalizeProjectJson: the examples\' descriptions unchanged (but migrated, #5907); a broken one in shape, what was dropped said', () => {
   for (const [n, ex] of Object.entries(EXAMPLES)) {
     const r = normalizeProjectJson(ex.json, n);
-    assert.deepEqual(r, { json: ex.json, warnings: [] }, n);
+    assert.deepEqual(r, { json: migrateProject(ex.json), warnings: [] }, n);   // (in this Silinx's version, #5907)
   }
   // not a description at all
   for (const bad of [null, 'x', 42, ['files'], undefined]) {
@@ -428,7 +430,7 @@ test('#483 normalizeProjectJson: the examples\' descriptions unchanged; a broken
     'silinx.json: constraints path outside the project dropped (["not","a","string"])',
   ]);
   assert.deepEqual(r.json, {
-    name: 'P', version: 1, device: { family: 'spartan3e', part: 'xc3s250e', package: 'cp132', speed: '-4' }, board: null, top: '', simTop: '',
+    name: 'P', version: 2, profile: 'fpga', device: { family: 'spartan3e', part: 'xc3s250e', package: 'cp132', speed: '-4' }, board: null, top: '', simTop: '',
     files: [{ path: 'src/top.vhd', lang: 'vhdl', role: 'design' }, { path: 'sim/tb.v', lang: 'verilog', role: 'sim' }, { path: 'docs/notes.txt', lang: 'text', role: 'design' }],
     constraints: null, excluded: ['src/old.vhd'], stimuli: {}, impl: { optMode: 'Speed', optLevel: 1, startupClk: 'JtagClk' },
   });

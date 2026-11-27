@@ -121,7 +121,8 @@ test('the workspace\'s repository: its untrusted project stays so, and a project
     await P.trustProject('a');
     // b untrusted, its mark in its silinx.json, committed and pushed
     await P.updateProject('b', pj => ({ ...pj, trusted: false }));
-    sh(wsDir, 'commit', '--quiet', '-am', 'b untrusted'); sh(wsDir, 'push', '--quiet');
+    // (a save that changes nothing keeps silinx.json's bytes, #5907: the commit may be empty)
+    sh(wsDir, 'commit', '--quiet', '--allow-empty', '-am', 'b untrusted'); sh(wsDir, 'push', '--quiet');
     // another author: b's silinx.json without the mark, a new project c
     const theirs = path.join(tmp, 'theirs-ws');
     sh(tmp, 'clone', '--quiet', bare, theirs);

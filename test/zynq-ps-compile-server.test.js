@@ -39,7 +39,7 @@ async function systemProject(files = { 'zybo/ps/main.c': MAIN }) {
   await P.createProject({ name, template: 'uart' });
   await P.writeFile(name, 'zynq.sys.json', JSON.stringify(SYS, null, 2));
   for (const [f, t] of Object.entries(files)) await P.writeFile(name, f, t);
-  await P.updateProject(name, (p) => ({ ...p, kind: 'system', board: null, constraints: null, top: null }));
+  await P.updateProject(name, (p) => ({ ...p, profile: 'system', board: null, constraints: null, top: null }));
   return name;
 }
 const run = async (name, node) => waitJob(jobs, (await startPsCompile(name, node === undefined ? {} : { node })).id);

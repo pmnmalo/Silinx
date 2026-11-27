@@ -88,7 +88,7 @@ test('#5755 System → Board: the uart-avr example keeps its FPGA node; the Ardu
   const r = modeChange(pj, 'board', { files, texts });
   assert.equal(r.error, undefined);
   assert.deepEqual([modeOf(r.project), r.project.kind, r.project.profile, r.project.board, r.project.device.part, r.project.constraints, r.project.top, r.kept, r.down, r.moves, r.write],
-    ['board', undefined, undefined, 'basys2', 'xc3s250e', 'fpga/uart.ucf', 'uart', 'fpga', true, [], null]);
+    ['board', undefined, 'fpga', 'basys2', 'xc3s250e', 'fpga/uart.ucf', 'uart', 'fpga', true, [], null]);
   assert.deepEqual(r.lost, ['the node uno (mcu, arduino-uno) leaves the project: its folder uno/ stays on the disk', 'its 1 link (serial)', 'its System document uart_avr.sys.json (it stays in the folder, out of the flow)']);
   assert.equal(modeChangeText('uart-avr', 'board', r), 'uart-avr: Board now (nothing deleted: what left the project stays on the disk).\n  the node fpga the project\'s (basys2)\nWARNING: lost: the node uno (mcu, arduino-uno) leaves the project: its folder uno/ stays on the disk\nWARNING: lost: its 1 link (serial)\nWARNING: lost: its System document uart_avr.sys.json (it stays in the folder, out of the flow)');
   assert.equal(confirmText('uart-avr', 'board', r), 'going down to Board loses, in \'uart-avr\': the node uno (mcu, arduino-uno) leaves the project: its folder uno/ stays on the disk; its 1 link (serial); its System document uart_avr.sys.json (it stays in the folder, out of the flow). Give confirm true to do it (nothing is deleted from the disk).');

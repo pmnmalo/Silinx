@@ -6,7 +6,8 @@ A project is a directory under the workspace (default `~/Silinx-projects`, overr
 ```json
 {
   "name": "blinky",
-  "version": 1,
+  "version": 2,
+  "profile": "fpga",
   "device": { "family": "spartan3e", "part": "xc3s500e", "package": "fg320", "speed": "-4" },
   "board": "s3e-starter",
   "top": "top",
@@ -26,14 +27,15 @@ A project is a directory under the workspace (default `~/Silinx-projects`, overr
 * `synthTool`: `'silinx'` (the Silinx toolchain: Yosys, nextpnr's place & route, Silinx's bitstream),
   `'xst'` (Xilinx ISE 14.7) or `'vivado'` (AMD Vivado, the 7-series devices of the local server: the Artix-7's and the
   Zynq-7000's XC7Z010 / XC7Z020's default, #4680, the Spartan-7's, Kintex-7's and the other Zynq-7000 parts' only one, #3895); without it, the mode of Toolchain Settings.
-* `kind`: `"design"` for a design and simulation project (no FPGA: drawings and simulation, no board, no implementation;
-  #3891, #4103); absent, an FPGA project.
-  Since #5440 it is read as the project's profile (below): `"design"` the Digital Logic profile, absent FPGA.
-* `profile` (#5440, roadmap #5416): the node kinds the project's System allows, each containing the one before:
-  `"logic"` (Digital Logic: design and circuit nodes), `"fpga"`, `"embedded"` (Embedded / SoC: and microcontrollers),
-  `"system"` (System: and terminals) (`core/project-profile.js`). Written only when it is changed and only for
-  Embedded / SoC and System: Digital Logic is kept as `kind: "design"`, FPGA as no field, so that an untouched project's
-  silinx.json keeps its bytes. A project of a System's profile whose top is no module has its one System document as
+* `version`: 2 since #5907 (`core/doc-envelope.js`); a description of version 1 is read through its migration
+  (`core/project-migrations.js`: its `kind` as its `profile`) and written in version 2
+  on its next save, a version of the project (`before-migrate`) holding it as it was kept first. A newer one is said.
+* `kind` (version 1 only, never written since #5907): `"design"` for a design and simulation project (#3891, #4103),
+  `"system"` for a System project of before #5440; absent, an FPGA project. Read as the profile below.
+* `profile` (#5440, roadmap #5416; written for every project since #5907): the node kinds the project's System allows,
+  each containing the one before: `"logic"` (Digital Logic: a design and simulation project, design and circuit nodes),
+  `"fpga"`, `"embedded"` (Embedded / SoC: and microcontrollers), `"system"` (System: and terminals)
+  (`core/project-profile.js`). A project of a System's profile whose top is no module has its one System document as
   its top, `<name>.sys.json` (`core/system-doc.js`, checked by `core/system-check.js`, #4697), its nodes and links; it has
   no `board`: each FPGA node is a module of the project on a board of its own (`board`, `variant`, its ports' `pins`).
   Widening the profile converts nothing; narrowing it is refused while a node would not be allowed
@@ -42,8 +44,8 @@ A project is a directory under the workspace (default `~/Silinx-projects`, overr
   its `ps/` (`ps/main.c`), as a System's FPGA node's `ps` is (`<id>/ps/main.c`, `core/zynq-ps.js`); the PL's build leaves
   `ps/` out, and Silinx HLS does not take its C. New Source's PS Program (Zynq) writes one (its starter), the first
   one the project's `ps`; the Design pane shows it under the PS (Cortex-A9). Absent: the PS is not used.
-* The project's **mode** (roadmap #5753, `core/project-mode.js`): Circuit, Board or System, read from the fields above,
-  never written: Circuit is the Digital Logic profile, Board the FPGA profile, System the Embedded / SoC and System
+* The project's **mode** (roadmap #5753, `core/project-mode.js`): Circuit, Board or System, read from its profile (one
+  written field, #5907), never written itself: Circuit is the Digital Logic profile, Board the FPGA profile, System the Embedded / SoC and System
   profiles, except a **processor board's Board project** (#5756, `core/processor-board.js`): a System of its one
   microcontroller node whose silinx.json names that board in `board` (an Arduino, the Explorer 16/32, a Pico, an
   ESP32: `core/system-doc.js` MCU_BOARDS), which no other System project has (theirs is `null`). Project ▸ Change Mode…

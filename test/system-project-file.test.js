@@ -44,5 +44,5 @@ test('#5440 a System project\'s profile written and read; the old kind id codesi
   const { isSystemProject } = await import('../core/project-kind.js');
   assert.deepEqual([normalizeProjectJson({ name: 'old1', profile: 'system' }, 'old1').json.profile, normalizeProjectJson({ name: 'old1', kind: 'codesign' }, 'old1').json.profile,
     isSystemProject({ kind: 'codesign' }), isSystemProject({ kind: 'system' }), isSystemProject({ profile: 'embedded' }), isSystemProject({ kind: 'design' })],
-  ['system', undefined, false, true, true, false]);
+  ['system', 'fpga', false, true, true, false]);   // (an FPGA project's profile written too, #5907)
 });

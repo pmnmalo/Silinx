@@ -43,12 +43,12 @@ test('new_project design_only: no board, no device, no constraints; refused with
   assert.equal(r.text, 'WARNING: design_only is deprecated (#4103): give profile (true is profile logic).\nEmpty Digital Logic project \'d0\' made (a design and simulation project). Add its drawings with new_source, then set_top.');
   assert.deepEqual(r.data, { project: 'd0', kind: 'design', mode: 'circuit', board: null, device: null, trusted: false });
   const pj = await P.readProject('d0');
-  assert.deepEqual([pj.kind, pj.board, pj.constraints], ['design', null, null]);
+  assert.deepEqual([pj.kind, pj.profile, pj.board, pj.constraints], [undefined, 'logic', null, null]);
   assert.equal(fs.existsSync(path.join(P.projectDir('d0'), 'constraints')), false, 'no constraints folder');
   await fails('new_project', { name: 'd00', design_only: true, board: 'basys2' }, 'a Digital Logic project (profile logic) has no board: give profile logic or a board, not both');
   // (an FPGA project as before)
   const f = await ok('new_project', { name: 'f0' });
-  assert.equal((await P.readProject('f0')).kind, undefined);
+  assert.equal((await P.readProject('f0')).profile, 'fpga');
   assert.equal(f.data.board, null);
 });
 
@@ -113,19 +113,19 @@ test('set_design_properties: a board makes a design project an FPGA project, des
   const r = await ok('set_design_properties', { project: 'd4', board: 'basys2', update_constraints: true });
   assert.equal(r.text, 'd4: an FPGA project now: its HDL and its implementation shown.\nDevice set to xc3s250e-4-cp132 (board basys2); synthesis tool of Toolchain Settings; constraints/top.ucf written from the basys2\'s pins.');
   let pj = await P.readProject('d4');
-  assert.deepEqual([pj.kind, pj.board, pj.constraints], [undefined, 'basys2', 'constraints/top.ucf']);
+  assert.deepEqual([pj.kind, pj.profile, pj.board, pj.constraints], [undefined, 'fpga', 'basys2', 'constraints/top.ucf']);
   assert.ok(fs.existsSync(path.join(P.projectDir('d4'), 'constraints/top.ucf')));
   assert.match((await ok('project_info', { project: 'd4' })).text, /^d4: top traffic, test bench \(none\), basys2 \(xc3s250ecp132-4\), constraints constraints\/top\.ucf/);
   // (and back: its sources all drawings; the constraints left on the disk)
   const b = await ok('set_design_properties', { project: 'd4', design_only: true });
   assert.equal(b.text, 'WARNING: design_only is deprecated (#4103): give profile (true is profile logic, false profile fpga).\nd4: a design and simulation project now (no FPGA): no board, no constraints (constraints/top.ucf left on the disk, out of the project).');
   pj = await P.readProject('d4');
-  assert.deepEqual([pj.kind, pj.board, pj.constraints], ['design', null, null]);
+  assert.deepEqual([pj.kind, pj.profile, pj.board, pj.constraints], [undefined, 'logic', null, null]);
   await fails('set_design_properties', { project: 'd4', design_only: true }, 'the project \'d4\' is a design and simulation project already');
   // a device with no board makes it an FPGA project too
   const d = await ok('set_design_properties', { project: 'd4', part: 'xc3s500e', package: 'fg320', speed: '-4' });
   assert.match(d.text, /^d4: an FPGA project now: its HDL and its implementation shown\.\nDevice set to xc3s500e-4-fg320; /);
-  assert.equal((await P.readProject('d4')).kind, undefined);
+  assert.equal((await P.readProject('d4')).profile, 'fpga');
 });
 
 test('set_design_properties design_only: refused with HDL sources of the user\'s own, or with a board', async () => {
@@ -133,7 +133,7 @@ test('set_design_properties design_only: refused with HDL sources of the user\'s
   await fails('set_design_properties', { project: 'e1', design_only: true },
     'the project \'e1\' cannot become a design and simulation project: its HDL and C sources are not drawings (src/timer.vhd, src/sevenseg.v, src/top.vhd)');
   await fails('set_design_properties', { project: 'e1', design_only: true, board: 'basys2' }, 'kind: a design and simulation project has no board');
-  assert.equal((await P.readProject('e1')).kind, undefined, 'unchanged');
+  assert.equal((await P.readProject('e1')).profile, 'fpga', 'unchanged');
 });
 
 test('the local server\'s implementation refuses a design project with the same message (POST /projects/:p/implement)', async () => {

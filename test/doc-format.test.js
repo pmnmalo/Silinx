@@ -44,7 +44,7 @@ test('a drawing a newer Silinx saved: known, said; the same or an older one: not
   assert.equal(newerDrawing('m.fsm.json', { version: '2' }).version, 2);
   assert.equal(newerProject({ version: PROJECT_VERSION }), null);
   assert.equal(newerProject({}), null);
-  assert.equal(newerProject({ version: 2 }), 'the project was saved by a newer Silinx (its format 2; this one reads up to 1): what that Silinx added to it may be lost when it is saved here: update Silinx');
+  assert.equal(newerProject({ version: 3 }), 'the project was saved by a newer Silinx (its format 3; this one reads up to 2): what that Silinx added to it may be lost when it is saved here: update Silinx');
 });
 
 test('downgradeRefusal: a newer drawing written over in an older format, refused; in its own or newer, a new one, any other file: not', () => {

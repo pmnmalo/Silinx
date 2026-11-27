@@ -5,6 +5,10 @@
 import { constraintsExtOf } from '../packages/silinx-fpga/src/parts.js';
 import { asDesignProject, asSystemProject, newSystemKind } from './project-kind.js';
 import { withProfile } from './project-profile.js';
+import { migrateProject } from './project-json.js';
+import { DOCUMENTS } from './doc-envelope.js';
+
+const PROJECT_VERSION = DOCUMENTS.find(d => d.type === 'project').version;
 
 /** A new project's Process Properties: Optimization Fast (Speed, Normal: GOAL_IMPL.fast of the toolchain's package,
  *  #4828), the FPGA start-up clock the JTAG clock. A project read with none keeps reading as Fast (synthGoal, #2470). */
@@ -14,11 +18,12 @@ export const NEW_IMPL = Object.freeze({ optMode: 'Speed', optLevel: 1, startupCl
 export const DEFAULT_DEVICE = Object.freeze({ family: 'spartan3e', part: 'xc3s250e', package: 'cp132', speed: '-4' });
 
 /** A new empty project's silinx.json (#4766, one for the server and the browser): its device and board (none: the
- *  default device, no board), its constraints file the device's format; kind 'design': a design and simulation project
- *  (#3780: no board, no constraints). */
+ *  default device, no board), its constraints file the device's format, its profile FPGA (#5907: written, as every
+ *  profile); kind 'design': a design and simulation project (#3780: no board, no constraints), 'system' / 'embedded': a
+ *  System project. */
 export function newProjectJson(name, { device, board, kind = null } = {}) {
   const json = {
-    name, version: 1, device: { ...(device || DEFAULT_DEVICE) }, board: board ?? null, top: '', simTop: '', files: [],
+    name, version: PROJECT_VERSION, profile: 'fpga', device: { ...(device || DEFAULT_DEVICE) }, board: board ?? null, top: '', simTop: '', files: [],
     constraints: `constraints/top${constraintsExtOf(device)}`, stimuli: {}, impl: { ...NEW_IMPL },
   };
   // (a System project, #4702: its profile System, or Embedded / SoC, #5440)
@@ -27,9 +32,10 @@ export function newProjectJson(name, { device, board, kind = null } = {}) {
 }
 
 /** silinx.json's text (#4766, as both stores write it): 2-space JSON and a final newline, its name the project's, no
- *  fileTree (the interface's, never stored), no Top-Level Source Type (a project's of before #5786: dropped). */
+ *  fileTree (the interface's, never stored), no Top-Level Source Type (a project's of before #5786: dropped); in this
+ *  Silinx's version (#5907: core/project-json.js migrateProject, an older description's next save). */
 export function projectJsonText(name, pj) {
-  const clean = { ...pj, name };
+  const clean = { ...migrateProject(pj), name };
   delete clean.fileTree;
   delete clean.topSourceType;
   return JSON.stringify(clean, null, 2) + '\n';
