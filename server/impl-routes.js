@@ -30,7 +30,7 @@ import { isTrusted, untrustedMessage } from '../core/trust.js';
 import { normalizePath } from '../core/import-gate.js';
 import { foldName } from '../core/fold-name.js';
 import { familyProfile } from '../core/family-profile.js';
-import { checkBody, pathFree, IMPLEMENT_BODY, CAPTURE_BODY, FIRMWARE_BODY, PROGRAM_SYSTEM_BODY } from './http-errors.js';
+import { checkBody, pathFree, IMPLEMENT_BODY, CAPTURE_BODY, FIRMWARE_BODY, PS_BODY, PROGRAM_SYSTEM_BODY } from './http-errors.js';
 
 // files that only Silinx understands: not part of an exported Xilinx ISE project
 export const SILINX_ONLY = /(^|\/)(silinx\.json|[^/]+\.(asm|sch|tt|bool|fsm|sym|regs)\.json)$/i;   // (a module's symbol too, #3828)
@@ -302,6 +302,8 @@ export function registerImplRoutes(api, { wrap, projects: P }) {
 
   // (a System's Arduino node's firmware compiled by arduino-cli: server/avr-compile.js, #5503)
   api.post('/projects/:p/firmware', checkBody(FIRMWARE_BODY), wrap(async req => ({ job: (await (await import('./avr-compile.js')).startFirmwareCompile(req.params.p, req.body)).id })));
+  // (a Zynq board's PS program compiled by arm-none-eabi-gcc: server/zynq-ps-compile.js, #4687)
+  api.post('/projects/:p/ps', checkBody(PS_BODY), wrap(async req => ({ job: (await (await import('./zynq-ps-compile.js')).startPsCompile(req.params.p, req.body)).id })));
 
   // (a System built by its plan, the FPGA nodes first: server/system-build-all.js and server/system-plan.js, #5489)
   api.get('/projects/:p/build-plan', wrap(async req => (await import('./system-plan.js')).readBuildPlan(req.params.p)));

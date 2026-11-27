@@ -831,8 +831,10 @@ config.json's `xc16.mode` (`local` or `ssh`) chooses one; without it, this compu
 ### Compiling a Zynq board's PS program
 
 A Zynq board's processing system (#4686: a System's FPGA node on the Zybo Z7 or the Arty Z7, or a Board project on one)
-has its program compiled by **Compile PS Program** (#4687, part 1: the MCP's `run_process` `ps`, with the node's id in a
-System and none in a Board project; `server/zynq-ps-compile.js`, `core/zynq-ps-compile.js`). The compiler is
+has its program compiled by **Compile PS Program** (#4687: the MCP's `run_process` `ps`, with the node's id in a
+System and none in a Board project; `server/zynq-ps-compile.js`, `core/zynq-ps-compile.js`). In the interface it is a
+process of the Design pane's PS row, of a Zynq node's row and of a Board project's `ps/` files (`web/js/zynq-ps-ui.js`),
+its run in the console; the browser edition says a server is needed. The compiler is
 [the Arm GNU Toolchain](https://developer.arm.com/downloads/-/arm-gnu-toolchain-downloads)'s `arm-none-eabi-gcc`, installed by
 the user (Silinx installs nothing): config.json's `paths['arm-none-eabi-gcc']`, the PATH, Homebrew's folders, or Arm's macOS
 installer's `/Applications/ArmGNUToolchain/<version>/arm-none-eabi/bin`; the MCP's `toolchain_info` says whether it is found.

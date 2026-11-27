@@ -74,13 +74,14 @@ export function topRow(treeItem, select, { sim, dev, menu }) {
 /** A Zynq board's processing system's row (#4686): `PS (Cortex-A9)`, its program's files (ps/'s) under it, the files of
  *  `node`'s folder's ps/ (a System's FPGA node), else the project's root ps/ (a Board project on a Zynq board); null on a
  *  board with no PS, or a Board project with no PS program yet (New Source ▸ PS Program makes one). */
-export function psBranch(treeItem, fileRow, node = null) {
+export function psBranch(treeItem, fileRow, node = null, select = null) {
   const board = node ? node.board : S.project?.board;
   if (!psOfBoard(board, node?.variant)) return null;
   const tree = filesState.fileTree || [];
   const files = tree.filter(p => isPsPath(node ? relInNode(p, node.id) : p)).sort();
   if (!node && !files.length && !S.project?.ps) return null;
-  const it = treeItem({ label: 'PS', meta: '(Cortex-A9)', ico: 'mBoard', open: true, key: `ps:${node?.id ?? ''}` });
+  // (its row's process: Compile PS Program, #4687: web/js/zynq-ps-ui.js)
+  const it = treeItem({ label: 'PS', meta: '(Cortex-A9)', ico: 'mBoard', open: true, key: `ps:${node?.id ?? ''}`, onSelect: select ? () => select({ type: 'ps', node: node?.id ?? null }) : undefined });
   for (const p of files) it.ul.append(fileRow(p).li);
   if (!files.length) it.setLeaf();
   return it;
@@ -101,7 +102,7 @@ function systemRow(treeItem, select) {
   // (a processor board's Board project, #5756: its one node the top row, its board's; no System row)
   const single = processorBoardOf(S.project) && nodes.length === 1 ? nodes[0] : null;
   const nodeRow = (n, cls) => treeItem({ label: n.id, meta: n.board ? `(${boardName(n)})` : '', ico: NODE_ICON[n.kind] || 'system', open: true, key: `node:${f}:${n.id}`, cls,
-    onSelect: () => select({ type: 'node', file: f, node: n.id, kind: n.kind, module: n.module, board: n.board, lang: n.lang }), onOpen: () => openSystem(f), onContext: menu });
+    onSelect: () => select({ type: 'node', file: f, node: n.id, kind: n.kind, module: n.module, board: n.board, variant: n.variant, lang: n.lang }), onOpen: () => openSystem(f), onContext: menu });
   const item = single ? nodeRow(single, 'top-mod') : treeItem({ label: sys?.name || f.split('/').pop(), ico: 'system', open: true, key: `sys:${f}`, cls: 'top-mod',
     badges: [{ text: 'System', base: true, title: 'Open', open: () => openSystem(f), context: menu }],
     onSelect: () => select({ type: 'file', file: f, system: true }), onOpen: () => openSystem(f), onContext: menu });
@@ -120,7 +121,7 @@ function systemRow(treeItem, select) {
       const cpu = n.kind === 'mcu' ? (n.lang === 'micropython' ? 'Py' : LANG_NAMES[n.lang]) ?? null : null;
       if (n.module) addModule(it.ul, n.module, null, 0, n.module);
       // (a Zynq board's processing system, its program's files, #4686)
-      const ps = n.kind === 'fpga' ? psBranch(treeItem, fileRow, n) : null;
+      const ps = n.kind === 'fpga' ? psBranch(treeItem, fileRow, n, select) : null;
       if (ps) it.ul.append(ps.li);
       const mine = roots.filter(r => r !== n.module && nodeOfPath(moduleFile(r), ids) === n.id);
       for (const m of mine) addModule(it.ul, m, null, 0, m, cpu);
