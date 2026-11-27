@@ -22,8 +22,9 @@ const ALLOWED = new Set([
 // (@silinx/nextpnr-himbaechel-spartan3e: nextpnr in WebAssembly, the flow's nextpnr engine, #2136; -spartan6: its
 // Spartan-6, #2138; -xc7: the 7-series', #3146)
 const PACKAGES = new Set(['@yowasp/yosys', '@silinx/nextpnr-himbaechel-spartan3e', '@silinx/nextpnr-himbaechel-spartan6', '@silinx/nextpnr-himbaechel-xc7',
-  '@yowasp/nextpnr-ice40', '@yowasp/nextpnr-ecp5', '@yowasp/nextpnr-himbaechel-gowin', '@yowasp/nextpnr-himbaechel-gatemate']);   // (optional peer dependencies: the iCE40's, #2295; the
-  // ECP5's, #2302; the Gowin's, #2303; the GateMate's, #2431)
+  '@yowasp/nextpnr-ice40', '@yowasp/nextpnr-ecp5', '@yowasp/nextpnr-himbaechel-gowin', '@yowasp/nextpnr-himbaechel-gatemate',
+  '@silinx/nextpnr-mistral']);   // (optional peer dependencies: the iCE40's, #2295; the ECP5's, #2302; the Gowin's, #2303; the
+  // GateMate's, #2431; the Cyclone V's, #5377)
 
 function sources(dir) {
   return fs.readdirSync(path.join(ROOT, dir), { withFileTypes: true }).flatMap((e) => {

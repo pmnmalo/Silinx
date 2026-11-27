@@ -63,7 +63,8 @@ test('the Intel boards\' programmers: openFPGALoader, the cable of their USB-Bla
     const [family, part] = BOARDS[b], t = toolOf({ family, part }, false);
     assert.deepEqual(t.program, { process: 'config', page: 'program-open', title: 'Program FPGA', target: 'sram', file }, b);
     assert.deepEqual(t.steps.find(s => s.id === 'bitgen').produces, ['output_files/{top}.sof', file], b);
-    assert.equal(toolOf({ family, part }, false, { standalone: true }).program, null, b);   // (the browser edition: no Quartus)
+    // (the browser edition: no Quartus; the DE0-CV's 5CEBA4 the Silinx toolchain's, nextpnr-mistral's .rbf, #5377)
+    assert.deepEqual(toolOf({ family, part }, false, { standalone: true }).program, b === 'de0-cv' ? t.program : null, b);
   }
 });
 

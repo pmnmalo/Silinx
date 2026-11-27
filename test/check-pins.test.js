@@ -242,8 +242,12 @@ test('check-pins: the pins declared in the repository, each read with what its k
     assert.ok(build.includes(`${v}_TAG="${by(n).tag}" ${v}_COMMIT="${by(n).commit}"`), n);
   }
   // nextpnr-spartan's SILINX_REF: read from the fork's workflows, behind when the files of its chip databases changed
-  const chipdbs = pins.filter(p => p.remote);
+  const chipdbs = pins.filter(p => p.remote && p.repo === 'pmnmalo/Silinx');
   assert.deepEqual(chipdbs.map(p => p.remote.url.split('/').pop()), ['spartan3e.yml', 'spartan6.yml']);
+  // the Mistral commit @silinx/nextpnr-mistral is built from: its MISTRAL_REF, read from the fork's mistral.yml, against Mistral's head (#5377)
+  const mistral = by('Mistral, the Cyclone V\'s database of @silinx/nextpnr-mistral (nextpnr-spartan\'s MISTRAL_REF)');
+  assert.deepEqual([mistral.kind, mistral.repo, mistral.remote.url.split('/').pop(), mistral.file], ['commit', 'Ravenslofty/mistral', 'mistral.yml', 'packages/silinx-fpga/src/nextpnr-mistral-io.js']);
+  assert.deepEqual(pins.filter(p => p.remote).map(p => p.remote.url.split('/').pop()).sort(), ['mistral.yml', 'spartan3e.yml', 'spartan6.yml']);
   for (const p of chipdbs) assert.deepEqual([p.repo, p.branch, p.watch[0]], ['pmnmalo/Silinx', 'main', 'packages/silinx-fpga/devices']);
   // reported only: the Docker images' bases and the tools whose installers are not public
   assert.deepEqual(pins.filter(p => p.kind === 'reported').map(p => p.current.split('@')[0]).sort(),

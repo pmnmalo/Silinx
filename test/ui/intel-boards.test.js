@@ -48,7 +48,7 @@ uiTest('#5376 Design Properties: the DE boards, experimental; the DE0-CV\'s pins
   });
   // (Intel Quartus Prime, #5378, the default; the 5CEBA4 a part of nextpnr-mistral's, the Silinx toolchain the other, #5377)
   assert.deepEqual(chosen, { part: '5ceba4', pkg: 'f23', speed: 'c7', synth: 'quartus', synthOff: false,
-    tools: ['Quartus (VHDL/Verilog; Intel Quartus Prime Lite)', 'Silinx (VHDL/Verilog; no Quartus needed; experimental)'] });
+    tools: ['Quartus (VHDL/Verilog; Intel Quartus Prime Lite)', 'Silinx (VHDL/Verilog; no Quartus needed; on trial)'] });
   // (the Cyclone IV E: Quartus's alone, locked)
   const ep4 = await page.eval(() => {
     const sel = l => [...document.querySelectorAll('.dlg-overlay label')].find(x => x.textContent === l).nextElementSibling;

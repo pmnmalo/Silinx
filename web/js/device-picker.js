@@ -17,8 +17,8 @@ export const noFlowWarning = device => (experimentalDevice(device) && !vivadoDev
 /** The synthesis tools of an Artix-7 project on the local server (#3146): AMD Vivado's flow, or the Silinx toolchain's; a
  *  Vivado-only family's (#3895) the first alone. */
 /** An Intel device's on the local server (#5378): Intel Quartus Prime; a Cyclone V part of nextpnr-mistral's (#5377) the Silinx
- *  toolchain's too, experimental. */
-const QUARTUS_TOOLS = [['quartus', 'Quartus (VHDL/Verilog; Intel Quartus Prime Lite)'], ['silinx', 'Silinx (VHDL/Verilog; no Quartus needed; experimental)']];
+ *  toolchain's too, on trial. */
+const QUARTUS_TOOLS = [['quartus', 'Quartus (VHDL/Verilog; Intel Quartus Prime Lite)'], ['silinx', 'Silinx (VHDL/Verilog; no Quartus needed; on trial)']];
 const VIVADO_TOOLS = [['vivado', 'Vivado (VHDL/Verilog; AMD Vivado 2025.2)'], ['silinx', 'Silinx (VHDL/Verilog; no Vivado needed; on trial)']];
 
 // Cascading Family -> Device -> Package -> Speed selectors over the device database.
