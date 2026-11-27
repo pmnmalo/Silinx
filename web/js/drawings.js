@@ -788,7 +788,9 @@ export async function drawingsAsBase() {
     const makes = async m => viewHdl(f, JSON.stringify({ ...m, generatedFile: undefined, base: undefined, ...(kind === 'sch' ? {} : { lang }) }), { modules: kind === 'sch' ? await schModules() : {} })?.text;
     let next = null, warnings = [], why = `${hdlPath.split('/').pop()} is not what the ${noun} makes`;
     // (blank lines aside: the generators' layout may change, e.g. #224)
-    const same = (a, b) => String(a).replace(/\n[ \t]*(?=\n)/g, '') === String(b).replace(/\n[ \t]*(?=\n)/g, '');
+    // (its silinx-sync line aside, #5872)
+    const { readStamp } = await import('/core/hdl-cache.js');
+    const same = (a, b) => readStamp(a).body.replace(/\n[ \t]*(?=\n)/g, '') === readStamp(b).body.replace(/\n[ \t]*(?=\n)/g, '');
     if (same(await makes(old), hdl)) next = old;
     else if (kind === 'asm' || kind === 'fsm' || kind === 'tt') {
       try {
