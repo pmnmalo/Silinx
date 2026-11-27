@@ -4,6 +4,7 @@
 // HDL compiled, elaborated and simulated in VHDL and Verilog with no warnings; setOutputLogic's errors.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
+import { readStamp } from '../core/hdl-cache.js';
 import fs from 'node:fs';
 import {
   newTable, normalizeTable, reshapeTable, generateTableHdl, schematicFromTable, schematicErrors, truthTableFromModule,
@@ -44,7 +45,7 @@ test('#2951 a new table: every output in the form of least gates; a table saved 
   // the example's table (traffic: lamps.bool.json, minimal SOP): its module is the one committed
   const lamps = JSON.parse(fs.readFileSync(new URL('../examples/traffic/src/lamps.bool.json', import.meta.url), 'utf8'));
   assert.equal(lamps.forms, undefined);
-  assert.equal(generateTableHdl(lamps, 'vhdl', { source: 'lamps.bool.json' }).code, fs.readFileSync(new URL('../examples/traffic/src/lamps.vhd', import.meta.url), 'utf8'));
+  assert.equal(generateTableHdl(lamps, 'vhdl', { source: 'lamps.bool.json' }).code, readStamp(fs.readFileSync(new URL('../examples/traffic/src/lamps.vhd', import.meta.url), 'utf8')).body);   // (its silinx-sync line aside, #5872)
 });
 
 test('#2951 each output in its own form, the canonical SOP and POS among them: its HDL (compiled, simulated, no warnings) and its schematic', () => {

@@ -5,6 +5,7 @@
 // System document) or from a System example; a System example only a System project's.
 import { test, before, after } from 'node:test';
 import assert from 'node:assert/strict';
+import { readStamp } from '../core/hdl-cache.js';
 import fs from 'node:fs';
 import path from 'node:path';
 import { scratchEnv } from './server-helpers.js';
@@ -149,7 +150,7 @@ test('#5288 regs-avr: its map\'s slave generated from it, its firmware regs.asm 
   const { readRegmap } = await import('../core/regmap.js');
   const { generateRegmap } = await import('../core/regmap-hdl.js');
   const map = readRegmap(fs.readFileSync(path.join(RA, 'fpga/pwm_regs.regs.json'), 'utf8')).regmap;
-  assert.equal(fs.readFileSync(path.join(RA, 'fpga/pwm_regs.vhd'), 'utf8'), generateRegmap(map, { lang: 'vhdl' }).code, 'its slave as the map generates it');
+  assert.equal(readStamp(fs.readFileSync(path.join(RA, 'fpga/pwm_regs.vhd'), 'utf8')).body, generateRegmap(map, { lang: 'vhdl' }).code, 'its slave as the map generates it');
   assert.equal(fs.readFileSync(path.join(RA, 'uno/regs.hex'), 'utf8'), intelHex(avrAssemble(fs.readFileSync(path.join(RA, 'uno/regs.asm'), 'utf8').split('\n'))));
   await ok('new_project_from_example', { name: 'ra', example: 'regs-avr' });
   const W = (pin, port, loc) => `WARNING: spi: uno's ${pin}, a 5 V output, drives fpga's ${port} (pin ${loc}), a 3.3 V input of the FPGA (LVCMOS33): a level shifter or a divider on the real boards`;
