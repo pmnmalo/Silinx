@@ -5,7 +5,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 
-export const DOWNLOADED_PACKAGES = ['@yowasp/nextpnr-ice40', '@yowasp/nextpnr-ecp5', '@yowasp/nextpnr-himbaechel-gowin', '@yowasp/nextpnr-himbaechel-gatemate'];
+export const DOWNLOADED_PACKAGES = ['@yowasp/nextpnr-ice40', '@yowasp/nextpnr-ecp5', '@yowasp/nextpnr-himbaechel-gowin', '@yowasp/nextpnr-himbaechel-gatemate', '@silinx/nextpnr-mistral'];
 
 /** Removes the downloaded packages from an app folder's node_modules. */
 export function leaveOutDownloaded(app) {

@@ -194,9 +194,9 @@ test('docs: the boards the Silinx toolchain supports are the ones the code suppo
   const section = /^\*\*Without ISE \(Silinx toolchain[\s\S]*?(?=^\*\*Recommended)/m.exec(read('docs/user/en/toolchains.md'))?.[0];
   assert.ok(section, 'docs/user/en/toolchains.md: the section on the Silinx toolchain');
   for (const b of SUPPORTED) {
-    // (a board with no variants by its name: the Nexys3, the Atlys)
+    // (a board with no variants by its name: the Nexys3, the Atlys; the Terasic boards', a - in it, #5377)
     const ok = b.board === 's3e-starter' ? /Spartan-3E Starter Kit/.test(section)
-      : b.name.includes('-') ? named(section).includes(b.name) : new RegExp(`\\b${b.name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`).test(section);   // (a name with a +, #2517)
+      : b.name.includes('-') && !/^Terasic /.test(b.name) ? named(section).includes(b.name) : new RegExp(`\\b${b.name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`).test(section);   // (a name with a +, #2517)
     assert.ok(ok, `the toolchains' Silinx toolchain section does not name the ${b.name}`);
   }
   // "Basys2 and Nexys2 boards" (Getting Started, both languages): every variant of them

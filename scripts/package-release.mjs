@@ -79,7 +79,7 @@ function packageApp() {
     copyTracked(app);
     run('npm', ['ci', '--omit=dev', '--ignore-scripts', '--no-audit', '--no-fund'], app);
     unlinkWorkspaces(app);
-    // the iCE40's, the ECP5's, the Gowin's and the GateMate's nextpnr: downloaded on their first use (#2444, #2302, #2303, #2431), but installed by npm ci (#2570)
+    // the iCE40's, the ECP5's, the Gowin's, the GateMate's and the Cyclone V's nextpnr: downloaded on their first use (#2444, #2302, #2303, #2431, #5377), but installed by npm ci (#2570)
     leaveOutDownloaded(app);
     // nextpnr's chip databases: downloaded on their first use (#2329)
     for (const pkg of NEXTPNR_PACKAGES) leaveOutChipdbs(path.join(app, 'node_modules', pkg));

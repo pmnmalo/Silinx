@@ -32,10 +32,11 @@ export const FAMILY_INFO = {
   gatemate:     { name: 'GateMate', constraints: 'ccf', bitstream: '.bit' },
   // (#5376: the Intel (Altera) FPGAs of Terasic's DE boards, experimental families: their boards and their constraints, QSF
   // (qsf.js, its clocks in an SDC); Intel Quartus Prime their back end on the local server (#5378), none in the browser
-  // (next: what the browser edition's message adds); the Silinx toolchain's Cyclone V to come (#5377))
+  // (next: what the browser edition's message adds); the Silinx toolchain's Cyclone V (#5377: nextpnr-mistral, its openParts: the
+  // parts of Mistral's e50f and sx120f, whose routing data @silinx/nextpnr-mistral has, open-flow-mistral.js), in the browser too
   max10:        { name: 'MAX 10', experimental: true, constraints: 'qsf', bitstream: '.svf', vendor: 'intel', backEnd: 'quartus', openFlow: false, next: 'Intel Quartus Prime implements it on the local server' },
   cyclone4e:    { name: 'Cyclone IV E', experimental: true, constraints: 'qsf', bitstream: '.rbf', vendor: 'intel', backEnd: 'quartus', openFlow: false, next: 'Intel Quartus Prime implements it on the local server' },
-  cyclone5:     { name: 'Cyclone V', experimental: true, constraints: 'qsf', bitstream: '.rbf', vendor: 'intel', backEnd: 'quartus', openFlow: false, next: 'Intel Quartus Prime implements it on the local server; the Silinx toolchain\'s flow to come' },
+  cyclone5:     { name: 'Cyclone V', experimental: true, constraints: 'qsf', bitstream: '.rbf', vendor: 'intel', backEnd: 'quartus', openParts: /^5c(e[bf]a[24]|s[ext][a-z]{2}[56])$/, next: 'Intel Quartus Prime implements it on the local server; the Silinx toolchain the 5CEBA2 / A4 and the 5CSxA5 / A6' },
 };
 
 /** Family id of a part name such as xc3s250e, xc6slx9, xc3s700an, xc7a100t, ice40up5k. */
@@ -92,8 +93,9 @@ export const openFlowDevice = device => {
 /** The family whose back end of the Silinx toolchain implements this one: the Zynq-7000's the Artix-7's, the 7-series' (its
  *  programmable logic the same fabric, #4680); the family itself otherwise. */
 export const openFamilyOf = family => FAMILY_INFO[family]?.openFamily || family;
-/** Why the Silinx toolchain does not implement a device of a Vivado-only family (#3895): the interface offers Vivado alone. */
-export const noOpenFlowMessage = device => `the Silinx toolchain has no back end for the ${String(device?.part || '').toUpperCase()} (${familyName(deviceFamily(device))}): AMD Vivado implements it (Synthesis Tool: Vivado, on the local server)`;
+/** Why the Silinx toolchain does not implement a device of a Vivado-only family (#3895): the interface offers Vivado alone; or a
+ *  Quartus family's part out of its openParts (#5377): Intel Quartus Prime's alone. */
+export const noOpenFlowMessage = device => `the Silinx toolchain has no back end for the ${String(device?.part || '').toUpperCase()} (${familyName(deviceFamily(device))}): ${quartusDevice(device) ? 'Intel Quartus Prime implements it (Synthesis Tool: Quartus' : 'AMD Vivado implements it (Synthesis Tool: Vivado'}, on the local server)`;
 /** Why an experimental family's device has no implementation (the interface offers none; a request gets this error): its
  *  constraints' format, and what comes next (the Intel families', #5376). */
 export const noFlowMessage = device => {

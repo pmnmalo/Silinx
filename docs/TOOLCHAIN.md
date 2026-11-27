@@ -135,7 +135,7 @@ The plan is in #1953 and #2315. For the open toolchains:
 | MachXO2 | `synth_lattice -family xo2` (`xo3` for the MachXO3; `synth_machxo2` is gone from Yosys) | nextpnr-machxo2 | `ecppack`, Project Trellis | LPF | Measured, not a family of Silinx yet (#2302): every example builds on the LCMXO2-1200HC and the LCMXO3LF-6900C, below |
 | GateMate | `synth_gatemate -luttree -nomx8` | nextpnr-himbaechel-gatemate | `gmpack`, Project Peppercorn | CCF | Works: local server and browser, downloaded on first use (4 MB); the CCGM1A1 and CCGM1A2, Cologne Chip's evaluation board and the examples on it (#2431); its board not programmed from Silinx (openFPGALoader's); its Post-Synthesis model (Silinx's models of the CC_ cells), no Post-Place & Route one; the CCGM1A2 by router1, slowly, below |
 | Gowin | `synth_gowin` | nextpnr-himbaechel-gowin | `gowin_pack`, Silinx's JavaScript port of Apicula's (`src/fpga/gowin/`) | CST | Works: local server and browser, downloaded on first use (32 MB); the GW1NR-9C, the Tang Nano 9K and the examples on it, their `.fs` Apicula's byte for byte, the rPLL and the oscillator too (#2303); its board programmed by the local server's openFPGALoader or the browser over WebUSB (SRAM, #2298) |
-| Cyclone V | `synth_intel_alm` | nextpnr, not yet stable | Mistral | to be defined | To be measured (#2304) |
+| Cyclone V | `synth_intel_alm -nodsp` | nextpnr-mistral, `@silinx/nextpnr-mistral` | Mistral's, written by nextpnr-mistral (`.rbf`) | QSF | An experimental family (#5377): local server (beside Intel Quartus Prime), downloaded on first use (66 MB), the browser edition wired but not yet measured (about 2.9 GB of memory); the 5CEBA2 / A4 and the 5CSxA5 / A6, the DE0-CV, the DE1-SoC and the DE10-Nano and the examples on them; no DSP blocks nor PLLs; the `.rbf` not yet checked on a board |
 | Xilinx 7-series (Artix-7, Zynq-7000's PL) | `synth_xilinx` | nextpnr-himbaechel's xilinx, `@silinx/nextpnr-himbaechel-xc7` (#3143) | Silinx, from nextpnr's FASM on Project X-Ray's database (#3144) | XDC | An experimental family (#3146): the Basys 3's XC7A35T and the Nexys A7's XC7A100T (#3145), the Zybo Z7's and the Arty Z7's XC7Z020 / XC7Z010 (their programmable logic, the family `zynq`'s back end the 7-series', #4680, #4681, #4682) in the local server (AMD Vivado the default there) and in the browser (#3143: the Basys 3's `.bit` the local server's byte for byte); its timing nextpnr's estimate; every example on these boards, its size and speed below (#3147) |
 
 Done: the routed design is opaque to the orchestrator (#2384); XDL and `open/routed.xdl` are the Xilinx back ends'. The
@@ -282,6 +282,41 @@ oscillator (OSCH) and the PLL (EHXPLLJ) placed and packed (`test/machxo2-measure
 The LUTs are nextpnr's count after packing (its TRELLIS_COMB, more than Yosys's LUT4s: the carries take two each); the bitstream is the part's whole
 configuration, 45,060 bytes on the 1200HC and 191,836 on the 6900C, a block RAM's initial values adding to it (stopwatch
 47,392 and 194,168, micro80 48,558 and 195,334). Each build takes 1–4 s.
+
+The Cyclone V (#5377, `src/open-flow-mistral.js`) is the Silinx toolchain's first Intel family: Yosys's `synth_intel_alm -family cyclonev
+-nodsp`, then nextpnr-mistral on the Mistral project's database, its bitstream nextpnr-mistral's own `.rbf` (Mistral writes it). The
+package is Silinx's, `@silinx/nextpnr-mistral` (built in WebAssembly by nextpnr-spartan's `mistral.yml`, Mistral at a pinned commit,
+its `.rbf` checked against a native build's), downloaded on first use (66 MB: nextpnr 3 MB, Mistral's global data 2.7 MB and the
+routing data of two dies, the e50f's 20 MB and the sx120f's 42 MB, the one a part needs read as it runs). Its parts are those dies':
+the 5CEBA2 / A4 (the DE0-CV's 5CEBA4F23C7) and the 5CSxA5 / A6 (the DE1-SoC's 5CSEMA5F31C6, the DE10-Nano's 5CSEBA6U23I7); the other
+Cyclone V parts, the MAX 10 and the Cyclone IV E are Intel Quartus Prime's alone. On the local server Quartus is an Intel part's
+default toolchain, the Silinx toolchain the other choice (Design Properties' synthesis tool); the browser edition has the Silinx
+toolchain only, wired as the other families' (the worker's \`io.nextpnr.cyclone5\`) but not yet run in a browser: the sx120f's
+nextpnr takes about 2.9 GB, near what a browser's WebAssembly gives. Its constraints are the QSF (`set_location_assignment`, `IO_STANDARD`), a clock's period a comment of it given to
+nextpnr in an SDC and as `--freq` (nextpnr-mistral leaves the SDC's clock on the port's net, not past its clock buffer). Two
+limits of nextpnr-mistral's: no DSP blocks (`MISTRAL_MUL18X18` has no place: `-nodsp` puts the multipliers in the logic, the
+stopwatch's three among them) and no PLL yet. The `.rbf` is not yet checked on a board nor against Quartus's (a different
+bitstream of the same design): the examples' check is that each builds, at the board's pins, its clock met.
+
+Every example builds on the three boards with no warning, its clock at the boards' 50 MHz met by nextpnr's estimate
+(`test/examples-cyclone5.test.js`; nextpnr-mistral 0.1.0, seed 1; each build 4–16 s on an Apple
+M-series laptop, about 2.9 GB of memory at most, the sx120f's). The ALUTs and flip-flops are Yosys's count; the `.rbf` is
+2,632,660 bytes on the e50f and 7,007,204 on the sx120f.
+
+| Example | DE0-CV: ALUTs | flip-flops | MHz | DE1-SoC: ALUTs | flip-flops | MHz | DE10-Nano: ALUTs | flip-flops | MHz |
+|---|---|---|---|---|---|---|---|---|---|
+| gates | 1 | 0 | – | 1 | 0 | – | 1 | 0 | – |
+| breadboard | 6 | 8 | 288.4 | 6 | 8 | 244.8 | 6 | 8 | 262.0 |
+| traffic | 139 | 58 | 145.1 | 139 | 58 | 150.8 | 139 | 58 | 125.4 |
+| blinky | 178 | 94 | 163.1 | 178 | 94 | 169.3 | 178 | 94 | 205.5 |
+| pong | 503 | 256 | 129.1 | 503 | 256 | 130.0 | 503 | 256 | 112.9 |
+| stopwatch | 567 | 215 | 115.0 | 567 | 215 | 112.4 | 567 | 215 | 110.8 |
+| clock | 333 | 158 | 154.0 | 333 | 158 | 164.9 | 333 | 158 | 178.1 |
+| vga | 320 | 61 | 134.5 | 320 | 61 | 118.2 | 320 | 61 | 123.9 |
+| isqrt | 97 | 86 | 189.4 | 97 | 86 | 173.6 | 97 | 86 | 161.2 |
+| uart | 198 | 138 | 177.7 | 198 | 138 | 212.4 | 198 | 138 | 173.8 |
+| micro80 | 268 | 187 | 141.6 | 268 | 187 | 140.9 | 268 | 187 | 117.4 |
+| lock | 252 | 175 | 141.3 | 252 | 175 | 143.9 | 252 | 175 | 137.4 |
 
 The GateMate (#2431), Cologne Chip's, is measured too, not yet a family of Silinx. `scripts/gatemate-measure.mjs` takes the
 same flat Verilog (the ULX3S's, 25 MHz) through Yosys's `synth_gatemate`, nextpnr-himbaechel's gatemate and Project

@@ -41,6 +41,8 @@ A circuit's analog side can run on ngspice, through eecircuit-engine (its wrappe
 solver under LGPL-2.0 and numparam under LGPL-2.0 or later compiled in, OSDI MPL-2.0, XSPICE public domain; the model
 cards it bundles Apache-2.0, PTM's with no licence given, not used): Silinx does not ship it, the local server downloads
 it from npm's registry on its first use.
+The Cyclone V's place and route runs on nextpnr-mistral, with the Mistral project's Cyclone V database (ISC,
+BSD-3-Clause): Silinx does not ship it, the local server downloads it from npm's registry on its first use.
 Their licence texts are in THIRD-PARTY-NOTICES.md.
 
 Your designs, and the HDL Silinx generates for them, are not covered by this licence.
