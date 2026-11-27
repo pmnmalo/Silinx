@@ -68,3 +68,20 @@ uiTest('#4732 Update Constraints and Check Constraints: the interface\'s and the
   const warnings = (await page.consoleText()).split('\n').filter((l) => /^(WARNING|ERROR)\b/.test(l));
   assert.deepEqual(warnings, []);
 });
+
+// #5765: a top's btn0 and btn3 (a button by its number) on BTN0 and BTN3 (G12, A7; not the next free button, C11),
+// in the interface's Update Constraints as in the MCP's. No warnings.
+uiTest('#5765 Update Constraints: a port named after a button by its number goes on that button', E, async (page) => {
+  const { readFile, readProject } = await P();
+  const KEYS = 'library ieee; use ieee.std_logic_1164.all;\nentity k is port (btn0, btn3, a : in std_logic; led0, y : out std_logic); end k;\narchitecture r of k is begin led0 <= btn0 and not btn3; y <= a; end r;\n';
+  await mcp('new_project', { name: 'keys5765', board: 'basys2' });
+  await mcp('write_file', { project: 'keys5765', path: 'src/k.vhd', text: KEYS });
+  await mcp('set_top', { project: 'keys5765', top: 'k' });
+  await page.openProject('keys5765');
+  const ui = await uiUpdate(page, 'keys5765');
+  for (const [net, loc] of [['btn0', 'G12'], ['btn3', 'A7'], ['led0', 'M5'], ['a', 'P11'], ['y', 'M11']]) assert.match(ui, new RegExp(`NET "${net}"\\s+LOC = "${loc}"`), net);
+  await mcp('set_top', { project: 'keys5765', top: 'k', update_constraints: true });
+  assert.equal(await readFile('keys5765', (await readProject('keys5765')).constraints), ui);
+  const warnings = (await page.consoleText()).split('\n').filter((l) => /^(WARNING|ERROR)\b/.test(l));
+  assert.deepEqual(warnings, []);
+});

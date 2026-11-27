@@ -79,3 +79,19 @@ test('constraintsFileDiagnostics: each format by its name, as checkUcf and const
   assert.deepEqual(x, constraintsDiagnostics('xdc', 'set_property PACKAGE_PIN W5 [get_ports zz]\n', { ports }).map(d => ({ ...d, file: 'top.xdc', tool: 'ConstraintSystem' })));
   assert.ok(x.length >= 1);
 });
+
+// #5765: a top with btn0 and btn3 (a key on BTN0, the reset on BTN3): set_top update_constraints puts btn3 on BTN3 (A7),
+// not on the next free button (C11, BTN1), as the interface's Update Constraints does (the same file)
+test('#5765 set_top update_constraints: a port named after a button by its number goes on that button', async () => {
+  const KEYS = 'library ieee; use ieee.std_logic_1164.all;\nentity k is port (btn0, btn3, a : in std_logic; led0, y : out std_logic); end k;\narchitecture r of k is begin led0 <= btn0 and not btn3; y <= a; end r;\n';
+  await ok('new_project', { name: 'keys', board: 'basys2' });
+  await ok('write_file', { project: 'keys', path: 'src/k.vhd', text: KEYS });
+  const r = await ok('set_top', { project: 'keys', top: 'k', update_constraints: true });
+  const pj = await P.readProject('keys');
+  assert.equal(r.text, `keys: top k, test bench (none); ${pj.constraints} written from the basys2's pins.`);
+  const text = await P.readFile('keys', pj.constraints);
+  assert.equal(text, boardConstraintsFile('k', portsOf(KEYS, 'k'), boardOfProject(pj)).text);
+  for (const [net, loc] of [['btn0', 'G12'], ['btn3', 'A7'], ['led0', 'M5'], ['a', 'P11'], ['y', 'M11']]) assert.match(text, new RegExp(`NET "${net}"\\s+LOC = "${loc}"`), net);
+  const c = await ok('check_constraints', { project: 'keys' });
+  assert.deepEqual([c.data.ok, c.data.errors, c.data.warnings], [true, [], []]);
+});
