@@ -549,3 +549,33 @@ test('oneBitBase: as the RegExp it replaces on every small name, and linear on a
   assert.deepEqual(r.unmatched, []);
   assert.ok(Date.now() - t0 < 1000, `${Date.now() - t0} ms: no quadratic time`);
 });
+
+// #5765: a one-bit port named after a resource of several pins and its index (btn3, led_0, sw7, an2) goes on that pin,
+// as btn(3) of a bus would, on every family's board; an index the resource has not, and an unnumbered name, as before
+test('#5765 boardAutoAssign: a port named after a button, an LED, a switch or a digit by its number takes that pin', async () => {
+  const { resolveBoard } = await import('../server/devices.js');
+  const ports = [{ name: 'btn0', dir: 'in', width: 1 }, { name: 'btn3', dir: 'in', width: 1 }, { name: 'led_1', dir: 'out', width: 1 },
+    { name: 'SW2', dir: 'in', width: 1 }, { name: 'an2', dir: 'out', width: 1 }, { name: 'buttons_1', dir: 'in', width: 1 }];
+  for (const id of ['basys2', 'nexys2', 'nexys3', 'basys3', 'icebreaker', 'ulx3s', 'tangnano9k']) {
+    const b = resolveBoard(id);
+    const res = b.resources, pin = (name, i) => res.find(r => r.name === name)?.pins[i];
+    const r = boardAutoAssign(ports, { ...b.board, device: b.device, resources: res });
+    const want = { btn0: pin('btn', 0), btn3: pin('btn', 3), led_1: pin('led', 1), SW2: pin('sw', 2), an2: pin('an', 2), buttons_1: pin('btn', 1) };
+    for (const [port, loc] of Object.entries(want)) {
+      if (loc && res.find(x => x.name === port.toLowerCase().replace(/_?\d+$/, '').replace('buttons', 'btn'))?.pins.length > 1) assert.deepEqual(r.assignments[port], { ...r.assignments[port], loc }, `${id} ${port}`);
+      else assert.ok(r.unmatched.includes(port), `${id} ${port}: ${JSON.stringify(r.assignments[port])}`);
+    }
+  }
+  // the Basys2's of the issue: BTN0 G12, BTN3 A7 (not C11, BTN1), the free switch for the port no name matches
+  const b2 = resolveBoard('basys2');
+  const r = boardAutoAssign([{ name: 'btn0', dir: 'in', width: 1 }, { name: 'btn3', dir: 'in', width: 1 }, { name: 'a', dir: 'in', width: 1 },
+    { name: 'btn4', dir: 'in', width: 1 }, { name: 'clk2', dir: 'in', width: 1 }, { name: 'x7', dir: 'out', width: 1 }], { ...b2.board, device: b2.device, resources: b2.resources }, { byDirection: true });
+  assert.deepEqual([r.assignments.btn0.loc, r.assignments.btn3.loc], ['G12', 'A7']);
+  // btn4 (the Basys2 has 4 buttons), clk2 (a clock of one pin) and x7 (no resource) match no name: by direction, as before
+  assert.deepEqual(r.byDirection, [{ port: 'a', nets: [['a', 'sw<0>']] }, { port: 'btn4', nets: [['btn4', 'sw<1>']] },
+    { port: 'clk2', nets: [['clk2', 'sw<2>']] }, { port: 'x7', nets: [['x7', 'led<0>']] }]);
+  assert.deepEqual(r.unmatched, []);
+  // a bus btn and a scalar named btn as before
+  const bus = boardAutoAssign([{ name: 'btn', dir: 'in', width: 4, msb: 3, lsb: 0 }, { name: 'led', dir: 'out', width: 1 }], { ...b2.board, device: b2.device, resources: b2.resources });
+  assert.deepEqual([bus.assignments['btn<3>'].loc, bus.assignments.led.loc], ['A7', 'M5']);
+});

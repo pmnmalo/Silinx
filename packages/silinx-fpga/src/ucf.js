@@ -423,6 +423,16 @@ export function boardAutoAssign(ports, board, { byDirection = false } = {}) {
     // rx / tx: the board's serial port, whatever it calls them (rs232_rx, uart_tx, rs232_dce_txd…: the first, #2537)
     const SERIAL = { rx: 'in', tx: 'out' };
     if (!r && Object.hasOwn(SERIAL, alias)) r = res.find(x => ['UART', 'RS-232', 'USB-UART'].includes(x.group) && x.dir === SERIAL[alias]);
+    // a one-bit port named after a resource of several pins and an index (btn3, led_0, sw7, an2): that pin, as
+    // btn(3) of a bus would have it (#5765); an index the resource has not stays unmatched
+    let at = 0;
+    if (!r && (p.width || 1) === 1) {
+      const m = /^(.*?[a-z])_?(\d{1,3})$/.exec(key);
+      const base = m && ((Object.hasOwn(ALIASES, m[1]) && ALIASES[m[1]]) || m[1]), i = m ? Number(m[2]) : -1;
+      const many = x => x && x.pins.length > 1 && i < x.pins.length ? x : null;
+      r = m ? many(byName.get(m[1])) || many(byName.get(base)) || (Object.hasOwn(GROUP, base) ? res.find(x => x.group === GROUP[base] && many(x)) : null) : null;
+      if (r) at = i;
+    }
     if (!r) { unmatched.push(p.name); continue; }
     const attrs = pin => {
       const a = { loc: pin };   // I/O standard: the default (none written) unless the user picks one
@@ -434,12 +444,12 @@ export function boardAutoAssign(ports, board, { byDirection = false } = {}) {
     };
     const width = p.width || 1;
     if (width === 1 && (p.msb === null || p.msb === undefined)) {
-      setByName(assignments, bitName(p.name), attrs(r.pins[0]));
+      setByName(assignments, bitName(p.name), attrs(r.pins[at]));
       if (r.group === 'Clock') clocks.push({ net: bitName(p.name), period: periodNs(r.extra?.period || '20 ns'), duty: 50 });
     } else {
       const lo = Math.min(p.msb, p.lsb);
       if (width > r.pins.length) unmatched.push(`${p.name}[${lo + r.pins.length}..]`);
-      for (let i = 0; i < Math.min(width, r.pins.length); i++) setByName(assignments, bitName(p.name, lo + i), attrs(r.pins[i]));
+      for (let i = 0; i < Math.min(width, r.pins.length - at); i++) setByName(assignments, bitName(p.name, lo + i), attrs(r.pins[at + i]));
     }
     matched.push(p.name);
   }
