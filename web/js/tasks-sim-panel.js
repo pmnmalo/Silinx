@@ -1,8 +1,10 @@
 // Simulate's side panel with nothing simulated yet (#1376), under a Simulation tab as SSim's own, the page beside it
 // (web/css/tasks.css):
-// - the project's test benches, a row each, as SSim's tree: one clicked is simulated (#1378);
-// - with none, the module to simulate and the model, each on its prompt, the simulation run once both are chosen
-//   (#1378); the Test Bench Wizard is the bar's New Test Bench… (#1385).
+// - under the project and its device (none in a Circuit project), as the Design pane shows them (#5789,
+//   web/js/task-hierarchy.js), the project's test benches, a row each: one clicked is simulated (#1378); its objects under
+//   it (its unit under test, their submodules, what it instantiates; no source's badge);
+// - with none, the module to simulate and the model, each on its prompt, under the device, the simulation run once both
+//   are chosen (#1378); the Test Bench Wizard is the bar's New Test Bench… (#1385); the page beside says what to do.
 // A simulation open, the side panel is SSim's tree.
 
 import { h, popupMenu } from './ui.js';
@@ -11,6 +13,7 @@ import { benchSelect, modelSelect, promptChoices, refreshBench, simChoices, simT
 import { benchItems, treeBar, treeItems } from './tasks-sim-tree.js';
 import { mountSimPages } from './tasks-sim-files.js';
 import { designState } from './state-design.js';
+import { hierarchyDefs, hierarchyTree, objectsOf } from './task-hierarchy.js';
 import { isSystemProject } from '../../core/project-kind.js';   // (relative: tasks.js loads in Node too, #4843)
 import { systemsOn } from '../../core/build-channel.js';
 
@@ -43,14 +46,13 @@ export function mountSimPanel(app, { simulate }) {
   });
   document.getElementById('workspace').append(panel);
 
-  const bench = name => {
-    const li = h('li', { class: 'task-sim-bench', 'data-bench': name });
-    const r = h('div', { class: 'row', title: `Simulate ${name}` }, h('span', { class: 'twisty' }, '▸'), icon('moduleTop'), h('span', { class: 'lbl', 'data-no-i18n': '' }, name));
-    clickable(r, () => app.setTop(name, true).then(() => simulate()));
+  // a test bench's row (simulated when clicked, its menu), its objects under it
+  const bench = name => ({ label: name, ico: 'moduleTop', raw: true, li: 'task-sim-bench', data: { 'data-bench': name }, children: objectsOf(name), row: r => {
+    r.title = `Simulate ${name}`;
+    clickable(r, () => app.setTop(name, true).then(() => simulate()));   // (its twisty folds it: not a click of the row)
     r.addEventListener('contextmenu', e => { e.preventDefault(); popupMenu(benchItems(app, name), e.clientX, e.clientY); });
-    li.append(r);
-    return li;
-  };
+  } });
+  const prompts = [...choices.children], folded = new Set();
   return {
     /** Its rows as the project is now (`shown`: the panel shown, else as it is). */
     refresh(shown = !panel.hidden) {
@@ -58,13 +60,22 @@ export function mountSimPanel(app, { simulate }) {
       const S = app.S, sys = systemTree(S.project), names = S.project && !sys ? simChoices(S.project, designState.modules).benches : [];
       promptChoices(shown && !names.length && !sys);
       panel.hidden = !shown;
-      choices.hidden = !!names.length || sys;
-      benches.hidden = !names.length;
+      choices.hidden = true;
+      benches.hidden = !S.project || sys;
       system.hidden = !sys;
       refreshBench(app);
-      if (benches.dataset.key !== names.join()) { benches.dataset.key = names.join(); benches.replaceChildren(...names.map(bench)); }
+      // (drawn again when the project, its device, its test benches or their objects change; the prompts, with no test
+      // bench, under the device)
+      const defs = S.project && !sys ? hierarchyDefs(S.project, names.map(bench), 'sim') : [];
+      const key = JSON.stringify(defs, (k, v) => (k === 'row' ? undefined : v));
+      if (benches.dataset.key !== key) {
+        benches.dataset.key = key;
+        choices.append(...prompts);
+        benches.replaceChildren(...hierarchyTree(defs, folded));
+        if (defs.length && !names.length) [...benches.querySelectorAll('ul')].pop()?.append(...prompts);
+      }
       const cur = S.project ? simTarget(S.project, designState.modules) : null;
-      for (const li of benches.children) li.firstChild.classList.toggle('sel', li.dataset.bench === cur);
+      for (const li of benches.querySelectorAll('li.task-sim-bench')) li.firstChild.classList.toggle('sel', li.dataset.bench === cur);
     },
   };
 }

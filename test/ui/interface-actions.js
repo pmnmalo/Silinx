@@ -70,7 +70,7 @@ export function scanPage(where, { menus = true, panes = true, editor = true } = 
   }
   // the Processes rows (an action each) and the panes' rows' context menus: one row per kind of row (its badge or icon)
   if (panes) {
-    for (const r of document.querySelectorAll('#procs .row, .task-emu-tree .row')) if (shown(r)) add('Processes', r.querySelector('.lbl')?.textContent);
+    for (const r of document.querySelectorAll('#procs .row:not(.proc-hier), .task-emu-tree .row:not(.proc-hier)')) if (shown(r)) add('Processes', r.querySelector('.lbl')?.textContent);
     // (a row's menu selects it, which draws the Processes again: the rows looked for anew after each)
     const seen = new Set();
     const paneOf = (r) => (r.closest('#procs, .task-emu-tree') ? 'Processes' : r.closest('#hier') ? 'Design' : r.closest('#files-page') ? 'Files' : r.closest('[id]')?.id || 'side panel');
