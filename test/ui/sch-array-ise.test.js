@@ -59,9 +59,10 @@ uiTest('#3828 #4275 Export Project to Xilinx ISE and Import Project back: reg(3:
   const text = (p) => Buffer.from(entries.find((e) => e.path === p).data).toString('utf8');
   assert.deepEqual(entries.map((e) => e.path).filter((p) => /^src\//.test(p)).sort(), ['src/reg1.sym', 'src/reg1.vhd', 'src/top.sch', 'src/top.vhd']);
   assert.match(text('src/top.sch'), /<block symbolname="reg1" name="reg_1\(3:0\)">\n {12}<blockpin signalname="q\(3:0\)" name="q" \/>/);
-  // (reg, a reserved word, written as reg_1(3:0): ISE's sch2hdl refuses it, #3870; the console's exact lines)
+  // (reg, a reserved word, written as reg_1(3:0): ISE's sch2hdl refuses it, #3870; the console's exact lines; its
+  // top.vhd the schematic's HDL, made from it as the project was opened, not the stub written, #5872: 3 KB)
   assert.deepEqual((await page.consoleText()).slice(c0).split('\n').filter(Boolean), [
-    'Exported ArrIse.zip: Xilinx ISE project ArrIse.xise + its sources (2 KB).',
+    'Exported ArrIse.zip: Xilinx ISE project ArrIse.xise + its sources (3 KB).',
     "WARNING: src/top.sch: instance 'reg(3:0)' written as 'reg_1(3:0)': 'reg' is a reserved word of Verilog, which ISE's schematic refuses as a block's name",
     "WARNING: src/top.sch: 'reg1': project module — ISE uses its HDL source and the reg1.sym symbol (or regenerate it with Create Schematic Symbol)"]);
   const c1 = (await page.consoleText()).length;

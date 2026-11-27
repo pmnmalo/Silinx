@@ -47,7 +47,10 @@ uiTest('#3829 Rename… of a module with a symbol file: the file renamed with it
   const tree = await page.eval(() => window.SilinxApp.S.fileTree.filter((f) => /sym\.json$/.test(f)));
   assert.deepEqual(tree, ['src/bit_reg.sym.json']);
   const sym = JSON.parse(await env.server.api('GET', `/api/projects/SymRen/file?path=${encodeURIComponent('src/bit_reg.sym.json')}`));
-  assert.deepEqual(sym, { ...SYM, module: 'bit_reg' });
+  // (its interface's hash, given as the project was opened, #5872: its ports, the module's name apart, the same)
+  const { interface: iface, ...rest } = sym;
+  assert.match(iface, /^[0-9a-f]{16}$/);
+  assert.deepEqual(rest, { ...SYM, module: 'bit_reg' });
   // the schematic (reopened by the rename): its instance of bit_reg with the symbol's layout, up to date
   await page.eval(() => window.SilinxApp.openSch('src/top.sch.json'));
   await page.waitFor((ed) => window.Silinx.active?.schEditor?.getDoc().symbols[0]?.params.module === 'bit_reg' && document.querySelector(`${ed} svg .sym[data-id="U"]`), [ED], { what: 'the schematic' });

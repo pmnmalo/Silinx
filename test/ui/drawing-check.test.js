@@ -146,3 +146,23 @@ uiTest('#5872 live: a drawing with errors written, said once, its HDL left; an H
   assert.equal((await page.eval(() => window.__console())).match(/changed outside Silinx/g)?.length ?? 0, before, 'nothing made again nor kept');
   assert.deepEqual((await versions('BurstPj')).length, 1);
 });
+
+uiTest('#5872 its symbol: a state diagram replaced on disk with another port: its symbol put in step and a schematic\'s instance of it flagged, said (in Portuguese too)', E, async (page) => {
+  const { handle } = await import('../../server/mcp.js');
+  let n = 0;
+  const call = async (name, args) => { const r = (await handle({ jsonrpc: '2.0', id: ++n, method: 'tools/call', params: { name, arguments: args } })).result; assert.equal(r.isError, false, r.content[0].text); };
+  await makeProject(env, { name: 'SymPj', template: 'traffic' });
+  await call('edit_symbol', { project: 'SymPj', module: 'traffic', pins: [{ name: 'phase', side: 'N' }] });
+  await call('new_source', { project: 'SymPj', type: 'schematic', name: 'wrap' });
+  await call('place_instance', { project: 'SymPj', path: 'src/wrap.sch.json', module: 'traffic', name: 'u1', x: 200, y: 200 });
+  await page.openProject('SymPj');
+  await page.eval(async () => (await import('/js/i18n.js')).setLanguage('pt'));
+  try {
+    const fsm = JSON.parse(await P.readFile('SymPj', 'src/traffic.fsm.json'));
+    fsm.inputs.push({ name: 'hold', width: 1 });
+    await P.writeFile('SymPj', 'src/traffic.fsm.json', JSON.stringify(fsm, null, 2));
+    await page.waitConsole(/src\/traffic\.sym\.json atualizado: as portas de traffic mudaram \(acrescentadas hold\)/);
+    await page.waitConsole(/WARNING: src\/wrap\.sch\.json: 1 instância\(s\) de traffic desatualizada\(s\) \(S1\): Atualizar Símbolo/);
+  } finally { await page.eval(async () => (await import('/js/i18n.js')).setLanguage('en')); }
+  assert.ok(JSON.parse(await P.readFile('SymPj', 'src/traffic.sym.json')).pins.some((q) => q.name === 'hold' && q.side === 'W'));
+});

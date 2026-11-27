@@ -51,7 +51,10 @@ A project is a folder with `silinx.json`: its sources, its top, its device and b
 opens and closes it). Its profile says which node kinds its System may hold (the next part); its kind, as kept, is an FPGA project or a design and simulation project, with no board, no flow and no
 HDL shown (`core/project-kind.js`, `web/js/design-only.js`; New Project's first page, `web/js/project-kind-step.js`, #5041, and Design Properties' Project Kind, #3780,
 #3891, #4103). A new project is empty, its top added as any module (#5786: no Top-Level Source Type). The Design pane shows one row per module: a drawing is the module's base and its HDL file is always
-generated from it (CLAUDE.md). ISE's project files are read and written too (`server/xise.js`, ISE's schematics:
+generated from it (CLAUDE.md): a cache of the drawing, checked by hashes (#5872, `core/hdl-cache.js`: its last line,
+`silinx-sync`, holds the drawing's hash and its own text's; `core/drawing-sync.js checkDrawings` at a project's opening,
+on the folder's changes and before every flow, the drawing winning and an HDL file edited by hand kept in a version;
+a module's symbol records its interface's hash, `core/symbol-sync.js`). ISE's project files are read and written too (`server/xise.js`, ISE's schematics:
 `core/isesch.js`).
 
 ### The System: the general case

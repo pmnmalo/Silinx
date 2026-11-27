@@ -57,7 +57,9 @@ export function normalizeSymbol(o) {
   const width = size('width'), height = size('height');
   const title = TITLE_PLACES.includes(o.title) ? o.title : 'top';
   if (o.title != null && !TITLE_PLACES.includes(o.title)) errors.push(`title '${o.title}' is not one of ${TITLE_PLACES.join(', ')}`);
-  return { symbol: { version: 1, kind: 'symbol', module, pins, spacing, width, height, title }, errors };
+  // (the hash of the module's interface it was last put in step with, #5872: core/symbol-sync.js)
+  const iface = typeof o.interface === 'string' && /^[0-9a-f]{16}$/.test(o.interface) ? { interface: o.interface } : {};
+  return { symbol: { version: 1, kind: 'symbol', module, pins, spacing, width, height, title, ...iface }, errors };
 }
 
 /** A symbol's file text read: { symbol, errors } (symbol null when it is not JSON). */
