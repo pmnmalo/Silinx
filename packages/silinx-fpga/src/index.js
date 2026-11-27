@@ -42,6 +42,9 @@ export { loadChipdb as loadGowinChipdb } from './fpga/gowin/chipdb.js';
 // the GateMate's nextpnr and gmpack, YoWASP's package as io.nextpnr.gatemate (#2431; in Node: node.js nextpnrGatemateNode)
 export { gatemateIo } from './nextpnr-gatemate-io.js';
 export { GATEMATE_PARTS, GATEMATE_STEPS } from './open-flow-gatemate.js';
+// the Cyclone V's nextpnr-mistral, Silinx's package as io.nextpnr.cyclone5 (#5377; in Node: node.js nextpnrMistralNode)
+export { mistralIo } from './nextpnr-mistral-io.js';
+export { MISTRAL_PARTS, MISTRAL_STEPS } from './open-flow-mistral.js';
 export { PCF } from './pcf.js';
 export { LPF } from './lpf.js';
 export { CST } from './cst.js';

@@ -138,7 +138,7 @@ test('the Intel families: their part names, an experimental family\'s QSF and no
   assert.equal(openFlowDevice({ part: 'ep4ce22' }), false);   // (Quartus's, #5378: no Silinx toolchain's flow)
   assert.equal(quartusDevice(de0cv), true);
   assert.equal(quartusDevice({ part: 'xc7s50' }), false);
-  assert.equal(noFlowMessage(de0cv), 'the 5CEBA4 (Cyclone V, an experimental family) has no implementation flow yet: its boards and its QSF constraints only (Intel Quartus Prime implements it on the local server; the Silinx toolchain\'s flow to come)');
+  assert.equal(noFlowMessage(de0cv), 'the 5CEBA4 (Cyclone V, an experimental family) has no implementation flow yet: its boards and its QSF constraints only (Intel Quartus Prime implements it on the local server; the Silinx toolchain the 5CEBA2 / A4 and the 5CSxA5 / A6)');   // (#5377)
   assert.equal(noFlowMessage(de10lite), 'the 10M50DA (MAX 10, an experimental family) has no implementation flow yet: its boards and its QSF constraints only (Intel Quartus Prime implements it on the local server)');
   assert.equal(noFlowMessage({ part: 'ep4ce22' }), 'the EP4CE22 (Cyclone IV E, an experimental family) has no implementation flow yet: its boards and its QSF constraints only (Intel Quartus Prime implements it on the local server)');
   // (the 7-series' message as it was)

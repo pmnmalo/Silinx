@@ -22,7 +22,7 @@ test('every component has a known licence and its full text; the editor\'s modul
   const md = fs.readFileSync(path.join(ROOT, 'THIRD-PARTY-NOTICES.md'), 'utf8');
   assert.ok(THIRD_PARTY.length > 10);
   for (const c of THIRD_PARTY) {
-    assert.match(c.license, /^(MIT|ISC|BSD-[23]-Clause|Apache-2\.0|EPL-2\.0 OR GPL-3\.0-or-later|LGPL-2\.1|CC0-1\.0|CC-BY-4\.0|BSD-3-Clause AND GPL-2\.0-only|MIT AND BSD-3-Clause AND LGPL-2\.0-only AND LGPL-2\.0-or-later AND MPL-2\.0 AND Apache-2\.0|GPL-2\.0-or-later)$/, `${c.name}: licence ${c.license}`);   // (the RP2040's bootrom, its mufplib under GPL-2.0: downloaded, not shipped, #5494; ngspice's eecircuit-engine, its KLU and numparam LGPL: downloaded, not shipped, #5386; the Zynq's two ps7_init of Vivado, GPL-2.0-or-later: register facts in a test only, #4686)
+    assert.match(c.license, /^(MIT|ISC|BSD-[23]-Clause|Apache-2\.0|EPL-2\.0 OR GPL-3\.0-or-later|LGPL-2\.1|CC0-1\.0|CC-BY-4\.0|BSD-3-Clause AND GPL-2\.0-only|MIT AND BSD-3-Clause AND LGPL-2\.0-only AND LGPL-2\.0-or-later AND MPL-2\.0 AND Apache-2\.0|GPL-2\.0-or-later|ISC AND BSD-3-Clause)$/, `${c.name}: licence ${c.license}`);   // (the RP2040's bootrom, its mufplib under GPL-2.0: downloaded, not shipped, #5494; ngspice's eecircuit-engine, its KLU and numparam LGPL: downloaded, not shipped, #5386; nextpnr-mistral's, nextpnr's and Mistral's: downloaded, not shipped, #5377; the Zynq's two ps7_init of Vivado, GPL-2.0-or-later: register facts in a test only, #4686)
     const sec = new RegExp(`## ${c.name.replace(/[.*+?^${}()|[\]\\/]/g, '\\$&')} ${c.version} — [^\\n]*\\n\\n[^\\n]*\\n\\n\`\`\`text\\n([\\s\\S]*?)\\n\`\`\``).exec(md);
     assert.ok(sec, `${c.name} has a section`);
     assert.ok(sec[1].length > 200 && !/no licence file/.test(sec[1]), `${c.name}: the licence text`);
@@ -85,7 +85,7 @@ test('silinx-fpga: Apache-2.0 (LICENSE, package.json), its NOTICE, its dependenc
   // the components are its dependencies', each with its licence text
   const md = fs.readFileSync(path.join(pkg, 'THIRD-PARTY-NOTICES.md'), 'utf8');
   assert.match(md, /^# Third-party notices\n\nsilinx-fpga \(Copyright 2026 Pedro Maló, Apache-2\.0\)/);
-  const listed = [...md.matchAll(/^## (\S+) (\S+) — (\S+)$/gm)].map(m => m[1]);
+  const listed = [...md.matchAll(/^## (\S+) (\S+) — (.+)$/gm)].map(m => m[1]);
   // (an optional peer's: the iCE40's, #2295; and the components ported into it: Project X-Ray's, #3144; Apicula's, #2303)
   assert.deepEqual(listed, [...Object.keys({ ...json.dependencies, ...json.peerDependencies }), 'apicula', 'prjxray', 'prjxray-db'].sort());
   for (const name of listed) {

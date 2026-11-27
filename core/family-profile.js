@@ -3,7 +3,7 @@
 // a new family is an entry here (test/family-conditions.test.js keeps web/js free of family names in conditions).
 // The resources' counts stay in the device resources model (packages/silinx-fpga/src/resources.js, #790): a profile
 // names the resource, the part counts it.
-import { ICE40_STEPS, ICE40_PARTS, ECP5_STEPS, ECP5_PARTS, GOWIN_STEPS, GOWIN_PARTS, GATEMATE_STEPS, GATEMATE_PARTS, XC7_STEPS } from '../packages/silinx-fpga/src/index.js';
+import { ICE40_STEPS, ICE40_PARTS, ECP5_STEPS, ECP5_PARTS, GOWIN_STEPS, GOWIN_PARTS, GATEMATE_STEPS, GATEMATE_PARTS, MISTRAL_STEPS, MISTRAL_PARTS, XC7_STEPS } from '../packages/silinx-fpga/src/index.js';
 
 export const FAMILY_PROFILES = {
   spartan3e: {
@@ -64,6 +64,14 @@ export const FAMILY_PROFILES = {
     // programmed from Silinx (no program: openFPGALoader's, not in the browser)
     openFlow: { tools: 'nextpnr-himbaechel-gatemate', packer: 'gmpack', package: '@yowasp/nextpnr-himbaechel-gatemate', mb: 4, layout: 'nextpnrGatemate',
       parts: new RegExp(`^(${Object.keys(GATEMATE_PARTS).join('|')})$`), partOf: 'a GateMate part', steps: GATEMATE_STEPS },
+  },
+  cyclone5: {
+    // its own tools (#5377): nextpnr-mistral (Silinx's package, the Mistral project's routing data of the e50f and the sx120f),
+    // which writes the .rbf itself; Intel Quartus Prime its other back end on the local server (#5378)
+    openFlow: { tools: 'nextpnr-mistral', packer: 'nextpnr-mistral', package: '@silinx/nextpnr-mistral', mb: 66, layout: 'nextpnrMistral',
+      parts: MISTRAL_PARTS, partOf: 'a Cyclone V part of Mistral\'s e50f or sx120f', steps: MISTRAL_STEPS },
+    // its board programmed: the .rbf loaded into the FPGA's SRAM (#5379)
+    program: 'sram',
   },
 };
 

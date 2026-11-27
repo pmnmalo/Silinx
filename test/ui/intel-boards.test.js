@@ -1,9 +1,10 @@
 // UI: the Intel (Altera) boards (#5376): Terasic's DE boards in Design Properties, marked experimental, their families too;
-// choosing the DE0-CV writes its pins as constraints/top.qsf, its synthesis tool Quartus, locked; the process tree Intel
+// choosing the DE0-CV writes its pins as constraints/top.qsf, its synthesis tool Quartus (the Silinx toolchain its other choice, #5377); the process tree Intel
 // Quartus Prime's on the local server (#5378: its synthesis, Place & Route, the programming file; Emulate), a run with no Quartus
 // says so; the QSF Wizard writes the board's pins with their I/O standards;
 // I/O Pin Planning reads the QSF, its I/O standards Quartus's; Check Constraints of the QSF, its warnings exact; Configure Target
-// Device loads the .rbf with openFPGALoader through the board's USB-Blaster (#5379); in Portuguese.
+// Device loads the .rbf with openFPGALoader through the board's USB-Blaster (#5379); the Silinx toolchain on the DE0-CV, its
+// synthesis tool's other choice (#5377: Yosys, nextpnr-mistral, the .rbf); in Portuguese.
 // Both interfaces.
 import { before, after } from 'node:test';
 import assert from 'node:assert/strict';
@@ -42,9 +43,21 @@ uiTest('#5376 Design Properties: the DE boards, experimental; the DE0-CV\'s pins
   const chosen = await page.eval(() => {
     const sel = l => [...document.querySelectorAll('.dlg-overlay label')].find(x => x.textContent === l).nextElementSibling;
     const b = sel('Evaluation Development Board:'); b.value = 'de0-cv'; b.dispatchEvent(new Event('change'));
-    return { part: sel('Device:').value, pkg: sel('Package:').value, speed: sel('Speed:').value, synth: sel('Synthesis Tool:').value, synthOff: sel('Synthesis Tool:').disabled };
+    const s = sel('Synthesis Tool:');
+    return { part: sel('Device:').value, pkg: sel('Package:').value, speed: sel('Speed:').value, synth: s.value, synthOff: s.disabled, tools: [...s.options].map(o => o.textContent) };
   });
-  assert.deepEqual(chosen, { part: '5ceba4', pkg: 'f23', speed: 'c7', synth: 'quartus', synthOff: true });   // (Intel Quartus Prime, #5378)
+  // (Intel Quartus Prime, #5378, the default; the 5CEBA4 a part of nextpnr-mistral's, the Silinx toolchain the other, #5377)
+  assert.deepEqual(chosen, { part: '5ceba4', pkg: 'f23', speed: 'c7', synth: 'quartus', synthOff: false,
+    tools: ['Quartus (VHDL/Verilog; Intel Quartus Prime Lite)', 'Silinx (VHDL/Verilog; no Quartus needed; on trial)'] });
+  // (the Cyclone IV E: Quartus's alone, locked)
+  const ep4 = await page.eval(() => {
+    const sel = l => [...document.querySelectorAll('.dlg-overlay label')].find(x => x.textContent === l).nextElementSibling;
+    const b = sel('Evaluation Development Board:'); b.value = 'de0-nano'; b.dispatchEvent(new Event('change'));
+    const s = sel('Synthesis Tool:'), tools = [...s.options].map(o => o.textContent), off = s.disabled;
+    b.value = 'de0-cv'; b.dispatchEvent(new Event('change'));
+    return { tools, off };
+  });
+  assert.deepEqual(ep4, { tools: ['Quartus (VHDL/Verilog; Intel Quartus Prime Lite)'], off: true });
   await page.dialogButton('OK');
   await page.waitDialog('Update Constraints');
   await page.dialogButton('Yes');
@@ -98,6 +111,42 @@ uiTest('#5376 Design Properties: the DE boards, experimental; the DE0-CV\'s pins
   await page.eval(async () => (await import('/js/implement.js')).checkUcfFile());
   await page.waitConsole(/Process "Check Constraints" completed successfully/);
   assert.deepEqual((await page.consoleText()).split('\n').filter(l => /ConstraintSystem/.test(l)), []);
+});
+
+// #5377: a DE0-CV project whose synthesis tool is Silinx: the Silinx toolchain's processes (Yosys, nextpnr-mistral), Generate
+// Programming File to its .rbf in the server's real flow, the Design Summary; in Portuguese
+const BLINKY = 'module top(input clk, output [1:0] led);\n  reg [24:0] c = 0;\n  always @(posedge clk) c <= c + 1;\n  assign led = c[24:23];\nendmodule\n';
+const BLINKY_QSF = 'set_location_assignment PIN_M9 -to clk\nset_instance_assignment -name IO_STANDARD "3.3-V LVTTL" -to clk\nset_location_assignment PIN_AA2 -to led[0]\n'
+  + 'set_instance_assignment -name IO_STANDARD "3.3-V LVTTL" -to led[0]\nset_location_assignment PIN_AA1 -to led[1]\nset_instance_assignment -name IO_STANDARD "3.3-V LVTTL" -to led[1]\n'
+  + '# create_clock -name {clk} -period 20.000 [get_ports {clk}]\n';
+uiTest('#5377 the Silinx toolchain on the DE0-CV: its processes, Generate Programming File to its .rbf by nextpnr-mistral, the Design Summary; Portuguese', E, async (page) => {
+  const pj = await makeProject(env, { name: 'CvOpen', board: 'de0-cv', files: { 'src/top.v': BLINKY, 'constraints/top.qsf': BLINKY_QSF }, top: 'top', constraints: 'constraints/top.qsf' });
+  await env.server.api('PUT', '/api/projects/CvOpen', { ...pj, synthTool: 'silinx' });
+  await page.openProject('CvOpen');
+  await page.setView('impl');
+  await page.treeRow('#hier', 'top');
+  const labels = await procLabels(page);
+  for (const present of ['Synthesize - Yosys', 'Implement Design', 'Generate Post-Place & Route Static Timing', 'Generate Programming File', 'Configure Target Device', 'Emulate'])
+    assert.ok(labels.includes(present), `${present}: ${labels}`);
+  for (const absent of ['Synthesize - Quartus', 'Synthesize - XST', 'Map', 'Generate Post-Synthesis Simulation Model', 'Generate Post-Place & Route Simulation Model'])
+    assert.ok(!labels.includes(absent), `${absent}: ${labels}`);
+  await page.treeRow('#procs', 'Generate Programming File', { dbl: true, exact: true });
+  await page.waitConsole(/Process "Generate Programming File" (completed successfully|failed)/, { timeout: 300000 }).catch(async (e) => { throw new Error(`${e.message}\n${(await page.consoleText()).slice(-2500)}`); });
+  const text = await page.consoleText();
+  assert.deepEqual(text.split('\n').filter(l => /WARNING|ERROR/.test(l)), []);
+  const bytes = +/Bitstream: build\/top\.rbf \((\d+) bytes, nextpnr-mistral's\)/.exec(text)?.[1];
+  assert.ok(bytes > 100000, text.slice(-2000));
+  await page.eval(() => window.SilinxApp.openSummary());
+  const summary = caption => page.waitFor(c => {
+    const t = [...document.querySelectorAll('.summary-table')].find(x => x.querySelector('caption')?.textContent === c);
+    return t ? [...t.querySelectorAll('tr')].map(tr => [...tr.children].map(x => x.textContent)) : null;
+  }, [caption], { what: caption });
+  assert.deepEqual(await summary('Detailed Reports'), [['Report Name', 'Status'], ['Synthesis Report (Yosys)', 'Current'], ['Static Timing Report', 'Current']]);
+  assert.deepEqual(await summary('Programming File'), [['Bitstream', `build/top.rbf (${Math.round(bytes / 1024)} KB)`]]);
+  await page.eval(async () => (await import('/js/i18n.js')).setLanguage('pt'));
+  try {
+    assert.deepEqual((await summary('Relatórios Detalhados')).slice(1).map(x => x[0]), ['Relatório de Síntese (Yosys)', 'Relatório de Temporização Estática']);
+  } finally { await page.eval(async () => (await import('/js/i18n.js')).setLanguage('en')); }
 });
 
 // #5379: Configure Target Device of a DE0-CV project, Quartus's .rbf there: the Program FPGA page (the board's USB-Blaster), the

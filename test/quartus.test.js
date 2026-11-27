@@ -201,7 +201,10 @@ test('an Intel project is implemented by Quartus (POST implement, run_process): 
   assert.ok(gen.lines.includes('Scripts generated only (generateOnly). Run build/run.sh on a machine with Quartus.'));
   assert.ok(fs.existsSync(path.join(P.projectDir('QBlinky'), 'build', 'top.qpf')));
   // another toolchain asked for; Quartus asked for a Spartan-3E; a simulation model; an untrusted project
-  for (const toolchain of ['silinx', 'ise', 'vivado']) await assert.rejects(startImplementation('QBlinky', { toolchain }), new RegExp(`^Error: Intel Quartus Prime implements the 5CEBA4 \\(Cyclone V\\), not ${toolchain} \\(toolchain: 'quartus'\\)$`));
+  for (const toolchain of ['ise', 'vivado']) await assert.rejects(startImplementation('QBlinky', { toolchain }), new RegExp(`^Error: Intel Quartus Prime implements the 5CEBA4 \\(Cyclone V\\), not ${toolchain} \\(toolchain: 'quartus'\\)$`));
+  // (#5377: the DE0-CV's 5CEBA4 is a part of nextpnr-mistral's: the Silinx toolchain asked for implements it)
+  const open = await wait(await startImplementation('QBlinky', { toolchain: 'silinx', steps: ['synth'] }));
+  assert.deepEqual([open.meta.toolchain, open.status], ['silinx', 'ok'], open.error);
   fs.cpSync(path.join(ROOT, 'examples', 'gates'), path.join(process.env.SILINX_WORKSPACE, 'QGates'), { recursive: true });
   await assert.rejects(startImplementation('QGates', { toolchain: 'quartus' }), /^Error: Intel Quartus Prime implements the Intel FPGAs \(the MAX 10, the Cyclone IV E, the Cyclone V\), not the XC3S250E$/);
   await assert.rejects(startImplementation('QBlinky', { steps: ['postsynth'] }), /Quartus's flow has no post-synthesis simulation model/);

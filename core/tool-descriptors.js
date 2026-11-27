@@ -159,6 +159,14 @@ const GATEMATE_STEPS = [
   step('trce', 'Generate Post-Place & Route Static Timing', ['par']),
   step('bitgen', 'Generate Programming File - gmpack', ['par']),
 ];
+// (the Cyclone V's, open-flow-mistral.js MISTRAL_STEPS, #5377: nextpnr-mistral writes the .rbf)
+const MISTRAL_STEPS = [
+  step('synth', 'Synthesize - Yosys'),
+  step('translate', 'Translate', ['synth']),
+  step('par', 'Place & Route - nextpnr', ['translate']),
+  step('trce', 'Generate Post-Place & Route Static Timing', ['par']),
+  step('bitgen', 'Generate Programming File - nextpnr-mistral', ['par']),
+];
 const withProducts = (steps, products) => steps.map(s => ({ ...s, produces: products[s.id] || [] }));
 
 const UCF = { format: 'ucf', ext: '.ucf', label: 'UCF' };
@@ -369,6 +377,24 @@ export const VIVADO = {
   tasks: LAB_TASKS,
 };
 
+/** The Silinx toolchain on the Cyclone V (#5377), with nextpnr-mistral (the Mistral project's database), its parts of Mistral's e50f
+ *  and sx120f: as the GateMate's, its bitstream nextpnr-mistral's .rbf, which openFPGALoader loads into the board's FPGA (#5379); no
+ *  simulation models (no models of the MISTRAL_ cells yet); Emulate on the QSF's pins. On the local server when the project's
+ *  synthesis tool is Silinx, and in the browser edition. */
+export const SILINX_MISTRAL = {
+  id: 'silinx-mistral', name: 'Silinx toolchain (Cyclone V)', open: true,
+  steps: withProducts(MISTRAL_STEPS, { synth: ['open/{top}.json', 'open/{top}_stat.txt'], par: ['open/routed.rbf.b64', 'open/routed.json', 'open/nextpnr-report.json'], trce: ['open/timing.txt', 'open/paths.json'], bitgen: ['{top}.rbf'] }),
+  reports: [
+    { id: 'synthesis', label: 'Synthesis Report (Yosys)', step: 'synth', file: 'open/{top}_stat.txt' },
+    { id: 'timing', label: 'Static Timing Report', step: 'trce', file: 'open/timing.txt' },
+  ],
+  constraints: QSF,
+  messages: LOG_MESSAGES,
+  program: { process: 'config', page: 'program-open', title: 'Program FPGA', target: 'sram', file: '{top}.rbf' },
+  tree: treeOf(['synth-open', 'map', 'xpwr', 'posttrans', 'postmap', 'postsynth', 'postpar', 'pin2ucf', 'fpgaview', 'tech', 'capture'], SILINX_CHANGE),
+  tasks: LAB_TASKS,
+};
+
 /** Intel Quartus Prime on the Intel FPGAs (#5378, server/quartus.js): ISE's step names, each a Quartus tool (quartus_map as the
  *  synthesis, quartus_fit as Place & Route, quartus_sta as the timing, quartus_asm as the programming file, the .sof); no simulation
  *  models, no technology schematic, no FPGA view; its reports Quartus's summaries; the board's FPGA loaded with the .rbf quartus_cpf makes
@@ -402,10 +428,11 @@ const OPEN_BY_FAMILY = { ice40: SILINX_ICE40, artix7: SILINX_XC7, ecp5: SILINX_E
  *  `open` (the project's synthesis tool Silinx, #3146), and always in the browser edition (`standalone`, #3143), the Artix-7's
  *  only: a Vivado-only family's (the Spartan-7, the Kintex-7, #3895) none there; another experimental family's
  *  none yet; `open`, the Silinx toolchain (its back end by the family), else ISE; a design and simulation project's
- *  (`designOnly`, #3780) DESIGN_ONLY whatever its device. */
+ *  (`designOnly`, #3780) DESIGN_ONLY whatever its device; an Intel device's Intel Quartus Prime on the local server (#5378), a
+ *  Cyclone V part of nextpnr-mistral's the Silinx toolchain when `open` and in the browser edition (#5377). */
 export const toolOf = (device, open, { standalone = false, designOnly = false } = {}) => (designOnly ? DESIGN_ONLY
   : vivadoDevice(device) ? (!openFlowDevice(device) ? (standalone ? NO_FLOW : VIVADO) : open || standalone ? SILINX_XC7 : VIVADO)
-  : quartusDevice(device) ? (standalone ? NO_FLOW_QSF : bitstreamExtOf(device) === '.svf' ? QUARTUS_SVF : QUARTUS)
+  : quartusDevice(device) ? (openFlowDevice(device) && (open || standalone) ? SILINX_MISTRAL : standalone ? NO_FLOW_QSF : bitstreamExtOf(device) === '.svf' ? QUARTUS_SVF : QUARTUS)
   : experimentalDevice(device) ? (constraintsFormatOf(device) === 'qsf' ? NO_FLOW_QSF : NO_FLOW) : open ? OPEN_BY_FAMILY[deviceFamily(device)] || SILINX : ISE);
 
 /** Every tool's tasks, in their order: the kept state's and the switchers'. */

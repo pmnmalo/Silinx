@@ -234,6 +234,7 @@ export async function createApp({ host = '127.0.0.1', token = null, codes = crea
   app.use('/vendor/nextpnr-ecp5', asset(path.join(ROOT, 'node_modules/@yowasp/nextpnr-ecp5')));   // (the ECP5's, #2302)
   app.use('/vendor/nextpnr-himbaechel-gowin', asset(path.join(ROOT, 'node_modules/@yowasp/nextpnr-himbaechel-gowin')));   // (the Gowin's, #2303)
   app.use('/vendor/nextpnr-himbaechel-gatemate', asset(path.join(ROOT, 'node_modules/@yowasp/nextpnr-himbaechel-gatemate')));   // (the GateMate's, #2431)
+  app.use('/vendor/nextpnr-mistral', asset(path.join(ROOT, 'node_modules/@silinx/nextpnr-mistral')));   // (the Cyclone V's, #5377)
 
   const api = express.Router();
   // the token for a one-time code of a launcher's address (#2955); a code for the address a second launch opens

@@ -8,7 +8,7 @@ import { FAMILY_PROFILES, familyProfile } from '../core/family-profile.js';
 import { planClock } from '../core/clocking.js';
 import { MEMORY_FAMILIES, planMemory } from '../core/blockram.js';
 import { resourceCount, resourceOfPrimitive } from '../packages/silinx-fpga/src/resources.js';
-import { FAMILY_INFO, ICE40_STEPS, ECP5_STEPS, ECP5_PARTS, GOWIN_STEPS, GATEMATE_STEPS, XC7_STEPS } from '../packages/silinx-fpga/src/index.js';
+import { FAMILY_INFO, ICE40_STEPS, ECP5_STEPS, ECP5_PARTS, GOWIN_STEPS, GATEMATE_STEPS, MISTRAL_STEPS, XC7_STEPS } from '../packages/silinx-fpga/src/index.js';
 import { findPart } from '../server/devices.js';
 
 globalThis.SILINX_ASSETS = 'https://example.test/assets/';
@@ -16,7 +16,7 @@ const { browserOpenStatus, browserSteps, BROWSER_DEVICES } = await import('../we
 
 test('every profile is of a known family; a family with none gets an empty, frozen profile', () => {
   for (const f of Object.keys(FAMILY_PROFILES)) assert.ok(FAMILY_INFO[f], f);
-  assert.deepEqual(Object.keys(FAMILY_PROFILES).sort(), ['artix7', 'ecp5', 'gatemate', 'gowin', 'ice40', 'spartan3e', 'spartan6']);
+  assert.deepEqual(Object.keys(FAMILY_PROFILES).sort(), ['artix7', 'cyclone5', 'ecp5', 'gatemate', 'gowin', 'ice40', 'spartan3e', 'spartan6']);
   for (const f of ['spartan3a', 'kintex7', 'nonsense', null, undefined]) {
     assert.deepEqual(familyProfile(f), {});
     assert.ok(Object.isFrozen(familyProfile(f)));
@@ -25,9 +25,10 @@ test('every profile is of a known family; a family with none gets an empty, froz
   assert.equal(familyProfile('ice40').blockRam, undefined);
   // (#2302: the ECP5 offers none of the Xilinx families' wizards; the iCE40 programs its flash, the ECP5 and the Gowin their
   // SRAM, #2298)
-  for (const f of ['ecp5', 'gowin', 'gatemate']) for (const k of ['clock', 'blockRam', 'multiplier', 'mapChoice']) assert.equal(familyProfile(f)[k], undefined, `${f} ${k}`);
+  for (const f of ['ecp5', 'gowin', 'gatemate', 'cyclone5']) for (const k of ['clock', 'blockRam', 'multiplier', 'mapChoice']) assert.equal(familyProfile(f)[k], undefined, `${f} ${k}`);
   // (#2431: the GateMate's board not programmed from Silinx, openFPGALoader's)
-  assert.deepEqual(['ice40', 'ecp5', 'gowin', 'gatemate'].map(f => familyProfile(f).program), ['spi-flash', 'sram', 'sram', undefined]);
+  // (#5377: the Cyclone V's .rbf loaded into its SRAM, openFPGALoader over the board's USB-Blaster, #5379)
+  assert.deepEqual(['ice40', 'ecp5', 'gowin', 'gatemate', 'cyclone5'].map(f => familyProfile(f).program), ['spi-flash', 'sram', 'sram', undefined, 'sram']);
 });
 
 test('the clock manager: the primitive core/clocking.js plans for the family, its resource the resources model\'s', () => {
@@ -99,10 +100,15 @@ test('the open flow: the parts each family\'s Silinx toolchain takes, its bit da
   assert.equal(familyProfile('ice40').openFlow.tools, 'nextpnr-ice40');
   assert.equal(familyProfile('ice40').openFlow.steps, ICE40_STEPS);
   // (#2302) the families of YoWASP's tools: their package, its packer, the browser's key, their parts
-  assert.deepEqual(Object.keys(FAMILY_PROFILES).filter(f => familyProfile(f).openFlow?.package), ['ice40', 'ecp5', 'gowin', 'gatemate']);
+  assert.deepEqual(Object.keys(FAMILY_PROFILES).filter(f => familyProfile(f).openFlow?.package), ['ice40', 'ecp5', 'gowin', 'gatemate', 'cyclone5']);
   // (#2431) the GateMate: nextpnr and gmpack, Project Peppercorn's, in YoWASP's package
   const gm = familyProfile('gatemate').openFlow;
   assert.deepEqual([gm.tools, gm.packer, gm.package, gm.layout, gm.mb, gm.steps], ['nextpnr-himbaechel-gatemate', 'gmpack', '@yowasp/nextpnr-himbaechel-gatemate', 'nextpnrGatemate', 4, GATEMATE_STEPS]);
+  // (#5377) the Cyclone V: Silinx's nextpnr-mistral, which writes the .rbf itself, its parts Mistral's e50f's and sx120f's
+  const cv = familyProfile('cyclone5').openFlow;
+  assert.deepEqual([cv.tools, cv.packer, cv.package, cv.layout, cv.steps], ['nextpnr-mistral', 'nextpnr-mistral', '@silinx/nextpnr-mistral', 'nextpnrMistral', MISTRAL_STEPS]);
+  for (const p of ['5ceba4', '5csema5', '5cseba6']) assert.ok(cv.parts.test(p), p);
+  for (const p of ['5cgxfc7', '5csema4', 'ep4ce22']) assert.ok(!cv.parts.test(p), p);
   assert.ok(gm.parts.test('ccgm1a1') && gm.parts.test('ccgm1a2') && !gm.parts.test('ccgm1a4'));
   // (#2303) the Gowin: nextpnr and gowin_pack (Silinx's port)
   const gowin = familyProfile('gowin').openFlow;

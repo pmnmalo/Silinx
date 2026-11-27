@@ -1939,13 +1939,14 @@ uiTest('#487 static editions: a Content-Security-Policy with the inline scripts\
     const ecp5 = JSON.parse(await fs.readFile(path.join(ROOT, 'package-lock.json'), 'utf8')).packages['node_modules/@yowasp/nextpnr-ecp5'];
     const gowin = JSON.parse(await fs.readFile(path.join(ROOT, 'package-lock.json'), 'utf8')).packages['node_modules/@yowasp/nextpnr-himbaechel-gowin'];
     const gatemate = JSON.parse(await fs.readFile(path.join(ROOT, 'package-lock.json'), 'utf8')).packages['node_modules/@yowasp/nextpnr-himbaechel-gatemate'];
+    const mistral = JSON.parse(await fs.readFile(path.join(ROOT, 'package-lock.json'), 'utf8')).packages['node_modules/@silinx/nextpnr-mistral'];   // (the Cyclone V's, #5377)
     assert.ok(text.includes(JSON.stringify({ url: ice40.resolved, integrity: ice40.integrity })), 'the page has the package\'s URL and SHA-512');
     assert.deepEqual(d['worker-src'], ["'self'", 'blob:']);
     assert.deepEqual(d['object-src'], ["'none'"]);
     assert.deepEqual(d['base-uri'], ["'none'"]);
     assert.equal(d['frame-ancestors'], undefined, 'not in a <meta> (the browser reports it as an error)');
     layout = JSON.parse(text.match(/window\.SILINX_ASSET_LAYOUT = (\{.*?\});\n/)[1]);
-    assert.deepEqual({ ...layout, integrity: undefined, sizes: undefined }, { dir, yosys: `../vendor/yowasp-yosys/${yosysVersion}/gen/bundle.js`, nextpnr: `../vendor/nextpnr-spartan/${nextpnrVersion}/gen/bundle.js`, nextpnrS6: `../vendor/nextpnr-spartan6/${nextpnrS6Version}/gen/bundle.js`, nextpnrXc7: `../vendor/nextpnr-xc7/${nextpnrXc7Version}/gen/bundle.js`, xc7Parts, nextpnrIce40Package: { url: ice40.resolved, integrity: ice40.integrity }, nextpnrEcp5Package: { url: ecp5.resolved, integrity: ecp5.integrity }, nextpnrGowinPackage: { url: gowin.resolved, integrity: gowin.integrity }, nextpnrGatematePackage: { url: gatemate.resolved, integrity: gatemate.integrity }, site: siteUrl, integrity: undefined, sizes: undefined });
+    assert.deepEqual({ ...layout, integrity: undefined, sizes: undefined }, { dir, yosys: `../vendor/yowasp-yosys/${yosysVersion}/gen/bundle.js`, nextpnr: `../vendor/nextpnr-spartan/${nextpnrVersion}/gen/bundle.js`, nextpnrS6: `../vendor/nextpnr-spartan6/${nextpnrS6Version}/gen/bundle.js`, nextpnrXc7: `../vendor/nextpnr-xc7/${nextpnrXc7Version}/gen/bundle.js`, xc7Parts, nextpnrIce40Package: { url: ice40.resolved, integrity: ice40.integrity }, nextpnrEcp5Package: { url: ecp5.resolved, integrity: ecp5.integrity }, nextpnrGowinPackage: { url: gowin.resolved, integrity: gowin.integrity }, nextpnrGatematePackage: { url: gatemate.resolved, integrity: gatemate.integrity }, nextpnrMistralPackage: { url: mistral.resolved, integrity: mistral.integrity }, site: siteUrl, integrity: undefined, sizes: undefined });
     // (each asset's size beside its SHA-256, the first Implement's download said with it, #4628)
     assert.deepEqual(Object.keys(layout.sizes).sort(), Object.keys(layout.integrity).sort());
     for (const p of [`${dir}devices/xc3s250ecp132-4.json.gz`, `vendor/yowasp-yosys/${yosysVersion}/gen/yosys.core.wasm`]) assert.equal(layout.sizes[p], (await fs.stat(path.join(site, 'assets', p))).size, p);
