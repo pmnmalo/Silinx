@@ -28,7 +28,7 @@ first, with three cards, and a project can move to another mode later with **Pro
   PIC24 starts with none: its `.hex` is MPLAB X's). Select the board's row in the Design pane for its **Emulate Node**,
   **Simulate Node** and **Program Node**.
 - **System**: an empty System, or a System example (uart-avr, spi-avr, i2c-avr, regs-avr, uart-pic24, adc-pmod,
-  uart-pico).
+  uart-pico, uart-esp32, uart-zynq).
 
 Systems, and with them the processor boards, are in the development build until they are stable.
 

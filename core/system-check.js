@@ -23,7 +23,7 @@ import { endsProblem } from './system-links.js';
 import { usbError } from './usb-id.js';
 import { RUNTIME_NAMES } from './rp2040-firmware.js';
 import { withNodePins } from './system-constraints.js';
-import { psProblems } from './zynq-ps.js';
+import { psProblems, psOfBoard } from './zynq-ps.js';
 
 const node = id => ({ kind: 'node', id });
 const link = id => ({ kind: 'link', id });
@@ -208,7 +208,15 @@ function checkFpga(n, at, { modules, files }, { err, warn }) {
   };
   for (const f of n.interfaces) {
     if (!checkInterface(n, f, at, { err, warn })) continue;
-    if (f.kind === 'uart') {
+    if (f.kind === 'uart' && f.ps) {
+      // (a Zynq's PS UART, #4687: its board's MIO pins, which reach its USB serial port only; one a node)
+      const ps = psOfBoard(n.board, n.variant);
+      if (!ps) { err(`${n.id}.${f.name}: a PS UART, but its board ${n.board || '(none)'} has no processing system`, ref); continue; }
+      if (f.tx || f.rx) { err(`${n.id}.${f.name}: a PS UART's pins are its board's MIO ${ps.uart.tx} (TX) and ${ps.uart.rx} (RX), not tx and rx ports`, ref); continue; }
+      if (n.interfaces.find((i) => i.kind === 'uart' && i.ps) !== f) { err(`${n.id}.${f.name}: a second PS UART: its PS has one, UART${ps.uart.id}`, ref); continue; }
+      const mio = (p, dir) => ({ pin: `MIO${p}`, dir, kind: 'transaction', protocol: 'uart' });
+      at.ifaces.set(lc(f.name), { f, tx: mio(ps.uart.tx, 'out'), rx: mio(ps.uart.rx, 'in') });
+    } else if (f.kind === 'uart') {
       if (!f.tx && !f.rx) { err(`${n.id}.${f.name}: a UART with no tx nor rx port`, ref); continue; }
       at.ifaces.set(lc(f.name), { f, tx: f.tx ? pinOf(f, f.tx, 'out') : null, rx: f.rx ? pinOf(f, f.rx, 'in') : null });
     } else if (f.kind === 'spi') {
@@ -317,6 +325,15 @@ function checkLinks(sys, nodes, { err, warn }, wiresOut) {
     const [a, b] = ends;
     if (a.at === b.at) { err(`${l.id}: both ends on ${a.at.n.id}: a link joins two nodes`, ref); continue; }
     if (!a.r || !b.r) continue;   // (an interface in error: said)
+    // (a Zynq's PS UART, #4687: its board's USB serial port, a terminal's only; its Cortex-A9 not simulated, no wires)
+    const psEnd = [a, b].find((e) => e.r.f?.ps);
+    if (psEnd) {
+      const other = psEnd === a ? b : a;
+      if (other.at.n.kind !== 'terminal') { err(`${l.id}: ${psEnd.name} is its board's USB serial port: link it to a serial terminal (${other.name} is a ${other.at.n.kind} node's)`, ref); continue; }
+      uartWires(l, a, b, { err });
+      warn(`${l.id}: ${psEnd.name} is its PS's, whose Cortex-A9 is not simulated: Simulate and Emulate leave the link out (its terminal's Real Board reaches it)`, ref);
+      continue;
+    }
     // (an MQTT link: a client and its broker, #5500; messages, no wires)
     if (l.kind === 'mqtt') { if ((a.at.n.kind === 'broker') === (b.at.n.kind === 'broker')) err(`${l.id}: an MQTT link joins a client and a broker`, ref); continue; }
     const wires = l.kind === 'uart' ? uartWires(l, a, b, { err }) : l.kind === 'spi' ? spiWires(l, a, b, { err }) : l.kind === 'i2c' ? i2cWires(l, a, b, { err }) : gpioWires(l, a, b, { err });

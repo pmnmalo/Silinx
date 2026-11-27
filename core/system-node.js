@@ -10,7 +10,7 @@ import { withProfile } from './project-profile.js';
 import { isName } from './ident.js';
 import { nodeIdError } from './system-doc.js';
 import { relInNode } from './system-layout.js';
-import { isPsPath } from './zynq-ps.js';
+import { isPsPath, psOfBoard } from './zynq-ps.js';
 
 const same = (a, b) => String(a ?? '').toUpperCase() === String(b ?? '').toUpperCase();
 
@@ -62,5 +62,7 @@ export function nodeProject(pj, node, constraints) {
   const board = nodeBoard(node);
   // (its PS's program not the PL's, #4686)
   const files = (pj.files || []).filter(f => relInNode(f.path, node.id) != null && !isPsPath(relInNode(f.path, node.id)));
-  return { ...withProfile(pj, 'fpga'), top: node.module, board: node.board, device: { ...board.device }, constraints, files };
+  // (psDir: its PS's folder, whose C its build leaves to the Cortex-A9, not Silinx HLS: core/drawing-code.js inCpuNode, #4687)
+  return { ...withProfile(pj, 'fpga'), top: node.module, board: node.board, device: { ...board.device }, constraints, files,
+    ...(psOfBoard(node.board, node.variant) ? { psDir: `${node.id}/ps` } : {}) };
 }
