@@ -18,6 +18,8 @@ const REPORT_RE = /^build\/(?:[\w-][\w.-]*\/){0,3}[\w-][\w.-]{0,127}$/;
 export const reportPath = p => typeof p === 'string' && REPORT_RE.test(p) && !p.split('/').some(s => s === '..' || s.startsWith('.'));
 
 const bytes = s => new TextEncoder().encode(s).length;
+// (a line's time, the owner's: ms since the epoch, #5035)
+const lineTime = t => Number.isSafeInteger(t) && t >= 0;
 
 // (the placeholders the server's own list may give, server/owner-secrets.js)
 const PLACEHOLDERS = ['<workspace>', '<exchange folder>', '<Silinx configuration>', '~', '<ISE host>', '<ISE build folder>'];
@@ -42,7 +44,7 @@ export const redactAll = (v, secrets = []) => (typeof v === 'string' ? redact(v,
   : v && typeof v === 'object' ? Object.fromEntries(Object.entries(v).map(([k, x]) => [redact(k, secrets), redactAll(x, secrets)])) : v);
 
 /** The `runs` value: { id (the run's number), status: { process: state }, from (the index of the run's first line
- *  kept), lines: [[text, class, source]] (#4749: its message's source, core/message.js; the application's when not one), summary (the Design Summary's data, null: none or too large) }; the lines kept from
+ *  kept), lines: [[text, class, source, time?]] (#4749: its message's source, core/message.js; the application's when not one; #5035: the time it was written, the owner's), summary (the Design Summary's data, null: none or too large) }; the lines kept from
  *  the run's end within RUN_LIMITS. */
 export function runsActivity({ id = 0, status = {}, lines = [], summary = null }, limits = RUN_LIMITS) {
   const st = {};
@@ -50,8 +52,8 @@ export function runsActivity({ id = 0, status = {}, lines = [], summary = null }
   const kept = [];
   let size = 0, from = lines.length;
   for (let i = lines.length - 1; i >= 0 && kept.length < limits.lines; i--) {
-    const [text, cls, src] = lines[i];
-    const line = [String(text).slice(0, limits.line), CLASSES.includes(cls) ? cls : '', MESSAGE_SOURCES.includes(src) ? src : 'app'];
+    const [text, cls, src, time] = lines[i];
+    const line = [String(text).slice(0, limits.line), CLASSES.includes(cls) ? cls : '', MESSAGE_SOURCES.includes(src) ? src : 'app', ...(lineTime(time) ? [time] : [])];
     size += bytes(line[0]) + 8;
     if (size > limits.linesBytes) break;
     kept.unshift(line);
@@ -66,7 +68,7 @@ export function followedRuns(v, limits = RUN_LIMITS) {
   if (!v || typeof v !== 'object' || Array.isArray(v) || !Number.isSafeInteger(v.id) || v.id < 0) return null;
   const status = {};
   if (v.status && typeof v.status === 'object' && !Array.isArray(v.status)) for (const [k, s] of Object.entries(v.status)) if (PROC_RE.test(k) && STATES.includes(s)) status[k] = s;
-  const lines = Array.isArray(v.lines) ? v.lines.slice(0, limits.lines).filter(l => Array.isArray(l) && typeof l[0] === 'string').map(([t, c, src]) => [t.slice(0, limits.line), CLASSES.includes(c) ? c : '', MESSAGE_SOURCES.includes(src) ? src : 'app']) : [];
+  const lines = Array.isArray(v.lines) ? v.lines.slice(0, limits.lines).filter(l => Array.isArray(l) && typeof l[0] === 'string').map(([t, c, src, time]) => [t.slice(0, limits.line), CLASSES.includes(c) ? c : '', MESSAGE_SOURCES.includes(src) ? src : 'app', ...(lineTime(time) ? [time] : [])]) : [];
   const from = Number.isSafeInteger(v.from) && v.from >= 0 ? v.from : 0;
   const summary = v.summary && typeof v.summary === 'object' && !Array.isArray(v.summary) ? v.summary : null;
   return { id: v.id, status, from, lines, summary };
@@ -106,5 +108,6 @@ export function runLines(v, last = 10) {
 }
 
 /** The runs' lines as messages (#4749: the MCP's follow_project): each one's as a follower's console makes it
- *  (core/message.js lineMessage), its source the owner's, its location a file of the shared project (`paths`), as data. */
-export const runMessages = (r, paths = []) => (r?.lines || []).map(([text, cls, source]) => messageData(lineMessage(text, { cls, source, paths })));
+ *  (core/message.js lineMessage), its source the owner's, its location a file of the shared project (`paths`), its time the
+ *  owner's (#5035), as data. */
+export const runMessages = (r, paths = []) => (r?.lines || []).map(([text, cls, source, time]) => messageData(lineMessage(text, { cls, source, paths, time })));

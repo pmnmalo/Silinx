@@ -21,7 +21,7 @@ export function runsPublisher(session) {
   const off = onLogLine((line, cls, msg) => {
     if (!procState.busy) return;
     if (!run.busy) run = { id: run.id + 1, lines: [], dropped: 0, busy: true };
-    run.lines.push([redact(line, secrets()), cls, msg?.source || 'app']);   // (its source: the follower's filters, #4749)
+    run.lines.push([redact(line, secrets()), cls, msg?.source || 'app', ...(msg?.time != null ? [msg.time] : [])]);   // (its source: the follower's filters, #4749; its time, #5035)
     // (the end of a long run's lines kept: what a follower gets is RUN_LIMITS.lines at most)
     if (run.lines.length > 2 * RUN_LIMITS.lines) { const n = run.lines.length - RUN_LIMITS.lines; run.lines.splice(0, n); run.dropped += n; }
   });
@@ -79,8 +79,8 @@ function applyRuns(st, r) {
   renderProcesses();
   // (a run's lines from where this page was: a new run's from its first line kept)
   if (st.run?.id !== r.id) st.run = { id: r.id, shown: r.from };
-  // (each line with its source, the owner's: under the follower's filters as under the owner's, #4749)
-  for (let i = Math.max(0, st.run.shown - r.from); i < r.lines.length; i++) log(r.lines[i][0], r.lines[i][1], { src: r.lines[i][2] });
+  // (each line with its source, the owner's: under the follower's filters as under the owner's, #4749; its time the owner's, #5035)
+  for (let i = Math.max(0, st.run.shown - r.from); i < r.lines.length; i++) log(r.lines[i][0], r.lines[i][1], { src: r.lines[i][2], time: r.lines[i][3] });
   st.run.shown = Math.max(st.run.shown, r.from + r.lines.length);
   const key = JSON.stringify(r.summary);
   if (st.summaryKey !== key) { st.summaryKey = key; refreshSummary(); }
