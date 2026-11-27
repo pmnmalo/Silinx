@@ -17,7 +17,7 @@ export const SHIELD_ID = 'shield';
 export const SHIELD_PATH = 'shield/shield.circ.json';
 
 /** The processor board's node of a Board project's System `sys` (its one microcontroller node), or null. */
-export const boardNodeOf = sys => sys?.nodes?.find(n => n.kind === 'mcu') ?? null;
+const boardNodeOf = sys => sys?.nodes?.find(n => n.kind === 'mcu') ?? null;
 /** The shield of a Board project's System `sys`: its circuit node, or null. */
 export const shieldOf = sys => sys?.nodes?.find(n => n.kind === 'circuit') ?? null;
 /** Whether a processor board can have a shield: its part for a circuit (an Arduino, a Pico, an ESP32; not the Explorer). */

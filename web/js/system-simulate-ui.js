@@ -29,7 +29,7 @@ async function simulate(file, nodes) {
 }
 
 /** Simulate Node: the node `id` of the System `file` alone, for the Simulation Properties' time. */
-export const simulateNode = (file, id) => simulate(file, [id]);
+const simulateNode = (file, id) => simulate(file, [id]);
 /** Simulate Node of a board with its shield (#5898: core/processor-shield.js withShield): those nodes. */
 export const simulateNodes = (file, ids) => simulate(file, ids);
 
