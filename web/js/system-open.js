@@ -31,6 +31,7 @@ import { mountSystemSim } from './system-sim-view.js';
 import { openSystemWaves } from './system-waves-view.js';
 import { saveNodeFolders } from './system-folders-ui.js';
 import { nodePinsHere, constraintsHere } from './system-constraints-ui.js';
+import { profileById, systemRuleProfile } from '/core/project-profile.js';
 
 // the project's modules ({ name: ports, null when not elaborated }): every module, the FPGA nodes' elaborated
 function projectModules(sys) {
@@ -154,6 +155,7 @@ export async function openSystem(path) {
         onCheck: diags => problems.log(diags),
         onMessage: (text, err) => log(err ? `WARNING: ${name}: ${text}` : `${name}: ${text}`, err ? 'warn' : 'info'),
         check: checkProjectSystem, modules, portsOf, firmwares, circuits, psPrograms,
+        nodeKinds: profileById(systemRuleProfile(S.project))?.nodes ?? null,   // (the node tools its profile allows, #5910)
         // (a project followed, #3181: read only, the follower's notice at the end of its toolbar; no live editing yet)
         ...(following() ? { readOnly: true, banner: followNotice() } : phoneOnly()),   // (a phone's, #5121)
         // (Simulate: the System's simulation view, #4701)

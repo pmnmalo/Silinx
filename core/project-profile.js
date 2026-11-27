@@ -13,7 +13,7 @@ export const PROFILES = [
   { id: 'logic', label: 'Digital Logic', nodes: ['design', 'circuit'] },
   { id: 'fpga', label: 'FPGA', nodes: ['design', 'circuit', 'fpga'] },
   { id: 'embedded', label: 'Embedded / SoC', nodes: ['design', 'circuit', 'fpga', 'mcu'] },
-  { id: 'system', label: 'System', nodes: ['design', 'circuit', 'fpga', 'mcu', 'terminal'] },
+  { id: 'system', label: 'System', nodes: ['design', 'circuit', 'fpga', 'mcu', 'terminal', 'broker'] },   // (an MQTT broker, #5500, #5910)
 ];
 const RANK = Object.fromEntries(PROFILES.map((p, i) => [p.id, i]));
 /** A profile by its id, or null. */
@@ -53,6 +53,19 @@ export function profileRefusal(name, to, nodes = []) {
   const named = out.map(n => `${n.id} (${n.kind})`).join(', ');
   return `the project '${name}' cannot be ${p.label}: ${out.length > 1 ? 'its nodes' : 'its node'} ${named} ${out.length > 1 ? 'are' : 'is'} not allowed (${p.label} allows ${p.nodes.join(', ')})`;
 }
+
+/** Why a System of the profile `id` (a project's, profileOf's) cannot have a node of kind `kind`, or null (an unknown
+ *  profile: no rule; #5910: a node added in the System editor or by the MCP's edit_system as a profile change's check). */
+export function nodeKindRefusal(id, kind) {
+  const p = profileById(id);
+  if (!p || p.nodes.includes(kind)) return null;
+  return `${/^[AEIOF]/.test(p.label) ? 'an' : 'a'} ${p.label} project's System has no ${kind} node (${p.label} allows ${p.nodes.join(', ')}: Design Properties' Project Kind changes it)`;
+}
+
+/** The profile whose node kinds a System document of the project `pj` keeps to (#5910): its own when it is a System's
+ *  (Embedded / SoC, System: its System its profile's); none for a Digital Logic or an FPGA project (a System document of
+ *  theirs is not their System: no rule, as before). */
+export const systemRuleProfile = pj => (systemProfile(profileOf(pj)) ? profileOf(pj) : null);
 
 /** What a profile change did, said (the interface's console and the MCP's result, #5440). */
 export const profileChangedText = (name, to) => `${name}: ${profileById(to).label} now: its System may have ${profileById(to).nodes.join(', ')} nodes (nothing converted, nothing deleted).`;

@@ -58,3 +58,23 @@ test('#5500 a Pico\'s MQTT interface refused by edit_system; a link of two clien
   assert.equal(r.isError, true);
   assert.match(r.text, /plain: an MQTT interface is a network's: a Pico W's/);
 });
+
+test('#5910 edit_system keeps to the project\'s profile: an Embedded / SoC project\'s System refuses a terminal and a broker (nothing written); a System project\'s takes both; an FPGA project\'s System document, no rule', async () => {
+  await ok('new_project', { name: 'emb', profile: 'embedded' });
+  const P = await import('../server/projects.js');
+  const file = 'emb.sys.json', at = path.join(P.projectDir('emb'), file), before = fs.readFileSync(at, 'utf8');
+  for (const kind of ['terminal', 'broker']) {
+    const r = await call('edit_system', { project: 'emb', file, edits: [{ action: 'add_node', fields: { kind: 'mcu', id: 'uno' } }, { action: 'add_node', fields: { kind, id: 'x' } }] });
+    assert.deepEqual([r.isError, r.text], [true, `edit_system: edit 1 (add_node): an Embedded / SoC project's System has no ${kind} node (Embedded / SoC allows design, circuit, fpga, mcu: Design Properties' Project Kind changes it) (nothing written)`]);
+  }
+  assert.equal(fs.readFileSync(at, 'utf8'), before, 'nothing written');
+  const m = await ok('edit_system', { project: 'emb', file, edits: [{ action: 'add_node', fields: { kind: 'mcu', id: 'uno' } }] });
+  assert.deepEqual([m.data.edits, m.data.warnings], [['add_node uno'], []]);
+  // (a System project: a terminal and a broker; the uart example, an FPGA project: its System document has no rule)
+  await ok('new_project', { name: 'sys', profile: 'system' });
+  const s = await ok('edit_system', { project: 'sys', file: 'sys.sys.json', edits: [{ action: 'add_node', fields: { kind: 'terminal', id: 't' } }, { action: 'add_node', fields: { kind: 'broker', id: 'b' } }] });
+  assert.deepEqual(s.data.edits, ['add_node t', 'add_node b']);
+  await ok('new_project_from_example', { name: 'fp', example: 'uart' });
+  await ok('write_file', { project: 'fp', path: 'x.sys.json', text: JSON.stringify({ format: 'silinx-system', version: 2, name: 'x', nodes: [], links: [] }, null, 2) });
+  assert.deepEqual((await ok('edit_system', { project: 'fp', file: 'x.sys.json', edits: [{ action: 'add_node', fields: { kind: 'terminal', id: 't' } }] })).data.edits, ['add_node t']);
+});
