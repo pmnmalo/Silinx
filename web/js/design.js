@@ -142,7 +142,7 @@ export function renderHierarchy() {
   };
   for (const r of roots) addModule(devItem.ul, r, null, 0, r);
   // (a Board project on a Zynq board: its processing system's row, its program's files, #4686)
-  const ps = !sysRow && !sim ? psBranch(treeItem, fileRow) : null;
+  const ps = !sysRow && !sim ? psBranch(treeItem, fileRow, null, select) : null;
   if (ps) devItem.ul.append(ps.li);
   // (a System project's nodes, each its branch: its module's rows, its files', #5414)
   // (grouped by node, #5488: each node's folder's root modules under it, the others' under the System)

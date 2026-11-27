@@ -15,6 +15,7 @@ import { RUN_KINDS } from '/core/system-alone.js';
 import { nodeConstraintsProcs } from './system-constraints-ui.js';
 import { nodeModelProcs } from './system-emulate-ui.js';
 import { unprogrammed } from './system-implement-tree.js';
+import { psProcesses } from './zynq-ps-ui.js';
 
 // the node of a node's row, as its System describes it
 const nodeOf = sel => shownSystem()?.system?.nodes.find(n => n.id === sel.node) || { id: sel.node, kind: sel.kind, board: sel.board, lang: sel.lang };
@@ -67,6 +68,8 @@ export function systemProcesses(sel, view, { check, rtl }) {
       ...FLOW.map(([id, label, steps]) => ({ id, label, ico: 'process', run: impl(sel.node, steps, label) })),
       { id: 'node-program', label: 'Program Node', ico: 'board', run: program(sel.node) },   // (on its board over JTAG, #5447)
     ] : []),
+    // (a Zynq node's PS program, #4687: web/js/zynq-ps-ui.js)
+    ...psProcesses(sel),
     // (an Arduino node's C or C++, #5503, a PIC24's C and assembly, #5482: web/js/system-firmware-ui.js)
     ...(sel.kind === 'mcu' && !firmwareRefusal({ id: sel.node, kind: sel.kind, board: sel.board, lang: sel.lang }) ? [
       { id: 'node-firmware', label: 'Compile Firmware', ico: 'process', run: async () => (await import('./system-firmware-ui.js')).runNodeFirmware(sel.node, sel.file, sel.board) },

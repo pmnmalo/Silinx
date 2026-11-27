@@ -33,6 +33,7 @@ import { syncState } from './state-sync.js';
 import { cState } from './state-c.js';
 import { runState } from './state-run.js';
 import { systemProcesses } from './system-processes.js';
+import { psProcesses } from './zynq-ps-ui.js';
 import { systemEmulateProcesses } from './system-emulate-ui.js';
 import { systemSimulateProcesses } from './system-simulate-ui.js';
 import { systemImplementProcesses } from './system-implement-tree.js';
@@ -99,6 +100,9 @@ function selectionProcesses(sel, view) {
     { id: 'ucf-check', label: 'Check Constraints', ico: 'process', run: () => checkUcfFile(sel.file) },
     { id: 'pins', label: 'I/O Pin Planning', ico: 'pins', run: () => openPinPlanner() },
   ];
+  // (a Zynq board's PS program: its PS row, a Board project's ps/ file, #4687)
+  const ps = psProcesses(sel);
+  if (ps.length) return ps;
   if (sel.type !== 'module') return [{ id: 'none', label: 'No processes for the selected item', ico: 'process', disabled: true }];
   const mod = sel.module;
   // a C module: its C simulation, co-simulation and report first (#1531)

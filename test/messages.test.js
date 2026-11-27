@@ -134,6 +134,7 @@ const PRODUCERS = {
   // (a System node's implementation, #5446: its run states its source, startRun's, as its process is named by its node)
   'web/js/system-implement-ui.js': {},
   'web/js/system-firmware-ui.js': {},
+  'web/js/zynq-ps-ui.js': {},   // (a Zynq's Compile PS Program, #4687: a run of its own, as a node's firmware)
   'web/js/system-build-ui.js': {},   // (a System's Build Plan and Build All, #5489: runs of their own)   // (an Arduino node's Compile Firmware, #5503: a run of its own, as a node's implementation)
   'web/js/system-program-ui.js': {},   // (a System's Program All and Program Node, #5489, #5584: a run of its own, Implement's)
   'web/js/tasks-check.js': { 'Check Schematic': 'check', 'Try it': 'check', 'Validate': 'check', 'Check State Diagram': 'check', 'Check Petri Net': 'check', 'Check Circuit': 'check' },
