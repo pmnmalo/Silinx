@@ -312,7 +312,7 @@ written) or `circuitpython`: Adafruit's CircuitPython (10.3.2, MIT), pinned and 
   `code.py` and its folder's other `.py` files to the CIRCUITPY drive mounted (macOS `/Volumes`, Linux's media folders,
   Windows' drives; told by its `boot_out.txt`); CircuitPython runs it again. None mounted, or the browser edition: the
   console says how to copy them by hand.
-- **The example `uart-pico`** is `uart-avr`'s System with a Pico on CircuitPython in the Arduino's place.
+- **The example `uart-fpga-pico`** is `uart-avr`'s System with a Pico on CircuitPython in the Arduino's place.
 
 ### The ESP32
 
@@ -427,7 +427,7 @@ it needs the emulation.
   whose pin a link drives is not one), its potentiometer R6 and its temperature sensor set on the board's model; the
   MCP's `simulate` with `controls` sets them (`S3` on, `R6` a value from 0 to 1, `TC1047A` in °C) and says what the
   board shows. The static editions bundle silinx-pic24 in the System's worker. Its parts still to come (the plan in
-  #5484): the board as a circuit's part, SPI and I²C as links. The **uart-pic24** example is its System for the course
+  #5484): the board as a circuit's part, SPI and I²C as links. The **uart-fpga-pic24** example is its System for the course
   (below, Example systems for a course).
 - **XC16 in the browser, an experiment** (#5491). XC16 is GCC 4.5.1 with Microchip's pic30 back end and binutils,
   whose GPL source Microchip publishes ("MPLAB XC16 C-Compiler Source"); the native build from it already needs
@@ -1020,7 +1020,7 @@ The local server does the same for the MCP's `serial_terminal` (`server/serial-m
    The broker is a node of Silinx's. It teaches IoT and topics.
 5. **Precise PWM.** The AVR computes the servos' positions; the FPGA generates eight exact PWMs.
 6. **Zynq.** The A9's C writes the student's module's AXI-Lite registers.
-7. **`uart-pic24`** (#5484). The PIC24 course's board, the Explorer 16/32, with an FPGA: the PIC24 writes its title on
+7. **`uart-fpga-pic24`** (#5484). The PIC24 course's board, the Explorer 16/32, with an FPGA: the PIC24 writes its title on
    its LCD, sends "Hi from PIC24!" over UART (UART2 on the USB-UART's pins through PPS, 9600 baud), and shows on the
    LCD's second row each byte the FPGA echoes back or sends (its BTN0: "Hello from Silinx!"), the last one on its LEDs;
    the FPGA (the uart example's module) shows them on its LEDs. Both sides are at 3.3 V: no level shifter. Its firmware
@@ -1032,12 +1032,12 @@ The local server does the same for the MCP's `serial_terminal` (`server/serial-m
    answer in a sixteenth of the SPI clock (3.125 MHz by default: 20 ns, said in the console), so that the FPGA reads each
    bit as the converter puts it out; a faster SCK is the circuit node's SPI clock, in its Properties (`spiHz`). It
    teaches SPI, an A/D converter's code (⌊VIN × 4096 / VCC⌋) and multiplexed displays.
-9. **`uart-pico`** (#5697). `uart-avr` with a Raspberry Pi Pico on CircuitPython: its `pico/code.py` sends "Hello from the
+9. **`uart-fpga-pico`** (#5697). `uart-avr` with a Raspberry Pi Pico on CircuitPython: its `pico/code.py` sends "Hello from the
    Pico!" over `busio.UART` (GP0/GP1, 9600 baud) and prints each line the FPGA echoes, its LED toggling; the FPGA's BTN0
    message is printed too. Both sides at 3.3 V. The FPGA's first byte is the one it read while the Pico booted, its TX held
    low by the RP2040's pull-down at reset: echoed before the Pico's UART is on, as on the boards. It teaches CircuitPython's
    `busio`, `board` and `digitalio` and its CIRCUITPY drive.
-10. **`uart-esp32`** (#5495). An ESP32 DevKitC in MicroPython with an FPGA: its `esp/main.py` sends "Hello from ESP32!"
+10. **`uart-fpga-esp32`** (#5495). An ESP32 DevKitC in MicroPython with an FPGA: its `esp/main.py` sends "Hello from ESP32!"
     over UART (UART(2), GPIO17 and GPIO16, 9600 baud) and prints each byte it receives, the FPGA's echo and its BTN0's
     "Hello from Silinx!", in its console; the FPGA (the uart example's module) shows them on its LEDs. Both sides at 3.3 V.
     It teaches a UART from Python, the same program on the real board.

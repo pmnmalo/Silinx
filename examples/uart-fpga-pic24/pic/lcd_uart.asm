@@ -1,4 +1,4 @@
-; lcd_uart.asm: the Explorer 16/32's firmware of the uart-pic24 example (a PIC24FJ1024GB610, Fcy 2 MHz: the FRC
+; lcd_uart.asm: the Explorer 16/32's firmware of the uart-fpga-pic24 example (a PIC24FJ1024GB610, Fcy 2 MHz: the FRC
 ; divided, as its configuration words are erased but the watchdog's, off), its .hex made from it. UART2 at 9600 baud,
 ; 8N1, on the USB-UART's pins through PPS (U2RX on RP10, RF4; U2TX on RP17, RF5), linked to the FPGA: it writes
 ; "PIC24 + FPGA" on the LCD's first row, sends "Hi from PIC24!" CR LF to the FPGA, then shows each byte it receives

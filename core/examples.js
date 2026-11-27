@@ -7,7 +7,7 @@
 export const EXAMPLE_ORDER = ['gates', 'breadboard', 'traffic', 'blinky', 'pong', 'stopwatch', 'clock', 'vga', 'isqrt', 'uart', 'micro80', 'lock'];
 
 /** The System examples, in their order after the FPGA ones (core/project-kind.js SYSTEM_EXAMPLES, #5214). */
-export const SYSTEM_ORDER = ['uart-avr', 'spi-avr', 'i2c-avr', 'regs-avr', 'uart-pic24', 'adc-pmod', 'uart-pico', 'uart-esp32'];
+export const SYSTEM_ORDER = ['uart-avr', 'spi-avr', 'i2c-avr', 'regs-avr', 'uart-fpga-pic24', 'adc-pmod', 'uart-fpga-pico', 'uart-fpga-esp32'];
 
 /** The Circuit versions of the FPGA examples (#5757's 4a, roadmap #5753), Circuit projects of their own: drawings only (a
  *  schematic of the palette's symbols, state diagrams, truth tables, an ASM chart, a Petri net, a breadboard), no board,
@@ -30,3 +30,10 @@ export function orderExamples(names) {
   const rank = n => { const i = known.indexOf(n); return i < 0 ? known.length : i; };
   return [...names].sort((a, b) => rank(a) - rank(b) || (a < b ? -1 : a > b ? 1 : 0));
 }
+
+/** The examples renamed (#5894): the System examples of the uart example's FPGA with a microcontroller, now
+ *  uart-fpga-<board>, their short names the processor boards' own uart examples'. */
+export const EXAMPLE_ALIASES = { 'uart-pic24': 'uart-fpga-pic24', 'uart-pico': 'uart-fpga-pico', 'uart-esp32': 'uart-fpga-esp32' };
+/** An example's name as given (a link's, a short link's, the MCP's, New Project's): its new name if it is an old one
+ *  that no example has now (#5894), else as it is. */
+export const exampleName = name => ([...EXAMPLE_ORDER, ...CIRCUIT_ORDER, ...SYSTEM_ORDER].includes(name) ? name : EXAMPLE_ALIASES[name] ?? name);

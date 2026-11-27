@@ -9,6 +9,7 @@
 import fs from 'node:fs';
 import fsp from 'node:fs/promises';
 import path from 'node:path';
+import { exampleName } from '../core/examples.js';
 import * as P from './projects.js';
 import { toolError, readProject, STR, PROJECT } from './mcp-util.js';
 import { projectNameError } from '../core/project-name.js';
@@ -132,17 +133,18 @@ export const LINK_TOOLS = [
           warnings.push(...r.warnings.filter(w => !d.warnings.includes(w)).map(w => `WARNING: ${w}`), ...r.missing.map(m => `WARNING: ${m}: listed by the project, not found`));
         };
       } else {
-        const dir = path.join(P.EXAMPLES_DIR, source.name);
-        if (!fs.existsSync(path.join(dir, 'silinx.json'))) throw toolError(`the link names no example '${source.name}' (list_examples)`);
-        pjName = name || source.name;
-        ({ project, files } = P.exampleFiles(source.name));
+        const example = exampleName(source.name);   // (an example's old name, #5894)
+        const dir = path.join(P.EXAMPLES_DIR, example);
+        if (!fs.existsSync(path.join(dir, 'silinx.json'))) throw toolError(`the link names no example '${example}' (list_examples)`);
+        pjName = name || example;
+        ({ project, files } = P.exampleFiles(example));
         const { BOARDS } = await import('./devices.js');
         if (board && !BOARDS.some(b => b.id === board)) throw toolError(`the link's board '${board}' is not a board (list_devices)`);
         const other = board && board !== project.board;
         // (on another board: New Project from the example for it, its pins the board's)
         make = async () => {
-          if (other) { const { resolveBoard } = await import('./devices.js'); await P.createProject({ name: pjName, template: source.name, board, device: resolveBoard(board).device, madeBy: 'mcp' }); }
-          else await P.createProject({ name: pjName, template: source.name, madeBy: 'mcp' });   // (untrusted, #2981)
+          if (other) { const { resolveBoard } = await import('./devices.js'); await P.createProject({ name: pjName, template: example, board, device: resolveBoard(board).device, madeBy: 'mcp' }); }
+          else await P.createProject({ name: pjName, template: example, madeBy: 'mcp' });   // (untrusted, #2981)
         };
         if (other) project = { ...project, board };
       }

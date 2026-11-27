@@ -27,8 +27,9 @@ first, with three cards, and a project can move to another mode later with **Pro
   (an assembly program for an Arduino, a MicroPython or CircuitPython one for a Pico, MicroPython for an ESP32; the
   PIC24 starts with none: its `.hex` is MPLAB X's). Select the board's row in the Design pane for its **Emulate Node**,
   **Simulate Node** and **Program Node**.
-- **System**: an empty System, or a System example (uart-avr, spi-avr, i2c-avr, regs-avr, uart-pic24, adc-pmod,
-  uart-pico).
+- **System**: an empty System, or a System example (uart-avr, spi-avr, i2c-avr, regs-avr, uart-fpga-pic24, adc-pmod,
+  uart-fpga-pico, uart-fpga-esp32: named uart-pic24, uart-pico and uart-esp32 before, names that still open them, in a
+  link too).
 
 Systems, and with them the processor boards, are in the development build until they are stable.
 

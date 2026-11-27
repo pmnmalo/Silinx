@@ -1,7 +1,7 @@
 {
   "format": "silinx-system",
   "version": 2,
-  "name": "uart_pico",
+  "name": "uart_fpga_pico",
   "nodes": [
     {
       "id": "pico",

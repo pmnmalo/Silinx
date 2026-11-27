@@ -98,7 +98,10 @@ test('folder: a project from each example is the server\'s, file for file', asyn
     await P.createProject({ name, template: t });
     assert.deepEqual(under(await dump(root), name), sorted(diskTree(P.projectDir(name))), t);
   }
-  assert.deepEqual(Object.keys(EXAMPLES).sort(), ['blinky', 'breadboard', 'clock', 'gates', 'i2c-avr', 'isqrt', 'lock', 'micro80', 'pong', 'regs-avr', 'spi-avr', 'stopwatch', 'traffic', 'uart', 'uart-avr', 'uart-pic24', 'vga', 'adc-pmod', 'uart-pico', 'uart-esp32', 'traffic-circuit', 'blinky-circuit', 'stopwatch-circuit', 'lock-circuit'].sort());   // (the Circuit versions, #5779)
+  assert.deepEqual(Object.keys(EXAMPLES).sort(), ['blinky', 'breadboard', 'clock', 'gates', 'i2c-avr', 'isqrt', 'lock', 'micro80', 'pong', 'regs-avr', 'spi-avr', 'stopwatch', 'traffic', 'uart', 'uart-avr', 'uart-fpga-pic24', 'vga', 'adc-pmod', 'uart-fpga-pico', 'uart-fpga-esp32', 'traffic-circuit', 'blinky-circuit', 'stopwatch-circuit', 'lock-circuit'].sort());   // (the Circuit versions, #5779)
+  // (an example's old name, #5894: the browser edition's store makes the renamed one)
+  await ops.create({ name: 'Ex_old', template: 'uart-pico' });
+  assert.ok(Object.keys(under(await dump(root), 'Ex_old')).includes('uart_fpga_pico.sys.json'));
 });
 
 // (#3710) an example made for another board (the Mimas V2: 100 MHz, its buttons and switches active low): its top's

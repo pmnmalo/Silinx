@@ -5,7 +5,7 @@ import fsp from 'node:fs/promises';
 import path from 'node:path';
 import * as P from './projects.js';
 import { readWithin } from './paths.js';
-import { orderExamples, exampleModes } from '../core/examples.js';
+import { orderExamples, exampleModes, exampleName } from '../core/examples.js';
 import { nameUnnamed } from '../core/schname.js';
 import { SYSTEM_KIND, DESIGN_KIND, isSystemProject, isDesignOnly, newSystemKind, offeredExamples } from '../core/project-kind.js';
 import { PROFILES, profileOf } from '../core/project-profile.js';
@@ -105,7 +105,8 @@ export const PROJECT_TOOLS = [
     description: 'Make a new project in the workspace from an example (list_examples), optionally for another board (list_devices: basys2, nexys2, basys3…): its pins are then the board\'s.',
     inputSchema: { type: 'object', properties: { name: STR('The new project\'s name: a letter, then up to 63 letters, digits, - and _.'), example: STR('The example (list_examples).'), mode: { type: 'string', enum: ['circuit', 'board', 'system'], description: 'Its mode (list_examples).' }, board: STR('The board (list_devices; default: the example\'s).'), variant: STR('The board\'s variant (default: the board\'s), e.g. 100 or 250 for the Basys2.') }, required: ['name', 'example'], additionalProperties: false },
     annotations: { readOnlyHint: false, destructiveHint: false },
-    async run({ name, example, board, variant, mode: given }) {
+    async run({ name, example: asked, board, variant, mode: given }) {
+      const example = exampleName(asked);   // (an example's old name, #5894)
       // (a Circuit version, #5757: Circuit mode, its only one, unless another is given)
       const mode = given ?? (/^[a-z0-9_-]+$/i.test(String(example || '')) && exampleModes(example).length === 1 && exampleModes(example)[0] === 'circuit' ? 'circuit' : undefined);
       // (one of its modes, #5757: a Circuit example made with no board)
