@@ -86,7 +86,7 @@ async function req(method, url, body, { text = false, bytes = false, headers = {
   if (!r.ok) {
     let msg = `${r.status} ${r.statusText}`, more = {};
     // (git's failures carry a hint for the console, and a conflict its files: #3195)
-    try { const j = await r.json(); if (j.error) msg = j.error; if (j.hint) more.hint = j.hint; if (j.files) more.files = j.files; if (j.drawings) more.drawings = j.drawings; if (j.texts) more.texts = j.texts; if (j.resolvable !== undefined) more.resolvable = j.resolvable; if (j.existing) more.existing = j.existing; if (j.project && j.etag) Object.assign(more, { project: j.project, etag: j.etag }); } catch { /* not json */ }
+    try { const j = await r.json(); if (j.error) msg = j.error; if (j.hint) more.hint = j.hint; if (j.files) more.files = j.files; if (j.drawings) more.drawings = j.drawings; if (j.texts) more.texts = j.texts; if (j.resolvable !== undefined) more.resolvable = j.resolvable; if (j.existing) more.existing = j.existing; if (j.project && j.etag) Object.assign(more, { project: j.project, etag: j.etag }); if (j.tag !== undefined) more.tag = j.tag; } catch { /* not json */ }
     throw Object.assign(new Error(msg), { status: r.status }, more);
   }
   if (text) return r.text();
@@ -150,7 +150,8 @@ export const api = {
   readFile: (name, path) => req('GET', `/api/projects/${enc(name)}/file?path=${enc(path)}`, undefined, { text: true }),
   // a file's bytes (a firmware's .elf, #5198): a Uint8Array
   readFileBytes: (name, path) => req('GET', `/api/projects/${enc(name)}/file?path=${enc(path)}&bytes=1`, undefined, { bytes: true }),
-  writeFile: (name, path, text) => req('PUT', `/api/projects/${enc(name)}/file?path=${enc(path)}`, text),
+  // (ifMatch: the tag of the text read, core/text-tag.js, #5915: written over it only, else a 412 whose `tag` is the text now's)
+  writeFile: (name, path, text, { ifMatch = null } = {}) => req('PUT', `/api/projects/${enc(name)}/file?path=${enc(path)}`, text, ifMatch ? { headers: { 'If-Match': ifMatch } } : {}),
   renameFile: (name, from, to) => req('POST', `/api/projects/${enc(name)}/rename`, { from, to }),
   // (trash: the user's Delete File / Delete Folder, into the workspace's .trash -> { trashed }, #3364)
   deleteFile: (name, path, { trash = false } = {}) => req('DELETE', `/api/projects/${enc(name)}/file?path=${enc(path)}${trash ? '&trash=1' : ''}`),

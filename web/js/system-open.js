@@ -7,6 +7,7 @@ import { api } from './api.js';
 import { h, popupMenu } from './ui.js';
 import { S, app, activateDoc, findDoc, openDoc, setDirty, viewRoots } from './app.js';
 import { log, logError } from './console.js';
+import { changedMeanwhile, textTag } from '/core/text-tag.js';
 import { editorProblems } from './editor-problems.js';
 import { renderHierarchy } from './design.js';
 import { designState } from './state-design.js';
@@ -135,8 +136,8 @@ export async function openSystem(path) {
   const id = `sys:${path}`;
   if (findDoc(id)) return activateDoc(findDoc(id));
   const pj = S.project.name;
-  let r;
-  try { r = readSystem(await api.readFile(pj, path)); }
+  let r, tag;
+  try { const text = await api.readFile(pj, path); tag = textTag(text); r = readSystem(text); }
   catch (e) { logError(`cannot open ${path}: ${e.message}`); return; }
   if (r.error) { logError(`cannot open ${path}: ${r.error}`); return; }
   const { mountSystemEditor } = await import('./system-editor.js');
@@ -174,10 +175,23 @@ export async function openSystem(path) {
       return {
         save: async () => {
           const model = ed.getModel();
+          // (changed meanwhile, #5915: nothing moved nor written; said; saved again, the user's own kept)
+          const now = await api.readFile(S.project.name, path).catch(() => null);
+          const changed = changedMeanwhile(path, now, tag);
+          if (changed) { tag = textTag(now); logError(changed); return; }
           // (the nodes' folders first, #5488: one that cannot be renamed, the System not written)
           await saveNodeFolders(saved, model, ed.renames());
           const text = writeSystem(model);
-          await api.writeFile(S.project.name, path, text); setDirty(d, false);
+          // (over the System it read only, #5915: changed meanwhile by edit_system or another tab, not written over and
+          // said, still to save; saved again, the user's own written over it, as the message says)
+          try { await api.writeFile(S.project.name, path, text, { ifMatch: tag }); } catch (e) {
+            if (e.status !== 412) throw e;
+            tag = e.tag ?? null;
+            logError(e.message);
+            return;
+          }
+          tag = textTag(text);
+          setDirty(d, false);
           saved = model; ed.savedAs();
           // (a Zynq node's PS program named and not in the project: its starter, as edit_system writes it, #4686)
           const starters = psWrites(model, filesState.fileTree || []);

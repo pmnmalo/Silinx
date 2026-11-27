@@ -29,6 +29,7 @@ import { langOfPath } from '../../core/file-kinds.js';
 import { registerWritten, renameEntries, deleteEntries } from '../../core/project-entries.js';
 import { expiredTrash } from '../../core/trash.js';
 import { downgradeRefusal, migratingWrite } from '../../core/doc-format.js';
+import { changedMeanwhile, textTag } from '../../core/text-tag.js';
 
 export const NAME_RE = PROJECT_NAME_RE;   // (core/project-name.js, #3538)
 // the site's development edition (https://pmnmalo.github.io/Silinx/dev/, built from main): its
@@ -694,10 +695,13 @@ export function projectOps(getStore, examples = {}, { beforeMigrate = null } = {
       if (!b) fail(`${key}: the browser's storage keeps text files only: an .elf needs a workspace folder (File ▸ Open Workspace Folder…), or give the firmware's .hex`);
       return b;
     },
-    writeFile: async (name, path, text) => {
+    writeFile: async (name, path, text, { ifMatch = null } = {}) => {
       const p = await S().load(name);
       // written again: back in the project
       path = notDescriptor(await spelled(p, cleanPath(path)));
+      // (over the text the writer read only, its tag given, as the local server's, #5915)
+      const changed = changedMeanwhile(path, p.files[path] ?? null, ifMatch);
+      if (changed) throw Object.assign(new Error(changed), { status: 412, tag: textTag(p.files[path] ?? null) });
       // (a name by the import gate's rules, as the local server's, #3414; build/'s files by the rest of their path)
       const gated = normalizePath(/^build\//.test(path) ? `b${path.slice(5)}` : path);   // (build/x as b/x)
       if (gated.reason) fail(`'${path}': not written: ${gated.reason}`);
@@ -710,7 +714,7 @@ export function projectOps(getStore, examples = {}, { beforeMigrate = null } = {
       await S().writeFile(name, path, text);
       const json = clone(p.json);
       if (registerWritten(json, path)) await S().saveJson(name, json);   // (core/project-entries.js, as the server's, #4733)
-      return { ok: true };
+      return { ok: true, tag: textTag(text) };
     },
     renameFile: async (name, from, to) => {
       const p = await S().load(name);

@@ -18,6 +18,7 @@ import { applyNodeFolders } from './system-folders.js';
 import { constraintsTexts } from './system-constraints.js';
 import { withNodePins, pinsToConstraints } from '../core/system-constraints.js';
 import { psWrites } from '../core/zynq-ps.js';
+import { changedMeanwhile, textTag } from '../core/text-tag.js';
 
 // the circuit nodes' circuits ({ path: circuit }; one that cannot be read left out: its node's check says so, #5215)
 async function projectCircuits(name, sys, files) {
@@ -93,7 +94,7 @@ export const SYSTEM_TOOLS = [
       delete_folders: { type: 'boolean' } }, required: ['project', 'file', 'edits'], additionalProperties: false },
     annotations: { readOnlyHint: false, destructiveHint: true, idempotentHint: false },
     async run({ project: name, file, edits, delete_folders: deleteFolders = false }) {
-      let { system } = await readSystemFile(name, file);
+      let { system, text: read } = await readSystemFile(name, file);
       const profile = systemRuleProfile(await readProject(name));   // (a node kind its profile does not allow refused, #5910)
       const before = system, renames = [];
       if (!Array.isArray(edits) || !edits.length) throw toolError('edits: a list of { action, … }');
@@ -105,6 +106,9 @@ export const SYSTEM_TOOLS = [
         system = r.system;
         said.push(`${e.action} ${r.id}`);
       }
+      // (changed meanwhile by another writer, the System editor's save, #5915: nothing moved nor written, as the page's)
+      const changed = changedMeanwhile(file, await P.readFile(name, file).catch(() => null), textTag(read));
+      if (changed) throw toolError(`${changed} (nothing written: run edit_system again)`);
       // (the nodes' folders first, #5488: one that cannot be renamed writes nothing)
       said.push(...await applyNodeFolders(name, layoutPlan(before, system, renames), { deleteFolders: !!deleteFolders }));
       // (its pins, edited or of before, in its FPGA nodes' constraints files, #5581)
@@ -112,7 +116,7 @@ export const SYSTEM_TOOLS = [
       // (a Zynq board's PS's program named and not in the project: its starter, #4686)
       for (const w of psWrites(system, await P.fileTree(name))) { await P.writeFile(name, w.path, w.text); said.push(`${w.path}: the PS's starter program`); }
       const text = writeSystem(system);
-      await P.writeFile(name, file, text);
+      try { await P.writeFile(name, file, text, { ifMatch: textTag(read) }); } catch (e) { if (e.status === 412) throw toolError(`${e.message} (run edit_system again)`); throw e; }
       const { lines, errors, warnings } = await checkSystemFile(name, file, text);
       return { text: [...said, ...lines].join('\n'), data: { project: name, file, edits: said, ok: !errors.length, errors, warnings }, isError: false,
         untrusted: 'the System\'s names and its problems, which quote them' };

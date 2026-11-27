@@ -409,7 +409,7 @@ export const api = {
     }
   },
   readFileBytes: (name, path) => ops.readFileBytes(name, path),   // (a firmware's .elf, #5198)
-  writeFile: async (name, path, text) => (/^build\//.test(path) ? ops.writeFile(name, path, text) : changedProject(name, await ops.writeFile(name, path, text))),
+  writeFile: async (name, path, text, opts = {}) => (/^build\//.test(path) ? ops.writeFile(name, path, text, opts) : changedProject(name, await ops.writeFile(name, path, text, opts))),
   deleteFile: async (name, path, opts) => changedProject(name, await ops.deleteFile(name, path, opts)),
   sources: name => ops.sources(name),
   devices: async () => getDeviceDb(),

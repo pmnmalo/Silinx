@@ -12,6 +12,7 @@ import zlib from 'node:zlib';
 import { scratchEnv, startApp, makeFakes, sleep, HERE, POSIX_ONLY } from './server-helpers.js';
 import { createZip, readZip, textOf } from '../core/zip.js';
 import { spawnSync } from 'node:child_process';
+import { textTag } from '../core/text-tag.js';
 const hasOpenssl = () => spawnSync('openssl', ['version'], { stdio: 'ignore' }).status === 0;
 
 const codec = { deflate: d => zlib.deflateRawSync(d), inflate: d => zlib.inflateRawSync(d) };
@@ -195,7 +196,7 @@ test('files: a body that is neither text nor JSON with a string text is refused,
 test('files: write (text and JSON bodies) registers HDL with a role, read back, sources', async () => {
   await call('POST', '/projects', { name: 'Files' });
   let r = await call('PUT', '/projects/Files/file?path=src/top.v', 'module top; endmodule\n');
-  assert.deepEqual(r.body, { ok: true });
+  assert.deepEqual(r.body, { ok: true, tag: textTag('module top; endmodule\n') });   // (its text's tag, #5915)
   r = await call('PUT', '/projects/Files/file?path=src/pkg.vhd', { text: 'package p is end;\n' });
   assert.equal(r.status, 200);
   await call('PUT', '/projects/Files/file?path=sim/check.v', 'module check; endmodule\n');
@@ -236,7 +237,7 @@ test('files: a hidden file or folder is not written through the file route (#303
     assert.deepEqual([r.status, r.body.error], [400, `'${p}': not written: hidden file or folder ('${seg}')`], p);
   }
   assert.deepEqual(listed(), before);
-  assert.deepEqual((await call('PUT', '/projects/Hid/file?path=build/open/top.json', '{}\n')).body, { ok: true });
+  assert.deepEqual((await call('PUT', '/projects/Hid/file?path=build/open/top.json', '{}\n')).body, { ok: true, tag: textTag('{}\n') });
   assert.equal((await call('GET', '/projects/Hid/file?path=build/open/top.json')).body, '{}\n');
 });
 

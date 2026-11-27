@@ -29,6 +29,7 @@ import { langOfPath } from '../core/file-kinds.js';
 import { registerWritten, renameEntries, deleteEntries } from '../core/project-entries.js';
 import { trashTime, expiredTrash } from '../core/trash.js';
 import { formatVersion, downgradeRefusal, migratingWrite } from '../core/doc-format.js';
+import { changedMeanwhile, textTag } from '../core/text-tag.js';
 import { noteWritten, noteRemoved, noteMoving } from './own-writes.js';
 import { UNRECORDED } from '../core/trust.js';
 import * as trustStore from './trust-store.js';
@@ -669,7 +670,7 @@ export async function readFileBytes(name, rel) {
   catch (e) { throw e.status === 400 ? new HttpError(400, e.message) : new HttpError(404, `file '${rel}' not found`); }
 }
 
-export async function writeFile(name, rel0, text) {
+export async function writeFile(name, rel0, text, { ifMatch = null } = {}) {
   const dir = projectDir(name);
   const full = await spelledJoin(dir, rel0);
   if (typeof text !== 'string') throw new HttpError(400, 'text: the whole text of the file');
@@ -691,6 +692,12 @@ export async function writeFile(name, rel0, text) {
   await withProjectLock(name, async () => {
     await requireProject(name);
     if ((await fs.stat(full).catch(() => null))?.isDirectory()) throw new HttpError(400, `'${rel}' is a folder, not a file`);
+    // (written over the text the writer read only, its tag given, #5915: else a 412 with the text now's tag)
+    if (ifMatch) {
+      const now = await fs.readFile(full, 'utf8').catch(() => null);
+      const changed = changedMeanwhile(rel, now, ifMatch);
+      if (changed) throw Object.assign(new HttpError(412, changed), { tag: textTag(now) });
+    }
     // (a drawing a newer Silinx saved never written over in an older format: what it added would be lost, #4756)
     if (formatVersion(rel) !== null) {
       const was = await fs.readFile(full, 'utf8').catch(() => null);
