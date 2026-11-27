@@ -2,7 +2,7 @@
 // step with the Design pane's, the Design Summary, I/O Pin Planning, iMPACT (moved from web/js/app.js as they were, #4765).
 import { api } from './api.js';
 import { confirmDlg } from './ui.js';
-import { openOnlyDevice } from '/packages/silinx-fpga/src/parts.js';
+import { openOnlyDevice, quartusDevice } from '/packages/silinx-fpga/src/parts.js';
 import { commandError, commandInfo, commandWarning } from './console.js';
 import { FLOW_UP_TO, runImpl } from './implement.js';
 import { projectTool } from './processes.js';
@@ -112,5 +112,5 @@ export async function openImpact() {
   const { mountImpact } = await import('./impact.js');
   // (an open family's: its page, titled by its flow's programming (the iCE40's Program Flash, the ECP5's Program FPGA), no
   // iMPACT, #2298)
-  openDoc({ id: 'impact', title: openOnlyDevice(S.project?.device) ? projectTool().program?.title || 'iMPACT' : 'iMPACT', icon: 'impact', create: (el, d) => mountImpact(el, d) });
+  openDoc({ id: 'impact', title: openOnlyDevice(S.project?.device) || quartusDevice(S.project?.device) ? projectTool().program?.title || 'iMPACT' : 'iMPACT', icon: 'impact', create: (el, d) => mountImpact(el, d) });
 }

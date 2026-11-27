@@ -11,7 +11,7 @@ import { programFileState, implementFirstText } from './impact-file.js';
 import { pinsReady } from './pins-check.js';
 import { loadUcfText } from './processes.js';
 import { mountOpenProgram } from './program-open.js';
-import { openOnlyDevice } from '/packages/silinx-fpga/src/parts.js';
+import { openOnlyDevice, quartusDevice } from '/packages/silinx-fpga/src/parts.js';
 import { vendorFlashText } from '/core/vendor-flash.js';
 import { refusedProject, isTrusted } from '/core/trust.js';
 import { noWebUsb } from '/core/webusb-support.js';
@@ -25,8 +25,8 @@ export function mountImpact(el) {
   const page = h('div', { class: 'page' });
   el.append(page);
   // (an open family's: no JTAG chain, the iCE40's .bin into the board's SPI flash, the ECP5's .bit and the Gowin's .fs into
-  // the FPGA's SRAM, #2298)
-  if (openOnlyDevice(S.project?.device)) return mountOpenProgram(page);
+  // the FPGA's SRAM, #2298; an Intel FPGA's Quartus .rbf or .svf through its USB-Blaster, #5379)
+  if (openOnlyDevice(S.project?.device) || quartusDevice(S.project?.device)) return mountOpenProgram(page);
   const pj = S.project;
   const db = S.devices;
   let board = db?.boards.find(b => b.id === pj?.board) || null;
