@@ -737,7 +737,8 @@ server's `check_system` says them too, a line each after the System described (`
 data (`wires`).
 
 **The boards as the circuit's parts** (#5215, `core/circuit-boards.js`): the Circuit editor's Parts panel has a Boards
-group, the Arduino Uno and Nano, the ESP32 DevKitC (#5495), the Basys2 and the Nexys2, each as large as the board and with its real pins, drawn as
+group, the Arduino Uno and Nano, the ESP32 DevKitC (#5495), the Raspberry Pi Pico and Pico W (#5898: a DIP-40 across a
+breadboard's channel, its pins 1–20 and 40–21 0.7 inch apart; `web/js/emulator-pico.js` draws it), the Basys2 and the Nexys2, each as large as the board and with its real pins, drawn as
 the emulators draw it (#5366: the Board Emulator's Basys2 and Nexys2, their LEDs, switches, buttons and digits where it
 puts them; the System Emulator's Uno, Nano and DevKitC; `BOARD_ART` gives each drawing's size, pitch and pin 1, the part's body
 on the grid; the Pmods 0.9 inch apart, the Uno's headers where the real ones are). An
@@ -750,8 +751,8 @@ alone; a circuit as a System's node gives them to the System's nodes.
 **A circuit as a System's node** (#5215, `core/system-circuit.js`, `core/system-sim-circuit.js`): a node of kind
 `circuit` names a `.circ.json` of the project (the System editor's Circuit tool, its Properties' Circuit; the MCP's
 `edit_system`). It has no interfaces: its boards are the System's nodes their labels name (an Uno labelled `uno` is the
-node uno; no label, its id), and each board pin the circuit wires to something is a link. An Arduino's pin goes both
-ways (the AVR's pin is an input or an output as its program says; an input with its pull-up drives the circuit weakly);
+node uno; no label, its id), and each board pin the circuit wires to something is a link. A microcontroller's pin (an
+Arduino's, an ESP32's, a Pico's, #5898) goes both ways (the AVR's pin is an input or an output as its program says; an input with its pull-up drives the circuit weakly);
 an FPGA board's pin is the port of the node's module on that package pin, its direction the port's (an inout port is
 not joined yet). The scheduler runs the circuit's own simulation as a node, a wire of 1 µs each way. The check says a
 board that names no node or a node of another board, an FPGA pin on no port, a pin both a link's and the circuit's, and
@@ -760,6 +761,15 @@ lit) and a short. Its clocks tick at their frequency. The System Emulator draws 
 editor draws it (#5322): its LEDs lit from the run, a click on a switch or a DIP switch's lever turning it, a button
 held down while pressed; the MCP's `simulate` takes its switches and buttons as controls (`S1`, a lever `DIP1:2`) and
 says which of its lamps are lit.
+
+**A processor board's shield** (#5898, `core/processor-shield.js`): a Board project of an Arduino, a Pico or an ESP32
+alone (#5756) may have one circuit around its board, its shield: the circuit node `shield` of its System, its circuit
+`shield/shield.circ.json`, whose board part is the project's board labelled with its node's id (the board's row's Add
+Shield, the MCP's `edit_system` `add_shield`: a half breadboard, its supply and the board below it). The project stays a
+Board project; the Design pane's top row is the board, the shield's row under it; the board's Emulate Node and Simulate
+Node run the board with its shield (`withShield`); the mode changes keep it (up, a circuit node of the System; down to
+the board, its shield with it). The Explorer 16/32 has its own buttons and display, and no part for a circuit: no
+shield.
 
 A System drawn only as a circuit would lose the protocol level: the decoders, the speed and the links' checks.
 

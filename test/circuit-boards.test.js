@@ -113,7 +113,7 @@ test('#5495 the ESP32 DevKitC\'s pins: its board\'s GPIOs (the System\'s), each 
 });
 
 test('#5215 the boards in the library: after the parts, before the ICs; their details, their ids; not exported to KiCad', () => {
-  assert.deepEqual(PART_ORDER.filter((t) => PARTS[t].kind === 'board'), ['arduino-uno', 'arduino-nano', 'esp32-devkitc', 'fpga-basys2', 'fpga-nexys2']);
+  assert.deepEqual(PART_ORDER.filter((t) => PARTS[t].kind === 'board'), ['arduino-uno', 'arduino-nano', 'esp32-devkitc', 'pico', 'pico-w', 'fpga-basys2', 'fpga-nexys2']);   // (the Picos, #5898)
   assert.ok(PART_ORDER.indexOf('arduino-uno') > PART_ORDER.indexOf('probe') && PART_ORDER.indexOf('fpga-nexys2') < PART_ORDER.indexOf('7400'));
   const listed = partsList().find((x) => x.type === 'fpga-basys2');
   assert.deepEqual([listed.title, listed.kind, listed.board, listed.pins[0]], ['Digilent Basys2', 'board', 'basys2', { n: 1, name: 'JA1', dir: 'board', dx: 0, dy: 0, loc: 'B2', volts: 3.3 }]);
@@ -192,7 +192,7 @@ test('#5215 #5202 the boards are the Systems\': in a release not listed nor adde
     assert.equal(partsList().some((x) => x.kind === 'board'), false);
     assert.deepEqual(addPart(m, { type: 'arduino-uno', at: [0, 30] }), { error: `arduino-uno: ${SYSTEMS_OFF}` });
   } finally { setBuildChannel('dev'); }
-  assert.equal(partsList().filter((x) => x.kind === 'board').length, 5);
+  assert.equal(partsList().filter((x) => x.kind === 'board').length, 7);   // (the Picos, #5898)
   const r = addPart(m, { type: 'arduino-uno', at: [0, 30] });
   assert.deepEqual([r.id, r.model.parts.at(-1)], ['A1', { id: 'A1', type: 'arduino-uno', x: 0, y: 30 }]);
 });

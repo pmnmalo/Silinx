@@ -162,6 +162,7 @@ const MODE_LINES = [
   [/^its implementation, emulation and programming$/, 'a sua implementação, emulação e programação'],
   [/^its board the System's first node, (\S+) \((\S+)\), its files in its folder already$/, 'a sua placa o primeiro nó do Sistema, $1 ($2), os seus ficheiros já na sua pasta'],
   [/^its System document (\S+) rewritten with the node alone$/, 'o seu documento de Sistema $1 reescrito só com o nó'],
+  [/^its System document (\S+) rewritten with the node alone and its shield$/, 'o seu documento de Sistema $1 reescrito só com o nó e o seu shield'],   // (#5898)
 ];
 const modeLine = l => { const m = MODE_LINES.find(([re]) => re.test(l)); return m ? l.replace(m[0], m[1]) : l; };
 export const WIZARDS_PT_PATTERNS = [

@@ -64,6 +64,9 @@ const ABOUT = {
   'arduino-uno': "Its headers' pins, the board's (D0…D13, A0…A5; SDA and SCL are A4 and A5): its 5V, 3V3 and GND power the breadboard; its other pins are its program's, in a System (alone, they drive nothing).",
   'arduino-nano': "A DIP-30 that straddles a breadboard's channel, its pins the board's (D0…D13, A0…A7; A6 and A7 inputs only): its 5V, 3V3 and GND power the breadboard; its other pins are its program's, in a System (alone, they drive nothing).",
   'esp32-devkitc': "Its two headers' pins, 1 inch apart (one on each breadboard), the board's GPIOs (GPIO34…GPIO39 inputs only; the flash's SD0…SD3, CMD and CLK, and EN, not simulated): its 5V, 3V3 and GND power the breadboard, its I/O at 3.3 V; its other pins are its MicroPython program's, in a System (alone, they drive nothing).",
+  // (the Picos, #5898)
+  pico: "A DIP-40 that straddles a breadboard's channel, its pins the board's (GP0…GP22, GP26…GP28; RUN, ADC_VREF, 3V3_EN and VSYS not simulated): its VBUS (5 V), 3V3 and GND power the breadboard, its I/O at 3.3 V; its other pins are its MicroPython or CircuitPython program's, in a System or as a Board project's shield (alone, they drive nothing).",
+  'pico-w': "A DIP-40 that straddles a breadboard's channel, its pins the board's (GP0…GP22, GP26…GP28; RUN, ADC_VREF, 3V3_EN and VSYS not simulated): its VBUS (5 V), 3V3 and GND power the breadboard, its I/O at 3.3 V; its other pins are its MicroPython or CircuitPython program's, in a System or as a Board project's shield (alone, they drive nothing).",
   'fpga-basys2': "Its Pmod connectors' pins (JA1…, each its FPGA's package pin): its 3V3 and GND power the breadboard; its other pins are its design's, in a System (alone, they drive nothing).",
   'fpga-nexys2': "Its Pmod connectors' pins (JA1…, each its FPGA's package pin): its 3V3 and GND power the breadboard; its other pins are its design's, in a System (alone, they drive nothing).",
 };
