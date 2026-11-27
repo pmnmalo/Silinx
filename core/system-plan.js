@@ -32,10 +32,11 @@ export function describedNode(node) {
   return out;
 }
 
-/** The files an FPGA node is built from: its folder's (`files` the project's), but its test benches' (sim/) and a build/. */
+/** The files an FPGA node is built from: its folder's (`files` the project's), but its test benches' (sim/), a build/ and
+ *  a Zynq board's PS's program (ps/, #4686). */
 export const fpgaSources = (files, id) => files.filter(f => {
   const rel = relInNode(f, id);
-  return rel != null && !/^(build|sim)\//i.test(rel);
+  return rel != null && !/^(build|sim|ps)\//i.test(rel);
 }).sort();
 
 /** The files an Arduino node is built from: its sketch's (`files` the project's) and the drawings that make it (#5486). */

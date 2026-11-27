@@ -3,7 +3,8 @@
 // check is core/system-check.js. Isomorphic module (browser + Node).
 //
 //   { format: 'silinx-system', version: 1, name,
-//     nodes: [ { id, kind: 'fpga', module, board, variant?, constraints?: <its constraints file, in its folder>, lang, interfaces, x, y }
+//     nodes: [ { id, kind: 'fpga', module, board, variant?, constraints?: <its constraints file, in its folder>, ps?: <a Zynq
+//                board's PS's program, a .c of its folder's ps/, #4686>, lang, interfaces, x, y }
 //              { id, kind: 'mcu', board: 'arduino-uno' | 'arduino-nano' | 'explorer-1632' | 'pico' | 'esp32-devkitc', firmware: <a .hex / .elf of the project; a Pico's .py>, runtime?: 'circuitpython', lang, usb, interfaces, x, y }
 //              { id, kind: 'terminal', interfaces, x, y }
 //              { id, kind: 'circuit', circuit: <a .circ.json of the project>, spiHz?: <its SPI parts' SCK (Hz), #5384>, interfaces: [], x, y } ],
@@ -116,6 +117,8 @@ function normalNode(n) {
     // of before or an edit's, kept until it is saved: core/system-constraints.js pinsToConstraints)
     if (n.constraints) out.constraints = String(n.constraints);
     if (n.pins && typeof n.pins === 'object' && Object.keys(n.pins).length) out.pins = { ...n.pins };
+    // (a Zynq board's processing system's program, #4686: core/zynq-ps.js)
+    if (n.ps) out.ps = String(n.ps);
   } else if (out.kind === 'mcu') {
     out.board = n.board ?? null; out.firmware = n.firmware ?? null;
     if (n.runtime) out.runtime = String(n.runtime);
