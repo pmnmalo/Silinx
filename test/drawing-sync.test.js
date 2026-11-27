@@ -100,3 +100,33 @@ test('adoptDrawing: a drawing whose HDL file is in the way says why, a design pr
   assert.equal(read('clash', 'src/maj.vhd'), hand);
   assert.equal(JSON.parse(read('clash', 'src/maj.bool.json')).generatedFile, undefined);
 });
+
+// #5764: a drawing whose generatedFile is not there (written or imported with it, its HDL file never made, or deleted) is
+// one without it, as the interface's (#231): its HDL file made, saying which file it had; one whose file is still in the
+// project folder but removed from the project: not replaced, said, as the interface says it; one linked: syncDrawing's
+test('#5764 adoptDrawing: a drawing whose generatedFile is missing gets its HDL file, said; removed from the project: said', async () => {
+  await P.createProject({ name: 'lost' });
+  const table = (name, extra = {}) => JSON.stringify({ version: 1, name, inputs: ['a', 'b', 'c'], outputs: ['f'], table: { f: '00010111' }, exprs: {}, notes: '', form: 'sop', lang: 'vhdl', ...extra });
+  await P.writeFile('lost', 'src/maj.bool.json', table('maj', { generatedFile: 'src/maj.vhd' }));
+  assert.deepEqual(await D.syncDrawing(P, 'lost', 'src/maj.bool.json'), null);
+  assert.deepEqual(await D.adoptDrawing(P, 'lost', 'src/maj.bool.json'), { target: 'src/maj.vhd', written: 'src/maj.vhd', removed: null, stale: null, messages: ['src/maj.vhd generated from src/maj.bool.json (its HDL file src/maj.vhd is no longer in the project folder)'] });
+  assert.match(read('lost', 'src/maj.vhd'), /f <= \(b and c\) or \(a and c\) or \(a and b\);/);
+  assert.ok((await P.readProject('lost')).files.some(f => f.path === 'src/maj.vhd'));
+  // linked now: adoptDrawing leaves it to syncDrawing
+  assert.equal(await D.adoptDrawing(P, 'lost', 'src/maj.bool.json'), null);
+  // a generatedFile of another name: the HDL file its module's, the old name said
+  await P.writeFile('lost', 'src/min.bool.json', table('min', { generatedFile: 'src/old_min.vhd' }));
+  assert.deepEqual((await D.adoptDrawing(P, 'lost', 'src/min.bool.json')).messages, ['src/min.vhd generated from src/min.bool.json (its HDL file src/old_min.vhd is no longer in the project folder)']);
+  assert.equal(JSON.parse(read('lost', 'src/min.bool.json')).generatedFile, 'src/min.vhd');
+  // its HDL file removed from the project, still in its folder: left as it is, said as the interface says it
+  await P.updateProject('lost', pj => ({ ...pj, files: pj.files.filter(f => f.path !== 'src/maj.vhd') }));
+  const hdl = read('lost', 'src/maj.vhd');
+  const r = await D.adoptDrawing(P, 'lost', 'src/maj.bool.json');
+  assert.deepEqual(r, { target: null, written: null, removed: null, stale: null, clash: { kind: 'removed', path: 'src/maj.bool.json', module: 'maj', target: 'src/maj.vhd', file: 'src/maj.vhd' },
+    messages: ['WARNING: src/maj.bool.json has no HDL file: its HDL file src/maj.vhd was removed from the project (it is still in the project folder). Generate HDL File… (its right-click menu in the Design pane) makes it again from src/maj.bool.json; Add to Project (Files) brings it back as it is.'] });
+  assert.equal(read('lost', 'src/maj.vhd'), hdl);
+  assert.equal(D.clashWarning(r.clash, true), 'WARNING: src/maj.bool.json: Not made: its module was removed from the project. Make Module… (right-click) makes it again from the drawing.');
+  // a drawing with errors: none, as before
+  await P.writeFile('lost', 'src/bad.bool.json', table('bad', { generatedFile: 'src/bad.vhd', outputs: [] , table: {} }));
+  assert.equal(await D.adoptDrawing(P, 'lost', 'src/bad.bool.json'), null);
+});

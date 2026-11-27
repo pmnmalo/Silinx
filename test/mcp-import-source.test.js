@@ -91,6 +91,25 @@ test('import_source: a drawing, its HDL made; the gate\'s refusal and warning; a
   assert.ok(!(await P.fileTree('p')).includes('src/bin.vhd'));
 });
 
+// #5764: a drawing imported with its generatedFile, that file not in the project: its HDL file made, said
+test('#5764 import_source and write_file: a drawing whose generatedFile does not exist yet gets its HDL file, said', async () => {
+  await ok('new_project', { name: 'lost', board: 'basys2' });
+  const asm = fs.readFileSync(path.join(import.meta.dirname, '..', 'examples', 'blinky', 'src', 'speed_ctrl.asm.json'), 'utf8');
+  assert.equal(JSON.parse(asm).generatedFile, 'src/speed_ctrl.vhd');
+  put('speed_ctrl.asm.json', asm);
+  const r = await ok('import_source', { project: 'lost', files: ['speed_ctrl.asm.json'] });
+  assert.equal(r.text, ['src/speed_ctrl.vhd generated from src/speed_ctrl.asm.json (its HDL file src/speed_ctrl.vhd is no longer in the project folder)', 'Added 1 source file(s).'].join('\n'));
+  assert.equal(fs.readFileSync(path.join(P.projectDir('lost'), 'src/speed_ctrl.vhd'), 'utf8'), fs.readFileSync(path.join(import.meta.dirname, '..', 'examples', 'blinky', 'src', 'speed_ctrl.vhd'), 'utf8'));
+  assert.equal((await roles('lost'))['src/speed_ctrl.vhd'], 'design');
+  // write_file the same: a state machine written with a generatedFile no file is
+  const w = await ok('write_file', { project: 'lost', path: 'src/ctrl.asm.json', text: asm.replace(/"speed_ctrl"/g, '"ctrl"').replace('src/speed_ctrl.vhd', 'src/control.vhd') });
+  assert.deepEqual(w.text.split('\n').slice(1), ['src/ctrl.vhd generated from src/ctrl.asm.json (its HDL file src/control.vhd is no longer in the project folder)']);
+  assert.deepEqual(w.data.hdl, { file: 'src/ctrl.vhd', written: true, removed: null, stale: null });
+  assert.equal(JSON.parse(fs.readFileSync(path.join(P.projectDir('lost'), 'src/ctrl.asm.json'), 'utf8')).generatedFile, 'src/ctrl.vhd');
+  // Check Syntax of both: no warnings
+  for (const top of ['speed_ctrl', 'ctrl']) assert.match((await ok('check_syntax', { project: 'lost', top })).text, /^Process "Check Syntax" of <\w+> completed successfully \([^)]*\)\.$/);
+});
+
 test('import_source: its errors (outside the exchange folder, no such file, a file it does not take, none given)', async () => {
   put('x.exe', 'MZ');
   fs.writeFileSync(path.join(tmp, 'outside.vhd'), INV);
