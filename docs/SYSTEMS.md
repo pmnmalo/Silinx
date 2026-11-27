@@ -828,6 +828,28 @@ config.json's `xc16.mode` (`local` or `ssh`) chooses one; without it, this compu
   node's firmware; Emulate System runs it on silinx-pic24. The build plan's XC16 step is the same (Build All).
 - The MCP's `run_process` process `firmware` with the node's id; the browser edition says the `.hex` is MPLAB X's.
 
+### Compiling a Zynq board's PS program
+
+A Zynq board's processing system (#4686: a System's FPGA node on the Zybo Z7 or the Arty Z7, or a Board project on one)
+has its program compiled by **Compile PS Program** (#4687, part 1: the MCP's `run_process` `ps`, with the node's id in a
+System and none in a Board project; `server/zynq-ps-compile.js`, `core/zynq-ps-compile.js`). The compiler is
+[the Arm GNU Toolchain](https://developer.arm.com/downloads/-/arm-gnu-toolchain-downloads)'s `arm-none-eabi-gcc`, installed by
+the user (Silinx installs nothing): config.json's `paths['arm-none-eabi-gcc']`, the PATH, Homebrew's folders, or Arm's macOS
+installer's `/Applications/ArmGNUToolchain/<version>/arm-none-eabi/bin`; the MCP's `toolchain_info` says whether it is found.
+
+- The program: the C (`.c`, `.h`) and assembly (`.s`, `.S`) of the node's `ps/` (a Board project's `ps/` at its root), copied
+  into its build folder (`build/nodes/<id>/ps/`, a Board project's `build/ps/`) and linked there to `out/<id>.elf` (`out/ps.elf`).
+- Bare metal on CPU 0, in the on-chip memory (no DDR): Silinx's startup code (the vectors at 0, the Supervisor mode with
+  the interrupts off, the stack, the `.bss` zeroed, `main` called) and linker script (the OCM's low 192 KB,
+  0x00000000–0x0002FFFF, where the boot ROM leaves it after a reset; its 16 KB stack at the top), unless `ps/` has its own
+  `startup.S` (or `crt0.S`) or a `.ld`.
+- The options: `-mcpu=cortex-a9 -marm -mfloat-abi=soft -O2 -g -Wall -ffreestanding -nostartfiles --specs=nosys.specs`
+  (no floating-point unit: the startup does not turn the VFP on; newlib's stubs, no operating system).
+- Its ELF is checked: an ARM executable, its segments and its entry in the OCM. Loading it over JTAG (the ARM DAP, after
+  Silinx's ps7_init) and the PS's UART in the console are #4687's next parts.
+- Its errors and warnings are the job's ERROR and WARNING lines, by the project's file and line; the OCM overflowed is said
+  as such.
+
 ### The build and programming plan
 
 A System has a **build plan** (#5489, `core/system-plan.js`): each FPGA and microcontroller node's steps, the FPGA nodes
@@ -1143,7 +1165,8 @@ The existing `program_board` and `capture` serve the FPGA nodes.
      project has none); a Board project on a Zynq board the same, its silinx.json's `ps` at the root (`ps/main.c`);
      in the interface (part 2b) the node's Properties' PS program and New PS Program (its starter written when the
      System is saved), New Source's PS Program (Zynq) in a Board project (the MCP's new_source `ps`), the Design pane's
-     PS (Cortex-A9) row with its program; a PS's C is never a Silinx HLS source;
+     PS (Cortex-A9) row with its program; a PS's C is never a Silinx HLS source; its program compiled by the user's
+     arm-none-eabi-gcc (#4687, part 1: Compile PS Program, the MCP's run_process `ps`), its ELF in the on-chip memory;
    - the PS–PL as an AXI-Lite link, the Zynq's processor engines as the scheduler's adapters;
    - #4396's soft cores as FPGA nodes with the common instruction view.
 

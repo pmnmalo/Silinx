@@ -1,0 +1,32 @@
+#!/usr/bin/env node
+// A stand-in for arm-none-eabi-gcc (#4687, test/zynq-ps-compile-server.test.js): `--version`, and a compile and link
+// (`… -o <elf> …`, run in the build folder): each `#error X` / `#warning X` line of its C and assembly said as gcc says
+// it (its path as given, line and column), exit 1 on an error; STUB_OVERFLOW=N, the linker's OCM overflowed by N bytes;
+// else <elf>, an ELF of two segments (the program's 8 bytes at STUB_ADDR, default 0: `b .` twice; a .bss and stack of
+// 0x4000 bytes after them), entry STUB_ADDR. Its arguments are written to args.json in its folder.
+import fs from 'node:fs';
+import path from 'node:path';
+import { writeElf32 } from './elf.mjs';
+const a = process.argv.slice(2);
+if (a[0] === '--version') { console.log('arm-none-eabi-gcc (Arm GNU Toolchain 14.2.Rel1 (Build arm-14.52)) 14.2.1 20241119'); process.exit(0); }
+fs.writeFileSync('args.json', JSON.stringify(a));
+let err = false;
+for (const f of a.filter((x) => /\.(c|s|S)$/.test(x))) {
+  fs.readFileSync(f, 'utf8').split('\n').forEach((l, i) => {
+    const m = /^\s*#(error|warning)\s+(.*)$/.exec(l);
+    if (!m) return;
+    if (m[1] === 'error') err = true;
+    console.error(`${f}:${i + 1}:${l.indexOf('#') + 2}: ${m[1]}: #${m[1]} ${m[2]}`);
+  });
+}
+if (err) process.exit(1);
+if (process.env.STUB_OVERFLOW) {
+  console.error(`/opt/arm/bin/../lib/gcc/arm-none-eabi/14.2.1/../../../../arm-none-eabi/bin/ld: out/ps.elf section \`.bss' will not fit in region \`OCM'`);
+  console.error(`/opt/arm/bin/../lib/gcc/arm-none-eabi/14.2.1/../../../../arm-none-eabi/bin/ld: region \`OCM' overflowed by ${process.env.STUB_OVERFLOW} bytes`);
+  console.error('collect2: error: ld returned 1 exit status');
+  process.exit(1);
+}
+const addr = Number(process.env.STUB_ADDR || 0);
+const elf = a[a.indexOf('-o') + 1];
+fs.mkdirSync(path.dirname(elf), { recursive: true });
+fs.writeFileSync(elf, writeElf32([{ addr, bytes: new Uint8Array([0xfe, 0xff, 0xff, 0xea, 0xfe, 0xff, 0xff, 0xea]) }, { addr: addr + 8, bytes: new Uint8Array(0), memsz: 0x4000 }], { entry: addr }));
