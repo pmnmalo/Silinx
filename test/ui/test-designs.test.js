@@ -5,7 +5,7 @@
 import { before, after } from 'node:test';
 import assert from 'node:assert/strict';
 import { setupUi, uiTest, readWs, makeProject } from './harness.js';
-import { SYSTEM_ORDER, EXAMPLE_ORDER, CIRCUIT_ORDER } from '../../core/examples.js';
+import { SYSTEM_ORDER, EXAMPLE_ORDER, CIRCUIT_ORDER, PROCESSOR_ORDER } from '../../core/examples.js';
 import { TEST_DESIGN_ORDER } from '../../core/test-designs.js';
 
 let env;
@@ -29,12 +29,12 @@ uiTest('#5108 New Project: Start from lists Empty project and the examples only,
   await page.waitDialog('New Project Wizard');
   await page.dialogButton('Next >');   // (its kind: With an FPGA, #5041)
   await page.waitFor((s) => document.querySelector(s)?.options.length > 1, [SEL], { what: 'Start from' });
-  const EN = [['empty', 'Empty project'], ...[...EXAMPLE_ORDER, ...CIRCUIT_ORDER, ...SYSTEM_ORDER].map((t) => [t, `Example: ${t}`])];
+  const EN = [['empty', 'Empty project'], ...[...EXAMPLE_ORDER, ...CIRCUIT_ORDER, ...PROCESSOR_ORDER, ...SYSTEM_ORDER].map((t) => [t, `Example: ${t}`])];
   assert.deepEqual(await options(page), EN);
   assert.ok(!(await options(page)).some(([v]) => TEST_DESIGN_ORDER.includes(v)));
   // in Portuguese
   await setLanguage(page, 'pt');
-  const PT = [['empty', 'Projeto vazio'], ...[...EXAMPLE_ORDER, ...CIRCUIT_ORDER, ...SYSTEM_ORDER].map((t) => [t, `Exemplo: ${t}`])];
+  const PT = [['empty', 'Projeto vazio'], ...[...EXAMPLE_ORDER, ...CIRCUIT_ORDER, ...PROCESSOR_ORDER, ...SYSTEM_ORDER].map((t) => [t, `Exemplo: ${t}`])];
   await page.waitFor((s, x) => JSON.stringify([...document.querySelector(s).options].map((o) => [o.value, o.textContent])) === x, [SEL, JSON.stringify(PT)], { what: 'Portuguese' });
   await setLanguage(page, 'en');
   await page.waitFor((s, x) => JSON.stringify([...document.querySelector(s).options].map((o) => [o.value, o.textContent])) === x, [SEL, JSON.stringify(EN)], { what: 'English again' });

@@ -98,7 +98,7 @@ test('folder: a project from each example is the server\'s, file for file', asyn
     await P.createProject({ name, template: t });
     assert.deepEqual(under(await dump(root), name), sorted(diskTree(P.projectDir(name))), t);
   }
-  assert.deepEqual(Object.keys(EXAMPLES).sort(), ['blinky', 'breadboard', 'clock', 'gates', 'i2c-avr', 'isqrt', 'lock', 'micro80', 'pong', 'regs-avr', 'spi-avr', 'stopwatch', 'traffic', 'uart', 'uart-avr', 'uart-pic24', 'vga', 'adc-pmod', 'uart-pico', 'uart-esp32', 'traffic-circuit', 'blinky-circuit', 'stopwatch-circuit', 'lock-circuit'].sort());   // (the Circuit versions, #5779)
+  assert.deepEqual(Object.keys(EXAMPLES).sort(), ['blinky', 'breadboard', 'clock', 'gates', 'i2c-avr', 'isqrt', 'lock', 'micro80', 'pong', 'regs-avr', 'spi-avr', 'stopwatch', 'traffic', 'uart', 'uart-avr', 'uart-pic24', 'vga', 'adc-pmod', 'uart-pico', 'uart-esp32', 'traffic-circuit', 'blinky-circuit', 'stopwatch-circuit', 'lock-circuit', 'blinky-pic24', 'traffic-pic24', 'stopwatch-pic24', 'clock-pic24', 'lock-pic24'].sort());   // (the Circuit versions, #5779)
 });
 
 // (#3710) an example made for another board (the Mimas V2: 100 MHz, its buttons and switches active low): its top's
@@ -106,8 +106,8 @@ test('folder: a project from each example is the server\'s, file for file', asyn
 test('folder: a project from each example for the Mimas V2: its top\'s generics the board\'s, as the server writes them', async () => {
   const { root, ops } = folder();
   // (a System example has no board: refused with one, test/system-example.test.js, #4702)
-  // (nor a Circuit version: no board, #5757)
-  for (const t of Object.keys(EXAMPLES).filter(t => !['system', 'design'].includes(EXAMPLES[t].json.kind))) {
+  // (nor a Circuit version: no board, #5757; nor a processor board's, on its own board, #5874)
+  for (const t of Object.keys(EXAMPLES).filter(t => !['system', 'design'].includes(EXAMPLES[t].json.kind) && EXAMPLES[t].json.profile !== 'embedded')) {
     const name = `Mimas_${t}`;
     await ops.create({ name, template: t, board: 'mimas-v2', device: { family: 'spartan6', part: 'xc6slx9', package: 'csg324', speed: '-2' } });
     await P.createProject({ name, template: t, board: 'mimas-v2', device: { family: 'spartan6', part: 'xc6slx9', package: 'csg324', speed: '-2' } });
@@ -894,4 +894,10 @@ test('#4725 the browser\'s snapshots: one budget for every project (UTF-16 units
   localSnapshots(() => ls, 'browser:', 'A2').forget();
   assert.equal(C.save(await snap('C', big)), true);
   assert.deepEqual([...ls.m.keys()].sort(), ['silinx.snapshots:browser::B', 'silinx.snapshots:folder:work:C']);
+});
+
+test('#5883 normalizeProjectJson: a processor board\'s Board project keeps its board (an import, a copy, a clone); a System project\'s none', async () => {
+  const { normalizeProjectJson } = await import('../web/js/project-store.js');
+  for (const board of ['arduino-uno', 'explorer-1632', 'pico', 'esp32-devkitc']) assert.equal(normalizeProjectJson({ name: 'p', profile: 'embedded', top: '', board }, 'p').json.board, board);
+  assert.equal(normalizeProjectJson({ name: 's', profile: 'system', top: '', board: 'basys2' }, 's').json.board, null);
 });

@@ -14,6 +14,7 @@ import { fileURLToPath } from 'node:url';
 import { example } from './examples-lib.mjs';
 import { diffSynth, expectWarnings, stimulus, rng, isReset, activeLow, compareRuns, netlistClocks } from './diff-synth.js';
 import { readYosysJson } from '../packages/silinx-fpga/src/fpga/netlist.js';
+import { PROCESSOR_ORDER } from '../core/examples.js';
 
 const ROOT = path.join(path.dirname(fileURLToPath(import.meta.url)), '..');
 const read = (...p) => fs.readFileSync(path.join(ROOT, ...p), 'utf8');
@@ -263,6 +264,7 @@ test('example projects: RTL and Yosys netlist agree',{ timeout: 600000 }, async 
     if (!fs.existsSync(path.join(ROOT, pj))) continue;
     const proj = JSON.parse(read(pj));
     if (proj.kind === 'system') continue;   // (a System example: no top module, its FPGA's the uart example's, #4702)
+    if (PROCESSOR_ORDER.includes(name)) continue;   // (a processor board's: no HDL, its firmware its program, #5874)
     await t.test(name, async () => {
       // (a C source's module too, its HDL made from the C, #1966)
       const sources = example(name).design.map(({ path, lang, text }) => ({ path, lang, text }));
