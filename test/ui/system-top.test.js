@@ -1,6 +1,6 @@
-// UI (#5402): a System as the project's top. Design Properties' Top-Level Source Type "System" makes an FPGA project a
-// System project, its new System its top (the Design pane's System row; its board kept); the Files view's Set as Top
-// Module on a System document does the same. #5583: Set as Top Module on a module of a System project sets the top
+// UI (#5402): a System as the project's top. The Files view's Set as Top Module on a System document makes an FPGA project
+// a System project, that System its top (the Design pane's System row; its board kept); Design Properties has no
+// Top-Level Source Type since #5786. #5583: Set as Top Module on a module of a System project sets the top
 // module of the FPGA node whose folder holds it (the Design pane marks it), the System still the project's top; a module
 // in no node's folder is refused. The console's lines; in Portuguese; no warnings. Both interfaces.
 import { before, after } from 'node:test';
@@ -16,51 +16,39 @@ const E = () => env;
 const BLINK = 'library ieee;\nuse ieee.std_logic_1164.all;\nentity blink is port (sw : in std_logic; led : out std_logic); end blink;\narchitecture r of blink is begin led <= sw; end r;\n';
 const warnings = (page) => page.eval(() => [...document.querySelectorAll('#console-log .ln')].map((l) => l.textContent).filter((l) => /^(WARNING|ERROR)/.test(l)));
 // (its profile, #5440: a System project's written as profile)
-const project = (page) => page.eval(() => { const p = window.Silinx.project; return [p.profile ?? p.kind ?? null, p.board, p.top, p.topSourceType]; });
-const field = (label) => [...document.querySelectorAll('.dlg-overlay .form-grid > label')].find((l) => l.textContent === label).nextElementSibling;
+const project = (page) => page.eval(() => { const p = window.Silinx.project; return [p.profile ?? p.kind ?? null, p.board, p.top]; });
 
-uiTest('#5402 a System as the project\'s top: Design Properties\' System; the Files view\'s Set as Top Module on a System document', E, async (page) => {
-  await makeProject(env, { name: 'SysTop', board: 'basys2', top: 'blink', files: { 'src/blink.vhd': BLINK } });
+uiTest('#5402 a System as the project\'s top: the Files view\'s Set as Top Module on a System document; Design Properties with no Top-Level Source Type (#5786)', E, async (page) => {
+  // the Files view: Set as Top Module on a System document of an FPGA project
+  await makeProject(env, { name: 'SysTop', board: 'basys2', top: 'blink', files: { 'src/blink.vhd': BLINK, 'lab.sys.json': JSON.stringify({ format: 'silinx-system', version: 2, name: 'lab', nodes: [], links: [] }) } });
   await page.openProject('SysTop');
   await page.waitFor(() => window.Silinx.modules.some((m) => m.name === 'blink'), [], { what: 'its module' });
-  // Design Properties: System among the Top-Level Source Types, chosen
-  await page.menu('Project', 'Design Properties…');
-  await page.waitDialog('Design Properties');
-  const types = await page.eval((f) => [...eval(`(${f})`)('Top-Level Source Type:').options].map((o) => `${o.value}:${o.textContent}`), field.toString());
-  assert.equal(types.at(-1), 'system:System');
-  await page.eval((f) => { const s = eval(`(${f})`)('Top-Level Source Type:'); s.value = 'system'; s.dispatchEvent(new Event('change')); }, field.toString());
-  await page.dialogButton('OK');
-  await page.waitNoDialog();
-  await page.waitFor(() => window.Silinx.project?.profile === 'system', [], { what: 'a System project' });
-  await page.waitConsole(/^SysTop: a System project now, its System SysTop\.sys\.json its top \(its board kept\)\.$/m);
-  assert.deepEqual(await project(page), ['system', null, '', 'system']);
-  // (the Design pane: its System's row, as a System project's)
-  await page.waitFor(() => [...document.querySelectorAll('#left .tree .badge, #left .tree [class*=badge]')].some((b) => b.textContent === 'System'), [], { what: 'the System row' });
-  // Set as Top Module on its module, in no node's folder (#5583): refused, the System still its top
-  await page.eval(() => window.SilinxApp.setTop('blink', false));
-  await page.waitConsole(/^ERROR: Set as Top Module: 'blink' is in no node's folder of the System SysTop: a System project's top is its System, and an FPGA node's top module is a module of its folder$/m);
-  assert.deepEqual(await project(page), ['system', null, '', 'system']);
-  // the Files view: Set as Top Module on a System document of an FPGA project
-  await makeProject(env, { name: 'SysTop2', board: 'basys2', top: 'blink', files: { 'src/blink.vhd': BLINK, 'lab.sys.json': JSON.stringify({ format: 'silinx-system', version: 2, name: 'lab', nodes: [], links: [] }) } });
-  await page.openProject('SysTop2');
   await page.leftTab('files');
   const i = await page.waitFor(() => [...document.querySelectorAll('#files-page tr')].findIndex((tr) => tr.cells[0]?.textContent === 'lab.sys.json') + 1) - 1;
   await page.rightClick('#files-page tr', { index: i });
   await page.waitForSelector('body > .menu-popup');
   await page.click('body > .menu-popup .mi', { text: 'Set as Top Module' });
   await page.waitFor(() => window.Silinx.project?.profile === 'system', [], { what: 'a System project' });
-  await page.waitConsole(/^SysTop2: a System project now, its System lab\.sys\.json its top \(its board kept\)\.$/m);
-  assert.deepEqual(await project(page), ['system', null, '', 'system']);
-  // in Portuguese: the type's label
-  await page.eval(async () => { (await import('/js/i18n.js')).setLanguage('pt'); });
-  await page.menu('Projeto', 'Propriedades do Projeto…');
-  await page.waitDialog('Propriedades do Projeto');
-  // (the Top-Level Source Type's option, not the Project Kind's: both ids system since #5411)
-  assert.equal(await page.eval(() => [...document.querySelectorAll('.dlg-overlay select')].find((s) => [...s.options].some((o) => o.value === 'hdl'))?.querySelector('option[value=system]')?.textContent), 'Sistema');
-  await page.dialogButton('Cancelar');
-  await page.waitNoDialog();
+  await page.waitConsole(/^SysTop: a System project now, its System lab\.sys\.json its top \(its board kept\)\.$/m);
+  assert.deepEqual(await project(page), ['system', null, '']);
+  // (the Design pane: its System's row, as a System project's)
+  if (process.env.SILINX_UI_INTERFACE !== 'ise') await page.leftTab('design');
+  await page.waitFor(() => [...document.querySelectorAll('#left .tree .badge, #left .tree [class*=badge]')].some((b) => b.textContent === 'System'), [], { what: 'the System row' });
+  // Set as Top Module on its module, in no node's folder (#5583): refused, the System still its top
+  await page.eval(() => window.SilinxApp.setTop('blink', false));
+  await page.waitConsole(/^ERROR: Set as Top Module: 'blink' is in no node's folder of the System lab: a System project's top is its System, and an FPGA node's top module is a module of its folder$/m);
+  assert.deepEqual(await project(page), ['system', null, '']);
+  // Design Properties, in Portuguese too: no Top-Level Source Type field (#5786)
+  for (const [lang, menu, item, title, cancel] of [['en', 'Project', 'Design Properties…', 'Design Properties', 'Cancel'], ['pt', 'Projeto', 'Propriedades do Projeto…', 'Propriedades do Projeto', 'Cancelar']]) {
+    await page.eval(async (l) => { (await import('/js/i18n.js')).setLanguage(l); }, lang);
+    await page.menu(menu, item);
+    await page.waitDialog(title);
+    assert.equal(await page.eval(() => [...document.querySelectorAll('.dlg-overlay .form-grid > label')].some((l) => /Top-Level Source Type|Tipo de Fonte de Topo/.test(l.textContent))), false);
+    await page.dialogButton(cancel);
+    await page.waitNoDialog();
+  }
   await page.eval(async () => { (await import('/js/i18n.js')).setLanguage('en'); });
-  assert.deepEqual(await warnings(page), ['ERROR: Set as Top Module: \'blink\' is in no node\'s folder of the System SysTop: a System project\'s top is its System, and an FPGA node\'s top module is a module of its folder']);
+  assert.deepEqual(await warnings(page), ['ERROR: Set as Top Module: \'blink\' is in no node\'s folder of the System lab: a System project\'s top is its System, and an FPGA node\'s top module is a module of its folder']);
   assert.deepEqual(page.console.filter((c) => c.type === 'error' || c.type === 'warning' || c.type === 'warn').map((c) => c.text), []);
 }, { timeout: 180000 });
 

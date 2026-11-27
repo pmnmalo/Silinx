@@ -23,8 +23,7 @@ The umbrella issue is #3897; each phase has an issue of its own (#3898 to #3902)
   display (a 7447 or a 7448), a counter with display (a 7490 or a 74161, a clock of 1 to 50 Hz, a button `rst`), a
   4-bit adder (a 7483 or a 74283), a gate test bench (7400, 7402, 7404, 7408, 7432, 7486), a comparator (7485), a
   decoder or multiplexer (74138, 74151), a shift register (74164, 74194: buttons `clk` and `clr`, a switch `din`) and
-  flip-flops (7474); a circuit is also a **Top-Level Source Type** (#4105): New Project starts an empty project with one as its
-  top (`src/top.circ.json`), and Design Properties can choose it.
+  flip-flops (7474); a circuit can be a project's top, as any module (New Source ▸ Circuit, then Set as Top Module).
 - **It is a module**, as every Silinx drawing: its **logic switches** and **buttons** are its inputs, its **LEDs**,
   each **7-segment display**'s segment and each **LED bar**'s light its outputs, named by their labels; its HDL file is generated from it (below). The Design pane shows
   its row as every drawing's: `[Circuit]` first (it opens the drawing), then `[Schematic]` (#4069, as a Boolean

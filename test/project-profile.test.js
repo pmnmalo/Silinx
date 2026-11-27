@@ -20,7 +20,7 @@ const LOGIC = { name: 'd', kind: 'design', board: null, constraints: null, top: 
 // a System project, its System document with nodes of the kinds given
 const sysProject = (profile, kinds) => {
   const sys = { ...newSystem('s'), nodes: kinds.map((k, i) => ({ id: `${k}${i}`, kind: k, ...(k === 'fpga' ? { module: 'top', board: 'basys2' } : {}), interfaces: [] })) };
-  return [{ name: 's', profile, board: null, top: '', topSourceType: 'system', files: [] }, { files: ['s.sys.json'], texts: { 's.sys.json': writeSystem(sys) } }];
+  return [{ name: 's', profile, board: null, top: '', files: [] }, { files: ['s.sys.json'], texts: { 's.sys.json': writeSystem(sys) } }];
 };
 
 test('#5440 the profiles: each the node kinds it allows, each containing the one before', () => {
@@ -68,7 +68,7 @@ test('#5440 narrowing: refused while a node would not be allowed, the node named
   assert.deepEqual(changeProfile(two, 'embedded', ctx2).project, { ...two, profile: 'embedded' });
   const [one, ctx1] = sysProject('embedded', ['fpga']);
   assert.equal(changeProfile(one, 'fpga', ctx1).error, 'the project \'s\' cannot be FPGA: its top is its System (Set as Top Module on one of its modules first)');
-  const m = changeProfile({ ...one, top: 'top', topSourceType: 'hdl' }, 'fpga', ctx1).project;
+  const m = changeProfile({ ...one, top: 'top' }, 'fpga', ctx1).project;
   assert.deepEqual([m.kind, m.profile, m.top], [undefined, undefined, 'top']);
   // (a module its top, the System document no longer its top: its nodes not those of the System it had)
   const [many, ctxm] = sysProject('system', ['fpga', 'mcu', 'terminal']);

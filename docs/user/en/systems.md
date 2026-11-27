@@ -11,9 +11,8 @@ UART and GPIO links. Its design is in [SYSTEMS.md](../../SYSTEMS.md); its roadma
 - **New Project ▸ System.** It has no board of its own: each FPGA node of its System names its board and pins, each
   microcontroller its firmware. Start from **Empty** (its System, `<name>.sys.json`, with no node yet) or from the
   example **uart-avr** (an Arduino and the `uart` example's FPGA linked by UART).
-- **A System as the top of an FPGA project**: the Top-Level Source Type **System** (New Project, Design
-  Properties), or **Set as Top Module** on a System (`.sys.json`, in the Files view), makes the project a System
-  project, that System its top; its board is kept. **Set as Top Module** on one of its modules makes it an FPGA project
+- **A System as the top of an FPGA project**: **Set as Top Module** on a System (`.sys.json`, in the Files view) makes
+  the project a System project, that System its top; its board is kept. **Set as Top Module** on one of its modules makes it an FPGA project
   again, on the board of the FPGA node that runs that module (else the board it had).
 - **Its System** is its top, shown in the Design pane as `<name> [System]`, each of its nodes a branch under it (#5414): an
   FPGA node with its board and its module's hierarchy, an Arduino with its board and its firmware, a circuit node with

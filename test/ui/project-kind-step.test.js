@@ -10,6 +10,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
 import { setupUi, uiTest, makeProject, ROOT } from './harness.js';
+import { addTopDrawing } from './top-doc.js';
 
 let env;
 before(async () => { env = await setupUi(); });
@@ -73,20 +74,23 @@ const fpgaShown = page => page.eval((src) => {
 }, FLOW.source);
 const NOTHING = { badges: [], files: [], menus: [], toolbar: [], procs: [], tasks: [], device: '' };
 
-// a project with no FPGA made through the kind page (`l`: its language's buttons), a state diagram its top
+// a project with no FPGA made through the kind page (`l`: its language's buttons), a state diagram its top (added after it)
 async function makeNoFpga(page, name, l) {
   await openWizard(page, l);
   await page.click('.dlg-overlay .kind-card[data-kind=design] input');
   await page.dialogButton(l.next);
   await page.fill('.dlg-overlay .wiz-main input[type=text]', name);
   await page.dialogButton(l.next);
-  await page.waitFor(() => document.querySelectorAll('.dlg-overlay .wiz-main select').length > 6, [], { what: 'Project Settings' });
-  await page.fill('.dlg-overlay .wiz-main select', 'fsm', { index: 6 });
+  await page.waitFor((t) => document.querySelector('.dlg-overlay .wiz-main h3')?.textContent === t, [l === L.en ? 'Project Settings' : 'Definições do Projeto'], { what: 'Project Settings' });
   await page.dialogButton(l.next);
   // (the summary says its mode, #5754)
   assert.match(await page.eval(() => document.querySelector('.dlg-overlay .wiz-main pre').textContent), /\n {2}Mode: {9}Circuit\n/);
   await page.dialogButton(l.finish);
   await page.waitNoDialog();
+  // (an empty project of its mode, #5786: its top, a state diagram, added as New Source adds one)
+  await page.waitFor((n) => window.Silinx.project?.name === n, [name], { what: `${name} open` });
+  await addTopDrawing(env, name, 'fsm');
+  await page.openProject(name);
   await page.waitFor((n) => window.Silinx.project?.name === n && window.Silinx.hdlToSch?.['src/top.vhd'] === 'src/top.fsm.json' && document.querySelector('#hier .row.top-mod'),
     [name], { what: `${name} open, its state diagram's HDL made` });
   const pj = await page.eval(() => window.Silinx.project);

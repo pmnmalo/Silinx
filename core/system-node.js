@@ -60,5 +60,5 @@ export function nodeConstraints(node, ports) {
 export function nodeProject(pj, node, constraints) {
   const board = nodeBoard(node);
   const files = (pj.files || []).filter(f => relInNode(f.path, node.id) != null);
-  return { ...withProfile(pj, 'fpga'), top: node.module, board: node.board, device: { ...board.device }, constraints, topSourceType: 'hdl', files };
+  return { ...withProfile(pj, 'fpga'), top: node.module, board: node.board, device: { ...board.device }, constraints, files };
 }

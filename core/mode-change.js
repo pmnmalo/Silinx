@@ -76,7 +76,7 @@ function toSystem(pj, files) {
   const sys = { ...newSystem(pj.name), nodes: [first] };
   let out = structuredClone(pj);
   for (const m of moves) out = renameEntries(out, m.from, m.to);
-  out = { ...withProfile(out, profileOf(pj) === 'embedded' ? 'embedded' : 'system'), board: null, constraints: null, top: '', topSourceType: 'system' };
+  out = { ...withProfile(out, profileOf(pj) === 'embedded' ? 'embedded' : 'system'), board: null, constraints: null, top: '' };
   const lines = [`its ${node.kind === 'fpga' ? 'board' : 'drawings'} the System's first node, ${id}${node.board ? ` (${node.board})` : ''}`,
     moves.length ? `its files moved into the node's folder, ${id}/ (${moves.map(m => m.from).join(', ')})` : null, `its System document ${path} written`].filter(Boolean);
   return { project: out, moves, write: { path, text: writeSystem(sys) }, done: lines, lost: [] };
@@ -94,7 +94,7 @@ function fromSystem(pj, files, texts, keep) {
   if (!['fpga', 'design', 'mcu'].includes(kept.kind)) return { error: `${kept.id} is a ${kept.kind} node: only an FPGA, a design or a microcontroller node can be kept` };
   const others = nodes.filter(n => n !== kept);
   const theirs = p => others.some(n => relInNode(p, n.id) != null);
-  const out = { ...structuredClone(pj), files: (pj.files || []).filter(f => !theirs(f.path)), top: kept.module || '', topSourceType: 'hdl' };
+  const out = { ...structuredClone(pj), files: (pj.files || []).filter(f => !theirs(f.path)), top: kept.module || '' };
   delete out.fpga;
   const dropped = (pj.files || []).filter(f => theirs(f.path)).map(f => f.path);
   const lost = [
@@ -106,7 +106,7 @@ function fromSystem(pj, files, texts, keep) {
   // (a microcontroller kept: a processor board's project, #5756: its System that one node, rewritten; its board named)
   if (kept.kind === 'mcu') {
     const one = { ...r.model, nodes: [{ ...kept, x: 0, y: 0, interfaces: kept.interfaces }], links: [] };
-    return { project: { ...out, board: kept.board, top: '', topSourceType: 'system' }, kept: kept.id, write: { path: r.system, text: systemText(one) },
+    return { project: { ...out, board: kept.board, top: '' }, kept: kept.id, write: { path: r.system, text: systemText(one) },
       lost: lost.map(l => l.replace(/^its System document (\S+) \(it stays in the folder, out of the flow\)$/, 'its System document $1 rewritten with the node alone')) };
   }
   if (kept.kind === 'design') return { project: { ...asDesignProject(withProfile(out, 'logic')), top: kept.module || '' }, kept: kept.id, lost };

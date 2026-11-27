@@ -111,7 +111,6 @@ export function mountXiseRoutes(ctx) {
       device: parsed.device.part ? parsed.device : cur.device,
       top: parsed.top || cur.top,
       simTop: parsed.simTop || cur.simTop,
-      topSourceType: parsed.topSourceType || cur.topSourceType || 'hdl',
       files,
       constraints: parsed.constraints && inProject(parsed.constraints) ? parsed.constraints : cur.constraints,
       impl: { ...cur.impl, ...parsed.impl },

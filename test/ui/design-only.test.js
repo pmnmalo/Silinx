@@ -7,6 +7,7 @@ import { before, after } from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
+import { addTopDrawing } from './top-doc.js';
 import { setupUi, uiTest, makeProject, writeWs, ROOT } from './harness.js';
 
 let env;
@@ -46,13 +47,8 @@ uiTest('#3780 New Project: Design and simulation only, no board, no device, no H
   assert.deepEqual(await page.eval(() => [...document.querySelectorAll('.dlg-overlay .form-grid > label')].filter(l => l.style.display !== 'none').map(l => l.textContent)), ['Name:', 'Location:', 'Start from:']);   // (its examples, #5757)
   await page.dialogButton('Next >');
   await page.waitFor(() => document.querySelector('.dlg-overlay .wiz-main h3')?.textContent === 'Project Settings');
-  // (its fields: the Top-Level Source Type alone, a drawing: no HDL)
-  const settings = await page.eval(() => {
-    const labels = [...document.querySelectorAll('.dlg-overlay .form-grid > label')].filter(l => l.style.display !== 'none').map(l => l.textContent);
-    const top = [...document.querySelectorAll('.dlg-overlay .wiz-main select')][6];
-    return { labels, top: top.value, types: [...top.options].filter(o => !o.hidden).map(o => o.value) };
-  });
-  assert.deepEqual(settings, { labels: ['Top-Level Source Type:'], top: 'sch', types: ['sch', 'fsm', 'asm', 'tt', 'petri', 'circuit'] });   // (#4105: no C / C++ either)
+  // (its fields: none, no board nor HDL; no Top-Level Source Type since #5786)
+  assert.deepEqual(await page.eval(() => [...document.querySelectorAll('.dlg-overlay .form-grid > label')].filter(l => l.style.display !== 'none').map(l => l.textContent)), []);
   await page.dialogButton('Next >');
   await page.waitFor(() => document.querySelector('.dlg-overlay .wiz-main h3')?.textContent === 'Project Summary');
   const summary = await page.eval(() => document.querySelector('.dlg-overlay .wiz-main pre').textContent);
@@ -60,6 +56,11 @@ uiTest('#3780 New Project: Design and simulation only, no board, no device, no H
   assert.doesNotMatch(summary, /Device|Board|Language|Synthesis/);
   await page.dialogButton('Finish');
   await page.waitNoDialog();
+  // (an empty project of its mode, #5786; its top added as New Source adds a schematic)
+  await page.waitFor(() => window.Silinx.project?.name === 'Drawn', [], { what: 'project Drawn open' });
+  assert.deepEqual(await page.eval(() => [window.Silinx.project.top, window.Silinx.project.files]), ['', []]);
+  await addTopDrawing(env, 'Drawn', 'sch');
+  await page.openProject('Drawn');
   await page.waitFor(() => window.Silinx.project?.name === 'Drawn' && window.Silinx.project.top === 'top' && document.querySelector('#hier .row.top-mod'), [], { what: 'project Drawn open, its top' });
   const pj = await page.eval(() => window.Silinx.project);
   assert.deepEqual([pj.kind, pj.board, pj.constraints, pj.top], ['design', null, null, 'top']);
@@ -129,7 +130,7 @@ uiTest('#3780 #4103 Design Properties: its Project Kind makes a design project a
   const pick = v => (v === 'design' ? choose('Project Kind:', 'design') : choose('Project Kind:', 'fpga').then(() => choose('Evaluation Development Board:', v)));
   await page.menu('Project', 'Design Properties…');
   await page.waitDialog('Design Properties');
-  assert.deepEqual(await dialogFields(), { kind: 'design', kinds: ['Digital Logic', 'FPGA', 'Embedded / SoC', 'System'], board: '', boards: [''], shown: ['Name:', 'Project Kind:', 'Top-Level Source Type:'] });
+  assert.deepEqual(await dialogFields(), { kind: 'design', kinds: ['Digital Logic', 'FPGA', 'Embedded / SoC', 'System'], board: '', boards: [''], shown: ['Name:', 'Project Kind:'] });
   await pick('basys2');
   assert.ok((await dialogFields()).shown.includes('Device:') && (await dialogFields()).shown.includes('Evaluation Development Board:'));
   await page.dialogButton('OK');

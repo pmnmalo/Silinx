@@ -291,7 +291,7 @@ function xiseProject(name, xise, files = {}) {
     const text = lookup(parsed.constraints);
     if (typeof text === 'string') pfiles[constraints] = text;
   }
-  Object.assign(json, { device: parsed.device.part ? parsed.device : json.device, top: parsed.top || '', simTop: parsed.simTop || '', topSourceType: parsed.topSourceType || 'hdl', files: out, constraints, impl: { ...json.impl, ...parsed.impl } });
+  Object.assign(json, { device: parsed.device.part ? parsed.device : json.device, top: parsed.top || '', simTop: parsed.simTop || '', files: out, constraints, impl: { ...json.impl, ...parsed.impl } });
   return { json, files: pfiles, warnings };
 }
 

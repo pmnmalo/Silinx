@@ -13,8 +13,8 @@ const exportsOf = code => new Set([
 ]);
 
 // wizards.js's exports before the split (but importXiseDialog and importSilinxDialog, one Import Project… since
-// #3703: web/js/project-zip-dialogs.js)
-const BEFORE = ['field', 'select', 'wizard', 'newProjectWizard', 'createTopSource', 'openProjectDialog', 'zipFolderSelection',
+// #3703: web/js/project-zip-dialogs.js; and createTopSource, the Top-Level Source Type's, removed with it, #5786)
+const BEFORE = ['field', 'select', 'wizard', 'newProjectWizard', 'openProjectDialog', 'zipFolderSelection',
   'replaceGuard', 'closeBeforeReplace', 'moduleElsewhere', 'drawnHdlTaken',
   'newSourceWizard', 'addSourceDialog', 'sourceProperties', 'projectProperties', 'implProperties', 'toolchainDialog',
   'aboutDialog', 'GOATCOUNTER_URL', 'WHO_URL', 'whoAreYou', 'updateCheckEnabled', 'setUpdateCheckEnabled',

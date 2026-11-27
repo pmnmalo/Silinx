@@ -16,7 +16,7 @@ after(async () => { await env?.teardown?.(); });
 const E = () => env;
 
 // New Project wizard: page 1 name (+ template), page 2 board / device / language, page 3 summary
-async function newProject(page, { name, template = 'empty', board = '', family, part, lang, top }) {
+async function newProject(page, { name, template = 'empty', board = '', family, part, lang }) {
   await page.menu('File', 'New Project…');
   await page.waitDialog('New Project Wizard');
   await page.dialogButton('Next >');   // (its kind: With an FPGA, #5041)
@@ -27,8 +27,7 @@ async function newProject(page, { name, template = 'empty', board = '', family, 
   if (board) await page.fill('.dlg-overlay .wiz-main select', board, { index: 0 });
   if (family) await page.fill('.dlg-overlay .wiz-main select', family, { index: 2 });
   if (part) await page.fill('.dlg-overlay .wiz-main select', part, { index: 3 });
-  if (lang) await page.fill('.dlg-overlay .wiz-main select', lang, { index: 9 });
-  if (top) await page.fill('.dlg-overlay .wiz-main select', top, { index: 6 });   // Top-Level Source Type
+  if (lang) await page.fill('.dlg-overlay .wiz-main select', lang, { index: 8 });   // (no Top-Level Source Type before it since #5786)
   const settings = await page.eval(() => {
     const s = [...document.querySelectorAll('.dlg-overlay .wiz-main select')];
     return { board: s[0].value, family: s[2].value, part: s[3].value, pkg: s[4].value, speed: s[5].value, disabled: s[2].disabled, parts: [...s[3].options].map((o) => o.value) };
@@ -1053,38 +1052,25 @@ uiTest('#2981 a project the MCP server made waits for the user\'s trust too: the
   assert.deepEqual((await page.consoleText()).split('\n').filter((l) => /^(WARNING|ERROR)/.test(l)), []);
 });
 
-uiTest('New Project wizard: Top-Level Source Type Schematic / FSM / ASM / Truth Table / Digital Electronic Circuit (#4061) starts the project with that top', E, async (page) => {
-  const cases = [['sch', 'top.sch.json', 'vhdl', 'Schematic'], ['fsm', 'top.fsm.json', 'verilog', 'Finite State Machine (FSM)'],
-    ['asm', 'top.asm.json', 'vhdl', 'Algorithmic State Machine (ASM)'], ['tt', 'top.bool.json', 'verilog', 'Boolean Algebra'], ['circuit', 'top.circ.json', 'vhdl', 'Digital Electronic Circuit']];
-  for (const [type, file, lang, label] of cases) {
-    const name = `Top_${type}`;
-    const r = await newProject(page, { name, lang, top: type });
-    assert.ok(r.summary.includes(`Top-Level Source Type: ${label}\n`), r.summary);
-    await page.waitFor((n) => window.Silinx.project?.name === n && window.Silinx.project.top === 'top', [name], { what: `${name}: top = top` });
-    const hdl = `src/top.${lang === 'vhdl' ? 'vhd' : 'v'}`;
-    const pj = JSON.parse(await readWs(env, name, 'silinx.json'));
-    assert.equal(pj.topSourceType, type);
-    assert.ok(pj.files.some((f) => f.path === hdl && f.role === 'design'), JSON.stringify(pj.files));
-    const doc = JSON.parse(await readWs(env, name, `src/${file}`));
-    assert.equal(doc.generatedFile, hdl);
-    assert.match(await readWs(env, name, hdl), lang === 'vhdl' ? /entity top is/ : /module top/);
-    // the hierarchy shows the top as that document, and its editor is open
-    await page.waitFor((f) => [...document.querySelectorAll('#hier .row')].some((r) => r.textContent.includes(`(${f})`)), [file], { what: `hierarchy shows ${file}` });
-    await page.waitFor((f) => String(window.Silinx.active?.id || '').endsWith(`src/${f}`), [file], { what: `${file} editor open` });
-  }
-  // an example: the type stays HDL (the example has its own sources); the types (#4105), the circuit's named as New Source's (#4061)
+uiTest('#5786 New Project wizard: no Top-Level Source Type: its settings\' fields, its summary; an empty project of its mode, no top document made', E, async (page) => {
+  const r = await newProject(page, { name: 'NoTopType', lang: 'verilog' });
+  assert.doesNotMatch(r.summary, /Top-Level Source/);
+  assert.match(r.summary, /\n {2}Preferred Language: VERILOG$/);
+  const pj = JSON.parse(await readWs(env, 'NoTopType', 'silinx.json'));
+  assert.deepEqual(['topSourceType' in pj, pj.top, pj.preferredLanguage, pj.files], [false, '', 'verilog', []]);
+  assert.deepEqual(await fs.readdir(path.join(env.server.workspace, 'NoTopType', 'src')), []);
+  // (the settings page's fields: the FPGA's, the Top-Level Source Type's none)
   await page.menu('File', 'New Project…');
   await page.waitDialog('New Project Wizard');
-  await page.dialogButton('Next >');   // (its kind: With an FPGA, #5041)
-  await page.fill('.dlg-overlay .wiz-main select', 'blinky', { index: 0 });
-  await page.fill('.dlg-overlay .wiz-main input[type=text]', 'Top_ex');
+  await page.dialogButton('Next >');
+  await page.fill('.dlg-overlay .wiz-main input[type=text]', 'Fields');
   await page.dialogButton('Next >');
   await page.waitFor(() => document.querySelector('.dlg-overlay .wiz-main h3')?.textContent === 'Project Settings');
-  assert.deepEqual(await page.eval(() => { const s = document.querySelectorAll('.dlg-overlay .wiz-main select')[6]; return [s.value, s.disabled]; }), ['hdl', true]);
-  assert.deepEqual(await page.eval(() => [...document.querySelectorAll('.dlg-overlay .wiz-main select')[6].options].map((o) => o.textContent)),
-    ['HDL', 'Schematic', 'Finite State Machine (FSM)', 'Algorithmic State Machine (ASM)', 'Boolean Algebra', 'Petri Net', 'Digital Electronic Circuit', 'C Function (HLS)', 'C++ Function (HLS)', 'System']);   // (System: a System project's top, #5402)
+  assert.deepEqual(await page.eval(() => [...document.querySelectorAll('.dlg-overlay .form-grid > label')].filter((l) => l.style.display !== 'none').map((l) => l.textContent)),
+    ['Evaluation Development Board:', 'Product Category:', 'Family:', 'Device:', 'Package:', 'Speed:', 'Synthesis Tool:', 'Simulator:', 'Preferred Language:', 'VHDL Source Analysis Standard:']);
   await page.dialogButton('Cancel');
   await page.waitNoDialog();
+  assert.deepEqual((await page.consoleText()).split('\n').filter((l) => /^(WARNING|ERROR)/.test(l)), []);
 });
 
 uiTest('Remove from Project of a diagram (ASM chart): it leaves the hierarchy, the file stays; Undo brings it back', E, async (page) => {

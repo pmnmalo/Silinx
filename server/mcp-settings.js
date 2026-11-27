@@ -16,9 +16,6 @@ import { changeProfile } from '../core/profile-change.js';
 import { isSystemFile, readSystem } from '../core/system-doc.js';
 import { runnableNodes, emulateNodesOf, withEmulateNodes, simulateSettingsOf, withSimulateSettings } from '../core/system-alone.js';
 import { MODEL_NAMES, emulateModelsOf, withEmulateModels } from '../core/system-models.js';
-import { TOP_TYPES, topType, topTypeRefusal } from '../core/top-types.js';
-import { SYSTEM_TOP } from '../core/system-top.js';
-import { makeSystemTop } from './mcp-system-top.js';
 import { makeDesignProject } from './mcp-design-only.js';
 import { setMode } from './mcp-mode.js';
 import { MODES } from '../core/project-mode.js';
@@ -140,14 +137,13 @@ export const SETTINGS_TOOLS = [
   },
   {
     name: 'set_design_properties', title: 'Design Properties',
-    description: 'Change a project\'s target as Design Properties does: its board (none: no board) or device (part, package, speed), synthesis tool (silinx: the Silinx toolchain; xst: Xilinx ISE; vivado: AMD Vivado, the Artix-7\'s and Zynq-7000\'s default, the Spartan-7\'s and Kintex-7\'s only; quartus: Intel Quartus Prime, the Intel FPGAs\'), Preferred Language (the drawings\' HDL made again in it), Project Kind (kind) and Top-Level Source Type. A new device is checked against the design (warnings). update_constraints writes a new board\'s pins for the top\'s ports into the constraints file, as Update Constraints does.',
+    description: 'Change a project\'s target as Design Properties does: its board (none: no board) or device (part, package, speed), synthesis tool (silinx: the Silinx toolchain; xst: Xilinx ISE; vivado: AMD Vivado, the Artix-7\'s and Zynq-7000\'s default, the Spartan-7\'s and Kintex-7\'s only; quartus: Intel Quartus Prime, the Intel FPGAs\'), Preferred Language (the drawings\' HDL made again in it), and Project Kind (kind). A new device is checked against the design (warnings). update_constraints writes a new board\'s pins for the top\'s ports into the constraints file, as Update Constraints does.',
     inputSchema: { type: 'object', properties: {
       project: PROJECT, board: STR('The board (list_devices), or none for no board.'), variant: STR('The board\'s variant (default: the board\'s default).'),
       part: STR('The device, e.g. xc3s500e; with no board.'), package: STR('The package, e.g. fg320.'), speed: STR('The speed grade, e.g. -4.'),
       synth_tool: { type: 'string', enum: SYNTH_TOOLS, description: 'The synthesis tool.' },
       preferred_language: { type: 'string', enum: ['vhdl', 'verilog'], description: 'The drawings\' HDL made again in it (those with no language of their own).' },
       update_constraints: { type: 'boolean', description: 'With a new board: write its pins into the constraints file (default false).' },
-      top_source_type: { type: 'string', enum: TOP_TYPES.map(t => t.id), description: 'The Top-Level Source Type: a setting of the project, saved, nothing made (tt: Boolean algebra; a design and simulation project\'s is a drawing).' },
       profile: { type: 'string', enum: PROFILES.map(p => p.id), description: 'Its profile (Design Properties\' Project Kind): logic (Digital Logic: no board, HDL hidden; refused with HDL or C of its own), fpga (with a board or a device), embedded, system (narrower refused while a node is not allowed).' },
       mode: { type: 'string', enum: MODES.map(m => m.id), description: 'Change Mode; down: confirm.' },
       keep: STR('Mode down from a System: the node kept.'), confirm: { type: 'boolean', description: 'Mode down: do it.' },
@@ -169,19 +165,10 @@ export const SETTINGS_TOOLS = [
         return changeProfileOf(name, pj, profile);
       }
       const kind = profile === 'logic' ? DESIGN_KIND : profile;
-      // (the Top-Level Source Type, #4105: checked against the kind the project will have; saved with the rest, or alone)
-      const tst = args.top_source_type;
       const device = [board, variant, part, pkg, speed, synthTool, language, args.update_constraints].some(x => x !== undefined);
-      const willBeDesign = kind === DESIGN_KIND || (isDesignOnly(pj) && kind !== 'fpga' && !(board && board !== 'none') && !part);
-      if (tst !== undefined) { const why = topTypeRefusal(willBeDesign ? { kind: DESIGN_KIND } : {}, tst); if (why) throw toolError(why); }
-      // (System: the project made a System project, its System its top, #5402)
-      if (tst === SYSTEM_TOP) { if (kind !== undefined || device) throw toolError('top_source_type system: give it alone (a System project has no board of its own)'); return makeSystemTop(name); }
-      const topLine = tst === undefined ? [] : [`Top-Level Source Type: ${topType(tst).label}.`];
-      const withTop = async r => { if (tst === undefined) return r; await P.updateProject(name, p => ({ ...p, topSourceType: tst })); return { text: [r?.text, ...topLine].filter(Boolean).join('\n'), data: { ...(r?.data || { project: name }), topSourceType: tst } }; };
-      if (kind === DESIGN_KIND) return withTop(await makeDesignProject(name, pj, args));
-      if (tst !== undefined && kind === undefined && !device) return withTop(null);
+      if (kind === DESIGN_KIND) return makeDesignProject(name, pj, args);
       const fromDesign = isDesignOnly(pj);
-      if (kind === 'fpga' && !fromDesign && !device && tst === undefined) throw toolError(`the project '${name}' is an FPGA project already`);
+      if (kind === 'fpga' && !fromDesign && !device) throw toolError(`the project '${name}' is an FPGA project already`);
       if (fromDesign) {
         if (kind !== 'fpga' && !(board && board !== 'none') && !part) throw toolError(DESIGN_ONLY_MESSAGES.flow(name));
         pj = { ...pj, board: null, constraints: null };
@@ -252,7 +239,7 @@ export const SETTINGS_TOOLS = [
         if (fs.existsSync(path.join(P.projectDir(name), old))) warnings.push(`WARNING: this device's constraints are ${ext.slice(1).toUpperCase()}: ${constraintsFile} is the project's now, ${old} was not converted.`);
       }
       const oldLang = pj.preferredLanguage === 'verilog' ? 'verilog' : 'vhdl';
-      await P.updateProject(name, p => withoutKind({ ...p, board: nextBoard, device: next, constraints: constraintsFile, ...synthOf(), ...(language ? { preferredLanguage: language } : {}), ...(tst !== undefined ? { topSourceType: tst } : {}) }, fromDesign));
+      await P.updateProject(name, p => withoutKind({ ...p, board: nextBoard, device: next, constraints: constraintsFile, ...synthOf(), ...(language ? { preferredLanguage: language } : {}) }, fromDesign));
       // every drawing in the new language, its HDL file made again in it (#1477)
       const languageLines = [];
       if (language && language !== oldLang) {
@@ -273,7 +260,6 @@ export const SETTINGS_TOOLS = [
       const noFlow = experimental && !vivado && !quartus ? [`WARNING: ${R.noFlowMessage(next)}.`] : [];
       warnings.push(...noFlow);
       const text = [...warnings.filter(w => !pins.includes(w) && !languageLines.includes(w) && !noFlow.includes(w)), ...languageLines, ...(fromDesign ? [`${name}: an FPGA project now: its HDL and its implementation shown.`] : []), `Device set to ${R.deviceLabel(next)}${nextBoard ? ` (board ${nextBoard})` : ''}; synthesis tool ${after.synthTool || 'of Toolchain Settings'}${constraints ? `; ${after.constraints} written from the ${nextBoard}'s pins` : ''}.`, ...pins, ...noFlow];
-      text.push(...topLine);
       return { text: text.join('\n'), data: { project: name, board: nextBoard, device: next, synthTool: after.synthTool || null, preferredLanguage: after.preferredLanguage || 'vhdl', constraints: after.constraints || null, constraintsUpdated: constraints, generics: generics ? { file: generics.path, ...generics.values } : null, warnings } };
     },
   },

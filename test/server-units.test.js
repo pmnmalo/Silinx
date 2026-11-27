@@ -606,16 +606,19 @@ test('xise: implementation-only association round trip (Implementation only <-> 
   assert.deepEqual(back.files.map(f => `${f.path}:${f.role}`), ['src/top.vhd:design', 'src/syn_only.vhd:impl', 'sim/tb.vhd:sim']);
 });
 
-test('xise: Top-Level Source Type round trip (Schematic <-> topSourceType sch, otherwise HDL)', async () => {
+test('#5786 xise: the Top-Level Source Type from the top\'s file (a schematic\'s: Schematic; else HDL), none kept by the import', async () => {
   const { exportXise, importXise } = await import('../server/xise.js');
   const base = { name: 'p', top: 'top', device: { family: 'spartan3e', part: 'xc3s250e', package: 'cp132', speed: '-4' }, files: [{ path: 'src/top.vhd', lang: 'vhdl', role: 'design' }] };
-  const sch = exportXise({ ...base, topSourceType: 'sch' }, {});
+  const sources = { 'src/top.vhd': 'entity top is end top;\narchitecture rtl of top is begin end rtl;\n' };
+  // (a schematic top: its .sch stands for its HDL)
+  const sch = exportXise(base, { sources, schematics: [{ path: 'src/top.sch', hdl: 'src/top.vhd' }] });
   assert.match(sch, /<property xil_pn:name="Top-Level Source Type" xil_pn:value="Schematic"/);
-  assert.equal(importXise(sch).topSourceType, 'sch');
-  for (const t of ['hdl', 'fsm', 'tt', undefined]) {
-    const x = exportXise({ ...base, topSourceType: t }, {});
-    assert.match(x, /"Top-Level Source Type" xil_pn:value="HDL"/);
-    assert.equal(importXise(x).topSourceType, 'hdl');
+  assert.equal('topSourceType' in importXise(sch), false);
+  // (an HDL top; a project of before with its own saved type: not read)
+  for (const old of [undefined, 'sch', 'fsm']) {
+    const x = exportXise({ ...base, ...(old ? { topSourceType: old } : {}) }, { sources });
+    assert.match(x, /"Top-Level Source Type" xil_pn:value="HDL"/, String(old));
+    assert.equal('topSourceType' in importXise(x), false);
   }
 });
 

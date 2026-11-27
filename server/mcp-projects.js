@@ -13,15 +13,12 @@ import { MODES, modeOf, newProjectProfile } from '../core/project-mode.js';
 import { systemsOn, SYSTEMS_OFF } from '../core/build-channel.js';
 import { placeText } from '../core/project-place.js';
 import { withPlaces } from './project-places.js';
-import { TOP_TYPES, topTypeRefusal } from '../core/top-types.js';
-import { topSourceFiles } from '../core/top-source.js';
 import { designProjectInfo } from './mcp-design-only.js';
 import { newProcessorProject } from './mcp-processor.js';
 import { isProcessorBoard } from '../core/processor-board.js';
 import { flowFiles } from '../core/flow-files.js';
 import { topRefusal } from '../core/project-entries.js';
 import { makeSystemTop, makeNodeTop } from './mcp-system-top.js';
-import { SYSTEM_TOP } from '../core/system-top.js';
 import { isSystemFile } from '../core/system-doc.js';
 import { projectNodes } from '../core/project-nodes.js';
 import { projectSystem } from '../core/project-system.js';
@@ -47,16 +44,6 @@ function nameInstances(text) {
   return names.length ? { text: JSON.stringify(m, null, 1), names } : null;
 }
 
-// New Project's flow (#4121, web/js/wizards.js's): the Preferred Language (a design and simulation project's VHDL) and
-// the Top-Level Source Type saved, then the top document made (core/top-source.js) and the top module 'top'; its file or null
-async function startTop(name, designOnly, type, language = 'vhdl') {
-  await P.updateProject(name, pj => ({ ...pj, preferredLanguage: designOnly ? 'vhdl' : language, ...(type !== undefined ? { topSourceType: type } : {}) }));
-  const top = type !== undefined ? await topSourceFiles(type, language) : null;
-  if (!top) return null;
-  for (const f of top.files) await P.writeFile(name, f.path, f.text);
-  await P.updateProject(name, pj => ({ ...pj, top: 'top' }));
-  return top.file;
-}
 
 // the roots of a view's hierarchy as the Design pane lists them (#3819): the Implementation view's top first, then in
 // natural order (x_2 before x_10); none when the sources do not compile
@@ -144,46 +131,41 @@ export const PROJECT_TOOLS = [
   },
   {
     name: 'new_project', title: 'New empty project',
-    description: 'Make a new empty project in the workspace for a board (list_devices; default: the Basys2-250\'s device, no board); then write_file its sources (a test bench in sim/) and set_top. mode circuit (profile logic, Digital Logic): no board, device or constraints; drawings (new_source) simulated with test_bench_wizard and simulate; no implementation, emulation or programming (set_design_properties with a board makes it a board project); mode system: devices linked in a System. top_source_type: its top document, module \'top\' (a drawing\'s HDL generated; top.c / .cpp: HLS\'s function; hdl: none; system: a System project).',
+    description: 'Make a new empty project in the workspace for a board (list_devices; default: the Basys2-250\'s device, no board); then write_file its sources (a test bench in sim/) and set_top. mode circuit (profile logic, Digital Logic): no board, device or constraints; drawings (new_source) simulated with test_bench_wizard and simulate; no implementation, emulation or programming (set_design_properties with a board makes it a board project); mode system: devices linked in a System.',
     inputSchema: { type: 'object', properties: { name: STR('The new project\'s name: a letter, then up to 63 letters, digits, - and _.'), board: STR('The board (list_devices).'), variant: STR('The board\'s variant (default: the board\'s), e.g. 100 or 250 for the Basys2.'), mode: { type: 'string', enum: MODES.map(m => m.id), description: `Its mode: ${MODES.map(m => `${m.id} (${m.short})`).join(', ')}.` },
       profile: { type: 'string', enum: PROFILES.map(p => p.id), description: `Its profile, finer than its mode: ${PROFILES.map(p => `${p.id} (${p.label}: ${PROFILE_SHORT[p.id]})`).join(', ')}.` },
-      top_source_type: { type: 'string', enum: TOP_TYPES.map(t => t.id), description: 'Its Top-Level Source Type, as New Project\'s (tt: Boolean algebra; a design project\'s: a drawing; system: a System project); saved, its top document made.' },
-      language: { type: 'string', enum: ['vhdl', 'verilog'], description: 'Its Preferred Language, as New Project\'s (default vhdl): the top document\'s HDL module\'s.' },
+      language: { type: 'string', enum: ['vhdl', 'verilog'], description: 'Its Preferred Language, as New Project\'s (default vhdl).' },
       runtime: { type: 'string', enum: ['micropython', 'circuitpython'], description: 'A Pico\'s Python.' } }, required: ['name'], additionalProperties: false },
     annotations: { readOnlyHint: false, destructiveHint: false },
-    async run({ name, board, variant, mode, profile: given0, top_source_type: type, language, runtime }) {
+    async run({ name, board, variant, mode, profile: given0, language, runtime }) {
       // (a processor board, #5756: a Board project of it alone, core/processor-board.js)
-      if (isProcessorBoard(board) && (mode === undefined || mode === 'board')) return newProcessorProject(name, board, { runtime, variant, type, language, profile: given0 });
+      if (isProcessorBoard(board) && (mode === undefined || mode === 'board')) return newProcessorProject(name, board, { runtime, variant, language, profile: given0 });
       if (runtime !== undefined) throw toolError('runtime: a Raspberry Pi Pico\'s Python firmware: give a processor board (board pico or pico-w)');
       // (its mode, #5754: its profile, or the finer one given if it is of the mode, core/project-mode.js)
       let profile = given0;
       if (mode !== undefined) { const r = newProjectProfile(mode, profile); if (r.error) throw toolError(r.error); profile = r.profile; }
-      if (mode === 'board' && type === SYSTEM_TOP) throw toolError('top_source_type system makes a System project: give mode system, not board');
       // (its profile, #5440; kind and design_only, its deprecated names: server/mcp-aliases.js); as a new project's kind
       const given = profile === 'logic' ? DESIGN_KIND : profile;
       // (a System project, #4702: no board, its System document, no top document)
-      // (top_source_type system: a System project too, its System its top, #5402)
-      if (newSystemKind(given) || (type === SYSTEM_TOP && given !== DESIGN_KIND)) {
+      if (newSystemKind(given)) {
         if (!systemsOn()) throw toolError(SYSTEMS_OFF);   // (#5202)
-        if (board || variant || (type !== undefined && type !== SYSTEM_TOP)) throw toolError('a System project (profile system or embedded) has no board nor top document: its System (edit_system) names each FPGA node\'s board');
-        try { await P.createProject({ name, kind: newSystemKind(given) ? given : SYSTEM_KIND, madeBy: 'mcp' }); } catch (e) { throw toolError(e.message); }
+        if (board || variant || language !== undefined) throw toolError('a System project (profile system or embedded) has no board nor top document: its System (edit_system) names each FPGA node\'s board');
+        try { await P.createProject({ name, kind: given, madeBy: 'mcp' }); } catch (e) { throw toolError(e.message); }
         const sys = `${name}.sys.json`;
-        return { text: `Empty System project '${name}' made: its System ${sys} (no node yet). Write its modules with write_file, its firmware (.hex, .elf), then edit_system.${UNTRUSTED}`, data: { project: name, kind: SYSTEM_KIND, mode: 'system', profile: newSystemKind(given) ? given : 'system', board: null, system: sys, trusted: false } };
+        return { text: `Empty System project '${name}' made: its System ${sys} (no node yet). Write its modules with write_file, its firmware (.hex, .elf), then edit_system.${UNTRUSTED}`, data: { project: name, kind: SYSTEM_KIND, mode: 'system', profile: given, board: null, system: sys, trusted: false } };
       }
       const designOnly = (given ?? 'fpga') === DESIGN_KIND;
       if (designOnly && (board || variant)) throw toolError('a Digital Logic project (profile logic) has no board: give profile logic or a board, not both');
-      const refusal = type !== undefined && topTypeRefusal({ kind: designOnly ? DESIGN_KIND : null }, type);
-      if (refusal) throw toolError(refusal);
+      if (designOnly && language !== undefined) throw toolError('language: a Circuit project shows no HDL (its drawings are its sources)');
       let device;
       if (board || variant) ({ board, device } = await boardDevice(board, variant));
       try { await P.createProject({ name, device, board, kind: designOnly ? DESIGN_KIND : null, madeBy: 'mcp' }); } catch (e) { throw toolError(e.message); }
-      const flow = type !== undefined || language !== undefined;
-      const top = flow ? await startTop(name, designOnly, type, language) : null;
+      // (its Preferred Language, New Project's; its top added as any module, new_source or write_file, #5786)
+      if (language !== undefined) await P.updateProject(name, pj => ({ ...pj, preferredLanguage: language }));
       const pj = await P.readProject(name);
-      const made = top ? ` It starts with ${top} (the top module 'top').` : '';
-      const more = flow ? { topSourceType: pj.topSourceType ?? null, preferredLanguage: pj.preferredLanguage, top: pj.top || null, topFile: top } : {};
-      if (designOnly) return { text: `${top ? '' : 'Empty '}Digital Logic project '${name}' made (a design and simulation project).${made} Add its drawings with new_source${top ? '' : ', then set_top'}.`, data: { project: name, kind: DESIGN_KIND, mode: 'circuit', board: null, device: null, ...more, trusted: false } };
-      return { text: `${top ? 'P' : 'Empty p'}roject '${name}' made: ${pj.board || 'no board'} (${deviceName(pj.device)}).${made} Write its sources with write_file${top ? '' : ', then set_top'}.${UNTRUSTED}`, data: { project: name, mode: 'board', board: pj.board || null, device: pj.device, ...more, trusted: false } };
+      const more = language !== undefined ? { preferredLanguage: pj.preferredLanguage } : {};
+      if (designOnly) return { text: `Empty Digital Logic project '${name}' made (a design and simulation project). Add its drawings with new_source, then set_top.`, data: { project: name, kind: DESIGN_KIND, mode: 'circuit', board: null, device: null, trusted: false } };
+      return { text: `Empty project '${name}' made: ${pj.board || 'no board'} (${deviceName(pj.device)}). Write its sources with write_file, then set_top.${UNTRUSTED}`, data: { project: name, mode: 'board', board: pj.board || null, device: pj.device, ...more, trusted: false } };
     },
   },
   {
