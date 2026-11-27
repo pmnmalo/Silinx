@@ -123,6 +123,23 @@ export function psStarter(ps, boardName = 'the board') {
   ].join('\n');
 }
 
+/** The starter program of a Board project on a Zynq board (`pj`, its silinx.json), or throws: a board with no PS. */
+export function boardPsStarter(pj) {
+  const ps = psOfBoard(pj?.board);
+  if (!ps) throw new Error(boardPsRefusal(pj));
+  return psStarter(ps, resolveBoard(pj.board).board.name);
+}
+
+/** Why a Board project (`pj`) cannot have a PS program `path` (New Source's PS Program): a project with no Zynq board (a
+ *  System's FPGA node has its own: its Properties, edit_system's `ps`), a path out of ps/ or no .c; else null. */
+export function boardPsRefusal(pj, path = null) {
+  if (!psOfBoard(pj?.board)) return `a PS program is a Zynq board's (the Zybo Z7, the Arty Z7): this project's board is ${pj?.board || 'none'}${pj?.board ? '' : ' (a System\'s FPGA node: its PS program in its Properties)'}`;
+  return path == null ? null : psProgramError(path, null);
+}
+
+/** The project `pj` with its PS program `path` (New Source's PS Program): the first one its `ps`, a later one not. */
+export const withBoardPs = (pj, path) => (pj?.ps ? pj : { ...pj, ps: path });
+
 /** The starter programs a System's FPGA nodes on a Zynq board need: [{ path, text }], for each node whose `ps` names a
  *  program in its ps/ that the project has not (`files`: its paths). */
 export function psWrites(system, files = []) {

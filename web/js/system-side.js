@@ -11,6 +11,7 @@ import { BAUDS } from '/core/uart.js';
 import { readUsbId, usbIdText } from '/core/usb-id.js';
 import { changeNode, changeInterface, addInterface, removeInterface, changeLink, NODE_KIND_NAMES } from '/core/system-edit.js';
 import { nodeConstraintsPath } from '/core/system-constraints.js';
+import { psOfBoard, psProgramPath } from '/core/zynq-ps.js';
 
 /** { renderSide } of mountSystemEditor (M(), sel(): its values; apply(r): an edit's result taken, or its error said). */
 export function mountSystemSide(ctx) {
@@ -53,6 +54,14 @@ export function mountSystemSide(ctx) {
       out.push(field('Module', choose(n.module, [['', '(none)'], ...mods.map(m => [m, m])], v => take(changeNode(M(), n.id, { module: v }), 'node'), 'sys-module')),
         field('Board', choose(n.board, BOARDS.map(b => [b.id, b.name]), v => take(changeNode(M(), n.id, { board: v, variant: null }), 'node'), 'sys-board')));
       if (board?.variants?.length) out.push(field('Variant', choose(n.variant || '', [['', '(the board\'s)'], ...board.variants.map(v => [v.id, v.id])], v => take(changeNode(M(), n.id, { variant: v }), 'node'), 'sys-variant')));
+      // (a Zynq board's processing system, #4686: its program, a .c of its folder's ps/, its starter written when saved)
+      if (psOfBoard(n.board, n.variant)) {
+        const progs = [...new Set([...(opts.psPrograms?.(n.id) || []), ...(n.ps ? [n.ps] : [])])];
+        out.push(field('PS program', choose(n.ps || '', [['', '(none)'], ...progs.map(f => [f, f])], v => take(changeNode(M(), n.id, { ps: v || null }), 'node'), 'sys-ps'),
+          'a .c of its ps/: the Cortex-A9\'s program, its starter written when the System is saved'));
+        if (!n.ps) out.push(h('div', { class: 'asm-row' }, btn('New PS Program', 'Its processing system\'s program, ps/main.c: its starter (the UART says hello, an LED blinks), written when the System is saved',
+          () => take(changeNode(M(), n.id, { ps: psProgramPath(n.id) }), 'node'), 'asm-small sys-new-ps')));
+      }
       out.push(...usbFields(n));
       // its pins: its constraints file's, edited by its I/O Pin Planning (#5581: web/js/system-constraints-ui.js; its Text
       // view the file as text, Edit Constraints (Text) of before, #5642)

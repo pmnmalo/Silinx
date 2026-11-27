@@ -5,7 +5,7 @@
 // text writeSystem's, the Check run again. The Design pane's row of the System (design-system.js) opens it.
 import { api } from './api.js';
 import { h, popupMenu } from './ui.js';
-import { S, activateDoc, findDoc, openDoc, setDirty, viewRoots } from './app.js';
+import { S, app, activateDoc, findDoc, openDoc, setDirty, viewRoots } from './app.js';
 import { log, logError } from './console.js';
 import { editorProblems } from './editor-problems.js';
 import { renderHierarchy } from './design.js';
@@ -19,6 +19,7 @@ import { ucfPort } from '/core/board-constraints.js';
 import { normalizeCircuit } from '/core/circuit.js';
 import { readSystem, writeSystem } from '/core/system-doc.js';
 import { relInNode } from '/core/system-layout.js';
+import { isPsPath, psWrites } from '/core/zynq-ps.js';
 import { systemsOn, SYSTEMS_OFF } from '/core/build-channel.js';
 import { checkSystem, analyzeSystem } from '/core/system-check.js';
 import { systemInputs } from '/core/system-run.js';
@@ -125,6 +126,7 @@ const portsOf = name => (designState.modules || []).find(m => m.name === name)?.
 const inNode = (f, id) => id == null || relInNode(f, id) != null;
 const firmwares = id => (filesState.fileTree || []).filter(f => /\.(hex|elf|py)$/i.test(f) && inNode(f, id));   // (a Pico's program a .py, #5494)
 const circuits = id => (filesState.fileTree || []).filter(f => /\.circ\.json$/i.test(f) && inNode(f, id));   // (a circuit node's, #5215)
+const psPrograms = id => (filesState.fileTree || []).filter(f => /\.c$/i.test(f) && isPsPath(relInNode(f, id)));   // (a Zynq node's PS's, #4686)
 
 export async function openSystem(path) {
   // (Systems not in a release yet, #5202: said in the console, no editor)
@@ -151,7 +153,7 @@ export async function openSystem(path) {
         onProblems: diags => problems.set(diags),
         onCheck: diags => problems.log(diags),
         onMessage: (text, err) => log(err ? `WARNING: ${name}: ${text}` : `${name}: ${text}`, err ? 'warn' : 'info'),
-        check: checkProjectSystem, modules, portsOf, firmwares, circuits,
+        check: checkProjectSystem, modules, portsOf, firmwares, circuits, psPrograms,
         // (a project followed, #3181: read only, the follower's notice at the end of its toolbar; no live editing yet)
         ...(following() ? { readOnly: true, banner: followNotice() } : phoneOnly()),   // (a phone's, #5121)
         // (Simulate: the System's simulation view, #4701)
@@ -175,6 +177,10 @@ export async function openSystem(path) {
           const text = writeSystem(model);
           await api.writeFile(S.project.name, path, text); setDirty(d, false);
           saved = model; ed.savedAs();
+          // (a Zynq node's PS program named and not in the project: its starter, as edit_system writes it, #4686)
+          const starters = psWrites(model, filesState.fileTree || []);
+          for (const w of starters) { await api.writeFile(S.project.name, w.path, w.text); log(`${path}: ${w.path}: the PS's starter program written`, 'info'); }
+          if (starters.length) await app.reloadProject();
           // (its Design row: its name, its FPGA nodes' modules)
           designState.viewTexts = { ...designState.viewTexts, [path]: text };
           renderHierarchy();

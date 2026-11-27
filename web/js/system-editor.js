@@ -3,7 +3,7 @@
 //
 //   import { mountSystemEditor } from './system-editor.js';
 //   const ed = mountSystemEditor(container, { model, onChange(model), onProblems(diags), onCheck(diags), onMessage(text, isError),
-//     check(model) -> diags, modules() -> [name], portsOf(module) -> [{ name, dir }], firmwares(id) -> [path], circuits(id) -> [path] (a node's folder's, #5488), readOnly, banner,
+//     check(model) -> diags, modules() -> [name], portsOf(module) -> [{ name, dir }], firmwares(id) -> [path], circuits(id) -> [path], psPrograms(id) -> [path] (a node's folder's, #5488; a Zynq node's PS's, #4686), readOnly, banner,
 //     mountSim(host, { system() }) -> its simulation view (system-sim-view.js), wires(model) -> its wires (#5216) });
 //   ed.getModel(); ed.renames() (its nodes renamed since ed.savedAs(), #5488); ed.setModel(m); ed.undo(); ed.redo(); ed.canUndo(); ed.canRedo(); ed.fit(); ed.check(); ed.select({ kind, id });
 //   ed.deleteSelection(); ed.canDelete(); ed.showSim(); ed.sim (its simulation view, open); ed.setView('system' | 'wiring');

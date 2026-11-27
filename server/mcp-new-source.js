@@ -37,6 +37,7 @@ const TYPES = {
   mem: { label: 'Memory Initialization File (.mem)', ext: '.mem', dir: 'src' },
   c: { label: 'C Function (HLS)', ext: '.c', dir: 'src' },
   cpp: { label: 'C++ Function (HLS)', ext: '.cpp', dir: 'src' },
+  ps: { label: 'PS Program (Zynq)', ext: '.c', dir: 'ps' },   // (a Zynq board's PS's program, #4686)
   schematic: { label: 'Schematic', ext: '.sch.json', dir: 'src' },
   fsm: { label: 'Finite State Machine (FSM)', ext: '.fsm.json', dir: 'src' },
   asm: { label: 'Algorithmic State Machine (ASM)', ext: '.asm.json', dir: 'src' },
@@ -72,7 +73,7 @@ function portsOf(list) {
 export const NEW_SOURCE_TOOLS = [
   {
     name: 'new_source', title: 'New Source',
-    description: 'Add a new source to a project, as the New Source wizard does: module (an HDL module with its ports), test_bench (of a module of the project), package (VHDL), constraints (in the device\'s format: UCF, PCF, LPF, CST, XDC), mem, c or cpp (a function for Silinx HLS), an empty drawing (schematic, fsm or an FSM Wizard template, asm, petri, boolean: a truth table, circuit: a breadboard or a template\'s assembly, regmap), or lab (labs/<name>.lab.json, a guided lab\'s steps to edit). In VHDL or Verilog (default: the Preferred Language), from the wizard\'s templates, added; edit it with write_file. An existing file is kept.',
+    description: 'Add a new source to a project, as the New Source wizard does: module (an HDL module with its ports), test_bench (of a module of the project), package (VHDL), constraints (in the device\'s format: UCF, PCF, LPF, CST, XDC), mem, c or cpp (a function for Silinx HLS), ps (a Zynq board\'s PS program in ps/), an empty drawing (schematic, fsm or an FSM Wizard template, asm, petri, boolean: a truth table, circuit: a breadboard or a template\'s assembly, regmap), or lab (labs/<name>.lab.json, a guided lab\'s steps to edit). In VHDL or Verilog (default: the Preferred Language), from the wizard\'s templates, added; edit it with write_file. An existing file is kept.',
     inputSchema: { type: 'object', properties: {
       project: PROJECT, type: { type: 'string', enum: Object.keys(TYPES), description: 'The source\'s type.' },
       name: STR('Its file name, without the extension (letters, digits, _ and -; a letter first).'),
@@ -98,6 +99,8 @@ export const NEW_SOURCE_TOOLS = [
       if (!/^[A-Za-z0-9_/-]+$/.test(loc) || loc.split('/').some(s => !s || s.startsWith('.'))) throw toolError('Invalid location.');
       if (/^build(\/|$)/i.test(loc)) throw toolError('build/ is written by Silinx itself');
       if (type === 'lab' && loc !== 'labs') throw toolError('A guided lab is in the labs folder: Location labs.');
+      // (a Zynq board's PS's program, #4686: a Board project's, in ps/)
+      if (type === 'ps') { const why = (await import('../core/zynq-ps.js')).boardPsRefusal(pj, `${loc}/${file}${t.ext}`); if (why) throw toolError(why); }
       if (type === 'package' && language === 'verilog') throw toolError('a package is VHDL\'s');
       const lang = type === 'package' ? 'vhdl' : language || (['vhdl', 'verilog'].includes(place?.lang) ? place.lang : null) || (pj.preferredLanguage === 'verilog' ? 'verilog' : 'vhdl');
       const ext = type === 'constraints' ? constraintsExtOf(pj.device) : t.ext ?? (lang === 'verilog' ? '.v' : '.vhd');
@@ -115,7 +118,7 @@ export const NEW_SOURCE_TOOLS = [
       const mods = lib ? [...lib.modules.values()] : [];
       const taken = m => mods.find(x => x.name.toLowerCase() === m.toLowerCase());
       // the module named as the file (a drawing, a test bench, a package, a C function): not a reserved word
-      if (!['module', 'constraints', 'mem', 'lab'].includes(type)) {
+      if (!['module', 'constraints', 'mem', 'lab', 'ps'].includes(type)) {
         const r = reservedError(ident(file));
         if (r) throw toolError(`${r}: choose another name.`);
       }
@@ -163,6 +166,7 @@ export const NEW_SOURCE_TOOLS = [
       const noConstraints = !pj.constraints || !tree.includes(pj.constraints);
       try { await P.writeFile(name, rel, text); } catch (e) { throw toolError(e.message); }
       if (type === 'constraints' && noConstraints) await P.updateProject(name, p => ({ ...p, constraints: rel }));
+      if (type === 'ps') { const { withBoardPs } = await import('../core/zynq-ps.js'); await P.updateProject(name, p => withBoardPs(p, rel)); }
       // a drawing: its HDL file, as the interface gives it (#3184; an empty state diagram or ASM chart has none yet)
       const adopted = DRAWN.includes(type) ? await (await import('./drawing-sync.js')).adoptDrawing(P, name, rel) : null;
       const entry = (await P.readProject(name)).files.find(f => f.path === (adopted?.target || rel));
