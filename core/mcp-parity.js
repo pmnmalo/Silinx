@@ -89,6 +89,10 @@ export const MENU_PARITY = {
   'Project > Add Copy of Source…': ['import_source'],
   'Project > Set as Top Module': ['set_top'],
   'Project > Design Properties…': ['set_design_properties'],
+  // (a project's mode, #5755: set_design_properties's mode; its versions, #5740)
+  'Project > Change Mode…': ['set_design_properties'],
+  'Project > Save Version…': ['save_version'],
+  'Project > Versions…': ['list_versions', 'version_diff', 'restore_version'],
   'Project > Merge Contribution…': ['merge_preview', 'merge_contribution'],
   'Project > Undo Merge': ['undo_merge'],
   'Project > Guided Labs…': ['lab'],

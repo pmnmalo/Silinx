@@ -27,9 +27,10 @@ async function measure(page) {
   for (let i = 0; i < 3; i++) await page.send('HeapProfiler.collectGarbage');
   const { metrics } = await page.send('Performance.getMetrics');
   const m = Object.fromEntries(metrics.map((x) => [x.name, x.value]));
-  // the console keeps its last 5000 lines (2 nodes each): those are not leaks, so they are not counted
-  const consoleLines = await page.eval(() => document.getElementById('console-log').childElementCount);
-  return { heap: m.JSHeapUsedSize, nodes: m.Nodes - 2 * consoleLines, listeners: m.JSEventListeners };
+  // the console keeps its last 5000 lines (2 nodes each, and its time's ::before, #5035, a node of Chrome's count): those are
+  // not leaks, so they are not counted
+  const consoleNodes = await page.eval(() => { const log = document.getElementById('console-log'); return 2 * log.childElementCount + log.querySelectorAll(':scope > [data-time]').length; });
+  return { heap: m.JSHeapUsedSize, nodes: m.Nodes - consoleNodes, listeners: m.JSEventListeners };
 }
 
 /**
