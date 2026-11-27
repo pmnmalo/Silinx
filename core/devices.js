@@ -536,20 +536,29 @@ export function findBoard(id) {
 
 /**
  * Resolve a board (+ optional variant id, or a device part to pick the variant) into
- * { board, device, resources } with variant overrides applied.
+ * { board, device, resources } with variant overrides applied. boards: the list to look in (core's; the page passes
+ * /api/devices's, #5092); fallback: the variant of a part no variant has: 'first' (the default variant, else the first)
+ * or 'default' (the default variant, else none: the board's own device).
  */
-export function resolveBoard(id, { variant, part } = {}) {
-  const b = findBoard(id);
+export function resolveBoard(id, { variant, part, boards = BOARDS, fallback = 'first' } = {}) {
+  const b = boards.find(x => x.id === id);
   if (!b) return null;
   let v = null;
   if (b.variants) {
     v = b.variants.find(x => x.id === variant)
       || (part && b.variants.find(x => x.device.part === String(part).toLowerCase()))
-      || b.variants.find(x => x.default) || b.variants[0];
+      || b.variants.find(x => x.default) || (fallback === 'first' ? b.variants[0] : null);
   }
   const ov = v?.resourceOverrides || {};
   const resources = b.resources.map(r => (ov[r.name] ? { ...r, ...ov[r.name] } : { ...r }));
   return { board: b, variant: v, device: { ...(v?.device || b.device) }, resources };
+}
+
+/** A project's board as the page reads it (app.js projectBoard, #5092): the board with the device and the resources of
+ *  the variant of the project's part, else of the default variant, else the board's own; null with no board. */
+export function projectBoardOf(pj, boards = BOARDS) {
+  const r = pj?.board ? resolveBoard(pj.board, { part: pj.device?.part, boards, fallback: 'default' }) : null;
+  return r && { ...r.board, device: r.device, resources: r.resources };
 }
 
 /** Boards of the original Spartan-3E-only database: the default getDeviceDb() view. */

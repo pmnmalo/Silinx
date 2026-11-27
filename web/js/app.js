@@ -28,6 +28,7 @@ import { circuitPartModules } from '/core/circuit-modules.js';
 import { isLabFile } from '/core/labs.js';
 import { primitiveTemplates } from '/core/prim-templates.js';
 import { deviceFamily } from '/packages/silinx-fpga/src/parts.js';
+import { projectBoardOf } from '/core/devices.js';
 import { setActionRunner, longPressMenu } from './ui.js';
 import { appLog, clearConsole, commandError, log, logError, logInfo, logLine, logWarning, renderDiagnostics, setDiagnostics, showConsolePage } from './console.js';
 import { watchStale } from './stale-page.js';
@@ -220,13 +221,9 @@ export function compileProject() {
   return designState.lib;
 }
 
-// The project's board with the variant (pin overrides) that matches the selected part.
+// The project's board with the variant (pin overrides) that matches the selected part (core/devices.js, #5092).
 export function projectBoard(pj = S.project) {
-  const b = S.devices?.boards.find(x => x.id === pj?.board);
-  if (!b) return null;
-  const v = b.variants?.find(x => x.device.part === pj.device.part) || b.variants?.find(x => x.default) || null;
-  const ov = v?.resourceOverrides || {};
-  return { ...b, device: { ...(v?.device || b.device) }, resources: b.resources.map(r => (ov[r.name] ? { ...r, ...ov[r.name] } : r)) };
+  return S.devices?.boards ? projectBoardOf(pj, S.devices.boards) : null;
 }
 
 export function moduleInfo(name) { return designState.modules.find(m => m.name === name) || designState.modules.find(m => m.name.toLowerCase() === String(name).toLowerCase()); }
