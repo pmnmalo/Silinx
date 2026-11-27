@@ -57,6 +57,13 @@ A project is a directory under the workspace (default `~/Silinx-projects`, overr
   `Speed` and 1 **Fast** (the default of a new project, `core/project-defaults.js` `NEW_IMPL`: one mapping, its critical LUTs made shallower, one placement; a project with none is Fast too), `Area` and 2 **Area** (the
   smaller of the usual mapping's netlist and Speed's, one placement), `Speed` and 2 **Speed** (every mapping for speed, the state machines of 8 states or more one-hot, the
   fastest kept; several placements, the fastest kept). `Area` at 1, of a project made before, is Area.
+* **Documents' formats** (#4756, #5906, `core/doc-envelope.js`): silinx.json and each of Silinx's own documents (the
+  drawings `.sch`, `.fsm`, `.asm`, `.tt` / `.bool`, `.pn`, `.circ`, `.regs`, and `.sym`, `.sys`, `.stim` `.json`, the
+  versions' index) carry a version, and some a `format`. One a newer Silinx saved opens read-only, said in the console,
+  and is never written back in the older format (the server's and the browser's stores refuse it: a 409). One in an
+  older format is read through its migrations (`migrate[n]`: version n to n + 1; the schematic's in its own reader) and
+  said in the console's information; it is written in the new format on its next save, never on open, a version of
+  the project (`before-migrate`) kept first. The MCP's `project_info` says the same (`documents`).
 * Generated implementation output lives in `<project>/build/` (ISE work dir), bitstream `build/<top>.bit`.
 
 ## HTTP API (server/)

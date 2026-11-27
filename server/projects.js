@@ -28,7 +28,7 @@ import { withFileLock } from './project-lock.js';
 import { langOfPath } from '../core/file-kinds.js';
 import { registerWritten, renameEntries, deleteEntries } from '../core/project-entries.js';
 import { trashTime, expiredTrash } from '../core/trash.js';
-import { formatVersion, downgradeRefusal } from '../core/doc-format.js';
+import { formatVersion, downgradeRefusal, migratingWrite } from '../core/doc-format.js';
 import { noteWritten, noteRemoved, noteMoving } from './own-writes.js';
 import { UNRECORDED } from '../core/trust.js';
 import * as trustStore from './trust-store.js';
@@ -693,8 +693,12 @@ export async function writeFile(name, rel0, text) {
     if ((await fs.stat(full).catch(() => null))?.isDirectory()) throw new HttpError(400, `'${rel}' is a folder, not a file`);
     // (a drawing a newer Silinx saved never written over in an older format: what it added would be lost, #4756)
     if (formatVersion(rel) !== null) {
-      const refused = downgradeRefusal(rel, await fs.readFile(full, 'utf8').catch(() => null), text);
+      const was = await fs.readFile(full, 'utf8').catch(() => null);
+      const refused = downgradeRefusal(rel, was, text);
       if (refused) throw new HttpError(409, refused);
+      // (a document's first save in a newer format: the project kept as it was first, a version, #5906; its error
+      // never stops the save, as a risky command's version)
+      if (migratingWrite(rel, was, text)) await (await import('./versions.js')).versionBefore(await import('./projects.js'), name, 'before-migrate');
     }
     try {
       await fs.mkdir(path.dirname(full), { recursive: true });

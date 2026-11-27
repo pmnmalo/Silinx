@@ -24,7 +24,7 @@ export const VERSION_LIMITS = Object.freeze({ max: 200, bytes: 64 << 20, all: 36
 export const REASONS = Object.freeze({
   save: 'saved on its own', manual: 'saved by hand', 'before-merge': 'before Merge Contribution', 'before-remove': 'before Remove from Project',
   'before-delete': 'before Delete', 'before-convert': 'before a conversion', 'before-import': 'before an import',
-  'before-git': 'before a git pull or merge', 'before-mode': 'before Change Mode', 'before-restore': 'before a restore', restore: 'restored',
+  'before-git': 'before a git pull or merge', 'before-mode': 'before Change Mode', 'before-migrate': 'before a document\'s new format', 'before-restore': 'before a restore', restore: 'restored',
 });
 const LABEL_MAX = 80, AUTHOR_MAX = 40;
 // (silinx.json's fields that are the project's own: never taken from a version, #5740)

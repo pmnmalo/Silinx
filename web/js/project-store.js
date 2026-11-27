@@ -4,7 +4,7 @@
 //   Chrome / Edge: a FileSystemDirectoryHandle), each one a normal project folder in the full
 //   application's format (silinx.json, src/, sim/, constraints/, build/… as server/projects.js
 //   writes them), so the same folder opens in the full application and zips for a submission.
-// projectOps(getStore, examples): the project operations of the API (list, create, open, save,
+// projectOps(getStore, examples, { beforeMigrate }): the project operations of the API (list, create, open, save,
 // read / write / rename / delete files, delete a project) on the store in use.
 // No browser global is touched at import time: the unit tests run this in Node with an in-memory
 // FileSystemDirectoryHandle (test/fixtures/fs-access-fake.js).
@@ -28,7 +28,7 @@ import { foldName, foldsToProjectFile, PROJECT_FILE, sameNameIn, spelledAs } fro
 import { langOfPath } from '../../core/file-kinds.js';
 import { registerWritten, renameEntries, deleteEntries } from '../../core/project-entries.js';
 import { expiredTrash } from '../../core/trash.js';
-import { downgradeRefusal } from '../../core/doc-format.js';
+import { downgradeRefusal, migratingWrite } from '../../core/doc-format.js';
 
 export const NAME_RE = PROJECT_NAME_RE;   // (core/project-name.js, #3538)
 // the site's development edition (https://pmnmalo.github.io/Silinx/dev/, built from main): its
@@ -581,7 +581,7 @@ export async function readBuildResults(store, name, { modelVersion }) {
 
 // ------------------------------------------------------------------ the project operations
 /** The API's project calls on the store `getStore()` returns (the one in use). */
-export function projectOps(getStore, examples = {}) {
+export function projectOps(getStore, examples = {}, { beforeMigrate = null } = {}) {
   const S = () => getStore();
   // (#4735: a folder on the disk's projects: the user's own recorded as trusted, the migration first; none in the
   // browser's own storage, which nothing but Silinx writes)
@@ -704,6 +704,9 @@ export function projectOps(getStore, examples = {}) {
       // (a drawing a newer Silinx saved never written over in an older format, as the local server's, #4756)
       const refused = downgradeRefusal(path, p.files[path] ?? null, text);
       if (refused) throw Object.assign(new Error(refused), { status: 409 });
+      // (a document's first save in a newer format: a version of the project as it was first, as the local server's,
+      // #5906; its error never stops the save)
+      if (beforeMigrate && migratingWrite(path, p.files[path] ?? null, text)) await Promise.resolve().then(() => beforeMigrate(name)).catch(() => {});
       await S().writeFile(name, path, text);
       const json = clone(p.json);
       if (registerWritten(json, path)) await S().saveJson(name, json);   // (core/project-entries.js, as the server's, #4733)
