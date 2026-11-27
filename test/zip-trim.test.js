@@ -23,6 +23,10 @@ test('leaveOutUnused: maps, types, the shared packages\' tests, demos and covera
       'node_modules/@scope/pkg/dist/index.js': 'x', 'node_modules/@scope/pkg/dist/index.d.mts': 'x', 'node_modules/@scope/pkg/test/keep.js': 'x', 'node_modules/@scope/pkg/package.json': '{}',
       'node_modules/other/coverage/keep.json': 'x', 'node_modules/other/node_modules/inner/x.js.map': 'x',
       'node_modules/@codemirror/legacy-modes/mode/vhdl.js': 'x', 'node_modules/@codemirror/legacy-modes/mode/cobol.js': 'x', 'node_modules/@codemirror/legacy-modes/package.json': '{}',
+      // (the ESP32's MicroPython, #5816: its module and the settrace build kept, the three others out)
+      'node_modules/@micropython/micropython-webassembly-pyscript/micropython.mjs': 'x', 'node_modules/@micropython/micropython-webassembly-pyscript/micropython-settrace.wasm': 'x',
+      'node_modules/@micropython/micropython-webassembly-pyscript/micropython.wasm': 'x', 'node_modules/@micropython/micropython-webassembly-pyscript/micropython-ulab.wasm': 'x',
+      'node_modules/@micropython/micropython-webassembly-pyscript/micropython-settrace-ulab.wasm': 'x',
     };
     for (const [f, t] of Object.entries(files)) { fs.mkdirSync(path.dirname(path.join(app, f)), { recursive: true }); fs.writeFileSync(path.join(app, f), t); }
     const r = leaveOutUnused(app);
@@ -30,9 +34,10 @@ test('leaveOutUnused: maps, types, the shared packages\' tests, demos and covera
     assert.deepEqual(left, ['node_modules/lib0/encoding.js', 'node_modules/lib0/dist/encoding.cjs', 'node_modules/lib0/testing.js',
       'node_modules/yjs/dist/yjs.mjs', 'node_modules/yjs/tests/a.js', 'node_modules/yjs/LICENSE', 'node_modules/y-codemirror.next/src/index.js', 'node_modules/y-codemirror.next/dist/y-codemirror.cjs',
       'node_modules/@scope/pkg/dist/index.js', 'node_modules/@scope/pkg/test/keep.js', 'node_modules/@scope/pkg/package.json', 'node_modules/other/coverage/keep.json',
-      'node_modules/other/node_modules/inner/x.js.map', 'node_modules/@codemirror/legacy-modes/mode/vhdl.js', 'node_modules/@codemirror/legacy-modes/package.json']);   // (a nested package: its parent's npm ci tree, left as it is)
+      'node_modules/other/node_modules/inner/x.js.map', 'node_modules/@codemirror/legacy-modes/mode/vhdl.js', 'node_modules/@codemirror/legacy-modes/package.json',
+      'node_modules/@micropython/micropython-webassembly-pyscript/micropython.mjs', 'node_modules/@micropython/micropython-webassembly-pyscript/micropython-settrace.wasm']);   // (a nested package: its parent's npm ci tree, left as it is)
     assert.equal(r.files, Object.keys(files).length - left.length);
-    assert.equal(r.bytes, 109);
+    assert.equal(r.bytes, 112);
     assert.deepEqual(leaveOutUnused(app), { files: 0, bytes: 0 }, 'again: nothing');
   } finally { fs.rmSync(app, { recursive: true, force: true }); }
 });
