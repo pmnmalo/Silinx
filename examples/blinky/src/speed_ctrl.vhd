@@ -222,3 +222,4 @@ begin
     step <= step_reg;
 
 end architecture rtl;
+-- silinx-sync drawing:cfec7de8193bd098 hdl:167e591f374d3527 (generated from the drawing: edit it, not this file)

@@ -8,6 +8,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
 import { drawingInLanguage, modelLanguage, viewHdl } from '../core/view-hdl.js';
+import { readStamp } from '../core/hdl-cache.js';
 import { compile, elaborate } from '../core/compile.js';
 import { newPetri } from '../core/petri.js';
 import { example } from './examples-lib.mjs';
@@ -65,10 +66,10 @@ for (const [ex, f, hdl] of DRAWINGS) {
     const all = example(ex).design.map(s => (s.path === hdl ? { ...s, path: target, lang: 'verilog', text: v.hdl } : s));
     const top = elaborate(compile(all), example(ex).project.top);
     assert.deepEqual(top.diags.map(d => `${d.severity}: ${d.message}`), []);
-    // back in VHDL: the drawing and the HDL shipped with the example
+    // back in VHDL: the drawing and the HDL shipped with the example (its silinx-sync line aside, #5872)
     const back = drawingInLanguage(f, v.text, 'vhdl');
     assert.deepEqual([back.from, back.target, back.model.generatedFile, back.errors], [target, hdl, hdl, []]);
-    assert.equal(back.hdl, read(ex, hdl));
+    assert.equal(back.hdl, readStamp(read(ex, hdl)).body);
     assert.equal(drawingInLanguage(f, back.text, 'vhdl'), null);
   });
 }

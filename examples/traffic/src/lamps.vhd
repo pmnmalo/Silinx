@@ -36,3 +36,4 @@ begin
     walk_r <= (not phase2 and not phase0) or (not phase1 and phase0);
     walk_g <= (phase1 and phase0) or (phase2 and not phase1 and not phase0 and blink);
 end truth_table;
+-- silinx-sync drawing:116bc3148764efed hdl:33163b222397e74e (generated from the drawing: edit it, not this file)

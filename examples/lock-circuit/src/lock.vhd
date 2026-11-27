@@ -192,3 +192,4 @@ begin
     end process output_logic;
 
 end architecture rtl;
+-- silinx-sync drawing:61061aee490b912d hdl:b7ebc5560692fd64 (generated from the drawing: edit it, not this file)

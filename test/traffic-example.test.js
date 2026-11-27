@@ -13,13 +13,15 @@ import path from 'node:path';
 import { normalizeFsm, validateFsm, generateFsm, fsmEncoding, fsmFromHdl, sameFsm } from '../core/fsm.js';
 import { normalizeTable, validateTable, generateTableHdl, truthTableFromModule, dontCaresInHdl } from '../core/logic.js';
 import { EXAMPLES, TARGETS, targetName, example, exampleUcf, runTestbench } from './examples-lib.mjs';
+import { readStamp } from '../core/hdl-cache.js';
 
 const ex = example('traffic');
 const read = (f) => fs.readFileSync(path.join(ex.dir, f), 'utf8');
 const fsm = JSON.parse(read('src/traffic.fsm.json'));
 const tt = JSON.parse(read('src/lamps.bool.json'));
-const fsmHdl = read('src/traffic.vhd');
-const ttHdl = read('src/lamps.vhd');
+// (their silinx-sync line aside, #5872)
+const fsmHdl = readStamp(read('src/traffic.vhd')).body;
+const ttHdl = readStamp(read('src/lamps.vhd')).body;
 const fsmCode = (m) => generateFsm(m, 'vhdl', { source: 'traffic.fsm.json' }).code;
 const ttCode = (t) => generateTableHdl(t, 'vhdl', { source: 'lamps.bool.json' }).code;
 const PHASES = ['CARS', 'CARS_YELLOW', 'ALL_RED', 'WALK', 'WALK_END', 'ALL_RED_2', 'NIGHT'];

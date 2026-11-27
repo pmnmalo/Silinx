@@ -22,6 +22,7 @@ import { normalizeModel as normalizeAsm, generate as generateAsm } from '../core
 import { normalizePetri, generatePetri } from '../core/petri.js';
 import { normalizeDoc, generateHdl } from '../core/schdoc.js';
 import { unlabelled } from './mcp-label.js';
+import { readStamp } from '../core/hdl-cache.js';   // (the HDL files' silinx-sync line aside, #5872)
 
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 const until = async (fn, what, ms = 5000) => { const t0 = Date.now(); for (;;) { const v = await fn(); if (v) return v; if (Date.now() - t0 > ms) throw new Error(`timed out: ${what}`); await sleep(25); } };
@@ -483,7 +484,7 @@ test('#3183 a state diagram edited live: an editor\'s page and the MCP client ch
   const disk = JSON.parse(await P.readFile('trafficFsm', FSM));
   assert.deepEqual(disk, drawingModel(ed.doc, FSM).model);
   await until(async () => /S_GO\b/.test(await P.readFile('trafficFsm', 'src/traffic.vhd')) && /S_EXTRA\b/.test(await P.readFile('trafficFsm', 'src/traffic.vhd')), 'the HDL made again', 8000);
-  assert.equal(await P.readFile('trafficFsm', 'src/traffic.vhd'), generateFsm(normalizeFsm(disk), 'vhdl', { source: 'traffic.fsm.json' }).code);
+  assert.equal(readStamp(await P.readFile('trafficFsm', 'src/traffic.vhd')).body, generateFsm(normalizeFsm(disk), 'vhdl', { source: 'traffic.fsm.json' }).code);
   const pj = await P.readProject('trafficFsm');
   assert.equal(pj.trusted, false);
   // the MCP client reads the merge: its Check (EXTRA is never left: a warning of the diagram's own, not of the merge)
@@ -525,7 +526,7 @@ test('#3183 a truth table edited live: a page and the MCP client change two cell
   await until(async () => JSON.parse(await P.readFile('trafficTt', TT)).table.car_r === want, 'the merge on the disk', 8000);
   const disk = JSON.parse(await P.readFile('trafficTt', TT));
   assert.deepEqual(disk, drawingModel(ed.doc, TT).model);
-  await until(async () => (await P.readFile('trafficTt', 'src/lamps.vhd')) === generateTableHdl(disk, 'vhdl', { source: 'lamps.bool.json' }).code, 'the HDL made again', 8000);
+  await until(async () => readStamp(await P.readFile('trafficTt', 'src/lamps.vhd')).body === generateTableHdl(disk, 'vhdl', { source: 'lamps.bool.json' }).code, 'the HDL made again', 8000);
   assert.deepEqual(JSON.parse((await ok('follow_project', { link: editLink, path: TT })).data.text), disk);
   assert.deepEqual((await ok('share_project', { project: 'trafficTt', action: 'status' })).data.warnings, []);
   await ed.close();
@@ -585,7 +586,7 @@ test('#3183 an ASM chart edited live: a page renames a state while the MCP clien
   await until(async () => want(JSON.parse(await P.readFile('blinkyAsm', F))), 'the merge on the disk', 8000);
   const disk = JSON.parse(await P.readFile('blinkyAsm', F));
   assert.deepEqual(disk, drawingModel(ed.doc, F).model);
-  await until(async () => (await P.readFile('blinkyAsm', 'src/speed_ctrl.vhd')) === generateAsm(disk, 'vhdl', { source: 'speed_ctrl.asm.json' }).code, 'the HDL made again', 8000);
+  await until(async () => readStamp(await P.readFile('blinkyAsm', 'src/speed_ctrl.vhd')).body === generateAsm(disk, 'vhdl', { source: 'speed_ctrl.asm.json' }).code, 'the HDL made again', 8000);
   assert.match(await P.readFile('blinkyAsm', 'src/speed_ctrl.vhd'), /S_RELEASE/);
   assert.deepEqual((await ok('share_project', { project: 'blinkyAsm', action: 'status' })).data.warnings, []);
   await ed.close();
@@ -614,7 +615,7 @@ test('#3183 a Petri net edited live: a page adds a place while the MCP client ad
   await until(async () => want(JSON.parse(await P.readFile('netPn', F))), 'the merge on the disk', 8000);
   const disk = JSON.parse(await P.readFile('netPn', F));
   assert.deepEqual(disk, drawingModel(ed.doc, F).model);
-  await until(async () => (await P.readFile('netPn', 'src/ctl.vhd')) === generatePetri(disk, 'vhdl', { source: 'ctl.pn.json' }).code, 'the HDL made again', 8000);
+  await until(async () => readStamp(await P.readFile('netPn', 'src/ctl.vhd')).body === generatePetri(disk, 'vhdl', { source: 'ctl.pn.json' }).code, 'the HDL made again', 8000);
   assert.match(await P.readFile('netPn', 'src/ctl.vhd'), /spare/);
   assert.deepEqual((await ok('share_project', { project: 'netPn', action: 'status' })).data.warnings, []);
   await ed.close();
@@ -644,7 +645,7 @@ test('#3183 a schematic edited live: a page moves a symbol while the MCP client 
   const text = await P.readFile('gatesSch', F);
   assert.equal(C(JSON.parse(text)), C(drawingModel(ed.doc, F).model));
   assert.equal(text, JSON.stringify(drawingModel(ed.doc, F).model, null, 1), 'indented by one space, as the schematic editor saves it');
-  await until(async () => (await P.readFile('gatesSch', 'src/gates.vhd')) === generateHdl(JSON.parse(text), { lang: 'vhdl' }).code, 'the HDL made again', 8000);
+  await until(async () => readStamp(await P.readFile('gatesSch', 'src/gates.vhd')).body === generateHdl(JSON.parse(text), { lang: 'vhdl' }).code, 'the HDL made again', 8000);
   assert.match(await P.readFile('gatesSch', 'src/gates.vhd'), /^-- merged live$/m);
   // (#4239) a write of another wires' style: left out, said, the owner's file keeping its own; the write's other changes merged
   const curved = { ...JSON.parse(text), wireStyle: 'curved', description: 'curved here' };

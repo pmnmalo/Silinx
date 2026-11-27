@@ -15,6 +15,7 @@ import { useProjectParts } from './circuit-kicad.js';
 import { modelRunners } from './circuit-live-model.js';
 import { syncNodeMain } from './node-main-sync.js';
 import { codeName, cpuDrawingRefusal, drawingC, drawingNode, isCodeFile, isCpuLang, nodeCodeOpts } from './drawing-code.js';
+import { cacheState, drawingHash, readStamp, stampHdl } from './hdl-cache.js';
 
 const kindOf = path => VIEW_RE.exec(path)?.[1].toLowerCase();
 const indent = path => (kindOf(path) === 'sch' ? 1 : 2);
@@ -76,33 +77,109 @@ export async function nodeOfDrawing(P, name, path) {
 }
 
 /** A drawing's HDL file made again from it (its C in a CPU node, #5486): { target, written, removed, stale: its errors'
- *  text or null, messages } (null: a drawing with no HDL file in the project, or not a drawing). */
-export async function syncDrawing(P, name, path, modules = null) {
+ *  text or null, messages } (null: a drawing with no HDL file in the project, or not a drawing). Its HDL file is a cache
+ *  of it (#5872, core/hdl-cache.js): written with its silinx-sync line; one changed outside Silinx (its text not the
+ *  line's) or of before that line, not the drawing's, kept in a version first (kept: its number; a warning for the
+ *  first); its text the drawing's but its line not (a file of before): written, stamped (nothing said); the drawing's layout
+ *  changed alone (the same HDL): left as it is. fast: nothing made for a file made from the drawing as it is and not
+ *  changed since (a check's); outside: the drawing changed outside Silinx, said; own: its HDL file changed by Silinx
+ *  itself (a rename's), not kept. */
+export async function syncDrawing(P, name, path, modules = null, { fast = false, outside = false, own = false } = {}) {
   const link = await linkOf(P, name, path);
   if (!link) return null;
   const at = await nodeOfDrawing(P, name, path);
   if (isCpuLang(at?.lang)) return syncCode(P, name, path, link, at);
   const { m, target, tree } = link;
-  const mods = modules || (kindOf(path) === 'sch' ? await projectModules(P, name) : {});
+  const modsOf = async () => modules || (kindOf(path) === 'sch' ? await projectModules(P, name) : {});
   // in another language than its file's: its HDL file in that language, the other one removed
   if (m.lang && isVerilog(target) !== (m.lang === 'verilog')) {
-    const r = drawingInLanguage(path, JSON.stringify(m), m.lang, { modules: mods });
+    const r = drawingInLanguage(path, JSON.stringify(m), m.lang, { modules: await modsOf() });
     const L = m.lang === 'verilog' ? 'Verilog' : 'VHDL';
     if (!r.hdl || r.errors.length) return { target, written: null, removed: null, stale: r.errors.map(e => e.replace(`${path}: `, '')).join('; '), messages: [`WARNING: ${target} not made in ${L} yet: ${path} has errors: ${r.errors.map(e => e.replace(`${path}: `, '')).join('; ')}`] };
     if (tree.includes(r.target)) return { target, written: null, removed: null, stale: null, messages: [`WARNING: the HDL of ${path} is not made in ${L}: ${r.target} exists already`] };
     await P.deleteFile(name, target);
-    await P.writeFile(name, r.target, r.hdl);
+    await P.writeFile(name, r.target, await stampHdl(r.hdl, await drawingHash(r.text), m.lang));
     await P.writeFile(name, path, r.text);
     return { target: r.target, written: r.target, removed: target, stale: null, messages: [`${path}: its HDL is now in ${L}, ${r.target} (${target} removed)`] };
   }
-  const r = viewHdl(path, JSON.stringify(m), { modules: mods, linked: () => false });
+  const had = await P.readFile(name, target).catch(() => null);
+  // (own: its HDL file changed by Silinx itself, a rename's: not an edit of the user's)
+  const read = had === null ? null : await cacheState(had, m);
+  const state = own && (read === 'edited' || read === 'unknown') ? 'drawing' : read;
+  const unchanged = { target, written: null, removed: null, stale: null, messages: [] };
+  const dh = await drawingHash(m);
+  const seen = `${name}\0${target}`, sig = `${dh}:${had}`;
+  // (a check's, #5872: made from the drawing as it is and not changed since, or found the drawing's already, nothing)
+  if (fast && (state === 'fresh' || (state === 'drawing' && verified.get(seen) === sig))) return unchanged;
+  const r = viewHdl(path, JSON.stringify(m), { modules: await modsOf(), linked: () => false });
   if (r.errors.length) {
     const why = r.errors.map(e => e.replace(`${path}: `, '')).join('; ');
     return { target, written: null, removed: null, stale: why, messages: [await designProject(P, name) ? `WARNING: ${path}: its module is not made again: ${why}` : `WARNING: ${target} not updated: ${path} has errors: ${why}`] };
   }
-  if (await P.readFile(name, target) === r.text) return { target, written: null, removed: null, stale: null, messages: [] };
-  await P.writeFile(name, target, r.text);
-  return { target, written: target, removed: null, stale: null, messages: await designProject(P, name) ? [] : [`${target} updated from ${path}`] };
+  const want = await stampHdl(r.text, dh, isVerilog(target) ? 'verilog' : 'vhdl');
+  if (had === want) return unchanged;
+  const body = had === null || readStamp(had).body !== readStamp(want).body;
+  // (the drawing's layout changed, its HDL the same: the file left as it is, no change in git; its check remembered)
+  if (!body && state === 'drawing') { remember(seen, sig); return unchanged; }
+  const design = await designProject(P, name);
+  // (its text changed outside Silinx, or a file of before #5872 not the drawing's: kept in a version, then the drawing's)
+  const kept = had !== null && body && (state === 'edited' || state === 'unknown') ? await keepVersion(P, name, editedLabel(target, path, design)) : null;
+  await P.writeFile(name, target, want);
+  // (only its line new: a file of before #5872, or its line changed by hand, its text the drawing's)
+  if (!body) return { ...unchanged, written: target, stamped: target };
+  const done = { target, written: target, removed: null, stale: null, ...(kept ? { kept: kept.id ?? null } : {}) };
+  if (state === 'edited') return { ...done, messages: [editedWarning(target, path, kept, design)] };
+  const before = kept ? ` (${kept.id ? `its text before, from a file with no silinx-sync line, is kept in version ${kept.id}` : `its text before could not be kept in a version: ${kept.error}`})` : '';
+  const why = outside && state === 'drawing' ? ' (the drawing was changed outside Silinx)' : '';
+  return { ...done, messages: design ? [] : [`${target} updated from ${path}${why}${before}`] };
+}
+
+/** Every drawing of the project checked against its HDL file (#5872), as the project is opened, the project's folder
+ *  changes or before a flow runs: one made from the drawing as it is and not changed since left as it is (its
+ *  silinx-sync line's hashes), the others made again (syncDrawing's: an HDL file changed outside Silinx kept in a
+ *  version, the drawing winning; a drawing with errors leaves its file, stale, and the flows stop on it), a drawing with
+ *  no HDL file given its own (adoptDrawing). only: these drawings. The schematics last (the modules they use made
+ *  first). { results: [{ path, ...syncDrawing's or adoptDrawing's }] (those that did or said something), written: [the
+ *  files written], messages }. */
+export async function checkDrawings(P, name, { only = null } = {}) {
+  const drawings = (await P.fileTree(name)).filter(f => kindOf(f) && (!only || only.includes(f)))
+    .sort((a, b) => (kindOf(a) === 'sch') - (kindOf(b) === 'sch') || a.localeCompare(b));
+  const out = { results: [], written: [], messages: [] };
+  for (const f of drawings) {
+    const r = await syncDrawing(P, name, f, null, { fast: true, outside: true }) || await adoptDrawing(P, name, f);
+    if (!r || (!r.written && !r.removed && !r.messages.length)) continue;
+    out.results.push({ path: f, ...r });
+    for (const w of [r.written, r.removed]) if (w && !out.written.includes(w)) out.written.push(w);
+    out.messages.push(...r.messages);
+  }
+  return out;
+}
+
+// the HDL files found to be their drawing's as it is, their line's drawing hash an older one (its layout changed since):
+// `project\0file` -> `drawing hash:file's text`, a check's fast way past them (a few hundred at most)
+const verified = new Map();
+function remember(key, sig) {
+  verified.delete(key);
+  verified.set(key, sig);
+  if (verified.size > 500) verified.delete(verified.keys().next().value);
+}
+
+/** The label of the version kept before an HDL file changed outside Silinx is made again from its drawing (#5872; a
+ *  design project's names its drawing, never its HDL, #3891). */
+export const editedLabel = (target, path, design = false) => (design ? `${path}: its module changed outside Silinx` : `${target} changed outside Silinx`);
+
+// a version of the project as it is (the HDL file changed outside Silinx in it), before its drawing's HDL replaces it:
+// { id } or { error } (a store with no versions: none kept)
+async function keepVersion(P, name, label) {
+  if (!P.saveVersion) return { error: 'no versions here' };
+  try { return { id: (await P.saveVersion(name, { reason: 'before-regenerate', label, author: 'Silinx' })).version.id }; } catch (e) { return { error: e.message }; }
+}
+
+// the warning of an HDL file changed outside Silinx, made again from its drawing (#5872)
+function editedWarning(target, path, kept, design) {
+  const where = kept.id ? `the changed file is kept in version ${kept.id} ("${editedLabel(target, path, design)}")` : `the changed file could not be kept in a version: ${kept.error}`;
+  return design ? `WARNING: ${path}: its module was changed outside Silinx: made again from the drawing; ${where}.`
+    : `WARNING: ${target} was changed outside Silinx: made again from ${path}, the drawing being its source; ${where}.`;
 }
 
 // a drawing's code made again (its file the C or the MicroPython, or its HDL from before its node's language was C,
@@ -192,7 +269,7 @@ export async function adoptDrawing(P, name, path) {
     const clash = other ? { ...c, kind: 'drawn', other } : c.kind === 'same' && c.file === lost ? { ...c, kind: 'removed' } : c;
     return { target: null, written: null, removed: null, stale: null, clash, messages: [clashWarning(clash, await designProject(P, name))] };
   }
-  await P.writeFile(name, target, r.text);
+  await P.writeFile(name, target, await stampHdl(r.text, await drawingHash(m), r.lang));
   await P.writeFile(name, path, JSON.stringify({ ...m, generatedFile: target }, null, indent(path)));
   const why = lost ? ` (its HDL file ${lost} ${tree.includes(lost) ? 'was removed from the project' : 'is no longer in the project folder'})` : '';
   return { target, written: target, removed: null, stale: null, messages: await designProject(P, name) ? [] : [`${target} generated from ${path}${why}`] };
