@@ -174,7 +174,12 @@ export async function adoptDrawing(P, name, path) {
   const lost = m.generatedFile || null;
   if (isCpuLang(at?.lang)) return withMain(P, name, at, await adoptCode(P, name, path, m, at));   // (in a CPU node: its C, #5486)
   const r = viewHdl(path, JSON.stringify(m), { modules: kindOf(path) === 'sch' ? await projectModules(P, name) : {}, linked: () => false });
-  if (!r || r.errors.length || !r.module || !r.text) return null;
+  if (r?.errors.length) {
+    // (with errors: a module by itself until it has none, said, #5799; Check Syntax says them too)
+    const why = r.errors.map(e => e.replace(`${path}: `, '')).join('; ');
+    return { target: null, written: null, removed: null, stale: why, messages: [await designProject(P, name) ? `WARNING: ${path}: its module is not made: ${why}` : `WARNING: ${path} has no HDL file yet: it has errors: ${why}`] };
+  }
+  if (!r || !r.module || !r.text) return null;
   const target = drawnHdlPath(path, r.module, r.lang);
   const hdl = (await P.readSources(name)).filter(s => !s.missing && (s.lang === 'vhdl' || s.lang === 'verilog'));
   const elsewhere = hdl.find(s => s.path !== target && definesModule(s.text, r.module, s.path));

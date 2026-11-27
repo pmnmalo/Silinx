@@ -347,7 +347,8 @@ async function checkSyntaxInner(mod, sim, id, hierarchy) {
   if (!await saveAll()) { setStatus(id, 'err'); return false; }
   setStatus(id, 'running');
   const R = startRun({ process: checkLabel(sim ? 'Behavioral Check Syntax' : 'Check Syntax'), source: 'check' });   // (its lines its own, #4749)
-  const srcs = designState.sources.filter(s => (s.lang === 'vhdl' || s.lang === 'verilog') && inView(s.role, sim));
+  // (not the HDL of a drawing with errors: its errors said instead, #5799)
+  const srcs = designState.sources.filter(s => (s.lang === 'vhdl' || s.lang === 'verilog') && inView(s.role, sim) && !(s.view && s.errors && !/\.(c|cpp|cc|cxx)$/i.test(s.path)));
   // (a design and simulation project, #3780: its drawings named, not their HDL files)
   for (const s of srcs) {
     if (!designOnly()) R.log(`${s.lang === 'vhdl' ? 'Parsing VHDL' : 'Analyzing Verilog'} file "${s.path}" into library work`);

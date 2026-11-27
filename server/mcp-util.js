@@ -142,8 +142,12 @@ export async function viewSourcesOf(name, project, sim, failed = null) {
   let drawn = [];
   try { drawn = await viewSources(project, P.projectDir(name), hdl); } catch { /* none */ }
   // (a C source whose HDL cannot be made, #2995, and a drawing whose module cannot be, #3934)
-  if (failed) failed.push(...drawn.filter(v => !v.text && (/\.(c|cpp|cc|cxx)$/i.test(v.path) || v.errors?.length)));
-  drawn = drawn.filter(v => v.text);
+  // (a drawing with errors whose HDL is still made: one that makes no module too, its errors said, not its HDL compiled,
+  // #5799, as the interface's Check Syntax)
+  const isC = v => /\.(c|cpp|cc|cxx)$/i.test(v.path);
+  const broken = v => !v.text ? isC(v) || v.errors?.length : !isC(v) && v.errors?.length;
+  if (failed) failed.push(...drawn.filter(broken));
+  drawn = drawn.filter(v => v.text && !(failed && broken(v)));
   return [...hdl, ...drawn.map(v => ({ path: v.path, lang: v.lang, text: v.text, role: 'design' }))];
 }
 
