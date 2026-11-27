@@ -43,8 +43,10 @@ test('set_design_properties: the evaluation board, its pins written as a CCF; ne
   assert.match(ccf, /\n# create_clock -period 100\.000 \[get_ports \{clk\}\]\n$/);
   await fails('set_design_properties', { project: 'b1', synth_tool: 'xst' }, 'the CCGM1A1 is the Silinx toolchain\'s only: no XST');
   assert.equal((await ok('check_constraints', { project: 'b1' })).text, 'Started : "Check Constraints" of constraints/top.ccf.\nProcess "Check Constraints" completed successfully');
-  assert.equal((await ok('new_source', { project: 'b1', type: 'constraints', name: 'pins' })).text, 'Created Implementation Constraints File \'constraints/pins.ccf\'.');
-  assert.match(fs.readFileSync(path.join(P.projectDir('b1'), 'constraints/pins.ccf'), 'utf8'), /^# Cologne Chip constraints \(CCF\) for b1\n# Target: ccgm1a1-fbga324\n/);
+  // (new_source makes no constraints file since #5873, I/O Pin Planning and the wizard below do: its template, as it was)
+  const nc = await call('new_source', { project: 'b1', type: 'constraints', name: 'pins' });
+  assert.ok(nc.isError && /^new_source: type: one of /.test(nc.text), nc.text);
+  assert.match(await (await import('../core/new-source-text.js')).sourceText('constraints', { pj: await P.readProject('b1') }), /^# Cologne Chip constraints \(CCF\) for b1\n# Target: ccgm1a1-fbga324\n/);
   await fails('constraints_wizard', { project: 'b1' }, 'constraints/top.ccf already exists: choose another name.');
   await fails('clock_manager', { project: 'b1' }, 'The Clocking Wizard makes a DCM for the Spartan-3E and a PLL for the Spartan-6: choose one of them as the target device (set_design_properties).');
 });
