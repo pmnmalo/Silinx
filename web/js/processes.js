@@ -357,6 +357,8 @@ export async function checkSyntax(mod, sim = false, { hierarchy = false } = {}) 
 }
 async function checkSyntaxInner(mod, sim, id, hierarchy) {
   if (!await saveAll()) { setStatus(id, 'err'); return false; }
+  // (the drawings' HDL files checked against their drawings first, #5872: never a stale or hand-edited one)
+  if ((await (await import('./drawing-check.js')).checkProjectDrawings())?.written.length) await (await import('./project.js')).reloadProject(false);
   setStatus(id, 'running');
   const R = startRun({ process: checkLabel(sim ? 'Behavioral Check Syntax' : 'Check Syntax'), source: 'check' });   // (its lines its own, #4749)
   // (not the HDL of a drawing with errors: its errors said instead, #5799)

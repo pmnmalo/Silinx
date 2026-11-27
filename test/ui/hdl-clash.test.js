@@ -11,11 +11,11 @@ import assert from 'node:assert/strict';
 import fsp from 'node:fs/promises';
 import path from 'node:path';
 import { setupUi, uiTest, makeProject, readWs } from './harness.js';
+import { readStamp } from '../../core/hdl-cache.js';   // (the HDL files' silinx-sync line aside, #5872)
 import { viewHdl } from '../../core/view-hdl.js';
 import { newPetri } from '../../core/petri.js';
 import { newTable } from '../../core/logic.js';
 import { newDoc } from '../../core/schdoc.js';
-import { readStamp } from '../../core/hdl-cache.js';   // (the HDL files' silinx-sync line aside, #5872)
 
 let env;
 before(async () => { env = await setupUi(); });

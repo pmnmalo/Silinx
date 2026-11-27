@@ -86,6 +86,8 @@ async function openProjectNow(name, { startup = false } = {}) {
     try { sessionStorage.setItem(prefKey('silinx.lastProject'), name); } catch { /* ignore */ }   // (this tab's, reopened by its reload)
     rememberRecent(name);
   }
+  // (its drawings' HDL files checked first: a drawing replaced or an HDL file edited while it was closed, #5872)
+  await (await import('./drawing-check.js')).checkProjectDrawings();
   await reloadProject();
   await fixMissingTops();   // (a project saved with a top it no longer has, #253)
   // (a design project's: no device, #3891)

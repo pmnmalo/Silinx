@@ -43,6 +43,7 @@ import { HLS_TOOLS } from './mcp-hls.js';
 import { TRANSFER_TOOLS } from './mcp-transfer.js';
 import { MERGE_TOOLS } from './mcp-merge.js';
 import { VERSION_TOOLS, versionBeforeTool } from './mcp-versions.js';
+import { checkBeforeTool } from './mcp-drawing-check.js';
 import { startAutoVersions } from './versions.js';
 import * as P from './projects.js';
 import { FIND_TOOLS } from './mcp-find.js';
@@ -115,8 +116,10 @@ export async function handle(msg, state = {}, { signal, notify } = {}) {
         // (its own project parts, #4294: another call's do not reach it)
         // (a version of the project kept before a tool that replaces or removes its files, #5740)
         const kept = await versionBeforeTool(tool.name, args);
+        // (a flow's: the drawings' HDL files checked against their drawings first, the drawing winning, #5872)
+        const checked = await checkBeforeTool(tool.name, args);
         const r = await inPartsScope(() => tool.run(args, { signal, progress: progressOf(msg, notify, name) }));
-        r.text = name([...aliased.warnings, ...(kept ? [kept] : []), r.text].join('\n'));
+        r.text = name([...aliased.warnings, ...(kept ? [kept] : []), ...checked, r.text].join('\n'));
         r.data = name(r.data);
         // (text from outside, #3363: labelled, in the text and in the structured content; every tool that takes a
         // project by default, #4738)

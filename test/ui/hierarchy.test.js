@@ -482,7 +482,7 @@ uiTest('drawings whose base was their HDL (before #220), the HDL edited by hand:
   for (const [f, hdl] of [['src/traffic.fsm.json', 'src/traffic.vhd'], ['src/lamps.bool.json', 'src/lamps.vhd']]) {
     const d = JSON.parse(await readWs(env, 'H_mig_fsm', f));
     assert.deepEqual([d.generatedFile, d.base], [hdl, undefined], f);
-    assert.equal(await readWs(env, 'H_mig_fsm', hdl), files.traffic[hdl], hdl);   // the user's HDL, as it was
+    assert.equal(readStamp(await readWs(env, 'H_mig_fsm', hdl)).body, readStamp(files.traffic[hdl]).body, hdl);   // the user's HDL, as it was (its silinx-sync line the drawing's now, #5872)
   }
   assert.deepEqual(await rows(page), EXAMPLES.traffic.impl.map((r) => r.replace('H_traffic', 'H_mig_fsm')));
   await page.openProject('H_mig_fsm');
@@ -497,7 +497,7 @@ uiTest('drawings whose base was their HDL (before #220), the HDL edited by hand:
   ]);
   const a = JSON.parse(await readWs(env, 'H_mig_asm', 'src/speed_ctrl.asm.json'));
   assert.deepEqual([a.generatedFile, a.base], ['src/speed_ctrl.vhd', undefined]);
-  assert.equal(await readWs(env, 'H_mig_asm', 'src/speed_ctrl.vhd'), files.blinky['src/speed_ctrl.vhd']);
+  assert.equal(readStamp(await readWs(env, 'H_mig_asm', 'src/speed_ctrl.vhd')).body, readStamp(files.blinky['src/speed_ctrl.vhd']).body);   // (its silinx-sync line the drawing's now, #5872)
   assert.deepEqual(await rows(page), EXAMPLES.blinky.impl.map((r) => r.replace('H_blinky', 'H_mig_asm')));
 }, { ui: 'ise' });
 

@@ -297,6 +297,8 @@ export function showPalette() {
 // (Export Project (.zip)…'s, the kind chosen in its window: project-zip-dialogs.js, #3703)
 export async function exportProjectZip(kind = 'xilinx') {
   if (!await saveAll()) return;
+  // (the drawings' HDL files as their drawings make them, #5872: the copy given out in sync)
+  await (await import('./drawing-check.js')).checkProjectDrawings();
   const title = 'Export Project';
   try {
     // (a copy given out: its origin, #4205; a back-up of the project, #4971)

@@ -116,7 +116,8 @@ test('the MCP: merge_preview lists the conflicts, merge_contribution refuses wit
   assert.equal((await call('export_project', { project: 'bea', kind: 'silinx', path: 'bea.zip' })).isError, false);
   const p = await call('merge_preview', { project: 'base2', from: 'bea.zip' });
   assert.equal(p.isError, false, p.text);
-  assert.match(p.text, /^Merge of bea\.zip into 'base2': three-way, 1 file\(s\) differ, 1 conflict\(s\) to choose\.\n {2}src\/traffic\.fsm\.json: changed on both sides: choose \(transitions\/t1: mine changed \(cond\), theirs changed \(cond\)\)$/);
+  // (export_project made bea's HDL again from its state diagram changed on disk first, #5872: its traffic.vhd taken)
+  assert.match(p.text, /^Merge of bea\.zip into 'base2': three-way, 2 file\(s\) differ, 1 conflict\(s\) to choose\.\n {2}src\/traffic\.fsm\.json: changed on both sides: choose \(transitions\/t1: mine changed \(cond\), theirs changed \(cond\)\)\n {2}src\/traffic\.vhd: changed there: taken$/);
   assert.ok(p.data.untrusted.note);
   assert.deepEqual(p.data.left, [{ path: FSM, id: 'transitions/t1' }]);
   const refused = await call('merge_contribution', { project: 'base2', from: 'bea.zip' });
