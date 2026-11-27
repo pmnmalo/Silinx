@@ -223,6 +223,12 @@ const presencePlace = (page) => page.eval(() => {
 });
 const PLACE = { silinx: { ui: 'silinx', parent: 'top-actions', next: 'palette-btn' }, ise: { ui: 'ise', parent: 'toolbar', next: null, split: false } };
 // the Design tree's menu of a row (on its name), its items (a disabled one marked), the menu closed or the item chosen
+// Share Module… of the row `row` (its index): its module, Try it for a drawing's, as the module's menu did before #5897 took it
+// out (Share Project… chooses them in its window; the function the Simulate tree's test benches still use)
+const shareModule = (page, row) => page.eval((i) => {
+  const r = document.querySelectorAll('#hier .row')[i], f = r.source?.file || '';
+  import('/js/share-how.js').then((m) => m.shareDialog({ module: r.dataset.module, view: /\.(sch|fsm|pn|asm|circ)\.json$/i.test(window.Silinx.hdlToSch?.[f] || f) ? 'try' : null }));
+}, row);
 async function treeMenu(page, row, item) {
   await page.rightClick('#hier .row .lbl', { index: row });
   await page.waitForSelector('body > .menu-popup');
@@ -292,9 +298,9 @@ uiTest('#3698 #4669 Share Project…: once in the Design tree\'s project and dev
     const items = await treeMenu(page, row);
     assert.equal(items.filter((i) => i.startsWith('Share ')).join(' | '), 'Share Project…', `row ${row}: ${items.join(' | ')}`);
   }
-  // a module's row (the top's): Share Module…
+  // a module's row (the top's): no Share Module… (#5897: Share Project… chooses the module in its window)
   const mod = await treeMenu(page, 2);
-  assert.equal(mod.filter((i) => i.startsWith('Share ')).join(' | '), 'Share Module…', mod.join(' | '));
+  assert.equal(mod.filter((i) => i.startsWith('Share ')).join(' | '), '', mod.join(' | '));
   // the window: a copy first, its Share: row; Live swaps it for the live window, A copy back
   await treeMenu(page, 1, 'Share Project…');
   assert.equal(await page.waitDialog('Share Project'), 'Share Project');
@@ -343,7 +349,7 @@ uiTest('#3698 #4669 Share Project…: once in the Design tree\'s project and dev
   // in Portuguese
   await page.eval(async () => (await import('/js/i18n.js')).setLanguage('pt'));
   for (const row of [0, 1]) assert.ok((await treeMenu(page, row)).includes('Partilhar Projeto…'), `row ${row}`);
-  assert.ok((await treeMenu(page, 2)).includes('Partilhar Módulo…'));
+  assert.ok(!(await treeMenu(page, 2)).some((i) => i.startsWith('Partilhar')));   // (no Partilhar Módulo…, #5897)
   await treeMenu(page, 0, 'Partilhar Projeto…');
   await page.waitDialog('Partilhar Projeto');
   assert.equal(await page.eval(() => [...document.querySelectorAll('.dlg-overlay .share-how > label, .dlg-overlay .share-how-choices > label')].map((l) => (l.parentElement.classList.contains('share-how') ? l.textContent : [...l.children].filter((c) => c.tagName === 'SPAN').map((c) => c.textContent).join(' · '))).join(' | ')), 'Partilhar: | Uma cópia · Uma ligação com o projeto lá dentro | Em direto · Os outros seguem-no enquanto trabalha');
@@ -363,7 +369,7 @@ uiTest('#3631 Share Module…: the links open on the module, the owner\'s page o
   await page.openProject('ModShared');
   await page.leftTab('design');
   await page.eval(async () => { await window.SilinxApp.openFile('src/top.vhd'); });
-  await treeMenu(page, await rowOf(page, 'pass1'), 'Share Module…');
+  await shareModule(page, await rowOf(page, 'pass1'));
   assert.equal(await page.waitDialog('Share Module'), 'Share Module');
   await chooseLive(page);
   await page.fill('.dlg-overlay input[data-field=name]', 'Ana');
@@ -392,14 +398,14 @@ uiTest('#3631 Share Module…: the links open on the module, the owner\'s page o
     await fp.waitConsole(/^Following Ana: their documents, views and selection\.$/m);
   } finally { await fp.close(); }
   // asked again while shared: that module's links at once
-  await treeMenu(page, await rowOf(page, 'top'), 'Share Module…');
+  await shareModule(page, await rowOf(page, 'top'));
   await page.waitDialog('Share Module');
   assert.match(await page.waitFor(() => (document.querySelector('.dlg-overlay .link-field:has([data-field=link]) .link-generate:not(:disabled)')?.click(), document.querySelector('.dlg-overlay input[data-field=link]')?.value) || null, [], { what: 'the link' }), /&top=top$/);
   await page.dialogButton('Close');
   await page.waitNoDialog();
   // in Portuguese
   await page.eval(async () => (await import('/js/i18n.js')).setLanguage('pt'));
-  await treeMenu(page, await rowOf(page, 'pass1'), 'Partilhar Módulo…');
+  await shareModule(page, await rowOf(page, 'pass1'));
   await page.waitDialog('Partilhar Módulo');
   assert.equal(await page.eval(() => document.querySelector('.dlg-overlay .collab-about').textContent), 'Quem tiver esta ligação segue "ModShared" em direto, só de leitura, aberto em pass1, enquanto o partilhar.');
   await page.dialogButton('Fechar');

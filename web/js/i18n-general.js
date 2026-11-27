@@ -57,7 +57,7 @@ export const PT = {
   '(no cookies, no personal data).': '(sem cookies nem dados pessoais).',
   'Silinx is free and asks for nothing. If you use it, in a course, a school or on your own, we would like to know: it helps to decide what to improve.': 'O Silinx é gratuito e não pede nada. Se o usa, numa disciplina, numa escola ou por conta própria, gostávamos de saber: ajuda a decidir o que melhorar.',
   'Say hello on GitHub Discussions (a GitHub account is needed): your school or course, your role (teacher, student…), the boards you use. Only what you write there is seen.': 'Deixe uma mensagem no GitHub Discussions (é preciso uma conta GitHub): a sua escola ou disciplina, o seu papel (professor, estudante…), as placas que usa. Só se vê o que escrever lá.', 'Keyboard Shortcuts': 'Atalhos de Teclado',
-  'Close': 'Fechar', 'Close Others': 'Fechar Outros', 'Close All': 'Fechar Todos', 'Open': 'Abrir', 'Remove from Project': 'Remover do Projeto',
+  'Close': 'Fechar', 'Close Others': 'Fechar Outros', 'Close All': 'Fechar Todos', 'Open': 'Abrir', 'Remove from Project': 'Remover do Projeto', 'Remove…': 'Remover…',
   // (two documents side by side, each side with its tabs, #1619, #1652)
   // a tab's related views (#2834)
   'Show Schematic Beside': 'Mostrar o Esquemático ao Lado', 'Show ASM Chart Beside': 'Mostrar o Fluxograma ASM ao Lado', 'Show State Diagram Beside': 'Mostrar o Diagrama de Estados ao Lado',

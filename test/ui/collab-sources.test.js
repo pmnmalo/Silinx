@@ -81,7 +81,7 @@ uiTest('#4418 an editor adds, renames, removes and deletes sources: the owner\'s
     await page.waitFor(() => window.Silinx.fileTree.includes('src/pass2.vhd') && !window.Silinx.fileTree.includes('src/pass1.vhd'), [], { what: 'renamed in the owner\'s page' });
     // Remove from Project at the editor's: out of the owner's project, the file kept
     await ep.leftTab('files');
-    await fileMenu(ep, 'src/pass2.vhd', 'Remove from Project');
+    await fileMenu(ep, 'src/pass2.vhd', 'Remove…');
     await ep.waitDialog('Remove Source');
     await ep.dialogButton('Remove from Project');
     await until(async () => !(await listed('src/pass2.vhd')), 'removed from the owner\'s project');

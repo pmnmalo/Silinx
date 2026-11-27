@@ -77,7 +77,7 @@ uiTest('#263 a long press opens the right-click menu of a Design-pane row, its b
 
   // ---- a Design-pane row: the right-click's menu, at the press's point, the row selected
   const ref = await rightMenu(page, row, { index: idx });
-  assert.ok(ref.includes('Remove from Project'), ref.join(' | '));
+  assert.ok(ref.includes('Remove…'), ref.join(' | '));
   await page.eval(() => document.querySelectorAll('#hier .row.sel').forEach((r) => r.classList.remove('sel')));
   const p = await press(page, row, { index: idx });
   assert.deepEqual(await menuItems(page), ref);

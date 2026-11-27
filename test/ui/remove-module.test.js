@@ -87,8 +87,8 @@ for (const k of DRAWN) {
     await page.eval((f) => window.SilinxApp.openFile(f), k.file);
     await page.waitFor((f) => String(window.Silinx.active?.id || '').endsWith(`:${f}`), [k.file], { what: 'the drawing open' });
     await page.treeRow('#hier', k.mod, { right: true, exact: true });
-    assert.ok((await menuLabels(page)).includes('Remove from Project'));
-    await page.click('body > .menu-popup .mi', { text: 'Remove from Project' });
+    assert.ok((await menuLabels(page)).includes('Remove…'));
+    await page.click('body > .menu-popup .mi', { text: 'Remove…' });
     assert.equal(await answer(page), QUESTION(k.file, hdl));
     await noRows(page);
     assert.deepEqual(await rows(page), [`project ${name}`, '  chip xc3s250e-4-cp132']);
@@ -132,14 +132,14 @@ uiTest('#234 Remove from Project from the drawing\'s badge and from the HDL\'s b
   await badgeRight(page, 'ctl', 'Petri');
   const menu = await menuLabels(page);
   assert.deepEqual(menu, own);
-  assert.ok(['Open', 'View State Machine (FSM)', 'Remove from Project'].every((l) => menu.includes(l)), menu.join(' | '));
-  await page.click('body > .menu-popup .mi', { text: 'Remove from Project' });
+  assert.ok(['Open', 'View State Machine (FSM)', 'Remove…'].every((l) => menu.includes(l)), menu.join(' | '));
+  await page.click('body > .menu-popup .mi', { text: 'Remove…' });
   assert.equal(await answer(page, 'Cancel'), QUESTION(k.file, hdl));
   assert.deepEqual(await rows(page), ROWS('R_badges', k));
   assert.deepEqual(await pjFiles('R_badges'), [hdl]);
   // Yes: both out; the toast's Undo
   await badgeRight(page, 'ctl', 'Petri');
-  await page.click('body > .menu-popup .mi', { text: 'Remove from Project' });
+  await page.click('body > .menu-popup .mi', { text: 'Remove…' });
   await answer(page);
   await noRows(page);
   assert.deepEqual(await pjFiles('R_badges'), []);
@@ -150,7 +150,7 @@ uiTest('#234 Remove from Project from the drawing\'s badge and from the HDL\'s b
   assert.deepEqual(await rows(page), ROWS('R_badges', k));
   // the HDL's badge: the module's menu, the same command
   await badgeRight(page, 'ctl', 'VHDL');
-  await page.click('body > .menu-popup .mi', { text: 'Remove from Project' });
+  await page.click('body > .menu-popup .mi', { text: 'Remove…' });
   assert.equal(await answer(page), QUESTION(k.file, hdl));
   await noRows(page);
   assert.deepEqual(await pjFiles('R_badges'), []);
@@ -159,7 +159,7 @@ uiTest('#234 Remove from Project from the drawing\'s badge and from the HDL\'s b
   // the Files view: the drawing alone; its HDL file stays in the project, a plain HDL module
   await page.leftTab('files');
   await page.rightClick('#files-page tr', { index: await filesRow(page, k.file) });
-  await page.click('body > .menu-popup .mi', { text: 'Remove from Project' });
+  await page.click('body > .menu-popup .mi', { text: 'Remove…' });
   assert.equal(await answer(page), `Remove '${k.file}' from the project?\n(The file stays in the project folder: Undo or Add to Project in the Files view brings it back.)\n\nRemove and Delete File moves it to the workspace's .trash folder.`);
   await page.leftTab('design');
   await page.waitFor(() => !Object.keys(window.Silinx.hdlToSch || {}).length, [], { what: 'the drawing out' });
@@ -173,14 +173,14 @@ uiTest('#234 Remove from Project from the drawing\'s badge and from the HDL\'s b
   assert.deepEqual(await warnings(page), []);
 });
 
-uiTest('#234 in Portuguese: Remover do Projeto of a drawn module (the question, the toast) and of one file in the Files view', E, async (page) => {
+uiTest('#234 in Portuguese: Remover… (Remover do Projeto) of a drawn module (the question, the toast) and of one file in the Files view', E, async (page) => {
   const k = DRAWN[1];
   const hdl = await openDrawn(page, 'R_pt', k);
   await page.eval(async () => { (await import('/js/i18n.js')).setLanguage('pt'); });
   try {
     await page.treeRow('#hier', k.mod, { right: true, exact: true });
-    assert.ok((await menuLabels(page)).includes('Remover do Projeto'));
-    await page.click('body > .menu-popup .mi', { text: 'Remover do Projeto' });
+    assert.ok((await menuLabels(page)).includes('Remover…'));
+    await page.click('body > .menu-popup .mi', { text: 'Remover…' });
     assert.equal(await answer(page, 'Remover do Projeto', 'Remover Fonte'), "Remover 'src/gate.sch.json' e o seu ficheiro HDL 'src/gate.vhd' do projeto?\n(Os ficheiros ficam na pasta do projeto: Anular ou Acrescentar ao Projeto na vista Ficheiros repõe-nos.)\n\nRemover e Apagar Ficheiros move-os para a pasta .trash da área de trabalho.");
     await page.waitFor(() => [...document.querySelectorAll('.toast')].some((t) => t.textContent.includes('Removidos gate.sch.json e gate.vhd do projeto')), [], { what: 'the toast in Portuguese' });
     assert.deepEqual(await pjFiles('R_pt'), []);
@@ -190,7 +190,7 @@ uiTest('#234 in Portuguese: Remover do Projeto of a drawn module (the question, 
     // one file (the Files view): its question in Portuguese; Não
     await page.leftTab('files');
     await page.rightClick('#files-page tr', { index: await filesRow(page, hdl) });
-    await page.click('body > .menu-popup .mi', { text: 'Remover do Projeto' });
+    await page.click('body > .menu-popup .mi', { text: 'Remover…' });
     assert.equal(await answer(page, 'Cancelar', 'Remover Fonte'), "Remover 'src/gate.vhd' do projeto?\n(O ficheiro fica na pasta do projeto: Anular ou Acrescentar ao Projeto na vista Ficheiros repõe-no.)\n\nRemover e Apagar Ficheiro move-o para a pasta .trash da área de trabalho.");
     assert.deepEqual(await pjFiles('R_pt'), [hdl]);
   } finally {

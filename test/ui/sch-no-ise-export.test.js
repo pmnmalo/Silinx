@@ -42,7 +42,7 @@ uiTest('#3313 the gates example\'s schematic: no Export as ISE Schematic (.sch)�
     try {
       for (const m of [await rowMenu(page, 'gates'), await badgeMenu(page, 'gates', lang === 'pt' ? 'Esquemático' : 'Schematic'), await badgeMenu(page, 'gates', 'VHDL')]) {
         assert.ok(NO_EXPORT(m), m.join(' | '));
-        assert.ok(m.includes(lang === 'pt' ? 'Remover do Projeto' : 'Remove from Project'), m.join(' | '));
+        assert.ok(m.includes(lang === 'pt' ? 'Remover…' : 'Remove…'), m.join(' | '));
       }
     } finally { await language(page, 'en'); }
   }
@@ -54,11 +54,11 @@ uiTest('#3313 a schematic without its HDL file ([No HDL]): its own menu has no E
   await page.openProject('X_nohdl');
   await page.waitFor(() => !!document.querySelector('#hier .badge.warn'), [], { what: 'the [No HDL] badge' });
   assert.deepEqual(await warnings(page), [W_GATE]);
-  assert.deepEqual(await rowMenu(page, 'gate'), ['Open', 'Set as Top Module', 'Rename…', 'Generate HDL File…', 'Remove from Project']);
+  assert.deepEqual(await rowMenu(page, 'gate'), ['Open', 'Set as Top Module', 'Rename…', 'Duplicate…', 'Remove…', 'Generate HDL File…']);
   await language(page, 'pt');
   try {
     const m = await rowMenu(page, 'gate');
-    assert.equal(m.length, 5, m.join(' | '));
+    assert.equal(m.length, 6, m.join(' | '));   // (its Duplicar… too, #5862)
     assert.ok(NO_EXPORT(m), m.join(' | '));
   } finally { await language(page, 'en'); }
   assert.deepEqual(await warnings(page), [W_GATE]);

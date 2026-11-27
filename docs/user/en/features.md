@@ -453,8 +453,7 @@ Syntax, say its problems), and shares it with the project. A link opens a lab be
 
 A link opens Silinx on a design, straight in Try it, the simulation or the board emulator, with no project to create
 or import: **Share Project…** (the project's right-click menu in the Design pane, the Start page, the ISE
-style's File menu) or **Share Module…** (a module's right-click menu) makes it, **A copy** chosen in its window, the view
-and the module chosen, the link made by *Generate* and hidden until *Show* (*Copy* copies it all the same, *Show QR
+style's File menu) makes it, **A copy** chosen in its window, the view and the module (or a test bench) chosen there, the link made by *Generate* and hidden until *Show* (*Copy* copies it all the same, *Show QR
 Code* shows its QR code, as large as the window) (its other way, **Live**, shares the project as you work: your name on
 the window, *Start Sharing*, then two links in the same window, each made by its own *Generate* and hidden with its
 *Copy*, *Show* and *Show QR Code*: the viewers' (`#view=…`), who follow it read only, and what you

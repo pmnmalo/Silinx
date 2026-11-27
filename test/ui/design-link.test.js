@@ -28,6 +28,12 @@ async function openLink(page, hash, query = 'l=1') {
 }
 const projects = async () => (await fs.readdir(env.server.workspace)).filter((f) => !f.startsWith('.')).sort();
 const exists = (p) => fs.access(path.join(env.server.workspace, p)).then(() => true, () => false);
+// Share Module… of the row `row` (its index): its module, Try it for a drawing's, as the module's menu did before #5897 took it
+// out (Share Project… chooses them in its window; the function the Simulate tree's test benches still use)
+const shareModule = (page, row) => page.eval((i) => {
+  const r = document.querySelectorAll('#hier .row')[i], f = r.source?.file || '';
+  import('/js/share-how.js').then((m) => m.shareDialog({ module: r.dataset.module, view: /\.(sch|fsm|pn|asm|circ)\.json$/i.test(window.Silinx.hdlToSch?.[f] || f) ? 'try' : null }));
+}, row);
 async function contextMenu(page, row, item) {
   // (on its name: the row's middle may be one of its badges)
   await page.rightClick('#hier .row .lbl', { index: row });
@@ -81,7 +87,7 @@ uiTest('#4119 regression, view=try on a circuit: the breadboard example opened i
   assert.doesNotMatch(await page.consoleText(), /ERROR/);
   // its module's Share Module…: Try it chosen, the link made with no error
   const row = await page.waitFor(() => { const i = [...document.querySelectorAll('#hier .row')].findIndex((r) => r.dataset.module === 'breadboard'); return i > 0 ? i : null; }, [], { what: 'the circuit\'s row' });
-  await contextMenu(page, row, 'Share Module…');
+  await shareModule(page, row);
   await page.waitDialog('Share Module');
   assert.equal(await page.eval(() => document.querySelector('.dlg-overlay select[data-field=view]').value), 'try');
   assert.match(await genLink(page), /&view=try(&ui=[A-Za-z0-9_-]+)?$/);
@@ -96,7 +102,7 @@ uiTest('#2869 a Petri net: Share Module… chooses Try it; the link opens the ne
   await makeProject(env, { name: 'PnLink', top: 'ctl', files: { 'src/ctl.pn.json': JSON.stringify(newPetri('ctl', 'vhdl'), null, 2) } });
   await page.openProject('PnLink');
   const row = await page.waitFor(() => { const i = [...document.querySelectorAll('#hier .row')].findIndex((r) => /\bctl\b/.test(r.textContent)); return i > 0 ? i : null; }, [], { what: 'the net\'s row' });
-  await contextMenu(page, row, 'Share Module…');
+  await shareModule(page, row);
   await page.waitDialog('Share Module');
   assert.equal(await page.eval(() => document.querySelector('.dlg-overlay select[data-field=view]').value), 'try');
   const link = await page.waitFor(() => /&view=try(&ui=[A-Za-z0-9_-]+)?$/.test((document.querySelector('.dlg-overlay .link-generate:not(:disabled)')?.click(), document.querySelector('.dlg-overlay .link-out').value)) && (document.querySelector('.dlg-overlay .link-generate:not(:disabled)')?.click(), document.querySelector('.dlg-overlay .link-out').value), [], { what: 'the link' });
@@ -136,7 +142,7 @@ uiTest('#2826 Copy Link…: the project\'s and a module\'s menus, the File menu,
   // a module's menu: its module chosen (the Start page's command: the same dialog)
   const row = await page.eval(() => [...document.querySelectorAll('#hier .row')].findIndex((r) => /\btimer\b/.test(r.textContent)));
   assert.ok(row > 0);
-  await contextMenu(page, row, 'Share Module…');
+  await shareModule(page, row);
   await page.waitDialog('Share Module');
   assert.equal(await page.eval(() => document.querySelector('.dlg-overlay select[data-field=module]').value), 'timer');
   await page.dialogButton('Close');
@@ -179,7 +185,7 @@ uiTest('#2871 regression, Share Module… with Open the project only: the link o
   // the module's link, made in the dialog (no view)
   const linkOf = async (module) => {
     const row = await page.waitFor((m) => { const i = [...document.querySelectorAll('#hier .row')].findIndex((r) => r.dataset.module === m); return i >= 0 ? i : null; }, [module], { what: `${module}'s row` });
-    await contextMenu(page, row, 'Share Module…');
+    await shareModule(page, row);
     await page.waitDialog('Share Module');
     assert.equal(await page.eval(() => document.querySelector('.dlg-overlay select[data-field=view]').value), '');
     const link = await page.waitFor(() => (document.querySelector('.dlg-overlay .link-generate:not(:disabled)')?.click(), document.querySelector('.dlg-overlay .link-out').value) || null, [], { what: 'the link' });
@@ -248,7 +254,7 @@ uiTest('#2878 Copy Link…: the Module list follows Open in: Simulation the test
   await page.waitConsole(/ERROR: Open from a link: 'tb_b' is a test bench: a link opens it in the simulation\./);
 });
 
-uiTest('#2883 a test bench\'s Share Module… in the Simulation hierarchy: Simulation, that test bench chosen; Portuguese', E, async (page) => {
+uiTest('#2883 a test bench\'s Share Module (no longer in the Simulation hierarchy\'s menu, #5897): Simulation, that test bench chosen; Portuguese', E, async (page) => {
   await makeProject(env, { name: 'TbLink', top: 'inv', simTop: 'tb_a',
     files: { 'src/inv.vhd': INV, 'sim/tb_a.vhd': tbOf('tb_a'), 'sim/tb_b.vhd': tbOf('tb_b') },
     roles: { 'sim/tb_a.vhd': 'sim', 'sim/tb_b.vhd': 'sim' } });
@@ -268,9 +274,14 @@ uiTest('#2883 a test bench\'s Share Module… in the Simulation hierarchy: Simul
       await page.rightClick('#hier .row .lbl', { text: 'tb_b' });
     }
     await page.waitForSelector('body > .menu-popup');
-    await page.click('body > .menu-popup .mi', { text: item });
+    const items = await page.eval(() => [...document.querySelectorAll('body > .menu-popup .mi')].map((m) => m.querySelector('.lbl')?.textContent.trim() ?? m.textContent.trim()));
+    await page.closeMenus();
+    return items;
   };
-  await benchMenu('Share Module…');
+  // its menu: no Share Module… (#5897); the function, as Share Project…'s window with the test bench chosen
+  assert.ok(!(await benchMenu()).some((i) => i.startsWith('Share')), 'no Share Module…');
+  const shareBench = () => page.eval(() => { import('/js/share-how.js').then((m) => m.shareDialog({ module: 'tb_b' })); });
+  await shareBench();
   await page.waitDialog('Share Module');
   // (a test bench: a copy only, Live disabled with its reason, #3698)
   assert.deepEqual(await page.eval(() => [...document.querySelectorAll('.dlg-overlay .share-how input')].map((r) => [r.value, r.checked, r.disabled, r.closest('label').title])),
@@ -283,7 +294,8 @@ uiTest('#2883 a test bench\'s Share Module… in the Simulation hierarchy: Simul
   // in Portuguese
   await page.eval(async () => (await import('/js/i18n.js')).setLanguage('pt'));
   try {
-    await benchMenu('Partilhar Módulo…');
+    assert.ok(!(await benchMenu()).some((i) => i.startsWith('Partilhar')), 'no Partilhar Módulo…');
+    await shareBench();
     assert.equal(await page.waitDialog('Partilhar Módulo'), 'Partilhar Módulo');
     assert.equal(await page.eval(() => document.querySelector('.dlg-overlay select[data-field=view] option:checked').textContent), 'Simulação');
     await page.dialogButton('Fechar');
@@ -299,7 +311,7 @@ uiTest('#2884 regression, Board Emulator: the Module list disabled on the top, t
   await openLink(page, 'open=example:traffic');
   await linkOpened(page);
   const row = await page.waitFor(() => { const i = [...document.querySelectorAll('#hier .row')].findIndex((r) => r.dataset.module === 'timer'); return i >= 0 ? i : null; }, [], { what: 'timer\'s row' });
-  await contextMenu(page, row, 'Share Module…');
+  await shareModule(page, row);
   await page.waitDialog('Share Module');
   await page.eval(() => { const v = document.querySelector('.dlg-overlay select[data-field=view]'); v.value = 'emulate'; v.dispatchEvent(new Event('change')); });
   const state = () => page.eval(() => { const m = document.querySelector('.dlg-overlay select[data-field=module]'); return { disabled: m.disabled, options: [...m.options].map((o) => `${o.textContent}${o.selected ? ' *' : ''}`) }; });
@@ -333,7 +345,7 @@ uiTest('#2876 regression, a schematic named in another case than its module (Gat
   await makeProject(env, { name: 'CaseLink', top: 'gates', files: { 'src/gates.sch.json': JSON.stringify(sch, null, 1), 'src/gates.vhd': hdl } });
   await page.openProject('CaseLink');
   const row = await page.waitFor(() => { const i = [...document.querySelectorAll('#hier .row')].findIndex((r) => (r.dataset.module || '').toLowerCase() === 'gates'); return i >= 0 ? i : null; }, [], { what: 'the schematic\'s row' });
-  await contextMenu(page, row, 'Share Module…');
+  await shareModule(page, row);
   await page.waitDialog('Share Module');
   assert.equal(await page.eval(() => document.querySelector('.dlg-overlay select[data-field=view]').value), 'try');
   const link = await page.waitFor(() => /&view=try(&ui=[A-Za-z0-9_-]+)?$/.test((document.querySelector('.dlg-overlay .link-generate:not(:disabled)')?.click(), document.querySelector('.dlg-overlay .link-out').value)) && (document.querySelector('.dlg-overlay .link-generate:not(:disabled)')?.click(), document.querySelector('.dlg-overlay .link-out').value), [], { what: 'the link' });
@@ -350,7 +362,7 @@ uiTest('#2882 regression, a C module (Silinx HLS): Share Module… makes its lin
   await makeProject(env, { name: 'CLink', template: 'fir' });
   await page.openProject('CLink');
   const row = await page.waitFor(() => { const i = [...document.querySelectorAll('#hier .row')].findIndex((r) => r.dataset.module === 'fir'); return i >= 0 ? i : null; }, [], { what: 'the C module\'s row' });
-  await contextMenu(page, row, 'Share Module…');
+  await shareModule(page, row);
   await page.waitDialog('Share Module');
   const link = await page.waitFor(() => (document.querySelector('.dlg-overlay .link-generate:not(:disabled)')?.click(), document.querySelector('.dlg-overlay .link-out').value) || null, [], { what: 'the link' });
   assert.match(link, /#design=[A-Za-z0-9_-]+&top=fir(&ui=[A-Za-z0-9_-]+)?$/);

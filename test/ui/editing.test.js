@@ -255,7 +255,7 @@ uiTest('Design hierarchy: modules, instances, files, views; set top by right-cli
   await page.rightClick('#hier .row[data-key="m:top/u_sub"]');
   await page.waitForSelector('body > .menu-popup');
   const menu = await page.eval(() => [...document.querySelectorAll('body > .menu-popup .mi .lbl')].map((e) => e.textContent));
-  for (const it of ['Set as Top Module', 'Open', 'Rename…', 'Check Syntax', 'View RTL Schematic', 'Convert to Schematic (editable)…', 'New Source…', 'Remove from Project', 'Source Properties…']) assert.ok(menu.includes(it), `context menu has ${it}: ${menu}`);
+  for (const it of ['Set as Top Module', 'Open', 'Rename…', 'Check Syntax', 'View RTL Schematic', 'Convert to Schematic (editable)…', 'New Source…', 'Remove…', 'Source Properties…']) assert.ok(menu.includes(it), `context menu has ${it}: ${menu}`);
   await page.click('body > .menu-popup .mi', { text: 'Set as Top Module' });
   await page.waitConsole(/Top-level module set to 'sub'/);
   assert.equal((await env.server.api('GET', '/api/projects/HierPj')).top, 'sub');

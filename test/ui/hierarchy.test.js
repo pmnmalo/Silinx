@@ -55,8 +55,8 @@ const badge = async (page, label, text, opts = {}) => {
 const menuLabels = (page) => page.waitFor(() => { const m = [...document.querySelectorAll('body > .menu-popup .mi')].map((i) => i.textContent.trim()); return m.length ? m : null; }, [], { what: 'the context menu' });
 // a row's own menu (a right-click on its name)
 const rowMenu = async (page, label) => { await page.treeRow('#hier', label, { right: true, exact: true }); const m = await menuLabels(page); await page.closeMenus(); return m; };
-// a module's menu with its drawing's commands (#2872: before Share Module…)
-const withDrawing = (menu, ...items) => { const i = menu.indexOf('Share Module…'); return [...menu.slice(0, i), ...items, ...menu.slice(i)]; };
+// a module's menu with its drawing's commands (#2872: before New Source…, no Share Module… since #5897)
+const withDrawing = (menu, ...items) => { const i = menu.indexOf('New Source…'); return [...menu.slice(0, i), ...items, ...menu.slice(i)]; };
 const badgeMenu = async (page, label, text) => { await badge(page, label, text, { button: 'right' }); const m = await menuLabels(page); await page.closeMenus(); return m; };
 // what the last opening of a project logged about its sources (before its "Project … opened" line):
 // the lines on its files, the warnings and the errors
@@ -207,7 +207,7 @@ uiTest('Design pane (#220, #2872): a badge opens its view; a right-click shows t
   assert.deepEqual(procs.slice(0, 2), ['View/Edit Schematic', 'Design Summary/Reports']);
   assert.ok(!procs.some((p) => /Convert to HDL|as base|Generate HDL/.test(p)), procs.join(' | '));
   // one menu on the name and on every badge (#2872): the module's, the schematic's commands in it
-  const MODULE = ['Set as Top Module', 'Open', 'Rename…', 'Check Syntax', 'View RTL Schematic', 'Edit Symbol', 'Verify Equivalence…', 'Verify Assertions…', ...TB, 'Share Module…', 'New Source…', `${IMPORT}…`, 'Remove from Project', 'Source Properties…'];
+  const MODULE = ['Set as Top Module', 'Open', 'Rename…', 'Duplicate…', 'Remove…', 'Check Syntax', 'View RTL Schematic', 'Edit Symbol', 'Verify Equivalence…', 'Verify Assertions…', ...TB, 'New Source…', `${IMPORT}…`, 'Source Properties…'];   // (Remove… after Duplicate…, #5897)
   // (gates the top: Unset as Top Module, #1220)
   // (no Export as ISE Schematic (.sch)…, #3313: no drawing commands for a schematic)
   const GATES = ['Unset as Top Module', ...MODULE.slice(1)];
@@ -235,8 +235,8 @@ uiTest('Design pane (#220, #2872): a badge opens its view; a right-click shows t
   const TRAFFIC = withDrawing(MODULE, 'Convert to ASM chart');
   for (const b of [null, 'FSM', 'Schematic', 'VHDL']) assert.deepEqual(await (b ? badgeMenu(page, 'u_fsm - traffic', b) : rowMenu(page, 'u_fsm - traffic')), TRAFFIC, b);
   for (const b of [null, 'Algebra', 'Schematic', 'VHDL']) assert.deepEqual(await (b ? badgeMenu(page, 'u_lamps - lamps', b) : rowMenu(page, 'u_lamps - lamps')), MODULE, b);
-  const PLAIN = ['Set as Top Module', 'Open', 'Rename…', 'Check Syntax', 'View RTL Schematic', 'Edit Symbol', 'Verify Equivalence…', 'Verify Assertions…', ...TB,
-    'Convert to Schematic (editable)…', 'Convert to State Machine (ASM)…', 'Convert to State Diagram (FSM)…', 'Share Module…', 'New Source…', `${IMPORT}…`, 'Remove from Project', 'Source Properties…'];
+  const PLAIN = ['Set as Top Module', 'Open', 'Rename…', 'Duplicate…', 'Remove…', 'Check Syntax', 'View RTL Schematic', 'Edit Symbol', 'Verify Equivalence…', 'Verify Assertions…', ...TB,
+    'Convert to Schematic (editable)…', 'Convert to State Machine (ASM)…', 'Convert to State Diagram (FSM)…', 'New Source…', `${IMPORT}…`, 'Source Properties…'];
   assert.deepEqual(await badgeMenu(page, 'u_timer - timer', 'VHDL'), PLAIN);
   assert.deepEqual(await badgeMenu(page, 'u_display - sevenseg', 'Verilog'), PLAIN);
   assert.deepEqual(await badgeMenu(page, 'u_lamps - lamps', 'VHDL'), MODULE);
@@ -425,7 +425,7 @@ uiTest('Design pane (#207, #220) in Portuguese: the badges [FSM] [Álgebra] [VHD
     ]);
     // the row's menu on every badge (#2872), the drawing's commands in it
     const fsm = await rowMenu(page, 'u_fsm - traffic');
-    assert.ok(fsm.includes('Converter para fluxograma ASM') && fsm.includes('Partilhar Módulo…') && fsm.includes('Abrir'), fsm.join(' | '));
+    assert.ok(fsm.includes('Converter para fluxograma ASM') && fsm.includes('Remover…') && fsm.includes('Abrir'), fsm.join(' | '));
     assert.deepEqual(await badgeMenu(page, 'u_fsm - traffic', 'FSM'), fsm);
     assert.deepEqual(await badgeMenu(page, 'u_lamps - lamps', 'Álgebra'), await rowMenu(page, 'u_lamps - lamps'));
     // the HDL editor's banner

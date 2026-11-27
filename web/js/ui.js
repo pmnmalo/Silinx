@@ -250,7 +250,9 @@ function buildMenu(items) {
     });
     if (!disabled && it.action) row.addEventListener('click', e => {
       e.stopPropagation(); closeMenus();
-      Promise.resolve().then(() => runAction(it.label, it.action)).catch(err => { console.error(err); message(`${it.label}: ${err.message || err}`, 'error'); });
+      // (its command's name, the history's and a version's reason: its label, or `command` when the label is short, #5897)
+      const name = it.command ?? it.label;
+      Promise.resolve().then(() => runAction(name, it.action)).catch(err => { console.error(err); message(`${name}: ${err.message || err}`, 'error'); });
     });
     m.append(row);
   }

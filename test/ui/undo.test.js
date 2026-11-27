@@ -157,7 +157,7 @@ uiTest('#5263 Edit ▸ Undo right after Remove from Project\'s question, the com
   await heldReads(page, 1);
   // Remove from Project of top, started while Set as Top Module ends: Yes, its project's reload held
   await page.treeRow('#hier', 'top', { right: true, exact: true });
-  await page.click('body > .menu-popup .mi', { text: 'Remove from Project' });
+  await page.click('body > .menu-popup .mi', { text: 'Remove…' });
   await page.waitDialog('Remove Source');
   await page.dialogButton('Remove from Project');
   await page.waitNoDialog();

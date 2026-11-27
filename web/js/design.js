@@ -423,6 +423,7 @@ function moduleContextMenu(e, mod, file) {
     designState.hdlToSch?.[file] || designOnly() ? null : editorItem(file),
     { label: 'Rename…', action: () => renameDialog(file, mod) },
     { label: 'Duplicate…', action: () => import('./design-duplicate.js').then(m => m.duplicateDialog(file)) },   // (a copy of its module, #5862)
+    { label: 'Remove…', command: 'Remove from Project', action: () => removeModule(file) },   // (after Duplicate, #5897)
     { label: checkLabel(), action: () => checkSyntax(mod, isSimView) },
     designOnly() ? null : { label: 'View RTL Schematic', action: () => openSchematic(mod) },   // (none in a design project, #3891)
     // (its symbol in the schematics, the Symbol Editor's: its pins' order and sides, #3755)
@@ -441,13 +442,10 @@ function moduleContextMenu(e, mod, file) {
       { label: 'Convert to State Diagram (FSM)…', action: () => convertToFsm(mod) },
     ]),
     isSimView ? { label: 'Simulate Behavioral Model', action: () => runSimulation(mod) } : null,
-    // (a schematic's, a state diagram's, a Petri net's, an ASM chart's or a circuit's module: its Try it or simulation, #2826, #2869, #2881, #4119)
-    // (a copy, or live opening on this module, #3631: chosen in its window, #3698)
-    { label: 'Share Module…', action: () => import('./share-how.js').then(m => m.shareDialog({ module: mod, view: /\.(sch|fsm|pn|asm|circ)\.json$/i.test(designState.hdlToSch?.[file] || file) ? 'try' : null })) },
+    // (no Share Module… since #5897: Share Project… chooses the module and the view in its window)
     '-',
     { label: 'New Source…', action: () => wiz.newSourceWizard() },
     { label: `${wiz.addSourceTitle()}…`, action: () => wiz.addSourceDialog() },
-    { label: 'Remove from Project', action: () => removeModule(file) },
     '-',
     { label: 'Source Properties…', action: () => wiz.sourceProperties(file) },
   ].filter(Boolean), e.clientX, e.clientY);
@@ -471,11 +469,11 @@ export function fileContextMenu(e, file) {
     textFile(file) ? editorItem(file) : null,   // (#4017)
     { label: 'Rename…', action: () => renameDialog(file) },
     { label: 'Duplicate…', action: () => import('./design-duplicate.js').then(m => m.duplicateDialog(file)) },   // (#5862)
+    { label: 'Remove…', command: 'Remove from Project', action: () => removeFile(file) },   // (after Duplicate, #5897)
     // (a System of an FPGA project: the project made a System project, it its top, #5402)
     isSystemFile(file) && !systemProject() && systemsOn() ? { label: 'Set as Top Module', action: async () => (await import('./system-top-ui.js')).makeSystemTop(file) } : null,
     /\.(vhdl?|v|sv|c)$/i.test(file) && !designOnly() ? { label: 'Check Syntax', action: () => checkFileSyntax(file) } : null,   // (.c: Silinx HLS, #1524)
     /\.(ucf|pcf|lpf|cst|ccf|xdc|qsf)$/i.test(file) ? { label: 'Check Syntax', action: () => checkUcfFile(file) } : null,
-    { label: 'Remove from Project', action: () => removeFile(file) },
     { label: 'Delete File…', action: () => deleteFile(file) },
     { label: 'Source Properties…', action: () => wiz.sourceProperties(file), disabled: !S.project.files.some(f => f.path === file) && designState.viewTexts?.[file] === undefined },
   ].filter(Boolean), e.clientX, e.clientY);
