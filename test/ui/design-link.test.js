@@ -76,7 +76,7 @@ uiTest('#4119 regression, view=try on a circuit: the breadboard example opened i
   await page.waitFor(() => window.SilinxApp.findDoc('circ:src/breadboard.circ.json')?.circuitEditor?.simulating(), [], { what: 'the circuit\'s Try it running', timeout: 60000 });
   assert.equal(await page.eval(() => window.Silinx.active?.id), 'circ:src/breadboard.circ.json');
   assert.equal(await page.eval((ed) => document.querySelector(ed).classList.contains('circ-simulating'), ED), true);
-  assert.deepEqual(await page.eval((ed) => [...document.querySelectorAll(`${ed} .circ-simbar:not([hidden]) > *`)].map((e) => e.textContent.trim()).filter(Boolean), ED), ['Try it', 'Reset', 'Stop']);
+  assert.deepEqual(await page.eval((ed) => [...document.querySelectorAll(`${ed} .circ-simbar > :not([hidden])`)].map((e) => e.textContent.trim()).filter(Boolean), ED), ['Try it', 'Reset', 'Stop']);
   await page.waitConsole(/Opened 'breadboard' from a link \(a new project\): Try it\./);
   assert.doesNotMatch(await page.consoleText(), /ERROR/);
   // its module's Share Module…: Try it chosen, the link made with no error
