@@ -112,8 +112,8 @@ uiTest('#5720 Remove from Project of a selection (its menu): the files kept in t
   await rowClick(page, 'st', { modifiers: CTRL });
   // the selection's menu: the commands of several sources; those of one disabled
   await rowClick(page, 'c', { button: 'right' });
-  assert.deepEqual(await menuItems(page), ['Open', 'Remove from Project', 'Duplicate', 'Rename… (disabled)', 'Set as Top Module (disabled)', 'Source Properties… (disabled)']);
-  await page.click('body > .menu-popup .mi', { text: 'Remove from Project' });
+  assert.deepEqual(await menuItems(page), ['Open', 'Duplicate', 'Remove…', 'Rename… (disabled)', 'Set as Top Module (disabled)', 'Source Properties… (disabled)']);
+  await page.click('body > .menu-popup .mi', { text: 'Remove…' });
   await page.waitDialog('Remove Source');
   assert.equal(await question(page), "Remove these 3 sources from the project?\n'src/b.vhd'\n'src/c.vhd'\n'src/st.fsm.json' and its HDL file 'src/st.vhd'\n(The files stay in the project folder: Undo or Add to Project in the Files view brings them back.)\n\nRemove and Delete Files moves them to the workspace's .trash folder.");
   assert.deepEqual(await badButtons(page), []);
@@ -142,7 +142,7 @@ uiTest('#5720 Remove from Project of a selection (its menu): the files kept in t
   await rowClick(page, 'b');
   await rowClick(page, 'c', { modifiers: CTRL });
   await rowClick(page, 'b', { button: 'right' });
-  await page.click('body > .menu-popup .mi', { text: 'Remove from Project' });
+  await page.click('body > .menu-popup .mi', { text: 'Remove…' });
   await page.waitDialog('Remove Source');
   await page.dialogButton('Cancel');
   await page.waitNoDialog();
@@ -207,8 +207,8 @@ uiTest('#5720 in Portuguese: a selection\'s menu, the question and its buttons, 
     await rowClick(page, 'a');
     await rowClick(page, 'c', { modifiers: SHIFT });
     await rowClick(page, 'b', { button: 'right' });
-    assert.deepEqual(await menuItems(page), ['Abrir', 'Remover do Projeto', 'Duplicar', 'Mudar o Nome… (disabled)', 'Definir como Módulo de Topo (disabled)', 'Propriedades da Fonte… (disabled)']);
-    await page.click('body > .menu-popup .mi', { text: 'Remover do Projeto' });
+    assert.deepEqual(await menuItems(page), ['Abrir', 'Duplicar', 'Remover…', 'Mudar o Nome… (disabled)', 'Definir como Módulo de Topo (disabled)', 'Propriedades da Fonte… (disabled)']);
+    await page.click('body > .menu-popup .mi', { text: 'Remover…' });
     await page.waitDialog('Remover Fonte');
     assert.equal(await question(page), "Remover estas 3 fontes do projeto?\n'src/a.vhd'\n'src/b.vhd'\n'src/c.vhd'\n(Os ficheiros ficam na pasta do projeto: Anular ou Acrescentar ao Projeto na vista Ficheiros repõe-nos.)\n\nRemover e Apagar Ficheiros move-os para a pasta .trash da área de trabalho.");
     assert.deepEqual(await badButtons(page), []);

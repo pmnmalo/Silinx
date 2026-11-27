@@ -62,7 +62,7 @@ uiTest('#5740 Save Version…, Versions…, Restore Project; a version before Re
   await page.leftTab('design');
   const i = await page.waitFor(() => [...document.querySelectorAll('#hier .row .lbl')].findIndex((x) => x.textContent === 'b') + 1, [], { what: 'row b' });
   await page.click('#hier .row .lbl', { index: i - 1, button: 'right' });
-  await page.click('body > .menu-popup .mi', { text: 'Remove from Project' });
+  await page.click('body > .menu-popup .mi', { text: 'Remove…' });
   await page.waitDialog('Remove Source');
   await page.dialogButton('Remove from Project');
   await page.waitConsole(/^Removed src\/b\.vhd from the project/m);

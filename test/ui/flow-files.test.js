@@ -32,7 +32,7 @@ const rowOf = (page, sel, label, ev) => page.eval((s, l, e) => {
 }, sel, label, ev);
 const menuLabels = (page) => page.waitFor(() => { const m = [...document.querySelectorAll('body > .menu-popup .mi')].map((i) => i.textContent.trim()); return m.length ? m : null; }, [], { what: 'the context menu' });
 // (the file's menu, the Files page's: its Open in … item the machine's editor's, left out)
-const FILE_MENU = ['Open', 'Rename…', 'Check Syntax', 'Remove from Project', 'Delete File…', 'Source Properties…'];
+const FILE_MENU = ['Open', 'Rename…', 'Duplicate…', 'Remove…', 'Check Syntax', 'Delete File…', 'Source Properties…'];   // (Remove… after Duplicate…, #5897)
 const fileMenu = async (page, sel, label) => {
   await rowOf(page, sel, label, 'contextmenu');
   const m = (await menuLabels(page)).filter((x) => !/^Open in /.test(x));

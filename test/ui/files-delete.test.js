@@ -70,7 +70,7 @@ uiTest('#1215 Files: Delete File… moves a file to the workspace\'s .trash (#33
   assert.ok(!(await page.eval(() => window.Silinx.project.constraints)), await page.eval(() => JSON.stringify(window.Silinx.project.constraints)));
   assert.equal(await onDisk('DelPj', 'constraints/top.ucf'), false);
   // not in the project (removed from it first): Delete File… too
-  await fileMenu(page, 'src/a.vhd', 'Remove from Project');
+  await fileMenu(page, 'src/a.vhd', 'Remove…');
   await page.waitDialog('Remove Source');
   await page.dialogButton('Remove from Project');
   await page.waitFor(() => document.querySelector('#files-page tr[data-file="src/a.vhd"] td:nth-child(2)')?.textContent === 'Not in project', [], { what: 'not in the project' });
@@ -116,7 +116,7 @@ uiTest('#1214 Tasks ▸ Files: Add to Project… (the folder\'s files not in the
   await page.waitConsole(/^INFO: Add to Project: Every file of the project folder is in the project\.$/m);
   assert.equal(await page.dialogCount(), 0);
   // a file removed from the project: listed, chosen, added back
-  await fileMenu(page, 'src/b.v', 'Remove from Project');
+  await fileMenu(page, 'src/b.v', 'Remove…');
   await page.waitDialog('Remove Source');
   await page.dialogButton('Remove from Project');
   await page.waitFor(() => document.querySelector('#files-page tr[data-file="src/b.v"] td:nth-child(2)')?.textContent === 'Not in project', [], { what: 'removed' });

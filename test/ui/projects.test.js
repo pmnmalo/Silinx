@@ -545,7 +545,7 @@ uiTest('Files view: rename a file into another folder, remove a file (right-clic
   // remove src/b.v (confirmation): out of the project, but the file stays in the folder ("Not in project")
   await page.rightClick('#files-page tr', { index: await row('src/b.v') });
   await page.waitForSelector('body > .menu-popup');
-  await page.click('body > .menu-popup .mi', { text: 'Remove from Project' });
+  await page.click('body > .menu-popup .mi', { text: 'Remove…' });
   await page.waitDialog('Remove Source');
   assert.match(await page.eval(() => [...document.querySelectorAll('.dlg-overlay')].pop().innerText), /The file stays in the project folder/);
   await page.dialogButton('Remove from Project');
@@ -560,7 +560,7 @@ uiTest('Files view: rename a file into another folder, remove a file (right-clic
   // remove again, then Edit ▸ Undo Remove from Project
   await page.rightClick('#files-page tr', { index: await row('src/b.v') });
   await page.waitForSelector('body > .menu-popup');
-  await page.click('body > .menu-popup .mi', { text: 'Remove from Project' });
+  await page.click('body > .menu-popup .mi', { text: 'Remove…' });
   await page.waitDialog('Remove Source');
   await page.dialogButton('Remove from Project');
   await page.waitFor(() => !window.Silinx.project.files.some((f) => f.path === 'src/b.v'));
@@ -570,7 +570,7 @@ uiTest('Files view: rename a file into another folder, remove a file (right-clic
   // remove again, then the toolbar's Undo button
   await page.rightClick('#files-page tr', { index: await row('src/b.v') });
   await page.waitForSelector('body > .menu-popup');
-  await page.click('body > .menu-popup .mi', { text: 'Remove from Project' });
+  await page.click('body > .menu-popup .mi', { text: 'Remove…' });
   await page.waitDialog('Remove Source');
   await page.dialogButton('Remove from Project');
   await page.waitFor(() => !window.Silinx.project.files.some((f) => f.path === 'src/b.v'));
@@ -600,7 +600,7 @@ uiTest('Files view: rename a file into another folder, remove a file (right-clic
   // remove once more, then right-click the "Not in project" row ▸ Add to Project
   await page.rightClick('#files-page tr', { index: await row('src/b.v') });
   await page.waitForSelector('body > .menu-popup');
-  await page.click('body > .menu-popup .mi', { text: 'Remove from Project' });
+  await page.click('body > .menu-popup .mi', { text: 'Remove…' });
   await page.waitDialog('Remove Source');
   await page.dialogButton('Remove from Project');
   await page.waitFor(() => !window.Silinx.project.files.some((f) => f.path === 'src/b.v'));
@@ -1083,7 +1083,7 @@ uiTest('Remove from Project of a diagram (ASM chart): it leaves the hierarchy, t
   const idx = await page.waitFor(() => { const i = [...document.querySelectorAll('#files-page tr')].findIndex((tr) => tr.cells[0]?.textContent === 'src/ctl.asm.json'); return i >= 0 ? i + 1 : 0; }) - 1;
   await page.rightClick('#files-page tr', { index: idx });
   await page.waitForSelector('body > .menu-popup');
-  await page.click('body > .menu-popup .mi', { text: 'Remove from Project' });
+  await page.click('body > .menu-popup .mi', { text: 'Remove…' });
   await page.waitDialog('Remove Source');
   await page.dialogButton('Remove from Project');
   await page.waitFor(() => (window.Silinx.project.excluded || []).includes('src/ctl.asm.json'), [], { what: 'chart excluded' });

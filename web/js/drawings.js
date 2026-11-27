@@ -192,9 +192,9 @@ export function asmContextMenu(e, file) {
     designState.view === 'sim' ? null : topMenuItem(drawnTop(file), () => setViewAsTop(file)),
     { label: 'Rename…', action: () => renameDialog(file) },
     { label: 'Duplicate…', action: () => import('./design-duplicate.js').then(m => m.duplicateDialog(file)) },   // (#5862)
+    { label: 'Remove…', command: 'Remove from Project', action: () => removeModule(file) },   // (after Duplicate, #5897)
     { label: 'Convert to State Diagram (FSM)…', action: () => asmToFsmDiagram(file) },
     clashItem(file),
-    { label: 'Remove from Project', action: () => removeModule(file) },
   ].filter(Boolean), e.clientX, e.clientY);
 }
 
@@ -388,8 +388,8 @@ export function petriContextMenu(e, file) {
     designState.view === 'sim' ? null : topMenuItem(drawnTop(file), () => setViewAsTop(file)),
     { label: 'Rename…', action: () => renameDialog(file) },
     { label: 'Duplicate…', action: () => import('./design-duplicate.js').then(m => m.duplicateDialog(file)) },   // (#5862)
+    { label: 'Remove…', command: 'Remove from Project', action: () => removeModule(file) },   // (after Duplicate, #5897)
     clashItem(file),
-    { label: 'Remove from Project', action: () => removeModule(file) },
   ].filter(Boolean), e.clientX, e.clientY);
 }
 
@@ -453,8 +453,8 @@ export function circuitContextMenu(e, file) {
     designState.view === 'sim' ? null : topMenuItem(drawnTop(file), () => setViewAsTop(file)),
     { label: 'Rename…', action: () => renameDialog(file) },
     { label: 'Duplicate…', action: () => import('./design-duplicate.js').then(m => m.duplicateDialog(file)) },   // (#5862)
+    { label: 'Remove…', command: 'Remove from Project', action: () => removeModule(file) },   // (after Duplicate, #5897)
     clashItem(file),
-    { label: 'Remove from Project', action: () => removeModule(file) },
   ].filter(Boolean), e.clientX, e.clientY);
 }
 
@@ -464,9 +464,9 @@ export function fsmContextMenu(e, file) {
     designState.view === 'sim' ? null : topMenuItem(drawnTop(file), () => setViewAsTop(file)),
     { label: 'Rename…', action: () => renameDialog(file) },
     { label: 'Duplicate…', action: () => import('./design-duplicate.js').then(m => m.duplicateDialog(file)) },   // (#5862)
+    { label: 'Remove…', command: 'Remove from Project', action: () => removeModule(file) },   // (after Duplicate, #5897)
     { label: 'Convert to ASM chart', action: () => fsmToAsmChart(file) },
     clashItem(file),
-    { label: 'Remove from Project', action: () => removeModule(file) },
   ].filter(Boolean), e.clientX, e.clientY);
 }
 
@@ -848,7 +848,7 @@ export function schContextMenu(e, file) {
     designState.view === 'sim' ? null : topMenuItem(drawnTop(file), () => setViewAsTop(file)),
     { label: 'Rename…', action: () => renameDialog(file) },
     { label: 'Duplicate…', action: () => import('./design-duplicate.js').then(m => m.duplicateDialog(file)) },   // (#5862)
+    { label: 'Remove…', command: 'Remove from Project', action: () => removeModule(file) },   // (after Duplicate, #5897)
     clashItem(file),
-    { label: 'Remove from Project', action: () => removeModule(file) },
   ].filter(Boolean), e.clientX, e.clientY);
 }

@@ -63,8 +63,8 @@ function fileItems(app, path) {
     { label: 'Open', action: () => open(app, path) },
     { label: 'Rename…', action: () => import('./rename.js').then(r => r.renameDialog(path)) },
     { label: 'Duplicate…', action: () => import('./design-duplicate.js').then(m => m.duplicateDialog(path)) },   // (#5862)
+    { label: 'Remove…', command: 'Remove from Project', action: () => import('./design.js').then(d => d.removeFile(path)) },   // (after Duplicate, #5897)
     { label: 'Check Syntax', action: () => import('./processes.js').then(p => p.checkFileSyntax(path)) },
-    { label: 'Remove from Project', action: () => import('./design.js').then(d => d.removeFile(path)) },
     '-',
     { label: 'Source Properties…', action: () => import('./wizards.js').then(w => w.sourceProperties(path)) },
   ];

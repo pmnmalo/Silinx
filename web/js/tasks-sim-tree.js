@@ -22,8 +22,7 @@ export function benchItems(app, name) {
     design(app) ? { label: 'Simulate', action: () => app.runSimulation(name) } : { label: 'Open', action: () => { const i = info(); if (i) app.openFile(i.file, i.line, undefined, { task: 'sim' }); } },
     { label: 'Rename…', action: () => import('./rename.js').then(r => r.renameDialog(file(), name)) },
     { label: design(app) ? 'Check Design' : 'Check Syntax', action: () => check(name) },
-    // (its link, the simulation of this test bench, #2883)
-    { label: 'Share Module…', action: () => import('./share-how.js').then(m => m.shareDialog({ module: name })) },   // (a copy: a test bench's, #3698)
+    // (no Share Module… since #5897, as the Design pane's: Share Project… chooses the test bench in its window, #2883)
     '-',
     { label: 'New Test Bench…', action: () => newBench(app) },
     design(app) ? null : { label: 'Import Test Bench…', action: addCopy },

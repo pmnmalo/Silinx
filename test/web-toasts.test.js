@@ -85,7 +85,7 @@ test('#3591 no toast of kind error or warning is left: the errors, warnings and 
   assert.deepEqual(all.filter((x) => msgs.test(x.msg)).map((x) => `${x.file}: toast(${x.msg})`), []);
   // the menu's error and the editor's quick fix through ui.js's message, the app's console
   const ui = fs.readFileSync(path.join(WEB, 'ui.js'), 'utf8');
-  assert.match(ui, /message\(`\$\{it\.label\}: \$\{err\.message \|\| err\}`, 'error'\)/);
+  assert.match(ui, /message\(`\$\{name\}: \$\{err\.message \|\| err\}`, 'error'\)/);   // (its command's name: its label or its command, #5897)
   assert.match(fs.readFileSync(path.join(WEB, 'app.js'), 'utf8'), /setMessageSink\(\(text, level\) => \(level === 'error' \? logError : level === 'warning' \? logWarning : logInfo\)\(text\)\)/);
   const at = (f, re) => assert.match(fs.readFileSync(path.join(WEB, f), 'utf8'), re, f);
   at('impact.js', /logError\('Another operation is running'\)/);

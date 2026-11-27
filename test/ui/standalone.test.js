@@ -1845,15 +1845,12 @@ uiTest('#2894 regression, browser edition (the Pages site): a link opened in a n
   const pj = JSON.parse(await fs.readFile(path.join(ROOT, 'examples/pong/silinx.json'), 'utf8'));
   await page.goto(`${siteUrl}?l=1#open=example:pong`);
   await boot();
-  // Share Project… and Share Module…'s links: the project only, the module debounce's, the board emulator
+  // Share Project…'s links: the project only, a module's (debounce, chosen in its window), the board emulator
   const copy = async (view, module) => {
-    if (module) {
-      const row = await page.waitFor((m) => { const i = [...document.querySelectorAll('#hier .row')].findIndex((r) => r.dataset.module === m); return i >= 0 ? i : null; }, [module], { what: `${module}'s row` });
-      await page.rightClick('#hier .row .lbl', { index: row });
-      await page.waitForSelector('body > .menu-popup');
-      await page.click('body > .menu-popup .mi', { text: 'Share Module…' });
-    } else await page.menu('File', 'Share Project…');
-    await page.waitDialog(module ? 'Share Module' : 'Share Project');
+    // (a module's link: Share Project…'s window with the module chosen, its Share Module… out of its menu since #5897)
+    await page.menu('File', 'Share Project…');
+    await page.waitDialog('Share Project');
+    if (module) await page.eval((m) => { const s = document.querySelector('.dlg-overlay select[data-field=module]'); s.value = m; s.dispatchEvent(new Event('change')); }, module);
     await page.eval((v) => { const s = document.querySelector('.dlg-overlay select[data-field=view]'); s.value = v; s.dispatchEvent(new Event('change')); }, view);
     const link = await page.waitFor(() => /#design=[\w-]+/.test((document.querySelector('.dlg-overlay .link-generate:not(:disabled)')?.click(), document.querySelector('.dlg-overlay .link-out').value)) && (document.querySelector('.dlg-overlay .link-generate:not(:disabled)')?.click(), document.querySelector('.dlg-overlay .link-out').value), [], { what: 'the link' });
     await page.dialogButton('Close');

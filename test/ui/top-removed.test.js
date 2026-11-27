@@ -39,7 +39,7 @@ uiTest('#253 Remove from Project of the top module: the module left becomes the 
   await makeProject(env, { name: 'TopGone', top: 'top', board: 'basys2', files: { 'src/top.vhd': TOP, 'src/conv.vhd': CONV } });
   await page.openProject('TopGone');
   await page.treeRow('#hier', 'top', { right: true, exact: true });
-  await page.click('body > .menu-popup .mi', { text: 'Remove from Project' });
+  await page.click('body > .menu-popup .mi', { text: 'Remove…' });
   await answer(page);
   await page.waitFor(() => window.Silinx.project?.top === 'conv', [], { what: 'conv the top' });
   await savedTop(page, 'TopGone', 'conv');

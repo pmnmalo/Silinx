@@ -118,7 +118,7 @@ uiTest('#5862 a selection\'s Duplicate: each source under its own name; the File
   await rowClick(page, 'b');
   await rowClick(page, 'st', { modifiers: CTRL });
   await rowClick(page, 'b', { button: 'right' });
-  assert.deepEqual(await menuItems(page), ['Open', 'Remove from Project', 'Duplicate', 'Rename… (disabled)', 'Set as Top Module (disabled)', 'Source Properties… (disabled)']);
+  assert.deepEqual(await menuItems(page), ['Open', 'Duplicate', 'Remove…', 'Rename… (disabled)', 'Set as Top Module (disabled)', 'Source Properties… (disabled)']);
   await pick(page, 'Duplicate');
   await waitModules(page, ['a', 'b', 'b_copy', 'st', 'st_copy']);
   assert.deepEqual(await consoleLines(page, /^Duplicate: /), [

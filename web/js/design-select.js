@@ -73,9 +73,9 @@ export function selectionMenu(e, row) {
   const rows = selectedRows(row.closest('.tree'));
   popupMenu([
     { label: 'Open', action: () => { for (const r of rows) r.openIt?.(); } },
-    { label: 'Remove from Project', action: () => removeSources(sourcesOf(rows)) },
     // (each one under its own name, #5862)
     { label: 'Duplicate', action: () => import('./design-duplicate.js').then(m => m.duplicateSources(sourcesOf(rows).map(r => r.file))) },
+    { label: 'Remove…', command: 'Remove from Project', action: () => removeSources(sourcesOf(rows)) },   // (after Duplicate, #5897)
     '-',
     { label: 'Rename…', disabled: true },
     { label: 'Set as Top Module', disabled: true },
