@@ -1,0 +1,31 @@
+{
+  "format": "silinx-system",
+  "version": 2,
+  "name": "counter_pico",
+  "nodes": [
+    {
+      "id": "pico",
+      "kind": "mcu",
+      "board": "pico",
+      "firmware": "pico/main.py",
+      "lang": "micropython",
+      "interfaces": [
+        {
+          "name": "UART0",
+          "kind": "uart",
+          "baud": 9600,
+          "frame": "8N1"
+        },
+        {
+          "name": "UART1",
+          "kind": "uart",
+          "baud": 9600,
+          "frame": "8N1"
+        }
+      ],
+      "x": 0,
+      "y": 0
+    }
+  ],
+  "links": []
+}

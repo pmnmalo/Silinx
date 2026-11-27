@@ -73,7 +73,7 @@ test('#5757 list_examples: the Circuit versions said, after the FPGA examples; a
   assert.deepEqual(names.filter(x => CIRCUIT_ORDER.includes(x)), CIRCUIT_ORDER);
   assert.ok(names.indexOf('lock') < names.indexOf('traffic-circuit') && names.indexOf('lock-circuit') < names.indexOf('uart-avr'), names.join());
   assert.equal(l.text.split('\n').find(x => x.startsWith('traffic-circuit:')), 'traffic-circuit: a Circuit example (drawings, no board), top crossing, test bench tb_crossing, 4 file(s)');
-  assert.deepEqual(l.data.examples.find(e => e.name === 'lock-circuit'), { name: 'lock-circuit', modes: ['circuit'], top: 'safe', simTop: 'tb_safe', board: null, device: null, files: 8 });
+  assert.deepEqual(l.data.examples.find(e => e.name === 'lock-circuit'), { name: 'lock-circuit', modes: ['circuit'], boardType: null, top: 'safe', simTop: 'tb_safe', board: null, device: null, files: 8 });
   const f = await call('new_project_from_example', { name: 'tf', example: 'traffic-circuit', mode: 'board' });
   assert.deepEqual([f.isError, f.text], [true, 'new_project_from_example: traffic-circuit is not a board example (its modes: circuit)']);
 });

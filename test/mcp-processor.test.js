@@ -66,3 +66,11 @@ test('#5756 set_design_properties mode: a processor board\'s project up to Syste
   assert.deepEqual([(await P.readProject('e1')).board, (await ok('project_info', { project: 'e1' })).data.mode], ['esp32-devkitc', 'board']);
   await fails('set_design_properties', { project: 'e1', mode: 'circuit', confirm: true }, 'the project \'e1\' is a processor board\'s (ESP32 DevKitC): its firmware is no drawing, so it cannot be a Circuit project');
 });
+
+test('#5875 the ESP32\'s starter: no Pin.toggle (the ESP32\'s MicroPython has none), its level kept by the program: GPIO2 on, then off, no error', async () => {
+  await ok('new_project', { name: 'e2', board: 'esp32-devkitc' });
+  const py = fs.readFileSync(path.join(P.projectDir('e2'), 'esp32/main.py'), 'utf8');
+  assert.ok(!py.includes('toggle') && py.includes('    on = not on\n    led.value(on)\n'), py);
+  const at = async ms => { const s = await ok('simulate', { project: 'e2', top: 'e2.sys.json', time_ns: ms * 1e6, controls: [] }); assert.deepEqual([s.data.warnings, s.data.errors], [[], []], s.text); return s.data.boards.esp32.pins.GPIO2; };
+  assert.deepEqual([await at(300), await at(800)], [1, 0]);
+});

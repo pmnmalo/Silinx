@@ -53,12 +53,13 @@ uiTest('#5756 New Project: the Board card\'s Board Type; a Raspberry Pi Pico alo
   await page.dialogButton('Next >');
   await page.waitFor(() => document.querySelectorAll('.dlg-overlay .wiz-main select').length > 6, [], { what: 'Project Settings' });
   assert.ok((await offered(page)).includes('basys2') && !(await offered(page)).some(v => ['pico', 'arduino-uno'].includes(v)));
-  // (back to the Board Type, Raspberry Pi Pico: the Picos alone, the first chosen; the FPGA's fields hidden; no example)
+  // (back to the Board Type, Raspberry Pi Pico: the Picos alone, the first chosen; the FPGA's fields hidden; its examples,
+  // #5874: test/ui/processor-examples.test.js)
   await page.dialogButton('< Back');
   await page.dialogButton('< Back');
   await page.fill('.dlg-overlay .board-type', 'rp2040');
   await page.dialogButton('Next >');
-  assert.deepEqual(await page.eval(() => [...document.querySelector('.dlg-overlay .wiz-main select').options].filter(o => !o.hidden).map(o => o.value)), ['empty']);
+  assert.deepEqual(await page.eval(() => [...document.querySelector('.dlg-overlay .wiz-main select').options].filter(o => !o.hidden).map(o => o.value)), ['empty', 'blinky-pico', 'counter-pico', 'echo-pico']);
   await page.dialogButton('Next >');
   assert.deepEqual(await offered(page), ['pico', 'pico-w']);
   assert.deepEqual(await shownLabels(page), ['Evaluation Development Board:', 'Python Firmware:']);

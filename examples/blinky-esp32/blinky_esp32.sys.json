@@ -1,0 +1,25 @@
+{
+  "format": "silinx-system",
+  "version": 2,
+  "name": "blinky_esp32",
+  "nodes": [
+    {
+      "id": "esp32",
+      "kind": "mcu",
+      "board": "esp32-devkitc",
+      "firmware": "esp32/main.py",
+      "lang": "micropython",
+      "interfaces": [
+        {
+          "name": "UART2",
+          "kind": "uart",
+          "baud": 9600,
+          "frame": "8N1"
+        }
+      ],
+      "x": 0,
+      "y": 0
+    }
+  ],
+  "links": []
+}

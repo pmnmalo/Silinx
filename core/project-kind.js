@@ -7,7 +7,7 @@
 // MCP server. Isomorphic module (browser + Node).
 
 import { systemsOn, SYSTEMS_OFF } from './build-channel.js';
-import { SYSTEM_ORDER, CIRCUIT_EXAMPLES, CIRCUIT_ORDER } from './examples.js';
+import { SYSTEM_ORDER, CIRCUIT_EXAMPLES, CIRCUIT_ORDER, PROCESSOR_ORDER } from './examples.js';
 import { profileOf, systemProfile, withProfile } from './project-profile.js';
 
 export const DESIGN_KIND = 'design';
@@ -23,8 +23,8 @@ export const SYSTEM_KIND = 'system';
 /** The System examples (New Project's Start from for a System project; the others are FPGA projects'). */
 export const SYSTEM_EXAMPLES = SYSTEM_ORDER;
 /** The examples offered in this build (New Project, the MCP's list_examples): the System ones only where Systems are
- *  on (#5202). */
-export const offeredExamples = names => names.filter(n => systemsOn() || !SYSTEM_EXAMPLES.includes(n));
+ *  on (#5202), the processor boards' too (#5874: their machinery is a System's). */
+export const offeredExamples = names => names.filter(n => systemsOn() || !(SYSTEM_EXAMPLES.includes(n) || PROCESSOR_ORDER.includes(n)));
 /** Whether a new project of the kind or profile `k` is a System project (its System document made): System, or
  *  Embedded / SoC (#5440). */
 export const newSystemKind = k => k === SYSTEM_KIND || k === 'embedded';
@@ -42,8 +42,10 @@ export function createRefusal(given, template = 'empty') {
   if (given === 'fpga' && SYSTEM_EXAMPLES.includes(template)) return `an FPGA project starts from an FPGA example: ${template} is a System example`;
   // (a Circuit version: a Circuit project's alone, #5757)
   if ((given === 'fpga' || newSystemKind(given)) && CIRCUIT_ORDER.includes(template)) return `${template} is a Circuit example: a Circuit project starts from it (mode circuit)`;
-  // (Systems not in a release yet, #5202: core/build-channel.js)
-  if ((kind === SYSTEM_KIND || SYSTEM_EXAMPLES.includes(template)) && !systemsOn()) return SYSTEMS_OFF;
+  // (a processor board's example, #5874: a Board project of that board, not a System's start)
+  if (newSystemKind(given) && PROCESSOR_ORDER.includes(template)) return `${template} is a processor board's example: a Board project starts from it (mode board)`;
+  // (Systems not in a release yet, #5202: core/build-channel.js; a processor board's machinery is a System's, #5874)
+  if ((kind === SYSTEM_KIND || SYSTEM_EXAMPLES.includes(template) || PROCESSOR_ORDER.includes(template)) && !systemsOn()) return SYSTEMS_OFF;
   if (kind === SYSTEM_KIND && !empty && !SYSTEM_EXAMPLES.includes(template)) return `a System project starts empty or from a System example (${SYSTEM_EXAMPLES.join(', ')})`;
   return null;
 }

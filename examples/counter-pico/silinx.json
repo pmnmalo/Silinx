@@ -1,0 +1,22 @@
+{
+  "name": "counter-pico",
+  "version": 1,
+  "device": {
+    "family": "spartan3e",
+    "part": "xc3s250e",
+    "package": "cp132",
+    "speed": "-4"
+  },
+  "board": "pico",
+  "top": "",
+  "simTop": "",
+  "files": [],
+  "constraints": null,
+  "stimuli": {},
+  "impl": {
+    "optMode": "Speed",
+    "optLevel": 1,
+    "startupClk": "JtagClk"
+  },
+  "profile": "embedded"
+}

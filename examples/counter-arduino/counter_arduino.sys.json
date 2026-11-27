@@ -1,0 +1,25 @@
+{
+  "format": "silinx-system",
+  "version": 2,
+  "name": "counter_arduino",
+  "nodes": [
+    {
+      "id": "uno",
+      "kind": "mcu",
+      "board": "arduino-uno",
+      "firmware": "uno/counter.hex",
+      "lang": "c",
+      "interfaces": [
+        {
+          "name": "Serial",
+          "kind": "uart",
+          "baud": 9600,
+          "frame": "8N1"
+        }
+      ],
+      "x": 0,
+      "y": 0
+    }
+  ],
+  "links": []
+}

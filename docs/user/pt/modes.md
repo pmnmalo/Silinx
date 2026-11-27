@@ -26,9 +26,21 @@ Modo…** (Project ▸ Change Mode…).
   e a página das definições lista as placas desse tipo. Uma placa FPGA faz o projeto FPGA de todas as versões anteriores
   (vazio ou a partir de qualquer exemplo FPGA, blinky, pong, uart…). Uma placa de processador não precisa de nenhum
   campo da FPGA, e o projeto começa com um firmware que faz piscar o LED da placa (um programa em assembly para um Arduino, um em MicroPython ou CircuitPython
-  para um Pico, em MicroPython para um ESP32; o PIC24 começa sem nenhum: o seu `.hex` é do MPLAB X). Selecione a linha
-  da placa no painel Design para o seu **Emular Nó** (Emulate Node), **Simular Nó** (Simulate Node) e **Programar Nó**
-  (Program Node).
+  para um Pico, em MicroPython para um ESP32; o PIC24 começa sem nenhum: o seu `.hex` é do MPLAB X), ou a partir de um
+  dos exemplos do seu Tipo de Placa, em qualquer placa desse tipo:
+  - Arduino (Uno, Nano): **blinky-arduino** (o LED L a piscar), **counter-arduino** (um contador binário em D8..D13),
+    sketches Arduino cujo `.hex` vem com eles, para correrem sem compilador (o Compile Firmware fá-lo de novo com o
+    arduino-cli);
+  - PIC24 (Explorer 16/32): **blinky-pic24** (D3 a piscar), **buttons-pic24** (S3..S6 acendem os seus LEDs),
+    **counter-pic24** (um contador nos LEDs e no LCD), **adc-pic24** (o potenciómetro R6 como uma barra nos LEDs), em
+    assembly, com o seu `.hex`;
+  - Raspberry Pi Pico: **blinky-pico**, **counter-pico** (em GP6..GP9), **echo-pico** (cada linha escrita na sua consola
+    devolvida; o seu ficheiro de estímulos escreve uma para o Simular), em MicroPython, cada um a dizer o que faz na sua
+    consola;
+  - ESP32: **blinky-esp32** (GPIO2), **counter-esp32** (em GPIO32, GPIO33, GPIO25, GPIO26), em MicroPython.
+
+  Selecione a linha da placa no painel Design para o seu **Emular Nó** (Emulate Node), **Simular Nó** (Simulate Node) e
+  **Programar Nó** (Program Node).
 - **Sistema**: um Sistema vazio, ou um exemplo de Sistema (uart-avr, spi-avr, i2c-avr, regs-avr, uart-pic24, adc-pmod,
   uart-pico).
 
@@ -65,5 +77,7 @@ nas **Propriedades do Projeto** (Design Properties).
 
 O servidor MCP faz o mesmo ([O Silinx para um assistente de IA](ai-mcp.md)): o `new_project` recebe `mode` (`circuit`,
 `board`, `system`) e uma placa de processador como `board`; o `new_project_from_example` recebe `mode circuit` para um
-exemplo de Circuito; o `list_examples` dá os modos de cada exemplo; o `set_design_properties` com `mode` muda o modo de um projeto, uma descida
+exemplo de Circuito; o `list_examples` dá os modos e o Tipo de Placa de cada exemplo (o seu `mode` e o seu `board_type`
+listam só esses), e o `new_project_from_example` cria o exemplo de uma placa de processador noutra placa do seu tipo
+(`board`); o `set_design_properties` com `mode` muda o modo de um projeto, uma descida
 só com `confirm`, a recusa a dizer o que se perderia; o `project_info` e o `list_projects` dão o modo de cada projeto.

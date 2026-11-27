@@ -11,7 +11,7 @@ import { scratchEnv, startApp } from './server-helpers.js';
 import { unlabelled } from './mcp-label.js';
 import { buildChannel, setBuildChannel, systemsOn, channelFromEnv, SYSTEMS_IN_RELEASE, SYSTEMS_OFF } from '../core/build-channel.js';
 import { createRefusal, offeredExamples, SYSTEM_EXAMPLES } from '../core/project-kind.js';
-import { EXAMPLE_ORDER, CIRCUIT_ORDER } from '../core/examples.js';
+import { EXAMPLE_ORDER, CIRCUIT_ORDER, PROCESSOR_ORDER } from '../core/examples.js';
 // (the examples a release offers: the FPGA ones, then the Circuit versions, #5757)
 const OFFERED = [...EXAMPLE_ORDER, ...CIRCUIT_ORDER];
 
@@ -48,18 +48,19 @@ test('#5202 the switch: off in a release, on in the development build; the chann
 });
 
 test('#5202 the kinds\' rules and the examples offered, in each channel', () => {
-  const all = [...EXAMPLE_ORDER, ...SYSTEM_EXAMPLES];
-  assert.deepEqual([createRefusal('system'), createRefusal(null, 'uart-avr'), offeredExamples(all)], [null, null, all]);
+  const all = [...EXAMPLE_ORDER, ...PROCESSOR_ORDER, ...SYSTEM_EXAMPLES];
+  assert.deepEqual([createRefusal('system'), createRefusal(null, 'uart-avr'), createRefusal(null, 'blinky-arduino'), offeredExamples(all)], [null, null, null, all]);
   setBuildChannel('release');
   try {
-    assert.deepEqual([createRefusal('system'), createRefusal('system', 'uart-avr'), createRefusal(null, 'uart-avr')], [OFF, OFF, OFF]);
+    // (a processor board's example too, #5874: its machinery a System's)
+    assert.deepEqual([createRefusal('system'), createRefusal('system', 'uart-avr'), createRefusal(null, 'uart-avr'), createRefusal(null, 'blinky-arduino')], [OFF, OFF, OFF, OFF]);
     assert.deepEqual([createRefusal(null, 'uart'), createRefusal('design'), createRefusal(null)], [null, null, null], 'the other kinds as before');
     assert.deepEqual(offeredExamples(all), EXAMPLE_ORDER);
   } finally { setBuildChannel('dev'); }
 });
 
 test('#5202 the local server in a release: /templates without the System example, a System project refused; its page told the channel', async () => {
-  assert.deepEqual((await app.call('GET', '/templates')).body, [...OFFERED, ...SYSTEM_EXAMPLES]);
+  assert.deepEqual((await app.call('GET', '/templates')).body, [...OFFERED, ...PROCESSOR_ORDER, ...SYSTEM_EXAMPLES]);
   const page = await fetch(`${app.origin}/build-channel.js`);
   assert.deepEqual([page.status, page.headers.get('content-type'), await page.text()], [200, 'text/javascript; charset=utf-8', 'globalThis.SILINX_CHANNEL = "dev";\n']);
   setBuildChannel('release');

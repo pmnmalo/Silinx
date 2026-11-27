@@ -1,0 +1,8 @@
+{
+  "format": "silinx-stimulus",
+  "version": 1,
+  "controls": [],
+  "type": [
+    { "terminal": "pico.repl", "text": "hello\r", "at_ns": 300000000 }
+  ]
+}

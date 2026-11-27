@@ -5,7 +5,7 @@ import fsp from 'node:fs/promises';
 import path from 'node:path';
 import * as P from './projects.js';
 import { readWithin } from './paths.js';
-import { orderExamples, exampleModes } from '../core/examples.js';
+import { orderExamples, exampleModes, exampleBoardType } from '../core/examples.js';
 import { nameUnnamed } from '../core/schname.js';
 import { SYSTEM_KIND, DESIGN_KIND, isSystemProject, isDesignOnly, newSystemKind, offeredExamples } from '../core/project-kind.js';
 import { PROFILES, profileOf } from '../core/project-profile.js';
@@ -14,8 +14,9 @@ import { systemsOn, SYSTEMS_OFF } from '../core/build-channel.js';
 import { placeText } from '../core/project-place.js';
 import { withPlaces } from './project-places.js';
 import { designProjectInfo } from './mcp-design-only.js';
-import { newProcessorProject } from './mcp-processor.js';
-import { isProcessorBoard } from '../core/processor-board.js';
+import { newProcessorProject, newProcessorExampleProject } from './mcp-processor.js';
+import { isProcessorBoard, processorBoardOf, BOARD_TYPES } from '../core/processor-board.js';
+import { mcuBoard } from '../core/system-doc.js';
 import { flowFiles } from '../core/flow-files.js';
 import { topRefusal } from '../core/project-entries.js';
 import { makeSystemTop, makeNodeTop } from './mcp-system-top.js';
@@ -69,21 +70,25 @@ const nodeText = n => `${n.id} (${[n.kind, n.board].filter(Boolean).join(', ')}$
 export const PROJECT_TOOLS = [
   {
     name: 'list_examples', title: 'List the example projects',
-    description: 'The example projects a new project can start from (new_project_from_example), in the interface\'s order, with their top module, device and board.',
-    inputSchema: { type: 'object', properties: {}, additionalProperties: false },
+    description: 'The example projects a new project can start from (new_project_from_example), in the interface\'s order, with their modes, top module, device and board; a Board example\'s Board Type (fpga, or a processor board\'s: avr, pic24, rp2040, esp32), as New Project\'s. mode and board_type: those only.',
+    inputSchema: { type: 'object', properties: { mode: { type: 'string', enum: ['circuit', 'board', 'system'], description: 'Only the examples a project of this mode starts from.' }, board_type: { type: 'string', enum: BOARD_TYPES.map(t => t.id), description: `Only the Board examples of this Board Type: ${BOARD_TYPES.map(t => `${t.id} (${t.label})`).join(', ')}.` } }, additionalProperties: false },
     annotations: { readOnlyHint: true },
-    async run() {
+    async run({ mode, board_type: type } = {}) {
       const about = (dir, n) => {
         const pj = JSON.parse(fs.readFileSync(path.join(dir, n, 'silinx.json'), 'utf8'));
+        // (a processor board's, #5874: a Board project of that board alone, its firmware its program)
+        if (processorBoardOf(pj)) return { name: n, modes: exampleModes(n), boardType: exampleBoardType(n), top: null, simTop: null, board: pj.board, device: null, files: fs.readdirSync(path.join(dir, n), { recursive: true }).filter(f => !fs.statSync(path.join(dir, n, f)).isDirectory() && f !== 'silinx.json').length };
         // (a System example: its System its top, no board nor device, #4702)
-        if (isSystemProject(pj)) return { name: n, kind: SYSTEM_KIND, modes: exampleModes(n), top: null, simTop: null, board: null, device: null, files: (pj.files || []).length };
-        return { name: n, modes: exampleModes(n), top: pj.top, simTop: pj.simTop || null, board: pj.board || null, device: pj.device && !isDesignOnly(pj) ? `${pj.device.part}${pj.device.package}${pj.device.speed}` : null, files: (pj.files || []).length };
+        if (isSystemProject(pj)) return { name: n, kind: SYSTEM_KIND, modes: exampleModes(n), boardType: null, top: null, simTop: null, board: null, device: null, files: (pj.files || []).length };
+        return { name: n, modes: exampleModes(n), boardType: exampleBoardType(n), top: pj.top, simTop: pj.simTop || null, board: pj.board || null, device: pj.device && !isDesignOnly(pj) ? `${pj.device.part}${pj.device.package}${pj.device.speed}` : null, files: (pj.files || []).length };
       };
-      // (the examples only, as New Project's Start from: not the test designs, #5108)
-      const examples = offeredExamples(orderExamples(P.templateNames(P.EXAMPLES_DIR))).map(n => about(P.EXAMPLES_DIR, n));   // (#5202)
+      // (the examples only, as New Project's Start from: not the test designs, #5108; New Project's by its mode and Board
+      // Type, #5874)
+      const examples = offeredExamples(orderExamples(P.templateNames(P.EXAMPLES_DIR))).filter(n => (!mode || exampleModes(n).includes(mode)) && (!type || exampleBoardType(n) === type)).map(n => about(P.EXAMPLES_DIR, n));   // (#5202)
+      const typeLabel = t => BOARD_TYPES.find(x => x.id === t).label;
       // (its modes, #5757: a Circuit example's circuit too)
-      const text = examples.map(e => e.kind ? `${e.name}: a System example (FPGA and microcontroller nodes in a System), ${e.files} file(s)` : e.modes.join() === 'circuit' ? `${e.name}: a Circuit example (drawings, no board), top ${e.top}, test bench ${e.simTop}, ${e.files} file(s)` : `${e.name}: top ${e.top}${e.simTop ? `, test bench ${e.simTop}` : ''}, ${e.board || 'no board'} (${e.device}), ${e.files} file(s)${e.modes.includes('circuit') ? '; a Circuit example too' : ''}`);
-      return { text: text.join('\n'), data: { examples } };
+      const text = examples.map(e => e.kind ? `${e.name}: a System example (FPGA and microcontroller nodes in a System), ${e.files} file(s)` : e.boardType && e.boardType !== 'fpga' ? `${e.name}: ${/^[AEIOU]/.test(typeLabel(e.boardType)) ? 'an' : 'a'} ${typeLabel(e.boardType)} example (Board Type ${e.boardType}) for the ${mcuBoard(e.board).name}, ${e.files} file(s)` : e.modes.join() === 'circuit' ? `${e.name}: a Circuit example (drawings, no board), top ${e.top}, test bench ${e.simTop}, ${e.files} file(s)` : `${e.name}: top ${e.top}${e.simTop ? `, test bench ${e.simTop}` : ''}, ${e.board || 'no board'} (${e.device}), ${e.files} file(s)${e.modes.includes('circuit') ? '; a Circuit example too' : ''}`);
+      return { text: text.join('\n') || 'No example of that mode and Board Type.', data: { examples } };
     },
   },
   {
@@ -102,7 +107,7 @@ export const PROJECT_TOOLS = [
   },
   {
     name: 'new_project_from_example', title: 'New project from an example',
-    description: 'Make a new project in the workspace from an example (list_examples), optionally for another board (list_devices: basys2, nexys2, basys3…): its pins are then the board\'s.',
+    description: 'Make a new project in the workspace from an example (list_examples), optionally for another board (list_devices: basys2, nexys2, basys3…): its pins are then the board\'s. A processor board\'s example (Board Type avr, pic24, rp2040, esp32): a Board project of that board, or of another of its type (arduino-nano for an Arduino\'s, pico-w for a Pico\'s).',
     inputSchema: { type: 'object', properties: { name: STR('The new project\'s name: a letter, then up to 63 letters, digits, - and _.'), example: STR('The example (list_examples).'), mode: { type: 'string', enum: ['circuit', 'board', 'system'], description: 'Its mode (list_examples).' }, board: STR('The board (list_devices; default: the example\'s).'), variant: STR('The board\'s variant (default: the board\'s), e.g. 100 or 250 for the Basys2.') }, required: ['name', 'example'], additionalProperties: false },
     annotations: { readOnlyHint: false, destructiveHint: false },
     async run({ name, example, board, variant, mode: given }) {
@@ -119,6 +124,8 @@ export const PROJECT_TOOLS = [
       // (an example, as New Project's Start from: not a test design, #5108)
       const dir = P.EXAMPLES_DIR;
       if (!/^[a-z0-9_-]+$/i.test(String(example || '')) || !fs.existsSync(path.join(dir, example, 'silinx.json'))) throw toolError(`unknown example '${example}' (list_examples)`);
+      // (a processor board's, #5874: a Board project of its board, or of another of its type)
+      if (!['fpga', null].includes(exampleBoardType(example))) return newProcessorExampleProject(name, example, { board, variant });
       let device;
       if (board || variant) {
         const ex = JSON.parse(fs.readFileSync(path.join(dir, example, 'silinx.json'), 'utf8'));

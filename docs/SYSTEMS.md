@@ -1042,6 +1042,17 @@ The local server does the same for the MCP's `serial_terminal` (`server/serial-m
     "Hello from Silinx!", in its console; the FPGA (the uart example's module) shows them on its LEDs. Both sides at 3.3 V.
     It teaches a UART from Python, the same program on the real board.
 
+The processor boards alone have examples of their own (#5874, `core/examples.js` `PROCESSOR_EXAMPLES`): Board projects
+of one board, a System of its one microcontroller node (`core/processor-board.js`), listed by New Project's Board Type
+and the MCP's `list_examples` `board_type`, and made on any board of their type (`exampleOnBoard`: an Arduino's on the
+Uno or the Nano, a Pico's on the Pico or the Pico W). Arduino: `blinky-arduino`, `counter-arduino` (sketches, their
+`.hex` arduino-cli's); PIC24: `blinky-pic24`, `buttons-pic24`, `counter-pic24`, `adc-pic24` (assembly, their `.hex` the
+tests' assembler's, as `uart-pic24`'s); Raspberry Pi Pico: `blinky-pico`, `counter-pico`, `echo-pico` (MicroPython; the
+echo's stimulus file types into its console); ESP32: `blinky-esp32`, `counter-esp32` (MicroPython). The Arduino, the
+Pico and the ESP32 have no buttons of their own in the emulator, and a UART alone has no terminal, so buttons are the
+Explorer 16/32's and an echo the Pico's console's; the System examples show the boards' UARTs. `test/processor-examples.test.js`
+runs each one, `test/ui/processor-examples.test.js` makes them in New Project.
+
 A scenario test fits `grade` and the labs: press the Arduino's button, expect "OK" on the FPGA's UART.
 
 ## Where each part runs
