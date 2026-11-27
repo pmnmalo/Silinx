@@ -391,8 +391,9 @@ Share Project… (and the MCP's `share_project`) shares the open project live; a
   link, no address and no console line.
 - **A room the owner's page hosts** (the browser edition, `#view=….host`; `#follow=…` in the links made before #4073): the followers reach it over WebRTC. With
   the owner's key in the link, the follower's page looks for the owner at a public meeting point: Trystero's WebTorrent
-  trackers (`core/collab-meet.js` `TRACKERS`), and the owner proves itself with a signature only it can make. Without
-  it, the codes are exchanged by hand. Either way a STUN server (`stun.l.google.com`, or this browser's own list)
+  trackers (`core/collab-meet.js` `TRACKERS`), and the owner proves itself with a signature only it can make. A link
+  without it (made before the owner's key) is not followed: the codes once exchanged by hand are gone (#5868), and
+  they guarded nothing the link's key does not (a code was sealed with it, as the meeting point's signalling is). A STUN server (`stun.l.google.com`, or this browser's own list)
   finds the connection's addresses. Those servers see the follower's IP address, so the follow dialog names them
   before anything is sent.
   A link may name a relay (`&relay=…`), which sees the follower's IP address and the name they give: on the site any

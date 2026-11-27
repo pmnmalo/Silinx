@@ -71,30 +71,18 @@ export const COLLAB_PT = {
     'O endereço: no registo da construção, em "Deployed silinx-relay triggers", ou em Overview ▸ Domains & Routes do Worker. Cole-o abaixo e carregue em Verificar e Guardar.',
   'Use the Deploy to Cloudflare button: Cloudflare\'s Create ▸ Import a repository only lists the repositories you already have. Your copy does not follow Silinx\'s: to update the relay, push the relay\'s new files to your repository, and Cloudflare deploys it again.':
     'Use o botão Instalar no Cloudflare: Create ▸ Import a repository do Cloudflare só lista os repositórios que já tem. A sua cópia não segue a do Silinx: para atualizar o retransmissor, envie (push) os novos ficheiros do retransmissor para o seu repositório, e o Cloudflare instala-o de novo.',
-  // (Add a User…, #3996: web/js/collab-users.js, its code taken: web/js/collab-host.js)
-  'Add a User…': 'Adicionar um Utilizador…', 'Add a User': 'Adicionar um Utilizador', 'Connect': 'Ligar', 'Take a Code…': 'Receber um Código…',
+  // (Show Sharing Link…, #4851: web/js/collab-users.js)
   'Role:': 'Papel:', 'Viewer': 'Espectador', 'Editor': 'Editor',
-  'Give them the link of their role: they open it in Silinx.': 'Dê-lhe a ligação do seu papel: abre-a no Silinx.',
   'The links of this share: give each user the link of their role; they open it in Silinx.': 'As ligações desta partilha: dê a cada utilizador a ligação do seu papel; abre-a no Silinx.',
   'An editor edits its text files and drawings with you, live. Give this link only to whom you trust with them.':
     'Um editor edita os ficheiros de texto e os desenhos consigo, em direto. Dê esta ligação só a quem lhos confia.',
   'A viewer follows the project live, read only: its files and drawings, and what you do (your documents and cursor, your views, simulations, emulators and runs).':
     'Um espectador segue o projeto em direto, só de leitura: os ficheiros e os desenhos, e o que faz (os seus documentos e o cursor, as vistas, as simulações, os emuladores e os processos).',
-  'This page hosts the project: a user whose page shows a code sends it to you, and Take a Code… takes it.':
-    'Esta página aloja o projeto: um utilizador cuja página mostra um código envia-lho, e Receber um Código… recebe-o.',
-  'Connect to the Owner': 'Ligar ao Dono', 'Copy Code': 'Copiar Código', 'Your code:': 'O seu código:', 'The owner\'s code:': 'O código do dono:',
-  'A user gets a code when they open the link: paste it here.': 'Um utilizador recebe um código ao abrir a ligação: cole-o aqui.',
-  'Send this code back to them: they paste it to connect.': 'Envie-lhe este código de volta: cola-o para se ligar.',
-  'The owner\'s page shares this project itself. Send them your code (Add a User…, in their toolbar), then paste the code they send back.':
-    'A página do dono partilha este projeto ela própria. Envie-lhe o seu código (Adicionar um Utilizador…, na barra de ferramentas dele) e cole depois o código que ele lhe enviar.',
-  'This page hosts it: its followers find it when they open the link, or send you a code, which Add a User… takes.':
-    'Esta página aloja-o: os seguidores encontram-na ao abrir a ligação, ou enviam-lhe um código, que Adicionar um Utilizador… recebe.',
+  'This page hosts it: its followers find it when they open the link.': 'Esta página aloja-o: os seguidores encontram-na ao abrir a ligação.',
   // (the live window, #3996: the name on it, Start Sharing)
   'Start Sharing': 'Começar a Partilhar', 'Your name first: the others see it.': 'O seu nome primeiro: os outros veem-no.',
   // (the meeting point, #3227: web/js/collab-meet.js)
-  'Exchange Codes Instead': 'Trocar Códigos em Vez Disso',
-  'Looking for the owner at the meeting point…': 'A procurar o dono no ponto de encontro…',
-  'If they cannot be found there, you exchange codes with them instead.': 'Se não for encontrado aí, troca códigos com ele em vez disso.',
+  'Connect to the Owner': 'Ligar ao Dono', 'Looking for the owner at the meeting point…': 'A procurar o dono no ponto de encontro…',
   // (Share Project… ▸ Live's two ways, #4634: web/js/share-via.js)
   'Others follow it as you work, on any network': 'Os outros seguem-no enquanto trabalha, em qualquer rede', 'Others follow it as you work, with no setup': 'Os outros seguem-no enquanto trabalha, sem configuração',
   'Live via your Cloudflare relay': 'Em direto pelo seu retransmissor Cloudflare', 'Live peer to peer (no relay)': 'Em direto ponto a ponto (sem retransmissor)',

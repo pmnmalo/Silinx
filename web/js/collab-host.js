@@ -1,19 +1,11 @@
 // A shared project hosted by the owner's page (#3227, the browser edition, which has no server; on a server edition,
-// when the owner asks for it): the room in the page (core/collab-loop.js), the followers over WebRTC (collab-rtc.js),
-// each connected by two codes exchanged by hand: the follower's, which they get when they open the link, and the
-// owner's answer to it (Add a User…'s Take a Code…, #3996). Every message in the console.
+// when the owner asks for it): the room in the page (core/collab-loop.js), each follower met at the meeting point
+// (collab-meet.js) when they open the link: no codes exchanged by hand any longer (#5868). Every message in the console.
 //   hostRoom() -> { hosted, WebSocket }: the room of a share (collab-share.js startSharing), the owner's socket to it
-//   addCodeDialog(share): a follower's code taken, the answer's shown; the follower in the room once connected
-//   hostSocket(link): the follower's side (the meeting point first, collab-meet.js), its code shown and the owner's
-//                   asked; a WebSocket class for followRoom
-import { h, dialog } from './ui.js';
-import { writeClip } from './clipboard.js';
+//   hostSocket(link): the follower's side, the owner found at the meeting point; a WebSocket class for followRoom, or
+//                   null (not found, cancelled, or a link of before the owner's key)
 import { hostedRooms } from '/core/collab-loop.js';
-import { followerOffer, ownerAnswer, channelSocket, channelEnd } from './collab-rtc.js';
 import { collabLog } from './collab-log.js';
-
-const codeField = (value, field) => h('textarea', { class: 'collab-code', rows: 4, readonly: value !== undefined ? '' : null, spellcheck: 'false', 'data-field': field, 'data-no-i18n': '', style: { width: '100%' } }, value ?? '');
-const copyButton = (text, what) => h('button', { type: 'button', class: 'btn collab-copy', onclick: () => { writeClip('text', text); collabLog(`${what} copied.`, 'ok'); } }, 'Copy Code');
 
 /** The room of a share hosted by this page, and the owner's socket to it (room: its id, #4850: the page loaded again). */
 export function hostRoom(room = null) {
@@ -21,53 +13,9 @@ export function hostRoom(room = null) {
   return { hosted, WebSocket: hosted.owner };
 }
 
-/** Add a User…'s Take a Code…: their code (got when they opened the link) taken; the answer's code shown, for them. */
-export async function addCodeDialog(share) {
-  const input = codeField(undefined, 'code');
-  const code = await dialog({
-    title: 'Add a User',
-    body: h('div', { class: 'collab-dlg' },
-      h('p', {}, 'A user gets a code when they open the link: paste it here.'),
-      input),
-    buttons: [{ label: 'Connect', primary: true, value: () => input.value.trim() }, { label: 'Cancel', value: null }],
-    onOpen: () => setTimeout(() => input.focus(), 0),
-  });
-  if (!code || !share.hosted) return null;
-  let ans;
-  try { ans = await ownerAnswer({ key: share.session.key, room: share.session.room, code }); } catch (e) { collabLog(`ERROR: Add a User: ${e.message}.`, 'err'); return null; }
-  ans.channel.then(dc => { if (share.hosted) share.hosted.follower(channelEnd(dc, ans.pc)); else ans.close(); },
-    e => collabLog(`WARNING: Add a User: ${e.message}.`, 'warn'));
-  collabLog('Add a User: send your code back to them; they are in once they paste it.', 'info');
-  await dialog({
-    title: 'Add a User',
-    body: h('div', { class: 'collab-dlg' },
-      h('p', {}, 'Send this code back to them: they paste it to connect.'),
-      codeField(ans.code, 'answer'), copyButton(ans.code, 'Your code')),
-    buttons: [{ label: 'Close', primary: true, value: true }],
-  });
-  return ans.code;
-}
-
-/** The follower's side of a room the owner's page hosts: the owner found at the meeting point when the link has their
- *  key (collab-meet.js); else, or failing that, their code shown and the owner's asked; then the socket. */
+/** The follower's side of a room the owner's page hosts: the owner found at the meeting point (collab-meet.js), the
+ *  link's owner's key telling them from the other pages; a link with no owner's key (made before it) is not followed. */
 export async function hostSocket(link) {
-  if (link.host) {
-    const met = await (await import('./collab-meet.js')).findOwner(link);
-    if (met !== 'codes') return met;
-  }
-  let offer;
-  try { offer = await followerOffer({ key: link.key, room: link.room }); } catch (e) { collabLog(`ERROR: Follow a shared project: ${e.message}.`, 'err'); return null; }
-  const answer = codeField(undefined, 'answer');
-  const code = await dialog({
-    title: 'Connect to the Owner',
-    body: h('div', { class: 'collab-dlg' },
-      h('p', {}, 'The owner\'s page shares this project itself. Send them your code (Add a User…, in their toolbar), then paste the code they send back.'),
-      h('label', {}, 'Your code:'), codeField(offer.code, 'code'), copyButton(offer.code, 'Your code'),
-      h('label', {}, 'The owner\'s code:'), answer),
-    buttons: [{ label: 'Connect', primary: true, value: () => answer.value.trim() }, { label: 'Cancel', value: null }],
-  });
-  if (!code) { offer.close(); return null; }
-  let dc;
-  try { dc = await offer.accept(code); } catch (e) { offer.close(); collabLog(`ERROR: Follow a shared project: ${e.message}.`, 'err'); return null; }
-  return function HostChannelSocket() { return channelSocket(dc, offer.pc); };
+  if (!link.host) { collabLog('ERROR: Follow a shared project: this link has no owner\'s key (it was made by an earlier Silinx): ask its owner for the link again.', 'err'); return null; }
+  return (await import('./collab-meet.js')).findOwner(link);
 }

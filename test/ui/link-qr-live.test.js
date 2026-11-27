@@ -2,9 +2,8 @@
 // empty one said beside it; once shared, shown, not a field), Start Sharing, then in the same window the viewers' and
 // the editors' links, each made by its own Generate (none before), different (#view=, #edit=), hidden (Generate, Copy,
 // Show, Show QR Code) with its QR code by Show QR Code only (#3637, decoded back: the link; no small one in the window);
-// Stop Sharing keeps the window, Start Sharing again; no Add a User… in it: the toolbar's Sharing menu's (Viewer or
-// Editor, that role's link by Generate), and its Show Sharing Link… (#4851: Viewer or Editor, the share's link of that
-// role shown at once, no Generate: Copy, Show, Show QR Code); Share Module…'s links (#3631, opening on the module);
+// Stop Sharing keeps the window, Start Sharing again; the toolbar's Sharing menu's Show Sharing Link… (#4851: Viewer or Editor, the share's link of that
+// role shown at once, no Generate: Copy, Show, Show QR Code), no Add a User… (#5868); Share Module…'s links (#3631, opening on the module);
 // the labels in Portuguese; each link's Generate named for it (Generate View-Only, Generate Edit Link: #4613), its buttons in a
 // row below a box as tall as the link, hidden or shown (#4190, #4576), on a phone too, a copy's laid out the same (#4612);
 // the window's size the same as a copy's, switching, sharing or generating (#4617). A server with its relay. Both
@@ -55,7 +54,7 @@ const LIVE_ABOUT = 'Others follow the project live, read only: its files and dra
 const COPY_PT = 'Uma ligação que abre o projeto no Silinx, para diapositivos ou uma mensagem, com o projeto todo lá dentro: nenhum ficheiro a alojar. Quem a abre recebe uma cópia de cada ficheiro e dos comentários, tal como está. As alterações seguintes não vão: partilhe-o de novo.';
 const LIVE_PT = 'Outros seguem o projeto em direto, só de leitura: os ficheiros e desenhos à medida que mudam, e o que faz. Ligam-se através deste servidor Silinx, sem nada a configurar. Quem consegue chegar a este servidor e tem a ligação pode segui-lo enquanto trabalha.';
 
-uiTest('#3996 #4073 Share Project, live: the name on the window, Start Sharing, each link made by its Generate, hidden, its QR code; Stop Sharing; Add a User… in the menu', E, async (page) => {
+uiTest('#3996 #4073 Share Project, live: the name on the window, Start Sharing, each link made by its Generate, hidden, its QR code; Stop Sharing; no Add a User… in the menu (#5868)', E, async (page) => {
   await make(page, 'qrlive', 'gates');
   await page.openProject('qrlive');
   await page.eval(() => localStorage.removeItem('silinx.collab.name'));
@@ -127,18 +126,11 @@ uiTest('#3996 #4073 Share Project, live: the name on the window, Start Sharing, 
   assert.equal(await page.eval(() => !!document.querySelector('.dlg-overlay .collab-hosted') || [...document.querySelectorAll('.dlg-overlay .dlg-buttons .btn')].map((b) => b.textContent).join()), 'Close');
   await page.dialogButton('Close');
   await page.waitNoDialog();
-  // Add a User…: Viewer first, its link by Generate; Editor, the editors' link
-  await menuPick(page, 'Add a User…');
-  await page.waitDialog('Add a User');
-  assert.deepEqual(await fieldButtons(page, 'user-link'), ['Generate', 'Copy (off)', 'Show (off)', 'Show QR Code (off)']);
-  assert.equal(await gen(page, 'user-link'), link);
-  await page.click('.dlg-overlay input[data-field="role-editor"]');
-  assert.equal(await page.eval(() => document.querySelector('.dlg-overlay input[data-field="user-link"]').value), '', 'another role: Generate again');
-  assert.equal(await gen(page, 'user-link'), editLink);
-  await page.click('.dlg-overlay .link-field:has([data-field="user-link"]) .link-copy');
-  await page.waitConsole(/^Add a User: the editors' link copied: whoever opens it edits the project's text files and drawings with you\.$/m);
-  await page.dialogButton('Close');
-  await page.waitNoDialog();
+  // no Add a User… in the Sharing menu (#5868: opening the link is enough)
+  await page.click('.collab-presence .collab-btn');
+  await page.waitForSelector('body > .menu-popup');
+  assert.equal((await page.eval(() => [...document.querySelectorAll('body > .menu-popup .mi .lbl')].map((l) => l.textContent))).includes('Add a User…'), false);
+  await page.key('Escape');
   // Stop Sharing: the window kept, its links gone, the name a field again; Start Sharing again, new links (Generate)
   await page.eval(() => { window.__shared = import('/js/collab-share.js').then((m) => m.shareProjectDialog()); });
   await page.waitDialog('Share Project');
@@ -166,7 +158,7 @@ uiTest('#3996 #4073 Share Project, live: the name on the window, Start Sharing, 
   assert.deepEqual(await warnings(page), []);
 }, { timeout: 120000 });
 
-uiTest('#3996 #4073 Share Project, live, in Portuguese: its buttons, the name\'s message, the menu\'s Add a User…', E, async (page) => {
+uiTest('#3996 #4073 Share Project, live, in Portuguese: its buttons, the name\'s message, the menu\'s Show Sharing Link…', E, async (page) => {
   await make(page, 'qrlivept', 'gates');
   await page.openProject('qrlivept');
   await page.eval(async () => { localStorage.removeItem('silinx.collab.name'); (await import('/js/i18n.js')).setLanguage('pt'); });
@@ -187,8 +179,8 @@ uiTest('#3996 #4073 Share Project, live, in Portuguese: its buttons, the name\'s
     await page.click('.collab-presence .collab-btn');
     await page.waitForSelector('body > .menu-popup');
     assert.ok((await page.eval(() => [...document.querySelectorAll('body > .menu-popup .mi .lbl')].map((l) => l.textContent))).includes('Mostrar a Ligação de Partilha…'));
-    await page.click('body > .menu-popup .mi', { text: 'Adicionar um Utilizador…' });
-    await page.waitDialog('Adicionar um Utilizador');
+    await page.click('body > .menu-popup .mi', { text: 'Mostrar a Ligação de Partilha…' });
+    await page.waitDialog('Ligação de Partilha');
     assert.deepEqual(await page.eval(() => [...document.querySelectorAll('.dlg-overlay .share-how label')].map((l) => l.textContent)), ['Papel:', 'Espectador', 'Editor']);
     await page.dialogButton('Fechar');
     await page.waitNoDialog();

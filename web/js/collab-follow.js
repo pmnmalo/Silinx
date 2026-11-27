@@ -5,11 +5,11 @@
 // by <owner>" in the console); the follower follows the owner's editor, the document they have in front and their
 // cursor, or browses alone (opening another document); the toolbar shows who is in (collab-presence.js), its menu
 // follows the owner again or stops following. Every message in the console. A room the owner's page hosts (#3227, a
-// link …/#follow=<room>.<key>.host) is reached over WebRTC, with codes exchanged by hand (collab-host.js). An editor's
+// link …/#follow=<room>.<key>.host) is reached over WebRTC, its owner found at the meeting point (collab-host.js). An editor's
 // link (#3182, …#edit=…) also edits the project's text files: their editors bound live (collab-bind.js); and its
 // drawings edited live (#3183, every drawing: state diagrams, truth tables, ASM charts, Petri nets, schematics): their editors bound to the drawings' structures (collab-drawing.js).
 // A connection to a relay lost is made again on its own (#3835), and one to a room its owner's page hosts, through the
-// meeting point, when the owner was found there (not when the codes were exchanged by hand): "Reconnecting to
+// meeting point: "Reconnecting to
 // <owner>…" in the toolbar meanwhile, the loss and the return in the console (an editor's changes made meanwhile sent
 // once it is back). Its role changed by the owner (#3997: made an editor, or a viewer again): said in the console, its
 // open documents opened again, editable or read only. The owner's activity followed too (#4002, collab-activity.js):
@@ -104,9 +104,8 @@ export async function startFollowing(hash = location.hash) {
 async function joined(link, WS, name, sign, resumed, ms) {
   let session;
   try {
-    // (#3835: a relay's connection made again; a room the owner's page hosts, through the meeting point when the owner
-    // was found there, never when the codes were exchanged by hand: they would have to be again)
-    session = await followRoom({ url: WS ? 'silinx-host:' : relayUrl(link.relay || location.href, 'follow'), WebSocket: WS, room: link.room, key: link.key, sign, owner: link.owner ?? null, user: { name }, onEvent: ev => onEvent(ev), resumed, ...(WS ? (WS.rejoin ? { transport: WS.rejoin } : { reconnect: false }) : {}) });
+    // (#3835: a relay's connection made again; a room the owner's page hosts, through the meeting point)
+    session = await followRoom({ url: WS ? 'silinx-host:' : relayUrl(link.relay || location.href, 'follow'), WebSocket: WS, room: link.room, key: link.key, sign, owner: link.owner ?? null, user: { name }, onEvent: ev => onEvent(ev), resumed, ...(WS ? { transport: WS.rejoin } : {}) });
     await Promise.race([session.ready, new Promise((_, no) => setTimeout(() => no(new Error('the project did not arrive (is its owner still sharing it?)')), ms))]);
   } catch (e) { session?.close(); throw e; }
   return session;
@@ -121,7 +120,7 @@ export async function resumeFollowing(rec) {
   try { link = parseFollowLink(rec.hash); } catch (e) { return no(e.message); }
   if (!link) return no('not a link to follow');
   if (link.relay && !await relayOk(link.relay)) return no(notHere(link.relay));
-  if (link.via === 'host' && !link.host) return no('its codes were exchanged by hand');
+  if (link.via === 'host' && !link.host) return no('its link has no owner\'s key: it was made by an earlier Silinx');
   let WS;
   if (link.via === 'host') { try { WS = await (await import('./collab-meet.js')).ownerFound(link, RESUME_MS); } catch (e) { return no(e.message); } }
   // (the relay may not have seen the page's old connection end yet: its client id still in the room, tried again)

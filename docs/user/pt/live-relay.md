@@ -4,12 +4,13 @@
 
 Quando partilha um projeto ao vivo a partir do sítio do Silinx, é a sua página que o aloja. Quem o segue liga-se à sua
 página **diretamente** (ponto a ponto, WebRTC) quando a rede o permite. Antes disso, tem de encontrar a sua página, e
-pode fazê-lo de três maneiras:
+pode fazê-lo de duas maneiras:
 
 - **um retransmissor seu**, que também leva as mensagens de quem não consegue ligar-se diretamente (uma rede que não
   deixa passar UDP, como muitas redes de escolas e de empresas);
-- o ponto de encontro público (trackers WebTorrent de terceiros), quando não indica retransmissor;
-- um código trocado à mão (*Adicionar um Utilizador…*), em último caso.
+- o ponto de encontro público (trackers WebTorrent de terceiros), quando não indica retransmissor.
+
+Quem o segue só abre a ligação: a sua página encontra a sua, ou diz que não a encontrou.
 
 Um retransmissor seu no plano gratuito do Cloudflare monta-se em poucos minutos e não precisa de servidor. Cada pessoa
 monta o seu: o professor para as suas turmas, o aluno para o seu grupo. O que gasta do plano gratuito conta na conta de
@@ -92,7 +93,7 @@ que faz a forma escolhida. **Em direto pelo seu retransmissor Cloudflare** vem e
 endereço (nunca a chave) abaixo de *O seu nome*, e *Alterar…* abre de novo *Configurar um Retransmissor Cloudflare…*. Sem retransmissor
 configurado, a janela di-lo e oferece *Configurar um Retransmissor Cloudflare…*, e *Começar a Partilhar* espera até haver
 um. **Em direto ponto a ponto (sem retransmissor)** não precisa de configuração: quem o segue encontra-o no ponto de
-encontro público e liga-se de navegador a navegador, ou envia-lhe um código (*Adicionar um Utilizador…*); pode falhar em
+encontro público e liga-se de navegador a navegador; pode falhar em
 redes que bloqueiam ligações diretas. A janela lembra-se da forma escolhida da última vez. A ligação indica o
 retransmissor, por isso quem o segue só precisa da ligação: nem chave, nem conta.
 

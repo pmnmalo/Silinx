@@ -5,8 +5,8 @@
 // its key, so the relay sees nothing of the project. The followers are shown in the toolbar (collab-presence.js),
 // their coming and going in the console; Stop Sharing closes the room for them all. Opening another project stops
 // sharing too. The browser edition, which has no relay, hosts the room in the owner's page (#3227, collab-host.js):
-// each follower finds it at the public meeting point (collab-meet.js: the link carries the owner's key), or connects
-// with codes exchanged by hand (Add a User…, #3996). Editors (#3182, phase 2): its editors' link (a link of its own, #3996) signs
+// each follower finds it at the public meeting point (collab-meet.js: the link carries the owner's key) when they open
+// the link (no codes exchanged by hand, nor an add-a-user step, #5868). Editors (#3182, phase 2): its editors' link (a link of its own, #3996) signs
 // their changes; the page's open text editors are bound live to the document (collab-bind.js), and what an editor
 // changes in a text file is written to the disk, anything else undone from it (the disk is the owner's); through the
 // import gate, the project untrusted from an editor's first change (#3355). Its drawings edited live (#3183): each one a
@@ -71,7 +71,7 @@ const RESUME_SETTLE_MS = 30_000;   // (a share resumed: the time its followers h
 /** Share Project…'s window, live (#3996): one window, the name on it (filled with the last one, the cursor in it; once
  *  shared, shown, not a field: #4073), Start Sharing, then the viewers' and the editors' links in the same window, each
  *  made by its Generate (#4073; kept for the share's later windows; Generate View-Only, Generate Edit Link, #4576, #4613), hidden
- *  (link-field.js: Generate, Copy, Show, Show QR Code, in a row below a box as tall as the link); Stop Sharing, Close (Add a User…: the toolbar's Sharing menu's). Share Module… (`module`, #3631): the
+ *  (link-field.js: Generate, Copy, Show, Show QR Code, in a row below a box as tall as the link); Stop Sharing, Close (Show Sharing Link…: the toolbar's Sharing menu's). Share Module… (`module`, #3631): the
  *  same, that module's source opened (the followers follow it), the links opening on it (`view`: its copy's, the way
  *  switched, #3698). Resolves to the viewers' link once closed (null: not shared). */
 export async function shareProjectDialog({ module = null, view = null, via = undefined, shown = null } = {}) {
@@ -85,7 +85,7 @@ export async function shareProjectDialog({ module = null, view = null, via = und
   const nameBox = h('div', { class: 'collab-name-box' }, input, nameShown);
   const nameErr = h('div', { class: 'wiz-error collab-name-error' });
   // (the browser edition: this page hosts the room, its followers met at the Cloudflare relay set up in the
-  // Collaboration tab, #4543, #4574, or peer to peer, no relay, at the public meeting point or by codes, #3227: two
+  // Collaboration tab, #4543, #4574, or peer to peer, no relay, at the public meeting point, #3227: two
   // of the Share: row's choices, the one chosen explained below it, #4634)
   const ways = api.collab ? null : (await import('./share-via.js')).viaPart({ ...(via ? { via } : {}), changed: () => draw() });
   // the links, hidden: the viewers' and the editors', each made by its Generate (#3996, #4073: different links, the
@@ -96,7 +96,7 @@ export async function shareProjectDialog({ module = null, view = null, via = und
   const viewer = linkField({ field: 'link', label: 'Generate View-Only', row: true, expected: () => linkOf('view')?.length, onCopy: l => copyLink(l), generate: async () => made('view') });
   const editor = linkField({ field: 'edit-link', label: 'Generate Edit Link', row: true, expected: () => linkOf('edit')?.length, onCopy: l => copyEditorLink(l), generate: async () => made('edit') });
   const about = h('p', { class: 'collab-about' });
-  const hostedNote = h('p', { class: 'collab-hosted' }, 'This page hosts it: its followers find it when they open the link, or send you a code, which Add a User… takes.');
+  const hostedNote = h('p', { class: 'collab-hosted' }, 'This page hosts it: its followers find it when they open the link.');
   // (three parts, a rule before each link's sentence, #4668: the name, the view-only link, the editors' link)
   const links = h('div', { class: 'collab-links' },
     h('hr', { class: 'collab-rule' }), about, viewer.el,
@@ -214,7 +214,7 @@ export async function startSharing(name, { via = api.collab ? 'relay' : 'host', 
   // (the way it goes said once, at its start: not again when it resumes)
   if (other && !host && !resumed) collabLog(`Shared through the relay at ${new URL(other).host}: it sees no file, only who is in.`, 'info');
   if (host && other && !resumed) collabLog(`This page hosts the shared project: its followers meet it at the relay at ${new URL(other).host}, then connect to it directly when they can, through the relay otherwise; it sees no file. It lasts while this page is open.`, 'info');
-  else if (host && !resumed) collabLog('This page hosts the shared project: its followers find it at the meeting point when they open the link, or send you a code (Add a User…, in the toolbar, takes it); it lasts while this page is open.', 'info');
+  else if (host && !resumed) collabLog('This page hosts the shared project: its followers find it at the meeting point when they open the link; it lasts while this page is open.', 'info');
   if (host) share.meet = (await import('./collab-meet.js')).meetFollowers(share, hostKey.key);
   // (a hosted room's meeting: its followers' paths, drawn again as they change, #4643)
   if (host) { const s = share; s.onVia = () => { if (share === s) draw(); }; s.meet.then(m => { s.met = m; s.onVia(); }).catch(() => {}); }
@@ -266,7 +266,6 @@ export const editorsLink = () => share?.editLink || null;
 // a link copied, said in the console
 const copyLink = (link = share.link) => { writeClip('text', link); collabLog('Shared project\'s link copied: whoever opens it follows it live, read only.', 'ok'); };
 const copyEditorLink = (editLink = share.editLink) => { writeClip('text', editLink); collabLog('Shared project\'s editors\' link copied: whoever opens it edits its text files and drawings with you.', 'ok'); };
-const addUser = (module = null) => { const s = share; if (s) import('./collab-users.js').then(m => m.addUserDialog(s, module)); };
 // (the share's links, Viewer's or Editor's, shown with Copy, Show, Show QR Code: #4851, in place of Copy View Link and Copy Editor Link)
 const showLinks = () => { const s = share; if (s) import('./collab-users.js').then(m => m.sharingLinkDialog(s)); };
 // a participant made an editor or a viewer (#3997): the editors' key given to them, or renewed (the link with it)
@@ -292,7 +291,6 @@ async function renewLink() {
 const commands = () => [
   { label: 'Show Sharing Link…', action: () => showLinks() },
   ...(share?.session?.ownerKey ? [{ label: 'Renew Editor Link', action: () => renewLink() }] : []),
-  { label: 'Add a User…', action: () => addUser() },
   { label: 'Stop Sharing', action: () => stopSharing() },
 ];
 

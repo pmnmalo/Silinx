@@ -199,7 +199,7 @@ uiTest('#4640 Share Project…: A copy | Live via your Cloudflare relay | Live p
   await choose(page, 'live-peer');
   await page.dialogButton('Start Sharing');
   await page.waitFor(() => !document.querySelector('.dlg-overlay .collab-links').hidden, [], { what: 'shared peer to peer' });
-  await page.waitConsole(/^This page hosts the shared project: its followers find it at the meeting point when they open the link, or send you a code \(Add a User…, in the toolbar, takes it\); it lasts while this page is open\.$/m);
+  await page.waitConsole(/^This page hosts the shared project: its followers find it at the meeting point when they open the link; it lasts while this page is open\.$/m);
   await page.dialogButton('Stop Sharing');
   await page.waitFor(() => document.querySelector('.dlg-overlay .collab-links').hidden, [], { what: 'stopped' });
   await page.dialogButton('Close');

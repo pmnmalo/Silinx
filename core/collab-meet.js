@@ -1,5 +1,5 @@
 // The public meeting point of a room the owner's page hosts (#3227, the browser edition): opening the link is enough,
-// the codes exchanged by hand (core/collab-codes.js) staying as the fall-back. The meeting point (Trystero's torrent
+// the only way in (no codes exchanged by hand any longer, #5868). The meeting point (Trystero's torrent
 // strategy: public WebTorrent trackers, web/js/collab-meet.js) connects every page that joins the room's topic (a hash
 // of the room's id) with the link's key as its password (the signalling encrypted with it), each to every other. So
 // the link's key alone cannot tell the owner: a follower could pose as the owner to another follower. The owner's page
@@ -26,8 +26,8 @@ import { withLoopback } from './collab-loopback.js';
 const subtle = () => globalThis.crypto.subtle;
 const HASH = { name: 'ECDSA', hash: 'SHA-256' };
 const PROOF = 0xF8;
-const LINGER_MS = 1000;   // (a connection the owner's page ends, kept that long: its last messages delivered)   // (a proof's first byte: never a frame's kind, a part's 0xF0 nor a code's)
-/** How long a follower looks for the owner at the meeting point before the codes take over. */
+const LINGER_MS = 1000;   // (a connection the owner's page ends, kept that long: its last messages delivered)   // (a proof's first byte: never a frame's kind, a part's 0xF0 nor a code's of before #5868)
+/** How long a follower looks for the owner at the meeting point before it gives up (#5868: no codes then). */
 export const MEET_MS = 15_000;
 /** Trystero's application id (its topics' namespace). */
 export const APP_ID = 'silinx-collab';

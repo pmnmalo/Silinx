@@ -461,7 +461,7 @@ the window, *Start Sharing*, then two links in the same window, each made by its
 do: your documents, views and selection, your simulations and Board Emulators (run again on their page from the same
 files, with your time, inputs and view), your runs and the reports you open; and the
 editors' (`#edit=…`), who edit it with you; the toolbar's Sharing menu shows either (*Show Sharing Link…*: the role
-chosen, its link with *Copy*, *Show* and *Show QR Code*), *Add a User…* gives the link of the role you choose, and it
+chosen, its link with *Copy*, *Show* and *Show QR Code*), and it
 lists who is in, each a viewer or an editor with its *Viewer | Editor* switch, which makes a viewer an editor or an
 editor a viewer and renews the editors' link: the old one then only
 follows, the other editors keep editing; *Renew Editor Link* renews it too, for a link that reached people it should

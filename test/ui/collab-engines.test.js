@@ -1,18 +1,17 @@
 // UI: a shared project's WebRTC connection between two browser engines of one computer (#4494, the browser edition's
 // rooms that the owner's page hosts, #3227): the owner's page in the tests' browser (Chrome; WebKit in the browsers
 // job), a follower's in the other engine, Chromium or WebKit (Playwright's builds, Chromium's else the installed Chrome;
-// each skipped when it is not installed), through the codes (web/js/collab-rtc.js followerOffer / ownerAnswer), with no
-// STUN server and no network. Each browser hides its host address behind an mDNS name the other does not resolve: the
-// remote mDNS host candidates' twins at 127.0.0.1 (core/collab-loopback.js) connect them. Both descriptions as set carry
-// the twins; the channel opens; a frame goes each way (one larger than a data channel's message, in parts); no console
-// warning or error on either page (but Firefox's own of its CompressionStream, below). Firefox too, as the tests' browser or
-// the follower's (#4497): it takes no twin (its ICE sockets are bound to the interface's address), so it connects only
-// where the two browsers resolve each other's mDNS names (on macOS, with their Local Network access): checked first, by
-// a pair with no twin, and the test skipped, saying so, where they do not (a CI runner with no mDNS). A connection
-// with Firefox that finds no path says how two browsers of one computer connect (#4497).
+// each skipped when it is not installed), their connections the meeting point's (core/collab-loopback.js withLoopback,
+// as web/js/collab-meet.js and core/collab-meet-relay.js make them; the descriptions passed by the test: the codes
+// exchanged by hand are gone, #5868), with no STUN server and no network. Each browser hides its host address behind an
+// mDNS name the other does not resolve: the remote mDNS host candidates' twins at 127.0.0.1 connect them. Both
+// descriptions as set carry the twins; the channel opens; a message goes each way; no console warning or error on
+// either page. Firefox too, as the tests' browser or the follower's (#4497): it takes no twin (its ICE sockets are bound
+// to the interface's address), so it connects only where the two browsers resolve each other's mDNS names (on macOS,
+// with their Local Network access): checked first, by a pair with no twin, and the test skipped, saying so, where they
+// do not (a CI runner with no mDNS).
 import { before, after } from 'node:test';
 import assert from 'node:assert/strict';
-import crypto from 'node:crypto';
 import fs from 'node:fs';
 import { setupUi, uiTest, BROWSER, findChrome } from './harness.js';
 
@@ -22,14 +21,13 @@ before(async () => { env = await setupUi(); });
 after(async () => { await env?.teardown?.(); });
 const E = () => env;
 
-const b64 = (n) => crypto.randomBytes(n).toString('base64url');
 // (a follower's engine: not the tests' own, installed)
 // (Chromium: Playwright's build, else the installed Chrome)
 const exe = (engine) => (fs.existsSync(pw[engine].executablePath()) ? undefined : engine === 'chromium' ? findChrome() || null : null);
 const skipOf = (engine) => (!pw ? 'playwright not installed (npm install)'
   : engine === BROWSER || (engine === 'chromium' && BROWSER === 'chrome') ? `the tests' browser is ${BROWSER}: a follower in another engine only`
     : exe(engine) === null ? `Playwright's ${engine} not installed (npx playwright install ${engine})` : undefined);
-// Firefox's own warning, once a page, at its first CompressionStream (the codes', core/collab-codes.js): not the app's
+// Firefox's own warning, once a page (at its first CompressionStream): not the app's
 const FIREFOX_OWN = /^\[JavaScript Warning: "The execution of microtasks on this page was reordered to avoid unsafe execution\."/;
 const ownWarning = (text) => FIREFOX_OWN.test(text);
 
@@ -56,6 +54,23 @@ async function mdnsResolves(page, fp) {
   return open;
 }
 
+// a page's side of a connection the meeting point makes (withLoopback's class, no STUN server): the follower's offer
+// or the owner's answer, its candidates gathered; `remote`: the other side's description, its twins counted
+const SIDE = async ([role, remote]) => {
+  const { withLoopback } = await import('/core/collab-loopback.js');
+  const gathered = (pc) => new Promise((ok) => { const done = () => pc.iceGatheringState === 'complete' && ok(); pc.addEventListener('icegatheringstatechange', done); done(); setTimeout(ok, 4000); });
+  const twins = (pc) => (pc.remoteDescription?.sdp.match(/^a=candidate:\S+ \d+ udp \d+ 127\.0\.0\.1 \d+ typ host/gim) || []).length;
+  if (role === 'answer-in') { await window.pc.setRemoteDescription({ type: 'answer', sdp: remote }); return { twins: twins(window.pc) }; }
+  const pc = window.pc = new (withLoopback(RTCPeerConnection))({ iceServers: [] });
+  window.got = [];
+  const keep = (dc) => { window.dc = dc; dc.onmessage = (e) => window.got.push(e.data); window.opened = dc.readyState === 'open' ? Promise.resolve(true) : new Promise((ok) => { dc.onopen = () => ok(true); setTimeout(() => ok(false), 30000); }); };
+  if (role === 'offer') keep(pc.createDataChannel('silinx-collab'));
+  else { pc.ondatachannel = (e) => keep(e.channel); await pc.setRemoteDescription({ type: 'offer', sdp: remote }); }
+  await pc.setLocalDescription(role === 'offer' ? await pc.createOffer() : await pc.createAnswer());
+  await gathered(pc);
+  return { sdp: pc.localDescription.sdp, twins: twins(pc) };
+};
+
 for (const engine of ['chromium', 'webkit', 'firefox']) {
   uiTest(`#4494 a follower in ${engine} connects to the owner's page in the tests' browser over WebRTC, on one computer: the host candidates' twins at 127.0.0.1 (#4497: Firefox through the mDNS names)`, E, async (page, _env, t) => {
     const browser = await pw[engine].launch({ executablePath: exe(engine) });
@@ -79,85 +94,26 @@ for (const engine of ['chromium', 'webkit', 'firefox']) {
         t.skip(`Firefox and ${engine === 'firefox' ? BROWSER : engine} resolve no mDNS name of each other here: Firefox takes no twin (#4497)`);
         return;
       }
-      const key = b64(32), room = b64(16);
-      // the follower's offer (its page keeps it), the owner's answer, the follower's accept
-      const offer = await fp.evaluate(async ([k, r]) => {
-        const { followerOffer } = await import('/js/collab-rtc.js');
-        window.offer = await followerOffer({ key: k, room: r });
-        return window.offer.code;
-      }, [key, room]);
-      const answer = await page.eval(async (k, r, c) => {
-        const { ownerAnswer, channelSocket } = await import('/js/collab-rtc.js');
-        const a = await ownerAnswer({ key: k, room: r, code: c });
-        window.answered = a;
-        window.got = [];
-        a.channel.then((dc) => { window.ownerWs = channelSocket(dc, a.pc); });
-        return { code: a.code, twins: (a.pc.remoteDescription.sdp.match(/^a=candidate:\S+ \d+ udp \d+ 127\.0\.0\.1 \d+ typ host/gim) || []).length };
-      }, key, room, offer);
+      // the follower's offer, the owner's answer, the follower's taking it: their channel open
+      const offer = await fp.evaluate(SIDE, ['offer', null]);
+      const answer = await page.eval(SIDE, ['answer', offer.sdp]);
       assert.ok(answer.twins >= 1, `the follower's offer as the owner set it: its host candidates' twins (${answer.twins})`);
-      const follower = await fp.evaluate(async (c) => {
-        const t0 = Date.now();
-        const ch = await Promise.race([window.offer.accept(c), new Promise((_, no) => setTimeout(() => no(new Error(`no connection in 30 s (${window.offer.pc.iceConnectionState})`)), 30000))]);
-        window.ch = ch;
-        return { ms: Date.now() - t0, twins: (window.offer.pc.remoteDescription.sdp.match(/^a=candidate:\S+ \d+ udp \d+ 127\.0\.0\.1 \d+ typ host/gim) || []).length };
-      }, answer.code);
+      const follower = await fp.evaluate(SIDE, ['answer-in', answer.sdp]);
       assert.ok(follower.twins >= 1, `the owner's answer as the follower set it: its host candidates' twins (${follower.twins})`);
-      await page.waitFor(() => !!window.ownerWs && window.ownerWs.readyState === 1, [], { what: 'the owner\'s channel open' });
-      // a frame each way: the follower's text, the owner's bytes larger than a data channel's message (in parts)
-      await page.eval(() => { window.ownerWs.addEventListener('message', (ev) => window.got.push(typeof ev.data === 'string' ? ev.data : ev.data.byteLength)); });
-      await fp.evaluate(async () => {
-        const { channelSocket } = await import('/js/collab-rtc.js');
-        const ws = channelSocket(window.ch, window.offer.pc);
-        window.got = [];
-        ws.addEventListener('message', (ev) => window.got.push(typeof ev.data === 'string' ? ev.data : [ev.data.byteLength, new Uint8Array(ev.data)[100000]]));
-        ws.send('{"hello":"from the follower"}');
-      });
-      await page.waitFor(() => window.got.length === 1, [], { what: 'the follower\'s frame at the owner\'s' });
+      assert.equal(await fp.evaluate(() => window.opened), true, 'the follower\'s channel open');
+      await page.waitFor(() => window.dc?.readyState === 'open', [], { what: 'the owner\'s channel open', timeout: 30000 });
+      // a message each way
+      await fp.evaluate(() => window.dc.send('{"hello":"from the follower"}'));
+      await page.waitFor(() => window.got.length === 1, [], { what: 'the follower\'s message at the owner\'s' });
       assert.deepEqual(await page.eval(() => window.got), ['{"hello":"from the follower"}']);
-      await page.eval(() => { const b = new Uint8Array(200000); b[0] = 3; b[100000] = 42; window.ownerWs.send(b); });
+      await page.eval(() => window.dc.send('{"hello":"from the owner"}'));
       for (let t = Date.now(); Date.now() - t < 10000 && !(await fp.evaluate(() => window.got.length));) await new Promise((r) => setTimeout(r, 100));
-      assert.deepEqual(await fp.evaluate(() => window.got), [[200000, 42]]);
+      assert.deepEqual(await fp.evaluate(() => window.got), ['{"hello":"from the owner"}']);
       // no warnings, no errors, on either page
       assert.deepEqual(said, []);
       assert.deepEqual(page.console.slice(before).filter((c) => /^(warning|warn|error)$/.test(c.type) && !ownWarning(c.text)).map((c) => c.text), []);
-      await page.eval(() => window.answered.close());
-      await fp.evaluate(() => window.offer.close());
+      await page.eval(() => window.pc.close());
+      await fp.evaluate(() => window.pc.close());
     } finally { await browser.close(); }
   }, { skip: skipOf(engine), timeout: 120000 });
 }
-
-// #4497: a connection with Firefox that finds no path (the owner's answer Firefox's, its one candidate a closed port of
-// this computer): the follower's console says how two browsers of one computer connect, after the error it said before
-// (no path, or none in CONNECT_MS: Chrome keeps checking a candidate that never answers)
-uiTest('#4497 the codes connect no path and Firefox is one of the two: the console says Firefox and another browser of one computer need their .local names (Local Network) or a relay', E, async (page) => {
-  await page.eval(async () => { const { STUN_KEY } = await import('/js/collab-rtc.js'); localStorage.setItem(STUN_KEY, '[]'); });
-  const key = b64(32), room = b64(16);
-  await page.eval((k, r) => { import('/js/collab-host.js').then((m) => m.hostSocket({ key: k, room: r })); }, key, room);
-  await page.waitDialog('Connect to the Owner');
-  const code = await page.waitFor(() => document.querySelector('.dlg-overlay textarea[data-field=code]')?.value || null, [], { what: 'the follower\'s code', timeout: 15000 });
-  // the owner's answer, as Firefox's: its origin line, no candidate but 127.0.0.1's port 9 (nothing answers there)
-  const answer = await page.eval(async (k, r, c) => {
-    const { keyOf } = await import('/core/collab-crypto.js');
-    const { sealCode, openCode } = await import('/core/collab-codes.js');
-    const key = await keyOf(k);
-    const pc = new RTCPeerConnection({ iceServers: [] });
-    await pc.setRemoteDescription({ type: 'offer', sdp: await openCode(key, r, 'offer', c) });
-    const { sdp } = await pc.createAnswer();
-    pc.close();
-    const lines = sdp.split('\r\n').filter((l) => !/^a=(candidate|end-of-candidates)/.test(l)).map((l) => (l.startsWith('o=') ? 'o=mozilla...THIS_IS_SDPARTA-159.0 4497 0 IN IP4 0.0.0.0' : l));
-    const at = lines.findIndex((l) => l.startsWith('a=mid:'));
-    lines.splice(at + 1, 0, 'a=candidate:0 1 UDP 2122252543 127.0.0.1 9 typ host', 'a=end-of-candidates');
-    return sealCode(key, r, 'answer', lines.join('\r\n'));
-  }, key, room, code);
-  await page.fill('.dlg-overlay textarea[data-field=answer]', answer);
-  const before = page.console.length;
-  // (Firefox's own error in the browser's console, at its connection's failure)
-  const ICE_FAILED = /WebRTC: ICE failed, add a STUN server and see about:webrtc for more details/;
-  page.allowErrors.push(ICE_FAILED);
-  await page.dialogButton('Connect');
-  await page.waitConsole(/^ERROR: Follow a shared project: no connection: (the network between you lets no WebRTC through \(no UDP\)|the codes were not exchanged in time); Firefox and another browser of one computer reach each other only by their \.local names: on macOS, allow both browsers in System Settings ▸ Privacy & Security ▸ Local Network, or share through a relay \(Share Project…'s Relay\)\.$/m, { timeout: 100000 });
-  await page.waitNoDialog();
-  // that error, and no other warning or error
-  assert.deepEqual(page.console.slice(before).filter((c) => /^(warning|warn|error)$/.test(c.type) && !ownWarning(c.text) && !ICE_FAILED.test(c.text)).map((c) => c.text), []);
-  assert.deepEqual((await page.consoleText()).split('\n').filter((l) => /^(WARNING|ERROR)/.test(l.trim())).length, 1);
-}, { timeout: 150000 });

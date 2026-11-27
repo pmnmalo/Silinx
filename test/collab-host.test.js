@@ -2,15 +2,13 @@
 // hostedRooms over core/collab-room.js), the owner's participant through a pair of sockets in the page, each follower
 // through a socket of their own (a data channel in the page: here a socket pair, no network). The participants are
 // the relay's (core/collab-client.js), unchanged: the project arrives, an edit arrives, the presence both ways, a
-// follower's edit refused, a follower's frame too large closing their socket, the end with the owner. And the codes
-// exchanged by hand to connect (core/collab-codes.js): sealed, of their kind and their project only, their size capped.
+// follower's edit refused, a follower's frame too large closing their socket, the end with the owner. No codes exchanged
+// by hand to connect any longer (#5868).
 import { test, after } from 'node:test';
 import * as Y from 'yjs';
 import assert from 'node:assert/strict';
 import { socketPair, hostedRooms, HOST_LIMITS, FOLLOWER_JOIN } from '../core/collab-loop.js';
-import { sealCode, openCode, CODE_KINDS, CODE_MAX, SDP_MAX, NOT_THIS } from '../core/collab-codes.js';
 import { shareRoom, followRoom, KIND } from '../core/collab-client.js';
-import { newKey, keyOf, seal, b64url } from '../core/collab-crypto.js';
 import { projectDoc, publishProject, putFile, docFile, docProject } from '../core/collab-doc.js';
 import { ROOM_RE } from '../core/collab-link.js';
 
@@ -108,31 +106,17 @@ test('read only in the page\'s room: a follower\'s edit refused, never at the ow
   await owner.close();
 });
 
-test('the codes exchanged by hand: sealed, opened by their project\'s key and kind only, their size capped', async () => {
-  const { key, text } = await newKey();
-  const room = 'R'.repeat(22);
-  const sdp = `v=0\r\no=- 46117 2 IN IP4 127.0.0.1\r\ns=-\r\n${'a=candidate:1 1 udp 2122260223 192.0.2.20 54321 typ host\r\n'.repeat(4)}`;
-  const offer = await sealCode(key, room, 'offer', sdp);
-  assert.match(offer, /^S1\.[A-Za-z0-9_-]+$/);
-  assert.ok(!offer.includes('192.0.2') && offer.length < sdp.length + 100, 'sealed, compressed');
-  assert.equal(await openCode(await keyOf(text), room, 'offer', `  ${offer.slice(0, 40)}\n${offer.slice(40)} `), sdp);   // (spaces and line breaks of a paste)
-  await assert.rejects(openCode(key, room, 'answer', offer), /^Error: not the owner's code: a follower's instead$/);
-  const answer = await sealCode(key, room, 'answer', 'v=0\r\n');
-  await assert.rejects(openCode(key, room, 'offer', answer), /^Error: not a follower's code: the owner's instead$/);
-  await assert.rejects(openCode((await newKey()).key, room, 'offer', offer), new RegExp(`^Error: ${NOT_THIS.offer.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`));
-  // (the owner's code at a follower's page of another sharing: what to do too, #3351)
-  await assert.rejects(openCode((await newKey()).key, room, 'answer', await sealCode(key, room, 'answer', 'v=0')), (e) => e.message === NOT_THIS.answer);
-  await assert.rejects(openCode(key, 'S'.repeat(22), 'offer', offer), /not of this sharing/);
-  await assert.rejects(openCode(key, room, 'offer', offer.slice(0, -4)), /not of this sharing \(or not whole\)/);
-  for (const bad of ['', 'hello', 'S1.', 'S1.abc+/=', null]) await assert.rejects(openCode(key, room, 'offer', bad), /^Error: not a follower's code \(copy it again, whole\)$/);
-  await assert.rejects(openCode(key, room, 'offer', `S1.${'A'.repeat(CODE_MAX)}`), /^Error: a follower's code too long$/);
-  await assert.rejects(sealCode(key, room, 'frame', sdp), /an offer or an answer/);
-  // a code whose description inflates past its maximum (sealed with the right key: a follower's own): refused
-  const bomb = new Uint8Array(await new Response(new Blob([new Uint8Array(SDP_MAX + 1)]).stream().pipeThrough(new CompressionStream('deflate-raw'))).arrayBuffer());
-  await assert.rejects(openCode(key, room, 'offer', `S1.${b64url(await seal(key, room, CODE_KINDS.offer, bomb))}`), /^Error: a follower's code is broken$/);
-  // (a description that is not text: broken too)
-  const notText = new Uint8Array(await new Response(new Blob([Uint8Array.from([0xff, 0xfe, 0xfd])]).stream().pipeThrough(new CompressionStream('deflate-raw'))).arrayBuffer());
-  await assert.rejects(openCode(key, room, 'offer', `S1.${b64url(await seal(key, room, CODE_KINDS.offer, notText))}`), /is broken/);
+test('#5868 no codes exchanged by hand: core/collab-codes.js gone; web/js/collab-rtc.js only the meeting point\'s STUN servers; collab-host.js neither shows nor takes a code', async () => {
+  const { existsSync, readFileSync } = await import('node:fs');
+  const at = f => new URL(`../${f}`, import.meta.url);
+  assert.equal(existsSync(at('core/collab-codes.js')), false);
+  const rtc = readFileSync(at('web/js/collab-rtc.js'), 'utf8');
+  assert.deepEqual([...rtc.matchAll(/^export (?:const|function|async function) (\w+)/gm)].map(m => m[1]), ['STUN_KEY', 'STUN', 'iceServers']);
+  const host = readFileSync(at('web/js/collab-host.js'), 'utf8');
+  assert.deepEqual([...host.matchAll(/^export (?:const|function|async function) (\w+)/gm)].map(m => m[1]), ['hostRoom', 'hostSocket']);
+  for (const f of ['web/js/collab-host.js', 'web/js/collab-meet.js', 'web/js/collab-share.js', 'web/js/collab-users.js', 'web/js/collab-follow.js']) {
+    assert.doesNotMatch(readFileSync(at(f), 'utf8'), /collab-codes|Take a Code|Exchange Codes|Add a User|addUserDialog|addCodeDialog|followerOffer|ownerAnswer/, f);
+  }
 });
 
 test('a frame larger than a data channel\'s message: sent as parts, joined again whole, in order; a frame too large, or a part out of place, refused', async () => {

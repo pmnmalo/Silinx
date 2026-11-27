@@ -4,7 +4,7 @@
 // messages through the relay). A room the owner's page hosts (core/collab-loop.js hostedRooms) met at a relay
 // (core/collab-meet-relay.js) has a path per follower, which changes as the meeting says (`onVia`): through the relay
 // at first, direct once the channel is open, through the relay again when it closes. One met at the public meeting
-// point, or by codes, is peer to peer; one on a relay's room (a server's, the Cloudflare relay's) is through the relay.
+// point, is peer to peer; one on a relay's room (a server's, the Cloudflare relay's) is through the relay.
 //   shareMode({ hosted, relay, cloudflare }) -> 'cloudflare' | 'p2p' | 'server' (MODE_WORDS: in words)
 //   hostedPaths(rooms, ends, via) -> Map<client, 'p2p' | 'relay'>      withPaths(peers, paths) -> peers, each with path
 
