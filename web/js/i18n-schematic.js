@@ -156,6 +156,11 @@ export const SCH_PT_PATTERNS = [
   [/^'(.*)' is not a valid name: use a letter, then letters, digits and single _ \(not at the end\)\.$/, "'$1' não é um nome válido: use uma letra, seguida de letras, dígitos e _ simples (não no fim)."],
   [/^'(.*)' is already the name of (another instance|an instance|another I\/O marker|an I\/O marker): choose another name\.$/, (m, n, w) =>
     `'${n}' já é o nome de ${{ 'another instance': 'outra instância', 'an instance': 'uma instância', 'another I/O marker': 'outro marcador de E/S', 'an I/O marker': 'um marcador de E/S' }[w]}: escolha outro nome.`],
+  // an I/O marker given another marker's name (#4998): one port, drawn once
+  [/^(the I\/O marker (.+) is not renamed: )?'(.*)' is already the name of another I\/O marker: an I\/O marker is a port of the module, drawn once; to use (.+) in other places, give those wires the net name \4\. Choose another name\.$/, (m, w, old, n, k) =>
+    `${w ? `o marcador de E/S ${old} não é renomeado: ` : ''}'${n}' já é o nome de outro marcador de E/S: um marcador de E/S é um porto do módulo, desenhado uma vez; para usar ${k} noutros sítios, dê a esses fios o nome de rede ${k}. Escolha outro nome.`],
+  [/^duplicate I\/O marker '(.+)': an I\/O marker is a port of the module, drawn once; to use \1 in other places, give those wires the net name \1 and delete this marker$/,
+    "marcador de E/S duplicado '$1': um marcador de E/S é um porto do módulo, desenhado uma vez; para usar $1 noutros sítios, dê a esses fios o nome de rede $1 e apague este marcador"],
   // a net connected by name renamed as a whole (#734)
   [/^Renamed to '(.+)' with the net: (.+)$/, (m, n, parts) => `Mudado para '${n}' com a rede: ${parts.split(' and ').map(p => {
     let k;
