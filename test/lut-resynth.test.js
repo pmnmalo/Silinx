@@ -487,8 +487,11 @@ test('#652 the open synthesis of an I2C sequencer (vtr-stereovision3\'s): its cl
       const r = await synthesizeOpen(des, { run: yosysNode, effort });
       const json = r.files['iic.json'];
       // (main: the round undone, its data line's end having no shallower form: 161 LUTs, no multiplexer)
-      assert.deepEqual({ ...r.depth.resynth, ns: +r.depth.resynth.ns.toFixed(2) }, { rounds: 1, changed: 2, ns: 7.62, luts: 126, slices: 67, kept: true }, what);
-      assert.deepEqual([r.util.luts, r.util.muxes, r.util.flipFlops, logicLevels(json, 'iic')], [126, 14, 18, 6], what);
+      // (Yosys 0.71's sizes, #5830: the VHDL's 130 LUTs and 69 slices, the Verilog's 128 and 68; 0.70's 126 and 67 for both:
+      // the same netlist, its cells named and ordered otherwise, #5815)
+      const [luts, slices] = lang === 'vhdl' ? [130, 69] : [128, 68];
+      assert.deepEqual({ ...r.depth.resynth, ns: +r.depth.resynth.ns.toFixed(2) }, { rounds: 1, changed: 2, ns: 7.62, luts, slices, kept: true }, what);
+      assert.deepEqual([r.util.luts, r.util.muxes, r.util.flipFlops, logicLevels(json, 'iic')], [luts, 14, 18, 6], what);
       assert.equal(+criticalDelay(json, 'iic').toFixed(2), 7.62, what);
       // the multiplexers: MUXF5 … MUXF7 of the clock line's and the stop's trees (two LUT4s for each MUXF5)
       const cells = Object.values((typeof json === 'string' ? JSON.parse(json) : json).modules.iic.cells);
