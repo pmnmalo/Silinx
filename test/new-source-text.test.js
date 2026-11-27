@@ -25,7 +25,10 @@ test('#4751 each kind: the text of its generator', async () => {
   assert.match(await sourceText('mem', {}), /^\/\/ memory initialization file/);
   const lab = JSON.parse(await sourceText('lab', { file: 'lab1', pj }));
   assert.equal(typeof lab, 'object');
-  for (const k of SOURCE_KINDS.filter(k => !['module', 'test_bench'].includes(k))) assert.equal(typeof await sourceText(k, { file: 'x', pj }), 'string', k);
+  for (const k of SOURCE_KINDS.filter(k => !['module', 'test_bench', 'ps'].includes(k))) assert.equal(typeof await sourceText(k, { file: 'x', pj }), 'string', k);
+  // (a PS program: a Zynq board's, #4686; refused on another)
+  assert.match(await sourceText('ps', { file: 'main', pj: { ...pj, board: 'zybo-z7' } }), /Hello from the Cortex-A9 of Digilent Zybo Z7/);
+  await assert.rejects(sourceText('ps', { file: 'main', pj }), /^Error: a PS program is a Zynq board's/);
 });
 
 test('#4751 constraints: the device\'s format, or the one asked (New Source\'s own type)', async () => {

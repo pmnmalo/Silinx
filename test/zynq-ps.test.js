@@ -5,7 +5,9 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
-import { psOfBoard, psProgramPath, psProgramError, psProblems, psSummary, psStarter, psWrites, isPsPath } from '../core/zynq-ps.js';
+import { psOfBoard, psProgramPath, psProgramError, psProblems, psSummary, psStarter, psWrites, isPsPath, boardPsStarter, boardPsRefusal, withBoardPs } from '../core/zynq-ps.js';
+import { inCpuNode, hlsRefusal } from '../core/drawing-code.js';
+import { sourceText } from '../core/new-source-text.js';
 import { normalizeSystem } from '../core/system-doc.js';
 import { changeNode, describeSystem } from '../core/system-edit.js';
 import { analyzeSystem } from '../core/system-check.js';
@@ -95,4 +97,31 @@ test('#4686 a Board project on a Zynq board: its implicit node\'s PS program its
   assert.equal(projectSystem({ ...pj, ps: 'ps/main.c' }).model.nodes[0].ps, 'ps/main.c');
   assert.equal('ps' in projectSystem(pj).model.nodes[0], false);
   assert.deepEqual(psProblems(projectSystem({ ...pj, ps: 'ps/main.c' }).model.nodes[0], ['ps/main.c']), []);
+});
+
+test('#4686 a Board project\'s PS program (New Source\'s PS Program): its starter, the refusals, the first one its `ps`', async () => {
+  const pj = { name: 'p', board: 'zybo-z7', device: { family: 'zynq', part: 'xc7z020', package: 'clg400', speed: '-1' }, top: 'top', constraints: 'top.xdc' };
+  assert.equal(boardPsStarter(pj), psStarter(psOfBoard('zybo-z7'), 'Digilent Zybo Z7'));
+  assert.equal(await sourceText('ps', { file: 'main', pj }), boardPsStarter(pj));
+  assert.deepEqual([boardPsRefusal(pj), boardPsRefusal(pj, 'ps/main.c'), boardPsRefusal(pj, 'src/main.c'), boardPsRefusal(pj, 'ps/main.cpp')],
+    [null, null, 'its PS\'s program src/main.c is not in ps/', 'its PS\'s program ps/main.cpp is not a .c (C)']);
+  assert.deepEqual([boardPsRefusal({ board: 'basys3' }), boardPsRefusal({})], [
+    'a PS program is a Zynq board\'s (the Zybo Z7, the Arty Z7): this project\'s board is basys3',
+    'a PS program is a Zynq board\'s (the Zybo Z7, the Arty Z7): this project\'s board is none (a System\'s FPGA node: its PS program in its Properties)']);
+  assert.throws(() => boardPsStarter({ board: 'basys3' }), /this project's board is basys3/);
+  assert.equal(withBoardPs(pj, 'ps/main.c').ps, 'ps/main.c');
+  assert.equal(withBoardPs({ ...pj, ps: 'ps/main.c' }, 'ps/blink.c').ps, 'ps/main.c');
+});
+
+test('#4686 a PS\'s C is not an HLS source: a Board project\'s ps/, a System\'s Zynq node\'s <id>/ps/; another C is', () => {
+  const pj = { name: 'p', board: 'zybo-z7', device: { family: 'zynq', part: 'xc7z020', package: 'clg400', speed: '-1' }, top: 'top', constraints: 'top.xdc' };
+  const board = inCpuNode(pj, { files: ['ps/main.c', 'src/hls.c'] });
+  assert.deepEqual([board('ps/main.c'), board('src/hls.c')], ['ps', false]);
+  assert.equal(hlsRefusal('ps/main.c', board), 'ps/main.c is a Zynq\'s PS\'s C: it is built for its Cortex-A9, not by Silinx HLS');
+  assert.equal(hlsRefusal('src/hls.c', board), null);
+  assert.equal(inCpuNode({ ...pj, board: 'basys3' }, { files: ['ps/main.c'] })('ps/main.c'), false);
+  const s = { format: 'silinx-system', version: 2, name: 's', nodes: [zybo, { ...zybo, id: 'b3', board: 'basys3', variant: undefined }], links: [] };
+  const sp = { name: 'p', kind: 'system', top: '', files: [] };
+  const inSys = inCpuNode(sp, { files: ['s.sys.json', 'zybo/ps/main.c', 'b3/ps/main.c', 'zybo/hls.c'], texts: { 's.sys.json': JSON.stringify(s) } });
+  assert.deepEqual(['zybo/ps/main.c', 'b3/ps/main.c', 'zybo/hls.c'].map(inSys), ['ps', false, false]);
 });

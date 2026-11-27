@@ -6,7 +6,7 @@ import { cTemplate, cppTemplate } from './c-templates.js';
 import { constraintsFormatOf } from '../packages/silinx-fpga/src/parts.js';
 
 /** The kinds of source (the MCP's new_source's types). */
-export const SOURCE_KINDS = ['module', 'package', 'test_bench', 'constraints', 'mem', 'c', 'cpp', 'schematic', 'asm', 'fsm', 'petri', 'circuit', 'boolean', 'regmap', 'lab'];
+export const SOURCE_KINDS = ['module', 'package', 'test_bench', 'constraints', 'mem', 'c', 'cpp', 'ps', 'schematic', 'asm', 'fsm', 'petri', 'circuit', 'boolean', 'regmap', 'lab'];
 const CONSTRAINTS = { ucf: T.ucfTemplate, pcf: T.pcfTemplate, lpf: T.lpfTemplate, cst: T.cstTemplate, ccf: T.ccfTemplate, xdc: T.xdcTemplate, qsf: T.qsfTemplate };
 // a drawing's or a C function's name from the file's
 const ident = n => String(n).replace(/[^A-Za-z0-9_]/g, '_');
@@ -29,6 +29,7 @@ export async function sourceText(kind, { file, lang = 'vhdl', pj = {}, entity, a
     case 'mem': return '// memory initialization file ($readmemh format)\n00\n01\n02\n03\n';
     case 'c': return cTemplate(n);
     case 'cpp': return cppTemplate(n);
+    case 'ps': return (await import('./zynq-ps.js')).boardPsStarter(pj);   // (a Zynq board's PS's program, #4686)
     case 'schematic': return JSON.stringify((await import('./schdoc.js')).newDoc(n, lang), null, 1);
     case 'asm': return JSON.stringify((await import('./asm.js')).normalizeModel({ name: n, lang }), null, 2);   // empty (#2176)
     // (empty, #2176; the FSM Wizard's template, #4902: a counter, a sequence detector of bits or of a regular expression…)

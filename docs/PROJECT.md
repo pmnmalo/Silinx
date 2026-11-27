@@ -40,7 +40,8 @@ A project is a directory under the workspace (default `~/Silinx-projects`, overr
   (`core/profile-change.js`).
 * `ps` (#4686): a Board project on a Zynq board's (the Zybo Z7, the Arty Z7) processing system's program, a C file of
   its `ps/` (`ps/main.c`), as a System's FPGA node's `ps` is (`<id>/ps/main.c`, `core/zynq-ps.js`); the PL's build leaves
-  `ps/` out. Absent: the PS is not used.
+  `ps/` out, and Silinx HLS does not take its C. New Source's PS Program (Zynq) writes one (its starter), the first
+  one the project's `ps`; the Design pane shows it under the PS (Cortex-A9). Absent: the PS is not used.
 * The project's **mode** (roadmap #5753, `core/project-mode.js`): Circuit, Board or System, read from the fields above,
   never written: Circuit is the Digital Logic profile, Board the FPGA profile, System the Embedded / SoC and System
   profiles, except a **processor board's Board project** (#5756, `core/processor-board.js`): a System of its one

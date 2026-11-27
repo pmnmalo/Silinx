@@ -57,3 +57,16 @@ test('#4686 edit_system: a PS program refused on a board with no PS and out of t
     true, 'edit_system: edit 0 (change_node): zybo: its PS\'s program zybo/main.c is not in zybo/ps/ (nothing written)']);
   assert.equal((await call('read_file', { project: 'r', path: 'zybo/main.c' })).isError, true);
 });
+
+test('#4686 new_source ps: a Board project on a Zynq board, its PS program in ps/ (the first one its silinx.json\'s `ps`), refused on another board', async () => {
+  await ok('new_project', { name: 'zb', board: 'zybo-z7' });
+  assert.equal((await ok('new_source', { project: 'zb', type: 'ps', name: 'main' })).text, 'Created PS Program (Zynq) \'ps/main.c\'.');
+  assert.equal((await ok('new_source', { project: 'zb', type: 'ps', name: 'blink' })).text, 'Created PS Program (Zynq) \'ps/blink.c\'.');
+  assert.match((await ok('read_file', { project: 'zb', path: 'ps/main.c' })).text, /Hello from the Cortex-A9 of Digilent Zybo Z7/);
+  const pj = JSON.parse((await ok('read_file', { project: 'zb', path: 'silinx.json' })).text);
+  assert.deepEqual([pj.ps, pj.files], ['ps/main.c', []]);
+  await ok('new_project', { name: 'b3', board: 'basys3' });
+  const r = await call('new_source', { project: 'b3', type: 'ps', name: 'main' });
+  assert.deepEqual([r.isError, r.text], [true, 'new_source: a PS program is a Zynq board\'s (the Zybo Z7, the Arty Z7): this project\'s board is basys3']);
+  assert.equal((await call('read_file', { project: 'b3', path: 'ps/main.c' })).isError, true);
+});

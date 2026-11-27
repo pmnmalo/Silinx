@@ -12,11 +12,12 @@ import { isSystemProject } from '/core/project-kind.js';
 import { systemsOn } from '/core/build-channel.js';
 import { mcuBoard, readSystem } from '/core/system-doc.js';
 import { projectNodes } from '/core/project-nodes.js';
-import { nodeOfPath, nodeFilesOf, sourcePlace, LANG_NAMES } from '/core/system-layout.js';
+import { nodeOfPath, nodeFilesOf, sourcePlace, LANG_NAMES, relInNode } from '/core/system-layout.js';
 import { panes } from './state-panes.js';
 import { openSystem, systemContextMenu } from './system-open.js';
 import { cpuCode, isCpuDrawing } from './design-cpu.js';
 import { processorBoardOf } from '/core/processor-board.js';
+import { psOfBoard, isPsPath } from '/core/zynq-ps.js';
 
 /** Whether the project open is a System project (and Systems are on in this build, #5202). */
 export const systemProject = () => isSystemProject(S.project) && systemsOn();
@@ -70,6 +71,21 @@ export function topRow(treeItem, select, { sim, dev, menu }) {
   return { item: treeItem({ label, ico: !sim ? 'chip' : 'sim', open: true, key: 'device', onSelect: () => select({ type: 'device' }), onContext: menu }), owned: [], fill: null };
 }
 
+/** A Zynq board's processing system's row (#4686): `PS (Cortex-A9)`, its program's files (ps/'s) under it, the files of
+ *  `node`'s folder's ps/ (a System's FPGA node), else the project's root ps/ (a Board project on a Zynq board); null on a
+ *  board with no PS, or a Board project with no PS program yet (New Source ▸ PS Program makes one). */
+export function psBranch(treeItem, fileRow, node = null) {
+  const board = node ? node.board : S.project?.board;
+  if (!psOfBoard(board, node?.variant)) return null;
+  const tree = filesState.fileTree || [];
+  const files = tree.filter(p => isPsPath(node ? relInNode(p, node.id) : p)).sort();
+  if (!node && !files.length && !S.project?.ps) return null;
+  const it = treeItem({ label: 'PS', meta: '(Cortex-A9)', ico: 'mBoard', open: true, key: `ps:${node?.id ?? ''}` });
+  for (const p of files) it.ul.append(fileRow(p).li);
+  if (!files.length) it.setLeaf();
+  return it;
+}
+
 /** The System's row (`treeItem`, design.js's) and its nodes' branches, one per node, each its folder's rows (#5488):
  *  { item, owned, fill(addModule, fileRow, moduleOf, roots), ulOf(path), finish() } (fill draws the branches once
  *  design.js's rows can be made: an FPGA node's module with addModule, then its folder's other root modules (`roots`, the
@@ -103,6 +119,9 @@ function systemRow(treeItem, select) {
       // #5487)
       const cpu = n.kind === 'mcu' ? (n.lang === 'micropython' ? 'Py' : LANG_NAMES[n.lang]) ?? null : null;
       if (n.module) addModule(it.ul, n.module, null, 0, n.module);
+      // (a Zynq board's processing system, its program's files, #4686)
+      const ps = n.kind === 'fpga' ? psBranch(treeItem, fileRow, n) : null;
+      if (ps) it.ul.append(ps.li);
       const mine = roots.filter(r => r !== n.module && nodeOfPath(moduleFile(r), ids) === n.id);
       for (const m of mine) addModule(it.ul, m, null, 0, m, cpu);
       // (a circuit that is a module, its HDL generated from it: its module's row, #4069; a module's file once)
@@ -124,7 +143,9 @@ function systemRow(treeItem, select) {
   const finish = () => { for (const it of branches.values()) if (!it.ul.children.length && it !== item) it.setLeaf(); };
   // (each FPGA node's top module, marked as an FPGA project's top, #5583)
   const tops = new Set(nodes.filter(n => n.kind === 'fpga' && n.module).map(n => String(n.module).toLowerCase()));
-  return { item, owned: [...owned, ...nodes.flatMap(sources)], fill, ulOf, finish, tops };
+  // (a Zynq node's PS's files: its PS row's, #4686)
+  const psFiles = nodes.filter(n => n.kind === 'fpga').flatMap(n => tree.filter(p => isPsPath(relInNode(p, n.id))));
+  return { item, owned: [...owned, ...nodes.flatMap(sources), ...psFiles], fill, ulOf, finish, tops };
 }
 
 // a module's file (its drawing's, when it is drawn), or null

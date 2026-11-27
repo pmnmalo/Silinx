@@ -1141,6 +1141,9 @@ The existing `program_board` and `capture` serve the FPGA nodes.
      system's program its `ps`, a C file of its folder's `ps/` (`core/zynq-ps.js`: its place, its checks, its starter
      program, its description; the PL's build leaves `ps/` out), set by edit_system's `ps` (its starter written when the
      project has none); a Board project on a Zynq board the same, its silinx.json's `ps` at the root (`ps/main.c`);
+     in the interface (part 2b) the node's Properties' PS program and New PS Program (its starter written when the
+     System is saved), New Source's PS Program (Zynq) in a Board project (the MCP's new_source `ps`), the Design pane's
+     PS (Cortex-A9) row with its program; a PS's C is never a Silinx HLS source;
    - the PS–PL as an AXI-Lite link, the Zynq's processor engines as the scheduler's adapters;
    - #4396's soft cores as FPGA nodes with the common instruction view.
 

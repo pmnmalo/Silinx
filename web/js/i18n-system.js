@@ -112,6 +112,10 @@ export const SYSTEM_PT = {
   'Remove Node': 'Remover Nó',
   'Not made: its file is not in the project folder': 'Não gerado: o seu ficheiro não está na pasta do projeto',
   "its run's time: from 0 to 10000 ms (10 s)": 'o tempo da sua corrida: de 0 a 10000 ms (10 s)',   // (a Simulation Properties' refusal, #5652)
+  // (a Zynq board's processing system, #4686: its program in Properties, New Source, the Design pane)
+  'PS program': 'Programa do PS', 'New PS Program': 'Novo Programa do PS', 'PS Program (Zynq)': 'Programa do PS (Zynq)', '(Cortex-A9)': '(Cortex-A9)',
+  "a .c of its ps/: the Cortex-A9's program, its starter written when the System is saved": 'um .c da sua pasta ps/: o programa do Cortex-A9, o inicial escrito quando o Sistema é guardado',
+  "Its processing system's program, ps/main.c: its starter (the UART says hello, an LED blinks), written when the System is saved": 'O programa do seu sistema de processamento, ps/main.c: o inicial (a UART diz olá, um LED pisca), escrito quando o Sistema é guardado',
 };
 export const SYSTEM_PT_PATTERNS = [
   // (Program All / Program Node's board picked by hand, #5489: web/js/system-program-ui.js)
@@ -188,4 +192,7 @@ export const SYSTEM_PT_PATTERNS = [
   // (Program All / Program Node refused, web/js/system-program-ui.js)
   [/^(Program All|Program Node): the System is not open$/, (m, n) => `${t(n)}: o Sistema não está aberto`],
   [/^(Program All|Program Node): no node '([^']+)' to program in the System$/, (m, n, id) => `${t(n)}: nenhum nó '${id}' para programar no Sistema`],
+  [/^(\S+): (\S+): the PS's starter program written$/, '$1: $2: o programa inicial do PS escrito'],
+  [/^a PS program is a Zynq board's \(the Zybo Z7, the Arty Z7\): this project's board is (\S+)$/, 'um programa do PS é de uma placa Zynq (a Zybo Z7, a Arty Z7): a placa deste projeto é $1'],
+  [/^a PS program is a Zynq board's \(the Zybo Z7, the Arty Z7\): this project's board is none \(a System's FPGA node: its PS program in its Properties\)$/, 'um programa do PS é de uma placa Zynq (a Zybo Z7, a Arty Z7): este projeto não tem placa (num nó FPGA de um Sistema: o seu programa do PS nas suas Propriedades)'],
 ];

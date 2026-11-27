@@ -40,7 +40,7 @@ import { openFocused } from './doc-focus.js';
 import { inSelection, multiClick, paint, selectionKeys, selectionMenu, selectOne } from './design-select.js';
 import { removal, removeSources } from './design-remove.js';
 
-import { systemProject, topRow } from './design-system.js';
+import { systemProject, topRow, psBranch } from './design-system.js';
 import { cpuBadges, cpuModule } from './design-cpu.js';
 import { isSystemFile } from '/core/system-doc.js';
 import { systemsOn } from '/core/build-channel.js';
@@ -141,6 +141,9 @@ export function renderHierarchy() {
     for (const f of files) it.ul.append(f.li);
   };
   for (const r of roots) addModule(devItem.ul, r, null, 0, r);
+  // (a Board project on a Zynq board: its processing system's row, its program's files, #4686)
+  const ps = !sysRow && !sim ? psBranch(treeItem, fileRow) : null;
+  if (ps) devItem.ul.append(ps.li);
   // (a System project's nodes, each its branch: its module's rows, its files', #5414)
   // (grouped by node, #5488: each node's folder's root modules under it, the others' under the System)
   sysRow?.fill(addModule, fileRow, f => designState.modules.find(m => m.file === f)?.name, sysRow ? hierarchyOrder(viewRoots(sim), null) : [], cpuRow);

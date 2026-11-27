@@ -16,7 +16,8 @@ import { generateUnit } from './reactive-c.js';
 import { generateMicroPython } from './reactive-py.js';
 import { PY_BOARDS } from './reactive-py-pins.js';
 import { mcuBoard } from './system-doc.js';
-import { baseLang, nodeOfPath } from './system-layout.js';
+import { baseLang, nodeOfPath, relInNode } from './system-layout.js';
+import { psOfBoard, isPsPath } from './zynq-ps.js';
 import { projectSystem } from './project-system.js';
 import { port } from './system-ports.js';
 
@@ -59,12 +60,20 @@ export function drawingNode(pj, path, { files = [], texts = {} } = {}) {
  */
 export function inCpuNode(pj, { files = [], texts = {} } = {}) {
   const { model, implicit } = projectSystem(pj, { files, texts });
-  if (implicit || !model) return () => false;
-  const ids = model.nodes.filter((n) => isCpuLang(baseLang(n, pj?.preferredLanguage))).map((n) => n.id);
-  return ids.length ? (path) => nodeOfPath(path, ids) != null : () => false;
+  if (!model) return () => false;
+  // (a Zynq board's PS's program, its node's ps/, a Board project's at its root: 'ps', #4686)
+  const zynq = model.nodes.filter((n) => n.kind === 'fpga' && psOfBoard(n.board, n.variant));
+  const inPs = (path) => zynq.some((n) => isPsPath(n.implicit ? path : relInNode(path, n.id)));
+  const ids = implicit ? [] : model.nodes.filter((n) => isCpuLang(baseLang(n, pj?.preferredLanguage))).map((n) => n.id);
+  if (!ids.length && !zynq.length) return () => false;
+  return (path) => (inPs(path) ? 'ps' : ids.length > 0 && nodeOfPath(path, ids) != null);
 }
-/** Why a C source cannot be compiled by Silinx HLS (it is a CPU node's), or null. */
-export const hlsRefusal = (path, inCpu) => (inCpu(path) ? `${path} is a microcontroller node's C: it is built for its board, not by Silinx HLS` : null);
+/** Why a C source cannot be compiled by Silinx HLS (it is a CPU node's, a Zynq's PS's), or null. */
+export const hlsRefusal = (path, inCpu) => {
+  const cpu = inCpu(path);
+  return cpu === 'ps' ? `${path} is a Zynq's PS's C: it is built for its Cortex-A9, not by Silinx HLS`
+    : cpu ? `${path} is a microcontroller node's C: it is built for its board, not by Silinx HLS` : null;
+};
 
 /** The pins a node gives its drawings' ports: { port: [pins] }, from its GPIO interfaces named as the ports. */
 export function nodePins(node) {

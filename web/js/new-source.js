@@ -18,6 +18,7 @@ import { filesState } from './state-files.js';
 import { designState } from './state-design.js';
 import { systemsOn } from '/core/build-channel.js';
 import { newSourcePlace } from './design-system.js';
+import { psOfBoard, boardPsRefusal, withBoardPs } from '/core/zynq-ps.js';
 export { cTemplate, cppTemplate } from './c-templates.js';
 
 const SOURCE_TYPES = [
@@ -50,6 +51,8 @@ const SOURCE_TYPES = [
   { id: 'lab', label: 'Guided Lab', ico: 'help', ext: '.lab.json', dir: 'labs' },   // (a teacher's, its steps checked: #3179)
   { id: 'c', label: 'C Function (HLS)', ico: 'file', ext: '.c', dir: 'src' },   // (Silinx HLS, compatible with Vitis HLS: #1531)
   { id: 'cpp', label: 'C++ Function (HLS)', ico: 'file', ext: '.cpp', dir: 'src' },   // (#1590)
+  // (a Zynq board's PS's program, #4686: a Board project's on a Zybo Z7 or an Arty Z7)
+  { id: 'ps', label: 'PS Program (Zynq)', ico: 'file', ext: '.c', dir: 'ps', get hidden() { return !psOfBoard(S.project?.board); } },
   // not in the list any more; newSourceWizard({ type: 'vhdl-pkg' }) still creates one
   { id: 'vhdl-pkg', label: 'VHDL Package', ico: 'vhdl', ext: '.vhd', dir: 'src', hidden: true },
 ];
@@ -61,7 +64,7 @@ const CONSTRAINTS = ['ucf', 'pcf', 'lpf', 'cst', 'ccf', 'xdc', 'qsf'];
 // name, location, lang, atFile: a wizard's < Back (#2082): New Source again at the File Name and Location page, as left
 // New Source's types as core/new-source-text.js (the MCP's new_source) names them
 const KIND_OF = { hdl: 'module', 'vhdl-pkg': 'package', tb: 'test_bench', ucf: 'constraints', pcf: 'constraints', lpf: 'constraints',
-  cst: 'constraints', ccf: 'constraints', xdc: 'constraints', qsf: 'constraints', mem: 'mem', lab: 'lab', c: 'c', cpp: 'cpp', sch: 'schematic', asm: 'asm',
+  cst: 'constraints', ccf: 'constraints', xdc: 'constraints', qsf: 'constraints', mem: 'mem', lab: 'lab', c: 'c', cpp: 'cpp', ps: 'ps', sch: 'schematic', asm: 'asm',
   fsm: 'fsm', petri: 'petri', circuit: 'circuit', tt: 'boolean', regmap: 'regmap' };
 
 export async function newSourceWizard({ type, name = '', location = null, lang = null, atFile = false } = {}) {
@@ -130,7 +133,8 @@ export async function newSourceWizard({ type, name = '', location = null, lang =
       // Verilog, in any letter case (#679; a module's own name is asked on the next page)
       // a guided lab: in the project's labs folder, the file's name its id (core/labs.js isLabFile)
       if (st.id === 'lab' && loc.value.trim().replace(/\/+$/, '') !== 'labs') return 'A guided lab is in the labs folder: Location labs.';
-      if (!['hdl', ...CONSTRAINTS, 'mem', 'lab'].includes(st.id)) {
+      if (st.id === 'ps') { const why = boardPsRefusal(S.project, p); if (why) return why; }   // (in ps/, #4686)
+      if (!['hdl', ...CONSTRAINTS, 'mem', 'lab', 'ps'].includes(st.id)) {
         const r = reservedError(n.split('/').pop().replace(/[^A-Za-z0-9_]/g, '_'));
         if (r) return `${r}: choose another name.`;
       }
@@ -272,6 +276,8 @@ export async function newSourceWizard({ type, name = '', location = null, lang =
   // reload first: saving the project settings from the old copy would drop that registration
   await app.reloadProject();
   if (CONSTRAINTS.includes(st.id) && noUcf) { S.project.constraints = path; await app.saveProjectJson(); await app.reloadProject(); }
+  // (a Zynq board's PS program: the project's first its PS's, #4686)
+  if (st.id === 'ps' && !S.project.ps) { Object.assign(S.project, withBoardPs(S.project, path)); await app.saveProjectJson(); await app.reloadProject(); }
   if (st.id === 'tb') app.showInSim(n);   // selected in the Simulation view, ready to simulate
   appLog(`Created ${st.label}${st.ext ? '' : ` (${langSel.value === 'verilog' ? 'Verilog' : 'VHDL'})`} '${path}'.`, 'ok');
   if (st.id === 'fsm') { app.openFsm(path); return; }
