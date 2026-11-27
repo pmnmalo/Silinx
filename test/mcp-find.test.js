@@ -98,3 +98,23 @@ test('find_in_project: a regular expression that backtracks without end stopped 
   assert.equal((await ok('find_in_project', { project: 'gates', text: 'aab' })).data.count, 1);
   await ok('delete_file', { project: 'gates', path: 'src/long.vhd' });
 });
+
+test('#5911 find_in_project: a register map, an AVR\'s assembly, a Pico\'s Python, an XDC and a circuit searched too, against the reference', async () => {
+  await ok('new_project_from_example', { name: 'regs', example: 'regs-avr' });
+  const rd = f => P.readFile('regs', f);
+  const r = await ok('find_in_project', { project: 'regs', text: 'duty', whole_word: true });
+  const by = Object.fromEntries(r.data.files.map(f => [f.path, f]));
+  assert.deepEqual(Object.keys(by), ['fpga/pwm_regs.regs.json', 'fpga/pwm_regs.vhd', 'fpga/pwm_top.vhd', 'uno/regs.asm']);
+  assert.deepEqual(r.data.files.map(f => [f.drawing, f.generated]), [[true, false], [false, true], [false, false], [false, false]]);
+  for (const f of ['fpga/pwm_top.vhd', 'fpga/pwm_regs.vhd', 'uno/regs.asm']) assert.equal(by[f].count, words(await rd(f), 'duty'), f);
+  assert.equal(by['fpga/pwm_regs.regs.json'].count, strings(JSON.parse(await rd('fpga/pwm_regs.regs.json'))).reduce((s, x) => s + words(x, 'duty'), 0));
+  // (a Pico's program; an XDC and a circuit written in a project)
+  await ok('new_project_from_example', { name: 'pico', example: 'uart-pico' });
+  const py = await ok('find_in_project', { project: 'pico', text: 'uart', whole_word: true });
+  assert.equal(py.data.files.find(f => f.path === 'pico/code.py')?.count, words(await P.readFile('pico', 'pico/code.py'), 'uart'));
+  await ok('write_file', { project: 'pico', path: 'extra/top.xdc', text: 'set_property PACKAGE_PIN W5 [get_ports zzclk]\n' });
+  await ok('write_file', { project: 'pico', path: 'extra/bb.circ.json', text: JSON.stringify({ format: 'silinx-circuit', version: 1, name: 'bb', parts: [{ id: 'zzled', type: 'led' }], wires: [] }) });
+  const x = await ok('find_in_project', { project: 'pico', text: 'zz' });
+  // (the circuit's HDL, made when it was written, found and marked generated from its drawing)
+  assert.deepEqual(x.data.files.map(f => [f.path, f.drawing, f.generated, f.count]), [['extra/bb.circ.json', true, false, 1], ['extra/bb.vhd', false, true, words(await P.readFile('pico', 'extra/bb.vhd'), 'zzled')], ['extra/top.xdc', false, false, 1]]);
+});

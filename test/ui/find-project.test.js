@@ -84,3 +84,16 @@ uiTest('#1430 Find in Project: Ctrl+Shift+F opens it', E, async (page) => {
   await page.eval(() => window.dispatchEvent(new KeyboardEvent('keydown', { key: 'F', ctrlKey: true, shiftKey: true, bubbles: true })));
   await page.waitFor(() => window.Silinx.active?.id === 'find', [], { what: 'Find in Project' });
 });
+
+uiTest('#5911 Find in Project: a register map, an AVR\'s assembly and an XDC searched too; a result in the assembly opens it', E, async (page) => {
+  await makeProject(env, { name: 'FindRegs', template: 'regs-avr', files: { 'extra/top.xdc': 'set_property PACKAGE_PIN W5 [get_ports duty_clk]\n' } });
+  await page.openProject('FindRegs');
+  await page.click('#toolbar .tb-btn[title^="Find in Project"]');
+  await page.waitFor(() => window.Silinx.active?.id === 'find', [], { what: 'Find in Project' });
+  const r = await search(page, 'duty');
+  for (const f of ['fpga/pwm_regs.regs.json', 'uno/regs.asm', 'extra/top.xdc']) assert.ok(r.files.includes(f), `${f}: ${r.files.join()}`);
+  // (the assembly's result opens its file)
+  await page.click(`${DOC} .fp-group:has(.fp-file[data-path="uno/regs.asm"]) .fp-hit`);
+  await page.waitFor(() => window.Silinx.active?.id === 'file:uno/regs.asm', [], { what: 'the assembly opened' });
+  assert.deepEqual(await page.eval(() => window.SilinxApp.S.diags.filter((d) => d.severity === 'warning' || d.severity === 'error').map((d) => d.message)), []);
+});
