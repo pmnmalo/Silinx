@@ -11,7 +11,7 @@ import { axisArgs, axisTop } from './c-axis.js';
 import { dataflow } from './c-dataflow.js';
 import { portOf, renamedWhy } from './c-names.js';
 import { scheduled } from './c-schedule.js';
-import { vhdlSeq, verilogSeq, seqRoots, liveRegs } from './c-hdl-seq.js';
+import { vhdlSeq, verilogSeq, seqRoots, liveRegs, constRegs, freeMachine } from './c-hdl-seq.js';
 import { aggregate, aggregable, structPragmas, wordGroups } from './c-aggregate.js';
 import { cProcesses } from './c-processes.js';
 import { regionLoops } from './c-dataflow-loops.js';
@@ -241,9 +241,10 @@ function fromChecked(source, checked, { file = 'input.c', lang = 'vhdl', headers
   df.outputs = new Map([...df.outputs].filter(([k]) => !drop.has(k)).map(([k, v]) => [inner.get(k) ?? k, v]));
   const name = module || rn(checked.top);
   const src = file.split('/').pop();
+  if (df.seq) freeMachine(df);
   // (each operation only as wide as its users read it, #2290)
   df.graph.narrow(df.seq ? seqRoots(df) : [...df.outputs.values()]);
-  if (df.seq) df.regs = liveRegs(df);
+  if (df.seq) { constRegs(df); df.regs = liveRegs(df); }
   const text = df.seq ? (lang === 'vhdl' ? vhdlSeq : verilogSeq)(name, src, ports, df, agg) : (lang === 'vhdl' ? vhdl : verilog)(name, src, ports, df, agg);
   // (a design: its sub-modules first)
   const hdl = modules ? text : [...subs.modules().map((m) => m.gen.hdl), text].join('\n');
@@ -390,7 +391,7 @@ export function vhdlNodes(nodes, g, L) {
       case 'and': case 'or': case 'xor': L.push(`  ${X} <= ${sig(a)} ${n.op} ${sig(b)};`); break;
       case 'not': L.push(`  ${X} <= not ${sig(a)};`); break;
       case 'neg': L.push(n.s ? `  ${X} <= -${sig(a)};` : `  ${X} <= unsigned(-signed(${sig(a)}));`); break;
-      case 'shl': L.push(`  ${X} <= shift_left(${sig(a)}, ${amount(b)});`); break;
+      case 'shl': L.push(`  ${X} <= shift_left(${a.w < n.w ? `resize(${sig(a)}, ${n.w})` : sig(a)}, ${amount(b)});`); break;
       case 'shr': L.push(`  ${X} <= shift_right(${sig(a)}, ${amount(b)});`); break;
       case 'eq': case 'ne': case 'lt': case 'le': case 'gt': case 'ge':
         L.push(`  ${X} <= "1" when ${sig(a)} ${{ eq: '=', ne: '/=', lt: '<', le: '<=', gt: '>', ge: '>=' }[n.op]} ${sig(b)} else "0";`); break;
@@ -451,7 +452,8 @@ export function verilogNodes(nodes, g, L) {
       case 'not': e = `~${sig(a)}`; break;
       case 'neg': e = `-${sig(a)}`; break;
       // (a constant amount a number, its node not written: #2290)
-      case 'shl': e = `${sig(a)} << ${b.op === 'const' ? b.k : sig(b)}`; break;
+      // (an operand narrower than the shift, #5841: padded on the left with the bits shifted out)
+      case 'shl': e = `${a.w < n.w ? `{${n.w - a.w}'b0, ${sig(a)}}` : sig(a)} << ${b.op === 'const' ? b.k : sig(b)}`; break;
       case 'shr': e = `${sig(a)} ${n.s ? '>>>' : '>>'} ${b.op === 'const' ? b.k : sig(b)}`; break;
       case 'eq': case 'ne': case 'lt': case 'le': case 'gt': case 'ge':
         e = `${sig(a)} ${{ eq: '==', ne: '!=', lt: '<', le: '<=', gt: '>', ge: '>=' }[n.op]} ${sig(b)}`; break;

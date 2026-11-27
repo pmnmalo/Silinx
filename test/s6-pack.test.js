@@ -288,14 +288,15 @@ const EXAMPLE_PACK = {
   isqrt: { slices: 29, X: 16, L: 13, M: 0, luts: 73, ffs: 86, warnings: 0 },
   uart: { slices: 50, X: 31, L: 19, M: 0, luts: 139, ffs: 138, warnings: 0 },
   micro80: { slices: 63, X: 43, L: 18, M: 2, luts: 174, ffs: 185, warnings: 0 },   // (#3710: 63, 43, 172 before its CLK_HZ)
-  lock: { slices: 57, X: 31, L: 26, M: 0, luts: 129, ffs: 175, warnings: 0 },   // (#5654: typed.cpp's 12-bit register)
+  lock: { slices: 55, X: 28, L: 27, M: 0, luts: 124, ffs: 157, warnings: 0 },   // (#5654: typed.cpp's 12-bit register; #5841: 57 slices, 175 FFs before)
 };
 // with LUT combining (combine: 'area'): the slices, never more than without, and the same warnings (isqrt: 29 when
 // the combining came before the storage elements, which then filled the slices it emptied again, #2636)
 // (blinky: 54 with 21-bit debouncers, #3922, 55 with 22-bit; 40 with 2-bit, in ticks, #4377)
 // (#5654: stopwatch 82 with one register of to_decimal's value, lock 57 with typed.cpp's 16-bit register)
 // (#5634, Yosys 0.71: traffic 31, blinky 40, pong 102, stopwatch 83, uart 49, micro80 63, lock 55 with 0.70's netlists)
-const EXAMPLE_AREA = { gates: 1, breadboard: 2, traffic: 28, blinky: 41, pong: 104, stopwatch: 82, clock: 76, vga: 49, isqrt: 28, uart: 48, micro80: 60, lock: 56 };
+// (#5841: lock 56 with penalty's table in registers and typed's arguments latched)
+const EXAMPLE_AREA = { gates: 1, breadboard: 2, traffic: 28, blinky: 41, pong: 104, stopwatch: 82, clock: 76, vga: 49, isqrt: 28, uart: 48, micro80: 60, lock: 54 };
 // the SLICELs and SLICEMs of night 1's netlists where an example changed since (blinky's 21-bit debouncers, #3710: 31
 // now; pong's and stopwatch's registers for the Zynq's 125 MHz, #4877; traffic's and clock's of Yosys 0.71, #5634)
 const NIGHT1 = { traffic: { L: 20 }, blinky: { L: 29 }, pong: { L: 53 }, stopwatch: { M: 0 }, clock: { L: 46 } };

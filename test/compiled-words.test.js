@@ -184,7 +184,7 @@ const EXPECTED = {
   isqrt: { chains: 1, registers: 1, cells: [353, 300] },
   uart: { chains: 3, registers: 3, cells: [588, 445] },
   micro80: { chains: 2, registers: 2, cells: [764, 630] },
-  lock: { chains: 4, registers: 4, cells: [735, 451] },   // (#5654: typed.cpp's 12-bit register)
+  lock: { chains: 4, registers: 4, cells: [679, 395] },   // (#5654: typed.cpp's 12-bit register; #5841: penalty's table constants, typed's arguments not latched: 735, 451 before)
 };
 // (#659, #670: the equalities with a constant; the tables (their inputs at most, their words, their outputs), the
 // cells before and after; the registers wordLevel made again of the flip-flops the tables feed)
@@ -200,7 +200,7 @@ const TABLES = {
   isqrt: [1, { tables: 35, inputs: 12, words: 22512, outputs: 78, cells: [296, 131] }, 5],
   uart: [5, { tables: 50, inputs: 11, words: 23536, outputs: 97, cells: [433, 219] }, 6],
   micro80: [2, { tables: 119, inputs: 10, words: 50088, outputs: 199, cells: [619, 440] }, 5],
-  lock: [5, { tables: 76, inputs: 12, words: 18632, outputs: 111, cells: [426, 231] }, 9],   // (#5654: typed.cpp's 12-bit register)
+  lock: [4, { tables: 64, inputs: 12, words: 21192, outputs: 97, cells: [371, 194] }, 5],   // (#5654: typed.cpp's 12-bit register; #5841: 5, 76 tables, 426 / 231 cells, 9 before)
 };
 // (#670: the part of its operations a step evaluates at most, as the profile estimates it: clock's and vga's models,
 // their display's and their pixel clock's logic changing at every other step, unguarded; blinky's display refresh

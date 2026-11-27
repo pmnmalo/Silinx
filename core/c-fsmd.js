@@ -278,7 +278,8 @@ class SeqFlow extends Flow {
       // (ap_ctrl_none: running by itself, its calls one after the other, when it has a stream to be fed through, as
       // Vitis HLS co-simulates it, #1900; else its block protocol is made)
       if (a.port === 'return' && mode === 'ap_ctrl_none') {
-        if (fn.params.some((pa) => pa.type.kind === 'stream')) this.ctrl = 'ap_ctrl_none';
+        // (or a pipelined function, II=1 or more: a free-running pipeline, a call each II cycles, Vitis HLS's form, #5841)
+        if (fn.params.some((pa) => pa.type.kind === 'stream') || fn.body.items.some((x) => x.kind === 'pragma' && x.pragma.name === 'PIPELINE' && !('off' in x.pragma.args))) this.ctrl = 'ap_ctrl_none';
         else this.warn(st.loc, 'ap_ctrl_none: this function is sequential, it needs its block protocol: ap_ctrl_hs is made');
       }
       // (ap_ctrl_chain: ap_ctrl_hs's and ap_continue, the module holding ap_done until it is taken, #1965)

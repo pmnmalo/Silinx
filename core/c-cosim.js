@@ -148,6 +148,9 @@ export function cosimBench(gen, calls0, { maxCycles = MAX_CYCLES } = {}) {
   // calls, each call adding the test bench's new ones; the values read counted from the start, at least the C's: a task
   // may read ahead)
   const free = !!gen.report?.tasks || (seq && !hs);
+  // (a function pipelined at II=1 and depth 1 with ap_ctrl_none and no stream, #5841: running by itself, a call each clock
+  // cycle; each C call its inputs for one cycle, its outputs, and their _ap_vld, read just after that cycle's edge)
+  const tick = seq && !hs && !(gen.fifos || []).length && !!gen.freeRun && gen.report?.pipeline?.ii === 1 && gen.report.pipeline.depth === 1;
   const fresh = new Map(), reads = new Map();
   if (free) for (const f of fifos.filter((x) => x.dir === 'in')) {
     let left = 0, total = 0;
@@ -184,7 +187,7 @@ export function cosimBench(gen, calls0, { maxCycles = MAX_CYCLES } = {}) {
   L.push('  initial begin');
   if (seq) L.push(`    #12 ${low ? 'ap_rst_n = 1' : 'ap_rst = 0'};`);
   else if (port('ap_start')) L.push('    ap_start = 1;');
-  const shown = [port('ap_return') ? 'ap_return' : null, ...outs.flatMap((o) => (seq || port(`${o.name}_ap_vld`) ? [seq ? `cap_${o.name}` : o.name, seq ? `got_${o.name}` : `${o.name}_ap_vld`] : [o.name, "1'b1"])),
+  const shown = [port('ap_return') ? 'ap_return' : null, ...outs.flatMap((o) => (seq || port(`${o.name}_ap_vld`) ? [seq && !tick ? `cap_${o.name}` : o.name, seq && !tick ? `got_${o.name}` : `${o.name}_ap_vld`] : [o.name, "1'b1"])),
     ...mems.filter((x) => x.written).flatMap((x) => Array.from({ length: x.n }, (_, k) => `mem_${x.name}[${k}]`))].filter(Boolean);
   calls.forEach((c, ci) => {
     const asg = gen.ports.filter((p) => p.dir === 'in' && p.param && p.role !== 'mem' && p.role !== 'fifo').map((p) => {
@@ -199,7 +202,8 @@ export function cosimBench(gen, calls0, { maxCycles = MAX_CYCLES } = {}) {
       })).join(' ');
     // (per call: the values each stream gives back, as many as the C's)
     const each = [...shown, ...fifos.flatMap((f) => (f.dir === 'in' ? [`fi_${f.name}`] : [`fo_${f.name}`, ...(c.streamOut[f.name] || []).map((_, k) => `fout_${f.name}[${k}]`)])), ...(seq ? ['cyc'] : [])];
-    if (seq && !hs) L.push(`    ${asg} ${outs.map((o) => `got_${o.name} = 0;`).join(' ')} cyc = 0;`);
+    if (tick) L.push(`    ${asg} cyc = 0;`, '    @(posedge ap_clk); #1;');
+    else if (seq && !hs) L.push(`    ${asg} ${outs.map((o) => `got_${o.name} = 0;`).join(' ')} cyc = 0;`);
     else if (chain) {
       // (the next stage not ready: ap_continue 0 and ap_start 1 a while: ap_done and ap_return held, no new call; then
       // ap_continue takes it, ap_done falls)
