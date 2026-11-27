@@ -115,7 +115,7 @@ export const WIZARD_TOOLS = [
   },
   {
     name: 'xadc_wizard', title: 'XADC Wizard (analog inputs)',
-    description: 'Make an XADC module as the XADC Wizard does (#5385): the 7-series XADC (Artix-7, Spartan-7, Kintex-7, Zynq-7000) converting the channels asked in turn, each one\'s last 12-bit code on an output (die temperature, VCCINT, VCCAUX, VCCBRAM, VP/VN, VAUX0..15: a VAUX\'s pins <port>_p and <port>_n). Its settings in its header: edit makes it again with them changed.',
+    description: 'Make an XADC module as the XADC Wizard does: the 7-series XADC (Artix-7, Spartan-7, Kintex-7, Zynq-7000) converting the channels asked in turn, each one\'s last 12-bit code on an output (die temperature, VCCINT, VCCAUX, VCCBRAM, VP/VN, VAUX0..15: a VAUX\'s pins <port>_p and <port>_n). Its settings in its header: edit makes it again with them changed.',
     inputSchema: { type: 'object', properties: {
       project: PROJECT, name: STR('The module\'s name (default xadc_read).'), location: STR('Its folder (default src).'), language: { type: 'string', enum: ['vhdl', 'verilog'], description: 'Its language (default the project\'s).' },
       edit: STR('A module the wizard made (its file).'),
