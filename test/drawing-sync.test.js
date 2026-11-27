@@ -126,7 +126,9 @@ test('#5764 adoptDrawing: a drawing whose generatedFile is missing gets its HDL 
     messages: ['WARNING: src/maj.bool.json has no HDL file: its HDL file src/maj.vhd was removed from the project (it is still in the project folder). Generate HDL File… (its right-click menu in the Design pane) makes it again from src/maj.bool.json; Add to Project (Files) brings it back as it is.'] });
   assert.equal(read('lost', 'src/maj.vhd'), hdl);
   assert.equal(D.clashWarning(r.clash, true), 'WARNING: src/maj.bool.json: Not made: its module was removed from the project. Make Module… (right-click) makes it again from the drawing.');
-  // a drawing with errors: none, as before
+  // a drawing with errors: no HDL file, saying why (#5799)
   await P.writeFile('lost', 'src/bad.bool.json', table('bad', { generatedFile: 'src/bad.vhd', outputs: [] , table: {} }));
-  assert.equal(await D.adoptDrawing(P, 'lost', 'src/bad.bool.json'), null);
+  assert.deepEqual(await D.adoptDrawing(P, 'lost', 'src/bad.bool.json'), { target: null, written: null, removed: null, stale: 'a truth table has at least 1 output',
+    messages: ['WARNING: src/bad.bool.json has no HDL file yet: it has errors: a truth table has at least 1 output'] });
+  assert.ok(!(await P.fileTree('lost')).includes('src/bad.vhd'));
 });
