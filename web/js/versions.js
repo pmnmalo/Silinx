@@ -100,10 +100,13 @@ export async function versionsDialog() {
   const showFiles = async id => {
     if (following()) { ownFiles(id); return; }
     const n = ++asked;
+    // (loading: its list, once there, moves the dialog's buttons; the UI tests wait for it, [data-loading], #5790)
     files.replaceChildren(h('p', {}, '…'));
+    files.dataset.loading = '';
     let d;
-    try { d = await api.versionDiff(name, id); } catch (e) { if (n === asked) files.replaceChildren(); logError(`Versions: ${e.message}`); return; }
+    try { d = await api.versionDiff(name, id); } catch (e) { if (n === asked) { files.replaceChildren(); delete files.dataset.loading; } logError(`Versions: ${e.message}`); return; }
     if (n !== asked) return;
+    delete files.dataset.loading;
     const item = f => h('li', { 'data-path': f.path },
       h('span', { 'data-no-i18n': '' }, f.path), ' (', h('span', { class: 'version-state' }, STATE[f.state]), ') ',   // (its word translated alone)
       f.state !== 'added' ? link('Open', 'version-open', () => openVersion(id, f.path)) : null, ' ',

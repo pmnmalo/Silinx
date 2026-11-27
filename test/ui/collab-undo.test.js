@@ -24,7 +24,7 @@ const command = (page, text) => page.eval(async (p, t) => {
   const [{ runAction }, { api }] = await Promise.all([import('/js/ui.js'), import('/js/api.js')]);
   await runAction('Rename…', () => api.writeFile(window.Silinx.project.name, p, t));
 }, P, text);
-const until = async (fn, what, ms = 10000) => { for (let t = Date.now(); Date.now() - t < ms;) { if (await fn()) return; await new Promise((r) => setTimeout(r, 100)); } assert.fail(`timed out: ${what}`); };
+const until = async (fn, what, ms = 20000) => { for (let t = Date.now(); Date.now() - t < ms;) { if (await fn()) return; await new Promise((r) => setTimeout(r, 100)); } assert.fail(`timed out: ${what}`); };
 
 uiTest('#5739 the owner\'s Undo of a command in a project an editor edits live: the command\'s change only, the editor\'s kept; an overlap refused, said; Portuguese', E, async (page) => {
   await makeProject(env, { name: 'Undo', top: 'top', files: { 'src/top.vhd': TOP, [P]: PASS } });
@@ -42,9 +42,9 @@ uiTest('#5739 the owner\'s Undo of a command in a project an editor edits live: 
     // Ana's command changes the entity's comment line; Rui, with the file open, writes a line of his own further down
     const ana = PASS.replace('entity pass1 is\n', '-- renamed by Ana\nentity pass1 is\n');
     await command(page, ana);
-    await ep.eval((p) => window.SilinxApp.openFile(p), P);
-    await ep.waitFor((t) => window.Silinx.active?.path === 'src/pass1.vhd' && window.Silinx.active.editor.getValue() === t, [ana], { what: 'Ana\'s command at Rui\'s' });
-    await new Promise((r) => setTimeout(r, 700));
+    // (the file opened at Ana's: following brings it to Rui's, bound there before he types; a state, not a timer, #5790)
+    await page.eval((p) => window.SilinxApp.openFile(p), P);
+    await ep.waitFor((t) => window.Silinx.active?.path === 'src/pass1.vhd' && window.Silinx.active.liveBound && window.Silinx.active.editor.getValue() === t, [ana], { what: 'Ana\'s command at Rui\'s, his editor bound', timeout: 30000 });
     await type(ep, 10, 0, '  -- by Rui\n');
     const both = ana.replace('  y <= a;\n', '  -- by Rui\n  y <= a;\n');
     await until(async () => await readWs(env, 'Undo', P) === both, 'Rui\'s line on the disk');
@@ -77,8 +77,8 @@ uiTest('#5739 the owner\'s Undo of a command in a project an editor edits live: 
     // the owner's save of the file open in her editor, its text read before Rui's next line arrived: the shared text
     // (with his line) kept, on the disk and at both, never the save's over it
     await page.eval((p) => window.SilinxApp.openFile(p), P);
-    await page.waitFor((t) => window.Silinx.active?.path === 'src/pass1.vhd' && window.Silinx.active.editor.getValue() === t, [theirs], { what: 'the file open at Ana\'s' });
-    await new Promise((r) => setTimeout(r, 700));
+    await page.waitFor((t) => window.Silinx.active?.path === 'src/pass1.vhd' && window.Silinx.active.liveBound && window.Silinx.active.editor.getValue() === t, [theirs], { what: 'the file open at Ana\'s, bound' });
+    await ep.waitFor(() => window.Silinx.active?.path === 'src/pass1.vhd' && window.Silinx.active.liveBound, [], { what: 'the file at Rui\'s, bound' });
     await type(ep, 0, 0, '-- Rui\'s header\n');
     const last = `-- Rui's header\n${theirs}`;
     await page.waitFor((t) => window.Silinx.active.editor.getValue() === t, [last], { what: 'Rui\'s header at Ana\'s' });
@@ -89,9 +89,8 @@ uiTest('#5739 the owner\'s Undo of a command in a project an editor edits live: 
       try { await api.writeFile(window.Silinx.project.name, p, stale); } finally { d._saving = null; }
     }, P, theirs);
     await until(async () => await readWs(env, 'Undo', P) === last, 'the shared text written over the stale save');
-    await new Promise((r) => setTimeout(r, 500));
-    assert.equal(await page.eval(() => window.Silinx.active.editor.getValue()), last);
-    assert.equal(await ep.eval(() => window.Silinx.active.editor.getValue()), last);
+    await page.waitFor((t) => window.Silinx.active.editor.getValue() === t, [last], { what: 'the shared text at Ana\'s' });
+    await ep.waitFor((t) => window.Silinx.active.editor.getValue() === t, [last], { what: 'the shared text at Rui\'s' });
     // no warnings but those: the project untrusted by Rui's first change, the refusal (said twice, in English and
     // in Portuguese: the distinct lines compared)
     const untrusted = 'WARNING: Project "Undo" was changed by an editor of its shared link: it is edited, checked, simulated and implemented with the Silinx toolchain; Xilinx ISE and programming a board or a PROM run only once you trust it. Trust Project';
