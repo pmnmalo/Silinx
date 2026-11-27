@@ -18,7 +18,7 @@ import path from 'node:path';
 import * as P from './projects.js';
 import { capture, runCommand } from './jobs.js';
 import { loadConfig, which } from './toolchain.js';
-import { DOCKER_ISOLATION, remoteDirFor, runPipe, shQuote, sshParts } from './ise.js';
+import { runInImage } from './image-remote.js';
 import { XC16_IMAGE, XC16_OPT, nodeProgram, pic24FileOf, xc16Commands, xc16Messages, xc16Script } from '../core/xc16-compile.js';
 import { mcuBoard } from '../core/system-doc.js';
 import { parseHex } from '../packages/silinx-pic24/src/hex.js';
@@ -106,21 +106,6 @@ async function runLocal(quiet, root, cmds, onLine) {
   return 0;
 }
 
-// XC16's image on the ISE machine: the build folder uploaded (tar over ssh), build.sh run in the image, out/ brought back
-async function runRemote(quiet, cfg, name, node, root, image, onLine, said) {
-  const { target, opts } = sshParts(cfg);
-  const rq = shQuote(remoteDirFor(cfg, `${name}.${node.id}.xc16`));
-  let code = await runPipe(quiet, ['tar', ['-C', root, '-cf', '-', '.']], ['ssh', [...opts, '--', target, `rm -rf ${rq} && mkdir -p ${rq} && tar -C ${rq} -xf -`]]);
-  if (code !== 0) { said(`ERROR: ${node.id}: its sources could not be sent to the ISE machine (exit code ${code})`); return code; }
-  // (a non-interactive ssh shell may lack Docker Desktop's /usr/local/bin, macOS's, on its PATH: ISE's way)
-  const run = `export PATH="$PATH:/usr/local/bin:/opt/homebrew/bin"; cd ${rq} && docker run --rm --pull=never ${DOCKER_ISOLATION.join(' ')} -v "$PWD":/work -w /work ${shQuote(image)} bash build.sh`;
-  const flow = await runCommand(quiet, 'ssh', [...opts, '--', target, run], { echo: false, onLine });
-  code = await runPipe(quiet, ['ssh', [...opts, '--', target, `tar -C ${rq} -cf - out`]], ['tar', ['-C', root, '-xf', '-']]);
-  await runCommand(quiet, 'ssh', [...opts, '--', target, `rm -rf ${rq}`], { echo: false }).catch(() => {});
-  if (code !== 0 && flow === 0) { said(`ERROR: ${node.id}: XC16 ran on the ISE machine, but its results could not be brought back (exit code ${code})`); return code; }
-  return flow;
-}
-
 /** One PIC24 node's firmware compiled (the System `sys`: server/avr-compile.js systemOf's; XC16 `tool`: detectXc16's):
  *  its lines logged, its .hex written; its result, as an Arduino node's (Build All's too). */
 export async function compilePic24(job, name, sys, node, tool) {
@@ -141,7 +126,7 @@ export async function compilePic24(job, name, sys, node, tool) {
   if (tool.via === 'local') code = await runLocal(quiet, root, xc16Commands({ id: node.id, device: prog.device, units, bin: tool.bin, root: tool.root }), onLine);
   else {
     await fs.writeFile(path.join(root, 'build.sh'), xc16Script({ id: node.id, device: prog.device, units }));
-    code = await runRemote(quiet, await loadConfig(), name, node, root, tool.image, onLine, l => job.log(l));
+    code = await runInImage(quiet, await loadConfig(), { remote: `${name}.${node.id}.xc16`, root, image: tool.image, who: node.id, tool: 'XC16' }, onLine, l => job.log(l));
   }
   job.checkCancelled();
   const { errors, warnings } = xc16Messages(text.join('\n'), p => pic24FileOf(p, root, node.id));

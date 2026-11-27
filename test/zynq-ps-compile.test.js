@@ -9,7 +9,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { execFileSync, spawnSync } from 'node:child_process';
-import { OCM, STACK, PS_STARTUP, PS_LINKER_SCRIPT, psProgram, psBuildDir, psCommand, psFileOf, psMessages, psElf } from '../core/zynq-ps-compile.js';
+import { OCM, STACK, PS_STARTUP, PS_LINKER_SCRIPT, ARM_GCC_IMAGE, PINNED, psProgram, psBuildDir, psCommand, psFileOf, psMessages, psElf, psScript } from '../core/zynq-ps-compile.js';
 import { psOfBoard, psStarter } from '../core/zynq-ps.js';
 import { writeElf32 } from './fixtures/arm-gcc-stub/elf.mjs';
 
@@ -42,6 +42,15 @@ test('#4687 the command: the Cortex-A9\'s options, Silinx\'s linker script and s
     [...flags, '-T', 'silinx/ps.ld', 'silinx/startup.S', 'src/lib/fifo.c', 'src/main.c', '-o', 'out/zybo.elf', '-Wl,-Map=out/zybo.map']]);
   const own = psProgram(board, ['ps/main.c', 'ps/crt0.S', 'ps/ld/my.ld']);
   assert.deepEqual(psCommand({ gcc: 'gcc', prog: own, units: ['src/crt0.S', 'src/main.c'] })[1].slice(flags.length), ['-T', 'src/ld/my.ld', 'src/crt0.S', 'src/main.c', '-o', 'out/ps.elf', '-Wl,-Map=out/ps.map']);
+});
+
+test('#4687 the image\'s build script (the ISE machine\'s arm-none-eabi-gcc): the compiler on its PATH, psCommand\'s line; its paths under /work the project\'s', () => {
+  const prog = psProgram(zybo, ['zybo/ps/main.c', 'zybo/ps/my lib.c']);
+  assert.deepEqual(psScript({ prog, units: ['src/main.c', 'src/my lib.c'] }).split('\n'), ['#!/bin/bash', '# Silinx: a Zynq\'s PS program made by arm-none-eabi-gcc (#4687)',
+    'command -v arm-none-eabi-gcc >/dev/null || { echo "ERROR: no arm-none-eabi-gcc in this image" >&2; exit 127; }', 'mkdir -p out',
+    "arm-none-eabi-gcc -mcpu=cortex-a9 -marm -mfloat-abi=soft -O2 -g -Wall -ffreestanding -nostartfiles --specs=nosys.specs -T silinx/ps.ld silinx/startup.S src/main.c 'src/my lib.c' -o out/zybo.elf -Wl,-Map=out/zybo.map", '']);
+  assert.deepEqual([psFileOf('/work/src/main.c', '/w/p/build', prog), psFileOf('/work/silinx/startup.S', null, prog)], ['zybo/ps/main.c', 'Silinx\'s startup.S']);
+  assert.deepEqual([ARM_GCC_IMAGE, PINNED.map((p) => [p.kind, p.current])], ['silinx/arm-none-eabi:12.2', [['reported', 'silinx/arm-none-eabi:12.2']]]);
 });
 
 test('#4687 the messages: gcc\'s by the project\'s file, Silinx\'s startup named as such; the OCM overflowed; once each', () => {

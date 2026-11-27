@@ -16,6 +16,13 @@ import { relInNode } from './system-layout.js';
 import { readElf32 } from './elf32.js';
 import { xc16Messages } from './xc16-compile.js';
 
+/** The Docker image of arm-none-eabi-gcc on the ISE machine, built from Debian bookworm's gcc-arm-none-eabi and
+ *  libnewlib-arm-none-eabi (never shipped): its tag gcc's version. */
+export const ARM_GCC_IMAGE = 'silinx/arm-none-eabi:12.2';
+// (reported by the monthly Pins workflow, scripts/check-pins.mjs, #5649: an image built on the ISE machine, not a workflow's)
+export const PINNED = [{ kind: 'reported', name: 'arm-none-eabi-gcc (a Zynq\'s PS programs\' compiler, its Docker image)', current: ARM_GCC_IMAGE,
+  note: 'Debian bookworm\'s gcc-arm-none-eabi and libnewlib-arm-none-eabi; the image built again from a newer Debian' }];
+
 /** The OCM's low part, where the program is linked and loaded: [start, end). */
 export const OCM = { start: 0x00000000, end: 0x00030000 };
 /** The stack's size in bytes (at the top of the OCM's low part). */
@@ -121,13 +128,25 @@ export function psCommand({ gcc, prog, units }) {
     '-o', prog.elf, `-Wl,-Map=${prog.elf.replace(/\.elf$/, '.map')}`]];
 }
 
+const sh = (s) => (/^[\w./=,:+-]+$/.test(s) ? s : `'${String(s).replace(/'/g, `'\\''`)}'`);
+
+/** The shell script that makes the program's ELF in arm-none-eabi-gcc's Docker image (its build folder at /work):
+ *  the compiler found on the image's PATH, then psCommand's. */
+export function psScript({ prog, units }) {
+  const [, args] = psCommand({ gcc: 'arm-none-eabi-gcc', prog, units });
+  return ['#!/bin/bash', '# Silinx: a Zynq\'s PS program made by arm-none-eabi-gcc (#4687)',
+    'command -v arm-none-eabi-gcc >/dev/null || { echo "ERROR: no arm-none-eabi-gcc in this image" >&2; exit 127; }',
+    'mkdir -p out',
+    ['arm-none-eabi-gcc', ...args.map(sh)].join(' '), ''].join('\n');
+}
+
 /** The compiler's path of a source (`p`: src/…, relative to its build folder, or under `dir`, the build folder) as the
  *  project's: `<its ps/ folder>/<its path there>`; Silinx's own as silinx/…; else null. */
 export function psFileOf(p, dir, prog) {
   let f = String(p).replace(/\\/g, '/');
   const d = String(dir || '').replace(/\\/g, '/').replace(/\/$/, '');
   if (d && f.startsWith(`${d}/`)) f = f.slice(d.length + 1);
-  f = f.replace(/^\.\//, '');
+  f = f.replace(/^\/work\//, '').replace(/^\.\//, '');
   return f.startsWith('src/') ? `${prog.dir}/${f.slice(4)}` : f.startsWith('silinx/') ? `Silinx's ${f.slice(7)}` : null;
 }
 

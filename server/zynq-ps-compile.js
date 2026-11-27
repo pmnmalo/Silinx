@@ -17,12 +17,14 @@ import { projectSystem } from '../core/project-system.js';
 import { isSystemFile } from '../core/system-doc.js';
 import { isTrusted, untrustedMessage } from '../core/trust.js';
 import { psOfBoard } from '../core/zynq-ps.js';
-import { PS_LINKER_SCRIPT, PS_STARTUP, OCM, psBuildDir, psCommand, psElf, psFileOf, psMessages, psProgram } from '../core/zynq-ps-compile.js';
+import { ARM_GCC_IMAGE, PS_LINKER_SCRIPT, PS_STARTUP, OCM, psBuildDir, psCommand, psElf, psFileOf, psMessages, psProgram, psScript } from '../core/zynq-ps-compile.js';
+import { runInImage } from './image-remote.js';
 
 const GCC = 'arm-none-eabi-gcc';
 // (where Homebrew puts it, besides PATH: a server started from the Dock has a short PATH; Arm's macOS installer's)
 const DIRS = ['/opt/homebrew/bin', '/usr/local/bin', '/usr/bin'];
 const ARM_APPS = '/Applications/ArmGNUToolchain';
+const IMAGE = /^[A-Za-z0-9][\w.\/:@-]*$/;
 const running = new Map();   // project -> job id
 
 /** arm-none-eabi-gcc's path: config.json's paths['arm-none-eabi-gcc'] (explicit), else the PATH's, the usual folders'
@@ -35,14 +37,38 @@ export function armGccPath(cfg, { apps = ARM_APPS } = {}) {
   return which(GCC, [...DIRS, ...installed]);
 }
 
-/** Can a PS program be compiled here? { available, path, version, reason }. */
-export async function detectArmGcc(cfg = null, opts = {}) {
-  const bin = armGccPath(cfg ?? await loadConfig(), opts);
+// this computer's arm-none-eabi-gcc: { available, path, version, reason }
+async function localGcc(cfg, opts) {
+  const bin = armGccPath(cfg, opts);
   if (!bin) return { available: false, path: null, version: null, reason: `${GCC} not found (the Arm GNU Toolchain: on the PATH or in config.json's paths['${GCC}'])` };
   const v = await capture(bin, ['--version'], { timeoutMs: 10000 });
   const version = /\)\s*(\d+\.\d+(?:\.\d+)?)/.exec(v.out || '')?.[1] || /(\d+\.\d+\.\d+)/.exec(v.out || '')?.[1] || null;
   if (v.code !== 0 && v.code != null) return { available: false, path: bin, version: null, reason: `${bin} did not run (${GCC} --version: exit code ${v.code})` };
-  return { available: true, path: bin, version, reason: `${GCC} ${version || ''} found`.replace('  ', ' ') };
+  return { available: true, path: bin, version, reason: `${GCC} ${version || ''} installed here`.replace('  ', ' ') };
+}
+
+/**
+ * Can a PS program be compiled, and where? As XC16's (server/xc16-compile.js detectXc16): this computer's
+ * arm-none-eabi-gcc, or its Docker image on the ISE machine (config.json's armGcc.image, ARM_GCC_IMAGE by default) over
+ * ssh; config.json's armGcc.mode ('local' or 'ssh') chooses one, else this computer's when it has one. { available, via
+ * ('local' | 'ssh' | null), path, version, image, reason, local: { available, reason }, remote: { available, reason } }.
+ */
+export async function detectArmGcc(cfg = null, opts = {}) {
+  cfg ??= await loadConfig();
+  const mode = ['local', 'ssh'].includes(cfg.armGcc?.mode) ? cfg.armGcc.mode : 'auto';
+  const image = cfg.armGcc?.image || ARM_GCC_IMAGE;
+  const l = mode === 'ssh' ? { available: false, path: null, version: null, reason: 'not used (config.json\'s armGcc.mode is ssh)' } : await localGcc(cfg, opts);
+  let remote;
+  if (mode === 'local') remote = { available: false, reason: 'not used (config.json\'s armGcc.mode is local)' };
+  else if (!IMAGE.test(image)) remote = { available: false, reason: 'config.json\'s armGcc.image is not an image\'s name' };
+  else if (!cfg.ssh?.host) remote = { available: false, reason: 'no ISE machine (no ssh host in the toolchain settings)' };
+  else if (!which('ssh')) remote = { available: false, reason: 'ssh not found' };
+  else remote = { available: true, reason: `the image ${image} on the ISE machine, over ssh` };
+  const both = { local: { available: l.available, reason: l.reason }, remote };
+  if (l.available) return { available: true, via: 'local', path: l.path, version: l.version, image: null, reason: `${l.reason}${remote.available ? ' (the ISE machine\'s image not used)' : ''}`, ...both };
+  // (the image's version its tag's: silinx/arm-none-eabi:12.2)
+  if (remote.available) return { available: true, via: 'ssh', path: null, version: /:v?(\d+(?:\.\d+)*)$/.exec(image)?.[1] || null, image, reason: `${GCC} in ${remote.reason} (${l.reason})`, ...both };
+  return { available: false, via: null, path: l.path, version: l.version, image: null, reason: `${l.reason}; ${remote.reason}`, ...both };
 }
 
 // the project's node whose PS program is compiled: a System's FPGA node on a Zynq board (`node`, its id), a Board
@@ -88,23 +114,32 @@ async function buildDir(name, node, prog) {
 
 /** One node's PS program compiled (`gcc`: arm-none-eabi-gcc's path): its lines logged; its result { node, elf (its
  *  path in the project), entry, size, memsz, warnings }. */
-async function compilePs(job, name, files, node, gcc) {
+async function compilePs(job, name, files, node, tool) {
   const prog = psProgram(node, files);
   if (prog.error) throw new Error(prog.error);
   const root = await buildDir(name, node, prog);
   const units = prog.units.map((f) => `src/${f.slice(prog.dir.length + 1)}`);
   const who = node.implicit ? 'The project' : `System node ${node.id}`;
-  job.log(`${who}: its PS program (${prog.units.length} C and assembly file(s) of ${prog.dir}/) for the Cortex-A9, by ${GCC}, with ${prog.startup ? `its ${prog.startup}` : 'Silinx\'s startup code'} and ${prog.script ? `its ${prog.script}` : 'Silinx\'s linker script (the on-chip memory)'}, in ${psBuildDir(node)}/.`);
+  job.log(`${who}: its PS program (${prog.units.length} C and assembly file(s) of ${prog.dir}/) for the Cortex-A9, by ${tool.via === 'ssh' ? `${GCC} in the image ${tool.image} on the ISE machine` : GCC}, with ${prog.startup ? `its ${prog.startup}` : 'Silinx\'s startup code'} and ${prog.script ? `its ${prog.script}` : 'Silinx\'s linker script (the on-chip memory)'}, in ${psBuildDir(node)}/.`);
   const text = [];
   // (its lines the console's once parsed: the job's own log not the compiler's raw output, which names the build folder)
   const quiet = { get cancelled() { return job.cancelled; }, procs: job.procs, log: (l) => text.push(String(l)) };
-  const [cmd, args] = psCommand({ gcc, prog, units });
-  const code = await runCommand(quiet, cmd, args, { cwd: root, echo: false, onLine: (l) => text.push(l) });
+  const onLine = (l) => text.push(l);
+  let code;
+  if (tool.via === 'ssh') {
+    await fs.writeFile(path.join(root, 'build.sh'), psScript({ prog, units }));
+    const who = node.implicit ? 'the project' : node.id;
+    code = await runInImage(quiet, await loadConfig(), { remote: `${name}.${node.implicit ? 'ps' : node.id}.arm`, root, image: tool.image, who, tool: GCC }, onLine, (l) => job.log(l));
+  } else {
+    const [cmd, args] = psCommand({ gcc: tool.path, prog, units });
+    code = await runCommand(quiet, cmd, args, { cwd: root, echo: false, onLine });
+  }
   job.checkCancelled();
   const { errors, warnings } = psMessages(text.join('\n'), (p) => psFileOf(p, root, prog));
   for (const l of [...errors, ...warnings]) job.log(l);
   if (code !== 0) {
-    if (!errors.length) job.log(`ERROR: ${GCC} failed (exit code ${code}): ${text.filter((l) => l.trim() && !/^\$ /.test(l)).slice(-3).join(' ').slice(0, 300) || 'no message'}`);
+    if (tool.via === 'ssh' && text.some((l) => /No such image|Unable to find image/i.test(l))) job.log(`ERROR: the image ${tool.image} is not on the ISE machine (build it there from Debian's gcc-arm-none-eabi and libnewlib-arm-none-eabi)`);
+    else if (!errors.length) job.log(`ERROR: ${GCC} failed (exit code ${code}): ${text.filter((l) => l.trim() && !/^\$ /.test(l)).slice(-3).join(' ').slice(0, 300) || 'no message'}`);
     throw new Error(`its PS program did not compile (${errors.length || 1} error(s), ${warnings.length} warning(s))`);
   }
   const bytes = await fs.readFile(path.join(root, prog.elf)).catch(() => null);
@@ -126,11 +161,11 @@ export async function startPsCompile(name, { node } = {}) {
   const prog = psProgram(n, files);
   if (prog.error) throw new P.HttpError(400, prog.error);
   const tool = await detectArmGcc();
-  if (!tool.available) throw new P.HttpError(400, `Compile PS Program needs ${GCC} on the local server: ${tool.reason}`);
+  if (!tool.available) throw new P.HttpError(400, `Compile PS Program needs ${GCC} on the local server or the ISE machine: ${tool.reason}`);
   const key = name.toLowerCase();
   const was = running.get(key);
   if (was && getJob(was)?.status === 'running') throw new P.HttpError(409, `a PS program of '${name}' is already being compiled (job ${was}); wait for it or cancel it`);
-  const job = createJob('ps', (j) => compilePs(j, name, files, n, tool.path), { meta: { project: name, node: n.implicit ? null : n.id, toolchain: GCC } });
+  const job = createJob('ps', (j) => compilePs(j, name, files, n, tool), { meta: { project: name, node: n.implicit ? null : n.id, toolchain: GCC, via: tool.via } });
   running.set(key, job.id);
   return job;
 }

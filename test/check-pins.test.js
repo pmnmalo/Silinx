@@ -251,7 +251,7 @@ test('check-pins: the pins declared in the repository, each read with what its k
   for (const p of chipdbs) assert.deepEqual([p.repo, p.branch, p.watch[0]], ['pmnmalo/Silinx', 'main', 'packages/silinx-fpga/devices']);
   // reported only: the Docker images' bases and the tools whose installers are not public
   assert.deepEqual(pins.filter(p => p.kind === 'reported').map(p => p.current.split('@')[0]).sort(),
-    ['silinx/xc16:2.10', 'ubuntu:14.04', 'ubuntu:22.04', 'xilinx/vitis-hls:2025.2']);
+    ['silinx/arm-none-eabi:12.2', 'silinx/xc16:2.10', 'ubuntu:14.04', 'ubuntu:22.04', 'xilinx/vitis-hls:2025.2']);
 });
 
 test('check-pins: a declared pin\'s kinds and what each needs; a tag\'s shape; abbreviated commits', () => {

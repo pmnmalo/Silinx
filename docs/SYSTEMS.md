@@ -835,7 +835,13 @@ has its program compiled by **Compile PS Program** (#4687, part 1: the MCP's `ru
 System and none in a Board project; `server/zynq-ps-compile.js`, `core/zynq-ps-compile.js`). The compiler is
 [the Arm GNU Toolchain](https://developer.arm.com/downloads/-/arm-gnu-toolchain-downloads)'s `arm-none-eabi-gcc`, installed by
 the user (Silinx installs nothing): config.json's `paths['arm-none-eabi-gcc']`, the PATH, Homebrew's folders, or Arm's macOS
-installer's `/Applications/ArmGNUToolchain/<version>/arm-none-eabi/bin`; the MCP's `toolchain_info` says whether it is found.
+installer's `/Applications/ArmGNUToolchain/<version>/arm-none-eabi/bin`. Or, as XC16's (#5482), the Docker image
+`silinx/arm-none-eabi:12.2` on the ISE machine (config.json's `armGcc.image`; built there from Debian bookworm's
+`gcc-arm-none-eabi` and `libnewlib-arm-none-eabi`, never shipped), reached over ssh: the build folder sent to
+`ssh.remoteDir`, its `build.sh` run in the image, its `out/` brought back, the remote folder removed. config.json's
+`armGcc.mode` (`local` or `ssh`) chooses one; without it, this computer's when it has one. The MCP's `toolchain_info` says
+which one is used and why the other is not. The browser edition has no compiler: it needs a server (clang and lld in
+WebAssembly: #5904).
 
 - The program: the C (`.c`, `.h`) and assembly (`.s`, `.S`) of the node's `ps/` (a Board project's `ps/` at its root), copied
   into its build folder (`build/nodes/<id>/ps/`, a Board project's `build/ps/`) and linked there to `out/<id>.elf` (`out/ps.elf`).
