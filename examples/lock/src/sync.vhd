@@ -182,3 +182,4 @@ begin
   q(3) <= '1' when to_x01(n8) = '1' and to_x01(n2) = '0' else '0';
 end architecture circuit;
 -- synthesis translate_on
+-- silinx-sync drawing:f8d9ee6ec29c33ad hdl:ad331ce718a2c5fa (generated from the drawing: edit it, not this file)

@@ -59,3 +59,4 @@ begin
   prime_nand <= not (q1 and q2 and q3 and q4);
   led <= prime_nand & prime_sop;
 end architecture schematic;
+-- silinx-sync drawing:426bfb2fb49e1973 hdl:5a0bd3b4dcca464e (generated from the drawing: edit it, not this file)

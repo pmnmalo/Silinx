@@ -51,3 +51,4 @@ begin
       left => left
     );
 end architecture schematic;
+-- silinx-sync drawing:95b85d6ef885df66 hdl:754c9b0e56e27891 (generated from the drawing: edit it, not this file)

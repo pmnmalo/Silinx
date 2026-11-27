@@ -155,3 +155,4 @@ begin
   clr_s <= over or rst;
   secs <= s;
 end architecture schematic;
+-- silinx-sync drawing:3e5b4952867b7e82 hdl:8405cef68dac1f84 (generated from the drawing: edit it, not this file)

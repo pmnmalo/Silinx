@@ -11,6 +11,7 @@ import path from 'node:path';
 import { execFileSync } from 'node:child_process';
 import { scratchEnv, ROOT } from './server-helpers.js';
 import { viewHdl } from '../core/view-hdl.js';
+import { readStamp } from '../core/hdl-cache.js';
 import { normalizeFsm, generateFsm } from '../core/fsm.js';
 import { randomVectors, runHdl, runModel } from './fsm-sim.js';
 import { branchesText, newBranchText, switchText, mergeBranchText, pullMergeLines } from '../core/git-messages.js';
@@ -136,7 +137,7 @@ test('Merge Branch…: Rui\'s branch, different objects: merged at once, the HDL
   assert.deepEqual([t(m, 't2').cond, t(m, 't3').cond], ['not req', 'req and not night']);
   assert.equal(m.states[0].x, readJson(path.join(ROOT, 'examples', 'traffic', FSM)).states[0].x + 40);
   const hdl = fs.readFileSync(path.join(dir, m.generatedFile), 'utf8');
-  assert.equal(hdl, viewHdl(FSM, JSON.stringify(m), { linked: () => false }).text);
+  assert.equal(readStamp(hdl).body, viewHdl(FSM, JSON.stringify(m), { linked: () => false }).text);   // (its silinx-sync line aside, #5872)
   const fm = normalizeFsm(m);
   const vectors = randomVectors(fm, 100, 7);
   assert.deepEqual(runHdl(hdl, 'vhdl', fm, vectors), runModel(fm, vectors));

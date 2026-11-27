@@ -168,6 +168,12 @@ export async function keepTrustInRepo(name, root, { fromOutside = false } = {}) 
 // only over the one it read (If-Match), so that a change made meanwhile (the MCP server's, another tab's) is not lost
 const descriptionEtag = text => `"${crypto.createHash('sha256').update(text).digest('base64url').slice(0, 27)}"`;
 const etags = new WeakMap();   // a description read or written -> its revision
+/** A version of the project as it is now (server/versions.js saveVersion): core/drawing-sync.js's, before an HDL file
+ *  changed outside Silinx is made again from its drawing (#5872). */
+export async function saveVersion(name, opts = {}) {
+  return (await import('./versions.js')).saveVersion(await import('./projects.js'), name, opts);
+}
+
 /** The revision of a description readProject read or writeProject wrote (undefined for any other object). */
 export const etagOf = pj => etags.get(pj);
 

@@ -93,7 +93,7 @@ test('the routes: listed, one by hand (the page\'s reasons only), read, restored
     assert.equal(s.status, 200);
     assert.deepEqual([s.body.saved, s.body.version.id, s.body.version.reason, s.body.version.author], [true, '1', 'manual', 'Ana']);
     const bad = await app.call('POST', '/projects/rt/versions', { reason: 'restore' });
-    assert.deepEqual([bad.status, bad.body.error], [400, 'reason: manual, or before-remove, before-delete, before-convert, before-import, before-merge, before-git, before-mode']);
+    assert.deepEqual([bad.status, bad.body.error], [400, 'reason: manual, or before-remove, before-delete, before-convert, before-import, before-merge, before-git, before-mode, before-regenerate']);
     assert.equal((await app.call('POST', '/projects/rt/versions', { label: 3 })).status, 400);
     await P.writeFile('rt', T, '-- b\n');
     assert.equal((await app.call('POST', '/projects/rt/versions', { reason: 'before-remove' })).body.version.reason, 'before-remove');
