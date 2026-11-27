@@ -90,7 +90,7 @@ async function relatedView({ project: name, path: rel, view, notation }) {
     if (!/\.fsm\.json$/i.test(rel)) throw toolError(`${rel}: a state diagram (.fsm.json) has an ASM chart`);
     const F = await import('../core/fsm.js');
     const f = F.normalizeFsm(json(text, rel));
-    const errs = [...F.fsmErrors(f), ...F.asmDontCares(f)];   // (a don't care: no ASM chart, #4891)
+    const errs = F.fsmErrors(f);
     if (errs.length) throw toolError(`the ASM chart of ${base(rel)}: ${errs.map(x => x.message).join('; ')}`);
     return reply(name, rel, view, F.fsmToAsm(f));
   }

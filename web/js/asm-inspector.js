@@ -43,7 +43,7 @@ export function mountInspector(ctx) {
     if (sel().nodes.size === 0) { selSection.hidden = true; return; }   // (nothing selected: the machine's settings only, #2739)
     const n = nodeById([...sel().nodes][0]);
     if (!n) return;
-    const syntax = 'Syntax: out = 1, out = 4\'b1010, cnt = cnt + 1 (registered), or just "out" for out = 1';
+    const syntax = 'Syntax: out = 1, out = 4\'b1010, out = X or "1X0" (a don\'t care), cnt = cnt + 1 (registered), or just "out" for out = 1';
     if (n.type === 'state') {
       put(h('h3', {}, 'State'));
       put(field('Name', h('input', { class: 'asm-input', value: n.name, spellcheck: 'false', 'data-focus': '1',

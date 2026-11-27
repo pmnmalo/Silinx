@@ -81,10 +81,10 @@ export const ENCODINGS = ['binary', 'gray', 'onehot', 'enum'];
 import { VHDL93_WORDS, VERILOG_WORDS, reservedError } from './reserved.js';
 import { isName } from './ident.js';
 import {
-  vhAssign, vhBool, vhExpr, vhLitW, vhNot, vhTruth, vlAssign, vlExpr, vlLitW, vlNot
+  dcAt, vhAssign, vhBool, vhExpr, vhLitW, vhNot, vhTruth, vlAssign, vlExpr, vlLitW, vlNot
 } from './asm-emit.js';
 import {
-  exprToString, parseAction, parseCondition
+  dontCareConst, exprToString, parseAction, parseCondition
 } from './asm-expr.js';
 import { mountGraphChecks } from './asm-graph.js';
 import { condAsText } from './cond-notation.js';
@@ -742,7 +742,17 @@ export function analyze(model) {
     if (bitlen(r.ast.v) > width) warn(`${what} '${name}': ${what === 'Output' ? 'default' : 'reset'} value '${text}' is truncated to ${width} bit(s)`);
     return r.ast.v;
   };
-  for (const o of m.outputs) if (syms.has(o.name)) defaults.set(o.name, literalValue(o.default, o.width, 'Output', o.name));
+  // (a combinational output's default may be a don't care, #4895: its don't-care bits in defaultX)
+  const defaultX = new Map();
+  for (const o of m.outputs) {
+    if (!syms.has(o.name)) continue;
+    const dc = !o.registered && dontCareConst(o.default);
+    if (!dc) { defaults.set(o.name, literalValue(o.default, o.width, 'Output', o.name)); continue; }
+    if (dc.x !== -1n && ((dc.v | dc.x) >> BigInt(o.width)) !== 0n) warn(`Output '${o.name}': default value '${o.default}' is truncated to ${o.width} bit(s)`);
+    const { v, x } = dcAt(dc, o.width);
+    defaults.set(o.name, v);
+    defaultX.set(o.name, x);
+  }
   for (const r of registers) if (syms.get(r.name)?.kind === 'register') defaults.set(r.name, literalValue(r.init, r.width, 'Register', r.name));
 
   // ---- graph -------------------------------------------------------------------------- (asm-graph.js)
@@ -822,13 +832,17 @@ export function analyze(model) {
       for (const a of n.actions) {
         const kind = n.type === 'state' ? `State '${n.name}'` : n.type === 'always' ? `Every-cycle block '${n.name}'` : 'Conditional output';
         const where = `${kind} action '${a}'`;
-        const r = parseAction(a);
+        const r = parseAction(a, { isName: (x) => syms.has(x) });
         if (r.error) { err(`${where}: ${r.error}`, n.id); continue; }
         const s = syms.get(r.target);
         if (!s || (s.kind !== 'output' && s.kind !== 'register')) {
           const why = !s ? 'not a declared output or register'
             : s.kind === 'input' ? 'an input and cannot be assigned' : 'a generic (a constant) and cannot be assigned';
           err(`${where}: '${r.target}' is ${why}`, n.id);
+          continue;
+        }
+        if (r.ast.k === 'dc' && s.registered) {
+          err(`${where}: '${r.target}' is ${s.kind === 'register' ? 'a register' : 'a registered output'} and cannot be a don't care (X): only a combinational output can`, n.id);
           continue;
         }
         if (assigned.has(r.target)) warn(`${where}: '${r.target}' is assigned more than once in the same box (the last assignment wins)`, n.id);
@@ -853,7 +867,7 @@ export function analyze(model) {
     }
   }
 
-  return { m, diags, idx, trees, syms, defaults, parsedConds, parsedCases, parsedActions, alwaysNodes, alwaysTrees, registers, generics };
+  return { m, diags, idx, trees, syms, defaults, defaultX, parsedConds, parsedCases, parsedActions, alwaysNodes, alwaysTrees, registers, generics };
 }
 
 export function describe(n) {

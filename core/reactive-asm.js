@@ -7,6 +7,7 @@
 // when it stays).
 // Isomorphic ES module: no DOM and no Node APIs.
 import { prepareAsmSim } from './asm-sim.js';
+import { dcAt } from './asm-emit.js';
 import { lowerAction, lowerCond, lower } from './reactive-expr.js';
 import { REACTIVE_VERSION } from './reactive.js';
 
@@ -36,7 +37,9 @@ export function asmToReactive(chart, { source } = {}) {
   const nameOf = (id) => a.idx.nodes.get(id)?.name;
   let count = 0;
   const grow = (n) => { count += n; if (count > MAX_STATEMENTS) throw Object.assign(new Error('too big'), { tooBig: true }); };
-  const acts = (id) => (a.parsedActions.get(id) || []).map((x) => ({ k: 'set', target: x.target, expr: renamed(lowerAction(x.ast, symWidth(x.target), width), sync) }));
+  // (a don't care, #4895: the value of its bits not X, as the simulation's)
+  const valueOf = (x) => (x.ast.k === 'dc' ? { k: 'lit', v: dcAt(x.ast, symWidth(x.target)).v, w: symWidth(x.target), base: 'b' } : x.ast);
+  const acts = (id) => (a.parsedActions.get(id) || []).map((x) => ({ k: 'set', target: x.target, expr: renamed(lowerAction(valueOf(x), symWidth(x.target), width), sync) }));
   const cond = (id) => renamed(lowerCond(a.parsedConds.get(id), width), sync);
 
   // the statements from the exit `port` of box `from`: up to the state it ends at (`here`: the arm's own, no go)

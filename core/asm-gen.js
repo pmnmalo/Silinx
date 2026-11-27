@@ -4,7 +4,7 @@
 // asm.js re-exports these functions.
 import { MAX_PATHS, analyze, bits, buildIndex, flatten, joinPoints, normalizeModel, pad, pathCount, treeSize, stateEncoding, stripParens, validate, vhAssign, vhBool, vhExpr, vhLitW, vhNot, vhTruth, vlAssign, vlExpr, vlLitW, vlNot, walkAlways } from './asm.js';
 import { isIdent } from './ident.js';
-import { vhLitP } from './asm-emit.js';
+import { vhDcW, vhLitP, vlDcW } from './asm-emit.js';
 import { clog2Lines } from './asm-width.js';
 import { vhdlType, vlogRange } from './hdl-emit.js';
 import { VHDL_USER_ENCODING, machineEntity, machineModule, vhdlStates, vlogStates } from './hdl-emit-fsm.js';
@@ -485,7 +485,7 @@ export function generateVerilog(model) {
     L.push('        // default values (every output is assigned on every path: no latches)');
     for (const o of m.outputs) {
       if (o.registered) L.push(`        ${o.name}_next = ${o.name}_reg;`);
-      else L.push(`        ${o.name} = ${vlLitW(a.defaults.get(o.name), o.width, 'd')};`);
+      else L.push(`        ${o.name} = ${a.defaultX.has(o.name) ? vlDcW(a.defaults.get(o.name), a.defaultX.get(o.name), o.width) : vlLitW(a.defaults.get(o.name), o.width, 'd')};`);
     }
     for (const r of a.registers) L.push(`        ${r.name}_next = ${r.name};`);
     const { pre, items } = outputBody(a, B, 'verilog');
@@ -614,7 +614,7 @@ export function generateVhdl(model) {
     L.push('        -- default values (every output is assigned on every path: no latches)');
     for (const o of m.outputs) {
       if (o.registered) L.push(`        ${o.name}_next <= ${o.name}_reg;`);
-      else L.push(`        ${o.name} <= ${vhLitW(a.defaults.get(o.name), o.width)};`);
+      else L.push(`        ${o.name} <= ${a.defaultX.has(o.name) ? vhDcW(a.defaults.get(o.name), a.defaultX.get(o.name), o.width) : vhLitW(a.defaults.get(o.name), o.width)};`);
     }
     for (const r of a.registers) L.push(`        ${r.name}_next <= ${r.name};`);
     printStmts(pre, 2, 'vhdl', L);

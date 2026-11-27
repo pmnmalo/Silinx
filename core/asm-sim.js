@@ -14,6 +14,8 @@
 //     a reset (synchronous: at the edge; asynchronous: as soon as it is active) loads their reset values.
 // Isomorphic ES module: no DOM and no Node APIs.
 import { analyze, stateEncoding } from './asm.js';
+import { dcAt } from './asm-emit.js';
+import { bitsText } from './fsm-value.js';
 
 const ARITH = new Set(['+', '-', '&', '|', '^']);
 const SHIFT = new Set(['<<', '>>']);
@@ -114,7 +116,7 @@ export function asmSimReset(sim) {
  * One cycle of the chart in the present state `st` with the inputs (name: value, a number, a BigInt or binary
  * digits; the reset's level by its name, none: not active): {
  *   state, next (state ids), outputs: { name: value } (the Moore and Mealy outputs, the registered ones' present
- *   value), assigned: { name: value } (the registers' and the registered outputs' next values), by: { name: id } (the
+ *   value; a don't care's bits 0), dontCares: { name: bits } (an output's don't-care bits, X, #4895), assigned: { name: value } (the registers' and the registered outputs' next values), by: { name: id } (the
  *   box whose action assigned it last this cycle: a state's a Moore output, a conditional output's a Mealy one),
  *   path: { nodes: [id] (the decisions and cases tested, the conditional outputs reached), edges: [id] (the exits
  *   followed), outputs: [id] (the conditional outputs reached) }, blocks: [{ id, nodes, edges, outputs }] (the
@@ -132,12 +134,15 @@ export function asmSimEval(sim, st, inputs = {}) {
     if (s.kind === 'input') return s.sig === `${name}_sync` ? st.sync[name] : big(inputs[name], s.width);
     return st.regs[name] ?? 0n;
   };
-  const vals = {}, by = {};
+  const vals = {}, by = {}, xs = {};   // (xs: a combinational output's don't-care bits, #4895)
   for (const o of m.outputs) vals[o.name] = o.registered ? st.regs[o.name] : a.defaults.get(o.name) & mask(o.width);
+  for (const [n, x] of a.defaultX) xs[n] = x;
   for (const r of a.registers) vals[r.name] = st.regs[r.name];
   const act = (id) => {
     for (const x of a.parsedActions.get(id) || []) {
       const w = width(x.target);
+      if (x.ast.k === 'dc') { ({ v: vals[x.target], x: xs[x.target] } = dcAt(x.ast, w)); by[x.target] = id; continue; }
+      delete xs[x.target];
       vals[x.target] = evalAt(x.ast, Math.max(w, selfWidth(x.ast, a.syms)), sim, read) & mask(w);
       by[x.target] = id;
     }
@@ -179,7 +184,8 @@ export function asmSimEval(sim, st, inputs = {}) {
   const next = walk(st.state, path) ?? st.state;
   const outputs = Object.fromEntries(m.outputs.map((o) => [o.name, o.registered ? st.regs[o.name] : vals[o.name]]));
   const assigned = Object.fromEntries(sim.regs.map((r) => [r.name, vals[r.name]]));
-  return { state: st.state, next, outputs, assigned, by, path, blocks, reset, st };
+  const dontCares = Object.fromEntries(Object.entries(xs).filter(([, x]) => x));
+  return { state: st.state, next, outputs, dontCares, assigned, by, path, blocks, reset, st };
 }
 
 /** The state after a clock edge from `st` with the inputs: { st (the new state), cycle (asmSimEval's of the cycle) }. */
@@ -198,15 +204,19 @@ export function asmSimStep(sim, st, inputs = {}) {
   };
 }
 
-/** A value for JSON: a number up to 2^53, else its binary digits. */
-export const asmSimValue = (v) => (v < 2n ** 53n ? Number(v) : v.toString(2));
-/** A value as the panel shows it: a bit as 0 / 1, a vector in binary with its decimal value. */
-export function asmSimText(v, w) {
+/** A value for JSON: a number up to 2^53, else its binary digits; with don't-care bits x (#4895) its bits, X the don't
+ *  cares ('1X0'). */
+export const asmSimValue = (v, x = 0n, w = 1) => (x ? bitsText(v, x, w) : v < 2n ** 53n ? Number(v) : v.toString(2));
+/** A value as the panel shows it: a bit as 0 / 1, a vector in binary with its decimal value; with don't-care bits x
+ *  its bits, X the don't cares. */
+export function asmSimText(v, w, x = 0n) {
+  if (x) return bitsText(v, x, w);
   if (w === 1) return String(v);
   return `${v.toString(2).padStart(w, '0')} (${v})`;
 }
 
-/** The chart's run through a sequence of inputs (one entry per cycle, from reset): per cycle its state, outputs, next. */
+/** The chart's run through a sequence of inputs (one entry per cycle, from reset): per cycle its state, outputs (a don't
+ *  care's: its bits, X the don't cares, '1X0'), next. */
 export function simulateAsm(model, vectors) {
   const r = prepareAsmSim(model);
   if (r.errors) throw Object.assign(new Error(r.errors.map((d) => d.message).join('; ')), { diagnostics: r.errors });
@@ -216,6 +226,8 @@ export function simulateAsm(model, vectors) {
   return vectors.map((inputs) => {
     const x = asmSimStep(sim, st, inputs);
     st = x.st;
-    return { state: name(x.cycle.state), outputs: x.cycle.outputs, registers: x.cycle.st.regs, next: name(x.st.state), path: x.cycle.path };
+    const outputs = { ...x.cycle.outputs };
+    for (const [n, b] of Object.entries(x.cycle.dontCares)) outputs[n] = bitsText(outputs[n], b, sim.a.syms.get(n).width);
+    return { state: name(x.cycle.state), outputs, registers: x.cycle.st.regs, next: name(x.st.state), path: x.cycle.path };
   });
 }

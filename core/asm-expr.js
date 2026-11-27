@@ -248,8 +248,48 @@ export function parseCondition(src) {
   }
 }
 
-/** Parse an action `target = expr` or `target`. Returns { target, ast } or { error }. */
-export function parseAction(src) {
+// a bit string's characters, MSB first: { v, x, w } (X, x and - a don't care)
+function bitsConst(bits) {
+  let v = 0n, x = 0n;
+  for (const c of bits) {
+    v <<= 1n; x <<= 1n;
+    if (c === '1') v |= 1n;
+    else if (c !== '0') x |= 1n;
+  }
+  return { v, x, w: bits.length };
+}
+
+/** A don't care (#4891, an ASM chart's action #4895): the whole value's (X, -, 'X', '-', 1'bx) or some of its bits'
+ *  ("1X0", "1-0", 3'b1x0, 8'hx5): { v, x, w } (its 1 bits, its don't-care bits, its width as written; w null and x -1n:
+ *  the whole value, at its target's width), or null. A Verilog literal's leftmost x is extended to its width (3'bx is
+ *  xxx), as Verilog's is. */
+export function dontCareConst(text) {
+  const s = String(text ?? '').trim();
+  let m;
+  // (a bare X upper case only: a lower case x is a name, as an input's, refused as a value)
+  if (/^[X-]$/.test(s)) return { v: 0n, x: -1n, w: null };
+  if ((m = /^'([xX-])'$/.exec(s))) return bitsConst(m[1]);
+  if ((m = /^"([01xX_-]*[xX-][01xX_-]*)"$/.exec(s))) return bitsConst(m[1].replace(/_/g, ''));
+  if ((m = /^(\d+)?\s*'([bBhH])\s*([0-9a-fA-FxX_]+)$/.exec(s))) {
+    const hex = /h/i.test(m[2]), d = m[3].replace(/_/g, '');
+    if (!/x/i.test(d) || !(hex ? /^[0-9a-fx]+$/i : /^[01x]+$/i).test(d)) return null;
+    let bits = hex ? [...d].map((c) => (/x/i.test(c) ? 'xxxx' : parseInt(c, 16).toString(2).padStart(4, '0'))).join('') : d;
+    const w = m[1] ? Number(m[1]) : bits.length;
+    if (!w) return null;
+    // (shorter: its leftmost x extended, else 0s; longer: as written, Check's "does not fit")
+    if (bits.length < w) bits = (/x/i.test(bits[0]) ? 'x' : '0').repeat(w - bits.length) + bits;
+    return bitsConst(bits);
+  }
+  return null;
+}
+
+/** Parse an action `target = expr` or `target`. Returns { target, ast } or { error }; a don't care (dontCareConst) is
+ *  { k: 'dc', v, x, w, text } (#4895), but a bare X when isName('X') (a signal X of the chart: X read). */
+export function parseAction(src, { isName } = {}) {
+  const d = /^\s*([A-Za-z_][A-Za-z0-9_]*)\s*(?:<=|:=|=)(.*)$/s.exec(String(src ?? ''));
+  const rhs = d?.[2].trim();
+  const dc = d && !(rhs === 'X' && isName?.('X')) && dontCareConst(rhs);
+  if (dc) return { target: d[1], ast: { k: 'dc', ...dc, text: rhs } };
   try {
     const toks = tokenize(String(src ?? ''));
     if (toks[0].t !== 'id') return { error: 'an action must start with an output or register name' };
@@ -272,6 +312,7 @@ export function exprToString(ast) {
     case 'id': return ast.name;
     case 'sel': return ast.hi === ast.lo ? `${ast.name}[${ast.hi}]` : `${ast.name}[${ast.hi}:${ast.lo}]`;
     case 'lit': return litNeutral(ast);
+    case 'dc': return ast.text;
     case 'un': return `${ast.op}${ast.a.k === 'bin' ? `(${exprToString(ast.a)})` : exprToString(ast.a)}`;
     case 'bin': {
       const s = (x) => (x.k === 'bin' ? `(${exprToString(x)})` : exprToString(x));

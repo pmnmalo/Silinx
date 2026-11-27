@@ -57,11 +57,13 @@ async function simulateAsmFile(m, cycles, base) {
     const x = asmSimStep(sim, st, given);
     const c = x.cycle;
     const path = pathText(c.path);
-    lines.push(`cycle ${k}: state ${node(c.state).name}${c.reset ? ' (reset)' : ''}; inputs ${pairs(ins, given)}; outputs ${pairs(sim.m.outputs, c.outputs)}`
+    lines.push(`cycle ${k}: state ${node(c.state).name}${c.reset ? ' (reset)' : ''}; inputs ${pairs(ins, given)}; outputs ${pairs(sim.m.outputs, c.outputs, c.dontCares, asmSimValue)}`
       + `${sim.regs.length ? `; registers ${pairs(sim.regs, c.st.regs)}` : ''}${path ? `; path ${path}` : ''}; next state ${node(x.st.state).name}`);
     st = x.st;
     const json = (o) => Object.fromEntries(Object.entries(o).map(([n, val]) => [n, asmSimValue(val)]));
-    return { cycle: k, state: node(c.state).name, inputs: json(given), outputs: json(c.outputs), registers: json(c.st.regs), next: node(x.st.state).name,
+    // (a don't care's bits, X, #4895)
+    const outs = Object.fromEntries(sim.m.outputs.map((o) => [o.name, asmSimValue(c.outputs[o.name], c.dontCares[o.name], o.width)]));
+    return { cycle: k, state: node(c.state).name, inputs: json(given), outputs: outs, registers: json(c.st.regs), next: node(x.st.state).name,
       path: { nodes: c.path.nodes, edges: c.path.edges, outputs: c.path.outputs }, blocks: c.blocks.map((b) => ({ id: b.id, nodes: b.nodes, edges: b.edges, outputs: b.outputs })) };
   });
   return { lines, rows };

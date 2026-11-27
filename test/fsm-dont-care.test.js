@@ -3,21 +3,18 @@
 // A state diagram's output set to a don't care (#4891): the whole output (X, -, 'X', '-', 1'bx) or some of its bits
 // ("1X0", "1-0", 3'b1x0, 8'hx5), read (core/fsm-value.js), checked (Check, the Properties' and the MCP's checks), kept as
 // written, simulated (X), in the tables and the Boolean algebra (X), and in the HDL each language's don't care (VHDL
-// '-', Verilog x): compiled, elaborated and simulated, the simulators showing x, the synthesis input an x. An ASM chart
-// has no don't care: a diagram with one has no ASM chart, its reason Check's.
+// '-', Verilog x): compiled, elaborated and simulated, the simulators showing x, the synthesis input an x. (Its ASM chart
+// keeps it: test/asm-dont-care.test.js, #4895.)
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
-  normalizeFsm, validateFsm, generateFsm, simulateFsm, stepFsm, encodedTable, stateTable, truthTablesOf, parseOutputs, parseLabel, asmDontCares,
+  normalizeFsm, validateFsm, generateFsm, simulateFsm, stepFsm, encodedTable, stateTable, truthTablesOf, parseOutputs, parseLabel,
 } from '../core/fsm.js';
 import { outputConst, outputFits, atWidth, bitsText } from '../core/fsm-value.js';
 import { outputValueProblem, setOutputValues } from '../core/fsm-outputs.js';
 import { compile, elaborate, simulate } from '../core/compile.js';
 import { synthesisInput } from '../core/synth-front.js';
 
-// (the interface's language Portuguese, as test/fsm-i18n.test.js sets it)
-Object.defineProperty(globalThis, 'localStorage', { value: { getItem: (k) => (k === 'silinx.lang' ? 'pt' : null), setItem() {}, removeItem() {} }, configurable: true, writable: true });
-const { t } = await import('../web/js/i18n.js');
 
 test('#4891 outputConst: a constant, a whole don\'t care, some bits don\'t care; not a constant', () => {
   const c = (s) => { const r = outputConst(s); return r && [r.v, r.x, r.w]; };
@@ -135,24 +132,4 @@ test('#4891 the HDL: VHDL \'-\', Verilog x; no warnings; compiled, elaborated an
     const syn = synthesisInput(design).text;
     assert.match(syn, /3'b1x0|3'bx1x0|'bx/, `${lang}: an x in the synthesis input`);
   }
-});
-
-test('#4891 an ASM chart has no don\'t care: the diagram\'s reasons, Check\'s, in Portuguese too', () => {
-  const m = machine();
-  const msgs = asmDontCares(m).map((d) => d.message);
-  assert.deepEqual(msgs, [
-    'State A: z = "1X0" is a don\'t care (X), which an ASM chart does not have',
-    'State A: y = X is a don\'t care (X), which an ASM chart does not have',
-    'State B: z = 3\'bx is a don\'t care (X), which an ASM chart does not have',
-    'Transition A → B: z = "0-1" is a don\'t care (X), which an ASM chart does not have',
-    'Output \'y\': its default value \'-\' is a don\'t care (X), which an ASM chart does not have',
-  ]);
-  assert.deepEqual(asmDontCares({ ...m, states: m.states.map((s) => ({ ...s, outputs: {} })), transitions: m.transitions.map((x) => ({ ...x, outputs: {} })), outputs: m.outputs.map((o) => ({ ...o, default: '0' })) }), []);
-  assert.deepEqual(msgs.map((x) => t(x)), [
-    'Estado A: z = "1X0" é um valor indiferente (X), que um fluxograma ASM não tem',
-    'Estado A: y = X é um valor indiferente (X), que um fluxograma ASM não tem',
-    'Estado B: z = 3\'bx é um valor indiferente (X), que um fluxograma ASM não tem',
-    'Transição A → B: z = "0-1" é um valor indiferente (X), que um fluxograma ASM não tem',
-    'Saída \'y\': o seu valor por omissão \'-\' é um valor indiferente (X), que um fluxograma ASM não tem',
-  ]);
 });

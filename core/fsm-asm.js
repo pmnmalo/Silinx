@@ -9,23 +9,10 @@ import {
 } from './fsm.js';
 import { sortedOutputs } from './fsm-hdl.js';
 import { writeCond } from './cond-notation.js';
-import { outputConst } from './fsm-value.js';
 
 // ---------------------------------------------------------------------------------------
 // FSM <-> ASM chart
 // ---------------------------------------------------------------------------------------
-
-/** Why the diagram has no ASM chart (#4891): its outputs set to a don't care (X), which an ASM chart's actions do not
- *  have; [{ severity, message, state | transition }] as Check's, none when it has one. */
-export function asmDontCares(model) {
-  const m = normalizeFsm(model);
-  const dc = (v) => { const c = outputConst(v); return !!c && c.x !== 0n; };
-  const out = [];
-  for (const s of m.states) for (const [o, v] of Object.entries(s.outputs)) if (dc(v)) out.push({ severity: 'error', message: `State ${s.name}: ${o} = ${v} is a don't care (X), which an ASM chart does not have`, state: s.id });
-  for (const t of m.transitions) for (const [o, v] of Object.entries(t.outputs)) if (dc(v)) out.push({ severity: 'error', message: `Transition ${nameOf(m, t.from)} → ${nameOf(m, t.to)}: ${o} = ${v} is a don't care (X), which an ASM chart does not have`, transition: t.id });
-  for (const o of m.outputs) if (dc(o.default)) out.push({ severity: 'error', message: `Output '${o.name}': its default value ${o.default} is a don't care (X), which an ASM chart does not have` });
-  return out;
-}
 
 const actionsOf = (m, outs) => sortedOutputs(m, outs).map(([o, v]) => `${o.name} = ${v}`);
 
@@ -163,9 +150,11 @@ const condText = (conds, W = () => 0) => conds.map((c0) => {
 function outputsOfActions(acts, m, prevOuts = {}) {
   const out = {};
   for (const a of acts) {
-    const r = parseAction(a);
+    const r = parseAction(a, { isName: (x) => m.inputs.some((i) => i.name === x) || m.outputs.some((o) => o.name === x) });
     if (r.error) throw new Error(`'${a}' is not an output assignment`);
     if (!m.outputs.some((o) => o.name === r.target)) throw new Error(`'${r.target}' is not an output`);
+    // (a don't care as written, #4895)
+    if (r.ast.k === 'dc') { out[r.target] = r.ast.text; continue; }
     if (r.ast.k !== 'lit') throw new Error(`the output ${r.target} gets the value ${exprToString(r.ast)}; a state diagram only gives outputs constant values`);
     const pv = prevOuts[r.target];
     out[r.target] = pv != null && constValue(pv) === r.ast.v ? pv : (r.ast.w == null ? r.ast.v.toString() : exprToString(r.ast));

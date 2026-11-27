@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 // The MCP server and a state diagram's don't-care outputs (#4891): set_fsm_outputs takes X, "1X0", 3'b1x0 as written
 // (returned and saved so; its HDL made again, each language's don't care), Check has nothing to say, simulate_drawing
-// shows X, and the diagram's ASM chart (convert_drawing, related_view) is refused with its reasons.
+// shows X, and the diagram's ASM chart (convert_drawing, related_view) keeps them, and back (#4895).
 import { test, before, after } from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
@@ -27,7 +27,7 @@ const machine = (lang) => ({
   transitions: [{ id: 't1', from: 'a', to: 'b', cond: 'go' }, { id: 't2', from: 'b', to: 'a', cond: '' }], initial: 'a',
 });
 
-test('#4891 set_fsm_outputs: a don\'t care as written (X, "1X0", 3\'b0x1), its HDL each language\'s; Check; simulate_drawing shows X; no ASM chart', async () => {
+test('#4891 set_fsm_outputs: a don\'t care as written (X, "1X0", 3\'b0x1), its HDL each language\'s; Check; simulate_drawing shows X; its ASM chart keeps it', async () => {
   for (const lang of ['vhdl', 'verilog']) {
     const pj = `dc${lang}`, F = 'src/dc.fsm.json', H = `src/dc.${lang === 'vhdl' ? 'vhd' : 'v'}`;
     await ok('new_project', { name: pj });
@@ -53,12 +53,19 @@ test('#4891 set_fsm_outputs: a don\'t care as written (X, "1X0", 3\'b0x1), its H
     const s = await ok('simulate_drawing', { project: pj, file: F, cycles: [{ go: 0 }, { go: 1 }, {}] });
     assert.deepEqual(s.data.cycles.map((x) => [x.state, x.outputs]), [['A', { z: '1X0', y: 'X' }], ['A', { z: '0X1', y: 'X' }], ['B', { z: 0, y: 1 }]]);
     assert.match(s.text, /cycle 1: state A; inputs go=1; outputs z=0X1 y=X; transition t1; next state B/);
-    // no ASM chart: its reasons
-    const reasons = ['State A: z = "1X0" is a don\'t care (X), which an ASM chart does not have', 'State A: y = X is a don\'t care (X), which an ASM chart does not have',
-      'Transition A → B: z = 3\'b0x1 is a don\'t care (X), which an ASM chart does not have'];
-    const c = await call('convert_drawing', { project: pj, path: F, to: 'asm' });
-    assert.deepEqual([c.isError, c.text], [true, `convert_drawing: ${reasons.join('\n')}`]);
-    const v = await call('related_view', { project: pj, path: F, view: 'asm' });
-    assert.deepEqual([v.isError, v.text], [true, `related_view: the ASM chart of dc.fsm.json: ${reasons.join('; ')}`]);
+    // its ASM chart (#4895): the don't cares kept, Check clean, simulated as the diagram; and back
+    const c = await ok('convert_drawing', { project: pj, path: F, to: 'asm' });
+    const A = c.data.made[0];
+    const asm = JSON.parse((await ok('read_file', { project: pj, path: A })).text);
+    assert.deepEqual(asm.nodes.filter((n) => n.actions?.length).map((n) => n.actions), [['z = "1X0"', 'y = X'], ['y = 1'], ["z = 3'b0x1"]]);
+    assert.match((await ok('check_drawing', { project: pj, file: A })).text, /completed successfully\.$/);
+    const sa = await ok('simulate_drawing', { project: pj, file: A, cycles: [{ go: 0 }, { go: 1 }, {}] });
+    assert.deepEqual(sa.data.cycles.map((x) => [x.state, x.outputs]), [['A', { z: '1X0', y: 'X' }], ['A', { z: '0X1', y: 'X' }], ['B', { z: 0, y: 1 }]]);
+    assert.match(sa.text, /cycle 1: state A; inputs go=1 rst=0; outputs z=0X1 y=X; path go → 1, \[z = 3'b0x1\]; next state B/);
+    const v = await ok('related_view', { project: pj, path: F, view: 'asm' });
+    assert.deepEqual(v.data.view, 'asm');
+    const back = await ok('convert_drawing', { project: pj, path: A, to: 'fsm' });
+    const f2 = JSON.parse((await ok('read_file', { project: pj, path: back.data.made[0] })).text);
+    assert.deepEqual([f2.states.map((x) => x.outputs), f2.transitions.map((x) => x.outputs)], [[{ z: '"1X0"', y: 'X' }, { y: '1' }], [{ z: "3'b0x1" }, {}]]);
   }
 });

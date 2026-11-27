@@ -48,7 +48,7 @@ import { USER_ENCODING, cleanCode, userCodeProblems, userCodes } from './fsm-cod
 import { snapAngle } from './fsm-stroke.js';
 export { clone };   // (core/util.js's)
 export { generateFsm } from './fsm-hdl.js';
-export { asmDontCares, asmToFsm, fsmToAsm } from './fsm-asm.js';
+export { asmToFsm, fsmToAsm } from './fsm-asm.js';
 export { USER_ENCODING, setEncoding, setStateCode } from './fsm-codes.js';
 
 const FSM_VERSION = 1;
