@@ -45,6 +45,7 @@ const EXAMPLES = {  '${doc.path || doc.title} could not be saved. Close it and l
   "New path of the folder '${dir}':": "New path of the folder 'src':",
   'Open ${viewTitle(sch)}': 'Open Circuit',
   'Generated from the ${noun}': 'Generated from the state machine',   // (a CPU node's drawing's badge, #5487)
+  'Rename ${what}…': 'Rename Output…', 'Delete ${what}': 'Delete Output',   // (a truth table column's menu, Input or Output, #5863, #5887)
   // (the System Emulator's models of a node, #5652: its title and the model's name)
   "${name}: ${id}'s ${MODEL_NAMES[m].toLowerCase()} model could not be made": "Emulate System: fpga1's post-synthesis model could not be made",
   "${name}: ${id}'s flow made no ${MODEL_NAMES[m].toLowerCase()} model": "Emulate Node fpga1: fpga1's flow made no post-place & route model",
