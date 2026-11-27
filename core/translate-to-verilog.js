@@ -558,6 +558,14 @@ function widthOfExpr(cx, e) {
       return a != null && b != null ? Math.max(a, b) : a ?? b;
     }
     case 'cond': return widthOfExpr(cx, e.then);
+    case 'qualified': return widthOfExpr(cx, e.expr);
+    case 'aggregate': {
+      // (named choices with no others, #5853: their span; positional ones: their count, of single bits)
+      if (e.items.every(i => !i.choices)) return e.items.every(i => widthOfExpr(cx, i.value) === 1) ? e.items.length : null;
+      if (e.items.some(i => !i.choices || i.choices.includes('others'))) return null;
+      const ends = e.items.flatMap(i => i.choices.flatMap(c => (c.range ? [intOf(c.range.left), intOf(c.range.right)] : [intOf(c)])));
+      return ends.includes(null) ? null : Math.max(...ends) - Math.min(...ends) + 1;
+    }
   }
   return null;
 }
@@ -614,7 +622,11 @@ function exprV(cx, e, want = null) {
     case 'unary': return unaryV(cx, e);
     case 'binary': return binaryV(cx, e);
     case 'attr': return attrV(cx, e);
-    case 'qualified': return exprV(cx, e.expr, want);
+    case 'qualified': {
+      // (signed'(0 => x): its bits signed, a 1-bit one -1 or 0, #5853)
+      const r = exprV(cx, e.expr, want);
+      return String(e.type).toLowerCase() === 'signed' && e.expr.op === 'aggregate' ? { c: `$signed(${r.c})`, p: ATOM, t: 'vec' } : r;
+    }
     case 'field': return cannot('a record field', e);
   }
   return cannot(`an expression of kind '${e?.op}'`, e);
@@ -677,22 +689,41 @@ function aggregateV(cx, e, want) {
     return { c: `{${w.c}{${v.c}}}`, p: ATOM, t: 'vec' };
   }
   if (e.items.every(i => !i.choices)) return { c: `{${e.items.map(i => exprV(cx, i.value).c).join(', ')}}`, p: ATOM, t: 'vec' };
-  // named choices of single bits (and others): a literal of the target's width
+  // named choices of single bits (and others, #5853): each bit's value, by its index, of the target's range or, with no
+  // others, of the choices' own (unsigned'(0 => ci), a std_logic made a 1-bit vector); its literals' runs one literal
+  const idx = c => (c.range ? [intOf(c.range.left), intOf(c.range.right)] : [intOf(c), intOf(c)]);
+  const named = e.items.flatMap(it => it.choices || []).filter(c => c !== 'others');
+  if (named.some(c => idx(c).includes(null))) cannot('an aggregate with named choices that are not constant', e);
+  let lo, n;
   const w = widthOf(cx, want);
-  if (w?.n == null || want.k !== 'vec') return cannot('an aggregate with named choices', e);
-  const lo = Math.min(intOf(want.range.left), intOf(want.range.right));
-  const bits = Array(w.n).fill(null);
+  if (w?.n != null && want.k === 'vec' && intOf(want.range.left) != null && intOf(want.range.right) != null) {
+    lo = Math.min(intOf(want.range.left), intOf(want.range.right)); n = w.n;
+  } else if (!e.items.some(it => !it.choices || it.choices.includes('others'))) {
+    const ends = named.flatMap(idx);
+    lo = Math.min(...ends); n = Math.max(...ends) - lo + 1;
+  } else return cannot('an aggregate with named choices', e);
+  const bits = Array(n).fill(null);
   for (const it of e.items) {
-    const v = it.value.op === 'lit' && it.value.scalar ? it.value.bits : cannot('an aggregate with named choices of values that are not literals', e);
-    for (const c of it.choices) {
-      if (c === 'others') { for (let i = 0; i < w.n; i++) if (bits[i] == null) bits[i] = v; continue; }
-      const at = intOf(c);
-      if (at == null) cannot('an aggregate with named choices that are not constant', e);
-      bits[at - lo] = v;
+    const v = it.value.op === 'lit' && it.value.scalar ? { lit: it.value.bits } : exprV(cx, it.value);
+    if (!v.lit && v.t === 'vec') cannot('an aggregate with named choices of values that are not single bits', e);
+    for (const c of it.choices || []) {
+      if (c === 'others') { for (let i = 0; i < n; i++) if (bits[i] == null) bits[i] = v; continue; }
+      const [a, b] = idx(c);
+      for (let i = Math.min(a, b); i <= Math.max(a, b); i++) {
+        if (i < lo || i >= lo + n) cannot('an aggregate with a choice out of its range', e);
+        bits[i - lo] = v;
+      }
     }
   }
   if (bits.includes(null)) cannot('an aggregate that does not give every bit', e);
-  return { c: bitsLit(bits.reverse().join('')), p: ATOM, t: 'vec' };
+  // from the left (the highest index): a literal per run of literal bits, the others' Verilog
+  const parts = [];
+  for (const v of bits.reverse()) {
+    if (v.lit && parts.length && parts[parts.length - 1].lit) parts[parts.length - 1].lit += v.lit;
+    else parts.push(v.lit ? { lit: v.lit } : v);
+  }
+  const code = parts.map(v => (v.lit ? bitsLit(v.lit) : v.c));
+  return { c: code.length === 1 ? code[0] : `{${code.join(', ')}}`, p: ATOM, t: 'vec' };
 }
 function unaryV(cx, e) {
   const a = exprV(cx, e.a);

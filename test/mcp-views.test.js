@@ -1,6 +1,6 @@
 // The MCP server's related views (#2834, server/mcp-views.js): related_view makes, read-only and writing nothing, the
 // views the interface shows beside a source: an HDL source's translation (traffic's VHDL to Verilog, pong's Verilog to
-// VHDL), a state diagram's ASM chart and its schematic (traffic's, its gate-level implementation, #4910), a truth table's
+// VHDL, a schematic ADD's carry in, #5853), a state diagram's ASM chart and its schematic (traffic's, its gate-level implementation, #4910), a truth table's
 // schematic (traffic's lamps), a Petri net's state machine,
 // each the same as the core's converters make; a truth table's results, as the editor's results panel (#2927); an ASM chart that is not a plain state machine, a state diagram with errors
 // and the wrong kinds of source refused, each with its reason.
@@ -17,6 +17,8 @@ import { petriToFsm } from '../core/petri-fsm.js';
 import { circuitSchematic } from '../core/circuit-sch.js';
 import { fsmSchematic } from '../core/fsm-schematic.js';
 import { halfAdder } from './circuit-helpers.mjs';
+import { normalizeDoc, symbolPins } from '../core/schdoc.js';
+import { generateHdl } from '../core/schdoc-hdl.js';
 
 let tmp;
 const { handle } = await import('../server/mcp.js');
@@ -58,6 +60,19 @@ test('related_view: traffic\'s translation, ASM chart and table\'s schematic, as
   const sch = await ok({ project: 't', path: 'src/lamps.bool.json', view: 'schematic' });
   assert.deepEqual(sch.data.model, schematicFromTable(normalizeTable(JSON.parse(read('t', 'src/lamps.bool.json')))));
   assert.deepEqual(files('t'), before);
+});
+
+// #5853: a schematic's ADD with its carry in, its VHDL (the carry unsigned'(0 => CI)) in Verilog, as the core makes it
+test('related_view: a schematic ADD with CI, its generated VHDL\'s translation (#5853)', async () => {
+  const sym = { id: 'S1', type: 'add', name: 'U1', x: 400, y: 400, params: { width: 4, cin: true, cout: true } };
+  const ports = symbolPins(normalizeDoc({ symbols: [sym] }).symbols[0]).map((p, i) => ({ id: `P${i}`, name: p.name, dir: p.dir, width: p.width || 1, x: p.x, y: p.y }));
+  const g = generateHdl(normalizeDoc({ name: 'adder', lang: 'vhdl', symbols: [sym], ports, wires: [], labels: [] }), {});
+  assert.match(g.code, /\+ unsigned'\(0 => CI\);/);
+  await call('new_project', { name: 'ci' });
+  await call('write_file', { project: 'ci', path: 'src/adder.vhd', text: g.code });
+  const tr = await ok({ project: 'ci', path: 'src/adder.vhd', view: 'translation' });
+  assert.equal(tr.text, translateSource(g.code, { path: 'src/adder.vhd', to: 'verilog' }).text);
+  assert.match(tr.text, /^ {4}assign U1_sum = \{1'b0, A\} \+ \{1'b0, B\} \+ CI;$/m);
 });
 
 test('related_view: a Verilog source in VHDL (an if generate\'s branches, #3501); a Petri net\'s state machine', async () => {
