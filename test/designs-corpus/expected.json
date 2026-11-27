@@ -10,7 +10,7 @@
    "slices": 197,
    "luts": 366,
    "ffs": 386,
-   "period": 11.563
+   "period": 11.756
   }
  },
  "epfl-bar": {
@@ -24,7 +24,7 @@
    "slices": 471,
    "luts": 941,
    "ffs": 264,
-   "period": 9.356
+   "period": 9.337
   }
  },
  "epfl-cavlc": {
@@ -35,8 +35,8 @@
   "flow": "complete",
   "quality": {
    "part": "xc3s250ecp132-4",
-   "slices": 143,
-   "luts": 285,
+   "slices": 136,
+   "luts": 272,
    "ffs": 0,
    "period": null
   }
@@ -49,8 +49,8 @@
   "flow": "complete",
   "quality": {
    "part": "xc3s250ecp132-4",
-   "slices": 25,
-   "luts": 49,
+   "slices": 24,
+   "luts": 47,
    "ffs": 0,
    "period": null
   }
@@ -66,7 +66,7 @@
    "slices": 187,
    "luts": 373,
    "ffs": 265,
-   "period": 6.439
+   "period": 6.376
   }
  },
  "epfl-i2c": {
@@ -77,10 +77,10 @@
   "flow": "complete",
   "quality": {
    "part": "xc3s250ecp132-4",
-   "slices": 248,
-   "luts": 489,
+   "slices": 238,
+   "luts": 476,
    "ffs": 276,
-   "period": 7.254
+   "period": 7.586
   }
  },
  "epfl-int2float": {
@@ -91,8 +91,8 @@
   "flow": "complete",
   "quality": {
    "part": "xc3s250ecp132-4",
-   "slices": 41,
-   "luts": 82,
+   "slices": 43,
+   "luts": 85,
    "ffs": 0,
    "period": null
   }
@@ -105,8 +105,8 @@
   "flow": "complete: on the XC3S1200E",
   "quality": {
    "part": "xc3s1200efg320-4",
-   "slices": 5385,
-   "luts": 10682,
+   "slices": 5333,
+   "luts": 10666,
    "ffs": 0,
    "period": null
   }
@@ -124,10 +124,10 @@
   },
   "quality": {
    "part": "xc3s250ecp132-4",
-   "slices": 672,
-   "luts": 1344,
+   "slices": 609,
+   "luts": 1217,
    "ffs": 643,
-   "period": 25.806
+   "period": 24.79
   }
  },
  "epfl-multiplier": {
@@ -143,10 +143,10 @@
   },
   "quality": {
    "part": "xc3s500efg320-4",
-   "slices": 4360,
-   "luts": 8719,
+   "slices": 4394,
+   "luts": 8787,
    "ffs": 257,
-   "period": 75.704
+   "period": 73.474
   }
  },
  "epfl-priority": {
@@ -157,10 +157,10 @@
   "flow": "complete",
   "quality": {
    "part": "xc3s250ecp132-4",
-   "slices": 117,
-   "luts": 233,
+   "slices": 118,
+   "luts": 236,
    "ffs": 137,
-   "period": 9.458
+   "period": 9.979
   }
  },
  "epfl-router": {
@@ -171,10 +171,10 @@
   "flow": "complete",
   "quality": {
    "part": "xc3s250ecp132-4",
-   "slices": 34,
-   "luts": 62,
+   "slices": 32,
+   "luts": 54,
    "ffs": 64,
-   "period": 7.274
+   "period": 6.823
   }
  },
  "epfl-sin": {
@@ -186,7 +186,7 @@
   "quality": {
    "part": "xc3s250ecp132-4",
    "slices": 1064,
-   "luts": 2128,
+   "luts": 2121,
    "ffs": 0,
    "period": null
   }
@@ -204,10 +204,10 @@
   },
   "quality": {
    "part": "xc3s250ecp132-4",
-   "slices": 1162,
-   "luts": 2323,
+   "slices": 1158,
+   "luts": 2316,
    "ffs": 1003,
-   "period": 26.288
+   "period": 25.783
   }
  },
  "femtorv32-quark": {
@@ -218,10 +218,10 @@
   "flow": "complete",
   "quality": {
    "part": "xc3s250ecp132-4",
-   "slices": 394,
-   "luts": 784,
+   "slices": 409,
+   "luts": 815,
    "ffs": 224,
-   "period": 15.56
+   "period": 16.365
   }
  },
  "fpu-adder": {
@@ -232,10 +232,10 @@
   "flow": "complete",
   "quality": {
    "part": "xc3s250ecp132-4",
-   "slices": 331,
-   "luts": 659,
+   "slices": 334,
+   "luts": 664,
    "ffs": 389,
-   "period": 11.347
+   "period": 10.994
   }
  },
  "fpu-multiplier": {
@@ -246,10 +246,10 @@
   "flow": "complete",
   "quality": {
    "part": "xc3s250ecp132-4",
-   "slices": 227,
-   "luts": 450,
+   "slices": 229,
+   "luts": 453,
    "ffs": 404,
-   "period": 14.256
+   "period": 14.034
   }
  },
  "itc99-b01": {
@@ -263,7 +263,7 @@
    "slices": 5,
    "luts": 9,
    "ffs": 5,
-   "period": 2.559
+   "period": 2.565
   }
  },
  "itc99-b02": {
@@ -288,10 +288,10 @@
   "flow": "complete",
   "quality": {
    "part": "xc3s250ecp132-4",
-   "slices": 15,
-   "luts": 29,
+   "slices": 16,
+   "luts": 28,
    "ffs": 30,
-   "period": 5.949
+   "period": 5.395
   }
  },
  "itc99-b04": {
@@ -302,10 +302,10 @@
   "flow": "complete",
   "quality": {
    "part": "xc3s250ecp132-4",
-   "slices": 101,
-   "luts": 189,
+   "slices": 97,
+   "luts": 183,
    "ffs": 66,
-   "period": 11.975
+   "period": 11.187
   }
  },
  "itc99-b05": {
@@ -314,19 +314,12 @@
   "synth": "pass",
   "diff": "pass",
   "flow": "complete",
-  "warnings": {
-   "synth": [
-    "Warning: Latch inferred for signal `p1_v0' from process `\\b05.$proc': $auto",
-    "Warning: Latch inferred for signal `p1_v1 [4:0]' from process `\\b05.$proc': $auto",
-    "Warning: Latch inferred for signal `p1_v1 [8:5]' from process `\\b05.$proc': $auto"
-   ]
-  },
   "quality": {
    "part": "xc3s250ecp132-4",
-   "slices": 194,
-   "luts": 374,
+   "slices": 212,
+   "luts": 411,
    "ffs": 34,
-   "period": 12.098
+   "period": 11.614
   }
  },
  "itc99-b06": {
@@ -340,7 +333,7 @@
    "slices": 5,
    "luts": 10,
    "ffs": 8,
-   "period": 3.136
+   "period": 3.241
   }
  },
  "itc99-b07": {
@@ -354,7 +347,7 @@
    "slices": 53,
    "luts": 103,
    "ffs": 43,
-   "period": 6.191
+   "period": 5.996
   }
  },
  "itc99-b08": {
@@ -368,7 +361,7 @@
    "slices": 18,
    "luts": 34,
    "ffs": 21,
-   "period": 5.792
+   "period": 6.088
   }
  },
  "itc99-b09": {
@@ -379,10 +372,10 @@
   "flow": "complete",
   "quality": {
    "part": "xc3s250ecp132-4",
-   "slices": 21,
-   "luts": 41,
+   "slices": 19,
+   "luts": 38,
    "ffs": 28,
-   "period": 5.701
+   "period": 5.611
   }
  },
  "itc99-b10": {
@@ -393,10 +386,10 @@
   "flow": "complete",
   "quality": {
    "part": "xc3s250ecp132-4",
-   "slices": 22,
+   "slices": 21,
    "luts": 41,
    "ffs": 24,
-   "period": 5.32
+   "period": 5.367
   }
  },
  "itc99-b11": {
@@ -407,10 +400,10 @@
   "flow": "complete",
   "quality": {
    "part": "xc3s250ecp132-4",
-   "slices": 81,
-   "luts": 157,
+   "slices": 88,
+   "luts": 171,
    "ffs": 36,
-   "period": 7.751
+   "period": 8.558
   }
  },
  "itc99-b12": {
@@ -429,7 +422,7 @@
    "slices": 178,
    "luts": 354,
    "ffs": 119,
-   "period": 9.167
+   "period": 9.347
   }
  },
  "itc99-b13": {
@@ -443,7 +436,7 @@
    "slices": 42,
    "luts": 82,
    "ffs": 64,
-   "period": 6.09
+   "period": 5.889
   }
  },
  "itc99-b14": {
@@ -459,10 +452,10 @@
   },
   "quality": {
    "part": "xc3s250ecp132-4",
-   "slices": 657,
-   "luts": 1300,
+   "slices": 648,
+   "luts": 1287,
    "ffs": 334,
-   "period": 35.424
+   "period": 34.203
   }
  },
  "itc99-b15": {
@@ -482,10 +475,10 @@
   },
   "quality": {
    "part": "xc3s250ecp132-4",
-   "slices": 1336,
-   "luts": 2661,
+   "slices": 1260,
+   "luts": 2508,
    "ffs": 546,
-   "period": 19.768
+   "period": 19.747
   }
  },
  "itc99-b17": {
@@ -510,10 +503,10 @@
   },
   "quality": {
    "part": "xc3s500efg320-4",
-   "slices": 3742,
-   "luts": 7451,
+   "slices": 3734,
+   "luts": 7435,
    "ffs": 1380,
-   "period": 22.378
+   "period": 22.704
   }
  },
  "itc99-b20": {
@@ -529,10 +522,10 @@
   },
   "quality": {
    "part": "xc3s250ecp132-4",
-   "slices": 1325,
-   "luts": 2635,
+   "slices": 1377,
+   "luts": 2735,
    "ffs": 492,
-   "period": 37.394
+   "period": 35.363
   }
  },
  "itc99-b21": {
@@ -548,10 +541,10 @@
   },
   "quality": {
    "part": "xc3s250ecp132-4",
-   "slices": 1361,
-   "luts": 2706,
+   "slices": 1370,
+   "luts": 2727,
    "ffs": 492,
-   "period": 35.217
+   "period": 36.941
   }
  },
  "itc99-b22": {
@@ -570,10 +563,10 @@
   },
   "quality": {
    "part": "xc3s250ecp132-4",
-   "slices": 2030,
-   "luts": 4026,
+   "slices": 2014,
+   "luts": 4002,
    "ffs": 706,
-   "period": 39.372
+   "period": 37.843
   }
  },
  "iwls05-i2c": {
@@ -585,9 +578,9 @@
   "quality": {
    "part": "xc3s250ecp132-4",
    "slices": 123,
-   "luts": 245,
+   "luts": 244,
    "ffs": 130,
-   "period": 7.17
+   "period": 6.466
   }
  },
  "iwls05-sasc": {
@@ -605,10 +598,10 @@
   },
   "quality": {
    "part": "xc3s250ecp132-4",
-   "slices": 49,
+   "slices": 51,
    "luts": 95,
    "ffs": 54,
-   "period": 4.814
+   "period": 5.407
   }
  },
  "iwls05-simple-spi": {
@@ -626,10 +619,10 @@
   },
   "quality": {
    "part": "xc3s250ecp132-4",
-   "slices": 79,
-   "luts": 156,
+   "slices": 78,
+   "luts": 154,
    "ffs": 67,
-   "period": 6.162
+   "period": 6.848
   }
  },
  "iwls05-spi": {
@@ -645,10 +638,10 @@
   },
   "quality": {
    "part": "xc3s250ecp132-4",
-   "slices": 356,
-   "luts": 706,
+   "slices": 354,
+   "luts": 704,
    "ffs": 229,
-   "period": 15.92
+   "period": 14.652
   }
  },
  "iwls05-ss-pcm": {
@@ -665,9 +658,9 @@
   "quality": {
    "part": "xc3s250ecp132-4",
    "slices": 42,
-   "luts": 39,
+   "luts": 38,
    "ffs": 79,
-   "period": 4.694
+   "period": 4.672
   }
  },
  "iwls05-usb-phy": {
@@ -683,10 +676,10 @@
   },
   "quality": {
    "part": "xc3s250ecp132-4",
-   "slices": 63,
-   "luts": 112,
+   "slices": 62,
+   "luts": 114,
    "ffs": 96,
-   "period": 5.408
+   "period": 4.992
   }
  },
  "light8080": {
@@ -706,10 +699,10 @@
   },
   "quality": {
    "part": "xc3s250ecp132-4",
-   "slices": 189,
-   "luts": 374,
+   "slices": 194,
+   "luts": 384,
    "ffs": 206,
-   "period": 11.787
+   "period": 11.592
   }
  },
  "nandland-spi-verilog": {
@@ -725,10 +718,10 @@
   },
   "quality": {
    "part": "xc3s250ecp132-4",
-   "slices": 31,
-   "luts": 59,
+   "slices": 30,
+   "luts": 57,
    "ffs": 37,
-   "period": 5.676
+   "period": 5.6
   }
  },
  "nandland-spi-vhdl": {
@@ -748,7 +741,7 @@
    "slices": 30,
    "luts": 57,
    "ffs": 37,
-   "period": 5.674
+   "period": 5.565
   }
  },
  "neorv32": {
@@ -809,9 +802,6 @@
    ],
    "synth": [
     "Warning: Drivers conflicting with a constant 1'0 driver:",
-    "Warning: Latch inferred for signal `p424_v0 [31:6]' from process `\\neorv32_test_setup_approm.$proc': $auto",
-    "Warning: Latch inferred for signal `p424_v0 [4:0]' from process `\\neorv32_test_setup_approm.$proc': $auto",
-    "Warning: Latch inferred for signal `p424_v0 [5]' from process `\\neorv32_test_setup_approm.$proc': $auto",
     "Warning: Replacing memory \\neorv32_top_inst.bus_gateway_inst.port_req with list of registers. See neorv32_test_setup_approm_syn.v:5117",
     "Warning: Replacing memory \\neorv32_top_inst.bus_gateway_inst.port_rsp with list of registers. See neorv32_test_setup_approm_syn.v:5077",
     "Warning: Replacing memory \\neorv32_top_inst.core_complex_gen[0].core_complex_inst.cpu_inst.cnts_enabled.cpu_counters_inst.cnt_we with list of registers. See neorv32_test_setup_approm_syn.v:3174",
@@ -837,10 +827,10 @@
   },
   "quality": {
    "part": "xc3s250ecp132-4",
-   "slices": 1662,
-   "luts": 3313,
-   "ffs": 1319,
-   "period": 16.497
+   "slices": 1630,
+   "luts": 3249,
+   "ffs": 1298,
+   "period": 15.953
   }
  },
  "picorv32": {
@@ -881,19 +871,19 @@
     "WARNING:Silinx:737 (latch) - picorv32.v:403: Found 4-bit latch for signal <mem_la_wstrb>. Latches may be generated from incomplete case or if statements."
    ],
    "synth": [
-    "Warning: Latch inferred for signal `mem_la_wdata' from process `\\picorv32.$proc': $auto",
-    "Warning: Latch inferred for signal `mem_la_wstrb' from process `\\picorv32.$proc': $auto",
-    "Warning: Latch inferred for signal `mem_rdata_word [15:8]' from process `\\picorv32.$proc': $auto",
-    "Warning: Latch inferred for signal `mem_rdata_word [31:16]' from process `\\picorv32.$proc': $auto",
-    "Warning: Latch inferred for signal `mem_rdata_word [7:0]' from process `\\picorv32.$proc': $auto"
+    "Warning: Latch inferred for signal `mem_la_wdata' from process `\\picorv32.$picorv32_syn.v:409$proc': $auto",
+    "Warning: Latch inferred for signal `mem_la_wstrb' from process `\\picorv32.$picorv32_syn.v:409$proc': $auto",
+    "Warning: Latch inferred for signal `mem_rdata_word [15:8]' from process `\\picorv32.$picorv32_syn.v:409$proc': $auto",
+    "Warning: Latch inferred for signal `mem_rdata_word [31:16]' from process `\\picorv32.$picorv32_syn.v:409$proc': $auto",
+    "Warning: Latch inferred for signal `mem_rdata_word [7:0]' from process `\\picorv32.$picorv32_syn.v:409$proc': $auto"
    ]
   },
   "quality": {
    "part": "xc3s250ecp132-4",
-   "slices": 706,
-   "luts": 1410,
+   "slices": 702,
+   "luts": 1401,
    "ffs": 767,
-   "period": 11.76
+   "period": 12.082
   }
  },
  "secworks-aes": {
@@ -914,10 +904,10 @@
   },
   "quality": {
    "part": "xc3s500efg320-4",
-   "slices": 3613,
-   "luts": 7225,
-   "ffs": 2989,
-   "period": 27.099
+   "slices": 4517,
+   "luts": 9033,
+   "ffs": 2996,
+   "period": 31.388
   }
  },
  "secworks-sha1": {
@@ -936,10 +926,10 @@
   },
   "quality": {
    "part": "xc3s250ecp132-4",
-   "slices": 1006,
-   "luts": 2009,
+   "slices": 1016,
+   "luts": 1982,
    "ffs": 1527,
-   "period": 14.991
+   "period": 16.13
   }
  },
  "secworks-sha256": {
@@ -961,10 +951,10 @@
   },
   "quality": {
    "part": "xc3s250ecp132-4",
-   "slices": 1339,
-   "luts": 2677,
-   "ffs": 1808,
-   "period": 26.428
+   "slices": 1465,
+   "luts": 2930,
+   "ffs": 1809,
+   "period": 25.244
   }
  },
  "secworks-siphash": {
@@ -975,10 +965,10 @@
   "flow": "complete",
   "quality": {
    "part": "xc3s250ecp132-4",
-   "slices": 686,
-   "luts": 1370,
+   "slices": 685,
+   "luts": 1368,
    "ffs": 798,
-   "period": 15.465
+   "period": 14.624
   }
  },
  "serv": {
@@ -1012,10 +1002,10 @@
   },
   "quality": {
    "part": "xc3s250ecp132-4",
-   "slices": 156,
-   "luts": 305,
-   "ffs": 293,
-   "period": 10.932
+   "slices": 191,
+   "luts": 338,
+   "ffs": 355,
+   "period": 11.652
   }
  },
  "spi-fpga-master": {
@@ -1034,7 +1024,7 @@
    "slices": 19,
    "luts": 34,
    "ffs": 21,
-   "period": 4.942
+   "period": 4.663
   }
  },
  "spi-fpga-slave": {
@@ -1048,7 +1038,7 @@
    "slices": 14,
    "luts": 26,
    "ffs": 21,
-   "period": 5.033
+   "period": 4.655
   }
  },
  "t80": {
@@ -1068,10 +1058,10 @@
   },
   "quality": {
    "part": "xc3s250ecp132-4",
-   "slices": 1065,
-   "luts": 2121,
+   "slices": 1069,
+   "luts": 2128,
    "ffs": 233,
-   "period": 19.11
+   "period": 19.961
   }
  },
  "uart-for-fpga": {
@@ -1087,10 +1077,10 @@
   },
   "quality": {
    "part": "xc3s250ecp132-4",
-   "slices": 41,
-   "luts": 78,
+   "slices": 43,
+   "luts": 80,
    "ffs": 53,
-   "period": 4.472
+   "period": 5.146
   }
  },
  "verilog-axis-fifo": {
@@ -1120,7 +1110,7 @@
    "slices": 19,
    "luts": 33,
    "ffs": 32,
-   "period": 5.705
+   "period": 5.678
   }
  },
  "verilog-i2c-master": {
@@ -1139,10 +1129,10 @@
   },
   "quality": {
    "part": "xc3s250ecp132-4",
-   "slices": 113,
-   "luts": 223,
-   "ffs": 72,
-   "period": 9.98
+   "slices": 112,
+   "luts": 220,
+   "ffs": 71,
+   "period": 10.881
   }
  },
  "verilog-lfsr-crc": {
@@ -1153,10 +1143,10 @@
   "flow": "complete",
   "quality": {
    "part": "xc3s250ecp132-4",
-   "slices": 50,
-   "luts": 99,
+   "slices": 51,
+   "luts": 102,
    "ffs": 64,
-   "period": 3.756
+   "period": 3.866
   }
  },
  "verilog-lfsr-prbs": {
@@ -1175,7 +1165,7 @@
    "slices": 16,
    "luts": 16,
    "ffs": 31,
-   "period": 2.192
+   "period": 2.108
   }
  },
  "verilog-uart": {
@@ -1186,10 +1176,10 @@
   "flow": "complete",
   "quality": {
    "part": "xc3s250ecp132-4",
-   "slices": 111,
-   "luts": 218,
+   "slices": 109,
+   "luts": 215,
    "ffs": 79,
-   "period": 6.938
+   "period": 7.832
   }
  },
  "vtr-ch-intrinsics": {
@@ -1215,22 +1205,22 @@
     "WARNING:Silinx:905 (sensitivity) - ch_intrinsics.v:50: One or more signals are missing in the sensitivity list of always block. The missing signals are: <prevTag> <str_out>"
    ],
    "synth": [
-    "Warning: Latch inferred for signal `memory_controller_address' from process `\\memset.$proc': $auto",
-    "Warning: Latch inferred for signal `memory_controller_in' from process `\\memset.$proc': $auto",
-    "Warning: Latch inferred for signal `memory_controller_out [31:8]' from process `\\memset.$proc': $auto",
-    "Warning: Latch inferred for signal `memory_controller_out [7:0]' from process `\\memset.$proc': $auto",
-    "Warning: Latch inferred for signal `memory_controller_write_enable' from process `\\memset.$proc': $auto",
-    "Warning: Latch inferred for signal `memtroll.str_address' from process `\\memset.$proc': $auto",
-    "Warning: Latch inferred for signal `memtroll.str_in' from process `\\memset.$proc': $auto",
-    "Warning: Latch inferred for signal `memtroll.str_write_enable' from process `\\memset.$proc': $auto"
+    "Warning: Latch inferred for signal `memory_controller_address' from process `\\memset.$memset_syn.v:156$proc': $auto",
+    "Warning: Latch inferred for signal `memory_controller_in' from process `\\memset.$memset_syn.v:156$proc': $auto",
+    "Warning: Latch inferred for signal `memory_controller_out [31:8]' from process `\\memset.$memset_syn.v:50$proc': $auto",
+    "Warning: Latch inferred for signal `memory_controller_out [7:0]' from process `\\memset.$memset_syn.v:50$proc': $auto",
+    "Warning: Latch inferred for signal `memory_controller_write_enable' from process `\\memset.$memset_syn.v:156$proc': $auto",
+    "Warning: Latch inferred for signal `memtroll.str_address' from process `\\memset.$memset_syn.v:50$proc': $auto",
+    "Warning: Latch inferred for signal `memtroll.str_in' from process `\\memset.$memset_syn.v:50$proc': $auto",
+    "Warning: Latch inferred for signal `memtroll.str_write_enable' from process `\\memset.$memset_syn.v:50$proc': $auto"
    ]
   },
   "quality": {
    "part": "xc3s250ecp132-4",
-   "slices": 266,
+   "slices": 265,
    "luts": 166,
    "ffs": 509,
-   "period": 6.582
+   "period": 5.606
   }
  },
  "vtr-diffeq1": {
@@ -1246,10 +1236,10 @@
   },
   "quality": {
    "part": "xc3s500efg320-4",
-   "slices": 260,
+   "slices": 261,
    "luts": 409,
    "ffs": 451,
-   "period": 36.627
+   "period": 36.284
   }
  },
  "vtr-diffeq2": {
@@ -1265,10 +1255,10 @@
   },
   "quality": {
    "part": "xc3s500efg320-4",
-   "slices": 142,
-   "luts": 278,
+   "slices": 143,
+   "luts": 279,
    "ffs": 96,
-   "period": 27.446
+   "period": 25.05
   }
  },
  "vtr-mkPktMerge": {
@@ -1316,10 +1306,10 @@
   },
   "quality": {
    "part": "xc3s250ecp132-4",
-   "slices": 719,
-   "luts": 751,
+   "slices": 720,
+   "luts": 747,
    "ffs": 962,
-   "period": 6.941
+   "period": 7.475
   }
  },
  "vtr-sha": {
@@ -1330,10 +1320,10 @@
   "flow": "complete",
   "quality": {
    "part": "xc3s250ecp132-4",
-   "slices": 796,
-   "luts": 1590,
+   "slices": 766,
+   "luts": 1529,
    "ffs": 893,
-   "period": 16.479
+   "period": 15.231
   }
  },
  "vtr-stereovision3": {
@@ -1348,15 +1338,15 @@
     "WARNING:Silinx:737 (latch) - stereovision3.v:642: Found 1-bit latch for signal <rst_done>. Latches may be generated from incomplete case or if statements."
    ],
    "synth": [
-    "Warning: Latch inferred for signal `rst_done' from process `\\sv_chip3_hierarchy_no_mem.$proc': $auto"
+    "Warning: Latch inferred for signal `rst_done' from process `\\sv_chip3_hierarchy_no_mem.$sv_chip3_hierarchy_no_mem_syn.v:499$proc': $auto"
    ]
   },
   "quality": {
    "part": "xc3s250ecp132-4",
-   "slices": 64,
-   "luts": 126,
-   "ffs": 99,
-   "period": 7.75
+   "slices": 79,
+   "luts": 156,
+   "ffs": 120,
+   "period": 7.251
   }
  }
 }
