@@ -192,7 +192,7 @@ export const SOURCE_TOOLS = [
   },
   {
     name: 'delete_project', title: 'Delete a project',
-    description: 'Delete projects, as Open Project\'s Delete: each folder moved to the workspace\'s .trash. All checked first: refused while a process of one runs or it is shared live.',
+    description: 'Delete projects (Open Project\'s Delete): each folder into the workspace\'s .trash. All checked first: refused while one\'s process runs or it is shared live.',
     inputSchema: { type: 'object', properties: { project: PROJECT, projects: { type: 'array', items: { type: 'string' }, description: 'Several (instead of project).' } }, additionalProperties: false },
     annotations: { readOnlyHint: false, destructiveHint: true },
     async run({ project: one, projects: many }) {

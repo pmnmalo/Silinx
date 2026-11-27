@@ -29,7 +29,7 @@ const LIST = NOTATIONS.map(([id, name, ex]) => `${id} (${name}: ${ex})`).join(',
 export const NOTATION_TOOLS = [
   {
     name: 'set_notation', title: 'Boolean Notation',
-    description: `The notation of the Boolean expressions Silinx shows (truth tables, K-map groups, state diagrams' tables, the conditions conversions write): ${LIST}; the first the default. As Settings ▸ Boolean Notation, for this MCP server (kept in its configuration). With project and path of a truth table: that table's own notation, as its editor's ⋮ menu sets it (settings: none of its own). Without notation: the one set (or the table's). Expressions are typed in any of them.`,
+    description: `The notation of the Boolean expressions Silinx shows (truth tables, K-map groups, state diagrams' tables, the conditions conversions write): ${LIST}; the first the default. As Settings ▸ Boolean Notation (kept in this server's configuration). With project and path of a truth table: that table's own notation, as its editor's ⋮ menu (settings: none of its own). Without notation: the one set (or the table's). Expressions are typed in any of them.`,
     inputSchema: { type: 'object', properties: { notation: { type: 'string', enum: [...NOTATION_IDS, 'settings'], description: 'The notation to set (settings: a table with none of its own).' },
       project: PROJECT, path: STR('A truth table of the project (.bool.json, .tt.json): its own notation.') }, additionalProperties: false },
     annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true },
@@ -46,7 +46,7 @@ export const NOTATION_TOOLS = [
   },
   {
     name: 'set_schematic_symbols', title: 'Schematic Symbols',
-    description: `The standard the schematics' gates, inverters and buffers are drawn in: ${SYMBOL_STANDARDS.map(([id, n]) => `${id} (${n})`).join(', ')}; the first the default. As Settings ▸ Schematic Symbols, for this MCP server (kept in its configuration). The look only: the pins, the file, its netlist, HDL and ISE export are the same. Without symbols: the one set.`,
+    description: `The standard the schematics' gates, inverters and buffers are drawn in: ${SYMBOL_STANDARDS.map(([id, n]) => `${id} (${n})`).join(', ')}; the first the default. As Settings ▸ Schematic Symbols (kept in this server's configuration). The look only: the pins, the file, its netlist, HDL and ISE export are the same. Without symbols: the one set.`,
     inputSchema: { type: 'object', properties: { symbols: { type: 'string', enum: [...SYMBOL_STANDARD_IDS], description: 'The standard to set.' } }, additionalProperties: false },
     annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true },
     async run({ symbols } = {}) {
