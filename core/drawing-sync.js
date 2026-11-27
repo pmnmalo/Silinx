@@ -16,6 +16,7 @@ import { modelRunners } from './circuit-live-model.js';
 import { syncNodeMain } from './node-main-sync.js';
 import { codeName, cpuDrawingRefusal, drawingC, drawingNode, isCodeFile, isCpuLang, nodeCodeOpts } from './drawing-code.js';
 import { cacheState, drawingHash, readStamp, stampHdl } from './hdl-cache.js';
+import { checkSymbols } from './symbol-sync.js';
 
 const kindOf = path => VIEW_RE.exec(path)?.[1].toLowerCase();
 const indent = path => (kindOf(path) === 'sch' ? 1 : 2);
@@ -138,19 +139,30 @@ export async function syncDrawing(P, name, path, modules = null, { fast = false,
  *  changes or before a flow runs: one made from the drawing as it is and not changed since left as it is (its
  *  silinx-sync line's hashes), the others made again (syncDrawing's: an HDL file changed outside Silinx kept in a
  *  version, the drawing winning; a drawing with errors leaves its file, stale, and the flows stop on it). A drawing with
- *  no HDL file in the project is left as it is (adoptDrawing's, as the interface's opening). only: these drawings. The schematics last (the modules they use made
- *  first). { results: [{ path, ...syncDrawing's }] (those that did or said something), written: [the
- *  files written], messages }. */
+ *  no HDL file in the project is left as it is (adoptDrawing's, as the interface's opening). only: these drawings. The
+ *  schematics last (the modules they use made first). Then the modules' symbols put in step with their interfaces, and
+ *  the schematics' instances of the modules made again flagged when out of date (core/symbol-sync.js). { results: [{
+ *  path, ...syncDrawing's }] (those that did or said something; a symbol file's, a schematic's flagged instances:
+ *  instances), written: [the files written], messages }. */
 export async function checkDrawings(P, name, { only = null } = {}) {
   const drawings = (await P.fileTree(name)).filter(f => kindOf(f) && (!only || only.includes(f)))
     .sort((a, b) => (kindOf(a) === 'sch') - (kindOf(b) === 'sch') || a.localeCompare(b));
   const out = { results: [], written: [], messages: [] };
+  const changed = [];
   for (const f of drawings) {
     const r = await syncDrawing(P, name, f, null, { fast: true, outside: true });
     if (!r || (!r.written && !r.removed && !r.messages.length)) continue;
     out.results.push({ path: f, ...r });
     for (const w of [r.written, r.removed]) if (w && !out.written.includes(w)) out.written.push(w);
     out.messages.push(...r.messages);
+    if (r.written && !r.stamped) { try { changed.push(JSON.parse(await P.readFile(name, f)).name); } catch { /* not its JSON */ } }
+  }
+  // the symbols in step with their modules, the schematics' instances of the modules made again flagged (#5872)
+  if (changed.length || (await P.fileTree(name)).some(isSymbolFile)) {
+    const s = await checkSymbols(P, name, await projectModules(P, name), { changed: changed.filter(Boolean) });
+    for (const f of s.written) { out.written.push(f); out.results.push({ path: f, target: f, written: f, removed: null, stale: null, messages: s.messages.filter(m => m.startsWith(`${f} `)) }); }
+    for (const x of s.stale) out.results.push({ path: x.path, target: null, written: null, removed: null, stale: null, instances: { module: x.module, ids: x.instances }, messages: s.messages.filter(m => m.startsWith(`WARNING: ${x.path}: `) && m.includes(` of ${x.module} `)) });
+    out.messages.push(...s.messages);
   }
   return out;
 }

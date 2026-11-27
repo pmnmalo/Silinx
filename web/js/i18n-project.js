@@ -48,6 +48,11 @@ export const PROJECT_PT_PATTERNS = [
   [/^(\S+): its module was changed outside Silinx: made again from the drawing; the changed file could not be kept in a version: (.+)\.$/,
     '$1: o seu módulo foi alterado fora do Silinx: gerado de novo a partir do desenho; o ficheiro alterado não pôde ser guardado numa versão: $2.'],
   [/^the drawings' HDL files not checked: (.+)$/, 'os ficheiros HDL dos desenhos não foram verificados: $1'],
+  // (a module's symbol in step with its interface, #5872: core/symbol-sync.js)
+  [/^(\S+) updated: the ports of (\S+) changed$/, '$1 atualizado: as portas de $2 mudaram'],
+  [/^(\S+) updated: the ports of (\S+) changed \((.+)\)$/, (m, f, mod, what) => `${f} atualizado: as portas de ${mod} mudaram (${what.replace(/\badded\b/g, 'acrescentadas').replace(/\bremoved\b/g, 'removidas')})`],
+  [/^(\S+): (\d+) instance\(s\) of (\S+) out of date \((.+)\): Update Symbol \(its right-click menu\) or update_symbols updates them, their wires kept\.$/,
+    '$1: $2 instância(s) de $3 desatualizada(s) ($4): Atualizar Símbolo (o seu menu de botão direito) ou update_symbols atualiza-as, mantendo os seus fios.'],
   // Remove from Project (web/js/design.js)
   [/^Removed (\S+) and its HDL file (\S+) from the project \(the files are kept in the project folder\)\.$/, 'Removidos do projeto $1 e o seu ficheiro HDL $2 (os ficheiros ficam na pasta do projeto).'],
   [/^Removed (.+) from the project \(the file is kept in the project folder\)\.$/, 'Removido $1 do projeto (o ficheiro fica na pasta do projeto).'],
