@@ -45,6 +45,7 @@ export const WIZARDS_PT = {
   'Replace Project': 'Substituir Projeto',   // (New Project's and the imports', #3538)
   // Rename Project… (#4641)
   'Rename Project…': 'Mudar o Nome do Projeto…', 'Rename Project': 'Mudar o Nome do Projeto',
+  'Delete Project': 'Apagar Projeto', 'Delete Projects': 'Apagar Projetos',   // (Open Project's Delete, #5785)
   'A letter, then letters, digits, - and _. The project stays open; its folder is renamed.': 'Uma letra, depois letras, dígitos, - e _. O projeto continua aberto; a pasta muda de nome.',
   // the FSM and ASM wizards
   'FSM Wizard': 'Assistente de FSM', 'ASM Wizard': 'Assistente de ASM',

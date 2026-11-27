@@ -173,6 +173,30 @@ test('delete_file: a drawing\'s HDL file (the drawing\'s HDL made from it then),
   await fails('delete_project', { project: 'd' }, 'no project \'d\' in the workspace');
 });
 
+test('delete_project: several projects (#5785), every one checked before any is deleted; a process running, a share refused', async () => {
+  for (const n of ['m1', 'm2', 'm3']) await P.createProject({ name: n });
+  // (a missing one among them: none deleted)
+  await fails('delete_project', { projects: ['m1', 'none'] }, 'no project \'none\' in the workspace');
+  assert.ok(fs.existsSync(P.projectDir('m1')));
+  // (one whose process runs: none deleted, the interface's message)
+  const { createJob } = await import('../server/jobs.js');
+  let end;
+  const job = createJob('implement', () => new Promise(r => { end = r; }), { meta: { project: 'm2' } });
+  await fails('delete_project', { projects: ['m1', 'm2'] }, '\'m2\' is not deleted while a process of it runs: stop it (or wait for it to finish) first');
+  end();
+  while (job.status === 'running') await new Promise(r => setTimeout(r, 5));
+  assert.ok(fs.existsSync(P.projectDir('m1')));
+  await fails('delete_project', { project: 'm1', projects: ['m2'] }, 'project or projects, not both');
+  await fails('delete_project', { projects: [] }, 'project or projects: the projects to delete (list_projects)');
+  await fails('delete_project', {}, 'project or projects: the projects to delete (list_projects)');
+  // (each once, in its order: a line each)
+  const r = await ok('delete_project', { projects: ['m3', 'm1', 'M1'] });
+  assert.equal(r.text, 'Project \'m3\' deleted (moved to the workspace\'s .trash folder).\nProject \'m1\' deleted (moved to the workspace\'s .trash folder).');
+  assert.deepEqual(r.data, { projects: ['m3', 'm1'], deleted: true });
+  assert.ok(!fs.existsSync(P.projectDir('m1')) && !fs.existsSync(P.projectDir('m3')) && fs.existsSync(P.projectDir('m2')));
+  assert.deepEqual((await ok('delete_project', { project: 'm2' })).data, { projects: ['m2'], deleted: true, project: 'm2' });
+});
+
 test('a hidden file or folder of a project (.git, .env, .vscode) refused by every tool that takes a path (#3035); an ordinary file and a report of build/ read as before', async () => {
   await ok('new_project_from_example', { name: 'h', example: 'traffic' });
   const dir = P.projectDir('h');

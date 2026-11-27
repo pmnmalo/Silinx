@@ -268,6 +268,9 @@ table.grid tr.sel td { background: #dbe8fb; }
 .msg-icon { width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: #fff; font: bold 18px Georgia; flex: none; background: #2b6fd1; }
 .msg-error .msg-icon { background: #d42020; }
 .msg-warn .msg-icon { background: #f5c400; color: #000; }
+.dlg .btn.danger { color: var(--danger); }
+.open-project-list tr[data-project] { user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; }   /* (a long press selects, #5785) */
+.open-project-list:focus-visible { outline: 1px dotted var(--fg, currentColor); }   /* (a dialog's dangerous choice: Delete Project's Delete, #5785) */
 .msg-text { padding-top: 6px; white-space: pre-wrap; max-width: 520px; }
 
 /* start page / summary */

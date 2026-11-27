@@ -192,13 +192,23 @@ export const SOURCE_TOOLS = [
   },
   {
     name: 'delete_project', title: 'Delete a project',
-    description: 'Delete a project of the workspace: its folder is moved to the workspace\'s .trash folder (from where it can be taken back by hand).',
-    inputSchema: { type: 'object', properties: { project: PROJECT }, required: ['project'], additionalProperties: false },
+    description: 'Delete projects, as Open Project\'s Delete: each folder moved to the workspace\'s .trash. All checked first: refused while a process of one runs or it is shared live.',
+    inputSchema: { type: 'object', properties: { project: PROJECT, projects: { type: 'array', items: { type: 'string' }, description: 'Several (instead of project).' } }, additionalProperties: false },
     annotations: { readOnlyHint: false, destructiveHint: true },
-    async run({ project: name }) {
-      await readProject(name);
-      try { await P.deleteProject(name); } catch (e) { throw toolError(e.message); }
-      return { text: `Project '${name}' deleted (moved to the workspace's .trash folder).`, data: { project: name, deleted: true } };
+    async run({ project: one, projects: many }) {
+      if (one !== undefined && many !== undefined) throw toolError('project or projects, not both');
+      const { deleteList } = await import('../core/project-delete.js');
+      const { checkDelete, deleteProjectChecked } = await import('./project-delete.js');
+      const { sharedHere } = await import('./mcp-collab.js');
+      let names;
+      try { names = deleteList(many !== undefined ? many : one !== undefined ? [one] : []); } catch { throw toolError('project or projects: the projects to delete (list_projects)'); }
+      // every project checked before any is deleted (#5785)
+      for (const name of names) { await readProject(name); try { checkDelete(name, { shared: sharedHere }); } catch (e) { throw toolError(e.message); } }
+      const lines = [];
+      for (const name of names) {
+        try { lines.push((await deleteProjectChecked(name, { shared: sharedHere })).message); } catch (e) { throw toolError([...lines, `${name}: ${e.message}`].join('\n')); }
+      }
+      return { text: lines.join('\n'), data: { projects: names, deleted: true, ...(names.length === 1 ? { project: names[0] } : {}) } };
     },
   },
   {
