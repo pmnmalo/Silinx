@@ -10,6 +10,7 @@ import { withProfile } from './project-profile.js';
 import { isName } from './ident.js';
 import { nodeIdError } from './system-doc.js';
 import { relInNode } from './system-layout.js';
+import { isPsPath } from './zynq-ps.js';
 
 const same = (a, b) => String(a ?? '').toUpperCase() === String(b ?? '').toUpperCase();
 
@@ -59,6 +60,7 @@ export function nodeConstraints(node, ports) {
  *  (#5488); nothing else changed. */
 export function nodeProject(pj, node, constraints) {
   const board = nodeBoard(node);
-  const files = (pj.files || []).filter(f => relInNode(f.path, node.id) != null);
+  // (its PS's program not the PL's, #4686)
+  const files = (pj.files || []).filter(f => relInNode(f.path, node.id) != null && !isPsPath(relInNode(f.path, node.id)));
   return { ...withProfile(pj, 'fpga'), top: node.module, board: node.board, device: { ...board.device }, constraints, files };
 }

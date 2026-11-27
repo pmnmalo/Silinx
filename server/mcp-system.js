@@ -16,6 +16,7 @@ import { boardLines, matchBoards } from '../core/system-usb.js';
 import { applyNodeFolders } from './system-folders.js';
 import { constraintsTexts } from './system-constraints.js';
 import { withNodePins, pinsToConstraints } from '../core/system-constraints.js';
+import { psWrites } from '../core/zynq-ps.js';
 
 // the circuit nodes' circuits ({ path: circuit }; one that cannot be read left out: its node's check says so, #5215)
 async function projectCircuits(name, sys, files) {
@@ -80,7 +81,7 @@ const SYS_FILE = STR('The System document (.sys.json).');
 const EDIT = { type: 'object', properties: {
   action: { type: 'string', enum: EDIT_ACTIONS },
   node: { type: 'string' }, interface: { type: 'string' }, link: { type: 'string' },
-  fields: { type: 'object', description: 'kind id board module variant pins firmware runtime circuit spiHz (a circuit\'s SPI clock, its wires\' latency) lang usb x y; name, its kind\'s fields; a b (node.interface)' },
+  fields: { type: 'object', description: 'kind id board module variant pins firmware runtime circuit spiHz (a circuit\'s SPI clock) ps (a Zynq\'s PS program <id>/ps/*.c, made if new) lang usb x y; name, its kind\'s fields; a b (node.interface)' },
 }, required: ['action'], additionalProperties: false };
 
 export const SYSTEM_TOOLS = [
@@ -106,6 +107,8 @@ export const SYSTEM_TOOLS = [
       said.push(...await applyNodeFolders(name, layoutPlan(before, system, renames), { deleteFolders: !!deleteFolders }));
       // (its pins, edited or of before, in its FPGA nodes' constraints files, #5581)
       system = await pinsToFiles(name, system, said);
+      // (a Zynq board's PS's program named and not in the project: its starter, #4686)
+      for (const w of psWrites(system, await P.fileTree(name))) { await P.writeFile(name, w.path, w.text); said.push(`${w.path}: the PS's starter program`); }
       const text = writeSystem(system);
       await P.writeFile(name, file, text);
       const { lines, errors, warnings } = await checkSystemFile(name, file, text);

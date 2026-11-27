@@ -23,6 +23,7 @@ import { endsProblem } from './system-links.js';
 import { usbError } from './usb-id.js';
 import { RUNTIME_NAMES } from './rp2040-firmware.js';
 import { withNodePins } from './system-constraints.js';
+import { psProblems } from './zynq-ps.js';
 
 const node = id => ({ kind: 'node', id });
 const link = id => ({ kind: 'link', id });
@@ -168,9 +169,11 @@ function checkInterface(n, f, at, { err, warn }) {
 }
 
 // an FPGA node: its module, its board, its ports' pins
-function checkFpga(n, at, { modules }, { err, warn }) {
+function checkFpga(n, at, { modules, files }, { err, warn }) {
   const ref = node(n.id);
   if (!n.module) err(`${n.id}: an FPGA node with no module`, ref);
+  // (a Zynq board's processing system: its program, its board's PS, #4686)
+  for (const p of psProblems(n, files ?? null)) err(p, ref);
   const entry = n.module && modules ? Object.entries(modules).find(([k]) => lc(k) === lc(n.module)) : null;
   const ports = entry?.[1] ?? null;   // (null: a module whose ports are not known, not elaborated: not checked)
   if (n.module && modules && !entry) err(`${n.id}: no module '${n.module}' in the project`, ref);

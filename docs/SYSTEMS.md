@@ -1136,7 +1136,11 @@ The existing `program_board` and `capture` serve the FPGA nodes.
      a board's `ps` description (`core/boards-vivado.js`: the Zybo Z7's and the Arty Z7's PS_CLK, PLLs, CPU, UART on the
      MIO, FCLK0), with no DDR (a program in the OCM): the MIO, the ARM and IO PLLs, the clocks, then after the PL is
      configured the level shifters and the PL's resets; data the JTAG loader runs through the ARM DAP (#4687);
-   - a Zynq board as a co-design node (roadmap #5412);
+   - a Zynq board as a co-design node (roadmap #5412; #4686, part 2): no node kind of its own (Pedro's model) but an
+     FPGA node on a board with a `ps` (the Zybo Z7, the Arty Z7), its PL built as any FPGA board's, its processing
+     system's program its `ps`, a C file of its folder's `ps/` (`core/zynq-ps.js`: its place, its checks, its starter
+     program, its description; the PL's build leaves `ps/` out), set by edit_system's `ps` (its starter written when the
+     project has none); a Board project on a Zynq board the same, its silinx.json's `ps` at the root (`ps/main.c`);
    - the PS–PL as an AXI-Lite link, the Zynq's processor engines as the scheduler's adapters;
    - #4396's soft cores as FPGA nodes with the common instruction view.
 
