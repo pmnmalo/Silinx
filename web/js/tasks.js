@@ -399,7 +399,7 @@ function taskButton(t) {
 
 // the task switchers, the task's bar and the page of a task with no document: there in the Tasks interface
 // only (the other interfaces' pages, their tests and their translations do not have them)
-const PARTS = ['task-switch', 'task-tabs', 'task-bar', 'task-empty', 'task-sim-panel', 'task-sim-split', 'task-impl-bar', 'task-procs-tab', 'task-emu-tab', 'task-emu-panel', 'task-view', 'task-impl-files', 'task-flow-files-tab', 'task-files-bar', 'task-close-bar'];   // (their ids)
+const PARTS = ['task-switch', 'task-tabs', 'task-bar', 'task-empty', 'task-sim-panel', 'task-sim-split', 'task-procs-tab', 'task-emu-tab', 'task-emu-panel', 'task-view', 'task-impl-files', 'task-flow-files-tab'];   // (their ids)
 const PAGE_NAME = { start: 'Start', design: 'Design', test: 'Test', files: 'Files', libraries: 'Libraries', teaching: 'Teaching', collab: 'Collaboration', procs: 'Implementation', emu: 'Emulate' };
 function build() {
   const $ = id => document.getElementById(id);
@@ -442,15 +442,9 @@ function build() {
   // Emulate's: its Processes as Implement's, under its tab (#1399; web/js/processes.js draws every .task-emu-tree)
   $('left-tabs').append(h('div', { id: 'task-emu-tab', class: 'tab', 'data-page': 'emu', role: 'tab', 'aria-selected': 'true' },
     h('span', { class: 'ico-inline tab-ico', html: icons.mBoard }), h('span', { class: 'tab-lbl' }, 'Emulate')));
-  // (I/O Pin Planning and Emulate above them, as Implement's bar, #1424; Emulate on Board before #5789)
+  // (I/O Pin Planning and Emulate: the project's and the device's menus, web/js/device-menu.js; a bar above them before
+  // #5939, #1424)
   $('proc-panel').after(h('div', { class: 'ise-panel', id: 'task-emu-panel' },
-    h('div', { id: 'task-emu-bar' },
-      h('button', { class: 'btn', type: 'button', 'data-act': 'pins', onclick: () => app.S.project?.top && app.openPinPlanner(undefined, { task: 'emu' }) }, 'I/O Pin Planning'),   // (in Emulate, #5642)
-      // (a System project's: Emulate System, its ticked nodes, #5581; web/js/processes.js names the button)
-      h('button', { class: 'btn', type: 'button', 'data-act': 'emulate', onclick: async () => {
-        if ((await import('./design-system.js')).systemTop()) return (await import('./system-emulate-ui.js')).emulateSystem();
-        if (app.S.project?.top) (await import('./viewers.js')).openEmulator(app.S.project.top);
-      } }, 'Emulate')),
     h('div', { class: 'body task-emu-tree' }),
     h('ul', { id: 'task-emu-files', class: 'tree task-flow-files', 'aria-label': 'Files' })));
   for (const t of $('left-tabs').querySelectorAll('.tab')) t.title = PAGE_NAME[t.dataset.page];
@@ -458,41 +452,16 @@ function build() {
   // in its Processes panel, below)
   mountFlowFiles(app, { tabs: $('left-tabs') });
   // (the Design page's New Source and Import Source: each device's row's [New] and [Import], #5873, web/js/design-system.js;
-  // above the tree before, #1210, #1501)
-  const wizard = f => () => import('./wizards.js').then(w => w[f]());
-  // and Check Design and Close Project at its end, under the tree (#1309; Check Design: the top module's Check Syntax,
-  // its whole hierarchy, whatever the tree selects)
-  $('hier').after(h('div', { id: 'task-close-bar' },
-    h('button', { class: 'btn', type: 'button', 'data-act': 'check-design', onclick: () => app.S.project?.top && import('./processes.js').then(p => p.checkSyntax(app.S.project.top)) }, 'Check Design'),
-    h('button', { class: 'btn', type: 'button', onclick: () => app.S.project && app.closeProject() }, 'Close Project')));
-  // Implement's Processes: I/O Pin Planning and Program FPGA above them (#1398; Program FPGA iMPACT's, opened beside); its
-  // Files page after them (#4609)
+  // above the tree before, #1210, #1501; its Check Design and Close Project: the project's and the device's menus, under the
+  // tree before, #1309, #5939)
+  // Implement's Processes (I/O Pin Planning and Program FPGA: the project's and the device's menus, web/js/device-menu.js, a
+  // bar above them before #5939, #1398); its Files page after them (#4609)
   $('procs').after(h('ul', { id: 'task-impl-files', class: 'tree task-flow-files', 'aria-label': 'Files' }));
-  $('procs').before(h('div', { id: 'task-impl-bar' },
-    // (a System project's: Build All and Program All, #5581's part 4; web/js/processes.js names the buttons)
-    h('button', { class: 'btn', type: 'button', 'data-act': 'pins', onclick: async () => {
-      if (sysImpl()) return (await import('./system-implement-tree.js')).buildAll();
-      if (app.S.project?.top) app.openPinPlanner();
-    } }, 'I/O Pin Planning'),
-    h('button', { class: 'btn', type: 'button', 'data-act': 'program', onclick: async () => {
-      if (!app.S.project) return;
-      if (sysImpl()) return (await import('./system-implement-tree.js')).programAll();
-      // (an iMPACT opened before, without its Program FPGA to run from here: opened again, #1421)
-      const old = app.findDoc('impact');
-      if (old && !old.program) await app.closeDoc(old);
-      await app.openImpact();
-      app.findDoc('impact')?.program?.();
-    } }, 'Program FPGA')));
-  // the Files page: Add to Project (the folder's files not in the project) and Add Copy to Project (#1214)
-  $('files-page').before(h('div', { id: 'task-files-bar' },
-    h('button', { class: 'btn', type: 'button', onclick: () => import('./design.js').then(d => d.addFromFolderDialog()) }, 'Add to Project…'),
-    h('button', { class: 'btn', type: 'button', onclick: wizard('addSourceDialog') }, 'Add Copy to Project…')));
+  // (the Files page's Add to Project and Add Copy to Project, #1214: its files' and folders' menus, a bar above it before #5939)
   app.renderHierarchy();   // (one tree, no views: #799)
   app.renderProcesses();   // (and Emulate's Processes, #1399)
   refreshDots();
 }
-// a System project's Implement bar (#5581's part 4: web/js/processes.js marks it)
-const sysImpl = () => document.getElementById('task-impl-bar')?.dataset.system === '1';
 // The header's room (#839): every label of the switcher if they fit, else the current task's only, else none,
 // else a shorter project name too (#topbar data-fit; the window's width, the language and a development
 // build's Development menu decide it, not a fixed width).
@@ -584,14 +553,7 @@ export function initTasks(a) {
   // menu, the project's name)
   new ResizeObserver(() => fitHeader()).observe($('topbar'));
   new MutationObserver(() => fitHeader()).observe($('topbar'), { childList: true, subtree: true, characterData: true });
-  // the bars' buttons as the project is: at once when it opens, is drawn again or its design changes (its top set or
-  // unset), and once a second (#1423)
-  // (a System project's Emulate: Emulate System, its I/O Pin Planning a node's, #5581: web/js/processes.js marks the bar)
-  const sysEmu = b => b.closest('#task-emu-bar, #task-impl-bar')?.dataset.system === '1';
-  const barsNow = () => { for (const b of document.querySelectorAll('#task-files-bar button, #task-close-bar button, #task-impl-bar button, #task-emu-bar button')) b.disabled = !app.S.project || (sysEmu(b) ? b.dataset.act === 'pins' && !b.closest('#task-impl-bar') : ['check-design', 'pins', 'emulate'].includes(b.dataset.act) && !app.S.project.top); };
-  for (const ev of ['silinx:project-opened', 'silinx:design-changed']) addEventListener(ev, () => { if (on()) barsNow(); });
-  new MutationObserver(() => { if (on()) barsNow(); }).observe($('procs'), { childList: true });
-  setInterval(() => { if (on()) { refreshDots(); if (current() === 'sim') { if (simPanel) simPanel.refresh(); else refreshBench(app); tagDocs(); } const g = document.querySelector('#task-empty button'); if (g) g.disabled = !mainEnabled();
-    barsNow(); } }, 1000);
+  // (no bars' buttons to follow the project since #5939: the rows' menus, #1423 before)
+  setInterval(() => { if (on()) { refreshDots(); if (current() === 'sim') { if (simPanel) simPanel.refresh(); else refreshBench(app); tagDocs(); } const g = document.querySelector('#task-empty button'); if (g) g.disabled = !mainEnabled(); } }, 1000);
   apply();
 }

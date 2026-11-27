@@ -7,6 +7,7 @@
 // warnings.
 import { before, after } from 'node:test';
 import assert from 'node:assert/strict';
+import { rowItems, runRowItem } from './row-menu.js';
 import { setupUi, uiTest, makeProject } from './harness.js';
 
 let env;
@@ -54,13 +55,12 @@ uiTest('#1204 #5642 #5789 Tasks ▸ Emulate: the project, its device, its top (n
   await page.click('#task-switch .task-btn[data-task="emu"]');
   // its page: its text, no button: the emulation from the side panel (#1420)
   assert.equal(await page.eval(() => [...document.querySelectorAll('#task-empty button')].filter((b) => b.getClientRects().length).length), 0);
-  // above its processes, I/O Pin Planning and Emulate (#1424, #5789)
-  await page.waitFor(() => !document.querySelector('#task-emu-bar [data-act=emulate]')?.disabled, [], { what: 'on' });
-  assert.deepEqual(await page.eval(() => {
-    const b = [...document.querySelectorAll('#task-emu-bar .btn')].filter((x) => x.getClientRects().length), t = document.querySelector('#task-emu-panel .task-emu-tree').getBoundingClientRect();
-    return { buttons: b.map((x) => x.textContent), above: b.every((x) => x.getBoundingClientRect().bottom <= t.top + 1) };
-  }), { buttons: ['I/O Pin Planning', 'Emulate'], above: true });
-  await page.click('#task-emu-bar [data-act=emulate]');
+  // I/O Pin Planning and Emulate: the project's and the device's menus (a bar above its processes before #5939, #1424, #5789)
+  await page.waitFor((b) => [...document.querySelectorAll(`${b} .row .lbl`)].some((l) => l.textContent === 'xc3s250e-4-cp132'), [BOX], { what: 'the device' });
+  assert.deepEqual(await page.eval(() => document.getElementById('task-emu-bar')), null);
+  assert.deepEqual((await rowItems(page, BOX, 'EmuProcs')).slice(0, 2), ['I/O Pin Planning', 'Emulate']);
+  assert.deepEqual((await rowItems(page, BOX, 'xc3s250e-4-cp132'))[0], 'Emulate');
+  await runRowItem(page, BOX, 'xc3s250e-4-cp132', 'Emulate');
   await page.waitConsole(/Board Emulator: 'top'/, { timeout: 30000 });
   await page.waitFor((b) => document.querySelectorAll(`${b} .task-emu-tree li`).length > 0, [BOX], { what: 'Emulate\'s Processes' });
   assert.deepEqual(await procs(page), { shown: true, side: true, tab: 'Emulate,Files', rows: EN });   // (its Files tab after it, #4609)
@@ -93,7 +93,7 @@ uiTest('#1204 #5642 #5789 Tasks ▸ Emulate: the project, its device, its top (n
   await page.eval(async () => (await import('/js/i18n.js')).setLanguage('pt'));
   await page.waitFor(() => document.querySelector('#task-emu-tab .tab-lbl')?.textContent === 'Emular', [], { what: 'Portuguese' });
   assert.deepEqual((await procs(page)).rows.slice(0, 5), [...HIER, '      Planeamento de Pinos de E/S', '      Emular']);
-  assert.equal(await page.eval(() => document.querySelector('#task-emu-bar [data-act=emulate]').textContent), 'Emular');
+  assert.deepEqual((await rowItems(page, BOX, 'EmuProcs')).slice(0, 2), ['Planeamento de Pinos de E/S', 'Emular']);
   await page.eval(async () => (await import('/js/i18n.js')).setLanguage('en'));
   // (the Board Emulator in front again: I/O Pin Planning is Emulate's document too, #5642, in front since)
   await page.eval(() => window.SilinxApp.activateDoc(window.SilinxApp.findDoc('emulator')));

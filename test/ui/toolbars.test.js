@@ -66,12 +66,12 @@ for (const theme of ['light', 'dark']) {
     await page.waitFor(() => document.querySelector('.doc:not([hidden]) .isim-toolbar')?.getClientRects().length > 0, [], { what: 'the simulation', timeout: 60000 });
     bars.ssim = await toolbar(page);
     await go(page, 'emu');
-    await page.click('#task-emu-bar .btn', { index: 1 });
+    await page.dblclick('#task-emu-panel li[data-proc="emulate"] > .row');   // (its tree's Emulate: a bar's before #5939)
     await page.waitFor(() => document.querySelector('.doc:not([hidden]) .emu-bar')?.getClientRects().length > 0, [], { what: 'the emulator', timeout: 60000 });
     bars.emulator = await toolbar(page);
     await page.eval(() => document.querySelector('.doc:not([hidden]) .emu-bar .btn')?.click());   // (paused)
     await go(page, 'impl');
-    await page.click('#task-impl-bar .btn', { index: 0 });
+    await page.dblclick('#procs li[data-proc="pins"] > .row');   // (its tree's I/O Pin Planning)
     await page.waitFor(() => document.querySelector('.doc:not([hidden]) .pp-bar')?.getClientRects().length > 0, [], { what: 'the pin planner' });
     bars['pin planner'] = await toolbar(page);
     for (const [name, b] of Object.entries(bars)) {
@@ -123,9 +123,9 @@ uiTest('#1409 a touch screen: every button 40 px, the rows 32 px, a document\'s 
   await page.waitFor(() => document.querySelector('.doc:not([hidden]) .editor-bar')?.getClientRects().length > 0, [], { what: 'the HDL' });
   assert.deepEqual(await page.eval(() => {
     const hs = (s) => [...new Set([...document.querySelectorAll(s)].filter((e) => e.getClientRects().length).map((e) => Math.round(e.getBoundingClientRect().height)))];
-    return { header: hs('#topbar .tb-btn'), tasks: hs('#task-switch .task-btn'), bar: hs('#task-close-bar .btn'), rows: hs('#hier .row'),
+    return { header: hs('#topbar .tb-btn'), tasks: hs('#task-switch .task-btn'), bar: hs('#left .btn'), rows: hs('#hier .row'),
       tools: hs('.doc:not([hidden]) .editor-bar :is(.btn, .tb-btn)') };
-  }), { header: [40], tasks: [40], bar: [40], rows: [32], tools: [36] });
+  }), { header: [40], tasks: [40], bar: [], rows: [32], tools: [36] });   // (no button in Design's page, #5939)
   await noWarnings(page);
 }, { tablet: 'landscape' });
 

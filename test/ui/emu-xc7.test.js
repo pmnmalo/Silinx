@@ -4,6 +4,7 @@
 // switches and the centre button drive the LEDs, SW0 the digit. In Portuguese; both interfaces and the Tasks interface. Its warnings Check Syntax's only.
 import { before, after } from 'node:test';
 import assert from 'node:assert/strict';
+import { rowItems, runRowItem } from './row-menu.js';
 import { setupUi, uiTest, makeProject, readWs } from './harness.js';
 import { resolveBoard } from '../../server/devices.js';
 
@@ -102,18 +103,19 @@ uiTest('#3704 the Tasks interface: a Basys 3 project has the Emulate task; Emula
   await basys3(page, 'Emu7Tasks');
   assert.deepEqual(await page.eval(() => [...document.querySelectorAll('#task-switch .task-btn')].map((b) => b.dataset.task)), ['edit', 'sim', 'emu', 'impl']);
   await page.click('#task-switch .task-btn[data-task="emu"]');
-  await page.waitFor(() => !document.querySelector('#task-emu-bar [data-act=emulate]')?.disabled, [], { what: 'Emulate on' });
   // its processes: the top's I/O Pin Planning (no User Constraints folder, #5642) and Emulate, its RTL model only; under
   // the project, the device and the top module (#5789)
   await page.waitFor(() => document.querySelectorAll('#task-emu-panel .task-emu-tree li').length > 0, [], { what: 'Emulate\'s Processes' });
   const dev = await page.eval(() => { const d = window.Silinx.project.device; return `${d.part}${d.speed}-${d.package}`; });
   assert.deepEqual(await page.eval(() => [...document.querySelectorAll('#task-emu-panel .task-emu-tree .row .lbl')].map((x) => x.textContent)),
     ['Emu7Tasks', dev, 'emu7', 'I/O Pin Planning', 'Emulate', 'Emulate Behavioral Model (RTL)']);
-  await page.click('#task-emu-bar [data-act=emulate]');
+  // (Emulate: the device's menu's, a bar above the tree before #5939)
+  assert.deepEqual((await rowItems(page, '#task-emu-panel', dev)).slice(0, 2), ['Emulate', 'New Source…']);
+  await runRowItem(page, '#task-emu-panel', dev, 'Emulate');
   await reacts(page);
   await page.eval(async () => (await import('/js/i18n.js')).setLanguage('pt'));
   await page.waitFor(() => document.querySelector('#task-switch .task-btn[data-task="emu"]')?.textContent.includes('Emular'), [], { what: 'Portuguese' });
-  assert.equal(await page.eval(() => document.querySelector('#task-emu-bar [data-act=emulate]').textContent), 'Emular');
+  assert.equal((await rowItems(page, '#task-emu-panel', dev))[0], 'Emular');
   await page.eval(async () => (await import('/js/i18n.js')).setLanguage('en'));
   await page.eval(() => localStorage.removeItem('silinx.ui'));
   await warnings(page);

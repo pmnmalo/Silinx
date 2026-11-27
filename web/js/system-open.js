@@ -208,9 +208,11 @@ export async function openSystem(path) {
   });
 }
 
-/** The System's row's menu in the Design pane: Open, Check System (its lines in the Console). */
-export function systemContextMenu(e, file) {
+/** The System's row's menu in the Design pane: Open, Check System (its lines in the Console); a node's row's (`items`, its
+ *  device's: web/js/device-menu.js, #5878) before them. */
+export function systemContextMenu(e, file, items = []) {
   popupMenu([
+    ...items, ...(items.length ? ['-'] : []),
     { label: 'Open', action: () => openSystem(file) },
     { label: 'Check System', action: async () => { await openSystem(file); findDoc(`sys:${file}`)?.checkSystem?.(); } },
     { label: 'Emulate System', action: async () => (await import('./system-emulate-ui.js')).emulateSystem() },

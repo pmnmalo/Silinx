@@ -54,17 +54,7 @@ html[data-layout="tasks"] #menubar { display: none; }
 html[data-layout="tasks"] #topbar > #toolbar { height: auto; padding: 0; margin-left: 6px; background: none; border: none; min-width: 0; }
 html[data-layout="tasks"] #toolbar .tb-btn:is([data-cmd="stop"], [data-cmd="gear"], [data-cmd="help"]),
 html[data-layout="tasks"] #toolbar .tb-btn[data-cmd="find"] ~ .tb-sep { display: none; }
-/* the Design page's New Source and Import Source (#1501), above the tree, half of the panel each (#1210); the Files
-   page's Add to Project and Add Copy to Project (#1214) */
-/* (the Simulation hierarchy's, as Design's: #1385, web/js/tasks-sim-tree.js) */
-.task-sim-src-bar { display: none; }
-#task-impl-bar, #task-emu-bar { display: none; }
-html[data-layout="tasks"][data-task="impl"] #task-impl-bar, html[data-layout="tasks"][data-task="emu"] #task-emu-bar,
-html[data-layout="tasks"] :is(#task-files-bar, #task-close-bar, .task-sim-src-bar, #start-page .start-btns) { display: flex; flex: none; gap: var(--m-bar-pad); padding: var(--m-bar-pad) var(--m-bar-pad) 2px; margin: 0; }
-html[data-layout="tasks"] #task-close-bar { padding: 4px var(--m-bar-pad) var(--m-bar-pad); border-top: 1px solid var(--m-border); }   /* (under the tree, #1309) */
-html[data-layout="tasks"] :is(#task-files-bar, #task-close-bar, .task-sim-src-bar, #task-impl-bar, #task-emu-bar, #start-page .start-btns) .btn { flex: 1 1 0; min-width: 0; padding: 4px 6px; font-size: var(--m-fs-sm); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-/* a design and simulation project (#3780): no HDL test bench imported */
-html[data-layout="tasks"][data-project-kind="design"] .task-sim-src-bar [data-act="add-bench"] { display: none; }
+/* (no bar above or under a side panel's tree since #5939: its rows' menus have their commands) */
 html[data-layout="tasks"] #design-panel { flex: 1; }
 
 /* ------------------------------------------------------------------ the task's bar (the toolbar's right end) */
@@ -268,7 +258,6 @@ html[data-layout="tasks"] #left-pages .ise-panel > .caption { display: none; }
 /* the Start page in the side panel: its buttons a bar as the other pages' (above), its sections inset as a tree's rows (#1409) */
 html[data-layout="tasks"] #start-page > .page { padding: 0 0 12px; }
 html[data-layout="tasks"] #start-page .start-box { margin: 0 12px; }
-html[data-layout="tasks"] #start-page .start-btns + .start-box { margin-top: 10px; }
 html[data-layout="tasks"]:not([data-task="impl"]) #task-procs-tab { display: none; }
 html[data-layout="tasks"][data-task="impl"] #left-tabs .tab:not(#task-procs-tab, #task-flow-files-tab) { display: none; }
 html[data-layout="tasks"][data-task="impl"] #left-tabs #task-procs-tab { flex: 1 1 auto; justify-content: flex-start; background: var(--m-accent-soft); color: var(--m-accent); font-weight: 600; }
@@ -332,4 +321,4 @@ html[data-layout="tasks"] .task-sim-tabs .tab[data-page]:not(.active) { padding:
 html[data-layout="tasks"] .task-sim-tabs .tab[data-page]:not(.active) .tab-lbl { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
 .task-sim-files { display: none; }
 html[data-layout="tasks"] [data-sim-page="files"] > .task-sim-files { display: block; flex: 1; min-height: 0; overflow: auto; padding: 4px 0; }
-html[data-layout="tasks"] [data-sim-page="files"] > :is(.task-sim-src-bar, .task-sim-trees, .body) { display: none !important; }
+html[data-layout="tasks"] [data-sim-page="files"] > :is(.task-sim-trees, .body) { display: none !important; }

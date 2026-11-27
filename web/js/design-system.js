@@ -112,12 +112,14 @@ function systemRow(treeItem, select) {
   if (!f) return null;
   const sys = readSystem(designState.viewTexts?.[f] || '').system;
   const menu = e => systemContextMenu(e, f);
+  // (a node's row: its device's items first, #5878: New Source…, Import Source…, an FPGA node's I/O Pin Planning)
+  const nodeMenu = (e, n) => import('./device-menu.js').then(m => systemContextMenu(e, f, m.deviceItems({ node: n })));
   // (a processor board's Board project, #5756: its one node the top row, its board's; no System row; its shield's row under
   // it, #5898: core/processor-shield.js)
   const mcus = nodes.filter(n => n.kind === 'mcu');
   const single = processorBoardOf(S.project) && mcus.length === 1 && nodes.every(n => n.kind === 'mcu' || n.kind === 'circuit') ? mcus[0] : null;
   const nodeRow = (n, cls) => treeItem({ label: n.id, meta: n.board ? `(${boardName(n)})` : '', ico: NODE_ICON[n.kind] || 'system', open: true, key: `node:${f}:${n.id}`, cls, tags: sourceTags(n, n.id),
-    onSelect: () => select({ type: 'node', file: f, node: n.id, kind: n.kind, module: n.module, board: n.board, variant: n.variant, lang: n.lang }), onOpen: () => openSystem(f), onContext: menu });
+    onSelect: () => select({ type: 'node', file: f, node: n.id, kind: n.kind, module: n.module, board: n.board, variant: n.variant, lang: n.lang }), onOpen: () => openSystem(f), onContext: e => nodeMenu(e, n) });
   const item = single ? nodeRow(single, 'top-mod') : treeItem({ label: sys?.name || f.split('/').pop(), ico: 'system', open: true, key: `sys:${f}`, cls: 'top-mod',
     badges: [{ text: 'System', base: true, title: 'Open', open: () => openSystem(f), context: menu }],
     onSelect: () => select({ type: 'file', file: f, system: true }), onOpen: () => openSystem(f), onContext: menu });
