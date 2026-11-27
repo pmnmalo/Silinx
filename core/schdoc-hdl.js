@@ -269,6 +269,8 @@ export function generateHdl(docIn, opts = {}) {
     if (isolated(net) && net.auto && net.endpoints[0].kind === 'pin') {
       const s = doc.symbols.find(x => x.id === net.endpoints[0].sym);
       if (SYMBOLS[s?.type]?.prim || (s && isBlock(s)) || (s?.type === 'module' && net.endpoints[0].dir === 'out')) continue;
+      // (an encoder's or a decoder's output left open: nothing assigned to it, #5850)
+      if ((s?.type === 'encoder' || s?.type === 'decoder') && net.endpoints[0].dir === 'out') continue;
     }
     const iv = init.get(net);
     if (ci) sigDecls.push(`  signal ${nm} : ${netType(net)}${iv ? ` := ${vhdlClass(netType(net)) === 'sl' ? vhdlBits(iv, true) : vhdlBits(iv, false)}` : ''};`);

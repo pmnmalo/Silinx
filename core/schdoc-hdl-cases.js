@@ -6,9 +6,11 @@ import { MUX_INPUTS, int } from './schdoc.js';
 /** { symbolCases } of generateHdl. */
 export function mountSymbolCases(ctx) {
   const {
-    INN, OUTN, PW, assign, body, ci, clsOf, diags, extra, fresh, inNet, name, netName, outRead, symbolCasesMore,
+    INN, OUTN, PW, assign, body, ci, clsOf, diags, extra, fresh, inNet, isolated, name, netName, nl, outRead, symbolCasesMore,
     warnOpen, zero
   } = ctx;
+  // an output pin's net, or null when the pin is left open (nothing assigned to it, #5850)
+  const OUTC = (s, pin) => { const n = nl.pinNet.get(`${s.id}/${pin}`); return n && !isolated(n) ? OUTN(s, pin) : null; };
 
   // a multiplexer's assignment, its pins named through P (a pin per bit: those of one row, #2081)
   const muxRow = (s, p, cmt, P, IN) => {
@@ -137,7 +139,7 @@ export function mountSymbolCases(ctx) {
           const outBus = p.bus ? OUTN(s, 'D') : null;
           if (p.bus && !outBus) return;
           for (let i = 0; i < 1 << n; i++) {
-            const o = p.bus ? (ci ? `${outBus}(${i})` : `${outBus}[${i}]`) : OUTN(s, `D${i}`);
+            const o = p.bus ? (ci ? `${outBus}(${i})` : `${outBus}[${i}]`) : OUTC(s, `D${i}`);
             if (!o) continue;
             const terms = [];
             let zeroT = e === null;
@@ -154,8 +156,8 @@ export function mountSymbolCases(ctx) {
           const n = Math.max(2, Math.min(5, int(p.n, 2))), m = 1 << n;
           const I = [...Array(m).keys()].map(i => bitIn(!!p.bus, 'I', i));
           const oA = p.bus ? OUTN(s, 'A') : null;
-          const oBits = p.bus ? [] : [...Array(n).keys()].map(j => OUTN(s, `A${j}`));
-          const oV = OUTN(s, 'V');
+          const oBits = p.bus ? [] : [...Array(n).keys()].map(j => OUTC(s, `A${j}`));
+          const oV = OUTC(s, 'V');
           const live = I.map((x, i) => [x, i]).filter(([x]) => x !== null);
           if (oA || oBits.some(Boolean)) {
             const t = fresh(`${s.name}_a`);
