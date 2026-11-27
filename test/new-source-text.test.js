@@ -49,3 +49,11 @@ test('#4751 New Source\'s types that write a text each map to a kind of core/new
   assert.ok(ids.length > 15, ids.join());
   for (const id of ids) assert.ok(SOURCE_KINDS.includes(map[id]), `${id} → ${map[id]}`);
 });
+
+test('#5873 a microcontroller\'s program: its sketch, C, C++, assembly or Python file, empty, named', async () => {
+  assert.equal(await sourceText('sketch', { file: 'blink' }), '// blink.ino: an Arduino sketch.\n\nvoid setup() {\n}\n\nvoid loop() {\n}\n');
+  assert.equal(await sourceText('c_source', { file: 'util' }), '// util.c: a C source of the program.\n');
+  assert.equal(await sourceText('cpp_source', { file: 'util' }), '// util.cpp: a C++ source of the program.\n');
+  assert.equal(await sourceText('assembly', { file: 'fw' }), '; fw.asm: an AVR assembly program (avra).\nloop:\n    rjmp loop\n');
+  assert.equal(await sourceText('python', { file: 'main' }), '# main.py: a Python program (MicroPython or CircuitPython).\n');
+});

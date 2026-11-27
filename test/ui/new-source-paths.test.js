@@ -24,7 +24,6 @@ const TYPES = {
   'Clock Manager (DCM / PLL)': { pages: ['File Name and Location'], wiz: true, only: true },
   'Block Memory': { pages: ['File Name and Location'], wiz: true, only: true },
   'Test Bench': { pages: ['File Name and Location', 'Associate Source', 'Summary'], wiz: true, file: 'sim/NAME.vhd' },
-  'Implementation Constraints File': { pages: ['File Name and Location', 'Summary'], wiz: true, file: 'constraints/NAME.ucf' },
   'Memory Initialization File (.mem)': { pages: ['File Name and Location', 'Summary'], file: 'src/NAME.mem' },
   'C Function (HLS)': { pages: ['File Name and Location', 'Summary'], file: 'src/NAME.c' },   // (#1531)
   'C++ Function (HLS)': { pages: ['File Name and Location', 'Summary'], file: 'src/NAME.cpp' },   // (#1590)

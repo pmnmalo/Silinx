@@ -37,3 +37,13 @@ export async function addPort(page, name, dir = 'in', width = 1) {
   await page.fill('.dlg-overlay .mw-pdir', dir, { index: k });
   await page.fill('.dlg-overlay .mw-pwidth', String(width), { index: k });
 }
+
+// the Constraints Wizard (the UCF, PCF, LPF, CST, CCF, XDC or QSF Wizard: the device's format), opened directly for
+// constraints/<name> since New Source makes no constraints file (#5873; its entry to decide, #5877): the wizard `title`
+export async function constraintsWizardOf(page, name, title) {
+  page.eval(async (n) => {
+    const { constraintsExtOf } = await import('/packages/silinx-fpga/src/parts.js');
+    (await import('/js/ucf-wizard.js')).ucfWizard({ path: `constraints/${n}${constraintsExtOf(window.SilinxApp.S.project.device)}` });
+  }, name).catch(() => {});
+  await page.waitDialog(title);
+}

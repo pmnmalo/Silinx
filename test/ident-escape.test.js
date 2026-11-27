@@ -50,7 +50,7 @@ test('sourceBase: every extension of New Source\'s types taken off a typed name,
   for (const f of ['web/js/new-source.js', 'server/mcp-new-source.js']) {
     for (const [, e] of fs.readFileSync(path.join(ROOT, f), 'utf8').matchAll(/ext: '(\.[a-z.]+)'/g)) exts.add(e);
   }
-  for (const e of ['.circ.json', '.sch.json', '.fsm.json', '.pn.json', '.lab.json', '.bool.json', '.asm.json', '.ucf', '.xdc', '.mem', '.c', '.cpp']) assert.ok(exts.has(e), e);
+  for (const e of ['.circ.json', '.sch.json', '.fsm.json', '.pn.json', '.lab.json', '.bool.json', '.asm.json', '.mem', '.c', '.cpp', '.ino', '.asm', '.py']) assert.ok(exts.has(e), e);   // (no constraints file, #5873)
   for (const e of exts) {
     assert.equal(sourceBase(`x${e}`), 'x', e);
     assert.equal(sourceBase(`  my-file${e.toUpperCase()} `), 'my-file', `${e}: its case, the spaces`);

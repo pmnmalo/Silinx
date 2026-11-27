@@ -12,7 +12,7 @@ import fs from 'node:fs/promises';
 import path from 'node:path';
 import { setupUi, uiTest, makeProject, readWs, writeWs } from './harness.js';
 import { TEXTS, untranslated } from './i18n-check.js';
-import { newSourceWizardOf } from './new-source-helpers.js';
+import { constraintsWizardOf } from './new-source-helpers.js';
 
 let env;
 before(async () => { env = await setupUi(); });
@@ -186,7 +186,7 @@ uiTest('#5379 Configure Target Device on the DE0-CV: its .rbf loaded by openFPGA
 uiTest('#5376 QSF Wizard on the DE1-SoC: the board\'s pins, their I/O standards from the board; I/O Pin Planning reads the QSF', E, async (page) => {
   await makeProject(env, { name: 'IntelWiz', board: 'de1-soc', device: DE1SOC, top: 'top', constraints: 'constraints/top.qsf', files: { 'src/top.v': TOP } });
   await page.openProject('IntelWiz');
-  await newSourceWizardOf(page, 'Implementation Constraints File', 'pins', 'QSF Wizard');
+  await constraintsWizardOf(page, 'pins', 'QSF Wizard');
   // (no attribute columns: a QSF's I/O standards the board's, I/O Pin Planning's to change)
   assert.deepEqual(await page.eval(() => [...document.querySelectorAll('.dlg-overlay .uw-pins th')].map(x => x.textContent)), ['Signal', 'Direction', 'Pin']);
   await page.dialogButton('Next >');
@@ -231,7 +231,7 @@ uiTest('#5376 in Portuguese: the DE boards and the Intel families marked experim
     await page.dialogButton('Cancelar');
   } finally { await page.eval(async () => (await import('/js/i18n.js')).setLanguage('en')); }
   // the QSF Wizard's pages in both languages: every label translated
-  await newSourceWizardOf(page, 'Implementation Constraints File', 'pins', 'QSF Wizard');
+  await constraintsWizardOf(page, 'pins', 'QSF Wizard');
   await page.eval(TEXTS);
   const setLang = l => page.eval(async x => { (await import('/js/i18n.js')).setLanguage(x); }, l);
   const missing = [];

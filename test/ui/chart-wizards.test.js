@@ -9,7 +9,7 @@ import { before, after } from 'node:test';
 import assert from 'node:assert/strict';
 import { setupUi, uiTest, makeProject, readWs } from './harness.js';
 import { TEXTS, untranslated } from './i18n-check.js';
-import { newSourceWizardOf, pickSourceType, waitNewSourcePage } from './new-source-helpers.js';
+import { newSourceWizardOf, pickSourceType, waitNewSourcePage, constraintsWizardOf } from './new-source-helpers.js';
 import { compile, elaborate } from '../../core/compile.js';
 
 let env;
@@ -141,7 +141,7 @@ uiTest('#2082 ASM Wizard: inputs and outputs, the states chained; the chart open
 uiTest('#2082 UCF Wizard on the Basys2: the top\'s bits on the board\'s pins, one changed, one given twice refused; the project\'s constraints file', E, async (page) => {
   await makeProject(env, { name: 'UwPj', top: 'adder', board: 'basys2', files: { 'src/adder.vhd': ADDER } });
   await page.openProject('UwPj');
-  await newSourceWizardOf(page, 'Implementation Constraints File', 'pins', 'UCF Wizard');
+  await constraintsWizardOf(page, 'pins', 'UCF Wizard');
   assert.deepEqual(await steps(page), ['Ports and Pins', 'Summary']);
   assert.equal(await page.eval(() => document.querySelector('.dlg-overlay .uw-module').value), 'adder');
   const rows = () => page.eval(() => [...document.querySelectorAll('.dlg-overlay .uw-pins tr')].slice(1).map((r) => `${r.cells[0].textContent} ${r.cells[1].textContent} ${r.querySelector('.uw-pin')?.value}`));
@@ -170,7 +170,7 @@ uiTest('#2082 UCF Wizard on the Basys2: the top\'s bits on the board\'s pins, on
 uiTest('#2082 UCF Wizard with no board: the pins typed; the module chosen', E, async (page) => {
   await makeProject(env, { name: 'UwNo', top: 'adder', files: { 'src/adder.vhd': ADDER, 'constraints/top.ucf': '# mine\n' } });
   await page.openProject('UwNo');
-  await newSourceWizardOf(page, 'Implementation Constraints File', 'more', 'UCF Wizard');
+  await constraintsWizardOf(page, 'more', 'UCF Wizard');
   assert.match(await page.eval(() => document.querySelector('.dlg-overlay .wiz-main').innerText), /No board selected/);
   assert.equal(await page.eval(() => document.querySelector('.dlg-overlay .uw-assign').disabled), true);
   assert.deepEqual(await page.eval(() => [...document.querySelectorAll('.dlg-overlay input.uw-pin')].map((i) => `${i.dataset.net}=${i.value}`)), ['a=', 'b=', 's<1>=', 's<0>=']);
@@ -231,8 +231,8 @@ uiTest('#2082 Portuguese: every page of the FSM, ASM and UCF wizards translated'
     for (const s of untranslated(en, pt, [/^(x|z|S\d|IDLE|RUN|DONE|clk|rst|in|out)$/, /^\(none\)$/, /·/])) missing.push(`${where}: ${s}`);
     await setLang('en');
   };
-  for (const [type, title] of [['Finite State Machine (FSM)', 'FSM Wizard'], ['Algorithmic State Machine (ASM)', 'ASM Wizard'], ['Implementation Constraints File', 'UCF Wizard']]) {
-    await newSourceWizardOf(page, type, 'pt_w', title);
+  for (const [type, title] of [['Finite State Machine (FSM)', 'FSM Wizard'], ['Algorithmic State Machine (ASM)', 'ASM Wizard'], [null, 'UCF Wizard']]) {
+    if (type) await newSourceWizardOf(page, type, 'pt_w', title); else await constraintsWizardOf(page, 'pt_w', title);   // (not in New Source, #5873)
     if (title !== 'UCF Wizard') {
       await compare(`${title} Template`);
       await next(page, 'Inputs and Outputs');

@@ -19,6 +19,7 @@ export const FILE_RE = /^[A-Za-z][A-Za-z0-9_-]*$/;
 export const PROJECT_NAME_RE = /^[A-Za-z][A-Za-z0-9_-]{0,63}$/;
 
 /** A new source's file name as typed, its extension taken off (any source's: an HDL file's, a drawing's…), one list for
- *  the New Source wizard and the MCP server's new_source (#4120: .circ.json was missing from both). */
-const SOURCE_EXT_RE = /\.(vhd|vhdl|v|ucf|pcf|lpf|cst|ccf|xdc|qsf|mem|c|cpp|asm\.json|tt\.json|bool\.json|sch\.json|fsm\.json|pn\.json|circ\.json|regs\.json|lab\.json)$/i;
+ *  the New Source wizard and the MCP server's new_source (#4120: .circ.json was missing from both; a microcontroller's
+ *  .ino, .asm, .py: #5873). */
+const SOURCE_EXT_RE = /\.(vhd|vhdl|v|ucf|pcf|lpf|cst|ccf|xdc|qsf|mem|c|cpp|ino|asm|py|asm\.json|tt\.json|bool\.json|sch\.json|fsm\.json|pn\.json|circ\.json|regs\.json|lab\.json)$/i;
 export const sourceBase = s => String(s ?? '').trim().replace(SOURCE_EXT_RE, '');

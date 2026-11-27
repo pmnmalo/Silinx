@@ -123,7 +123,7 @@ uiTest('#1409 a touch screen: every button 40 px, the rows 32 px, a document\'s 
   await page.waitFor(() => document.querySelector('.doc:not([hidden]) .editor-bar')?.getClientRects().length > 0, [], { what: 'the HDL' });
   assert.deepEqual(await page.eval(() => {
     const hs = (s) => [...new Set([...document.querySelectorAll(s)].filter((e) => e.getClientRects().length).map((e) => Math.round(e.getBoundingClientRect().height)))];
-    return { header: hs('#topbar .tb-btn'), tasks: hs('#task-switch .task-btn'), bar: hs('#task-src-bar .btn'), rows: hs('#hier .row'),
+    return { header: hs('#topbar .tb-btn'), tasks: hs('#task-switch .task-btn'), bar: hs('#task-close-bar .btn'), rows: hs('#hier .row'),
       tools: hs('.doc:not([hidden]) .editor-bar :is(.btn, .tb-btn)') };
   }), { header: [40], tasks: [40], bar: [40], rows: [32], tools: [36] });
   await noWarnings(page);

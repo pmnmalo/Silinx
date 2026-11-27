@@ -1,12 +1,11 @@
 // Import Source / Add Copy of Source / Import Test Bench (#1385, #1501; out of web/js/wizards.js addSourceDialog for the
 // MCP's import_source, #3546): where a file copied into a project goes, its passage through the import gate (#2830)
 // and the check of a drawing's name (#679), and the project's description after the copies (their association, the
-// constraints file). No DOM and no disk: the dialog's and the MCP tool's.
+// constraints file). The files each device takes: core/source-types.js (#5873). No DOM and no disk: the dialog's and the
+// MCP tool's.
 import { gateFile, GateError } from './import-gate.js';
 import { reservedError } from './reserved.js';
 
-/** The files Import Source takes (the dialog's `accept`). */
-export const IMPORT_SOURCE_ACCEPT = '.v,.vhd,.vhdl,.ucf,.pcf,.lpf,.cst,.ccf,.qsf,.mem,.hex,.asm.json,.json';
 /** The associations of a copy: All, Implementation only, Simulation only (Import Test Bench's). */
 export const IMPORT_SOURCE_ROLES = [['design', 'All (Implementation + Simulation)'], ['impl', 'Implementation only'], ['sim', 'Simulation only']];
 const CONSTRAINTS = ['ucf', 'pcf', 'lpf', 'cst', 'ccf', 'xdc', 'qsf'];
@@ -14,19 +13,21 @@ const CONSTRAINTS = ['ucf', 'pcf', 'lpf', 'cst', 'ccf', 'xdc', 'qsf'];
 const extOf = name => String(name).split('.').pop().toLowerCase();
 /** A constraints file (it goes to constraints/, and may become the project's constraints). */
 export const isConstraintsFile = name => CONSTRAINTS.includes(extOf(name));
-/** A file Import Source takes, by its name. */
-export const importSourceTakes = name => IMPORT_SOURCE_ACCEPT.split(',').some(e => String(name).toLowerCase().endsWith(e));
 
-/** The path in the project of the copy of a file named `name`: constraints/, sim/ (association sim), else src/. */
-export function importSourcePath(name, role) {
+/** The path in the project of the copy of a file named `name`: constraints/, sim/ (association sim), else src/; in a
+ *  System's node `node`, its folder (#5873, core/system-layout.js sourcePlace: its sources at its root, constraints/ and
+ *  sim/ inside it). */
+export function importSourcePath(name, role, node = null) {
   const dir = isConstraintsFile(name) ? 'constraints' : role === 'sim' ? 'sim' : 'src';
+  if (node) return dir === 'src' ? `${node}/${name}` : `${node}/${dir}/${name}`;
   return `${dir}/${name}`;
 }
 
-/** One file's copy (`name` its name, `data` its bytes): { path, text, warning } to write (`warning`: the gate's, or
- *  null), or { path, refused: 'gate' | 'reserved', message } (the console's warning, or the alert's text). */
-export function importSourceFile(name, data, role) {
-  const path = importSourcePath(name, role);
+/** One file's copy (`name` its name, `data` its bytes; `node` a System's node, its folder's): { path, text, warning } to
+ *  write (`warning`: the gate's, or null), or { path, refused: 'gate' | 'reserved', message } (the console's warning, or
+ *  the alert's text). */
+export function importSourceFile(name, data, role, node = null) {
+  const path = importSourcePath(name, role, node);
   let text, warning = null;
   try {
     const g = gateFile(path, data);
@@ -48,10 +49,10 @@ export function importSourceFile(name, data, role) {
 
 /** The project's description (`pj`, changed) after the copies (`written`: their paths, in order; `tree`: the project's
  *  files before them): their association, and a constraints file copied the project's constraints when the project's
- *  own is not among its files. */
-export function assignImported(pj, written, role, tree) {
+ *  own is not among its files (not a System node's: `node`, its own, #5873). */
+export function assignImported(pj, written, role, tree, node = null) {
   for (const path of written) {
-    if (isConstraintsFile(path) && !tree.includes(pj.constraints)) pj.constraints = path;
+    if (!node && isConstraintsFile(path) && !tree.includes(pj.constraints)) pj.constraints = path;
     const e = (pj.files || []).find(x => x.path === path);
     if (e) e.role = role;
   }
