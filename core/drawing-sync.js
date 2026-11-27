@@ -137,16 +137,16 @@ export async function syncDrawing(P, name, path, modules = null, { fast = false,
 /** Every drawing of the project checked against its HDL file (#5872), as the project is opened, the project's folder
  *  changes or before a flow runs: one made from the drawing as it is and not changed since left as it is (its
  *  silinx-sync line's hashes), the others made again (syncDrawing's: an HDL file changed outside Silinx kept in a
- *  version, the drawing winning; a drawing with errors leaves its file, stale, and the flows stop on it), a drawing with
- *  no HDL file given its own (adoptDrawing). only: these drawings. The schematics last (the modules they use made
- *  first). { results: [{ path, ...syncDrawing's or adoptDrawing's }] (those that did or said something), written: [the
+ *  version, the drawing winning; a drawing with errors leaves its file, stale, and the flows stop on it). A drawing with
+ *  no HDL file in the project is left as it is (adoptDrawing's, as the interface's opening). only: these drawings. The schematics last (the modules they use made
+ *  first). { results: [{ path, ...syncDrawing's }] (those that did or said something), written: [the
  *  files written], messages }. */
 export async function checkDrawings(P, name, { only = null } = {}) {
   const drawings = (await P.fileTree(name)).filter(f => kindOf(f) && (!only || only.includes(f)))
     .sort((a, b) => (kindOf(a) === 'sch') - (kindOf(b) === 'sch') || a.localeCompare(b));
   const out = { results: [], written: [], messages: [] };
   for (const f of drawings) {
-    const r = await syncDrawing(P, name, f, null, { fast: true, outside: true }) || await adoptDrawing(P, name, f);
+    const r = await syncDrawing(P, name, f, null, { fast: true, outside: true });
     if (!r || (!r.written && !r.removed && !r.messages.length)) continue;
     out.results.push({ path: f, ...r });
     for (const w of [r.written, r.removed]) if (w && !out.written.includes(w)) out.written.push(w);

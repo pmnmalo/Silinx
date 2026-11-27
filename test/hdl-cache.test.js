@@ -192,12 +192,12 @@ test('every kind of drawing (Petri net, truth table, state diagram, circuit, ASM
   assert.deepEqual(await D.syncDrawing(P, 'kinds', 'src/lock.fsm.json'), { target: 'src/lock.vhd', written: null, removed: null, stale: null, messages: [] });
 });
 
-test('a drawing with no HDL file gets one with its line (adoptDrawing); checkDrawings gives it too', async () => {
+test('a drawing with no HDL file: adoptDrawing gives it one with its line; checkDrawings leaves it as it is', async () => {
   await P.createProject({ name: 'adopt', template: 'traffic' });
   const fsm = JSON.parse(read('adopt', 'src/traffic.fsm.json'));
   const { generatedFile, ...alone } = { ...fsm, name: 'walk' };   // eslint-disable-line no-unused-vars
   await P.writeFile('adopt', 'src/walk.fsm.json', JSON.stringify(alone, null, 2));
-  const r = await D.checkDrawings(P, 'adopt', { only: ['src/walk.fsm.json'] });
-  assert.deepEqual(r.messages, ['src/walk.vhd generated from src/walk.fsm.json']);
+  assert.deepEqual(await D.checkDrawings(P, 'adopt', { only: ['src/walk.fsm.json'] }), { results: [], written: [], messages: [] });
+  assert.equal((await D.adoptDrawing(P, 'adopt', 'src/walk.fsm.json')).written, 'src/walk.vhd');
   assert.equal(await cacheState(read('adopt', 'src/walk.vhd'), JSON.parse(read('adopt', 'src/walk.fsm.json'))), 'fresh');
 });
