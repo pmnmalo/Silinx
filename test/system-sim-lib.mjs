@@ -51,14 +51,14 @@ export async function uartNode(kind, o = {}, pins = ['tx']) {
 /**
  * Two uart nodes linked by a UART: a.tx -> b.rx (the link 'ab'), b.tx -> a.rx ('ba') when twoWay, else a's rx idle at 1;
  * a's button pressed at press (ps) for 2 µs: a sends the message; latency: the links' fixed one (exact; null: adaptive).
- * opts: the scheduler's (wide, fine, adaptive).
+ * bPins: b's UART pins (an AVR's D1 and D0, #5912). opts: the scheduler's (wide, fine, adaptive).
  */
-export function uartSystem({ a, b, baud, twoWay = false, press = 10e6, latency = null, ...opts }) {
+export function uartSystem({ a, b, baud, twoWay = false, press = 10e6, latency = null, bPins = { tx: 'tx', rx: 'rx' }, ...opts }) {
   const sys = new SystemSim(opts);
   sys.addNode('a', a);
   sys.addNode('b', b);
-  sys.link({ name: 'ab', from: 'a.tx', to: 'b.rx', kind: 'uart', baud, latency });
-  if (twoWay) sys.link({ name: 'ba', from: 'b.tx', to: 'a.rx', kind: 'uart', baud, latency });
+  sys.link({ name: 'ab', from: 'a.tx', to: `b.${bPins.rx}`, kind: 'uart', baud, latency });
+  if (twoWay) sys.link({ name: 'ba', from: `b.${bPins.tx}`, to: 'a.rx', kind: 'uart', baud, latency });
   else a.setPin('rx', 1);
   if (press != null) {
     sys.at(press, () => a.setPin('btn', 1));
