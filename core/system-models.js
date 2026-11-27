@@ -1,5 +1,5 @@
 // Silinx - a System's FPGA node's models (#5612, docs/SYSTEMS.md, Emulation): an FPGA node emulated on its RTL or on
-// one of its flow's simulation models, as an FPGA project's Emulate on Board is (#3704): Post-Synthesis, Post-Translate,
+// one of its flow's simulation models, as an FPGA project's Emulate is (#3704): Post-Synthesis, Post-Translate,
 // Post-Map, Post-Place & Route, those its board's toolchain makes. A model is made by the node's own flow on its board
 // (#5446: build/nodes/<id>/, its run's reports.json naming the model's file); the project's Emulation Properties choose
 // each FPGA node's model for Emulate System (silinx.json's system.emulate.models: { id: model }; none: its RTL).

@@ -21,7 +21,7 @@ uiTest('#5385 the Board Emulator: an XADC\'s VAUX6 set by its knob, the LEDs its
   assert.equal(await page.eval(() => window.SilinxApp.regenerateUcf()), true);
   await page.setView('impl');
   await page.treeRow('#hier', 'adcled');
-  await page.treeRow('#procs', 'Emulate on Board', { dbl: true, exact: true });
+  await page.treeRow('#procs', 'Emulate', { dbl: true, exact: true });
   await page.waitFor(() => window.Silinx.active?.id === 'emulator' && window.Silinx.active.view?.outputs && document.querySelector('.doc:not([hidden]) .emu-xadc'), [], { what: 'emulator running, its XADC box' });
   assert.equal(await page.eval(() => document.querySelector('.doc:not([hidden]) .emu-xadc h4').textContent), 'Analog inputs (XADC)');
   // VAUX6 at 0.5 V: 2048, its top 8 bits 1000 0000 (LD7 lit; the LEDs listed from LD0)

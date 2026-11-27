@@ -344,10 +344,10 @@ for (const [w, h] of [[1400, 900], [820, 1180]]) {
   });
 }
 
-// #5299: on a tablet in portrait Emulate's page with no board open shows its side panel, Emulate on Board in it (the Silinx
+// #5299: on a tablet in portrait Emulate's page with no board open shows its side panel, Emulate in it (the Silinx
 // interface: it was folded, the page with nothing to start the emulator); the board opened folds it (its room, #1463), the
-// board closed shows it again; the ISE style interface: the toolbar's Emulate on Board
-uiTest('narrow screen 820×1180: Emulate with no board shows Emulate on Board; the board folds the side panel, closed shows it (#5299)', E, async (page) => {
+// board closed shows it again; the ISE style interface: the toolbar's Emulate
+uiTest('narrow screen 820×1180: Emulate with no board shows Emulate; the board folds the side panel, closed shows it (#5299)', E, async (page) => {
   await makeProject(env, { name: 'Narrow_emu', template: 'blinky' });
   await page.setViewport(820, 1180);
   await page.openProject('Narrow_emu');
@@ -358,10 +358,10 @@ uiTest('narrow screen 820×1180: Emulate with no board shows Emulate on Board; t
     await page.eval(() => [...document.querySelectorAll('.task-btn[data-task="emu"]')].find((b) => b.getClientRects().length).click());
     await page.waitFor(() => document.documentElement.dataset.task === 'emu', [], { what: 'Emulate' });
     assert.equal(await page.eval(() => document.documentElement.dataset.side), 'open');
-    assert.ok(await shown(page, start), 'Emulate on Board shown');
+    assert.ok(await shown(page, start), 'Emulate shown');
     await page.click(start);
   } else {
-    assert.ok(await shown(page, '#toolbar .tb-btn[data-cmd=board]'), 'the toolbar\'s Emulate on Board');
+    assert.ok(await shown(page, '#toolbar .tb-btn[data-cmd=board]'), 'the toolbar\'s Emulate');
     await page.click('#toolbar .tb-btn[data-cmd=board]');
   }
   await page.waitFor(() => window.SilinxApp.findDoc('emulator')?.view?.outputs, [], { what: 'the emulator', timeout: 60000 });
@@ -370,7 +370,7 @@ uiTest('narrow screen 820×1180: Emulate with no board shows Emulate on Board; t
     await page.click('#doc-tabs > .tab.active .tclose');
     await page.waitFor(() => !window.SilinxApp.findDoc('emulator'), [], { what: 'the emulator closed' });
     await page.waitFor(() => document.documentElement.dataset.side === 'open', [], { what: 'the side panel shown again' });
-    assert.ok(await shown(page, start), 'Emulate on Board shown again');
+    assert.ok(await shown(page, start), 'Emulate shown again');
   }
   const log = await page.eval((k) => [...document.querySelectorAll('#console-log .ln')].slice(k).map((l) => l.textContent).filter((t) => t.trim()), from);
   // the console: the Check Syntax and the emulator's lines, nothing else

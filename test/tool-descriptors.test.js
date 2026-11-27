@@ -385,7 +385,7 @@ test('#3146 the Silinx toolchain on the Artix-7 (the project\'s synthesis tool S
 test('#3704 Emulate in every flow, on the HDL and the board\'s pins; its models the ones the tool generates (#2299, #4362: the iCE40\'s, ECP5\'s, Gowin\'s and 7-series\' two)', () => {
   for (const tool of [...TOOLS, SILINX_XC7, VIVADO, SILINX_ECP5, SILINX_GOWIN, NO_FLOW]) {
     assert.ok(hasTask(tool, 'emu'), `${tool.id}: the Emulate task`);
-    assert.ok(tool.tree.some(n => n.part === 'emulate'), `${tool.id}: Emulate on Board`);
+    assert.ok(tool.tree.some(n => n.part === 'emulate'), `${tool.id}: Emulate`);
   }
   assert.deepEqual(simModelsOf(ISE), ['postsynth', 'posttrans', 'postmap', 'postpar']);
   assert.deepEqual(simModelsOf(SILINX), ['postsynth', 'posttrans', 'postmap', 'postpar']);

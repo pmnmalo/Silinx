@@ -9,8 +9,9 @@ screen's width, and its switches and buttons are repeated under it, large enough
 
 ![The stopwatch example on an emulated Basys2](../../images/emulator-basys2.webp)
 
-*Emulate* (the Silinx interface's Emulate task) or *Emulate on Board ▸ Emulate Behavioral Model (RTL)* (the ISE style
-interface) opens it on the project's top module.
+*Emulate* (the Silinx interface's Emulate task) or *Emulate ▸ Emulate Behavioral Model (RTL)* (the ISE style
+interface) opens it on the project's top module. Emulate's side panel shows the project, its device and its top
+module, with the emulation's processes under it: I/O Pin Planning, and Emulate with its models.
 
 ## Boards
 

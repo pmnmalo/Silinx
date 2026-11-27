@@ -1,5 +1,5 @@
 // UI: a GateMate device in the interface (#2431): the picker with its parts and the synthesis locked, the processes of its
-// toolchain only (its Post-Synthesis model, no Configure Target Device: its board openFPGALoader's, outside Silinx; Emulate on Board,
+// toolchain only (its Post-Synthesis model, no Configure Target Device: its board openFPGALoader's, outside Silinx; Emulate,
 // #3704), its constraints CCF (read, written, checked), Generate Programming File to its .bit (gmpack) in the server's real flow
 // and the Design Summary's programming file and reports, in English and Portuguese; the evaluation board's pins written as a CCF
 // by Update Constraints.
@@ -63,8 +63,8 @@ uiTest('#2431 a GateMate project: its processes, its constraints CCF, Generate P
   for (const absent of ['Map', 'Configure Target Device', 'Generate Post-Place & Route Simulation Model', 'Emulate Post-Place & Route Model']) {
     assert.ok(!labels.includes(absent), `${absent}: ${labels}`);
   }
-  // Emulate on Board (#3704): the HDL on the board's pins, its RTL model, its Post-Synthesis model too (#2299)
-  for (const present of ['Emulate on Board', 'Emulate Behavioral Model (RTL)', 'Emulate Post-Synthesis Model', 'Generate Post-Place & Route Static Timing']) assert.ok(labels.includes(present), `${present}: ${labels}`);
+  // Emulate (#3704): the HDL on the board's pins, its RTL model, its Post-Synthesis model too (#2299)
+  for (const present of ['Emulate', 'Emulate Behavioral Model (RTL)', 'Emulate Post-Synthesis Model', 'Generate Post-Place & Route Static Timing']) assert.ok(labels.includes(present), `${present}: ${labels}`);
 
   await page.treeRow('#procs', 'Generate Programming File', { dbl: true, exact: true });
   await page.waitConsole(/Process "Generate Programming File" (completed successfully|failed)/, { timeout: 120000 }).catch(async (e) => { throw new Error(`${e.message}\n${(await page.consoleText()).slice(-2500)}`); });

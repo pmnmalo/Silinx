@@ -42,6 +42,7 @@ import { filesState } from './state-files.js';
 import { docsState } from './state-docs.js';
 import { designState } from './state-design.js';
 import { procState } from './state-proc.js';
+import { hierarchyDefs, topDef } from './task-hierarchy.js';
 
 export { EXTRA_STEPS, IMPL_IDS } from './tool-descriptors.js';
 
@@ -152,16 +153,19 @@ const simModelActions = top => (globalThis.document?.documentElement.dataset.lay
 // board and the text (Edit Constraints (Text) of before), its Check Check Constraints (#5642); opened in the task it is
 // run from (`task`: Emulate's, else Implement's)
 const constraintsProcs = (mod, task) => ({ id: 'pins', label: 'I/O Pin Planning', ico: 'pins', run: () => openPinPlanner(mod, { task }) });
-// Emulate on Board and its models, of the top module `top` (onTop: what it does to the top, said when another
-// module is selected; none in Emulate's own list, which is the top's); the models the project's tool generates (#3704)
-const emulateProcs = (top, onTop) => ({ id: 'emulate', label: 'Emulate on Board', ico: 'board', onTop, run: () => openEmulator(top), children: [
+// Emulate (Emulate on Board before #5789) and its models, of the top module `top` (onTop: what it does to the top, said
+// when another module is selected; none in Emulate's own list, which is the top's); the models the project's tool
+// generates (#3704)
+const emulateProcs = (top, onTop) => ({ id: 'emulate', label: 'Emulate', ico: 'board', onTop, run: () => openEmulator(top), children: [
   { id: 'emulate-rtl', label: 'Emulate Behavioral Model (RTL)', ico: 'board', onTop, run: () => openEmulator(top) },
   ...Object.entries(SIM_MODEL_NAMES).filter(([step]) => simModelsOf(projectTool()).includes(step)).map(([step, name]) => ({ id: `emulate-${step}`, label: `Emulate ${name} Model`, ico: 'board', onTop, run: () => openEmulator(top, { model: step }) })),
 ] });
-/** The processes of the Tasks interface's Emulate (#1204): the top module's I/O Pin Planning and Emulate on Board. */
+/** The processes of the Tasks interface's Emulate (#1204): the top module's I/O Pin Planning and Emulate; under the
+ *  design's hierarchy as the Design pane shows it (#5789, web/js/task-hierarchy.js): the project, its device, its top
+ *  module (no source's badge). */
 function emulateProcesses() {
-  const top = S.project?.top;
-  return top ? [constraintsProcs(top, 'emu'), emulateProcs(top)] : [];
+  const pj = S.project, top = pj?.top;
+  return top ? hierarchyDefs(pj, [topDef(top, [constraintsProcs(top, 'emu'), emulateProcs(top)], 'emu')], 'emu') : [];
 }
 
 // (drawn again whenever a process's state changes: said, for the toolbar's steps to follow it, #4764)
@@ -178,7 +182,9 @@ function drawProcesses() {
   // (a System project's: its System's and its nodes' tree, #5581's part 4: web/js/system-implement-tree.js)
   const implSys = implTop() && systemTop() ? systemImplementProcesses() : null;
   const noTop = !implSys && implTop() && S.project && !S.project.top;
-  renderProcessTree(host, implSys || (noTop ? [] : processDefs(sel, view)));
+  // (the Tasks interface's Implement: under the project, its device and its top module, #5789)
+  const defs = noTop ? [] : processDefs(sel, view);
+  renderProcessTree(host, implSys || (implTop() && defs.length ? hierarchyDefs(S.project, [topDef(S.project.top, defs, 'impl')], 'impl') : defs));
   if (noTop) host.append(noTopNote());
   // (its bar: Build All and Program All, the System's, #5581's part 4; web/js/tasks.js runs them)
   const ibar = document.getElementById('task-impl-bar');
@@ -200,7 +206,7 @@ function drawProcesses() {
   if (bar) {
     const emu = bar.querySelector('[data-act=emulate]'), pins = bar.querySelector('[data-act=pins]');
     bar.dataset.system = sys ? '1' : '';
-    emu.textContent = sys ? 'Emulate System' : 'Emulate on Board';
+    emu.textContent = sys ? 'Emulate System' : 'Emulate';
     pins.disabled = !!sys || !S.project?.top;
     emu.disabled = !sys && !S.project?.top;
     pins.title = sys ? 'A node\'s: its I/O Pin Planning in the tree below' : '';
@@ -242,7 +248,7 @@ function renderProcessTree(host, defs) {
     const group = !!p.children?.length;
     const tw = h('span', { class: 'twisty' }, group ? (collapsed ? '▸' : '▾') : '');
     const isSel = panes.selProc?.id === p.id && panes.selProc?.label === p.label;
-    const row = h('div', { class: `row${p.disabled ? ' disabled' : ''}${isSel ? ' sel' : ''}`, ...(p.title ? { title: p.title } : {}) }, tw, h('span', { class: 'status', 'data-status': st || null, html: st ? icons[STATUS_ICON[st]] : '' }), icon(p.ico || 'process'), h('span', { class: 'lbl' }, p.label));
+    const row = h('div', { class: `row${p.disabled ? ' disabled' : ''}${isSel ? ' sel' : ''}${p.raw ? ' proc-hier' : ''}`, ...(p.title ? { title: p.title } : {}) }, tw, h('span', { class: 'status', 'data-status': st || null, html: st ? icons[STATUS_ICON[st]] : '' }), icon(p.ico || 'process'), h('span', { class: 'lbl', ...(p.raw ? { 'data-no-i18n': '' } : {}) }, p.label));   // (raw: a name, not translated)
     const sub = h('ul');
     if (collapsed) sub.style.display = 'none';
     li.append(row, sub);
@@ -260,7 +266,8 @@ function renderProcessTree(host, defs) {
     if (group && ico) { ico.style.cursor = 'pointer'; ico.addEventListener('click', e => { e.stopPropagation(); toggle(); }); ico.addEventListener('dblclick', e => e.stopPropagation()); }
     row.addEventListener('click', () => { host.querySelectorAll('.row.sel').forEach(r => r.classList.remove('sel')); row.classList.add('sel'); panes.selProc = p; });
     row.addEventListener('dblclick', () => { if (p.disabled && p.title) logInfo(p.title); else if (p.run && !p.disabled) runProcess(p); });
-    row.addEventListener('contextmenu', e => {
+    // (the hierarchy's rows, #5789: names, no process's menu)
+    if (!p.raw) row.addEventListener('contextmenu', e => {
       e.preventDefault(); row.click();
       popupMenu([
         { label: 'Run', action: () => runProcess(p), disabled: !p.run || p.disabled || (procState.busy && ISE_PROCS.includes(p.id)) },
@@ -270,7 +277,7 @@ function renderProcessTree(host, defs) {
         { label: 'Process Properties…', action: () => wiz.implProperties(), disabled: !['synth', 'impl', 'bitgen', 'map', 'par', 'translate'].includes(p.id) },
       ], e.clientX, e.clientY);
     });
-    longPressMenu(row);
+    if (!p.raw) longPressMenu(row);
     ul.append(li);
     for (const c of p.children || []) add(sub, c);
   };

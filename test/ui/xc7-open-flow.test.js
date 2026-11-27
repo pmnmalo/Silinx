@@ -1,6 +1,6 @@
 // UI: the Silinx toolchain on the Artix-7 (#3146, experimental): Design Properties offers AMD Vivado (the default) or
 // Silinx as the Basys 3's synthesis tool; Silinx chosen, the process tree is the toolchain's 7-series back end (Yosys,
-// nextpnr's Place & Route, the static timing, the programming file, Emulate on Board (#3704); its Post-Synthesis and Post-Place &
+// nextpnr's Place & Route, the static timing, the programming file, Emulate (#3704); its Post-Synthesis and Post-Place &
 // Route simulation models (#4362: Yosys's netlist of UNISIM's cells, nextpnr's routed design made of them again; the models
 // emulated too), no view), Generate
 // Programming File runs it from HDL to build/top.bit with no warning, and the Design Summary says the timing is nextpnr's
@@ -51,8 +51,8 @@ uiTest('#3146 Design Properties: the Basys 3\'s synthesis tool, Vivado or Silinx
     assert.ok(labels.includes(present), `${present}: ${labels}`);
   for (const absent of ['Synthesize - Vivado', 'Synthesize - XST', 'Map', 'View Technology Schematic', 'Generate Text Power Report', 'View Implemented Design (FPGA)'])
     assert.ok(!labels.some(l => l.startsWith(absent)), `${absent}: ${labels}`);
-  // Emulate on Board (#3704): the HDL on the board's pins; its RTL model and its Post-Synthesis and Post-Place & Route models (#4362)
-  for (const present of ['Emulate on Board', 'Emulate Behavioral Model (RTL)', 'Emulate Post-Synthesis Model', 'Emulate Post-Place & Route Model'])
+  // Emulate (#3704): the HDL on the board's pins; its RTL model and its Post-Synthesis and Post-Place & Route models (#4362)
+  for (const present of ['Emulate', 'Emulate Behavioral Model (RTL)', 'Emulate Post-Synthesis Model', 'Emulate Post-Place & Route Model'])
     assert.ok(labels.includes(present), `${present}: ${labels}`);
   for (const absent of ['Emulate Post-Translate Model', 'Emulate Post-Map Model']) assert.ok(!labels.includes(absent), `${absent}: ${labels}`);
 

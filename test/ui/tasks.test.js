@@ -1046,8 +1046,9 @@ uiTest('#917 #1378 Tasks ▸ Simulate: no test bench, the module and the model c
   const set = (id, v) => page.eval((i, x) => { const s = document.getElementById(i); s.value = x; s.dispatchEvent(new Event('change')); }, id, v);
   const panel = () => page.eval(() => {
     const p = document.getElementById('task-sim-panel'), e = document.getElementById('task-empty').getBoundingClientRect(), r = p.getBoundingClientRect();
-    const rows = [...p.querySelectorAll('.tree > li > .row')].filter((x) => x.getClientRects().length);
-    return { tab: p.querySelector('.task-sim-tabs .tab.active').textContent, rows: rows.map((x) => (x.querySelector('select')?.id || x.textContent) + (x.classList.contains('sel') ? '*' : '')),
+    // (the rows under the project and its device, #5789: their names)
+    const rows = [...p.querySelectorAll('.tree li > .row')].filter((x) => x.getClientRects().length);
+    return { tab: p.querySelector('.task-sim-tabs .tab.active').textContent, rows: rows.map((x) => (x.querySelector('select')?.id || x.querySelector('.lbl').textContent) + (x.classList.contains('sel') ? '*' : '')),
       beside: Math.round(r.right) <= Math.round(e.left) + 1, side: !!document.querySelector('#task-view [data-act="side"]')?.getClientRects().length };
   });
   const PROMPTS = { bench: { value: '', options: [['', 'Select design module to simulate...', true], ['and2', 'and2', false]] },
@@ -1059,7 +1060,7 @@ uiTest('#917 #1378 Tasks ▸ Simulate: no test bench, the module and the model c
   assert.equal(await page.eval(() => document.querySelector('#task-empty p').textContent),
     'The project has no test bench yet: create one with the wizard, or choose a module to simulate with stimuli drawn in SSim.');
   assert.deepEqual(await page.eval(() => [...document.querySelectorAll('#task-empty button')].filter((b) => b.getClientRects().length).length), 0);
-  assert.deepEqual(await panel(), { tab: 'Simulation', rows: ['task-bench', 'task-model'], beside: true, side: true });
+  assert.deepEqual(await panel(), { tab: 'Simulation', rows: ['TasksBench', 'xc3s250e-4-cp132', 'task-bench', 'task-model'], beside: true, side: true });
   // (folded by the side panel's button, as the other tasks', #1428)
   await page.click('#task-view [data-act="side"]');
   assert.ok(!(await shown(page, '#task-sim-panel')) && Math.round(await page.eval(() => document.getElementById('task-empty').getBoundingClientRect().left)) <= Math.round(await page.eval(() => document.getElementById('workspace').getBoundingClientRect().left)) + 1, 'folded');
@@ -1081,7 +1082,7 @@ uiTest('#917 #1378 Tasks ▸ Simulate: no test bench, the module and the model c
   await page.eval(async () => (await import('/js/i18n.js')).setLanguage('pt'));
   await page.waitFor(() => document.getElementById('task-bench').options[0].textContent === 'Selecione o módulo do projeto a simular...', [], { what: 'Portuguese' });
   assert.deepEqual(await page.eval(() => [document.getElementById('task-model').options[0].textContent, ...[...document.querySelectorAll('#task-sim-panel .tab, #task-sim-panel .lbl')].filter((e) => e.getClientRects().length).map((e) => e.textContent)]),
-    ['Selecione o modelo de simulação...', 'Simulação', 'Ficheiros']);
+    ['Selecione o modelo de simulação...', 'Simulação', 'Ficheiros', 'TasksBench', 'xc3s250e-4-cp132']);   // (the project's and the device's names as they are, #5789)
   await page.eval(async () => (await import('/js/i18n.js')).setLanguage('en'));
   // the wizard: its test bench becomes the one Simulate runs; the panel lists the test benches, the choices gone
   await page.click('#task-sim-panel [data-act=new-bench]');
@@ -1094,8 +1095,8 @@ uiTest('#917 #1378 Tasks ▸ Simulate: no test bench, the module and the model c
   await page.waitFor(() => window.Silinx.active?.id === 'file:sim/tb_and2.vhd', [], { what: 'its file open' });
   assert.deepEqual(await page.eval(() => [document.documentElement.dataset.task, window.Silinx.active.task]), ['sim', 'sim']);
   await page.eval(() => window.SilinxApp.closeDoc(window.Silinx.active));
-  await page.waitFor(() => document.querySelector('#task-sim-panel .task-sim-bench .row.sel')?.textContent === '▸tb_and2', [], { what: 'its row' });
-  assert.deepEqual(await panel(), { tab: 'Simulation', rows: ['▸tb_and2*'], beside: true, side: true });
+  await page.waitFor(() => document.querySelector('#task-sim-panel .task-sim-bench .row.sel .lbl')?.textContent === 'tb_and2', [], { what: 'its row' });
+  assert.deepEqual(await panel(), { tab: 'Simulation', rows: ['TasksBench', 'xc3s250e-4-cp132', 'tb_and2*', 'uut - and2'], beside: true, side: true });
   assert.notEqual(await page.eval(() => document.querySelector('#task-empty p').textContent), 'The project has no test bench yet: create one with the wizard, or choose a module to simulate with stimuli drawn in SSim.');
   // its row clicked: simulated
   await page.click('#task-sim-panel .task-sim-bench .row.sel');
@@ -1114,7 +1115,7 @@ uiTest('#917 #1378 Tasks ▸ Simulate: no test bench, the module and the model c
   await noWarnings(page);
 }, { build: DEV });
 
-// #923: Implement lists the implementation's processes only (Emulate on Board is the Emulate task's; Configure Target
+// #923: Implement lists the implementation's processes only (Emulate is the Emulate task's; Configure Target
 // Device Implement's since #1172, no Program task); the Design Summary's cards, their captions with them, never overlap
 const procRows = (page) => page.eval(() => [...document.querySelectorAll('#procs .lbl')].filter((l) => l.getClientRects().length).map((l) => l.textContent));
 uiTest('#923 #1172 Tasks ▸ Implement: no Emulate processes, Configure Target Device there; the Design Summary\'s cards do not overlap', E, async (page) => {
@@ -1128,7 +1129,7 @@ uiTest('#923 #1172 Tasks ▸ Implement: no Emulate processes, Configure Target D
   let procs = await procRows(page);
   // (no Generate Post-… Simulation Model: Simulate generates them, #1265)
   assert.ok(procs.includes('Generate Programming File') && !procs.includes('Generate Post-Synthesis Simulation Model'), procs.join(', '));
-  for (const p of ['Emulate on Board', 'Emulate Behavioral Model (RTL)', 'Emulate Post-Synthesis Model']) assert.ok(!procs.includes(p), `${p} in Implement`);
+  for (const p of ['Emulate', 'Emulate Behavioral Model (RTL)', 'Emulate Post-Synthesis Model']) assert.ok(!procs.includes(p), `${p} in Implement`);
   for (const p of ['Configure Target Device', 'Manage Configuration Project (iMPACT)']) assert.ok(procs.includes(p), `${p} in Implement`);
   // no card over another, its caption included, at every width from a tablet's to a lab desktop's
   const overlaps = () => page.eval(() => {
@@ -1162,7 +1163,7 @@ uiTest('#923 #1172 Tasks ▸ Implement: no Emulate processes, Configure Target D
   await page.eval(async () => (await import('/js/silinx.js')).setInterface('ise'));
   await page.waitFor(() => !document.documentElement.dataset.layout);
   procs = await procRows(page);
-  assert.ok(procs.includes('Emulate on Board') && procs.includes('Configure Target Device'), procs.join(', '));
+  assert.ok(procs.includes('Emulate') && procs.includes('Configure Target Device'), procs.join(', '));
   await env.server.api('PUT', '/api/toolchain', { mode: 'local' });
   await noWarnings(page);
 }, { build: DEV, timeout: 180000 });
@@ -1357,8 +1358,8 @@ uiTest('#1208 Tasks ▸ Implement: the top\'s processes whatever is selected in 
   const rows = () => page.eval(() => [...document.querySelectorAll('#procs .row')].filter((r) => r.getClientRects().length).map((r) => r.querySelector('.lbl').textContent));
   await page.waitFor(() => [...document.querySelectorAll('#procs .lbl')].some((e) => e.textContent.startsWith('Synthesize')), [], { what: 'the top\'s processes' });
   const full = await rows();
-  // (I/O Pin Planning alone, no User Constraints folder, #5642)
-  assert.deepEqual(full.slice(0, 2), ['Design Summary/Reports', 'I/O Pin Planning']);
+  // (I/O Pin Planning alone, no User Constraints folder, #5642; under the project, its device and its top, #5789)
+  assert.deepEqual([full[0], ...full.slice(2, 5)], ['ImplSel', 'gates', 'Design Summary/Reports', 'I/O Pin Planning']);
   assert.ok(!full.some((l) => /^(User Constraints|Edit Constraints \(Text\)|Check Constraints)$/.test(l)), full.join(', '));
   assert.ok(full.includes('Implement Design') && full.includes('Generate Programming File'), full.join(', '));
   for (const sel of [{ type: 'sch', file: 'src/gates.sch.json' }, { type: 'ucf', file: 'constraints/gates.ucf' }, { type: 'project' }, { type: 'device' }]) {

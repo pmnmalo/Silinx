@@ -124,7 +124,7 @@ export function readState(raw) {
 // Implement's (#1399)
 export const OWN_SIDE = ['sim'];
 // the tasks whose side panel is folded on a narrow screen at first, their document needing the room (Emulate's board), the
-// viewer's choice there kept apart (narrowSide); none of their documents open, it is shown (its Emulate on Board, #5299)
+// viewer's choice there kept apart (narrowSide); none of their documents open, it is shown (its Emulate, #5299)
 export const FOLDED_NARROW = ['emu'];
 /** A task's arrangement: what the viewer left, else its defaults; on a narrow screen too the side panel docked beside
  *  the document, not a drawer (#1463), FOLDED_NARROW's folded at first (`empty`: none of the task's documents open, the
@@ -442,7 +442,7 @@ function build() {
   // Emulate's: its Processes as Implement's, under its tab (#1399; web/js/processes.js draws every .task-emu-tree)
   $('left-tabs').append(h('div', { id: 'task-emu-tab', class: 'tab', 'data-page': 'emu', role: 'tab', 'aria-selected': 'true' },
     h('span', { class: 'ico-inline tab-ico', html: icons.mBoard }), h('span', { class: 'tab-lbl' }, 'Emulate')));
-  // (I/O Pin Planning and Emulate on Board above them, as Implement's bar, #1424)
+  // (I/O Pin Planning and Emulate above them, as Implement's bar, #1424; Emulate on Board before #5789)
   $('proc-panel').after(h('div', { class: 'ise-panel', id: 'task-emu-panel' },
     h('div', { id: 'task-emu-bar' },
       h('button', { class: 'btn', type: 'button', 'data-act': 'pins', onclick: () => app.S.project?.top && app.openPinPlanner(undefined, { task: 'emu' }) }, 'I/O Pin Planning'),   // (in Emulate, #5642)
@@ -450,7 +450,7 @@ function build() {
       h('button', { class: 'btn', type: 'button', 'data-act': 'emulate', onclick: async () => {
         if ((await import('./design-system.js')).systemTop()) return (await import('./system-emulate-ui.js')).emulateSystem();
         if (app.S.project?.top) (await import('./viewers.js')).openEmulator(app.S.project.top);
-      } }, 'Emulate on Board')),
+      } }, 'Emulate')),
     h('div', { class: 'body task-emu-tree' }),
     h('ul', { id: 'task-emu-files', class: 'tree task-flow-files', 'aria-label': 'Files' })));
   for (const t of $('left-tabs').querySelectorAll('.tab')) t.title = PAGE_NAME[t.dataset.page];

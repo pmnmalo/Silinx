@@ -141,7 +141,7 @@ export const PT = {
   'Implementation Constraints File': 'Ficheiro de Restrições de Implementação', 'Memory Initialization File (.mem)': 'Ficheiro de Inicialização de Memória (.mem)',
   'Enter a valid file name (letters, digits, _ and -).': 'Indique um nome de ficheiro válido (letras, dígitos, _ e -).', 'Invalid location.': 'Localização inválida.',
   'Invalid module name.': 'Nome de módulo inválido.', 'Duplicate port names.': 'Nomes de portos repetidos.', 'Select a module.': 'Selecione um módulo.',
-  'No design modules in the project.': 'Não há módulos de projeto.', 'Add Copy of Source': 'Adicionar Cópia de Fonte', 'Project:': 'Projeto:', 'Check for Updates…': 'Procurar Atualizações…', 'Emulate on Board': 'Emular na Placa', 'Emulate Behavioral Model (RTL)': 'Emular Modelo Comportamental (RTL)', 'Emulate Behavioral Model': 'Emular Modelo Comportamental',
+  'No design modules in the project.': 'Não há módulos de projeto.', 'Add Copy of Source': 'Adicionar Cópia de Fonte', 'Project:': 'Projeto:', 'Check for Updates…': 'Procurar Atualizações…', 'Emulate Behavioral Model (RTL)': 'Emular Modelo Comportamental (RTL)', 'Emulate Behavioral Model': 'Emular Modelo Comportamental',
   'Emulate Post-Synthesis Model': 'Emular Modelo Pós-Síntese', 'Emulate Post-Translate Model': 'Emular Modelo Pós-Translate',
   'Emulate Post-Map Model': 'Emular Modelo Pós-Map', 'Emulate Post-Place & Route Model': 'Emular Modelo Pós-Place & Route',
   'View Technology Schematic': 'Ver Esquemático Tecnológico',

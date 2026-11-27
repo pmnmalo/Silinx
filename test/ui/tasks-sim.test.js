@@ -605,7 +605,7 @@ uiTest('#1396 Tasks ▸ Simulate: the simulations closed, a test bench\'s HDL st
   await page.waitFor(() => !!document.getElementById('task-sim-panel')?.getClientRects().length, [], { what: 'the side panel', timeout: 5000 });
   assert.deepEqual(await page.eval(() => {
     const p = document.getElementById('task-sim-panel').getBoundingClientRect(), d = window.Silinx.active.el.getBoundingClientRect(), t = document.getElementById('doc-tabs').getBoundingClientRect();
-    return { task: document.documentElement.dataset.task, beside: d.left >= p.right - 1, tabs: Math.abs(t.left - p.right) <= 1, under: d.top >= t.bottom - 1, bench: [...document.querySelectorAll('#task-sim-panel .task-sim-bench .lbl')].map((e) => e.textContent) };
+    return { task: document.documentElement.dataset.task, beside: d.left >= p.right - 1, tabs: Math.abs(t.left - p.right) <= 1, under: d.top >= t.bottom - 1, bench: [...document.querySelectorAll('#task-sim-panel .task-sim-bench > .row .lbl')].map((e) => e.textContent) };
   }), { task: 'sim', beside: true, tabs: true, under: true, bench: ['tb_top'] });
   assert.doesNotMatch(await logText(page), /WARNING|ERROR/);
 }, { build: DEV });
