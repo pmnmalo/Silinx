@@ -1,6 +1,6 @@
 // UI: synthesis, implementation and emulation work on the project's top module (#223). With another
 // module selected in the Design pane, running one of them (Generate Programming File, Synthesize,
-// Implement Design, Emulate on Board; the Silinx header's Implement / Emulate) says so first: OK runs
+// Implement Design, Emulate; the Silinx header's Implement / Emulate) says so first: OK runs
 // it on the top, Cancel nothing; with the top selected, no question. In Portuguese too.
 import { before, after } from 'node:test';
 import assert from 'node:assert/strict';
@@ -19,13 +19,13 @@ const question = (page) => page.eval(() => {
 });
 const processLabels = (page) => page.eval(() => [...document.querySelectorAll('#procs .lbl')].map((l) => l.textContent));
 
-uiTest('the processes on the top module (#223): with another module selected, Generate Programming File, Synthesize, Implement Design and Emulate on Board say they work on the top (Cancel: nothing; OK: the top)', E, async (page) => {
+uiTest('the processes on the top module (#223): with another module selected, Generate Programming File, Synthesize, Implement Design and Emulate say they work on the top (Cancel: nothing; OK: the top)', E, async (page) => {
   await makeProject(env, { name: 'TopSel', template: 'traffic' });
   await page.openProject('TopSel');
   await page.treeRow('#hier', 'u_timer - timer', { exact: true });
   await page.waitFor(() => window.Silinx.sel?.module === 'timer');
   const synth = (await processLabels(page)).find((l) => /^Synthesize - /.test(l));
-  for (const [proc, verb] of [['Generate Programming File', 'implements'], [synth, 'synthesizes'], ['Implement Design', 'implements'], ['Emulate on Board', 'emulates']]) {
+  for (const [proc, verb] of [['Generate Programming File', 'implements'], [synth, 'synthesizes'], ['Implement Design', 'implements'], ['Emulate', 'emulates']]) {
     await page.treeRow('#procs', proc, { dbl: true, exact: true });
     await page.waitDialog(proc);
     assert.deepEqual(await question(page), { title: proc, text: [`${proc} ${verb} the top module 'top', not the selected module 'timer'.`, HINT], buttons: ['OK', 'Cancel'] });
@@ -36,9 +36,9 @@ uiTest('the processes on the top module (#223): with another module selected, Ge
   assert.equal(await page.eval(() => !!window.Silinx.busy || window.Silinx.docs.some((d) => d.id === 'emulator')), false);
   assert.doesNotMatch(await page.consoleText(), /Process "|Started :/);
   assert.equal(await page.eval(() => window.Silinx.project.top), 'top');
-  // OK: Emulate on Board emulates the top
-  await page.treeRow('#procs', 'Emulate on Board', { dbl: true, exact: true });
-  await page.waitDialog('Emulate on Board');
+  // OK: Emulate emulates the top
+  await page.treeRow('#procs', 'Emulate', { dbl: true, exact: true });
+  await page.waitDialog('Emulate');
   await page.dialogButton('OK');
   await page.waitFor(() => window.Silinx.active?.id === 'emulator' && window.Silinx.active.title === 'Board Emulator (top)', [], { what: 'the emulator of the top', timeout: 30000 });
   assert.equal(await page.eval(() => window.Silinx.project.top), 'top');
@@ -48,7 +48,7 @@ uiTest('the processes on the top module (#223): with another module selected, Ge
   await page.waitFor(() => window.Silinx.active?.id === 'file:src/top.vhd');
   await page.treeRow('#hier', 'top', { exact: true });
   await page.waitFor(() => window.Silinx.sel?.module === 'top');
-  await page.treeRow('#procs', 'Emulate on Board', { dbl: true, exact: true });
+  await page.treeRow('#procs', 'Emulate', { dbl: true, exact: true });
   await page.waitFor(() => window.Silinx.active?.id === 'emulator' && window.Silinx.active.title === 'Board Emulator (top)', [], { what: 'the emulator of the top', timeout: 30000 });
   assert.deepEqual(page.dialogs, []);
   assert.equal(await page.eval(() => !!document.querySelector('.dlg-overlay')), false);
@@ -83,9 +83,9 @@ uiTest('the processes on the top module (#223): the Silinx header\'s Implement a
     });
     await page.dialogButton('Cancelar');
     await page.waitNoDialog();
-    await page.treeRow('#procs', 'Emular na Placa', { dbl: true, exact: true });
-    await page.waitDialog('Emular na Placa');
-    assert.deepEqual((await question(page)).text[0], "Emular na Placa emula o módulo de topo 'top', não o módulo selecionado 'timer'.");
+    await page.treeRow('#procs', 'Emular', { dbl: true, exact: true });
+    await page.waitDialog('Emular');
+    assert.deepEqual((await question(page)).text[0], "Emular emula o módulo de topo 'top', não o módulo selecionado 'timer'.");
     await page.dialogButton('Cancelar');
     await page.waitNoDialog();
   } finally {

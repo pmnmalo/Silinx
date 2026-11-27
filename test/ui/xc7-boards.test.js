@@ -53,15 +53,15 @@ uiTest('#3142 #1649 Design Properties: the Basys 3, experimental; the pins as an
   assert.match(xdc, /\[get_ports \{led\[7\]\}\]\n\n# Timing constraints\ncreate_clock -add -name clk -period 10\.000 -waveform \{0\.000 5\.000\} \[get_ports \{clk\}\]\n/);
 
   // the processes: AMD Vivado's (#1649): its synthesis, the implementation, the programming file and the board; no
-  // simulation model, no technology view, no FPGA view; Emulate on Board (#3704)
+  // simulation model, no technology view, no FPGA view; Emulate (#3704)
   await page.setView('impl');
   await page.treeRow('#hier', 'top');
   const labels = await page.eval(() => [...document.querySelectorAll('#procs .row')].map(x => x.textContent.trim().replace(/^▾/, '')));
   for (const absent of ['Synthesize - Yosys', 'Synthesize - XST', 'View Technology Schematic', 'Generate Post-Synthesis Simulation Model', 'View Implemented Design (FPGA)']) assert.ok(!labels.some(l => l.startsWith(absent)), `${absent}: ${labels}`);
   for (const present of ['I/O Pin Planning', 'Synthesize - Vivado', 'View RTL Schematic', 'Check Syntax', 'Implement Design', 'Map', 'Place & Route', 'Generate Post-Place & Route Static Timing', 'Generate Programming File', 'Configure Target Device'])
     assert.ok(labels.includes(present), `${present}: ${labels}`);
-  // Emulate on Board (#3704): the HDL on the board's pins; its RTL model only (the flow makes no simulation model)
-  for (const present of ['Emulate on Board', 'Emulate Behavioral Model (RTL)']) assert.ok(labels.includes(present), `${present}: ${labels}`);
+  // Emulate (#3704): the HDL on the board's pins; its RTL model only (the flow makes no simulation model)
+  for (const present of ['Emulate', 'Emulate Behavioral Model (RTL)']) assert.ok(labels.includes(present), `${present}: ${labels}`);
   assert.ok(!labels.some(l => /^Emulate Post-/.test(l)), String(labels));
   // the Silinx toolbar's steps (the Silinx interface's): every one on, Emulate too (#3704)
   const steps = await page.eval(() => { window.SilinxApp.select?.(window.Silinx.sel); return Object.fromEntries([...document.querySelectorAll('#toolbar .m-step')].map(b => [b.dataset.step, b.disabled])); });

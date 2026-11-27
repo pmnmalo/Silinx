@@ -60,6 +60,9 @@ Uma linha por módulo: primeiro o desenho, depois o HDL gerado dele. Um projeto 
 placa) mostra só os desenhos, para uma cadeira que não chega à placa. No estilo ISE, a vista Implementação lista o
 ficheiro de restrições e as imagens de memória debaixo do módulo de topo, como o ISE; na interface Silinx, Implementar
 e Emular têm um separador Ficheiros ao lado do dos seus processos, com esses ficheiros debaixo do módulo de
-topo (sozinhos quando o projeto não tem topo).
+topo (sozinhos quando o projeto não tem topo). Na interface Silinx, os painéis laterais de Implementar, Emular e Simular
+começam pela mesma hierarquia: o projeto, o seu dispositivo (nenhum num projeto Circuito), e depois o módulo de topo de
+Implementar e de Emular com os seus processos por baixo, ou os bancos de teste de Simular, cada um com os seus objetos
+(a unidade em teste, os seus submódulos) por baixo.
 
 A seguir: [Simular](simulating.md). Cada editor em pormenor: [as funcionalidades](../en/features.md) (em inglês).

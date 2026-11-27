@@ -46,7 +46,7 @@ uiTest('#1224 Tasks ▸ Implement with no top module: said so, Set Top Module…
   await page.dialogButton('OK');
   await page.waitFor(() => window.Silinx.project.top === 'top' && [...document.querySelectorAll('#procs .lbl')].some((e) => e.textContent.startsWith('Synthesize')), [], { what: 'the top set, its processes' });
   assert.equal(await note(page), null, 'no note with a top');
-  assert.equal((await rows(page))[0], 'Design Summary/Reports', 'the Design Summary with a top (#1287)');
+  assert.equal((await rows(page))[3], 'Design Summary/Reports', 'the Design Summary with a top (#1287), under the project, its device and its top (#5789)');
   assert.equal((await env.server.api('GET', '/api/projects/NoTop')).top, 'top');
   // the Design Summary opened at once, in front, as when Implement is chosen with a top (#1372)
   await page.waitFor(() => window.Silinx.active?.id === 'summary' && document.documentElement.dataset.task === 'impl', [], { what: 'the Design Summary in front' });
@@ -77,12 +77,12 @@ uiTest('#1422 Tasks ▸ Emulate with no top module: said so in its side panel, S
   const emuNote = () => page.eval(() => { const n = document.querySelector('#task-emu-panel .task-no-top'); return n && n.getClientRects().length ? { text: n.querySelector('p').textContent, button: n.querySelector('button').textContent } : null; });
   await page.waitFor(() => !!document.querySelector('#task-emu-panel .task-no-top')?.getClientRects().length, [], { what: 'the note' });
   assert.deepEqual(await emuNote(), { text: 'No top module is set: the design is implemented from its top module, so set one to see its processes.', button: 'Set Top Module…' });
-  assert.deepEqual(await page.eval(() => [...document.querySelectorAll('#task-emu-bar .btn')].map((b) => `${b.textContent}${b.disabled ? ' (off)' : ''}`)), ['I/O Pin Planning (off)', 'Emulate on Board (off)'], 'its bar off (#1424)');
+  assert.deepEqual(await page.eval(() => [...document.querySelectorAll('#task-emu-bar .btn')].map((b) => `${b.textContent}${b.disabled ? ' (off)' : ''}`)), ['I/O Pin Planning (off)', 'Emulate (off)'], 'its bar off (#1424)');
   await page.click('#task-emu-panel .task-no-top button');
   await page.waitDialog('Set Top Module');
   await page.eval(() => { document.querySelector('.dlg-overlay select').value = 'top'; });
   await page.dialogButton('OK');
-  await page.waitFor(() => window.Silinx.project.top === 'top' && [...document.querySelectorAll('#task-emu-panel .lbl')].some((e) => e.textContent === 'Emulate on Board'), [], { what: 'its processes' });
+  await page.waitFor(() => window.Silinx.project.top === 'top' && [...document.querySelectorAll('#task-emu-panel .lbl')].some((e) => e.textContent === 'Emulate'), [], { what: 'its processes' });
   assert.equal(await emuNote(), null, 'no note with a top');
   assert.deepEqual(page.console.filter((c) => c.type === 'warning' || c.type === 'warn').map((c) => c.text), []);
 }, { build: DEV });

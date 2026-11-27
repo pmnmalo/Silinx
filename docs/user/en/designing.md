@@ -54,6 +54,8 @@ One row per module: its drawing first, then the HDL generated from it. A design 
 board) shows only the drawings, for a course that does not reach the board. In the ISE style, the Implementation view
 lists the constraints file and the memory images under the top module, as ISE does; in the Silinx interface, Implement
 and Emulate have a Files tab beside their processes' tab, with those files under the top module (on their own when
-the project has no top).
+the project has no top). In the Silinx interface, the side panels of Implement, Emulate and Simulate start with the same
+hierarchy: the project, its device (none in a Circuit project), then Implement's and Emulate's top module with their
+processes under it, or Simulate's test benches, each with its objects (the unit under test, its submodules) under it.
 
 Next: [Simulating](simulating.md). Every editor in detail: [the features](features.md).

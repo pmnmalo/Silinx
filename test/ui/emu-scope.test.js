@@ -35,7 +35,7 @@ uiTest('#5383 the Board Emulator\'s oscilloscope: a signal\'s trace, its frequen
   assert.equal(await page.eval(() => window.SilinxApp.regenerateUcf()), true);
   await page.setView('impl');
   await page.treeRow('#hier', 'tick8');
-  await page.treeRow('#procs', 'Emulate on Board', { dbl: true, exact: true });
+  await page.treeRow('#procs', 'Emulate', { dbl: true, exact: true });
   await page.waitFor((d) => window.Silinx.active?.id === 'emulator' && document.querySelector(d), [D], { what: 'the scope box' });
   assert.equal(await page.eval((d) => document.querySelector(`${d} h4`).textContent, D), 'Oscilloscope');
   // the Watch first, the scope right after it (#1399, #5671)

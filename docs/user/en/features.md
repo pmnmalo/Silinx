@@ -98,7 +98,7 @@ for Xilinx FPGAs supported by ISE 14.7.
   registers, 2-flip-flop input synchronisers, `<<`/`>>`, and *every cycle* blocks (decision and
   output boxes evaluated on every clock cycle, in parallel with the states), e.g. the blinky
   example's `speed_ctrl.asm.json` (button synchronisers + debouncers + speed FSM + step divider).
-- **Board emulator** (*Emulate on Board ▸ Emulate Behavioral Model (RTL)*): the design runs on a drawing of the real kit
+- **Board emulator** (*Emulate ▸ Emulate Behavioral Model (RTL)*): the design runs on a drawing of the real kit
   (Digilent Basys2, Nexys2, Nexys3, Atlys, Basys 3, Nexys A7, Zybo Z7 and Arty Z7, Spartan-3E Starter Kit, 1BitSquared
   iCEBreaker, the ULX3S, the Tang Nano 9K…; a generic panel for the other boards: the Arty S7, the GateMate evaluation board…),
   wired by the constraints (UCF, XDC, PCF, LPF or CST): click the slide switches, press the buttons, watch the LEDs and the

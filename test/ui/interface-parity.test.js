@@ -40,10 +40,10 @@ const SAME = [
   ['import source', 'add copy of source'],   // Project ▸ Add Copy of Source… is Import Source… in the Silinx interface (#1501)
   ['search commands and files', 'command palette'],   // the Silinx header's search; View ▸ Command Palette…
   ['check design', 'check syntax'],
-  // the ISE style's toolbar's Emulate Behavioral Model: Processes ▸ Emulate on Board ▸ Emulate Behavioral Model (RTL),
+  // the ISE style's toolbar's Emulate Behavioral Model: Processes ▸ Emulate ▸ Emulate Behavioral Model (RTL),
   // named without its "(RTL)" (#5114)
   ['emulate behavioral model', 'emulate behavioral model (rtl)'],
-  ['emulate on board', 'process:emulate'],   // Emulate's button: Processes ▸ Emulate on Board   // Design's Check Design: the top module's Check Syntax (#1309)
+  // (Emulate's task and its button: the ISE style's Processes ▸ Emulate, one key since #5789's rename)   // Design's Check Design: the top module's Check Syntax (#1309)
   ['new test bench', 'create test bench (wizard)'],   // Simulate's New Test Bench…: the Test Bench wizard
   ['import test bench', 'add copy of source'],   // Simulate's Import Test Bench…: a source imported
   ['add copy to project', 'add copy of source'],   // the Silinx interface's Files page: Add Copy to Project… (#1214)
@@ -57,7 +57,6 @@ const ALLOW = [
   // panes, sized by their splitters as ISE's
   ['silinx', 'simulate', 'the Silinx interface\'s Simulate task (the ISE style\'s Simulation view)'],
   ['silinx', 'implement', 'the Silinx interface\'s Implement task (the ISE style\'s Implementation view and its Processes)'],
-  ['silinx', 'emulate', 'the Silinx interface\'s Emulate task (the ISE style\'s Processes ▸ Emulate on Board)'],
   ['silinx', 'show or hide the side panel', 'the Silinx interface\'s layout: the ISE style\'s panes are sized by their splitters'],
   ['silinx', 'show or hide the messages', 'the same'],
   ['silinx', 'maximize the document (double-click its tab)', 'the same'],

@@ -1,5 +1,5 @@
 // UI: an ECP5 device in the interface (#2302): the picker with its speed grades and the synthesis locked, the processes of its
-// toolchain only (no Map; Configure Target Device its SRAM's, #2298: test/ui/program-open.test.js; Emulate on Board, #3704), its constraints LPF
+// toolchain only (no Map; Configure Target Device its SRAM's, #2298: test/ui/program-open.test.js; Emulate, #3704), its constraints LPF
 // (read, written, checked), Implement to its .bit with no warnings in the server's real flow and the Design Summary's
 // reports, in English and Portuguese; the ULX3S's pins written as an LPF by Update Constraints.
 import { before, after } from 'node:test';
@@ -69,8 +69,8 @@ uiTest('#2302 an ECP5 project: its processes, its constraints LPF, Implement giv
   assert.ok(labels.includes('Generate Programming File'), String(labels));
   for (const absent of ['Map', 'Generate Text Power Report', 'Back-annotate Pin Locations']) assert.ok(!labels.includes(absent), `${absent}: ${labels}`);
   assert.ok(labels.includes('Configure Target Device'), String(labels));   // (#2298)
-  // Emulate on Board (#3704): the HDL on the board's pins; its RTL model, its Post-Synthesis and Post-Place & Route models too (#2299)
-  for (const present of ['Emulate on Board', 'Emulate Behavioral Model (RTL)', 'Emulate Post-Synthesis Model', 'Emulate Post-Place & Route Model']) assert.ok(labels.includes(present), `${present}: ${labels}`);
+  // Emulate (#3704): the HDL on the board's pins; its RTL model, its Post-Synthesis and Post-Place & Route models too (#2299)
+  for (const present of ['Emulate', 'Emulate Behavioral Model (RTL)', 'Emulate Post-Synthesis Model', 'Emulate Post-Place & Route Model']) assert.ok(labels.includes(present), `${present}: ${labels}`);
   for (const absent of ['Emulate Post-Translate Model', 'Emulate Post-Map Model']) assert.ok(!labels.includes(absent), `${absent}: ${labels}`);
 
   await page.treeRow('#procs', 'Generate Programming File', { dbl: true, exact: true });

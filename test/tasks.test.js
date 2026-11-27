@@ -73,7 +73,7 @@ test('arrangement: the task in front gets the space; what the viewer left wins',
   assert.deepEqual(T.arrangement('emu', { side: true }, true), { side: false, console: true, max: false });
   assert.deepEqual(T.arrangement('emu', { side: false, narrowSide: true }, true), { side: true, narrowSide: true, console: true, max: false });
   assert.deepEqual(T.arrangement('emu', { side: true, narrowSide: true }), { side: true, narrowSide: true, console: true, max: false });
-  // (#5299: no board open, `empty`, its side panel shown, Emulate on Board in it; the viewer's choice there still wins;
+  // (#5299: no board open, `empty`, its side panel shown, Emulate in it; the viewer's choice there still wins;
   // on a wide screen, and for the other tasks, no change)
   assert.equal(T.arrangement('emu', {}, true, true).side, true);
   assert.equal(T.arrangement('emu', { side: true }, true, false).side, false);
