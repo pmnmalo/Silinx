@@ -69,7 +69,6 @@ export const SYSTEM_PT = {
   'Emulate': 'Emular', 'Emulate the System: its boards side by side, interactive, in real time': 'Emular o Sistema: as suas placas lado a lado, interativas, em tempo real',
   // (an FPGA node's constraints file, #5581: web/js/system-constraints-ui.js, web/js/system-side.js)
   'Its module\'s ports on its board\'s pins, written to its constraints file': 'As portas do seu módulo nos pinos da sua placa, escritas no seu ficheiro de restrições',
-  'A node\'s: its I/O Pin Planning in the tree below': 'De um nó: o seu Planeamento de Pinos de E/S na árvore abaixo',
   'Each FPGA node\'s model:': 'O modelo de cada nó FPGA:',
   // (the System Emulator's toolbar, #5613: web/js/system-emu-view.js)
   'Run the System at its rate until Pause': 'Correr o Sistema ao seu ritmo até Pausa', 'Rate:': 'Ritmo:',

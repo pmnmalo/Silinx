@@ -15,7 +15,7 @@ import { modulesFromLibrary } from '/core/schdoc.js';
 import * as wiz from './wizards.js';
 import { countEvent } from './analytics.js';
 import { S, activateDoc, app, closeDoc, findDoc, moduleInfo, openDoc, openFile, projectBoard, status, withPrimitives } from './app.js';
-import { asSsim, benchItems, treeBar, treeItems } from './tasks-sim-tree.js';
+import { asSsim, benchItems, treeItems } from './tasks-sim-tree.js';
 import { mountSimPages } from './tasks-sim-files.js';
 import { appLog, commandError, commandInfo, log, logError, logInfo, setDiagnostics, showConsolePage, simDiagnostics, startRun } from './console.js';
 import { reloadProject } from './project.js';
@@ -308,9 +308,9 @@ async function runSimulationInner(mod, model, stale) {
       const tree = el.querySelector('.isim-inst-panel');
       let pages = null;
       if (tree) {
-        const bar = treeBar(app), body = tree.querySelector(':scope > .body');
-        body.before(bar);
-        pages = mountSimPages(app, tree.querySelector('.task-sim-tabs'), [bar, body]);   // (and the Files page, #1395)
+        // (no bar above it since #5939: New Test Bench… and Import Test Bench… the hierarchy's empty space's menu)
+        const body = tree.querySelector(':scope > .body');
+        pages = mountSimPages(app, tree.querySelector('.task-sim-tabs'), [body]);   // (and the Files page, #1395)
       }
       // (brought to the front, e.g. its bench clicked in another simulation's tree: its bench shown expanded, #1267)
       // (the project read again, a test bench added, removed or renamed: its tree drawn again, #1364)

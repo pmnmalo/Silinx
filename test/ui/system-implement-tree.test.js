@@ -10,6 +10,7 @@ import { before, after } from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
+import { rowItems, runRowItem } from './row-menu.js';
 import { setupUi, uiTest, makeProject } from './harness.js';
 
 let env;
@@ -73,14 +74,13 @@ uiTest('#5581 a System\'s Implement: its tree, each node\'s plan state its mark,
     assert.deepEqual([await tip(page, 'fpga (Digilent Basys2)'), await tip(page, 'uno (Arduino Uno)'), await tip(page, 'Firmware: hello.hex')],
       [FPGA_TIP, UNO_TIP, 'uno: its firmware uno/hello.hex, made outside Silinx: nothing to build']);
     assert.equal(await page.eval(() => document.querySelector('#procs .task-no-top')), null, 'no "No top module is set"');
-    // its bar: Build All and Program All, the System's
-    await page.waitFor(() => document.querySelector('#task-impl-bar [data-act=pins]').textContent === 'Build All', [], { what: 'its bar' });
-    assert.deepEqual(await page.eval(() => [...document.querySelectorAll('#task-impl-bar .btn')].map((x) => [x.textContent, x.disabled])), [['Build All', false], ['Program All', false]]);
+    // its System's row's menu: Build All and Program All (a bar above the tree before #5939)
+    assert.deepEqual(await rowItems(page, '#procs', 'uart_avr (System)'), ['Build All', 'Program All']);
     // (each run said: the server's answer stubbed, the runs themselves are test/ui/system-build-all's and system-program's)
     await page.eval(async () => { const { api } = await import('/js/api.js'); api.buildSystem = async () => { throw new Error('stubbed'); }; api.programPlan = async () => { throw new Error('stubbed'); }; });
-    await page.click('#task-impl-bar [data-act=pins]');
+    await runRowItem(page, '#procs', 'uart_avr (System)', 'Build All');
     await page.waitConsole(/^Process "Build All" failed: stubbed$/m);
-    await page.click('#task-impl-bar [data-act=program]');
+    await runRowItem(page, '#procs', 'uart_avr (System)', 'Program All');
     await page.waitConsole(/^ERROR: Program All: stubbed$/m);
     // Build Plan: one line a node, the FPGA first
     await run(page, 'Build Plan');
@@ -107,7 +107,7 @@ uiTest('#5581 a System\'s Implement: its tree, each node\'s plan state its mark,
     assert.deepEqual(pt.slice(pt.findIndex((r) => r.startsWith('  pic '))), ['  pic (Explorer 16/32) [ok]', '    Programa (firmware): lcd_uart.hex (off)', '    Programar Nó (off)']);
     assert.equal(await page.eval(() => [...document.querySelectorAll('#procs .row')].filter((r) => r.querySelector('.lbl').textContent === 'Programar Nó')[1].title),
       'pic: um PIC24 ainda não é programado pelo Silinx: carregue o seu pic/lcd_uart.hex com o MPLAB IPE');
-    assert.deepEqual(await page.eval(() => [...document.querySelectorAll('#task-impl-bar .btn')].map((x) => x.textContent)), ['Construir Tudo', 'Programar Tudo']);
+    assert.deepEqual(await rowItems(page, '#procs', 'uart_pic24 (Sistema)'), ['Construir Tudo', 'Programar Tudo']);
     await page.eval(async () => (await import('/js/i18n.js')).setLanguage('en'));
   }
   assert.deepEqual(page.console.filter((c) => c.type === 'error' || c.type === 'warning' || c.type === 'warn').map((c) => c.text), []);

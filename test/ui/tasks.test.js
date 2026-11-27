@@ -6,6 +6,7 @@
 // line in it). The ISE style interface is unchanged (test/ui/silinx.test.js).
 import { before, after } from 'node:test';
 import assert from 'node:assert/strict';
+import { rowItems, runRowItem } from './row-menu.js';
 import { setupUi, uiTest, makeProject, chromeOnly, tick } from './harness.js';
 import { TEXTS, untranslated } from './i18n-check.js';
 import { newDoc, normalizeDoc, symbolPins } from '../../core/schdoc.js';
@@ -1055,8 +1056,9 @@ uiTest('#917 #1378 Tasks ▸ Simulate: no test bench, the module and the model c
     model: ['?', 'Select simulation model...'] };
   const prompts = async () => { const m = await choice('task-model'); return { bench: await choice('task-bench'), model: [m.value, m.options[0][1]] }; };
   // no test bench: said; the side panel beside the page (no button on it, #1376): the module and the model, each on its
-  // prompt; no Simulate row (#1378), the wizard the bar's New Test Bench (#1385)
-  await page.waitFor(() => document.querySelector('#task-sim-panel [data-act=new-bench]')?.getClientRects().length > 0, [], { what: 'the wizard offered' });
+  // prompt; no Simulate row (#1378), the wizard the project's and the device's menus' New Test Bench (a bar's, #1385, before
+  // #5939)
+  await page.waitFor(() => [...document.querySelectorAll('#task-sim-panel .row .lbl')].some((l) => l.textContent === 'xc3s250e-4-cp132' && l.getClientRects().length), [], { what: 'the device' });
   assert.equal(await page.eval(() => document.querySelector('#task-empty p').textContent),
     'The project has no test bench yet: create one with the wizard, or choose a module to simulate with stimuli drawn in SSim.');
   assert.deepEqual(await page.eval(() => [...document.querySelectorAll('#task-empty button')].filter((b) => b.getClientRects().length).length), 0);
@@ -1085,7 +1087,7 @@ uiTest('#917 #1378 Tasks ▸ Simulate: no test bench, the module and the model c
     ['Selecione o modelo de simulação...', 'Simulação', 'Ficheiros', 'TasksBench', 'xc3s250e-4-cp132']);   // (the project's and the device's names as they are, #5789)
   await page.eval(async () => (await import('/js/i18n.js')).setLanguage('en'));
   // the wizard: its test bench becomes the one Simulate runs; the panel lists the test benches, the choices gone
-  await page.click('#task-sim-panel [data-act=new-bench]');
+  await runRowItem(page, '#task-sim-panel', 'xc3s250e-4-cp132', 'New Test Bench…');
   await page.waitDialog('Test Bench Wizard');
   for (let k = 0; k < 4; k++) await page.dialogButton('Next >');
   await page.dialogButton('Finish');
@@ -1421,15 +1423,15 @@ uiTest('#1159 #1160 #1207 Tasks: no heading under the side panel\'s tabs; Implem
   await noWarnings(page);
 }, { build: DEV });
 
-// #1309: Design's Close Project, under its tree; off with no project; Portuguese; not in the ISE style interface
-uiTest('#1309 #1384 Tasks ▸ Design: Close Project under the Design tree, off with no project; the tree\'s empty space\'s menu; Portuguese; ISE style none', E, async (page) => {
+// #1309, #5939: Design's Close Project, in the project's row's menu (a bar under the tree before #5939); the tree's empty
+// space's menu; Portuguese; no bar in either interface
+uiTest('#1309 #1384 #5939 Tasks ▸ Design: no bar under the tree, Close Project in the project\'s menu; the tree\'s empty space\'s menu; Portuguese; ISE style none', E, async (page) => {
   await makeProject(env, { name: 'TasksClose', template: 'gates' });
   await page.setViewport(1366, 768);
   await tasksInterface(page);
   await page.openProject('TasksClose');
   await page.click('#left-tabs .tab[data-page="design"]');
-  const btn = () => page.eval(() => { const b = document.querySelector('#task-close-bar button:not([data-act])'), t = document.getElementById('hier').getBoundingClientRect(); return b && b.getClientRects().length ? { text: b.textContent, off: b.disabled, under: b.getBoundingClientRect().top >= t.bottom - 1 } : null; });
-  assert.deepEqual(await btn(), { text: 'Close Project', off: false, under: true });
+  assert.equal(await page.eval(() => document.getElementById('task-close-bar')), null);
   // a right-click on the tree's empty space (under its rows): New Source, Add Copy of Source, Close Project (#1384); on a
   // row, the row's menu
   const empty = await page.eval(() => { const t = document.getElementById('hier').getBoundingClientRect(), rows = [...document.querySelectorAll('#hier .row')].filter((r) => r.getClientRects().length);
@@ -1447,32 +1449,39 @@ uiTest('#1309 #1384 Tasks ▸ Design: Close Project under the Design tree, off w
   assert.deepEqual(await menu(), ['Nova Fonte…', 'Importar Fonte…', 'Mudar o Nome do Projeto…', 'Fechar Projeto']);
   await page.closeMenus();
   await page.eval(async () => (await import('/js/i18n.js')).setLanguage('en'));
-  await page.click('#task-close-bar button:not([data-act])');
+  // the project's row's Close Project
+  await page.rightClick('#hier .row .lbl', { text: 'TasksClose' });
+  assert.equal((await menu()).at(-1), 'Close Project');
+  await page.click('body > .menu-popup .mi', { text: 'Close Project' });
   await page.waitFor(() => !window.Silinx.project, [], { what: 'closed' });
-  await page.waitFor(() => document.querySelector('#task-close-bar button:not([data-act])').disabled, [], { what: 'off with no project' });
-  await page.eval(async () => (await import('/js/i18n.js')).setLanguage('pt'));
-  await page.waitFor(() => document.querySelector('#task-close-bar button:not([data-act])').textContent === 'Fechar Projeto', [], { what: 'Portuguese' });
-  await page.eval(async () => (await import('/js/i18n.js')).setLanguage('en'));
   await page.eval(async () => (await import('/js/silinx.js')).setInterface('ise'));
   await page.waitFor(() => !document.documentElement.dataset.layout);
   assert.equal(await page.eval(() => document.getElementById('task-close-bar')), null);
   await noWarnings(page);
 }, { build: DEV });
 
-// #1329, #1330: Design's Check Design beside Close Project (the top's Check Syntax, whatever the tree selects; off with no
-// top); no Create Test Bench (Wizard) in a module's right-click menu (the ISE style interface keeps it); Portuguese
-uiTest('#1329 #1330 Tasks ▸ Design: Check Design beside Close Project, the top\'s Check Syntax; no Create Test Bench in a module\'s menu; Portuguese; ISE style keeps it', E, async (page) => {
+// #1329, #1330, #5939: Check Design in the project's and the device's menus (the top's Check Syntax, whatever the tree
+// selects; disabled with no top; a bar under the tree before #5939); no Create Test Bench (Wizard) in a module's right-click
+// menu (the ISE style interface keeps it); Portuguese
+uiTest('#1329 #1330 #5939 Tasks ▸ Design: Check Design in the project\'s and the device\'s menus, the top\'s Check Syntax; no Create Test Bench in a module\'s menu; Portuguese; ISE style keeps it', E, async (page) => {
   await makeProject(env, { name: 'TasksCheckDesign', template: 'gates' });
   await page.setViewport(1366, 768);
   await tasksInterface(page);
   await page.openProject('TasksCheckDesign');
   await page.click('#left-tabs .tab[data-page="design"]');
-  const bar = () => page.eval(() => [...document.querySelectorAll('#task-close-bar button')].map(b => [b.textContent, b.disabled]));
-  await page.waitFor(() => !document.querySelector('#task-close-bar [data-act="check-design"]').disabled, [], { what: 'Check Design on' });
-  assert.deepEqual(await bar(), [['Check Design', false], ['Close Project', false]]);
+  // a row's menu: its items, each [label, disabled]
+  const items = async (label) => {
+    await page.rightClick('#hier .row .lbl', { text: label });
+    const m = await page.waitFor(() => { const x = [...document.querySelectorAll('body > .menu-popup .mi')].map((i) => [i.textContent.trim(), i.classList.contains('disabled')]); return x.length ? x : null; }, [], { what: 'the menu' });
+    await page.closeMenus();
+    return m;
+  };
+  const dev = await page.eval(() => document.querySelector('#hier .row[data-key="device"] .lbl').textContent);
+  for (const row of ['TasksCheckDesign', dev]) assert.deepEqual((await items(row)).find(([l]) => l === 'Check Design'), ['Check Design', false], row);
   // the top's Check Syntax, with no module selected in the tree
   await page.eval(() => document.querySelectorAll('#hier .row.sel').forEach(r => r.classList.remove('sel')));
-  await page.click('#task-close-bar [data-act="check-design"]');
+  await page.rightClick('#hier .row .lbl', { text: dev });
+  await page.click('body > .menu-popup .mi', { text: 'Check Design' });
   await page.waitConsole(/Process "Check Syntax" completed successfully/);
   // a module's right-click menu: Check Syntax and the others, no Create Test Bench (Wizard)
   const top = await page.eval(() => window.Silinx.project.top);
@@ -1481,12 +1490,14 @@ uiTest('#1329 #1330 Tasks ▸ Design: Check Design beside Close Project, the top
   await page.closeMenus();
   assert.ok(menu.includes('Check Syntax') && menu.includes('View RTL Schematic'), menu.join(' | '));
   assert.ok(!menu.includes('Create Test Bench (Wizard)…'), menu.join(' | '));
-  // off with no top module
+  // disabled with no top module
   await page.eval(async () => (await import('/js/design.js')).unsetTop());
-  await page.waitFor(() => document.querySelector('#task-close-bar [data-act="check-design"]').disabled, [], { what: 'Check Design off with no top' });
+  await page.waitFor(() => !window.Silinx.project.top, [], { what: 'no top' });
+  assert.deepEqual((await items(dev)).find(([l]) => l === 'Check Design'), ['Check Design', true]);
   await page.eval(async () => (await import('/js/i18n.js')).setLanguage('pt'));
-  await page.waitFor(() => document.querySelector('#task-close-bar [data-act="check-design"]').textContent === 'Verificar Projeto', [], { what: 'Portuguese' });
-  await page.eval(async () => (await import('/js/i18n.js')).setLanguage('en'));
+  try {
+    assert.ok((await items('TasksCheckDesign')).some(([l]) => l === 'Verificar Projeto'), 'Portuguese');
+  } finally { await page.eval(async () => (await import('/js/i18n.js')).setLanguage('en')); }
   // the ISE style interface: no bar, the wizard in the module's menu
   await page.eval(async () => (await import('/js/silinx.js')).setInterface('ise'));
   await page.waitFor(() => !document.documentElement.dataset.layout);
@@ -1749,42 +1760,41 @@ uiTest('#1260 Tasks: with no project, Simulate, Emulate and Implement are off an
   await noWarnings(page);
 }, { build: DEV });
 
-// #1398: Implement's I/O Pin Planning and Program FPGA above its Processes (I/O Pin Planning off with no top); Program FPGA
-// iMPACT's (the design implemented first when it is not); Portuguese; ISE style none
-uiTest('#1398 Tasks ▸ Implement: I/O Pin Planning and Program FPGA above the Processes; Portuguese; ISE style none', E, async (page) => {
+// #1398, #5939: Implement's I/O Pin Planning and Program FPGA, the project's and the device's menus' (a bar above its
+// Processes before #5939); Program FPGA iMPACT's (the design implemented first when it is not); Portuguese; ISE style none
+uiTest('#1398 #5939 Tasks ▸ Implement: I/O Pin Planning and Program FPGA in the project\'s and the device\'s menus, no bar; Portuguese; ISE style none', E, async (page) => {
   await makeProject(env, { name: 'TasksImplBar', template: 'blinky' });
   await page.setViewport(1366, 768);
   await tasksInterface(page);
   await page.openProject('TasksImplBar');
   await page.click('#task-switch .task-btn[data-task="impl"]');
-  const bar = () => page.eval(() => {
-    const b = [...document.querySelectorAll('#task-impl-bar .btn')].filter((x) => x.getClientRects().length), p = document.getElementById('procs').getBoundingClientRect();
-    return { buttons: b.map((x) => `${x.textContent}${x.disabled ? ' (off)' : ''}`), above: b.every((x) => x.getBoundingClientRect().bottom <= p.top + 1) };
-  });
-  await page.waitFor(() => !document.querySelector('#task-impl-bar [data-act=pins]')?.disabled, [], { what: 'on' });
-  assert.deepEqual(await bar(), { buttons: ['I/O Pin Planning', 'Program FPGA'], above: true });
-  await page.click('#task-impl-bar [data-act=pins]');
+  const dev = 'xc3s250e-4-cp132';
+  await page.waitFor((d) => [...document.querySelectorAll('#procs .row .lbl')].some((l) => l.textContent === d), [dev], { what: 'the device' });
+  assert.equal(await page.eval(() => document.getElementById('task-impl-bar')), null);
+  assert.deepEqual((await rowItems(page, '#procs', 'TasksImplBar')).slice(0, 2), ['I/O Pin Planning', 'Program FPGA']);
+  // (the device's: Program FPGA first, its I/O Pin Planning among its own)
+  const own = await rowItems(page, '#procs', dev);
+  assert.deepEqual([own[0], own.includes('I/O Pin Planning')], ['Program FPGA', true]);
+  await runRowItem(page, '#procs', 'TasksImplBar', 'I/O Pin Planning');
   await page.waitFor(() => window.Silinx.active?.id === 'pins', [], { what: 'I/O Pin Planning' });
   // Program FPGA: iMPACT opened beside, its Program FPGA run: not implemented yet, offered first
-  await page.click('#task-impl-bar [data-act=program]');
+  await runRowItem(page, '#procs', dev, 'Program FPGA');
   await page.waitDialog('Program FPGA');
   await page.dialogButton('No');
   await page.waitNoDialog();
   assert.deepEqual(await page.eval(() => [window.Silinx.active?.id, document.documentElement.dataset.task]), ['impact', 'impl']);
   // an iMPACT open from before, without its Program FPGA to run from here: opened again, and run (#1421)
   await page.eval(() => { delete window.SilinxApp.findDoc('impact').program; });
-  await page.click('#task-impl-bar [data-act=program]');
+  await runRowItem(page, '#procs', dev, 'Program FPGA');
   await page.waitDialog('Program FPGA');
   await page.dialogButton('No');
   await page.waitNoDialog();
-  // no top: I/O Pin Planning off
-  await page.eval(async () => { window.SilinxApp.S.project.top = ''; await window.SilinxApp.saveProjectJson(); });
-  await page.waitFor(() => document.querySelector('#task-impl-bar [data-act=pins]').disabled, [], { what: 'off with no top' });
   // in Portuguese
   await page.eval(async () => (await import('/js/i18n.js')).setLanguage('pt'));
-  await page.waitFor(() => document.querySelector('#task-impl-bar [data-act=program]').textContent === 'Programar FPGA', [], { what: 'Portuguese' });
-  assert.deepEqual((await bar()).buttons, ['Planeamento de Pinos de E/S (off)', 'Programar FPGA']);
-  await page.eval(async () => (await import('/js/i18n.js')).setLanguage('en'));
+  try {
+    await page.waitFor(() => document.querySelector('#task-procs-tab .tab-lbl')?.textContent !== 'Implementation', [], { what: 'Portuguese' });
+    assert.deepEqual((await rowItems(page, '#procs', 'TasksImplBar')).slice(0, 2), ['Planeamento de Pinos de E/S', 'Programar FPGA']);
+  } finally { await page.eval(async () => (await import('/js/i18n.js')).setLanguage('en')); }
   await page.eval(async () => (await import('/js/silinx.js')).setInterface('ise'));
   await page.waitFor(() => !document.documentElement.dataset.layout);
   assert.equal(await page.eval(() => document.getElementById('task-impl-bar')), null);
@@ -1824,36 +1834,33 @@ for (const theme of ['light', 'dark']) uiTest(`#1409 Tasks (${theme}): the side 
   await page.waitFor(() => document.querySelector('#doc-tabs .tab')?.getClientRects().length > 0, [], { what: 'the Design Summary' });
   assert.equal(await docTabs(), impl.tabs, 'the documents\' tabs as high as the side panel\'s');
   await go('edit');
-  const edit = await look('#left', '#left-tabs', '#left-tabs .tab.active .tab-lbl', '#task-close-bar', '#task-close-bar .btn', '#hier .row');
+  const edit = await look('#left', '#left-tabs', '#left-tabs .tab.active .tab-lbl', '#left .left-page:not([hidden]) > .task-bar', '#left .left-page:not([hidden]) > .task-bar .btn', '#hier .row');   // (no bar, #5939)
   await go('emu');
   const emu = await look('#left', '#left-tabs', '#task-emu-tab .tab-lbl', '#task-emu-bar', '#task-emu-bar .btn', '#task-emu-panel .row');
   await go('sim');
   await page.waitFor(() => document.getElementById('task-sim-panel')?.getClientRects().length > 0, [], { what: 'Simulate\'s panel' });
   const sim = await look('#task-sim-panel', '#task-sim-panel .task-sim-tabs', '#task-sim-panel .task-sim-tabs .tab.active .tab-lbl', '#task-sim-panel .task-sim-src-bar', '#task-sim-panel .task-sim-src-bar .btn', '#task-sim-panel .row');
   assert.equal(impl.width, 380);
-  assert.deepEqual([impl.tabs, impl.bar, impl.button, impl.row, impl.indent, impl.inset], [38, 40, '32 12px', '26 13px', 8, 6]);
-  for (const [name, x] of Object.entries({ sim, emu })) assert.deepEqual(x, impl, `${name} as Implement's`);
-  // (Design's bar is its Check Design and Close Project under the tree, a pixel higher, its border: none above the tree
-  // since #5873)
-  assert.deepEqual({ ...edit, bar: impl.bar }, impl, 'edit as Implement\'s');
-  assert.equal(edit.bar, impl.bar + 1);
+  // (no task's side panel has a bar since #5939: its commands its rows' menus)
+  assert.deepEqual([impl.tabs, impl.bar, impl.button, impl.row, impl.indent, impl.inset], [38, null, null, '26 13px', 8, 6]);
+  for (const [name, x] of Object.entries({ edit, sim, emu })) assert.deepEqual(x, impl, `${name} as Implement's`);
   // a simulation: its side panel as with none (its width, tabs, bar, rows), its tabs as high as the documents' beside it
   await page.click('#task-sim-panel .task-sim-bench .row');
   await page.waitFor(() => [...document.querySelectorAll('.doc .isim-left .isim-tree .row')].some((r) => r.getClientRects().length), [], { what: 'the simulation', timeout: 60000 });
   const running = await look('.doc:not([hidden]) .isim-left', '.doc:not([hidden]) .isim-left .task-sim-tabs', '.doc:not([hidden]) .isim-left .task-sim-tabs .tab.active .tab-lbl',
     '.doc:not([hidden]) .isim-left .task-sim-src-bar', '.doc:not([hidden]) .isim-left .task-sim-src-bar .btn', '.doc:not([hidden]) .isim-left .isim-tree .row');
   assert.deepEqual(running, impl, 'Simulate\'s side panel with a simulation as with none');
-  // the Start page: its buttons a bar as the other tasks', its commands' icons shown (none were: 0 px wide)
+  // the Start page: no buttons (New Project… and Open Project… its Project Commands', #5939), its commands' icons shown
+  // (none were: 0 px wide)
   await go('edit');
   await page.leftTab('start');
   await page.waitFor(() => document.querySelector('#start-page .start-box h3')?.getClientRects().length > 0, [], { what: 'the Start page' });
   const start = await page.eval(() => {
-    const r = (s) => document.querySelector(s).getBoundingClientRect(), b = document.querySelector('#start-page .start-btns .btn');
-    return { bar: Math.round(r('#start-page .start-btns').height), button: `${Math.round(b.getBoundingClientRect().height)} ${getComputedStyle(b).fontSize}`,
+    return { buttons: document.querySelectorAll('#start-page .btn').length,
       // (the entries shown: Share Project… is the ISE style's, hidden here, #3479)
       icons: [...new Set([...document.querySelectorAll('#start-page .entry .ico')].filter((e) => e.getClientRects().length).map((e) => Math.round(e.getBoundingClientRect().width)))] };
   });
-  assert.deepEqual(start, { bar: impl.bar, button: edit.button, icons: [16] });   // (the bars' height above a tree, Implement's: Design has none, #5873)
+  assert.deepEqual(start, { buttons: 0, icons: [16] });
   // the Files page: its rows as the trees', its folders' icon the app's
   await page.leftTab('files');
   await page.waitFor(() => document.querySelector('#files-page tr[data-file]')?.getClientRects().length > 0, [], { what: 'the Files page' });
@@ -1873,8 +1880,8 @@ uiTest('#1409 ISE style: the Start page\'s commands with their icons, the Files 
   await page.waitFor(() => document.querySelector('#start-page .start-box h3')?.getClientRects().length > 0, [], { what: 'the Start page' });
   // (the entries shown, #3380)
   assert.deepEqual(await page.eval(() => ({ icons: [...new Set([...document.querySelectorAll('#start-page .entry .ico')].filter((e) => e.getClientRects().length).map((e) => Math.round(e.getBoundingClientRect().width)))],
-    pad: getComputedStyle(document.querySelector('#start-page > .page')).padding, bar: getComputedStyle(document.querySelector('#start-page .start-btns')).padding })),
-  { icons: [16], pad: '14px 18px', bar: '0px' });
+    pad: getComputedStyle(document.querySelector('#start-page > .page')).padding, buttons: document.querySelectorAll('#start-page .btn').length })),
+  { icons: [16], pad: '14px 18px', buttons: 0 });   // (New Project… and Open Project…: Project Commands', #5939)
   await page.leftTab('files');
   await page.waitFor(() => document.querySelector('#files-page tr[data-file]')?.getClientRects().length > 0, [], { what: 'the Files page' });
   assert.deepEqual(await page.eval(() => ({ folder: document.querySelector('#files-page .folder-row td').textContent, icon: Math.round(document.querySelector('#files-page .folder-row .ico').getBoundingClientRect().width),

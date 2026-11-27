@@ -352,14 +352,15 @@ uiTest('narrow screen 820×1180: Emulate with no board shows Emulate; the board 
   await page.setViewport(820, 1180);
   await page.openProject('Narrow_emu');
   const from = await page.eval(() => document.querySelectorAll('#console-log .ln').length);
-  const start = '#task-emu-bar [data-act=emulate]';
+  // (its tree's Emulate: a bar's button above it before #5939)
+  const start = '#task-emu-panel li[data-proc="emulate"] > .row';
   const silinx = await page.eval(() => document.documentElement.dataset.ui === 'silinx');
   if (silinx) {
     await page.eval(() => [...document.querySelectorAll('.task-btn[data-task="emu"]')].find((b) => b.getClientRects().length).click());
     await page.waitFor(() => document.documentElement.dataset.task === 'emu', [], { what: 'Emulate' });
     assert.equal(await page.eval(() => document.documentElement.dataset.side), 'open');
     assert.ok(await shown(page, start), 'Emulate shown');
-    await page.click(start);
+    await page.dblclick(start);
   } else {
     assert.ok(await shown(page, '#toolbar .tb-btn[data-cmd=board]'), 'the toolbar\'s Emulate');
     await page.click('#toolbar .tb-btn[data-cmd=board]');

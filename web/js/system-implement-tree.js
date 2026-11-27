@@ -72,7 +72,9 @@ function nodeProcesses(file, n, e) {
     { id: `impl-program-${id}`, label: 'Program Node', ico: 'board', ...(refused ? { disabled: true, title: refused } : { run: program(id) }) },
   ];
   const board = n.board ? boardName(n) : null;
+  // (its device's menu, as an FPGA project's device's row, #5878: web/js/device-menu.js)
   return { id: `impl-n-${id}`, label: board ? `${id} (${board})` : id, ico: n.kind === 'fpga' ? 'chip' : 'board', children: kids,
+    menu: ev => import('./device-menu.js').then(m => m.deviceMenu(ev, { node: n })),
     ...(e ? { status: MARK[e.state] || null, title: planLine(e) } : {}) };
 }
 
@@ -81,7 +83,8 @@ export function systemImplementProcesses() {
   const s = shownSystem();
   if (!s?.system) return null;
   const sys = s.system, plan = entries();
-  return [{ id: 'impl-system', label: `${sys.name} (System)`, ico: 'system', children: [
+  // (its menu: Build All and Program All, the bar's above the tree before #5939)
+  return [{ id: 'impl-system', label: `${sys.name} (System)`, ico: 'system', menu: e => import('./device-menu.js').then(m => m.systemTaskMenu(e, 'impl')), children: [
     { id: 'impl-plan', label: 'Build Plan', ico: 'process', run: async () => (await build()).runBuildPlan() },
     { id: 'impl-boards', label: 'Connected Boards', ico: 'board', run: async () => (await build()).runConnectedBoards() },
     { id: 'impl-build', label: 'Build All', ico: 'process', run: () => buildAll(s.file) },   // (the project read again after it: its plan too)

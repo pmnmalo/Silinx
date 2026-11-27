@@ -135,7 +135,7 @@ async function newFromExample(page, t) {
   // (the Start page is drawn again asynchronously after the project closes: a click on the link it replaces is
   // lost, so click until the wizard opens)
   for (let k = 0; ; k++) {
-    await page.click('#start-page .start-btns .btn', { text: 'New Project…' });   // (a button at the top, #1216)
+    await page.click('#start-page .entry a', { text: 'New Project…' });   // (Project Commands' first, #5939: a button before)
     try { await page.waitDialog('New Project Wizard', { timeout: 3000 }); break; } catch (e) { if (k >= 4) throw e; }
   }
   await page.dialogButton('Next >');   // (its kind: With an FPGA, #5041)
@@ -146,7 +146,7 @@ uiTest('Start page: no Open Example entries (#776); New Project… lists the sev
   await page.eval(() => window.SilinxApp.closeProject?.());
   await page.waitForSelector('#start-page .start-box');
   // (drawn again asynchronously after the project closes: wait for its Project Commands)
-  await page.waitFor(() => [...document.querySelectorAll('#start-page .start-btns .btn')].some((a) => a.textContent === 'New Project…'), [], { what: 'the Start page' });
+  await page.waitFor(() => [...document.querySelectorAll('#start-page .entry a')].some((a) => a.textContent === 'New Project…'), [], { what: 'the Start page' });
   // the examples are New Project's templates now, not entries of their own (#776)
   const entries = await page.eval(() => [...document.querySelectorAll('#start-page .entry a')].map((a) => a.textContent));
   assert.deepEqual(entries.filter((e) => /^Open Example/.test(e)), []);
@@ -649,29 +649,27 @@ uiTest('Files view: rename a folder (its files and subfolders follow, still regi
   await page.waitConsole(new RegExp(`Folder old deleted \\(1 file\\(s\\); moved to the workspace's \\.trash folder: \\.trash/${bin}/old\\)\\.`));
 });
 
-// #1216: the Start page: New Project… and Open Project… buttons at the top, half of the page each (Close Project: under the
-// Design tree, #1309); Project Commands
+// #1216, #5939: the Start page: no buttons; New Project… and Open Project… Project Commands' first entries (buttons at the top
+// before #5939), then
 // the Silinx and the Xilinx imports and exports, then a line and the sharing and git entries in one group (#3699; the
 // exports disabled with no project; with one, they download its zips); in Portuguese
 const startPage = (page) => page.eval(() => {
   const p = document.getElementById('start-page');
-  const btns = [...p.querySelectorAll('.start-btns .btn')], w = btns.map((b) => b.getBoundingClientRect().width);
   const box = p.querySelector('.start-box');
   return {
-    buttons: btns.map((b) => b.textContent), top: p.querySelector('.page').firstElementChild === p.querySelector('.start-btns'),
-    halves: w.length === 2 && Math.abs(w[0] - w[1]) < 1 && btns.every((b) => b.scrollWidth <= b.clientWidth),
+    buttons: p.querySelectorAll('.btn').length, top: p.querySelector('.page').firstElementChild === box,
     // (the commands shown)
     commands: [...box.children].slice(1).filter((e) => e.getClientRects().length).map((e) => (e.tagName === 'HR' ? '—' : `${e.textContent}${getComputedStyle(e.querySelector('a')).pointerEvents === 'none' ? ' (disabled)' : ''}`)),
   };
 });
-uiTest('#1216 #3699 #4619 Start page: New Project and Open Project buttons on top; the Silinx and Xilinx imports and exports in Project Commands, no git group', E, async (page) => {
+uiTest('#1216 #3699 #4619 #5939 Start page: New Project and Open Project first in Project Commands, then the Silinx and Xilinx imports and exports, no git group', E, async (page) => {
   await page.eval(() => window.SilinxApp.closeProject?.());
   await page.leftTab('start');
-  await page.waitFor(() => document.querySelectorAll('#start-page .start-btns .btn').length === 2, [], { what: 'the Start page' });
+  await page.waitFor(() => document.querySelectorAll('#start-page .start-box .entry').length >= 4, [], { what: 'the Start page' });
   // (Share Project: the main toolbar's and the File menu's, #3716)
-  assert.deepEqual(await startPage(page), { buttons: ['New Project…', 'Open Project…'], top: true, halves: true, commands: [
+  assert.deepEqual(await startPage(page), { buttons: 0, top: true, commands: [
     // (no git group: the Collaboration tab's, shown with no project too, #4619)
-    'Import Project…', 'Export Project (.zip)… (disabled)'] });
+    'New Project…', 'Open Project…', 'Import Project…', 'Export Project (.zip)… (disabled)'] });
   // drawn again with a project open (a late drawing while one opens): the same page kept, only its host's attribute
   // changes, so that a click pressed before is not lost (#494, #1222)
   assert.deepEqual(await page.eval(async () => {
@@ -683,12 +681,12 @@ uiTest('#1216 #3699 #4619 Start page: New Project and Open Project buttons on to
     await A.renderStartPage();
     return [...r, host.firstElementChild === before, host.hasAttribute('data-project')];
   }), [true, true, true, false]);
-  // the buttons: their dialogs
-  await page.click('#start-page .start-btns .btn', { text: 'Open Project…' });
+  // New Project… and Open Project…: their dialogs
+  await page.click('#start-page .entry a', { text: 'Open Project…' });
   await page.waitDialog('Open Project');
   await page.dialogButton('Cancel');
   await page.waitNoDialog();
-  await page.click('#start-page .start-btns .btn', { text: 'New Project…' });
+  await page.click('#start-page .entry a', { text: 'New Project…' });
   await page.waitDialog('New Project Wizard');
   await page.dialogButton('Next >');   // (its kind: With an FPGA, #5041)
   await page.dialogButton('Cancel');
@@ -698,7 +696,7 @@ uiTest('#1216 #3699 #4619 Start page: New Project and Open Project buttons on to
   await page.openProject('StartZip');
   await page.leftTab('start');
   await page.waitFor(() => document.getElementById('start-page').hasAttribute('data-project'), [], { what: 'the exports enabled' });
-  assert.deepEqual((await startPage(page)).commands, ['Import Project…', 'Export Project (.zip)…']);
+  assert.deepEqual((await startPage(page)).commands, ['New Project…', 'Open Project…', 'Import Project…', 'Export Project (.zip)…']);
   // (the software chosen in the export's window, #3703)
   for (const [id, zip] of [['silinx', 'StartZip-silinx.zip'], ['xilinx', 'StartZip.zip']]) {
     await page.click('#start-page .entry a', { text: 'Export Project (.zip)…' });
@@ -713,10 +711,8 @@ uiTest('#1216 #3699 #4619 Start page: New Project and Open Project buttons on to
   await page.waitNoDialog();
   // in Portuguese
   await page.eval(async () => (await import('/js/i18n.js')).setLanguage('pt'));
-  await page.waitFor(() => document.querySelector('#start-page .start-btns .btn')?.textContent !== 'New Project…', [], { what: 'Portuguese' });
-  assert.deepEqual((await startPage(page)).buttons, ['Novo Projeto…', 'Abrir Projeto…']);
-  await page.waitFor(() => document.querySelector('#start-page .start-box .entry a')?.textContent === 'Importar Projeto…', [], { what: 'the commands in Portuguese' });
-  assert.deepEqual((await startPage(page)).commands, ['Importar Projeto…', 'Exportar Projeto (.zip)…']);
+  await page.waitFor(() => document.querySelector('#start-page .start-box .entry a')?.textContent === 'Novo Projeto…', [], { what: 'the commands in Portuguese' });
+  assert.deepEqual((await startPage(page)).commands, ['Novo Projeto…', 'Abrir Projeto…', 'Importar Projeto…', 'Exportar Projeto (.zip)…']);
   // the File menu's: Import Project…, a folder, a .zip or a .xise (#3965); the export a .zip only (#4132)
   const fileMenu = () => page.eval(async () => {
     const { t } = await import('/js/i18n.js');
@@ -728,10 +724,11 @@ uiTest('#1216 #3699 #4619 Start page: New Project and Open Project buttons on to
   assert.deepEqual(page.console.filter((c) => c.type === 'warning' || c.type === 'warn').map((c) => c.text), []);
 });
 
-// #1300: Close Project in the right-click menu of the project's row (and the device's) in the Design tree
-uiTest('#1300 the Design tree: the project\'s row and the device\'s right-click menus close the project', E, async (page) => {
+// #1300, #5878: Close Project in the right-click menu of the project's row in the Design tree (the device's its own since
+// #5878: New Source…, Import Source…, I/O Pin Planning, Check Design, Design Properties…)
+uiTest('#1300 #5878 the Design tree: the project\'s row\'s right-click menu closes the project, the device\'s has none', E, async (page) => {
   await makeProject(env, { name: 'CloseRow', template: 'gates' });
-  for (const row of ['project', 'device']) {
+  for (const row of ['project']) {
     await page.openProject('CloseRow');
     await page.leftTab('design');
     await page.eval((k) => { const r = document.querySelector(`#hier .row[data-key="${k}"]`), b = r.getBoundingClientRect(); r.dispatchEvent(new MouseEvent('contextmenu', { bubbles: true, cancelable: true, clientX: b.left + 10, clientY: b.top + 5 })); }, row);
@@ -740,6 +737,12 @@ uiTest('#1300 the Design tree: the project\'s row and the device\'s right-click 
     await page.click('body > .menu-popup .mi', { text: 'Close Project' });
     await page.waitFor(() => !window.Silinx.project, [], { what: `closed from the ${row}'s row` });
   }
+  await page.openProject('CloseRow');
+  await page.leftTab('design');
+  await page.eval(() => { const r = document.querySelector('#hier .row[data-key="device"]'), b = r.getBoundingClientRect(); r.dispatchEvent(new MouseEvent('contextmenu', { bubbles: true, cancelable: true, clientX: b.left + 10, clientY: b.top + 5 })); });
+  const dev = await page.waitFor(() => { const m = [...document.querySelectorAll('body > .menu-popup .mi')].map((i) => i.textContent.trim()); return m.length ? m : null; }, [], { what: 'the device\'s menu' });
+  await page.closeMenus();
+  assert.ok(!dev.includes('Close Project'), dev.join(' | '));
 });
 
 uiTest('Silinx and Xilinx zip: export, import as a new project, and a failing import keeps the existing project', E, async (page) => {

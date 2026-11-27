@@ -10,10 +10,11 @@
 import { h, popupMenu } from './ui.js';
 import { icon } from './icons.js';
 import { benchSelect, modelSelect, promptChoices, refreshBench, simChoices, simTarget } from './tasks-sim.js';
-import { benchItems, treeBar, treeItems } from './tasks-sim-tree.js';
+import { benchItems, treeItems } from './tasks-sim-tree.js';
 import { mountSimPages } from './tasks-sim-files.js';
 import { designState } from './state-design.js';
 import { hierarchyDefs, hierarchyTree, objectsOf } from './task-hierarchy.js';
+import { withMenus } from './device-menu-rows.js';
 import { isSystemProject } from '../../core/project-kind.js';   // (relative: tasks.js loads in Node too, #4843)
 import { systemsOn } from '../../core/build-channel.js';
 
@@ -36,7 +37,8 @@ export function mountSimPanel(app, { simulate }) {
   const system = h('div', { class: 'task-sim-system', hidden: true });
   // (its commands above it, a test bench's menu and the empty space's, as Design's: #1385)
   const tabs = h('div', { class: 'task-sim-tabs', role: 'tablist' }, h('span', { class: 'tab active', role: 'tab' }, h('span', { class: 'tab-lbl' }, 'Simulation')));
-  const tree = [treeBar(app), h('div', { class: 'task-sim-trees' }, choices, benches, system)];
+  // (New Test Bench… and Import Test Bench…: the project's and the device's menus, a bar above the tree before #5939)
+  const tree = [h('div', { class: 'task-sim-trees' }, choices, benches, system)];
   const panel = h('div', { id: 'task-sim-panel', hidden: true }, tabs, ...tree);
   const pages = mountSimPages(app, tabs, tree);   // (and the Files page, #1395)
   panel.addEventListener('contextmenu', e => {
@@ -66,7 +68,7 @@ export function mountSimPanel(app, { simulate }) {
       refreshBench(app);
       // (drawn again when the project, its device, its test benches or their objects change; the prompts, with no test
       // bench, under the device)
-      const defs = S.project && !sys ? hierarchyDefs(S.project, names.map(bench), 'sim') : [];
+      const defs = S.project && !sys ? withMenus(hierarchyDefs(S.project, names.map(bench), 'sim'), 'sim') : [];
       const key = JSON.stringify(defs, (k, v) => (k === 'row' ? undefined : v));
       if (benches.dataset.key !== key) {
         benches.dataset.key = key;

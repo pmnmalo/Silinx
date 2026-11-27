@@ -49,7 +49,9 @@ function nodeProcesses(file, n) {
     { id: `sim-node-${n.id}`, label: 'Simulate Node', ico: 'sim', run: () => simulateNode(file, n.id) },
   ];
   const board = n.board ? boardName(n) : null;
-  return { id: `sim-n-${n.id}`, label: board ? `${n.id} (${board})` : n.id, ico: n.kind === 'fpga' ? 'chip' : n.kind === 'circuit' ? 'circuit' : 'board', children: kids };
+  // (its device's menu, an FPGA node's test benches its own: New Test Bench… and Import Test Bench… in its folder, #5939)
+  return { id: `sim-n-${n.id}`, label: board ? `${n.id} (${board})` : n.id, ico: n.kind === 'fpga' ? 'chip' : n.kind === 'circuit' ? 'circuit' : 'board', children: kids,
+    menu: e => import('./device-menu.js').then(m => m.deviceMenu(e, { node: n, extra: n.kind === 'fpga' ? m.taskItems('sim', { node: n }) : [] })) };
 }
 
 /** The Simulate panel's tree of the open System project, or null (no System read). */
@@ -57,6 +59,7 @@ export function systemSimulateProcesses() {
   const s = shownSystem();
   if (!s?.system) return null;
   const sys = s.system, run = runnableNodes(sys);
+  // (a test bench a node's: New Test Bench… and Import Test Bench… its row's menu, #5939)
   return [{ id: 'sim-system', label: `${sys.name} (System)`, ico: 'system', children: [
     { id: 'sim-props', label: 'Simulation Properties…', ico: 'process', run: () => simulationProperties() },
     { id: 'sim-system-run', label: 'Simulate System', ico: 'sim', run: () => simulateSystem() },

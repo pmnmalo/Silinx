@@ -920,22 +920,21 @@ uiTest('a reload comes back to the simulation (ISim) and the board emulator, run
   assert.equal(await page.eval(() => document.querySelector('.dlg-overlay')), null, 'no message');
 }, { timeout: 180000 });
 
-// #1225: since #1216 the New Project and Open Project buttons come first, then Project Commands right under them
-uiTest('#1101 #1225 the Start page: its buttons right under the pane\'s caption (the page\'s own padding), "Project Commands" right under them, as the Design pane\'s content', E, async (page) => {
+// #1225, #5939: "Project Commands" right under the pane's caption (the page's own padding), New Project… and Open Project…
+// its first entries (buttons above it before #5939)
+uiTest('#1101 #1225 #5939 the Start page: "Project Commands" right under the pane\'s caption (the page\'s own padding), New Project… and Open Project… first, as the Design pane\'s content', E, async (page) => {
   await page.leftTab('start');
   await page.waitFor(() => document.querySelector('#start-page .start-box h3'), [], { what: 'the Start page' });
   const g = await page.eval(() => {
     // (the page's top: right under its caption; the Silinx interface shows none, #1159)
     const cap = { bottom: document.getElementById('start-page').getBoundingClientRect().top };
-    const btns = document.querySelector('#start-page .start-btns').getBoundingClientRect();
     const h3s = [...document.querySelectorAll('#start-page .start-box h3')];
     const pad = parseFloat(getComputedStyle(document.querySelector('#start-page > .page')).paddingTop);
-    return { buttons: Math.round(btns.top - cap.bottom), pad: Math.round(pad), text: h3s[0].textContent, gap: Math.round(h3s[0].getBoundingClientRect().top - btns.bottom),
-      second: parseFloat(getComputedStyle(h3s[1]).marginTop) };
+    return { top: Math.round(h3s[0].getBoundingClientRect().top - cap.bottom), pad: Math.round(pad), text: h3s[0].textContent, buttons: document.querySelectorAll('#start-page .btn').length,
+      entries: [...h3s[0].parentElement.querySelectorAll('.entry a')].map((a) => a.textContent), second: parseFloat(getComputedStyle(h3s[1]).marginTop) };
   });
-  assert.deepEqual([g.text, g.buttons], ['Project Commands', g.pad], JSON.stringify(g));
-  assert.ok(g.buttons <= 20, `${g.buttons} px`);
-  assert.ok(g.gap >= 0 && g.gap <= 14, `Project Commands ${g.gap} px under the buttons`);
+  assert.deepEqual([g.text, g.top, g.buttons], ['Project Commands', g.pad, 0], JSON.stringify(g));
+  assert.deepEqual(g.entries, ['New Project…', 'Open Project…', 'Import Project…', 'Export Project (.zip)…']);
   assert.ok(g.second > 0, 'the next heading keeps its space above');
   // (where the projects are kept above the recent ones, #2029; no Teaching box: the Teaching tab's, #3533)
   assert.deepEqual(await page.eval(() => [...document.querySelectorAll('#start-page .start-box h3')].filter((e) => e.getClientRects().length).map((e) => e.textContent)),

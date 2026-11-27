@@ -9,6 +9,7 @@ import { logError, log } from './console.js';
 import { shownSystem } from './design-system.js';
 import { saveProjectJson } from './design.js';
 import { nodeConstraintsProcs } from './system-constraints-ui.js';
+import { deviceMenu, pinsTags } from './device-menu.js';
 import { mcuBoard } from '/core/system-doc.js';
 import { runnableNodes, emulateNodesOf, withEmulateNodes } from '/core/system-alone.js';
 import { MODEL_NAMES, nodeModels, emulateModelsOf, withEmulateModels } from '/core/system-models.js';
@@ -37,7 +38,9 @@ function nodeProcesses(file, n) {
   const models = n.kind === 'fpga' ? nodeModelProcs(file, n) : [];
   const kids = [...(n.kind === 'fpga' ? [nodeConstraintsProcs(n, 'emu')] : []), { id: `emu-node-${n.id}`, label: 'Emulate Node', ico: 'emulate', run: () => emulate(file, [n.id]), ...(models.length ? { children: models } : {}) }];
   const board = n.board ? boardName(n) : null;
-  return { id: `emu-n-${n.id}`, label: board ? `${n.id} (${board})` : n.id, ico: n.kind === 'fpga' ? 'chip' : n.kind === 'circuit' ? 'circuit' : 'board', children: kids };
+  // (its device's menu and its [I/O Pins], as an FPGA project's device's row, #5878)
+  return { id: `emu-n-${n.id}`, label: board ? `${n.id} (${board})` : n.id, ico: n.kind === 'fpga' ? 'chip' : n.kind === 'circuit' ? 'circuit' : 'board', children: kids,
+    menu: e => deviceMenu(e, { node: n, task: 'emu' }), tags: pinsTags({ node: n, task: 'emu' }) };
 }
 
 /** The Emulate panel's tree of the open System project, or null (no System read). */
@@ -45,7 +48,8 @@ export function systemEmulateProcesses() {
   const s = shownSystem();
   if (!s?.system) return null;
   const sys = s.system, run = runnableNodes(sys);
-  return [{ id: 'emu-system', label: `${sys.name} (System)`, ico: 'system', children: [
+  // (its menu: Emulate System, the bar's above the tree before #5939)
+  return [{ id: 'emu-system', label: `${sys.name} (System)`, ico: 'system', menu: e => import('./device-menu.js').then(m => m.systemTaskMenu(e, 'emu')), children: [
     { id: 'emu-props', label: 'Emulation Properties…', ico: 'process', run: () => emulationProperties() },
     { id: 'emu-system-run', label: 'Emulate System', ico: 'emulate', run: () => emulateSystem() },
     ...sys.nodes.filter(n => run.includes(n.id)).map(n => nodeProcesses(s.file, n)),
