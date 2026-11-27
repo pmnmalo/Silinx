@@ -26,7 +26,10 @@ first, with three cards, and a project can move to another mode later with **Pro
   blinks the board's LED
   (an assembly program for an Arduino, a MicroPython or CircuitPython one for a Pico, MicroPython for an ESP32; the
   PIC24 starts with none: its `.hex` is MPLAB X's). Select the board's row in the Design pane for its **Emulate Node**,
-  **Simulate Node** and **Program Node**.
+  **Simulate Node** and **Program Node**. An Arduino, a Pico or an ESP32 has no buttons, switches or display of its own:
+  its row's **Add Shield** puts a circuit around it (`shield/shield.circ.json`: a breadboard, its supply and the board),
+  where its buttons, switches, 7-segment displays, LCD and LEDs are wired to its pins; its row's Emulate Node and
+  Simulate Node then run the board with its shield.
 - **System**: an empty System, or a System example (uart-avr, spi-avr, i2c-avr, regs-avr, uart-pic24, adc-pmod,
   uart-pico).
 

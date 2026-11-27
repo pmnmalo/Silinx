@@ -5,7 +5,7 @@
 // Compile Firmware (#5503: its sketch to its .hex by the local server's arduino-cli); the System's Build Plan and Build All
 // (#5489: the nodes not up to date built, the FPGAs first), Connected Boards and Program All; an FPGA or Arduino node's
 // Program Node (#5489's part 3, #5447: on its board, matched by its USB id). Emulate System runs the nodes its Emulation
-// Properties tick, a node's Emulate Node that node alone (#5581).
+// Properties tick, a node's Emulate Node that node alone (#5581), a processor board's with its shield (#5898).
 import { findDoc } from './app.js';
 import { openSystem } from './system-open.js';
 import { systemTop, shownSystem } from './design-system.js';
@@ -16,9 +16,13 @@ import { nodeConstraintsProcs } from './system-constraints-ui.js';
 import { nodeModelProcs } from './system-emulate-ui.js';
 import { unprogrammed } from './system-implement-tree.js';
 import { psProcesses } from './zynq-ps-ui.js';
+import { withShield } from '/core/processor-shield.js';
+import { canAddShield, addShieldUi } from './processor-shield-ui.js';
 
 // the node of a node's row, as its System describes it
 const nodeOf = sel => shownSystem()?.system?.nodes.find(n => n.id === sel.node) || { id: sel.node, kind: sel.kind, board: sel.board, lang: sel.lang };
+// the nodes a node's Emulate Node and Simulate Node run: a processor board's with its shield (#5898), any other alone
+const runIds = sel => (shownSystem()?.system ? withShield(shownSystem().system, sel.node) : [sel.node]);
 
 // a node's (or the System's, '*') implementation on its own board, #5446: web/js/system-implement-ui.js
 const impl = (node, steps, label) => async () => (await import('./system-implement-ui.js')).runNodeImpl(node, steps, label);
@@ -82,10 +86,12 @@ export function systemProcesses(sel, view, { check, rtl }) {
     ...(sel.kind === 'mcu' && nodeOf(sel)?.runtime === 'circuitpython' ? [{ id: 'node-program', label: 'Program Node', ico: 'board', run: program(sel.node) }] : []),
     // (a PIC24's or a MicroPython node's: not programmed by Silinx yet, said why, #5581's part 4)
     ...(sel.kind === 'mcu' && unprogrammed(nodeOf(sel)) ? [{ id: 'node-program', label: 'Program Node', ico: 'board', disabled: true, title: unprogrammed(nodeOf(sel)) }] : []),
+    // (a processor board's shield, #5898: web/js/processor-shield-ui.js)
+    ...(sel.kind === 'mcu' && canAddShield(sel.node) ? [{ id: 'node-shield', label: 'Add Shield', ico: 'circuit', run: addShieldUi }] : []),
     // (the node alone in the System Emulator, #5581; a terminal runs with what it is linked to)
     // (the node alone in the System editor's Try it panel, #5581)
-    ...(RUN_KINDS.includes(sel.kind) ? [{ id: 'node-simulate', label: 'Simulate Node', ico: 'sim', run: async () => (await import('./system-simulate-ui.js')).simulateNode(sel.file, sel.node) }] : []),
+    ...(RUN_KINDS.includes(sel.kind) ? [{ id: 'node-simulate', label: 'Simulate Node', ico: 'sim', run: async () => (await import('./system-simulate-ui.js')).simulateNodes(sel.file, runIds(sel)) }] : []),
     // (an FPGA node's models under it, #5612: web/js/system-emulate-ui.js nodeModelProcs)
-    ...(RUN_KINDS.includes(sel.kind) ? [{ ...(sel.kind === 'fpga' ? { children: nodeModelProcs(sel.file, { id: sel.node, kind: sel.kind, board: sel.board, variant: sel.variant }) } : {}), id: 'node-emulate', label: 'Emulate Node', ico: 'emulate', run: async () => (await import('./system-emu-open.js')).openSystemEmulator(sel.file, null, { nodes: [sel.node] }) }] : []),
+    ...(RUN_KINDS.includes(sel.kind) ? [{ ...(sel.kind === 'fpga' ? { children: nodeModelProcs(sel.file, { id: sel.node, kind: sel.kind, board: sel.board, variant: sel.variant }) } : {}), id: 'node-emulate', label: 'Emulate Node', ico: 'emulate', run: async () => (await import('./system-emu-open.js')).openSystemEmulator(sel.file, null, { nodes: runIds(sel) }) }] : []),
   ];
 }
