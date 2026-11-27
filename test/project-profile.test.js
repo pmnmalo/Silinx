@@ -1,6 +1,6 @@
 // A project's profile (#5440, roadmap #5416's phase 4: core/project-profile.js, core/profile-change.js): the profiles and
-// the node kinds each allows; a project's profile read from today's silinx.json; written only when changed (an FPGA or a
-// design project's bytes as before); every widening (nothing converted) and every narrowing (refused while a node of the
+// the node kinds each allows; a project's profile read from silinx.json (a description of before: its kind); written as
+// its profile whichever it is, never a kind (#5907); every widening (nothing converted) and every narrowing (refused while a node of the
 // project's System would not be allowed, named; a System as the top first replaced by a module; a design project's own
 // rule kept); the Systems' profiles off in a release.
 import { test, after } from 'node:test';
@@ -34,14 +34,14 @@ test('#5440 a project\'s profile read from today\'s silinx.json; written only wh
   assert.deepEqual([profileOf({}), profileOf({ kind: 'design' }), profileOf({ kind: 'system' }), profileOf({ profile: 'embedded' }), profileOf({ kind: 'codesign' }), profileOf({ profile: 'x' }), profileOf(null)],
     ['fpga', 'logic', 'system', 'embedded', 'fpga', 'fpga', 'fpga']);
   assert.deepEqual([isDesignOnly({ kind: 'design' }), isSystemProject({ profile: 'embedded' }), isSystemProject({ kind: 'system' }), isSystemProject({ profile: 'fpga' })], [true, true, true, false]);
-  // (written as kept: Digital Logic its kind design, FPGA nothing, a System's its profile; and back: the same bytes)
-  assert.deepEqual([withProfile(FPGA, 'logic').kind, withProfile(FPGA, 'logic').profile, withProfile(FPGA, 'embedded').profile, 'kind' in withProfile(FPGA, 'embedded')], ['design', undefined, 'embedded', false]);
+  // (written as kept, #5907: its profile whichever it is, never a kind; and back: the same bytes)
+  assert.deepEqual([withProfile(FPGA, 'logic').profile, 'kind' in withProfile(LOGIC, 'logic'), withProfile(FPGA, 'embedded').profile, withProfile(LOGIC, 'fpga').profile], ['logic', false, 'embedded', 'fpga']);
   // (an FPGA project back from any profile; a design project kept a design project: its fields in their places)
   for (const to of IDS) assert.equal(projectJsonText('p', withProfile(withProfile(FPGA, to), 'fpga')), projectJsonText('p', FPGA), to);
   assert.equal(projectJsonText('d', withProfile(LOGIC, 'logic')), projectJsonText('d', LOGIC));
-  // (a new project's: Digital Logic's kind design, an Embedded one's its profile)
-  assert.deepEqual([newProjectJson('n', { kind: 'design' }).kind, newProjectJson('n', { kind: 'logic' }).kind, newProjectJson('n', { kind: 'embedded' }).profile, newProjectJson('n', { kind: 'system' }).profile, newProjectJson('n').kind],
-    ['design', 'design', 'embedded', 'system', undefined]);
+  // (a new project's: its profile, #5907; no kind)
+  assert.deepEqual(['design', 'logic', 'embedded', 'system', undefined].map(k => newProjectJson('n', { kind: k })).map(j => [j.profile, 'kind' in j, j.version]),
+    [['logic', false, 2], ['logic', false, 2], ['embedded', false, 2], ['system', false, 2], ['fpga', false, 2]]);
 });
 
 test('#5440 widening converts nothing: FPGA to Embedded / SoC or System; Digital Logic to FPGA with its board', () => {
@@ -51,7 +51,7 @@ test('#5440 widening converts nothing: FPGA to Embedded / SoC or System; Digital
   }
   assert.deepEqual(changeProfile({ ...FPGA, profile: 'embedded' }, 'system').project, { ...FPGA, profile: 'system' });
   const f = changeProfile(LOGIC, 'fpga', { fpga: { board: 'nexys2', device: { part: 'xc3s500e' } } }).project;
-  assert.deepEqual([f.kind, f.board, f.device.part, f.constraints, f.top], [undefined, 'nexys2', 'xc3s500e', 'constraints/top.ucf', 'adder']);
+  assert.deepEqual([f.kind, f.profile, f.board, f.device.part, f.constraints, f.top], [undefined, 'fpga', 'nexys2', 'xc3s500e', 'constraints/top.ucf', 'adder']);
   const s = changeProfile(LOGIC, 'system').project;
   assert.deepEqual([s.kind, s.profile, s.top, s.files], [undefined, 'system', 'adder', LOGIC.files]);
   // (the same profile: the project as it is)
@@ -69,7 +69,7 @@ test('#5440 narrowing: refused while a node would not be allowed, the node named
   const [one, ctx1] = sysProject('embedded', ['fpga']);
   assert.equal(changeProfile(one, 'fpga', ctx1).error, 'the project \'s\' cannot be FPGA: its top is its System (Set as Top Module on one of its modules first)');
   const m = changeProfile({ ...one, top: 'top' }, 'fpga', ctx1).project;
-  assert.deepEqual([m.kind, m.profile, m.top], [undefined, undefined, 'top']);
+  assert.deepEqual([m.kind, m.profile, m.top], [undefined, 'fpga', 'top']);
   // (a module its top, the System document no longer its top: its nodes not those of the System it had)
   const [many, ctxm] = sysProject('system', ['fpga', 'mcu', 'terminal']);
   assert.equal(changeProfile({ ...many, top: 'top' }, 'fpga', ctxm).project.top, 'top');
@@ -78,9 +78,9 @@ test('#5440 narrowing: refused while a node would not be allowed, the node named
 test('#5440 narrowing to Digital Logic: a design project\'s rule kept (its own HDL or C refused), else its board left', () => {
   assert.equal(changeProfile(FPGA, 'logic').error, 'the project \'p\' cannot become a design and simulation project: its HDL and C sources are not drawings (src/blink.vhd)');
   const d = changeProfile(FPGA, 'logic', { generated: ['src/blink.vhd'] }).project;
-  assert.deepEqual([d.kind, d.board, d.constraints, d.top], ['design', null, null, 'blink']);
+  assert.deepEqual([d.kind, d.profile, d.board, d.constraints, d.top], [undefined, 'logic', null, null, 'blink']);
   const s = changeProfile({ ...FPGA, profile: 'system' }, 'logic', { generated: ['src/blink.vhd'] }).project;
-  assert.deepEqual([s.kind, s.profile, s.board], ['design', undefined, null]);
+  assert.deepEqual([s.kind, s.profile, s.board], [undefined, 'logic', null]);
 });
 
 test('#5440 the profiles in a release: Digital Logic and FPGA only; the Systems\' refused with their message; no such profile', () => {

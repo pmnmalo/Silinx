@@ -66,14 +66,15 @@ export function serverVersions(P) {
 }
 
 /** A version of the project as it is now: { version, saved }. */
-export async function saveVersion(P, name, opts = {}) {
-  return serverVersions(P).save(name, await mergeStorage(P).read(name), opts);
+export async function saveVersion(P, name, { json = null, ...opts } = {}) {
+  const now = await mergeStorage(P).read(name);
+  return serverVersions(P).save(name, json ? { ...now, json } : now, opts);   // (silinx.json as stored before its migration, #5907)
 }
 
 /** A version before a risky command (reason: core/versions.js REASONS' before-…): the project as it is, kept; its error
  *  never stops the command (the version is null, the warning said by the caller). */
-export async function versionBefore(P, name, reason, { author = '' } = {}) {
-  try { return (await saveVersion(P, name, { reason, author })).version; } catch (e) { return { error: e.message }; }
+export async function versionBefore(P, name, reason, { author = '', json = null } = {}) {
+  try { return (await saveVersion(P, name, { reason, author, json })).version; } catch (e) { return { error: e.message }; }
 }
 
 /** A version restored (the whole project, or `path`), as core/versions.js restoreVersion. */

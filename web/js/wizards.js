@@ -533,6 +533,7 @@ export async function projectProperties() {
   if (fromDesign) {   // (its kind dropped, its constraints file named: the device's format below)
     pj.constraints = asFpgaProject(pj, { device: dp.value() }).constraints;
     delete pj.kind;
+    pj.profile = 'fpga';   // (#5907: written)
     appLog(`${pj.name}: an FPGA project now: its HDL and its implementation shown.`, 'info');
   }
   pj.board = boardSel.value || null;

@@ -6,17 +6,20 @@
 // migratingWrite), newer (a newer Silinx saved it: read only, never written back in the older form, #4756), too old (its
 // reader refuses it: a System of version 1, #5488), damaged (not an object, or another kind's format) or with no version
 // (read as version 1, the first, as every reader did). core/doc-format.js, the stores' guards, is built from it.
-// Isomorphic, no imports: the numbers are the documents' own modules' (test/doc-envelope.test.js checks them).
+// Isomorphic; it imports only the migrations (themselves with no imports): the numbers are the documents' own
+// modules' (test/doc-envelope.test.js checks them).
 //
 // A migration, `migrate[n]`, takes a document of version n to version n + 1: small, pure (a new object), tested with
 // a fixture of version n. A kind whose reader upgrades its own older versions says so (`upgradedBy`): the schematic's
 // chain, core/schdoc.js normalizeDoc and core/schdoc-upgrade.js, needs the project's modules.
 
+import { projectV1toV2 } from './project-migrations.js';
+
 /** The documents, by kind: { type, re (its file's name), what (as the messages say it), version (the one written),
  *  oldest (the oldest read), format (the `format` field it carries, if any), migrate ({ n: doc -> doc }), upgradedBy }.
  *  `file: false`: not a project's file written by writeFile (silinx.json, the versions' index). */
 export const DOCUMENTS = Object.freeze([
-  { type: 'project', re: /(^|\/)silinx\.json$/i, what: 'project description', version: 1, file: false, migrate: {} },
+  { type: 'project', re: /(^|\/)silinx\.json$/i, what: 'project description', version: 2, file: false, migrate: { 1: projectV1toV2 } },
   { type: 'schematic', re: /\.sch\.json$/i, what: 'schematic', version: 7, migrate: {}, upgradedBy: 'core/schdoc.js normalizeDoc' },
   { type: 'fsm', re: /\.fsm\.json$/i, what: 'state diagram', version: 1, migrate: {} },
   { type: 'asm', re: /\.asm\.json$/i, what: 'ASM chart', version: 1, migrate: {} },

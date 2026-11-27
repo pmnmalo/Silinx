@@ -58,7 +58,7 @@ test('#5755 set_design_properties mode: blinky Board → System → Board, its b
   const d = await ok('set_design_properties', { project: 'b1', mode: 'board', confirm: true });
   assert.deepEqual(lines(d.text), ['b1: Board now (nothing deleted: what left the project stays on the disk).', '  the node fpga the project\'s (basys2)', 'WARNING: lost: its System document b1.sys.json (it stays in the folder, out of the flow)']);
   const pj = await P.readProject('b1');
-  assert.deepEqual([pj.board, pj.top, pj.constraints, pj.simTop, pj.profile, there('b1', 'b1.sys.json')], ['basys2', 'top', 'fpga/constraints/top.ucf', 'tb_top', undefined, true]);
+  assert.deepEqual([pj.board, pj.top, pj.constraints, pj.simTop, pj.profile, there('b1', 'b1.sys.json')], ['basys2', 'top', 'fpga/constraints/top.ucf', 'tb_top', 'fpga', true]);
   assert.ok(pj.files.every(f => f.path.startsWith('fpga/')), JSON.stringify(pj.files));
   // (its HDL still checks, at its new paths)
   const chk = await call('check_syntax', { project: 'b1' });
@@ -82,5 +82,5 @@ test('#5755 set_design_properties mode: the uart-avr System down to Board, the A
   const c = await ok('set_design_properties', { project: 's1', mode: 'circuit', confirm: true });
   assert.equal(lines(c.text)[0], 's1: Circuit now (nothing deleted: what left the project stays on the disk).');
   const pj = await P.readProject('s1');
-  assert.deepEqual([pj.kind, pj.board, pj.constraints, pj.files.length, there('s1', 'fpga/uart.vhd'), there('s1', 'fpga/uart.ucf')], ['design', null, null, 0, true, true]);
+  assert.deepEqual([pj.profile, pj.board, pj.constraints, pj.files.length, there('s1', 'fpga/uart.vhd'), there('s1', 'fpga/uart.ucf')], ['logic', null, null, 0, true, true]);
 });

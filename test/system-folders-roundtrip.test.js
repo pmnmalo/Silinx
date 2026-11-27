@@ -59,7 +59,7 @@ test('#5488 a System project exported as a zip and imported: its files in the sa
   await ok('import_project', { name: 'ub', from: path.join(tmp, 'exchange', 'ua.zip') });
   assert.deepEqual([await tree('ua'), await tree('ub')], [UA, UA]);
   assert.equal(await P.readFile('ub', 'uart_avr.sys.json'), await P.readFile('ua', 'uart_avr.sys.json'));
-  assert.equal((await P.readProject('ub')).kind, 'system');
+  assert.equal((await P.readProject('ub')).profile, 'system');   // (its kind of before, read as its profile, #5907)
   assert.deepEqual(await nodes('ub'), NODES);
   assert.deepEqual(await checked('ub'), [WARN]);
 });

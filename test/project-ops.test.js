@@ -20,21 +20,23 @@ const P = await import('../server/projects.js');
 
 test('#4766 newProjectJson: the default device, a board, the device\'s constraints format; a design project; not shared', () => {
   const a = newProjectJson('a');
-  assert.deepEqual(a, { name: 'a', version: 1, device: { ...DEFAULT_DEVICE }, board: null, top: '', simTop: '', files: [], constraints: 'constraints/top.ucf', stimuli: {}, impl: { ...NEW_IMPL } });
+  assert.deepEqual(a, { name: 'a', version: 2, profile: 'fpga', device: { ...DEFAULT_DEVICE }, board: null, top: '', simTop: '', files: [], constraints: 'constraints/top.ucf', stimuli: {}, impl: { ...NEW_IMPL } });
   a.device.part = 'x'; a.impl.optLevel = 9;
   assert.equal(DEFAULT_DEVICE.part, 'xc3s250e');
   assert.equal(NEW_IMPL.optLevel, 1);
   const ice = { family: 'ice40', part: 'up5k', package: 'sg48', speed: '' };
   assert.deepEqual([newProjectJson('i', { device: ice, board: 'icebreaker' }).constraints, newProjectJson('i', { device: ice, board: 'icebreaker' }).board], ['constraints/top.pcf', 'icebreaker']);
   const d = newProjectJson('d', { device: ice, board: 'icebreaker', kind: 'design' });
-  assert.deepEqual([d.kind, d.board, d.constraints, d.device], ['design', null, null, { ...DEFAULT_DEVICE }]);
+  assert.deepEqual([d.kind, d.profile, d.board, d.constraints, d.device], [undefined, 'logic', null, null, { ...DEFAULT_DEVICE }]);
   // (the browser store's names are core's)
   assert.equal(storeText, projectJsonText);
   assert.deepEqual(emptyProjectJson('e', { board: 'basys2-250' }), newProjectJson('e', { board: 'basys2-250' }));
 });
 
 test('#4766 projectJsonText: 2-space JSON, a final newline, the project\'s name, no fileTree', () => {
-  assert.equal(projectJsonText('n', { name: 'old', top: 't', fileTree: ['a'] }), '{\n  "name": "n",\n  "top": "t"\n}\n');
+  assert.equal(projectJsonText('n', { name: 'old', version: 2, top: 't', fileTree: ['a'] }), '{\n  "name": "n",\n  "version": 2,\n  "top": "t"\n}\n');
+  // (a description of before: in this Silinx's version, #5907)
+  assert.equal(projectJsonText('n', { name: 'old', top: 't', kind: 'design' }), '{\n  "name": "n",\n  "top": "t",\n  "profile": "logic",\n  "files": [],\n  "version": 2\n}\n');
 });
 
 test('#4766 renameEntries: a file, a folder, an HDL language following the name, the constraints, the excluded, the languages', () => {

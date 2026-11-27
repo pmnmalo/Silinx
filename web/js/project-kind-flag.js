@@ -8,7 +8,8 @@ export function setKindFlag(pj) {
   const root = globalThis.document?.documentElement;
   if (!root) return;
   if (pj) delete root.dataset.noProject; else root.dataset.noProject = '';
-  if (pj?.kind === 'design') root.dataset.projectKind = 'design'; else delete root.dataset.projectKind;
+  // (its profile Digital Logic: silinx.json's since its version 2, #5907; a description of before, its kind)
+  if (pj?.profile === 'logic' || (pj?.profile === undefined && pj?.kind === 'design')) root.dataset.projectKind = 'design'; else delete root.dataset.projectKind;
 }
 /** Whether a design and simulation project is open. */
 export const designKind = () => globalThis.document?.documentElement.dataset.projectKind === 'design';

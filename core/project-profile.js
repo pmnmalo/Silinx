@@ -1,7 +1,7 @@
 // A project's profile (#5440, roadmap #5416's phase 4: every project a System): the node kinds its System allows, each
 // profile containing the one before: Digital Logic ⊂ FPGA ⊂ Embedded / SoC ⊂ System. It replaces the project's kind.
-// Read from today's silinx.json: a `profile` written by a profile change, else its kind (none: FPGA; 'design': Digital
-// Logic; 'system': System); an FPGA or a design project untouched keeps its bytes. Widening allows more node kinds and
+// Read from silinx.json's `profile` (written for every project since its version 2, #5907), else, a description of before
+// read as it is, its kind (none: FPGA; 'design': Digital Logic; 'system': System). Widening allows more node kinds and
 // converts nothing; narrowing is refused while a node of the project's System would not be allowed. Systems' profiles
 // (Embedded / SoC, System) are off in a release (#5202). One set of rules and messages for the interface, the stores and
 // the MCP server. Isomorphic module (browser + Node).
@@ -31,15 +31,13 @@ export function profileOf(pj) {
   return pj?.kind === 'design' ? 'logic' : pj?.kind === 'system' ? 'system' : 'fpga';
 }
 
-/** The project `pj` with the profile `id` written as it is kept: Digital Logic and FPGA as today (kind 'design', or no
- *  kind: an FPGA project back from another profile has its bytes again); Embedded / SoC and System their profile. */
+/** The project `pj` with the profile `id` written as it is kept (#5907, silinx.json version 2: its profile, whichever it
+ *  is; the old kind never written again). */
 export function withProfile(pj, id) {
   const out = { ...pj };
-  delete out.profile;
-  // (its kind kept in its place when it stays: a design project's silinx.json as it was)
-  if (id === 'logic') { out.kind = 'design'; return out; }
   delete out.kind;
-  return id === 'fpga' ? out : { ...out, profile: id };
+  out.profile = id;
+  return out;
 }
 
 /** Why the project `name` cannot take the profile `to`, its System's `nodes` as it would be ({ id, kind }), or null: no

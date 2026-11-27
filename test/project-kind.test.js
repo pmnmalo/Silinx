@@ -47,10 +47,10 @@ test('addRefusal: an HDL-side file in a design project, with its message; nothin
 test('asDesignProject / asFpgaProject: the kind, the board and the constraints; the rest kept', () => {
   const fpga = { name: 'p', board: 'basys2', device: { part: 'xc3s250e' }, constraints: 'constraints/top.ucf', top: 't', files: [{ path: 'sim/tb.vhd', role: 'sim' }] };
   const d = asDesignProject(fpga);
-  assert.deepEqual(d, { ...fpga, kind: 'design', board: null, constraints: null });
+  assert.deepEqual(d, { ...fpga, profile: 'logic', board: null, constraints: null });
   assert.equal(fpga.kind, undefined, 'not changed in place');
   const f = asFpgaProject(d, { board: 'nexys2', device: { part: 'xc3s500e' }, ext: '.ucf' });
-  assert.deepEqual(f, { ...fpga, board: 'nexys2', device: { part: 'xc3s500e' } });
+  assert.deepEqual(f, { ...fpga, profile: 'fpga', board: 'nexys2', device: { part: 'xc3s500e' } });
   assert.equal('kind' in f, false);
   assert.equal(asFpgaProject(d, { board: null, device: { part: 'ice40up5k' }, ext: '.pcf' }).constraints, 'constraints/top.pcf');
   assert.deepEqual(asFpgaProject(d, { board: 'basys2' }).device, fpga.device, 'the device kept when none is given');
@@ -64,6 +64,6 @@ test('ownSources / toDesignProject: refused with HDL or C sources no drawing mak
   assert.deepEqual(toDesignProject(pj, ['src/traffic.vhd']), { error: 'the project \'p\' cannot become a design and simulation project: its HDL and C sources are not drawings (src/timer.vhd, src/f.c)' });
   const drawn = { ...pj, files: pj.files.filter(f => !/timer|f\.c/.test(f.path)) };
   assert.deepEqual(ownSources(drawn, ['src/traffic.vhd']), []);
-  assert.deepEqual(toDesignProject(drawn, ['src/traffic.vhd']), { project: { ...drawn, kind: 'design', board: null, constraints: null } });
-  assert.deepEqual(toDesignProject({ name: 'e', files: [] }).project.kind, 'design', 'an empty project');
+  assert.deepEqual(toDesignProject(drawn, ['src/traffic.vhd']), { project: { ...drawn, profile: 'logic', board: null, constraints: null } });
+  assert.deepEqual(toDesignProject({ name: 'e', files: [] }).project.profile, 'logic', 'an empty project');
 });

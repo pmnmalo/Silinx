@@ -21,9 +21,12 @@ const has = async p => fs.access(p).then(() => true, () => false);
 const descOf = name => path.join(P.projectDir(name), 'silinx.json');
 
 test('parseDescription: a byte order mark skipped; not JSON, the parser\'s error', () => {
-  assert.deepEqual(parseDescription('﻿{"a":1}'), { a: 1 });
-  assert.deepEqual(parseDescription('{"a":1}'), { a: 1 });
-  assert.deepEqual(parseDescription(' \n{"top":"x"}\n'), { top: 'x' });
+  // (as stored: its migration aside, #5907)
+  const raw = t => parseDescription(t, { migrate: false });
+  assert.deepEqual(raw('﻿{"a":1}'), { a: 1 });
+  assert.deepEqual(raw('{"a":1}'), { a: 1 });
+  assert.deepEqual(raw(' \n{"top":"x"}\n'), { top: 'x' });
+  assert.deepEqual(parseDescription('﻿{"version":2,"a":1}'), { version: 2, a: 1 });
   assert.throws(() => parseDescription('﻿﻿{}'), SyntaxError, 'one mark only: a second one is text');
   assert.throws(() => parseDescription('<<<<<<< HEAD\n{}'), SyntaxError);
   assert.throws(() => parseDescription(''), SyntaxError);

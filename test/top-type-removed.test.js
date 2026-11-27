@@ -31,10 +31,11 @@ function old(name, pj) {
 }
 
 test('#5786 read and written: the field dropped, the rest kept', () => {
-  assert.deepEqual(parseDescription('{"name":"a","top":"t","topSourceType":"sch"}'), { name: 'a', top: 't' });
-  assert.deepEqual(parseDescription('﻿{"name":"a","topSourceType":"system","kind":"system"}'), { name: 'a', kind: 'system' });
+  assert.deepEqual(parseDescription('{"name":"a","top":"t","topSourceType":"sch"}', { migrate: false }), { name: 'a', top: 't' });
+  assert.deepEqual(parseDescription('﻿{"name":"a","topSourceType":"system","kind":"system"}', { migrate: false }), { name: 'a', kind: 'system' });
+  assert.deepEqual(parseDescription('{"name":"a","version":2,"topSourceType":"sch"}'), { name: 'a', version: 2 });
   assert.deepEqual([parseDescription('[1]'), parseDescription('3')], [[1], 3]);
-  assert.equal(projectJsonText('a', { name: 'a', top: 't', topSourceType: 'fsm', fileTree: [] }), '{\n  "name": "a",\n  "top": "t"\n}\n');
+  assert.equal(projectJsonText('a', { name: 'a', version: 2, top: 't', topSourceType: 'fsm', fileTree: [] }), '{\n  "name": "a",\n  "version": 2,\n  "top": "t"\n}\n');
 });
 
 test('#5786 a project of before opens: an FPGA project with a schematic\'s type, a System one with System\'s; the field gone after a save', async () => {
@@ -43,7 +44,7 @@ test('#5786 a project of before opens: an FPGA project with a schematic\'s type,
   fs.writeFileSync(path.join(process.env.SILINX_WORKSPACE, 'oldsys', 'oldsys.sys.json'), JSON.stringify({ format: 'silinx-system', version: 2, name: 'oldsys', nodes: [], links: [] }, null, 2) + '\n');
   const a = await P.readProject('oldfpga'), b = await P.readProject('oldsys');
   assert.deepEqual([a.board, a.top, a.preferredLanguage, 'topSourceType' in a, modeOf(a)], ['basys2', 'top', 'vhdl', false, 'board']);
-  assert.deepEqual([b.kind, 'topSourceType' in b, modeOf(b)], ['system', false, 'system']);
+  assert.deepEqual([b.profile, 'topSourceType' in b, modeOf(b)], ['system', false, 'system']);   // (its kind as its profile, #5907)
   // (the MCP: as it was)
   const info = await call('project_info', { project: 'oldsys' });
   assert.deepEqual([info.isError, info.data.mode], [false, 'system']);

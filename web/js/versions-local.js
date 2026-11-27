@@ -79,7 +79,8 @@ export function localVersions({ store, ops, snapshots }) {
   return {
     list: name => versions.list(name),
     warning: name => versions.warning(name),
-    save: async (name, opts = {}) => versions.save(name, await storage.read(name), opts),
+    // (json: silinx.json as stored before its migration, #5907)
+    save: async (name, { json = null, ...opts } = {}) => { const now = await storage.read(name); return versions.save(name, json ? { ...now, json } : now, opts); },
     read: (name, id) => versions.read(name, id),
     async diff(name, id) { const target = await versions.read(name, id); return { version: target.version, ...versionChanges(target, await storage.read(name)) }; },
     restore: (name, id, opts = {}) => restoreVersion(storage, versions, name, id, opts),
