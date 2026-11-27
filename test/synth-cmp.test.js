@@ -142,7 +142,8 @@ endmodule
   const { text, top } = toVerilog(elaborate(compile([{ path: 't.v', lang: 'verilog', text: V }]), 't'));
   const found = await cmpProbe(top, text, 'spartan3e', yosysNode);
   assert.equal(found.length, 2);
-  assert.ok(found.every(n => /^\$(gt|lt)\$/.test(n)), found.join(' '));
+  // (Yosys 0.71 names a cell by its source line: $t_syn.v:12$gt$2, 0.70's $gt$2, #5830; select -read finds it so)
+  assert.ok(found.every(n => /^\$(?:[^$]*:\d+\$)?(gt|lt)\$/.test(n)), found.join(' '));
   assert.deepEqual(await cmpProbe(top, text, 'spartan6', yosysNode), []);
 });
 
