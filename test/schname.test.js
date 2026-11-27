@@ -46,7 +46,7 @@ test('#1546 renameError: the name of another instance or I/O marker (any letter 
   assert.equal(renameError(d, 'sym', 'S1', 'U2'), "'U2' is already the name of another instance: choose another name.");
   assert.equal(renameError(d, 'sym', 'S1', 'u2'), "'u2' is already the name of another instance: choose another name.");
   assert.equal(renameError(d, 'sym', 'S1', 'A'), "'A' is already the name of an I/O marker: choose another name.");
-  assert.equal(renameError(d, 'port', 'P1', 'Y'), "'Y' is already the name of another I/O marker: choose another name.");
+  assert.equal(renameError(d, 'port', 'P1', 'Y'), "'Y' is already the name of another I/O marker: an I/O marker is a port of the module, drawn once; to use y in other places, give those wires the net name y. Choose another name.");
   assert.equal(renameError(d, 'port', 'P1', 'u1'), "'u1' is already the name of an instance: choose another name.");
   assert.equal(renameError(d, 'label', 'L1', 'a'), null, 'another net of that name: asked by the editor (#689)');
 });
@@ -61,7 +61,7 @@ test('#1546 Rename…: its labels and messages in Portuguese', () => {
     "'AND' is a reserved word of VHDL and Verilog: choose another name.": "'AND' é uma palavra reservada de VHDL e Verilog: escolha outro nome.",
     "'U2' is already the name of another instance: choose another name.": "'U2' já é o nome de outra instância: escolha outro nome.",
     "'A' is already the name of an I/O marker: choose another name.": "'A' já é o nome de um marcador de E/S: escolha outro nome.",
-    "'Y' is already the name of another I/O marker: choose another name.": "'Y' já é o nome de outro marcador de E/S: escolha outro nome.",
+    "'Y' is already the name of another I/O marker: an I/O marker is a port of the module, drawn once; to use y in other places, give those wires the net name y. Choose another name.": "'Y' já é o nome de outro marcador de E/S: um marcador de E/S é um porto do módulo, desenhado uma vez; para usar y noutros sítios, dê a esses fios o nome de rede y. Escolha outro nome.",
     "'u1' is already the name of an instance: choose another name.": "'u1' já é o nome de uma instância: escolha outro nome.",
   };
   for (const [en, pt] of Object.entries(T)) assert.equal(t(en), pt, en);

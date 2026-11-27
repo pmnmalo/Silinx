@@ -181,3 +181,65 @@ uiTest('#2170 schematic: an I/O marker added or renamed with a net\'s name: Join
   }
   await page.eval(async () => (await import('/js/i18n.js')).setLanguage('en'));
 });
+
+// #4998: an I/O marker is a port of the module, drawn once. A marker duplicated (L_1) and renamed L in the Properties
+// panel: not renamed, the console saying why and how (a net name L on those wires); Rename… says it in its dialog; the Join
+// dialog never offered (it made two markers L, the schematic's errors three). A net name L on the copy's wire: one net,
+// no errors. In English and in Portuguese.
+uiTest('#4998 schematic: an I/O marker renamed as another marker is refused, said in the console; a net name joins it', E, async (page) => {
+  const doc = newDoc('dup', 'vhdl');
+  const and2 = (id, name, x, y) => ({ id, type: 'and2', x, y, rot: 0, mirror: false, name, params: {} });
+  doc.symbols.push(and2('S1', 'U1', 200, 100), and2('S2', 'U2', 200, 300));
+  const [A0, A1, AO] = symbolPins(normalizeDoc(doc).symbols[0]), [B0, B1, BO] = symbolPins(normalizeDoc(doc).symbols[1]);
+  doc.ports.push({ id: 'P1', name: 'L', dir: 'in', width: 1, x: A0.x - 40, y: A0.y }, { id: 'P2', name: 'L_1', dir: 'in', width: 1, x: B0.x - 40, y: B0.y },
+    { id: 'P3', name: 'a', dir: 'in', width: 1, x: A1.x, y: A1.y }, { id: 'P4', name: 'b', dir: 'in', width: 1, x: B1.x, y: B1.y },
+    { id: 'P5', name: 'y', dir: 'out', width: 1, x: AO.x, y: AO.y }, { id: 'P6', name: 'z', dir: 'out', width: 1, x: BO.x, y: BO.y });
+  doc.wires.push({ id: 'W1', points: [P(A0.x - 40, A0.y), P(A0.x, A0.y)] }, { id: 'W2', points: [P(B0.x - 40, B0.y), P(B0.x, B0.y)] });
+  await makeProject(env, { name: 'DupPj', files: { 'src/dup.sch.json': JSON.stringify(doc) } });
+  await page.openProject('DupPj');
+  await page.eval(() => window.SilinxApp.openSch('src/dup.sch.json'));
+  await page.waitFor((ed) => document.querySelectorAll(`${ed} svg .sym`).length === 2, [ED], { what: 'drawn' });
+  assert.deepEqual(netlist(await getDoc(page)).diagnostics.map((d) => d.message), [], 'as opened');
+  const PORT2 = `${ED} svg .port[data-id="P2"] .hitbox`;
+  const warnings = async () => (await page.consoleText()).split('\n').filter((l) => /^(WARNING|AVISO|ERROR|ERRO)\b/.test(l));
+  await page.click(`${ED} .se-btn[data-act=select]`);
+  for (const lang of ['en', 'pt']) {
+    await page.eval(async (l) => (await import('/js/i18n.js')).setLanguage(l), lang);
+    const T = lang === 'en'
+      ? { warn: "WARNING: dup.sch.json: the I/O marker L_1 is not renamed: 'L' is already the name of another I/O marker: an I/O marker is a port of the module, drawn once; to use L in other places, give those wires the net name L. Choose another name.",
+        err: "'L' is already the name of another I/O marker: an I/O marker is a port of the module, drawn once; to use L in other places, give those wires the net name L. Choose another name.", rename: 'Rename I/O Marker', ok: 'Rename', cancel: 'Cancel' }
+      : { warn: "WARNING: dup.sch.json: o marcador de E/S L_1 não é renomeado: 'L' já é o nome de outro marcador de E/S: um marcador de E/S é um porto do módulo, desenhado uma vez; para usar L noutros sítios, dê a esses fios o nome de rede L. Escolha outro nome.",
+        err: "'L' já é o nome de outro marcador de E/S: um marcador de E/S é um porto do módulo, desenhado uma vez; para usar L noutros sítios, dê a esses fios o nome de rede L. Escolha outro nome.", rename: 'Mudar o Nome do Marcador de E/S', ok: 'Mudar o Nome', cancel: 'Cancelar' };
+    const before = (await warnings()).length;
+    // the Properties panel: L_1 named L: no Join dialog, not renamed, the console's warning
+    await page.click(PORT2);
+    await page.waitFor((ed) => document.querySelector(`${ed} .se-field input`)?.value === 'L_1', [ED], { what: 'L_1\'s properties' });
+    await page.eval((ed) => { const i = document.querySelector(`${ed} .se-field input`); i.value = 'L'; i.dispatchEvent(new Event('change', { bubbles: true })); }, ED);
+    await page.waitFor((ed) => document.querySelector(`${ed} .se-field input`)?.value === 'L_1', [ED], { what: 'the field as it was' });
+    assert.equal(await page.eval(() => !!document.querySelector('.dlg-overlay')), false, `${lang}: no Join dialog`);
+    assert.equal((await getDoc(page)).ports[1].name, 'L_1', `${lang}: not renamed`);
+    await page.waitConsole(/L_1 (is not renamed|não é renomeado)/);
+    await page.waitFor((n) => window.__console().split('\n').filter((l) => /^(WARNING|AVISO|ERROR|ERRO)\b/.test(l)).length > n, [before], { what: 'the warning' });
+    assert.deepEqual((await warnings()).slice(before), [T.warn], `${lang}: the console`);
+    // Rename…: said in its dialog, which stays open
+    await page.key('Escape');
+    await page.rightClick(PORT2);
+    await page.waitFor(() => document.querySelector('body > .menu-popup'), [], { what: 'the menu' });
+    await page.click('body > .menu-popup > .mi');
+    await page.waitDialog(T.rename);
+    await page.eval(() => { const i = [...document.querySelectorAll('.dlg-overlay')].pop().querySelector('.dlg-body input'); i.value = 'L'; i.dispatchEvent(new Event('input', { bubbles: true })); });
+    await page.waitFor((t) => document.querySelector('.se-rename-err')?.textContent === t, [T.err], { what: 'the dialog\'s error' });
+    await page.dialogButton(T.cancel);
+    await page.waitNoDialog();
+    assert.equal((await getDoc(page)).ports[1].name, 'L_1', `${lang}: Rename… refused`);
+  }
+  await page.eval(async () => (await import('/js/i18n.js')).setLanguage('en'));
+  // the way: the copy deleted, its wire named L: one net L, no errors; its HDL one port L
+  const d = await getDoc(page);
+  d.ports.splice(1, 1);
+  d.labels.push({ id: 'L1', x: B0.x - 20, y: B0.y, net: 'L' });
+  const nl = netlist(normalizeDoc(d));
+  assert.deepEqual(nl.diagnostics.map((x) => x.message), []);
+  assert.equal(nl.wireNet.get('W1'), nl.wireNet.get('W2'), 'one net');
+  assert.equal((generateHdl(normalizeDoc(d), { lang: 'vhdl' }).code.match(/\bL : in std_logic/g) || []).length, 1);
+});

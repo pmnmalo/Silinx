@@ -479,7 +479,8 @@ export function netlist(docIn, { modules = {} } = {}) {
     // drivers: tri-state outputs (and bidirectional pins / markers) may share a net, a bus; an ordinary
     // output or an input marker must be its only driver
     const outs = eps.filter(e => e.dir === 'out' && e.kind === 'pin' && !e.tri && !(net.tapsIn && tapOuts.includes(e)));
-    const ins = eps.filter(e => e.kind === 'port' && e.dir === 'in');
+    // (input markers of one name are one driver, a duplicate marker said once below, #4998)
+    const ins = eps.filter(e => e.kind === 'port' && e.dir === 'in').filter((e, i, a) => a.findIndex(x => nk(epName(x, symById, doc)) === nk(epName(e, symById, doc))) === i);
     const tris = eps.filter(e => e.dir === 'out' && e.kind === 'pin' && e.tri);
     if (outs.length + ins.length > 1)
       diags.push({ severity: 'error', message: `net '${net.name}' has ${outs.length + ins.length} drivers (${[...outs, ...ins].map(e => epName(e, symById, doc)).join(', ')})`, ref: refOf(outs[0] || ins[0], symById), x: (outs[0] || ins[0]).x, y: (outs[0] || ins[0]).y, net: net.name });
@@ -605,7 +606,8 @@ export function netlist(docIn, { modules = {} } = {}) {
   // the HDL would not compile), a warning for the others
   for (const s of doc.symbols) if (rsvd(s.name)) diags.push({ severity: s.type === 'module' && !validIdent(s.name, doc.lang) ? 'error' : 'warning', message: `${rsvd(s.name)}: rename it`, ref: { kind: 'symbol', id: s.id }, x: s.x, y: s.y });
   const pseen = new Set();
-  for (const p of doc.ports) { const k = nk(p.name); if (pseen.has(k)) diags.push({ severity: 'error', message: `duplicate I/O marker '${p.name}'`, ref: { kind: 'port', id: p.id }, x: p.x, y: p.y }); pseen.add(k); }
+  // (an I/O marker is a port of the module, drawn once; the wires elsewhere join it by a net name of its name, #4998)
+  for (const p of doc.ports) { const k = nk(p.name); if (pseen.has(k)) diags.push({ severity: 'error', message: `duplicate I/O marker '${p.name}': an I/O marker is a port of the module, drawn once; to use ${p.name} in other places, give those wires the net name ${p.name} and delete this marker`, ref: { kind: 'port', id: p.id }, x: p.x, y: p.y }); pseen.add(k); }
   return { nets, pinNet, portNet, wireNet, labelNet, junctions: junctionsOf(doc, pinInfo), diagnostics: diags };
 }
 function byNameCount(labels, labelOf, nk) { return 0; }

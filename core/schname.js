@@ -32,8 +32,17 @@ export function renameError(doc, kind, id, name) {
   const sym = (doc.symbols || []).find(s => s.id !== id && same(s.name, v));
   if (sym) return `'${v}' is already the name of ${kind === 'sym' ? 'another instance' : 'an instance'}: choose another name.`;
   const port = (doc.ports || []).find(p => p.id !== id && same(p.name, v));
-  if (port) return `'${v}' is already the name of ${kind === 'port' ? 'another I/O marker' : 'an I/O marker'}: choose another name.`;
+  // (an I/O marker is a port of the module, drawn once: the wires elsewhere join it by a net name of its name, #4998)
+  if (port) return kind === 'port' ? `'${v}' is already the name of another I/O marker: an I/O marker is a port of the module, drawn once; to use ${port.name} in other places, give those wires the net name ${port.name}. Choose another name.`
+    : `'${v}' is already the name of an I/O marker: choose another name.`;
   return null;
+}
+
+/** Why the I/O marker `id` of `doc` cannot be named `name` because another marker has it (an I/O marker is a port of the
+ *  module, drawn once, #4998: renameError's message), or null (any other name: the Properties panel's own checks). */
+export function markerNameTaken(doc, id, name) {
+  const v = String(name ?? '').trim();
+  return (doc.ports || []).some(p => p.id !== id && same(p.name, v)) ? renameError(doc, 'port', id, v) : null;
 }
 
 /**

@@ -102,7 +102,7 @@ uiTest('#1546 schematic: Rename… in the right-click menu of a symbol, an I/O m
   // the I/O marker a: another marker's or an instance's name refused; din given (the port of the module)
   await open(PORT, 'Rename I/O Marker');
   assert.equal((await dialog()).value, 'a');
-  await refused('Y', "'Y' is already the name of another I/O marker: choose another name.");
+  await refused('Y', "'Y' is already the name of another I/O marker: an I/O marker is a port of the module, drawn once; to use y in other places, give those wires the net name y. Choose another name.");
   await refused('m1', "'m1' is already the name of an instance: choose another name.");
   await refused('', 'Type a name.');
   await type('din');

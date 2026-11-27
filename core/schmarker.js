@@ -44,6 +44,9 @@ export function markerJoin(doc, nl, name, except = null) {
   if (!net) return null;
   const ci = doc.lang !== 'verilog';
   const nk = v => (ci ? String(v).toLowerCase() : String(v));
+  // (a net named by an I/O marker of that name: that marker is the port, drawn once, not a net to join: refused,
+  // schname.js renameError says why, #4998)
+  if (net.ports.some(id => nk(doc.ports.find(p => p.id === id)?.name) === nk(parseNetName(name).base))) return null;
   let base = parseNetName(name).base, width = net.width || 1, named = false;
   for (const l of doc.labels || []) {
     const L = parseNetName(l.net);

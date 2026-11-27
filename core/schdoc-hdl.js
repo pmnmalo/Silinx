@@ -236,7 +236,8 @@ export function generateHdl(docIn, opts = {}) {
   for (const p of ports) {
     if (!p.net) continue;
     const owner = portOf.get(p.net);
-    if (owner && owner.id !== p.id) {
+    // (a marker of the owner's name: the duplicate the netlist's diagnostics say, #4998, not a second one here)
+    if (owner && owner.id !== p.id && nk(owner.name) !== nk(p.name)) {
       if (p.dir === 'out') assign(p.name, outRead.get(p.net) || hdlName(owner.name, lang));
       else diags.push({ severity: 'error', message: `I/O markers '${owner.name}' and '${p.name}' are on the same net`, ref: { kind: 'port', id: p.id } });
     }

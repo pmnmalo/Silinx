@@ -19,7 +19,7 @@ import { clone, snap, KEYS } from './sch-editor.js';
 import { mountMultiProps } from './sch-multi.js';
 import { mountCompareTicks } from './sch-compare.js';
 import { setMarkerWidth } from '/core/schmarker.js';
-import { instName, renameError } from '/core/schname.js';
+import { instName, markerNameTaken, renameError } from '/core/schname.js';
 import { arrayName, arrayOf, arrayWidth, withArrayWidth, sharedPins } from '/core/sch-array.js';
 import { graphicProps } from './sch-graphics.js';
 import { isFreeStyle } from '/core/wire-style.js';
@@ -285,8 +285,8 @@ export function mountProps(ctx) {
   }
   function portProps(p) {
     propBody.append(h('div', { class: 'se-ptitle', text: 'I/O Marker' }));
-    propBody.append(field('Name', inp(p.name, async v => {   // (a net's name: joined, taking its width, if the user says so, #2170)
-      const name = newName(v, p.name), j = name === p.name ? false : await joinMarker(name, nl()?.nets.find(n => n.ports.includes(p.id)));
+    propBody.append(field('Name', inp(p.name, async v => {   // (another marker's name refused, said, #4998; a net's joined if the user says so, #2170)
+      const name = newName(v, p.name), taken = name !== p.name && markerNameTaken(doc(), p.id, name), j = taken ? (message(`WARNING: the I/O marker ${p.name} is not renamed: ${taken}`), false) : name === p.name ? false : await joinMarker(name, nl()?.nets.find(n => n.ports.includes(p.id)));
       return j !== false && (() => { p.name = name; if (j) setMarkerWidth(p, j.width); });
     })));
     propBody.append(field('Direction', selBox(p.dir, [['in', 'Input'], ['out', 'Output'], ['inout', 'Bidirectional']], v => { p.dir = v; })));
