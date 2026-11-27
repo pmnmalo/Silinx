@@ -62,7 +62,7 @@ uiTest('#5503 an Arduino node\'s Compile Firmware from its row: its .hex in its 
   // the browser edition: no compiler, said
   await page.eval(async () => { (await import('/js/api.js')).api.standalone = true; });
   await page.treeRow('#procs', 'Compile Firmware', { exact: true, dbl: true });
-  await page.waitConsole(/^ERROR: Compile Firmware: a node's firmware is compiled by the local server's arduino-cli \(the browser edition has no compiler\): give the node a \.hex made elsewhere, the Arduino IDE's Export Compiled Binary$/m);
+  await page.waitConsole(/^ERROR: Compile Firmware: a node's sketch is compiled by the local server's arduino-cli \(the browser edition assembles an \.asm only\): give the node a \.hex made elsewhere, the Arduino IDE's Export Compiled Binary$/m);
   await page.eval(async () => { delete (await import('/js/api.js')).api.standalone; });
   assert.deepEqual(page.console.filter((c) => c.type === 'error' || c.type === 'warning' || c.type === 'warn').map((c) => c.text), []);
 }, { timeout: 180000 });

@@ -1,7 +1,8 @@
 // Silinx - a System's Arduino node's firmware compiled by the local server (#5503, roadmap #4695's phase 5,
 // docs/SYSTEMS.md): its node's Compile Firmware, for the interface (POST /projects/:p/firmware with { node }) and the
-// MCP's run_process (process firmware, node). arduino-cli, which the user installs with its Arduino AVR core (Silinx
-// installs nothing), compiles the node's sketch (its folder's .ino, C and C++: core/avr-compile.js; the one its drawings
+// MCP's run_process (process firmware, node). An assembly program (its folder's .asm, no .ino) is assembled by Silinx's AVR
+// assembler (#5933, core/avr-asm.js), as the browser edition does; else arduino-cli, which the user installs with its
+// Arduino AVR core (Silinx installs nothing), compiles the node's sketch (its folder's .ino, C and C++: core/avr-compile.js; the one its drawings
 // make, core/node-main-sync.js, made again first) for its board, in a
 // folder of its own, build/nodes/<id>/firmware/; its .hex is written to the node's folder, the node's firmware (set to it
 // when it had none), which the Board Emulator runs on avr8js. The compiler's errors and warnings are the job's ERROR and
@@ -14,13 +15,13 @@ import { loadConfig, which } from './toolchain.js';
 import { projectSystem } from '../core/project-system.js';
 import { isSystemFile, readSystem, writeSystem } from '../core/system-doc.js';
 import { changeNode } from '../core/system-edit.js';
-import { AVR_CORE, AVR_FQBN, compilerMessages, firmwareRefusal, nodeSketch, sketchFileOf } from '../core/avr-compile.js';
+import { AVR_CORE, AVR_FQBN, assembleNode, compilerMessages, firmwareRefusal, nodeAssembly, nodeSketch, sketchFileOf } from '../core/avr-compile.js';
 import { readFirmware } from '../core/avr-firmware.js';
 import { syncNodeMain } from '../core/node-main-sync.js';
 import { baseLang } from '../core/system-layout.js';
 import { isTrusted, untrustedMessage } from '../core/trust.js';
 import { takeBuildRecord, writeBuildRecord } from './system-plan.js';
-import { sketchSources } from '../core/system-plan.js';
+import { asmSources, sketchSources } from '../core/system-plan.js';
 
 const running = new Map();   // project -> job id
 /** The firmware compile of the project `name` running, its job, or null (one build of a project at a time, #5489). */
@@ -90,6 +91,9 @@ export async function compileOne(job, name, sys, node, bin) {
   const main = await syncNodeMain(P, name, node, baseLang(node));
   for (const l of main?.messages ?? []) job.log(l);
   const files = main?.written || main?.removed ? await P.fileTree(name) : sys.files;
+  // (an assembly program, its folder's .asm with no sketch: Silinx's AVR assembler, no arduino-cli, #5933)
+  const asm = nodeAssembly(node, files);
+  if (asm) return assembleOne(job, name, node, asm, files);
   const sketch = nodeSketch(node, files);
   if (sketch.error) throw new Error(sketch.error);
   // (what its .hex is built from, for the System's build plan, #5489: its sources as they are now)
@@ -118,6 +122,21 @@ export async function compileOne(job, name, sys, node, bin) {
   await writeBuildRecord(name, node, record);
   job.log(`System node ${node.id}: its firmware ${sketch.hex}, ${fw.size} bytes of the flash.`);
   return { node: node.id, hex: sketch.hex, size: fw.size, warnings: warnings.length, set: !node.firmware };
+}
+
+// the node's .asm assembled (core/avr-compile.js assembleNode, as the browser edition does): its lines logged, its .hex written
+async function assembleOne(job, name, node, asm, files) {
+  const record = await takeBuildRecord(name, { ...node, firmware: node.firmware || asm.hex }, asmSources(files, node.id));
+  const r = assembleNode(node, asm, await P.readFile(name, asm.main));
+  for (const l of r.lines) job.log(l);
+  if (!r.ok) throw new Error(r.error);
+  await P.writeFile(name, asm.hex, r.hex);
+  // (its build folder, where the record of what it was built from lives: made fresh, as a sketch's is)
+  const dir = P.safeJoin(P.projectDir(name), path.join('build', 'nodes', node.id, 'firmware'));
+  await fs.rm(dir, { recursive: true, force: true });
+  await fs.mkdir(dir, { recursive: true });
+  await writeBuildRecord(name, node, record);
+  return { node: node.id, hex: asm.hex, size: r.size, warnings: r.warnings, set: !node.firmware };
 }
 
 /** The nodes of `made` (compileOne's results) that had no firmware get the one made: their System document written once. */
@@ -149,7 +168,8 @@ export async function startFirmwareCompile(name, { node } = {}) {
   if (why) throw new P.HttpError(400, why);
   const { isPic24 } = await import('../core/xc16-compile.js');
   const pics = chosen.filter(isPic24), avrs = chosen.filter(n => !isPic24(n));
-  const tool = avrs.length ? await detectAvrCompiler() : null;
+  // (arduino-cli for the sketches only: an assembly program is Silinx's own, #5933)
+  const tool = avrs.some(n => !nodeAssembly(n, sys.files)) ? await detectAvrCompiler() : null;
   if (tool && !tool.available) throw new P.HttpError(400, `Compile Firmware needs arduino-cli on the local server: ${tool.reason}`);
   const X = pics.length ? await import('./xc16-compile.js') : null;
   const xc16 = X ? await X.detectXc16() : null;
@@ -160,13 +180,13 @@ export async function startFirmwareCompile(name, { node } = {}) {
   const job = createJob('firmware', async j => {
     const failed = [], made = [];
     for (const n of chosen) {
-      try { made.push(isPic24(n) ? await X.compilePic24(j, name, sys, n, xc16) : await compileOne(j, name, sys, n, tool.path)); }
+      try { made.push(isPic24(n) ? await X.compilePic24(j, name, sys, n, xc16) : await compileOne(j, name, sys, n, tool?.path)); }
       catch (e) { if (e?.name === 'JobCancelled') throw e; failed.push(n.id); j.log(`ERROR: System node ${n.id}: ${e.message}`); }
     }
     await setMadeFirmwares(j, name, sys, made);
     if (failed.length) throw new Error(`the System node(s) ${failed.join(', ')} failed`);
     return { nodes: made };
-  }, { meta: { project: name, node, toolchain: !pics.length ? 'arduino' : !avrs.length ? 'xc16' : 'arduino+xc16' } });
+  }, { meta: { project: name, node, toolchain: !pics.length ? (tool ? 'arduino' : 'avr-asm') : !avrs.length ? 'xc16' : 'arduino+xc16' } });
   running.set(key, job.id);
   return job;
 }

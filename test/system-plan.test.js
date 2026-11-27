@@ -75,8 +75,21 @@ test('#5489 an Arduino node with a sketch: compiled by arduino-cli to its firmwa
   assert.equal(planLine(none), 'uno: not built (no uno/hello.hex yet); compiled by arduino-cli to uno/hello.hex, programmed by avrdude (arduino-cli upload)');
 });
 
+test('#5933 an Arduino node with an .asm and no sketch: assembled by Silinx\'s AVR assembler to its firmware; a sketch wins', () => {
+  const files = ['uno/hello.hex', 'uno/hello.asm', 'uno/build/x.asm'];
+  const [e] = systemBuildPlan(sys(UNO), { files, exists: new Set(files) }).nodes;
+  assert.deepEqual(e, { id: 'uno', kind: 'mcu', board: 'arduino-uno', build: 'avr-asm', image: 'uno/hello.hex', programmer: 'avrdude', sources: ['uno/hello.asm'], state: 'out of date', reason: 'its last build left no record of its sources' });
+  assert.equal(planLine(e), 'uno: out of date (its last build left no record of its sources); assembled by Silinx\'s AVR assembler to uno/hello.hex, programmed by avrdude (arduino-cli upload)');
+  const record = { uno: buildRecord(UNO, ['uno/hello.asm'], { 'uno/hello.asm': 'h1' }) };
+  assert.equal(systemBuildPlan(sys(UNO), { files, exists: new Set(files), hashes: { 'uno/hello.asm': 'h1' }, records: record }).nodes[0].state, 'up to date');
+  assert.equal(planLine(systemBuildPlan(sys(UNO), { files, exists: new Set(files), hashes: { 'uno/hello.asm': 'h2' }, records: record }).nodes[0]), 'uno: out of date (uno/hello.asm changed since its last build); assembled by Silinx\'s AVR assembler to uno/hello.hex, programmed by avrdude (arduino-cli upload)');
+  // (no firmware yet: the .hex named as its .asm, not built; an .ino beside it: arduino-cli's sketch)
+  assert.equal(planLine(systemBuildPlan(sys({ ...UNO, firmware: undefined }), { files: ['uno/blink.asm'] }).nodes[0]), 'uno: not built (no uno/blink.hex yet); assembled by Silinx\'s AVR assembler to uno/blink.hex, programmed by avrdude (arduino-cli upload)');
+  assert.equal(systemBuildPlan(sys(UNO), { files: [...files, 'uno/hello.ino'] }).nodes[0].build, 'arduino-cli');
+});
+
 test('#5489 an Arduino node with a .hex and no sketch: given; its firmware missing, or a MicroPython node: said', () => {
-  const files = ['uno/hello.hex', 'uno/hello.asm'];
+  const files = ['uno/hello.hex', 'uno/notes.txt'];
   const [e] = systemBuildPlan(sys(UNO), { files }).nodes;
   assert.deepEqual(e, { id: 'uno', kind: 'mcu', board: 'arduino-uno', build: null, image: 'uno/hello.hex', programmer: 'avrdude', sources: [], state: 'given', reason: 'its firmware uno/hello.hex, no sketch to compile' });
   assert.equal(planLine(e), 'uno: given (its firmware uno/hello.hex, no sketch to compile); its image uno/hello.hex, programmed by avrdude (arduino-cli upload)');

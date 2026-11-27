@@ -97,6 +97,7 @@ test('#5503 a node with no firmware gets the one made: its System document writt
 
 test('#5503 the refusals: an FPGA node, no such node, no sketch, a project with no System as its top', { skip: WIN }, async () => {
   const name = await project({});
+  await P.deleteFile(name, 'uno/hello.asm');   // (an .asm is assembled by Silinx, #5933)
   await assert.rejects(startFirmwareCompile(name, { node: 'fpga' }), { message: 'fpga: a firmware is compiled for a microcontroller node (this one is fpga)' });
   await assert.rejects(startFirmwareCompile(name, { node: 'nano' }), { message: `no node 'nano' in the System of '${name}' (its microcontroller nodes: uno)` });
   const j = await run(name);
@@ -104,6 +105,41 @@ test('#5503 the refusals: an FPGA node, no such node, no sketch, a project with 
   assert.deepEqual(j.lines, ['ERROR: System node uno: uno: no sketch in its folder uno/ (an .ino: write one, or draw its program)', 'ERROR: the System node(s) uno failed']);
   await P.createProject({ name: 'plain', template: 'blinky' });
   await assert.rejects(startFirmwareCompile('plain', { node: 'uno' }), { message: 'the project \'plain\' has no System as its top: a firmware is compiled for a System\'s microcontroller node' });
+});
+
+test('#5933 an assembly program (its folder\'s .asm, no sketch) assembled by Silinx\'s AVR assembler: no arduino-cli; its errors and warnings by line; MCP', async () => {
+  // (arduino-cli not found: an assembly program does not need it)
+  await writeConfig({ mode: 'silinx', paths: { 'arduino-cli': '/nowhere/arduino-cli' } });
+  try {
+    const name = await project({});
+    const shipped = hexOf(name, 'uno/hello.hex');
+    fs.rmSync(path.join(P.projectDir(name), 'uno/hello.hex'));
+    const j = await run(name);
+    assert.equal(j.status, 'ok', j.lines.join('\n'));
+    assert.deepEqual(j.lines, ['System node uno: its program uno/hello.asm for arduino-uno, by Silinx\'s AVR assembler.', 'System node uno: its firmware uno/hello.hex, 148 bytes of the flash.']);
+    assert.equal(hexOf(name, 'uno/hello.hex'), shipped);   // (the example's .hex, byte for byte)
+    // (what it was built from: the System's plan sees it up to date)
+    const rec = JSON.parse(hexOf(name, 'build/nodes/uno/firmware/built-from.json'));
+    assert.deepEqual(Object.keys(rec.sources), ['uno/hello.asm']);
+    // an error and a warning: by file and line; the job fails
+    await P.writeFile(name, 'uno/hello.asm', 'ld r26, X+\nfrob r1\nrjmp PC\n');
+    const e = await run(name);
+    assert.equal(e.status, 'error');
+    assert.deepEqual(e.lines, ['System node uno: its program uno/hello.asm for arduino-uno, by Silinx\'s AVR assembler.', 'ERROR: uno/hello.asm:2: no instruction frob',
+      'WARNING: uno/hello.asm:1: ld with r26, a byte of the pointer X+ it changes: the result is undefined',
+      'ERROR: System node uno: uno: its program did not assemble (1 error(s), 1 warning(s))', 'ERROR: the System node(s) uno failed']);
+    // MCP: run_process firmware, the same lines and locations
+    const r = await tool('run_process').run({ project: name, process: 'firmware', node: 'uno' });
+    assert.equal(r.isError, true);
+    assert.ok(r.text.includes('Process "firmware" of <node uno> failed (3 error(s), 1 warning(s)) (Silinx\'s AVR assembler).'), r.text);
+    assert.deepEqual([r.data.toolchain, r.data.ok], ['avr-asm', false]);
+    assert.deepEqual(r.data.locations.map(l => [l.severity, l.file, l.line]), [['error', 'uno/hello.asm', 2], ['warning', 'uno/hello.asm', 1]]);
+    await P.writeFile(name, 'uno/hello.asm', 'loop: rjmp loop\n');
+    const ok = await tool('run_process').run({ project: name, process: 'firmware', node: 'uno' });
+    assert.ok(ok.text.includes('Process "firmware" of <node uno> completed successfully (Silinx\'s AVR assembler).'), ok.text);
+    assert.deepEqual([ok.data.errors, ok.data.warnings], [[], []]);   // no warnings
+    assert.equal(hexOf(name, 'uno/hello.hex'), ':02000000FFCF30\n:00000001FF\n');
+  } finally { await writeConfig({ mode: 'silinx', paths: { 'arduino-cli': STUB } }); }
 });
 
 test('#5503 MCP: run_process firmware, its errors, warnings and locations as the console\'s; its refusals; toolchain_info says arduino-cli', { skip: WIN }, async () => {
@@ -124,6 +160,9 @@ test('#5503 MCP: run_process firmware, its errors, warnings and locations as the
   await refused({ node: 'fpga' }, 'fpga: a firmware is compiled for a microcontroller node (this one is fpga)');
   const t = await tool('toolchain_info').run({});
   assert.equal(t.text.split('\n')[2], 'Arduino (Compile Firmware): available: arduino-cli 1.6.0 with the Arduino AVR core 1.8.6.');
+  // (an assembly program's, #5933: Silinx's own, always there)
+  assert.equal(t.text.split('\n')[3], 'Arduino assembly (Compile Firmware of an .asm): available: Silinx\'s AVR assembler, built in.');
+  assert.deepEqual(t.data.avrAsm, { available: true, builtin: true });
   assert.deepEqual(t.data.arduino, { available: true, version: '1.6.0', core: '1.8.6', reason: 'arduino-cli 1.6.0 with the Arduino AVR core 1.8.6' });
 });
 

@@ -795,8 +795,15 @@ finds arduino-cli on the PATH, in `/opt/homebrew/bin` or `/usr/local/bin`, or at
   `<id>/<sketch>.hex`, which becomes the node's firmware. Emulate System runs it on avr8js.
 - The MCP's `run_process` does the same, with process `firmware` and the node's id (`*`: every Arduino node).
 - A project imported from elsewhere compiles once it is trusted, as with ISE.
-- The browser edition has no compiler: it says so, and the node takes a `.hex` made elsewhere (the Arduino IDE's Export
-  Compiled Binary).
+- An **assembly program** (#5933: the node's folder has an `.asm` and no `.ino`) is assembled by Silinx's own AVR
+  assembler (`core/avr-asm.js`), with no arduino-cli, on the server and in the browser edition alike. Its syntax is
+  avrasm2's (avra's): the ATmega328P's names built in (`PORTB`, `UDRE0`, `INT0addr`, `RAMEND`, `XL`…`ZH`, as
+  `.include "m328Pdef.inc"` gives them), every instruction of the ATmega328P, `.equ .set .def .org .cseg .dseg .eseg .db
+  .dw .byte`, and expressions with `low()`, `high()` and C's operators. Its errors and warnings are by file and line
+  (`ERROR: uno/hello.asm:2: no instruction frob`); a label defined twice is refused, naming both lines; the manual's
+  undefined combinations (`ld r26, X+`) are warnings. Macros and conditional assembly are not supported yet.
+- The browser edition assembles an `.asm`; for a sketch it has no compiler: it says so, and the node takes a `.hex` made
+  elsewhere (the Arduino IDE's Export Compiled Binary).
 - Not compiled: a MicroPython node's program.
 
 ### Compiling a PIC24 node's firmware

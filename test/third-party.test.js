@@ -31,7 +31,9 @@ test('every component has a known licence and its full text; the editor\'s modul
   const cm = importMapPackages();
   assert.ok(['@codemirror/state', '@codemirror/view', '@codemirror/lint', '@codemirror/legacy-modes', 'style-mod'].every(p => cm.includes(p)), cm.join(', '));
   assert.deepEqual(THIRD_PARTY.filter(c => c.standalone).map(c => `${c.name}:${c.license}`).sort(),
-    ['adepttool:MIT', 'elkjs:EPL-2.0 OR GPL-3.0-or-later', 'SparkFun-KiCad-Libraries:CC-BY-4.0', ...cm.map(p => `${p}:MIT`)].sort());
+    ['adepttool:MIT', 'avr-libc:BSD-3-Clause', 'elkjs:EPL-2.0 OR GPL-3.0-or-later', 'SparkFun-KiCad-Libraries:CC-BY-4.0', ...cm.map(p => `${p}:MIT`)].sort());
+  // (the AVR assembler's ATmega328P names, #5933: avr-libc's iom328p.h's, its notice kept)
+  assert.match(md, /## avr-libc 2\.0\.0 — BSD-3-Clause[\s\S]*Copyright \(c\) 2007 Atmel Corporation[\s\S]*core\/avr-m328p\.js holds the ATmega328P/);
   // (the KiCad catalogue's previews, #4346: drawings derived from SparkFun's footprints, CC-BY-4.0)
   assert.match(md, /## SparkFun-KiCad-Libraries v10\.0\.0 — CC-BY-4\.0[\s\S]*Attribution 4\.0 International[\s\S]*By SparkFun Electronics\. core\/kicad-catalogue-data\.js/);
   assert.match(md, /source code of elkjs \(EPL-2\.0 OR GPL-3\.0-or-later\) is available at https:\/\/github\.com\/kieler\/elkjs/);

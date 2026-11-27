@@ -157,7 +157,7 @@ test('#5470 an Arduino reading a DHT22 on D2 through a System: its start, the 40
   // (TCNT1 cleared at its rise, read at its fall), stored at 0x100 + i
   const wait = (n, m, l) => [`ldi r18, ${n}`, `${l}a:`, `ldi r19, ${m}`, `${l}b:`, 'ldi r20, 255', `${l}c:`, 'dec r20', `brne ${l}c`, 'dec r19', `brne ${l}b`, 'dec r18', `brne ${l}a`];
   const low = (l) => [`${l}:`, 'in r16, 0x09', 'sbrc r16, 2', `rjmp ${l}`], high = (l) => [`${l}:`, 'in r16, 0x09', 'sbrs r16, 2', `rjmp ${l}`];
-  const prog = [...wait(170, 255, 'p'), 'ldi r16, 0x04', 'out 0x0a, r16', 'ldi r16, 0x00', 'out 0x0b, r16', ...wait(1, 26, 's'),
+  const prog = [...wait(170, 255, 'w'), 'ldi r16, 0x04', 'out 0x0a, r16', 'ldi r16, 0x00', 'out 0x0b, r16', ...wait(1, 26, 's'),
     'ldi r16, 0x00', 'out 0x0a, r16', 'ldi r16, 0x02', 'sts 0x81, r16', ...high('rr'), ...low('r0'), ...high('r1'), ...low('r2'),
     ...Array.from({ length: 40 }, (_, i) => [...high(`h${i}`), 'ldi r16, 0x00', 'sts 0x85, r16', 'sts 0x84, r16', ...low(`l${i}`), 'lds r24, 0x84', 'lds r25, 0x85', `sts ${0x100 + i}, r24`]).flat(),
     'end:', 'rjmp end'];

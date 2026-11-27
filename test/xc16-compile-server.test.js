@@ -200,7 +200,7 @@ test('#5482 MCP: run_process firmware on a PIC24 node, its errors, warnings and 
   assert.deepEqual(e.data.warnings, []);
   await assert.rejects(tool('run_process').run({ project: name, process: 'firmware', node: 'pic', toolchain: 'ise' }), { message: 'toolchain: a firmware is compiled by arduino-cli or XC16 (no toolchain to choose)' });
   const t = await tool('toolchain_info').run({});
-  assert.equal(t.text.split('\n')[3], 'XC16 2.10 (a PIC24\'s Compile Firmware): available, on this computer: XC16 2.10 installed here.');
+  assert.equal(t.text.split('\n')[4], 'XC16 2.10 (a PIC24\'s Compile Firmware): available, on this computer: XC16 2.10 installed here.');
   assert.deepEqual(t.data.xc16, { available: true, via: 'local', version: '2.10', reason: 'XC16 2.10 installed here', local: 'XC16 2.10 installed here', remote: 'no ISE machine (no ssh host in the toolchain settings)' });
 });
 

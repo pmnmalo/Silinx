@@ -78,6 +78,9 @@ const PORTED = [
     note: 'examples/micro80/src/light8080.vhdl and light8080_ucode_pkg.vhdl, the processor of the micro80 example, are its files as they are.' },
   { name: 'adepttool', version: 'ported', ported: true, license: 'MIT', url: 'https://github.com/mwkmwkmwk/adepttool', standalone: true,
     note: 'core/adept.js (the Digilent Adept USB programmer over WebUSB) is a JavaScript port of its USB and JTAG code.' },
+  // the ATmega328P's names for the AVR assembler (#5933), made from avr-libc's device header
+  { name: 'avr-libc', version: '2.0.0', ported: true, license: 'BSD-3-Clause', url: 'https://github.com/avrdudes/avr-libc', standalone: true,
+    note: 'core/avr-m328p.js holds the ATmega328P\'s register, bit and vector names and addresses of its avr/include/avr/iom328p.h (Atmel\'s, as Arduino\'s avr-gcc 7.3.0-atmel3.6.1 ships it), made by scripts/avr-symbols.mjs; the header\'s notice is kept in that file.' },
   // the 7-series' bitstream (#3144), in silinx-fpga too
   { name: 'prjxray', version: 'c9f02d8', pin: 'commit', ported: true, license: 'ISC', url: 'https://github.com/f4pga/prjxray', fpga: true,
     note: 'packages/silinx-fpga/src/fpga/xc7/ (the 7-series\' frames and .bit of nextpnr\'s FASM) is a JavaScript port of its fasm2frames and xc7frames2bit.' },

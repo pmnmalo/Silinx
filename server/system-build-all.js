@@ -63,7 +63,7 @@ export async function startSystemBuild(name, { node } = {}) {
   return job;
 }
 
-// an Arduino node's sketch compiled, as its Compile Firmware: a trusted project's, arduino-cli found; a PIC24's C by
+// an Arduino node's sketch compiled (its .asm assembled, #5933), as its Compile Firmware: a trusted project's, arduino-cli found; a PIC24's C by
 // XC16 (#5482: server/xc16-compile.js); its firmware set in the System document when it had none
 async function compileFirmware(j, name, sys, n) {
   const { isPic24 } = await import('../core/xc16-compile.js');
@@ -77,9 +77,11 @@ async function compileFirmware(j, name, sys, n) {
     if (!tool.available) throw new Error(`its firmware needs XC16 on the local server or the ISE machine: ${tool.reason}`);
     made = await compilePic24(j, name, sys, n, tool);
   } else {
-    const tool = await detectAvrCompiler();
-    if (!tool.available) throw new Error(`its firmware needs arduino-cli on the local server: ${tool.reason}`);
-    made = await compileOne(j, name, sys, n, tool.path);
+    // (an assembly program needs no arduino-cli: Silinx's AVR assembler, #5933)
+    const { nodeAssembly } = await import('../core/avr-compile.js');
+    const tool = nodeAssembly(n, sys.files) ? null : await detectAvrCompiler();
+    if (tool && !tool.available) throw new Error(`its firmware needs arduino-cli on the local server: ${tool.reason}`);
+    made = await compileOne(j, name, sys, n, tool?.path);
   }
   await setMadeFirmwares(j, name, sys, [made]);
 }
