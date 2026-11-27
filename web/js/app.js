@@ -178,6 +178,8 @@ export function compileProject() {
     for (const [f, t] of views) {
       const r = viewHdl(f, t, { modules: mods, linked: hdlInProject, lang: S.project.preferredLanguage, clock: hlsClock(), family: hlsFamily(), hls: cState.hls, mults: hlsMults() });
       if (!r?.text) { if (isC(f)) failedC.push([f, r]); else if (r?.errors?.length) designState.failedDrawings.push({ path: f, module: r.module, errors: r.errors }); continue; }
+      // (one with errors whose HDL is still made: Check Syntax says them, its HDL not compiled there, #5799)
+      if (!hdlMods.has(String(r.module).toLowerCase()) && r.errors.length && !isC(f)) designState.failedDrawings.push({ path: f, module: r.module, errors: r.errors });
       if (!hdlMods.has(String(r.module).toLowerCase())) { designState.viewSources.push({ path: f, lang: r.lang, text: r.text, role: 'design', view: true, module: r.module, errors: r.errors.length, lost: r.lost || null, ...(r.sequential ? { sequential: true } : {}) }); continue; }
       const m = !r.errors.length && [...(lib0?.modules.values() || [])].find(x => x.name.toLowerCase() === String(r.module).toLowerCase());
       if (m) designState.viewElsewhere[f] = { module: r.module, lang: r.lang, file: m.archFile || m.file, lost: r.lost || null };

@@ -68,3 +68,38 @@ test('check_syntax of an HDL top whose instance is a drawing that makes no modul
   assert.ok(!errs.some(e => /not found/.test(e) && /traffic/.test(e)), errs.join('\n'));
   assert.ok(!errs.some(e => /later/.test(e)), errs.join('\n'));
 });
+
+// #5799: a drawing with errors whose HDL is still made (a schematic whose net y has two drivers) and no HDL file: its
+// HDL not compiled, its errors Check Syntax's, as a drawing that makes none (#3934); the top, or an instance of an HDL
+// top; write_file says why it has no HDL file. Fixed, it gets its HDL file and Check Syntax passes (its one warning, an unused net).
+const TWO = JSON.stringify({ version: 7, name: 'both', lang: 'vhdl', sheet: { w: 1700, h: 1100 },
+  symbols: [{ id: 'S1', type: 'inv', x: 200, y: 100, rot: 0, mirror: false, name: 'U1', params: { width: 1 } }, { id: 'S2', type: 'inv', x: 200, y: 200, rot: 0, mirror: false, name: 'U2', params: { width: 1 } }],
+  wires: [{ id: 'W1', points: [{ x: 280, y: 110 }, { x: 320, y: 110 }] }, { id: 'W2', points: [{ x: 280, y: 210 }, { x: 320, y: 210 }] }],
+  labels: [{ id: 'L1', x: 300, y: 210, net: 'y' }],
+  ports: [{ id: 'P1', name: 'a', dir: 'in', width: 1, x: 200, y: 110 }, { id: 'P2', name: 'b', dir: 'in', width: 1, x: 200, y: 210 }, { id: 'P3', name: 'y', dir: 'out', width: 1, x: 320, y: 110 }] });
+const TWO_WHY = "net 'y' has 2 drivers (U1.O, U2.O)";
+
+test('#5799 check_syntax of a drawing with errors whose HDL is still made: its errors, not its HDL compiled; write_file says why', async () => {
+  await ok('new_project', { name: 'two' });
+  const w = await ok('write_file', { project: 'two', path: 'src/both.sch.json', text: TWO });
+  assert.equal(w.text, `Created src/both.sch.json (${TWO.length} characters).\nWARNING: src/both.sch.json has no HDL file yet: it has errors: ${TWO_WHY}`);
+  assert.deepEqual(w.data.hdl, { file: null, written: false, removed: null, stale: TWO_WHY });
+  assert.equal(fs.existsSync(path.join(P.projectDir('two'), 'src/both.vhd')), false);
+  const ERR = `src/both.sch.json: its HDL cannot be made: ${TWO_WHY}. Fix src/both.sch.json (its HDL is then made).`;
+  // the top
+  const r = await call('check_syntax', { project: 'two', top: 'both' });
+  assert.deepEqual([r.data.errors.map(e => `${e.file}: ${e.message}`), r.data.warnings], [[ERR], []]);
+  assert.match(r.text, /^ERROR:Silinx - "src\/both\.sch\.json": its HDL cannot be made: net 'y' has 2 drivers \(U1\.O, U2\.O\)\. Fix src\/both\.sch\.json \(its HDL is then made\)\.\nProcess "Check Syntax" of <both> failed \(1 error\(s\), 0 warning\(s\)\)\.$/);
+  // an instance of an HDL top: its errors for "not found"
+  await ok('write_file', { project: 'two', path: 'src/top.vhd', text: 'library ieee; use ieee.std_logic_1164.all;\nentity top is port (a, b : in std_logic; y : out std_logic); end top;\narchitecture s of top is begin\n  u: entity work.both port map (a => a, b => b, y => y);\nend s;\n' });
+  const t = await call('check_syntax', { project: 'two', top: 'top' });
+  assert.deepEqual([t.data.errors.map(e => `${e.file}: ${e.message}`), t.data.warnings], [[ERR], []]);
+  // fixed (U2's output its own net): its HDL file made, Check Syntax clean
+  const fixed = JSON.parse(TWO);
+  fixed.labels[0].net = 'z';
+  const f = await ok('write_file', { project: 'two', path: 'src/both.sch.json', text: JSON.stringify(fixed) });
+  assert.equal(f.text.split('\n')[1], 'src/both.vhd generated from src/both.sch.json');
+  const c = await call('check_syntax', { project: 'two', top: 'top' });
+  // (its one warning: U2's output z drives nothing)
+  assert.deepEqual([c.isError, c.data.errors, c.data.warnings.map(w => `${w.file}: ${w.message}`)], [false, [], ['src/both.vhd: Signal <z> is assigned but never used. This unconnected signal will be trimmed during the optimization process.']]);
+});
