@@ -193,7 +193,8 @@ test('an Intel project is implemented by Quartus (POST implement, run_process): 
   const job = await wait(await startImplementation('QBlinky', { steps: ['synth'] }));
   assert.equal(job.meta.toolchain, 'quartus');
   assert.equal(job.status, 'error');
-  const reason = 'no Quartus docker image configured (quartus.image)';
+  // (the docker command looked for first: on a machine without it, its absence, #5835, as test/vivado.test.js's NOT_READY)
+  const reason = tc.which('docker') ? 'no Quartus docker image configured (quartus.image)' : "'docker' command not found";
   assert.equal(job.error, `Intel Quartus Prime not available (docker mode): ${reason}. Configure it in Toolchain Settings (quartus in ~/.silinx/config.json, PUT /api/toolchain), or run ${path.join(P.projectDir('QBlinky'), 'build', 'run.sh')} on a machine with Quartus.`);
   assert.deepEqual(job.lines.filter(l => /^(How to fix|Quartus is not)/.test(l)), [`Quartus is not available in mode 'docker': ${reason}`, `How to fix: ${Q.QUARTUS_HELP.docker}`]);
   const gen = await wait(await startImplementation('QBlinky', { generateOnly: true }));
