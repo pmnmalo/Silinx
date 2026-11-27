@@ -2,7 +2,6 @@
 // Bench… (#1501) above it (nothing under it); a test bench's right-click menu, and the hierarchy's empty space's. Simulate's side
 // panel (web/js/tasks-sim-panel.js) and SSim's tree (web/js/viewers.js) have them.
 
-import { h } from './ui.js';
 import { newBench } from './tasks-sim.js';
 import { isDesignOnly } from '../../core/project-kind.js';   // (a relative path: Node imports this module too)
 
@@ -36,11 +35,6 @@ export function treeItems(app) {
     { label: 'New Test Bench…', action: () => newBench(app) },
     design(app) ? null : { label: 'Import Test Bench…', action: addCopy },
   ].filter(Boolean);
-}
-/** The bar above a hierarchy: New Test Bench… and Import Test Bench…. */
-export function treeBar(app) {
-  const b = (label, act, run) => h('button', { class: 'btn', type: 'button', 'data-act': act, onclick: run }, label);
-  return h('div', { class: 'task-sim-src-bar' }, b('New Test Bench…', 'new-bench', () => newBench(app)), b('Import Test Bench…', 'add-bench', addCopy));   // (hidden in a design project: web/css/tasks.css, #3780)
 }
 /** The app's menu items in SSim's (its separators { sep: true }). */
 export const asSsim = items => items.map(x => (x === '-' ? { sep: true } : x));

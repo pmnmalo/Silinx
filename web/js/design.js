@@ -40,7 +40,8 @@ import { openFocused } from './doc-focus.js';
 import { inSelection, multiClick, paint, selectionKeys, selectionMenu, selectOne } from './design-select.js';
 import { removal, removeSources } from './design-remove.js';
 
-import { systemProject, topRow, psBranch } from './design-system.js';
+import { systemProject, systemTop, shownSystem, topRow, psBranch } from './design-system.js';
+import { checkItem, deviceMenu } from './device-menu.js';
 import { cpuBadges, cpuModule } from './design-cpu.js';
 import { isSystemFile } from '/core/system-doc.js';
 import { systemsOn } from '/core/build-channel.js';
@@ -66,7 +67,8 @@ export function renderHierarchy() {
   tree.append(root.li);
   // (the top row from the project's nodes, #5443: a design and simulation project's Design, #3780, its drawings and test
   // benches under it; an FPGA project's device; a System project's System row, its nodes' branches, #4700, #5414)
-  const top = topRow(treeItem, select, { sim, dev, menu: e => projectContextMenu(e) });
+  // (the device's row: its own menu, #5878: New Source…, Import Source…, I/O Pin Planning, Check Design, web/js/device-menu.js)
+  const top = topRow(treeItem, select, { sim, dev, menu: e => deviceMenu(e) });
   const sysRow = top.fill ? top : null, devItem = top.item;
   root.ul.append(devItem.li);
 
@@ -460,7 +462,12 @@ function moduleContextMenu(e, mod, file) {
 }
 // a file the user's editor opens as text (#4017): not a drawing, a symbol, an image, a design project's HDL
 const textFile = file => !/\.(json|png|jpe?g|gif|bmp|svg|pdf|zip|bit|bin|wcfg|xise)$/i.test(file) && !(designOnly() && hdlSideFile(file));
-export function fileContextMenu(e, file) {
+// the Files page's: Add to Project… (the folder's files not in the project) and Add Copy to Project…, its bar's before
+// #5939 (`free`: none of the first, a file not in the project having its own Add to Project)
+export const filesPageItems = ({ free = true } = {}) => ['-', free ? { label: 'Add to Project…', action: () => addFromFolderDialog() } : null,
+  { label: 'Add Copy to Project…', command: 'Add Copy to Project', action: () => wiz.addSourceDialog() }].filter(Boolean);
+/** A file's menu (`files`: the Files page's, its Add to Project… and Add Copy to Project… too, #5939). */
+export function fileContextMenu(e, file, { files = false } = {}) {
   if (!filesState.fileTree.includes(file)) {   // a file of the folder that is not in the project
     popupMenu([
       { label: 'Add to Project', action: () => addToProject(file).then(added => added !== false && log(`${file} added to the project.`, 'ok')) },
@@ -469,6 +476,7 @@ export function fileContextMenu(e, file) {
       textFile(file) ? editorItem(file) : null,
       '-',
       { label: 'Delete File…', action: () => deleteFile(file) },
+      ...(files ? filesPageItems({ free: false }) : []),
     ].filter(Boolean), e.clientX, e.clientY);
     return;
   }
@@ -484,6 +492,7 @@ export function fileContextMenu(e, file) {
     /\.(ucf|pcf|lpf|cst|ccf|xdc|qsf)$/i.test(file) ? { label: 'Check Syntax', action: () => checkUcfFile(file) } : null,
     { label: 'Delete File…', action: () => deleteFile(file) },
     { label: 'Source Properties…', action: () => wiz.sourceProperties(file), disabled: !S.project.files.some(f => f.path === file) && designState.viewTexts?.[file] === undefined },
+    ...(files ? filesPageItems() : []),
   ].filter(Boolean), e.clientX, e.clientY);
 }
 // Delete File…: out of the project if it was in it, and off the project folder (#1215; Remove from Project keeps the
@@ -528,11 +537,15 @@ export async function addFromFolderDialog() {
     log(`${b.value} added to the project.`, 'ok');
   }
 }
-function projectContextMenu(e) {
+/** The project's row's menu (the Tasks interface's hierarchies' too, #5878: `extra`, the task's own items, first). */
+export function projectContextMenu(e, extra = []) {
   popupMenu([
+    ...extra, ...(extra.length ? ['-'] : []),
     { label: 'New Source…', action: () => wiz.newSourceWizard() },
     { label: `${wiz.addSourceTitle()}…`, action: () => wiz.addSourceDialog() },
     projectEditorItem(),   // (its folder in the user's editor, #4017)
+    // (Check Design: the top's Check Syntax; a System project's Check System; under the tree before, #5939)
+    checkItem({ system: systemTop() ? shownSystem()?.file : null }),
     '-',
     { label: 'Design Properties…', action: () => wiz.projectProperties() },
     { label: 'Share Project…', action: () => import('./share-how.js').then(m => m.shareDialog()) },   // (a copy, #2826, or live, #3479: chosen in its window, #3698)

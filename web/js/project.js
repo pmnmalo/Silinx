@@ -298,14 +298,12 @@ export async function renderStartPage() {
   const zipDialog = f => () => import('./project-zip-dialogs.js').then(m => m[f]());   // (the software chosen in the window, #3703)
   const command = ([l, ic, f, exp, cls]) => h('div', { class: `entry${exp ? ' start-export' : ''}${cls ? ` ${cls}` : ''}` }, icon(ic), h('a', { onclick: f }, l));
   const page = h('div', { class: 'page' },
-    // New Project and Open Project: buttons at the top (#1216)
-    h('div', { class: 'start-btns' },
-      h('button', { class: 'btn', type: 'button', onclick: () => wiz.newProjectWizard() }, 'New Project…'),
-      h('button', { class: 'btn', type: 'button', onclick: () => wiz.openProjectDialog() }, 'Open Project…')),   // (Close Project: under the Design tree, #1309)
-    // the import and the export, as the File menu has them (#1216; the software chosen in their window, #3703); the
-    // GitHub commands are the Collaboration tab's, shown with no project too (#4619)
+    // New Project and Open Project first (buttons above it before #5939), then the import and the export, as the File menu
+    // has them (#1216; the software chosen in their window, #3703); the GitHub commands are the Collaboration tab's, shown
+    // with no project too (#4619)
     h('div', { class: 'start-box' }, h('h3', {}, 'Project Commands'),
-      ...[['Import Project…', 'open', zipDialog('importProjectDialog')], ['Export Project (.zip)…', 'save', () => S.project && zipDialog('exportProjectDialog')(), true]].map(command)),
+      ...[['New Project…', 'newProject', () => wiz.newProjectWizard()], ['Open Project…', 'open', () => wiz.openProjectDialog()],
+        ['Import Project…', 'open', zipDialog('importProjectDialog')], ['Export Project (.zip)…', 'save', () => S.project && zipDialog('exportProjectDialog')(), true]].map(command)),
     // (where the projects are kept above the recent ones, #2029)
     api.standalone ? await storageBox() : await workspaceBox(),
     h('div', { class: 'start-box' }, h('h3', {}, 'Recent Projects'),

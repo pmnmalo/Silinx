@@ -44,6 +44,8 @@ import { docsState } from './state-docs.js';
 import { designState } from './state-design.js';
 import { procState } from './state-proc.js';
 import { hierarchyDefs, topDef } from './task-hierarchy.js';
+import { withMenus } from './device-menu-rows.js';
+import { pinsTags } from './device-menu.js';
 
 export { EXTRA_STEPS, IMPL_IDS } from './tool-descriptors.js';
 
@@ -172,7 +174,7 @@ const emulateProcs = (top, onTop) => ({ id: 'emulate', label: 'Emulate', ico: 'b
  *  module (no source's badge). */
 function emulateProcesses() {
   const pj = S.project, top = pj?.top;
-  return top ? hierarchyDefs(pj, [topDef(top, [constraintsProcs(top, 'emu'), emulateProcs(top)], 'emu')], 'emu') : [];
+  return top ? withMenus(hierarchyDefs(pj, [topDef(top, [constraintsProcs(top, 'emu'), emulateProcs(top)], 'emu')], 'emu'), 'emu', { tags: pinsTags({ task: 'emu' }) }) : [];
 }
 
 // (drawn again whenever a process's state changes: said, for the toolbar's steps to follow it, #4764)
@@ -191,15 +193,9 @@ function drawProcesses() {
   const noTop = !implSys && implTop() && S.project && !S.project.top;
   // (the Tasks interface's Implement: under the project, its device and its top module, #5789)
   const defs = noTop ? [] : processDefs(sel, view);
-  renderProcessTree(host, implSys || (implTop() && defs.length ? hierarchyDefs(S.project, [topDef(S.project.top, defs, 'impl')], 'impl') : defs));
+  renderProcessTree(host, implSys || (implTop() && defs.length ? withMenus(hierarchyDefs(S.project, [topDef(S.project.top, defs, 'impl')], 'impl'), 'impl') : defs));
   if (noTop) host.append(noTopNote());
-  // (its bar: Build All and Program All, the System's, #5581's part 4; web/js/tasks.js runs them)
-  const ibar = document.getElementById('task-impl-bar');
-  if (ibar) {
-    ibar.dataset.system = implSys ? '1' : '';
-    ibar.querySelector('[data-act=pins]').textContent = implSys ? 'Build All' : 'I/O Pin Planning';
-    ibar.querySelector('[data-act=program]').textContent = implSys ? 'Program All' : 'Program FPGA';
-  }
+  // (Build All and Program All, the System's, #5581's part 4: its row's menu, a bar above the tree before #5939)
   // (Emulate's list in the Tasks interface: the states and the selection the same, #1204)
   // (with no top module, why the list is empty and Set Top Module…, as Implement's, #1422)
   // (a System project's: its System's and its nodes' tree, #5581: web/js/system-emulate-ui.js)
@@ -208,16 +204,8 @@ function drawProcesses() {
   // (Simulate's, a System project's, #5581: web/js/system-simulate-ui.js)
   const simSys = systemTop() ? systemSimulateProcesses() : null;
   for (const el of document.querySelectorAll('.task-sim-system')) { if (simSys) renderProcessTree(el, simSys); else el.replaceChildren(); }
-  // (its bar: Emulate System; I/O Pin Planning a node's, in its row of the tree, #5581's part 2, #5642)
-  const bar = document.getElementById('task-emu-bar');
-  if (bar) {
-    const emu = bar.querySelector('[data-act=emulate]'), pins = bar.querySelector('[data-act=pins]');
-    bar.dataset.system = sys ? '1' : '';
-    emu.textContent = sys ? 'Emulate System' : 'Emulate';
-    pins.disabled = !!sys || !S.project?.top;
-    emu.disabled = !sys && !S.project?.top;
-    pins.title = sys ? 'A node\'s: its I/O Pin Planning in the tree below' : '';
-  }
+  // (Emulate System: its row's menu; I/O Pin Planning a node's, in its row of the tree, #5581's part 2, #5642; a bar above
+  // the tree before #5939)
 }
 
 function noTopNote() {
@@ -243,6 +231,16 @@ async function chooseTop() {
 }
 
 /** The tree of the processes `defs` drawn in `host`: each with its state, run by a double-click, its menu. */
+// a row's tags ([I/O Pins], #5878: { id, text, title, run }), after its name, or nothing
+function rowTags(tags) {
+  if (!tags?.length) return null;
+  return h('span', { class: 'row-tags' }, ...tags.map(t => {
+    const b = h('button', { type: 'button', class: 'row-tag', tabindex: '-1', title: t.title, 'data-tag': t.id }, t.text);
+    b.addEventListener('click', e => { e.stopPropagation(); t.run(); });
+    b.addEventListener('dblclick', e => e.stopPropagation());
+    return b;
+  }));
+}
 function renderProcessTree(host, defs) {
   host.innerHTML = '';
   const tree = h('ul', { class: 'tree' });
@@ -255,7 +253,7 @@ function renderProcessTree(host, defs) {
     const group = !!p.children?.length;
     const tw = h('span', { class: 'twisty' }, group ? (collapsed ? '▸' : '▾') : '');
     const isSel = panes.selProc?.id === p.id && panes.selProc?.label === p.label;
-    const row = h('div', { class: `row${p.disabled ? ' disabled' : ''}${isSel ? ' sel' : ''}${p.raw ? ' proc-hier' : ''}`, ...(p.title ? { title: p.title } : {}) }, tw, h('span', { class: 'status', 'data-status': st || null, html: st ? icons[STATUS_ICON[st]] : '' }), icon(p.ico || 'process'), h('span', { class: 'lbl', ...(p.raw ? { 'data-no-i18n': '' } : {}) }, p.label));   // (raw: a name, not translated)
+    const row = h('div', { class: `row${p.disabled ? ' disabled' : ''}${isSel ? ' sel' : ''}${p.raw ? ' proc-hier' : ''}`, ...(p.title ? { title: p.title } : {}) }, tw, h('span', { class: 'status', 'data-status': st || null, html: st ? icons[STATUS_ICON[st]] : '' }), icon(p.ico || 'process'), h('span', { class: 'lbl', ...(p.raw ? { 'data-no-i18n': '' } : {}) }, p.label), rowTags(p.tags));   // (raw: a name, not translated)
     const sub = h('ul');
     if (collapsed) sub.style.display = 'none';
     li.append(row, sub);
@@ -273,8 +271,8 @@ function renderProcessTree(host, defs) {
     if (group && ico) { ico.style.cursor = 'pointer'; ico.addEventListener('click', e => { e.stopPropagation(); toggle(); }); ico.addEventListener('dblclick', e => e.stopPropagation()); }
     row.addEventListener('click', () => { host.querySelectorAll('.row.sel').forEach(r => r.classList.remove('sel')); row.classList.add('sel'); panes.selProc = p; });
     row.addEventListener('dblclick', () => { if (p.disabled && p.title) logInfo(p.title); else if (p.run && !p.disabled) runProcess(p); });
-    // (the hierarchy's rows, #5789: names, no process's menu)
-    if (!p.raw) row.addEventListener('contextmenu', e => {
+    // (the hierarchy's rows, #5789: names, no process's menu; the project's and the device's their own, #5878: p.menu)
+    if (p.menu) { row.addEventListener('contextmenu', e => { e.preventDefault(); row.click(); p.menu(e); }); longPressMenu(row); } else if (!p.raw) row.addEventListener('contextmenu', e => {
       e.preventDefault(); row.click();
       popupMenu([
         { label: 'Run', action: () => runProcess(p), disabled: !p.run || p.disabled || (procState.busy && ISE_PROCS.includes(p.id)) },
@@ -284,7 +282,7 @@ function renderProcessTree(host, defs) {
         { label: 'Process Properties…', action: () => wiz.implProperties(), disabled: !['synth', 'impl', 'bitgen', 'map', 'par', 'translate'].includes(p.id) },
       ], e.clientX, e.clientY);
     });
-    if (!p.raw) longPressMenu(row);
+    if (!p.raw && !p.menu) longPressMenu(row);
     ul.append(li);
     for (const c of p.children || []) add(sub, c);
   };

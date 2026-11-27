@@ -148,7 +148,7 @@ uiTest('#2826 Copy Link…: the project\'s and a module\'s menus, the File menu,
   await page.dialogButton('Close');
   await page.waitNoDialog();
   await page.eval(() => window.SilinxApp.showLeftPage('start'));
-  await page.waitFor(() => [...document.querySelectorAll('#start-page .start-btns .btn')].some((b) => b.textContent === 'Open Project…' && b.getClientRects().length), [], { what: 'the Start page' });
+  await page.waitFor(() => [...document.querySelectorAll('#start-page .entry a')].some((b) => b.textContent === 'Open Project…' && b.getClientRects().length), [], { what: 'the Start page' });
   // the link opened: the same project (unchanged) kept, its test bench simulated
   await openLink(page, new URL(link).hash.slice(1), 'l=2');
   await linkOpened(page);

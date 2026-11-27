@@ -43,7 +43,7 @@ import { adoptDrawnHdl, drawnHdlClashes, freshHdl, openAsm, openFsm, openPetri, 
 import { checkFileSyntax, hdlDiagnostics, liveHdlDiagnostics, markStale, openMode, renderProcesses, saveAll, projectTool } from './processes.js';
 import { designOnly, hiddenHdl, refusedHere, shownFiles } from './design-only.js';
 import { hdlSideFile } from '/core/project-kind.js';
-import { fileContextMenu, inView, renderHierarchy, saveProjectJson, select, serialOp, setTop, treeItem } from './design.js';
+import { fileContextMenu, filesPageItems, inView, renderHierarchy, saveProjectJson, select, serialOp, setTop, treeItem } from './design.js';
 import { printActive, printable, refreshSteps, settingsItems, setupMenus, setupToolbar, showPalette } from './menus.js';
 import { runSimulation } from './viewers.js';
 import { renameSymbolIn } from './rename.js';
@@ -729,7 +729,7 @@ export function renderFilesPage() {
     }
     const f = reg.get(path);
     const pad = { paddingLeft: `${4 + (parts.length - 1) * 14}px` };
-    tbl.append(h('tr', { 'data-file': path, ondblclick: () => openFile(path), oncontextmenu: e => { e.preventDefault(); fileContextMenu(e, path); } },
+    tbl.append(h('tr', { 'data-file': path, ondblclick: () => openFile(path), oncontextmenu: e => { e.preventDefault(); fileContextMenu(e, path, { files: true }); } },
       h('td', { style: pad }, path),
       h('td', {}, !inProject.has(path) ? 'Not in project' : f ? (f.role === 'sim' ? 'Simulation' : f.role === 'impl' ? 'Implementation' : 'All') : path === S.project.constraints ? 'Implementation' : '—'),
       lang ? h('td', {}, f ? f.lang : path.split('.').pop()) : null));
@@ -742,6 +742,7 @@ function folderContextMenu(e, dir) {
   popupMenu([
     { label: 'Rename Folder…', action: () => renameFolder(dir) },
     { label: 'Delete Folder…', action: () => deleteFolder(dir) },
+    ...filesPageItems(),   // (#5939)
   ], e.clientX, e.clientY);
 }
 

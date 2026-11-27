@@ -9,6 +9,7 @@ import { before, after } from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
+import { rowItems, runRowItem } from './row-menu.js';
 import { setupUi, uiTest, makeProject } from './harness.js';
 
 let env;
@@ -60,8 +61,8 @@ uiTest('#5581 a System\'s Emulate: its tree, a node emulated alone (its link\'s 
     assert.deepEqual(await page.eval((b) => [...document.querySelectorAll(`${b} .task-emu-tree .row`)].map((r) => `${r.querySelector('.lbl').textContent}:${r.querySelector('.ico')?.dataset.ico}`)
       .filter((t) => /^(Emulate|uno)/.test(t)), BOX), ['Emulate System:emulate', 'uno (Arduino Uno):board', 'Emulate Node:emulate', 'Emulate Node:emulate', ...['Behavioral Model (RTL)', 'Post-Synthesis Model', 'Post-Translate Model', 'Post-Map Model', 'Post-Place & Route Model'].map((m) => `Emulate ${m}:emulate`)]);
     assert.equal(await page.eval((b) => document.querySelector(`${b} .task-no-top`), BOX), null, 'no "No top module is set"');
-    await page.waitFor(() => !document.querySelector('#task-emu-bar [data-act=emulate]').disabled, [], { what: 'Emulate System on' });
-    assert.deepEqual(await page.eval(() => [...document.querySelectorAll('#task-emu-bar .btn')].map((x) => [x.textContent, x.disabled])), [['I/O Pin Planning', true], ['Emulate System', false]]);
+    // (Emulate System: its System's row's menu's, a bar above the tree before #5939)
+    assert.deepEqual(await rowItems(page, BOX, 'uart_avr (System)'), ['Emulate System']);
     await run(page, 'Emulate Node', 1);   // (the FPGA's)
   }
   // the FPGA alone: its board, the terminal in the Uno's place, said
@@ -79,7 +80,7 @@ uiTest('#5581 a System\'s Emulate: its tree, a node emulated alone (its link\'s 
     await page.treeRow('#procs', 'Emulate System', { exact: true, dbl: true });
   } else {
     await page.click('#task-switch .task-btn[data-task="emu"]');
-    await page.click('#task-emu-bar [data-act=emulate]');
+    await runRowItem(page, BOX, 'uart_avr (System)', 'Emulate System');
   }
   // the System: both boards, in the same document, nothing more said
   await page.waitFor((e) => document.querySelector(`${e} [data-node=uno]`) && document.querySelector(`${e} [data-node=fpga]`), [EMU], { what: 'the System', timeout: 60000 });
@@ -99,7 +100,7 @@ uiTest('#5581 a System\'s Emulate: its tree, a node emulated alone (its link\'s 
   for (let k = 0; k < 50 && !json().system; k++) await new Promise((r) => setTimeout(r, 100));   // (saved by the server)
   assert.deepEqual(json().system, { emulate: { nodes: ['fpga'] } });
   if (ISE) await page.treeRow('#procs', 'Emulate System', { exact: true, dbl: true });
-  else await page.click('#task-emu-bar [data-act=emulate]');
+  else await runRowItem(page, BOX, 'uart_avr (System)', 'Emulate System');
   await page.waitFor((e) => !document.querySelector(`${e} [data-node=uno]`) && document.querySelector(`${e} [data-node=fpga]`), [EMU], { what: 'the FPGA alone again', timeout: 60000 });
   assert.deepEqual((await lines(page)).filter((l) => /^(WARNING|ERROR)/.test(l)), [WARN, WARN]);
   // Portuguese
@@ -112,7 +113,7 @@ uiTest('#5581 a System\'s Emulate: its tree, a node emulated alone (its link\'s 
     await page.waitFor((b) => document.querySelector(`${b} .task-emu-tree .lbl`)?.textContent === 'uart_avr (Sistema)', [BOX], { what: 'Portuguese' });
     assert.deepEqual(await rows(page), ['uart_avr (Sistema)', '  Propriedades da Emulação…', '  Emular o Sistema', '  uno (Arduino Uno)', '    Emular o Nó',
       '  fpga (Digilent Basys2)', '    Planeamento de Pinos de E/S', '    Emular o Nó', '      Emular Modelo Comportamental (RTL)', '      Emular Modelo Pós-Síntese', '      Emular Modelo Pós-Translate', '      Emular Modelo Pós-Map', '      Emular Modelo Pós-Place & Route']);
-    assert.equal(await page.eval(() => document.querySelector('#task-emu-bar [data-act=emulate]').textContent), 'Emular o Sistema');
+    assert.deepEqual(await rowItems(page, BOX, 'uart_avr (Sistema)'), ['Emular o Sistema']);
   }
   await page.eval(async () => (await import('/js/i18n.js')).setLanguage('en'));
   assert.deepEqual(page.console.filter((c) => c.type === 'error' || c.type === 'warning' || c.type === 'warn').map((c) => c.text), []);

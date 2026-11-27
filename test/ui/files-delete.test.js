@@ -74,7 +74,7 @@ uiTest('#1215 Files: Delete File… moves a file to the workspace\'s .trash (#33
   await page.waitDialog('Remove Source');
   await page.dialogButton('Remove from Project');
   await page.waitFor(() => document.querySelector('#files-page tr[data-file="src/a.vhd"] td:nth-child(2)')?.textContent === 'Not in project', [], { what: 'not in the project' });
-  assert.deepEqual(await fileMenu(page, 'src/a.vhd'), ['Add to Project', 'Open', 'Delete File…']);
+  assert.deepEqual(await fileMenu(page, 'src/a.vhd'), ['Add to Project', 'Open', 'Delete File…', 'Add Copy to Project…']);   // (the Files page's Add Copy to Project…, #5939)
   await page.eval(() => document.querySelector('body > .menu-popup')?.remove());
   // in Portuguese: the question
   await page.eval(async () => (await import('/js/i18n.js')).setLanguage('pt'));
@@ -89,57 +89,57 @@ uiTest('#1215 Files: Delete File… moves a file to the workspace\'s .trash (#33
   assert.deepEqual(warnings(page), []);
 });
 
-async function tasksInterface(page) {
-  await page.eval(() => localStorage.setItem('silinx.ui', 'tasks'));
-  await page.reload();
-  await page.waitFor(() => window.SilinxApp && document.querySelector('#menubar .item') && window.Silinx?.startupChecked, [], { what: 'app boot' });
-}
-const bar = (page) => page.eval(() => {
-  const b = document.getElementById('task-files-bar');
-  if (!b || !b.getClientRects().length) return null;
-  const btns = [...b.querySelectorAll('button')];
-  return { labels: btns.map((x) => x.textContent), enabled: btns.map((x) => !x.disabled), whole: btns.every((x) => x.scrollWidth <= x.clientWidth),
-    above: btns.every((x) => x.getBoundingClientRect().bottom <= document.getElementById('files-page').getBoundingClientRect().top + 1) };
-});
-
-uiTest('#1214 Tasks ▸ Files: Add to Project… (the folder\'s files not in the project) and Add Copy to Project… above the list; ISE style none', E, async (page) => {
+// #1214, #5939: the Files page's Add to Project… (the folder's files not in the project) and Add Copy to Project… in its
+// files' and folders' menus (a bar above the list before #5939, the Silinx interface's only), in both interfaces
+uiTest('#1214 #5939 Files: Add to Project… and Add Copy to Project… in a file\'s and a folder\'s menu, no bar; Portuguese', E, async (page) => {
   await makeProject(env, { name: 'AddPj', top: 'a', files: { 'src/a.vhd': A, 'src/b.v': B } });
   await page.setViewport(1366, 768);
-  await tasksInterface(page);
   await page.openProject('AddPj');
   await page.leftTab('files');
-  await page.waitFor(() => [...document.querySelectorAll('#task-files-bar button')].every((b) => !b.disabled), [], { what: 'enabled' });
-  assert.deepEqual(await bar(page), { labels: ['Add to Project…', 'Add Copy to Project…'], enabled: [true, true], whole: true, above: true });
+  await page.waitFor(() => !!document.querySelector('#files-page tr[data-file="src/a.vhd"]'), [], { what: 'the Files page' });
+  assert.equal(await page.eval(() => document.getElementById('task-files-bar')), null);
+  const IMPORT = await page.eval(() => (document.documentElement.dataset.layout === 'tasks' ? 'Import Source' : 'Add Copy of Source'));
+  // a file's menu: its own items, then Add to Project… and Add Copy to Project…
+  const items = await fileMenu(page, 'src/a.vhd');
+  await page.closeMenus();
+  assert.deepEqual(items.slice(-2), ['Add to Project…', 'Add Copy to Project…']);
+  // a folder's
+  await page.rightClick('#files-page tr.folder-row');
+  assert.deepEqual(await page.waitFor(() => { const m = [...document.querySelectorAll('body > .menu-popup .mi')].map((i) => i.textContent.trim()); return m.length ? m : null; }, [], { what: 'the folder\'s menu' }),
+    ['Rename Folder…', 'Delete Folder…', 'Add to Project…', 'Add Copy to Project…']);
+  await page.closeMenus();
   // every file in the project: said so
-  await page.click('#task-files-bar button:nth-child(1)');
+  await fileMenu(page, 'src/a.vhd', 'Add to Project…');
   // (in the console, no box, #4747)
   await page.waitConsole(/^INFO: Add to Project: Every file of the project folder is in the project\.$/m);
   assert.equal(await page.dialogCount(), 0);
-  // a file removed from the project: listed, chosen, added back
+  // a file removed from the project: its menu its own Add to Project, no Add to Project… (Add Copy to Project… kept)
   await fileMenu(page, 'src/b.v', 'Remove…');
   await page.waitDialog('Remove Source');
   await page.dialogButton('Remove from Project');
   await page.waitFor(() => document.querySelector('#files-page tr[data-file="src/b.v"] td:nth-child(2)')?.textContent === 'Not in project', [], { what: 'removed' });
-  await page.click('#task-files-bar button:nth-child(1)');
+  const free = await fileMenu(page, 'src/b.v');
+  await page.closeMenus();
+  assert.ok(free.includes('Add to Project') && !free.includes('Add to Project…') && free.at(-1) === 'Add Copy to Project…', free.join(' | '));
+  // another file's Add to Project…: the folder's files not in the project, chosen and added
+  await fileMenu(page, 'src/a.vhd', 'Add to Project…');
   await page.waitDialog('Add to Project');
   assert.deepEqual(await page.eval(() => [...document.querySelectorAll('.dlg-overlay .add-free-list label')].map((l) => l.textContent.trim())), ['src/b.v']);
   await page.click('.dlg-overlay .add-free-list input');
   await page.dialogButton('OK');
   await page.waitFor(() => window.Silinx.project.files.some((f) => f.path === 'src/b.v'), [], { what: 'added' });
   await page.waitConsole(/src\/b\.v added to the project\./);
-  // Add Copy to Project…: Import Source
-  await page.click('#task-files-bar button:nth-child(2)');
-  assert.equal(await page.waitDialog('Import Source'), 'Import Source');   // (the Silinx interface's name, #1501)
+  // Add Copy to Project…: Import Source (Add Copy of Source in the ISE style, #1501)
+  await fileMenu(page, 'src/a.vhd', 'Add Copy to Project…');
+  assert.equal(await page.waitDialog(IMPORT), IMPORT);
   await page.dialogButton('Cancel');
   await page.waitNoDialog();
   // in Portuguese
   await page.eval(async () => (await import('/js/i18n.js')).setLanguage('pt'));
-  await page.waitFor(() => document.querySelector('#task-files-bar button')?.textContent === 'Acrescentar ao Projeto…', [], { what: 'Portuguese' });
-  assert.deepEqual((await bar(page)).labels, ['Acrescentar ao Projeto…', 'Acrescentar Cópia ao Projeto…']);
-  await page.eval(async () => (await import('/js/i18n.js')).setLanguage('en'));
-  // the ISE style interface: none
-  await page.eval(async () => (await import('/js/silinx.js')).setInterface('ise'));
-  await page.waitFor(() => !document.documentElement.dataset.layout);
-  assert.equal(await page.eval(() => document.getElementById('task-files-bar')), null);
+  try {
+    const pt = await fileMenu(page, 'src/a.vhd');
+    await page.closeMenus();
+    assert.deepEqual(pt.slice(-2), ['Acrescentar ao Projeto…', 'Acrescentar Cópia ao Projeto…']);
+  } finally { await page.eval(async () => (await import('/js/i18n.js')).setLanguage('en')); }
   assert.deepEqual(warnings(page), []);
 }, { build: DEV });

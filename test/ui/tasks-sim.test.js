@@ -6,6 +6,7 @@ import { before, after } from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
+import { rowItems } from './row-menu.js';
 import { setupUi, uiTest, makeProject, ROOT } from './harness.js';
 
 let env;
@@ -468,7 +469,7 @@ uiTest('#1259 Tasks ▸ Simulate: the side panel from the top, the simulations\'
 // #1385: the Simulation hierarchy's commands, as Design's: New Test Bench and Import Test Bench (#1501) above it (nothing
 // under it), in Simulate's side panel and in SSim's tree; a test bench's right-click menu, the empty space's; SSim's Go To
 // Source, the module's source in Design; Portuguese; ISE style none
-uiTest('#1385 Tasks ▸ Simulate: the Simulation hierarchy\'s buttons and right-click menus; Portuguese; ISE style none', E, async (page) => {
+uiTest('#1385 #5939 Tasks ▸ Simulate: the Simulation hierarchy\'s right-click menus, no bar; Portuguese; ISE style none', E, async (page) => {
   await makeProject(env, { name: 'TasksSimCmds', template: 'blinky' });
   await page.setViewport(1366, 768);
   await tasksInterface(page);
@@ -480,9 +481,11 @@ uiTest('#1385 Tasks ▸ Simulate: the Simulation hierarchy\'s buttons and right-
   const below = (sel) => page.eval((s) => { const b = document.querySelector(s).getBoundingClientRect(), rows = [...document.querySelectorAll(`${s} .row`)].filter((r) => r.getClientRects().length);
     return { x: Math.round(b.left + 30), y: Math.round(((rows.at(-1)?.getBoundingClientRect().bottom ?? b.top) + b.bottom) / 2) }; }, sel);
   const BENCH = ['Open', 'Rename…', 'Check Syntax', 'New Test Bench…', 'Import Test Bench…', 'Remove from Project', 'Source Properties…'];
-  // the side panel, nothing simulated: the bar, the bench's menu, the empty space's
+  // the side panel, nothing simulated: no bar (#5939: New Test Bench… and Import Test Bench… the project's and the device's
+  // menus' first), the bench's menu, the empty space's
   await page.waitFor(() => document.querySelector('#task-sim-panel .task-sim-bench .row')?.getClientRects().length > 0, [], { what: 'the panel' });
-  assert.deepEqual(await bars('#task-sim-panel'), ['New Test Bench…', 'Import Test Bench…']);
+  assert.deepEqual(await bars('#task-sim-panel'), []);
+  for (const r of ['TasksSimCmds', 'xc3s250e-4-cp132']) assert.deepEqual((await rowItems(page, '#task-sim-panel', r)).slice(0, 2), ['New Test Bench…', 'Import Test Bench…'], r);
   await page.rightClick('#task-sim-panel .task-sim-bench .row');
   assert.deepEqual((await appMenu()).map((x) => x.replace(' (off)', '')), BENCH);
   assert.equal(await page.eval(() => Math.round(document.querySelector('body > .menu-popup .mi').getBoundingClientRect().height)), 30);
@@ -495,7 +498,7 @@ uiTest('#1385 Tasks ▸ Simulate: the Simulation hierarchy\'s buttons and right-
   await page.click('#task-sim-panel .task-sim-bench .row');
   await page.waitFor(() => window.Silinx.active?.id === 'isim:tb_top' && !window.Silinx.active.view.state.running, [], { what: 'SSim', timeout: 60000 });
   await page.showSide();
-  assert.deepEqual(await bars('.doc:not([hidden]) .isim-inst-panel'), ['New Test Bench…', 'Import Test Bench…']);
+  assert.deepEqual(await bars('.doc:not([hidden]) .isim-inst-panel'), []);
   await page.rightClick('.doc:not([hidden]) .isim-tree > li > .row .lbl', { text: 'tb_top' });
   const m = await ssimMenu();
   // (its items as the app's menus' items: #1409)
@@ -511,8 +514,7 @@ uiTest('#1385 Tasks ▸ Simulate: the Simulation hierarchy\'s buttons and right-
   await page.eval(() => document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' })));
   // Portuguese
   await page.eval(async () => (await import('/js/i18n.js')).setLanguage('pt'));
-  await page.waitFor(() => document.querySelector('.doc:not([hidden]) .task-sim-src-bar [data-act=new-bench]')?.textContent === 'Nova Bancada de Teste…', [], { what: 'Portuguese' });
-  assert.deepEqual(await bars('.doc:not([hidden]) .isim-inst-panel'), ['Nova Bancada de Teste…', 'Importar Bancada de Teste…']);
+  await page.waitFor(() => document.querySelector('#task-sim-tab .tab-lbl, #task-switch .task-btn[data-task="sim"]')?.textContent.includes('Simular'), [], { what: 'Portuguese' });
   await page.rightClick(await below('.doc:not([hidden]) .isim-inst-panel > .body'));
   assert.deepEqual(await ssimMenu(), ['Nova Bancada de Teste…', 'Importar Bancada de Teste…']);
   await page.eval(() => document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' })));
@@ -547,7 +549,7 @@ uiTest('#1395 Tasks ▸ Simulate: the Files page beside Simulation, the test ben
     const vis = (e) => !!e && e.getClientRects().length > 0;
     return { tabs: [...document.querySelectorAll(`${r} .task-sim-tabs .tab`)].map((t) => `${t.textContent}${t.classList.contains('active') ? '*' : ''}`),
       files: [...document.querySelectorAll(`${r} .task-sim-files .row`)].filter(vis).map((x) => `${x.querySelector('.lbl').textContent} ${x.querySelector('.meta').textContent}`),
-      tree: vis(document.querySelector(`${r} .task-sim-src-bar`)) };
+      tree: vis(document.querySelector(`${r} .task-sim-trees, ${r} > .body`)) };
   }, root);
   await page.waitFor(() => document.querySelector('#task-sim-panel .task-sim-bench .row')?.getClientRects().length > 0, [], { what: 'the panel' });
   assert.deepEqual(await state('#task-sim-panel'), { tabs: ['Simulation*', 'Files'], files: [], tree: true });

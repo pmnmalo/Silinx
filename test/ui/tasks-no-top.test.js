@@ -77,7 +77,8 @@ uiTest('#1422 Tasks ▸ Emulate with no top module: said so in its side panel, S
   const emuNote = () => page.eval(() => { const n = document.querySelector('#task-emu-panel .task-no-top'); return n && n.getClientRects().length ? { text: n.querySelector('p').textContent, button: n.querySelector('button').textContent } : null; });
   await page.waitFor(() => !!document.querySelector('#task-emu-panel .task-no-top')?.getClientRects().length, [], { what: 'the note' });
   assert.deepEqual(await emuNote(), { text: 'No top module is set: the design is implemented from its top module, so set one to see its processes.', button: 'Set Top Module…' });
-  assert.deepEqual(await page.eval(() => [...document.querySelectorAll('#task-emu-bar .btn')].map((b) => `${b.textContent}${b.disabled ? ' (off)' : ''}`)), ['I/O Pin Planning (off)', 'Emulate (off)'], 'its bar off (#1424)');
+  // (no bar above the tree since #5939, its I/O Pin Planning and Emulate off before, #1424: nothing to run with no top)
+  assert.equal(await page.eval(() => document.getElementById('task-emu-bar')), null);
   await page.click('#task-emu-panel .task-no-top button');
   await page.waitDialog('Set Top Module');
   await page.eval(() => { document.querySelector('.dlg-overlay select').value = 'top'; });
@@ -86,25 +87,3 @@ uiTest('#1422 Tasks ▸ Emulate with no top module: said so in its side panel, S
   assert.equal(await emuNote(), null, 'no note with a top');
   assert.deepEqual(page.console.filter((c) => c.type === 'warning' || c.type === 'warn').map((c) => c.text), []);
 }, { build: DEV });
-
-// #1423: a reload in Implement with no top module: I/O Pin Planning off from the moment the app is shown (not on until
-// the once-a-second check)
-uiTest('#1423 Tasks ▸ Implement: a reload with no top module shows I/O Pin Planning off at once', E, async (page) => {
-  await makeProject(env, { name: 'NoTopReload', top: '', files: { 'src/inv.vhd': INV, 'src/top.vhd': TOP } });
-  await page.setViewport(1366, 768);
-  await tasksInterface(page);
-  await page.openProject('NoTopReload');
-  await page.eval(async () => { window.SilinxApp.S.project.top = ''; await window.SilinxApp.saveProjectJson(); window.SilinxApp.renderProcesses(); });
-  await page.click('#task-switch .task-btn[data-task="impl"]');
-  await page.waitFor(() => document.querySelector('#task-impl-bar [data-act=pins]')?.disabled, [], { what: 'off' });
-  // (its state noted at every change while the app is shown)
-  await page.send('Page.addScriptToEvaluateOnNewDocument', { source: `window.__pins = []; new MutationObserver(() => {
-    const app = document.getElementById('app'), b = document.querySelector('#task-impl-bar [data-act=pins]');
-    if (!app || !b || getComputedStyle(app).visibility === 'hidden' || !b.getClientRects().length) return;
-    if (window.__pins.at(-1) !== b.disabled) window.__pins.push(b.disabled);
-  }).observe(document, { subtree: true, childList: true, attributes: true });` });
-  await page.reload();
-  await page.waitFor(() => window.Silinx?.project?.name === 'NoTopReload' && !document.documentElement.hasAttribute('data-starting') && document.documentElement.dataset.task === 'impl', [], { what: 'reopened', timeout: 30000 });
-  await page.eval(() => new Promise((r) => setTimeout(r, 300)));
-  assert.deepEqual(await page.eval(() => window.__pins), [true], 'off whenever shown');
-}, { build: DEV, skip: chromeOnly });
