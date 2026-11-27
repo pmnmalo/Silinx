@@ -6,6 +6,7 @@
 // (#5863: moveColumn), an output duplicated (#5869: duplicateOutput); its refusals, nothing written.
 import { test, before, after } from 'node:test';
 import assert from 'node:assert/strict';
+import { readStamp } from '../core/hdl-cache.js';
 import fs from 'node:fs';
 import path from 'node:path';
 import { scratchEnv } from './server-helpers.js';
@@ -37,7 +38,7 @@ test('set_output_logic: traffic\'s lamps, an output in the canonical SOP: the ta
   assert.equal(read('t', 'src/lamps.bool.json'), JSON.stringify(doc, null, 2));
   assert.deepEqual([doc.form, doc.forms], ['sop', { car_y: 'csop' }]);
   // its module: the one the table generates, car_y's assignment a sum of minterms of the four inputs
-  assert.equal(read('t', 'src/lamps.vhd'), generateTableHdl(doc, 'vhdl', { source: 'lamps.bool.json' }).code);
+  assert.equal(readStamp(read('t', 'src/lamps.vhd')).body, generateTableHdl(doc, 'vhdl', { source: 'lamps.bool.json' }).code);   // (its silinx-sync line aside, #5872)
   assert.match(read('t', 'src/lamps.vhd'), /car_y <= \(not phase2 and not phase1 and phase0 and not blink\) or /);
   assert.deepEqual([r.data.output, r.data.form, r.data.solutions, r.data.hdl.file, r.data.hdl.written], ['car_y', 'csop', {}, 'src/lamps.vhd', true]);
   assert.match(r.text, /^src\/lamps\.bool\.json: car_y's HDL logic: Canonical SOP: car_y = \/phase2\.\/phase1\.phase0\.\/blink \+ .* {3}\(canonical SOP, \d+ gate\(s\), delay \d+\)/);

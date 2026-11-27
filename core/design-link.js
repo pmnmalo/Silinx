@@ -15,6 +15,7 @@
 // Isomorphic: the codec is the browser's CompressionStream (in Node too), or one given.
 import { browserCodec, createZip } from './zip.js';
 import { VIEW_RE, isCSource, viewHdl } from './view-hdl.js';
+import { drawingHash, stampHdl } from './hdl-cache.js';
 import { gateEntries, gateMessages, normalizePath } from './import-gate.js';
 import { foldsToProjectFile, PROJECT_FILE } from './fold-name.js';
 import { PROJECT_NAME_RE } from './project-name.js';
@@ -57,15 +58,15 @@ async function regenerable(files) {
     try { m = JSON.parse(files[p]); } catch { continue; }
     const target = m?.generatedFile;
     if (!m || typeof m !== 'object' || m.base === 'hdl' || typeof target !== 'string' || typeof files[target] !== 'string') continue;
-    if (made(p, files[p], mods) === files[target]) out[target] = p;
+    if (await made(p, files[p], mods, target) === files[target]) out[target] = p;
   }
   return out;
 }
-function made(path, text, mods) {
-  try {
-    const r = viewHdl(path, text, { modules: /\.sch\.json$/i.test(path) ? mods : {}, linked: () => false });
-    return r && !r.errors.length ? r.text : null;
-  } catch { return null; }
+// (the HDL file as Silinx writes it, its silinx-sync line too, #5872)
+async function made(path, text, mods, target) {
+  let r;
+  try { r = viewHdl(path, text, { modules: /\.sch\.json$/i.test(path) ? mods : {}, linked: () => false }); } catch { return null; }
+  return r && !r.errors.length ? stampHdl(r.text, await drawingHash(text), /\.s?v$/i.test(target) ? 'verilog' : 'vhdl') : null;
 }
 // the tests' view of what is compiled (#3362: a link's HDL only once the import gate has passed it): compiled(paths)
 export const LINK_TESTING = { compiled: null };
@@ -152,7 +153,7 @@ export async function decodeDesign(design, { codec = browserCodec() } = {}) {
     const mods = await modulesOf(texts);
     for (const target of made_) {
       const from = Object.keys(texts).find(p => VIEW_RE.test(p) && (() => { try { return JSON.parse(texts[p])?.generatedFile === target; } catch { return false; } })());
-      const text = from ? made(from, texts[from], mods) : null;
+      const text = from ? await made(from, texts[from], mods, target) : null;
       if (text === null) warnings.push(`${target}: not made again from ${from || 'its drawing'}`);
       else madeEntries.push({ path: target, data: text });
     }

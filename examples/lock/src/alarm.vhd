@@ -106,3 +106,4 @@ begin
     alarm <= o_alarm;
   end process;
 end architecture petri;
+-- silinx-sync drawing:f6b03842b7cda9e7 hdl:3ea7cc3d6abea559 (generated from the drawing: edit it, not this file)

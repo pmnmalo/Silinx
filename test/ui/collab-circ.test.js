@@ -9,6 +9,7 @@ import assert from 'node:assert/strict';
 import { setupUi, uiTest, makeProject, readWs } from './harness.js';
 import { normalizeCircuit } from '../../core/circuit.js';
 import { generateCircuit } from '../../core/circuit-hdl.js';
+import { readStamp } from '../../core/hdl-cache.js';   // (the HDL files' silinx-sync line aside, #5872)
 
 let env;
 before(async () => { env = await setupUi(); });
@@ -58,7 +59,7 @@ uiTest('#4203 a circuit edited live by the owner and an editor: a wire deleted o
     assert.deepEqual(ids(merged), ids(c0).filter((x) => x !== wa && x !== wb));
     // the owner's page writes it to the disk, and its HDL made again from it
     await until(async () => same(await disk(), merged), 'the merge on the disk');
-    await until(async () => (await readWs(env, 'LiveCirc', hdl)) === generateCircuit(merged, merged.lang, { source: 'breadboard.circ.json' }).code, 'the HDL made again');
+    await until(async () => readStamp(await readWs(env, 'LiveCirc', hdl)).body === generateCircuit(merged, merged.lang, { source: 'breadboard.circ.json' }).code, 'the HDL made again');
     // each one's Undo: their own change only, on both sides
     await ep.eval(() => window.Silinx.active.circuitEditor.undo());
     await until(async () => { const m = await model(page); return ids(m).includes(wb) && !ids(m).includes(wa); }, 'Rui\'s change undone at the owner\'s');

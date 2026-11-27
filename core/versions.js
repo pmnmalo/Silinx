@@ -33,6 +33,7 @@ export const REASONS = Object.freeze({
   save: 'saved on its own', manual: 'saved by hand', 'before-merge': 'before Merge Contribution', 'before-remove': 'before Remove from Project',
   'before-delete': 'before Delete', 'before-convert': 'before a conversion', 'before-import': 'before an import',
   'before-git': 'before a git pull or merge', 'before-mode': 'before Change Mode', 'before-migrate': 'before a document\'s new format', 'before-restore': 'before a restore', restore: 'restored',
+  'before-regenerate': 'before an HDL file changed outside Silinx was made again from its drawing',
 });
 const LABEL_MAX = 80, AUTHOR_MAX = 40;
 // (silinx.json's fields that are the project's own: never taken from a version, #5740)

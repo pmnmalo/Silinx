@@ -6,6 +6,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import { viewHdl } from '../core/view-hdl.js';
+import { readStamp } from '../core/hdl-cache.js';
 import { newPetri } from '../core/petri.js';
 
 const read = (f) => fs.readFileSync(new URL(`../examples/${f}`, import.meta.url), 'utf8');
@@ -50,6 +51,6 @@ for (const name of Object.keys(DRAWINGS)) {
 test('#1186 the shipped examples\' HDL: what the generators write (the header too)', () => {
   for (const [name, hdl] of [['gates.sch.json', 'gates/src/gates.vhd'], ['speed_ctrl.asm.json', 'blinky/src/speed_ctrl.vhd'],
     ['traffic.fsm.json', 'traffic/src/traffic.vhd'], ['lamps.bool.json', 'traffic/src/lamps.vhd']]) {
-    assert.equal(generate(name, 'vhdl'), read(hdl), hdl);
+    assert.equal(generate(name, 'vhdl'), readStamp(read(hdl)).body, hdl);   // (its silinx-sync line aside, #5872)
   }
 });

@@ -140,7 +140,8 @@ export async function duplicateSource(P, name, path, { to = null, module = null,
   // the drawing's HDL made again for its new name (its header, its generator's names)
   const msgs = [];
   if (drawing) {
-    const r = p.hdlTo ? await syncDrawing(P, name, p.path) : await adoptDrawing(P, name, p.path);
+    // (its HDL copied and renamed here: not an edit of the user's, #5872)
+    const r = p.hdlTo ? await syncDrawing(P, name, p.path, null, { own: true }) : await adoptDrawing(P, name, p.path);
     if (r?.messages?.length) msgs.push(...r.messages);
     if (r?.written && !written.includes(r.written)) written.push(r.written);
   }

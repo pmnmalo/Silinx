@@ -87,3 +87,4 @@ begin
   opened <= is_open;
   alarm <= is_alarm;
 end architecture Structural;
+-- silinx-sync drawing:b7ec13f1665ecd91 hdl:058187466c524faa (generated from the drawing: edit it, not this file)

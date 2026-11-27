@@ -19,3 +19,4 @@ architecture truth_table of digit_ok is
 begin
     ok <= (not pos0 and not d3 and not d2 and d1 and not d0) or (not pos1 and pos0 and not d3 and not d2 and not d1 and not d0) or (pos1 and pos0 and not d3 and d2 and d1 and not d0);
 end truth_table;
+-- silinx-sync drawing:2e9af04ef93ba45a hdl:7d4b4557eed7cc73 (generated from the drawing: edit it, not this file)

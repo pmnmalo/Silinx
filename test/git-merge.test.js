@@ -14,6 +14,7 @@ import path from 'node:path';
 import { execFileSync } from 'node:child_process';
 import { scratchEnv, ROOT } from './server-helpers.js';
 import { viewHdl } from '../core/view-hdl.js';
+import { readStamp } from '../core/hdl-cache.js';
 import { normalizeFsm, generateFsm } from '../core/fsm.js';
 import { randomVectors, runHdl, runModel } from './fsm-sim.js';
 import { simulate } from '../core/compile.js';
@@ -78,7 +79,7 @@ test('different objects changed on both sides: merged at once, the HDL made agai
   const m = readJson(path.join(dir, FSM));
   assert.deepEqual([t(m, 't2').cond, t(m, 't3').cond], ['not req', 'req and not night']);
   assert.equal(m.states[0].x, readJson(path.join(ROOT, 'examples', 'traffic', FSM)).states[0].x + 20);
-  assert.equal(fs.readFileSync(path.join(dir, m.generatedFile), 'utf8'), viewHdl(FSM, JSON.stringify(m), { linked: () => false }).text);
+  assert.equal(readStamp(fs.readFileSync(path.join(dir, m.generatedFile), 'utf8')).body, viewHdl(FSM, JSON.stringify(m), { linked: () => false }).text);   // (its silinx-sync line aside, #5872)
   // (git never merged the JSON as text: Silinx's attributes; the merge committed, nothing left to commit)
   assert.match(fs.readFileSync(path.join(dir, '.git', 'info', 'attributes'), 'utf8'), /^# Silinx \(#3197\)[^\n]*\n\*\.sch\.json merge=binary\n(?:\*\.\w+\.json merge=binary\n)*\*\.circ\.json merge=binary\n/);
   assert.equal(sh(dir, 'log', '-1', '--format=%P').trim().split(' ').length, 2);

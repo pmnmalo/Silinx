@@ -94,3 +94,4 @@ begin
       walk_g => walk_g
     );
 end architecture schematic;
+-- silinx-sync drawing:b7aa35d368688408 hdl:154e872f092fa2b6 (generated from the drawing: edit it, not this file)

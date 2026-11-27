@@ -8,6 +8,7 @@ import { fileURLToPath } from 'node:url';
 import { normalizeModel, validate, generate, parseCondition, extractAlwaysBlocks, asmJoinPoints } from '../core/asm.js';
 import { asmFromHdl, asmLayout, sameAsmStructure, nodeSize } from '../core/asm-from-hdl.js';
 import { simulate } from '../core/compile.js';
+import { readStamp } from '../core/hdl-cache.js';
 
 const ROOT = path.join(path.dirname(fileURLToPath(import.meta.url)), '..');
 const BLINKY = path.join(ROOT, 'examples', 'blinky');
@@ -537,7 +538,7 @@ test('blinky example: the chart generates speed_ctrl.vhd, which round-trips and 
   const m = JSON.parse(fs.readFileSync(path.join(BLINKY, 'src', 'speed_ctrl.asm.json'), 'utf8'));
   assert.equal(m.generatedFile, 'src/speed_ctrl.vhd');
   assert.deepEqual(validate(m), []);
-  const file = fs.readFileSync(path.join(BLINKY, 'src', 'speed_ctrl.vhd'), 'utf8');
+  const file = readStamp(fs.readFileSync(path.join(BLINKY, 'src', 'speed_ctrl.vhd'), 'utf8')).body;   // (its silinx-sync line aside, #5872)
   assert.equal(generate(m, 'vhdl').code, file);
   const { model, warnings } = asmFromHdl(file, { path: 'src/speed_ctrl.vhd', previous: m });
   assert.deepEqual(warnings, []);

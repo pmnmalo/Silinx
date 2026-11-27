@@ -13,6 +13,7 @@ import { before, after } from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import { setupUi, uiTest, makeProject, readWs, tick } from './harness.js';
+import { readStamp } from '../../core/hdl-cache.js';   // (the HDL files' silinx-sync line aside, #5872)
 import { newDoc, normalizeDoc, symbolPins } from '../../core/schdoc.js';
 import { viewHdl } from '../../core/view-hdl.js';
 import { newModel } from '../../core/asm.js';
@@ -278,7 +279,7 @@ uiTest('every source has its HDL (#207): a schematic without an HDL file gets it
   await page.waitConsole(/src\/esq\.vhd generated from src\/esq\.sch\.json \(every source has its HDL\)/);
   await page.waitFor(() => window.Silinx.hdlToSch?.['src/esq.vhd'] === 'src/esq.sch.json', [], { what: 'linked' });
   // the file: the HDL made for the schematic, linked to it (the schematic the base), in the project
-  assert.equal(await readWs(env, 'teste', 'src/esq.vhd'), viewHdl('src/esq.sch.json', text).text);
+  assert.equal(readStamp(await readWs(env, 'teste', 'src/esq.vhd')).body, viewHdl('src/esq.sch.json', text).text);
   const saved = JSON.parse(await readWs(env, 'teste', 'src/esq.sch.json'));
   assert.deepEqual([saved.generatedFile, saved.base], ['src/esq.vhd', undefined]);
   assert.ok((await page.eval(() => window.Silinx.project.files.map((f) => f.path))).includes('src/esq.vhd'));
@@ -339,7 +340,7 @@ for (const [lang, L, ext] of [['vhdl', 'VHDL', 'vhd'], ['verilog', 'Verilog', 'v
       await page.waitFor((f, h) => window.Silinx.hdlToSch?.[h] === f, [k.file, hdl], { what: `${k.file} linked to ${hdl}` });
       const d = JSON.parse(await readWs(env, pj, k.file));
       assert.equal(d.generatedFile, hdl, k.file);
-      assert.equal(await readWs(env, pj, hdl), viewHdl(k.file, JSON.stringify({ ...d, generatedFile: undefined })).text, hdl);
+      assert.equal(readStamp(await readWs(env, pj, hdl)).body, viewHdl(k.file, JSON.stringify({ ...d, generatedFile: undefined })).text, hdl);
       await page.waitFor((n) => [...document.querySelectorAll('#hier .row')].some((r) => r.querySelector('.lbl').textContent === n), [k.name]);
       const row = (await rows(page)).find((r) => r.trim().startsWith(`${k.ico} ${k.name} `));
       assert.equal(row?.trim(), `${k.ico} ${k.name} [${k.badge}*]${k.views || ''} [${L}] (${k.file.split('/').pop()})`);
@@ -581,7 +582,7 @@ uiTest('a drawing\'s HDL language changed (a schematic\'s Language; a Petri net\
       await page.waitConsole(new RegExp(`${k.file.replace(/\./g, '\\.')}: its HDL is now in ${L}, src/${k.name}\\.${ext} \\(src/${k.name}\\.${other} removed\\)`));
       const d = JSON.parse(await readWs(env, 'H_lang', k.file));
       assert.deepEqual([d.lang, d.generatedFile], [lang, `src/${k.name}.${ext}`], k.file);
-      assert.equal(await readWs(env, 'H_lang', `src/${k.name}.${ext}`), viewHdl(k.file, JSON.stringify({ ...d, generatedFile: undefined })).text);
+      assert.equal(readStamp(await readWs(env, 'H_lang', `src/${k.name}.${ext}`)).body, viewHdl(k.file, JSON.stringify({ ...d, generatedFile: undefined })).text);
       // the links and the file tree are set while the project is read again, the Design pane drawn after it
       await page.waitFor((n, l) => [...document.querySelectorAll('#hier .row')].some((r) => r.querySelector('.lbl').textContent === n
         && [...r.querySelectorAll('.badge')].some((b) => b.textContent === l)), [k.name, L], { what: `the row of ${k.name} with [${L}]` });

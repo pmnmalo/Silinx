@@ -7,11 +7,12 @@
 import { api } from './api.js';
 
 /** The project store of core's modules (readProject, fileTree, readSources, readFile, writeFile, deleteFile, renameFile,
- *  updateProject) over the page's API. */
+ *  updateProject, saveVersion) over the page's API. */
 export const pageStore = () => ({
   readProject: n => api.project(n), fileTree: async n => (await api.project(n)).fileTree, readSources: n => api.sources(n),
   readFile: (n, p) => api.readFile(n, p), writeFile: (n, p, t) => api.writeFile(n, p, t), deleteFile: (n, p) => api.deleteFile(n, p),
   renameFile: (n, a, b) => api.renameFile(n, a, b),
+  saveVersion: (n, o) => api.saveVersion(n, o),   // (an HDL file changed outside Silinx kept before it is made again, #5872)
   updateProject: async (n, fn) => { const pj = await api.project(n); delete pj.fileTree; return api.saveProject(n, fn(pj) || pj); },
 });
 
