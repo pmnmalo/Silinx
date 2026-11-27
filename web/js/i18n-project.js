@@ -37,6 +37,14 @@ export const PROJECT_PT_PATTERNS = [
   // (the files deleted too, #5720: core/project-entries.js removedMessage)
   [/^Removed (\S+) and its HDL file (\S+) from the project and deleted them( \(moved to the workspace's \.trash folder\))?\.$/, (m, a, b, tr) => `Removidos do projeto ${a} e o seu ficheiro HDL ${b}, e apagados${tr ? ' (movidos para a pasta .trash da área de trabalho)' : ''}.`],
   [/^Removed (.+) from the project and deleted it( \(moved to the workspace's \.trash folder\))?\.$/, (m, a, tr) => `Removido ${a} do projeto, e apagado${tr ? ' (movido para a pasta .trash da área de trabalho)' : ''}.`],
+  // Open Project's Delete (#5785, web/js/open-project-delete.js, core/project-delete.js): the question, the console's lines
+  [/^Delete (?:the project '(.+)'|these (\d+) projects)\?\n((?:'.+'\n)*)\n(Its folder is|Their folders are|It is|They are) (?:moved to the workspace's \.trash folder|deleted from this browser's storage)\.(?:\n'(.+)' is open: it is closed first\.)?\nThis cannot be undone\.$/,
+    (m, one, n, list, who, open) => `${one ? `Apagar o projeto '${one}'?` : `Apagar estes ${n} projetos?`}\n${list}\n${{ 'Its folder is': 'A sua pasta é movida', 'Their folders are': 'As suas pastas são movidas', 'It is': 'É apagado', 'They are': 'São apagados' }[who]}${/folder/.test(who) ? ' para a pasta .trash da área de trabalho' : ' do armazenamento deste navegador'}.${open ? `\n'${open}' está aberto: é fechado primeiro.` : ''}\nNão se pode anular.`],
+  [/^Project '(.+)' deleted( \(moved to the workspace's \.trash folder\))?\.$/, (m, p, tr) => `Projeto '${p}' apagado${tr ? ' (movido para a pasta .trash da área de trabalho)' : ''}.`],
+  [/^Project '(.+)' closed, to be deleted\.$/, "Projeto '$1' fechado, para ser apagado."],
+  [/^'(.+)' is not deleted while a process of it runs: stop it \(or wait for it to finish\) first\.$/, "'$1' não é apagado enquanto um processo dele corre: pare-o (ou espere que termine) primeiro."],
+  [/^'(.+)' is not deleted while it is shared live: stop sharing it first\.$/, "'$1' não é apagado enquanto é partilhado em direto: pare de o partilhar primeiro."],
+  [/^'(.+)' is another person's project, followed live: it is not deleted\.$/, "'$1' é o projeto de outra pessoa, seguido em direto: não é apagado."],
   // Edit ▸ Undo / Redo of a project's command (web/js/app.js): the command's name
   // (in a project shared live with editors, #5739: a command's change and a later one in the same places)
   [/^(Undo|Redo): (.+?): not (?:undone|redone): (.+) changed since in the same places; the project kept as it is\.$/, (m, w, a, p) => `${w === 'Undo' ? 'Anular' : 'Refazer'}: ${t(a)}: não ${w === 'Undo' ? 'anulado' : 'refeito'}: ${p} alterado desde então nos mesmos sítios; o projeto mantido como está.`],
