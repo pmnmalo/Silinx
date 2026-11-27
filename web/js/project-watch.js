@@ -54,6 +54,11 @@ export async function applyChanges({ project, changes = [], by = null, tab = fal
   if (!S.project || S.project.name !== project || !changes.length) return;
   if (!by) dispatchEvent(new CustomEvent('silinx:disk-changes', { detail: { project, changes } }));   // (a project shared: read again, #3181)
   let files = changes.filter(c => !c.path.startsWith('build/'));
+  // (a file deleted and written again, as some editors save, #5872: back a moment later, a change, its editor kept)
+  if (!by && files.some(c => c.kind === 'deleted')) {
+    await new Promise(r => setTimeout(r, 300));
+    files = await Promise.all(files.map(async c => (c.kind === 'deleted' && await api.readFile(project, c.path).then(() => true, () => false) ? { ...c, kind: 'changed' } : c)));
+  }
   // (a project followed: a text file whose open editor shows it live already, #3182, not reloaded nor said again)
   if (by) files = (await Promise.all(files.map(async c => (c.kind === 'changed' && await shownLive(c.path) ? null : c)))).filter(Boolean);
   const run = changes.some(c => c.path === REPORTS);
@@ -61,6 +66,9 @@ export async function applyChanges({ project, changes = [], by = null, tab = fal
     log(`${by ? `Changed by ${by}` : where ? `Changed ${where}` : 'Changed outside Silinx'}: ${files.map(c => `${c.path}${c.kind === 'changed' ? '' : ` (${c.kind})`}`).join(', ')}.`, 'info');
     for (const c of files) for (const d of docsState.docs.filter(o => showsFile(o, c.path))) await reloadDoc(d, c, by, where);
     await reloadProject();
+    // (a drawing, its symbol or an HDL file changed on disk: the drawings' HDL files and symbols checked once the folder
+    // is quiet, the drawing winning, #5872; after the open editors were reloaded or the user chose theirs)
+    if (!by && files.some(c => c.kind !== 'deleted' && /\.(sch|asm|tt|bool|fsm|pn|circ|regs|sym)\.json$|\.(vhdl?|s?v)$/i.test(c.path))) (await import('./drawing-check.js')).checkWhenQuiet();
   }
   if (by) return;   // (a project followed: its runs are its owner's, not shared)
   if (procState.busy || runState.currentJob) return;   // (a run of the page's own: its marks are its own)

@@ -12,6 +12,7 @@ export const VERSIONS_PT = {
   'saved on its own': 'guardada automaticamente', 'saved by hand': 'guardada à mão', 'before Merge Contribution': 'antes de Juntar Contribuição',
   'before Remove from Project': 'antes de Remover do Projeto', 'before Delete': 'antes de Apagar', 'before a conversion': 'antes de uma conversão',
   'before an import': 'antes de uma importação', 'before a git pull or merge': 'antes de um pull ou merge do git', 'before Change Mode': 'antes de Mudar o Modo', 'before a document\'s new format': 'antes do novo formato de um documento', 'before a restore': 'antes de um restauro',
+  'before an HDL file changed outside Silinx was made again from its drawing': 'antes de um ficheiro HDL alterado fora do Silinx ser gerado de novo a partir do seu desenho',
 };
 
 export const VERSIONS_PT_PATTERNS = [

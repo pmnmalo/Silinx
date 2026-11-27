@@ -596,7 +596,9 @@ async function writeDrawnHdl(path, target, hdl) {
   try { m = JSON.parse(designState.viewTexts[path]); } catch { return false; }
   m.generatedFile = target;
   const text = JSON.stringify(m, null, isAsm(path) || isTt(path) || isFsm(path) || isPn(path) || isCirc(path) ? 2 : 1);
-  await api.writeFile(S.project.name, target, hdl);   // (registers the module in the project)
+  // (its silinx-sync line too, #5872: core/hdl-cache.js)
+  const { drawingHash, stampHdl } = await import('/core/hdl-cache.js');
+  await api.writeFile(S.project.name, target, await stampHdl(hdl, await drawingHash(m), /\.s?v$/i.test(target) ? 'verilog' : 'vhdl'));   // (registers the module in the project)
   await api.writeFile(S.project.name, path, text);
   designState.viewTexts[path] = text;
   linkOpenEditor(path, target);
@@ -813,6 +815,11 @@ export async function drawingsAsBase() {
     designState.viewTexts[f] = text;
     if (ed?.setDoc) ed.setDoc(m); else ed?.setModel?.(m);
     if (next) {
+      // (its HDL kept as it is, the drawing's from now on: its silinx-sync line the drawing's, #5872, so that the
+      // drawings' check takes it as made from it until the drawing is edited, which rewrites it)
+      const { drawingHash, readStamp, stampHdl } = await import('/core/hdl-cache.js');
+      const stamped = await stampHdl(readStamp(hdl).body, await drawingHash(m), lang);
+      if (stamped !== hdl) await api.writeFile(S.project.name, hdlPath, stamped);
       log(next === old ? `${f} is now the base of ${hdlPath} (its base until now): that file is what the ${noun} makes, generated from it from now on.`
                        : `${f} made again from ${hdlPath} (its base until now) and now its base: that file is generated from the ${noun} from now on.`, 'info');
       for (const w of warnings) log(`WARNING: ${f}: ${w}`, 'warn');
