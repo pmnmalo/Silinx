@@ -65,6 +65,11 @@ const ZYBO_Z7 = {
   deviceNotes: 'The Zybo Z7 (Rev. B), its programmable logic only: no processing system set up (the PS7, its block design, a boot image). Its USB-UART and its QSPI flash are the PS\'s.',
   // (#4683: in cascade, TDI first: the ARM DAP, the processing system's debug port, then the PL's TAP)
   jtagChain: [{ name: 'arm_dap', role: 'dap' }, { name: 'xc7z020/xc7z010', role: 'fpga' }],
+  // its processing system, as Silinx's ps7_init sets it up (core/zynq-ps7.js, #4686; Digilent's board preset's clocks):
+  // a 33.333 MHz PS_CLK, the CPU at 667 MHz, the IO PLL at 1 GHz, the USB-UART on UART1 (MIO 48 TX, 49 RX, bank 501 at
+  // 1.8 V), FCLK0 at 50 MHz; LD4 on MIO 7 (bank 500, 3.3 V), BTN4 and BTN5 on MIO 50 and 51
+  ps: { clkHz: 100e6 / 3, armFdiv: 40, cpuDiv: 2, ioFdiv: 30, uart: { id: 1, tx: 48, rx: 49, io: 'LVCMOS18', refHz: 100e6 }, fclk0Hz: 50e6,
+    gpio: [{ name: 'LD4', mio: 7, dir: 'out', io: 'LVCMOS33' }, { name: 'BTN4', mio: 50, dir: 'in', io: 'LVCMOS18' }, { name: 'BTN5', mio: 51, dir: 'in', io: 'LVCMOS18' }] },
   flash: { type: 'spi', part: 'Quad-SPI flash, 128 Mbit (the processing system\'s)', sizeMbit: 128, xcf: false, verified: false, note: 'The PS boots from it: a boot image (an FSBL and the .bit, bootgen), not written from Silinx. The .bit is loaded over JTAG.' },
   programmer: {
     preferred: 'openFPGALoader',
@@ -101,6 +106,10 @@ const ARTY_Z7 = {
   deviceNotes: 'The Arty Z7 (Rev. B), its programmable logic only: no processing system set up (the PS7, its block design, a boot image). Its USB-UART and its QSPI flash are the PS\'s.',
   // (#4683: the Zybo Z7's chain, the ARM DAP then the PL's TAP)
   jtagChain: [{ name: 'arm_dap', role: 'dap' }, { name: 'xc7z020/xc7z010', role: 'fpga' }],
+  // its processing system, as Silinx's ps7_init sets it up (core/zynq-ps7.js, #4686; as the PYNQ-Z1's, its twin): a
+  // 50 MHz PS_CLK, the CPU at 650 MHz, the IO PLL at 1.6 GHz, the USB-UART on UART0 (MIO 14 RX, 15 TX, bank 500 at
+  // 3.3 V), FCLK0 at 100 MHz; no PS LEDs or buttons
+  ps: { clkHz: 50e6, armFdiv: 26, cpuDiv: 2, ioFdiv: 32, uart: { id: 0, rx: 14, tx: 15, io: 'LVCMOS33', refHz: 100e6 }, fclk0Hz: 100e6, gpio: [] },
   flash: { type: 'spi', part: 'Quad-SPI flash, 128 Mbit (the processing system\'s)', sizeMbit: 128, xcf: false, verified: false, note: 'The PS boots from it: a boot image (an FSBL and the .bit, bootgen), not written from Silinx. The .bit is loaded over JTAG.' },
   programmer: {
     preferred: 'openFPGALoader',

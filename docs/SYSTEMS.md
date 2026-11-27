@@ -1132,6 +1132,10 @@ The existing `program_board` and `capture` serve the FPGA nodes.
    - arduino-cli on the local server: an Arduino node's Compile Firmware (done, #5503);
    - Espressif's QEMU as an optional engine.
 6. **Zynq and soft cores:**
+   - the PS set up by Silinx's own ps7_init (#4686, part 1): `core/zynq-ps7.js` makes the SLCR's register writes from
+     a board's `ps` description (`core/boards-vivado.js`: the Zybo Z7's and the Arty Z7's PS_CLK, PLLs, CPU, UART on the
+     MIO, FCLK0), with no DDR (a program in the OCM): the MIO, the ARM and IO PLLs, the clocks, then after the PL is
+     configured the level shifters and the PL's resets; data the JTAG loader runs through the ARM DAP (#4687);
    - a Zynq board as a co-design node (roadmap #5412);
    - the PS–PL as an AXI-Lite link, the Zynq's processor engines as the scheduler's adapters;
    - #4396's soft cores as FPGA nodes with the common instruction view.
