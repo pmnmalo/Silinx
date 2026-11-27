@@ -164,9 +164,9 @@ function remember(key, sig) {
   if (verified.size > 500) verified.delete(verified.keys().next().value);
 }
 
-/** The label of the version kept before an HDL file changed outside Silinx is made again from its drawing (#5872; a
- *  design project's names its drawing, never its HDL, #3891). */
-export const editedLabel = (target, path, design = false) => (design ? `${path}: its module changed outside Silinx` : `${target} changed outside Silinx`);
+// the label of the version kept before an HDL file changed outside Silinx is made again from its drawing (#5872; a
+// design project's names its drawing, never its HDL, #3891)
+const editedLabel = (target, path, design = false) => (design ? `${path}: its module changed outside Silinx` : `${target} changed outside Silinx`);
 
 // a version of the project as it is (the HDL file changed outside Silinx in it), before its drawing's HDL replaces it:
 // { id } or { error } (a store with no versions: none kept)

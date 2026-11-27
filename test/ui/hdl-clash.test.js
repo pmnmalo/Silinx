@@ -15,6 +15,7 @@ import { viewHdl } from '../../core/view-hdl.js';
 import { newPetri } from '../../core/petri.js';
 import { newTable } from '../../core/logic.js';
 import { newDoc } from '../../core/schdoc.js';
+import { readStamp } from '../../core/hdl-cache.js';   // (the HDL files' silinx-sync line aside, #5872)
 
 let env;
 before(async () => { env = await setupUi(); });
@@ -59,7 +60,7 @@ uiTest('#230 regression, a Petri net whose HDL file exists and defines its modul
   ]);
   assert.equal(await warnTip(page), TIP_PN);
   // nothing written; loaded again (e.g. after a save): not said again
-  assert.equal(await readWs(env, 'C_pn', 'src/ctl.vhd'), OLD_CTL);
+  assert.equal(readStamp(await readWs(env, 'C_pn', 'src/ctl.vhd')).body, OLD_CTL);
   assert.equal(await readWs(env, 'C_pn', 'src/ctl.pn.json'), PN);
   await page.eval(() => window.SilinxApp.reloadProject());
   assert.deepEqual(await warnings(page), [W_PN]);
@@ -71,7 +72,7 @@ uiTest('#230 regression, a Petri net whose HDL file exists and defines its modul
   assert.match(await topText(page), /src\/ctl\.vhd defines the module ctl already\.\n\nReplace it with the HDL generated from ctl\.pn\.json\? Its current contents will be lost\./);
   await page.dialogButton('No');
   await page.waitNoDialog();
-  assert.equal(await readWs(env, 'C_pn', 'src/ctl.vhd'), OLD_CTL);
+  assert.equal(readStamp(await readWs(env, 'C_pn', 'src/ctl.vhd')).body, OLD_CTL);
   assert.equal(await readWs(env, 'C_pn', 'src/ctl.pn.json'), PN);
   // the badge does the same; Yes: replaced by the net's HDL, linked
   await page.click('#hier .badge.warn');
@@ -82,7 +83,7 @@ uiTest('#230 regression, a Petri net whose HDL file exists and defines its modul
   await page.waitFor(() => window.Silinx.hdlToSch?.['src/ctl.vhd'] === 'src/ctl.pn.json', [], { what: 'linked' });
   const d = JSON.parse(await readWs(env, 'C_pn', 'src/ctl.pn.json'));
   assert.equal(d.generatedFile, 'src/ctl.vhd');
-  assert.equal(await readWs(env, 'C_pn', 'src/ctl.vhd'), viewHdl('src/ctl.pn.json', PN).text);
+  assert.equal(readStamp(await readWs(env, 'C_pn', 'src/ctl.vhd')).body, viewHdl('src/ctl.pn.json', PN).text);
   await page.waitFor(() => !document.querySelector('#hier .badge.warn'), [], { what: 'no [No HDL] badge' });
   assert.deepEqual(await rows(page), [
     'project C_pn',
@@ -116,8 +117,8 @@ uiTest('#230 regression, a truth table whose HDL file name holds another module:
   assert.equal(await page.dialogCount(), 0);
   await page.waitFor(() => window.Silinx.hdlToSch?.['src/maj_tt.vhd'] === 'src/maj.tt.json', [], { what: 'linked' });
   assert.equal(JSON.parse(await readWs(env, 'C_tt', 'src/maj.tt.json')).generatedFile, 'src/maj_tt.vhd');
-  assert.equal(await readWs(env, 'C_tt', 'src/maj_tt.vhd'), viewHdl('src/maj.tt.json', TT).text);
-  assert.equal(await readWs(env, 'C_tt', 'src/maj.vhd'), OTHER);
+  assert.equal(readStamp(await readWs(env, 'C_tt', 'src/maj_tt.vhd')).body, viewHdl('src/maj.tt.json', TT).text);
+  assert.equal(readStamp(await readWs(env, 'C_tt', 'src/maj.vhd')).body, OTHER);
   await page.waitFor(() => !document.querySelector('#hier .badge.warn'), [], { what: 'no [No HDL] badge' });
   assert.deepEqual(await rows(page), [
     'project C_tt',
@@ -151,7 +152,7 @@ uiTest('#230 two drawings of the same module: the second has no HDL file, warned
   await page.waitConsole(/^WARNING: Generate HDL File: No HDL file: its module ctl is the module of src\/ctl\.pn\.json\. Rename one of them\./m);
   assert.equal(await page.dialogCount(), 0);
   assert.equal(await readWs(env, 'C_two', 'src/other.tt.json'), TT2);
-  assert.equal(await readWs(env, 'C_two', 'src/ctl.vhd'), viewHdl('src/ctl.pn.json', PN).text);
+  assert.equal(readStamp(await readWs(env, 'C_two', 'src/ctl.vhd')).body, viewHdl('src/ctl.pn.json', PN).text);
 });
 
 uiTest('#230 New Source: a Petri net, a truth table and the Petri Net Wizard refuse a name whose HDL file is taken (or whose module exists); another name goes on', E, async (page) => {
@@ -198,7 +199,7 @@ uiTest('#230 New Source: a Petri net, a truth table and the Petri Net Wizard ref
   await page.waitNoDialog();
   await page.waitConsole(/src\/maj2\.vhd generated from src\/maj2\.pn\.json \(every source has its HDL\)/);
   assert.deepEqual(await warnings(page), []);
-  assert.equal(await readWs(env, 'C_new', 'src/maj.vhd'), OTHER);
+  assert.equal(readStamp(await readWs(env, 'C_new', 'src/maj.vhd')).body, OTHER);
 });
 
 uiTest('#230 in Portuguese: the [Sem HDL] badge and its tip, Gerar Ficheiro HDL… in the menu, the question, the New Source refusal', E, async (page) => {
@@ -218,7 +219,7 @@ uiTest('#230 in Portuguese: the [Sem HDL] badge and its tip, Gerar Ficheiro HDL�
     assert.match(await topText(page), /src\/ctl\.vhd já define o módulo ctl\.\n\nSubstituí-lo pelo HDL gerado a partir de ctl\.pn\.json\? O conteúdo atual perde-se\./);
     await page.dialogButton('Não');
     await page.waitNoDialog();
-    assert.equal(await readWs(env, 'C_pt', 'src/ctl.vhd'), OLD_CTL);
+    assert.equal(readStamp(await readWs(env, 'C_pt', 'src/ctl.vhd')).body, OLD_CTL);
     // New Source: the refusal
     await page.eval(async () => { (await import('/js/wizards.js')).newSourceWizard({ type: 'petri' }); });
     await page.waitDialog();
@@ -266,7 +267,7 @@ uiTest('#231 regression, a Petri net whose HDL file is deleted from the folder: 
   await page.eval(() => window.SilinxApp.reloadProject());
   await page.waitConsole(/src\/ctl\.vhd generated from src\/ctl\.pn\.json \(its HDL file src\/ctl\.vhd is no longer in the project folder\)/);
   await page.waitFor(() => window.Silinx.hdlToSch?.['src/ctl.vhd'] === 'src/ctl.pn.json', [], { what: 'linked again' });
-  assert.equal(await readWs(env, 'L_del', 'src/ctl.vhd'), CTL_HDL);
+  assert.equal(readStamp(await readWs(env, 'L_del', 'src/ctl.vhd')).body, CTL_HDL);
   assert.equal(JSON.parse(await readWs(env, 'L_del', 'src/ctl.pn.json')).generatedFile, 'src/ctl.vhd');
   assert.deepEqual(await rows(page), LINKED_ROWS('L_del'));
   assert.deepEqual(await warnings(page), []);
@@ -280,7 +281,7 @@ uiTest('#231 a truth table whose HDL file is gone when the project is opened: ma
   await page.openProject('L_open');
   await page.waitConsole(/src\/maj\.vhd generated from src\/maj\.tt\.json \(its HDL file src\/maj\.vhd is no longer in the project folder\)/);
   await page.waitFor(() => window.Silinx.hdlToSch?.['src/maj.vhd'] === 'src/maj.tt.json', [], { what: 'linked' });
-  assert.equal(await readWs(env, 'L_open', 'src/maj.vhd'), viewHdl('src/maj.tt.json', TT).text);
+  assert.equal(readStamp(await readWs(env, 'L_open', 'src/maj.vhd')).body, viewHdl('src/maj.tt.json', TT).text);
   assert.deepEqual(await rows(page), ['project L_open', '  chip xc3s250e-4-cp132', '    algebra maj [Algebra*] [Schematic] [VHDL] (maj.tt.json)']);
   assert.deepEqual(await warnings(page), []);
   // gone (it was src/maj_tt.vhd), src/maj.vhd holding another module: as #230
@@ -298,8 +299,8 @@ uiTest('#231 a truth table whose HDL file is gone when the project is opened: ma
   await page.click('#hier .badge.warn');
   await page.waitConsole(/src\/maj_tt\.vhd generated from src\/maj\.tt\.json \(src\/maj\.vhd holds something else\)/);
   await page.waitFor(() => window.Silinx.hdlToSch?.['src/maj_tt.vhd'] === 'src/maj.tt.json', [], { what: 'linked' });
-  assert.equal(await readWs(env, 'L_taken', 'src/maj_tt.vhd'), viewHdl('src/maj.tt.json', TT).text);
-  assert.equal(await readWs(env, 'L_taken', 'src/maj.vhd'), OTHER);
+  assert.equal(readStamp(await readWs(env, 'L_taken', 'src/maj_tt.vhd')).body, viewHdl('src/maj.tt.json', TT).text);
+  assert.equal(readStamp(await readWs(env, 'L_taken', 'src/maj.vhd')).body, OTHER);
   assert.deepEqual(await warnings(page), [W_TT]);
 });
 
@@ -314,7 +315,7 @@ uiTest('#231 regression, a Petri net whose HDL file is removed from the project 
   assert.deepEqual(await rows(page), ['project L_rm', '  chip xc3s250e-4-cp132', '    moduleTop ctl [Petri*] [FSM] [No HDL!] (ctl.pn.json)']);
   assert.equal(await warnTip(page), TIP_RM);
   // nothing written: the file in the folder, out of the project; the net still names it
-  assert.equal(await readWs(env, 'L_rm', 'src/ctl.vhd'), CTL_HDL);
+  assert.equal(readStamp(await readWs(env, 'L_rm', 'src/ctl.vhd')).body, CTL_HDL);
   assert.equal(await readWs(env, 'L_rm', 'src/ctl.pn.json'), LINKED_PN);
   assert.deepEqual(await pjFiles('L_rm'), []);
   // Undo (the toast's): back in the project, linked, nothing to say
@@ -342,7 +343,7 @@ uiTest('#231 regression, a Petri net whose HDL file is removed from the project 
   await page.waitConsole(/src\/ctl\.vhd generated again from src\/ctl\.pn\.json, back in the project/);
   await page.waitFor(() => window.Silinx.hdlToSch?.['src/ctl.vhd'] === 'src/ctl.pn.json' && !document.querySelector('#hier .badge.warn'), [], { what: 'linked' });
   assert.deepEqual(await pjFiles('L_rm'), ['src/ctl.vhd']);
-  assert.equal(await readWs(env, 'L_rm', 'src/ctl.vhd'), CTL_HDL);
+  assert.equal(readStamp(await readWs(env, 'L_rm', 'src/ctl.vhd')).body, CTL_HDL);
   assert.equal(JSON.parse(await readWs(env, 'L_rm', 'src/ctl.pn.json')).generatedFile, 'src/ctl.vhd');
   assert.deepEqual(await rows(page), LINKED_ROWS('L_rm'));
   // (said once per opening of the project)
@@ -374,7 +375,7 @@ uiTest('#231 a schematic whose HDL file is removed from the project (the Files v
   await page.waitFor(() => !window.Silinx.active.dirty, [], { what: 'saved' });
   await page.eval(() => window.SilinxApp.reloadProject());
   assert.deepEqual(JSON.parse(await readWs(env, 'L_sch', 'src/gate.sch.json')).ports.map((q) => q.name), ['a']);
-  assert.equal(await readWs(env, 'L_sch', 'src/gate.vhd'), hdl);
+  assert.equal(readStamp(await readWs(env, 'L_sch', 'src/gate.vhd')).body, hdl);
   assert.deepEqual(await pjFiles('L_sch'), []);
   assert.ok(await page.eval(() => !!document.querySelector('#hier .badge.warn')));
   assert.deepEqual(await warnings(page), [W]);

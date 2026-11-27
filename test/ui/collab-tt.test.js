@@ -8,6 +8,7 @@ import { before, after } from 'node:test';
 import assert from 'node:assert/strict';
 import { setupUi, uiTest, makeProject, readWs } from './harness.js';
 import { normalizeTable, generateTableHdl } from '../../core/logic.js';
+import { readStamp } from '../../core/hdl-cache.js';   // (the HDL files' silinx-sync line aside, #5872)
 
 let env;
 before(async () => { env = await setupUi(); });
@@ -55,7 +56,7 @@ uiTest('#3183 a truth table edited live by the owner and an editor: two cells of
     assert.equal(await ep.eval((s) => document.querySelector(s).textContent, cellAt('car_r', 14)), '0');
     // the owner's page writes it to the disk, and its HDL made again from it
     await until(async () => same(await disk(), merged), 'the merge on the disk');
-    await until(async () => (await readWs(env, 'LiveTt', 'src/lamps.vhd')) === generateTableHdl(merged, 'vhdl', { source: 'lamps.bool.json' }).code, 'the HDL made again');
+    await until(async () => readStamp(await readWs(env, 'LiveTt', 'src/lamps.vhd')).body === generateTableHdl(merged, 'vhdl', { source: 'lamps.bool.json' }).code, 'the HDL made again');
     // each one's Undo: their own change only, on both sides
     await ep.eval(() => window.Silinx.active.ttEditor.undo());
     await until(async () => (await model(page)).table.car_r === `${t0.table.car_r.slice(0, 14)}0X`, 'Rui\'s cell undone at the owner\'s');

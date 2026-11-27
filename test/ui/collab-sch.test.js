@@ -8,6 +8,7 @@ import { before, after } from 'node:test';
 import assert from 'node:assert/strict';
 import { setupUi, uiTest, makeProject, readWs } from './harness.js';
 import { normalizeDoc, generateHdl } from '../../core/schdoc.js';
+import { readStamp } from '../../core/hdl-cache.js';   // (the HDL files' silinx-sync line aside, #5872)
 
 let env;
 before(async () => { env = await setupUi(); });
@@ -64,7 +65,7 @@ uiTest('#3183 a schematic edited live by the owner and an editor: a symbol moved
     assert.deepEqual(await model(ep), merged);
     // the owner's page writes it to the disk, and its HDL made again from it
     await until(async () => same(await disk(), merged), 'the merge on the disk');
-    await until(async () => (await readWs(env, 'LiveSch', 'src/gates.vhd')) === generateHdl(normalizeDoc(merged), { lang: 'vhdl' }).code, 'the HDL made again');
+    await until(async () => readStamp(await readWs(env, 'LiveSch', 'src/gates.vhd')).body === generateHdl(normalizeDoc(merged), { lang: 'vhdl' }).code, 'the HDL made again');
     // each one's Undo: their own change only, on both sides
     await ep.eval(() => window.Silinx.active.schEditor.undo());
     await until(async () => { const m = await model(page); return sym(m, 'S7').name === 'inv_a' && sym(m, 'S5').y === sym(merged, 'S5').y; }, 'Rui\'s change undone at the owner\'s');
