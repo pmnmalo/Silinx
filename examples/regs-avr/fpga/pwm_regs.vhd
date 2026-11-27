@@ -95,3 +95,4 @@ begin
     clear <= clear_q;
     clear_wr <= clear_wr_q;
 end rtl;
+-- silinx-sync drawing:ffa221107ddbe439 hdl:6e75b3d7520126e7 (generated from the drawing: edit it, not this file)

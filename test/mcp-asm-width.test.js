@@ -6,6 +6,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import { scratchEnv } from './server-helpers.js';
 import { unlabelled } from './mcp-label.js';
+import { readStamp } from '../core/hdl-cache.js';
 
 let tmp;
 before(async () => { tmp = await scratchEnv('silinx-mcp-asm-width-'); });
@@ -33,7 +34,7 @@ test('#4378 MCP: blinky\'s chart with a width expression, written, checked, simu
   chart.registers.find((r) => r.name === 'cnt_f').width = 'clog2(DEBOUNCE) + 1';
   await ok('write_file', { project: 'b', path: 'src/speed_ctrl.asm.json', text: JSON.stringify(chart, null, 2) });
   const vhd = (await ok('read_file', { project: 'b', path: 'src/speed_ctrl.vhd' })).text;
-  assert.equal(vhd, generate(chart, 'vhdl').code);
+  assert.equal(readStamp(vhd).body, generate(chart, 'vhdl').code);   // (its silinx-sync line aside, #5872)
   assert.match(vhd, /signal cnt_f, cnt_f_next : std_logic_vector\(clog2\(DEBOUNCE\) \+ 1 - 1 downto 0\) := \(others => '0'\);/);
   assert.match((await ok('check_syntax', { project: 'b', simulation: true })).text, /^Process "Check Syntax" of <tb_top> completed successfully/);
 

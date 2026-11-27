@@ -9,6 +9,7 @@ import assert from 'node:assert/strict';
 import { newPetri } from '../../core/petri.js';
 import { generateFsm } from '../../core/fsm-hdl.js';
 import { setupUi, uiTest, makeProject, readWs } from './harness.js';
+import { readStamp } from '../../core/hdl-cache.js';
 
 let env;
 before(async () => { env = await setupUi(); });
@@ -131,7 +132,8 @@ uiTest('#3289 FSM editor: the Coding Style a choice of the ⋮ menu, the Encodin
   const hdl = (m) => generateFsm({ ...model, ...m }, 'vhdl', { source: 'traffic.fsm.json' }).code;
   const vhdl = async (want, what) => {
     let vhd = '';
-    for (let i = 0; i < 50 && vhd !== want; i++) { vhd = await readWs(env, 'FsmStyle', 'src/traffic.vhd'); if (vhd !== want) await new Promise((r) => setTimeout(r, 200)); }
+    // (its silinx-sync line aside, #5872)
+    for (let i = 0; i < 50 && vhd !== want; i++) { vhd = readStamp(await readWs(env, 'FsmStyle', 'src/traffic.vhd')).body; if (vhd !== want) await new Promise((r) => setTimeout(r, 200)); }
     assert.equal(vhd, want, what);
   };
   const got = () => page.eval(() => { const m = window.Silinx.active.fsmEditor.getModel(); return [m.encoding, m.style]; });

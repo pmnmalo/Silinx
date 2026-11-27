@@ -9,6 +9,7 @@ import { before, after } from 'node:test';
 import assert from 'node:assert/strict';
 import { setupUi, uiTest, makeProject, readWs } from './harness.js';
 import { normalizeFsm, generateFsm } from '../../core/fsm.js';
+import { readStamp } from '../../core/hdl-cache.js';   // (the HDL files' silinx-sync line aside, #5872)
 
 let env;
 before(async () => { env = await setupUi(); });
@@ -62,7 +63,7 @@ uiTest('#3183 a state diagram edited live by the owner and an editor: both chang
     // the owner's page writes it to the disk, and its HDL made again from it
     await until(async () => JSON.stringify(normalizeFsm(JSON.parse(await readWs(env, 'LiveFsm', FSM)))) === JSON.stringify(merged), 'the merge on the disk');
     await until(async () => (await readWs(env, 'LiveFsm', 'src/traffic.vhd')).includes('S_DARK'), 'the HDL made again');
-    assert.equal(await readWs(env, 'LiveFsm', 'src/traffic.vhd'), generateFsm(merged, 'vhdl', { source: 'traffic.fsm.json' }).code);
+    assert.equal(readStamp(await readWs(env, 'LiveFsm', 'src/traffic.vhd')).body, generateFsm(merged, 'vhdl', { source: 'traffic.fsm.json' }).code);
     // each one's Undo: their own change only, on both sides
     await ep.eval(() => window.Silinx.active.fsmEditor.undo());
     await until(async () => { const m = await model(page); return state(m, 's7').name === 'NIGHT' && state(m, 's3').y === state(merged, 's3').y; }, 'Rui\'s change undone at the owner\'s');

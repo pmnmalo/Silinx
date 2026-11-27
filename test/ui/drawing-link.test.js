@@ -8,6 +8,7 @@
 import { before, after } from 'node:test';
 import assert from 'node:assert/strict';
 import { setupUi, uiTest, makeProject, readWs } from './harness.js';
+import { readStamp } from '../../core/hdl-cache.js';   // (the HDL files' silinx-sync line aside, #5872)
 import { viewHdl } from '../../core/view-hdl.js';
 import { newPetri } from '../../core/petri.js';
 import { newModel } from '../../core/asm.js';
@@ -106,7 +107,7 @@ uiTest('#245 regression, a Petri net linked to its HDL file on the save that cle
   await page.menu('Edit', 'Redo');
   await page.waitFor(() => window.Silinx.active.petriEditor.getModel().places[0].capacity === 2, [], { what: 'redone' });
   await untilSaved('Lk_pn', 'src/ctl.pn.json', (m) => m.places[0].capacity === 2 && m.generatedFile === 'src/ctl.vhd', 'the redo saved with the link');
-  assert.equal(await readWs(env, 'Lk_pn', 'src/ctl.vhd'), viewHdl('src/ctl.pn.json', JSON.stringify({ ...net, places: [{ ...net.places[0], capacity: 2 }, net.places[1]] })).text);
+  assert.equal(readStamp(await readWs(env, 'Lk_pn', 'src/ctl.vhd')).body, viewHdl('src/ctl.pn.json', JSON.stringify({ ...net, places: [{ ...net.places[0], capacity: 2 }, net.places[1]] })).text);
   // (the undo's net, its error again: its HDL not made, said, as every editor's drawing with errors, #4750)
   assert.deepEqual(await warnings(page), ['WARNING: src/ctl.vhd not updated: src/ctl.pn.json has errors: place idle: 2 initial tokens, more than its capacity 1']);
 });

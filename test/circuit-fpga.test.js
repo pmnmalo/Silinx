@@ -7,6 +7,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import { compile, elaborate, simulate } from '../core/compile.js';
+import { readStamp } from '../core/hdl-cache.js';
 import { designChecks } from '../core/lint.js';
 import { generateCircuit } from '../core/circuit-hdl.js';
 import { createCircuitSim } from '../core/circuit-sim.js';
@@ -145,7 +146,7 @@ test('the open flow\'s front end on a circuit\'s HDL: the digital model elaborat
 test('the breadboard example: its HDL the circuit\'s, as the editor generates it; synthesis reads its digital model', () => {
   const dir = new URL('../examples/breadboard/', import.meta.url);
   const m = JSON.parse(fs.readFileSync(new URL('src/breadboard.circ.json', dir), 'utf8'));
-  const shipped = fs.readFileSync(new URL('src/breadboard.vhd', dir), 'utf8');
+  const shipped = readStamp(fs.readFileSync(new URL('src/breadboard.vhd', dir), 'utf8')).body;   // (its silinx-sync line aside, #5872)
   assert.equal(m.generatedFile, 'src/breadboard.vhd');
   assert.deepEqual(checkCircuit(m), []);
   assert.equal(generateCircuit(m, 'vhdl', { source: 'breadboard.circ.json' }).code, shipped);

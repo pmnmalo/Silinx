@@ -100,3 +100,4 @@ begin
 
   pos <= p;
 end architecture schematic;
+-- silinx-sync drawing:bba587168ceb9bef hdl:98576c7d68cbf7d6 (generated from the drawing: edit it, not this file)

@@ -7,6 +7,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import { setupUi, uiTest, makeProject, readWs } from './harness.js';
+import { readStamp } from '../../core/hdl-cache.js';   // (the HDL files' silinx-sync line aside, #5872)
 
 let env;
 before(async () => { env = await setupUi(); });
@@ -43,18 +44,18 @@ uiTest('Undo / Redo: Convert to Schematic (the schematic file and its link go an
   await page.menu('Edit', 'Undo Convert to Schematic (editable)');
   await page.waitFor(() => !window.Silinx.hdlToSch?.['src/inv.vhd'], [], { what: 'conversion undone' });
   assert.equal(await exists('UndoSch', 'src/inv.sch.json'), false);
-  assert.equal(await readWs(env, 'UndoSch', 'src/inv.vhd'), INV);
+  assert.equal(readStamp(await readWs(env, 'UndoSch', 'src/inv.vhd')).body, INV);
   await page.waitConsole(/Undo: Convert to Schematic \(editable\)\./);
   // Redo: the schematic and its link come back
   await page.menu('Edit', 'Redo Convert to Schematic (editable)');
   await page.waitFor(() => window.Silinx.hdlToSch?.['src/inv.vhd'] === 'src/inv.sch.json', [], { what: 'redo: linked again' });
   assert.equal(await readWs(env, 'UndoSch', 'src/inv.sch.json'), schematic);
-  assert.equal(await readWs(env, 'UndoSch', 'src/inv.vhd'), linkedHdl);
+  assert.equal(readStamp(await readWs(env, 'UndoSch', 'src/inv.vhd')).body, linkedHdl);
   // Undo once more
   await page.menu('Edit', 'Undo Convert to Schematic (editable)');
   await page.waitFor(() => !window.Silinx.hdlToSch?.['src/inv.vhd'], [], { what: 'undone again' });
   assert.equal(await exists('UndoSch', 'src/inv.sch.json'), false);
-  assert.equal(await readWs(env, 'UndoSch', 'src/inv.vhd'), INV);
+  assert.equal(readStamp(await readWs(env, 'UndoSch', 'src/inv.vhd')).body, INV);
 });
 
 uiTest('Undo / Redo: Rename (module and file, the instances), Design Properties, Delete Folder; the open editor follows', E, async (page) => {
@@ -73,8 +74,8 @@ uiTest('Undo / Redo: Rename (module and file, the instances), Design Properties,
   assert.match(await readWs(env, 'UndoRen', 'src/top.vhd'), /entity work\.neg/);
   await page.menu('Edit', 'Undo Rename');
   await page.waitFor(() => window.Silinx.project.files.some((f) => f.path === 'src/inv.vhd') && !window.Silinx.project.files.some((f) => f.path === 'src/neg.vhd'), [], { what: 'undo rename' });
-  assert.equal(await readWs(env, 'UndoRen', 'src/top.vhd'), TOP);
-  assert.equal(await readWs(env, 'UndoRen', 'src/inv.vhd'), INV);
+  assert.equal(readStamp(await readWs(env, 'UndoRen', 'src/top.vhd')).body, TOP);
+  assert.equal(readStamp(await readWs(env, 'UndoRen', 'src/inv.vhd')).body, INV);
   assert.equal(await exists('UndoRen', 'src/neg.vhd'), false);
   await page.waitFor(() => [...document.querySelectorAll('#hier .lbl')].some((e) => e.textContent === 'u_inv - inv'), [], { what: 'hierarchy back' });
   await page.menu('Edit', 'Redo Rename');
@@ -256,7 +257,7 @@ uiTest('a schematic alone in the project (#177) gets its HDL file when the proje
   // the hierarchy: the module gate, drawn (its schematic's icon, the file in brackets), its HDL and schematic badges
   await page.waitFor(() => [...document.querySelectorAll('#hier .row')].some((r) => r.querySelector('.lbl')?.textContent === 'gate' && /gate\.sch\.json/.test(r.textContent) && r.querySelectorAll('.badge').length === 2), [], { what: 'gate, a module of the project' });
   assert.equal(JSON.parse(await readWs(env, 'SchTop', 'src/gate.sch.json')).generatedFile, 'src/gate.vhd');
-  assert.equal(await readWs(env, 'SchTop', 'src/gate.vhd'), viewHdl('src/gate.sch.json', JSON.stringify(doc)).text);
+  assert.equal(readStamp(await readWs(env, 'SchTop', 'src/gate.vhd')).body, viewHdl('src/gate.sch.json', JSON.stringify(doc)).text);
   await page.treeRow('#hier', 'gate', { right: true, exact: true });
   const items = await page.eval(() => [...document.querySelectorAll('body > .menu-popup .mi .lbl')].map((e) => e.textContent));
   assert.ok(items.includes('Set as Top Module'), items.join(' | '));

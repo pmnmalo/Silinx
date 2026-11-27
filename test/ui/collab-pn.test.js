@@ -8,6 +8,7 @@ import { before, after } from 'node:test';
 import assert from 'node:assert/strict';
 import { setupUi, uiTest, makeProject, readWs } from './harness.js';
 import { newPetri, normalizePetri, generatePetri } from '../../core/petri.js';
+import { readStamp } from '../../core/hdl-cache.js';   // (the HDL files' silinx-sync line aside, #5872)
 
 let env;
 before(async () => { env = await setupUi(); });
@@ -60,7 +61,7 @@ uiTest('#3183 a Petri net edited live by the owner and an editor: a place moved 
     assert.deepEqual(await model(ep), merged);
     // the owner's page writes it to the disk, and its HDL made again from it
     await until(async () => same(await disk(), merged), 'the merge on the disk');
-    await until(async () => (await readWs(env, 'LivePn', 'src/ctl.vhd')) === generatePetri(merged, 'vhdl', { source: 'ctl.pn.json' }).code, 'the HDL made again');
+    await until(async () => readStamp(await readWs(env, 'LivePn', 'src/ctl.vhd')).body === generatePetri(merged, 'vhdl', { source: 'ctl.pn.json' }).code, 'the HDL made again');
     // each one's Undo: their own change only, on both sides
     await ep.eval(() => window.Silinx.active.petriEditor.undo());
     await until(async () => { const m = await model(page); return byId(m.transitions, 't1').name === 'start' && byId(m.places, 'p1').y === byId(merged.places, 'p1').y; }, 'Rui\'s change undone at the owner\'s');

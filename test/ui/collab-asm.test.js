@@ -8,6 +8,7 @@ import { before, after } from 'node:test';
 import assert from 'node:assert/strict';
 import { setupUi, uiTest, makeProject, readWs } from './harness.js';
 import { normalizeModel, generate } from '../../core/asm.js';
+import { readStamp } from '../../core/hdl-cache.js';   // (the HDL files' silinx-sync line aside, #5872)
 
 let env;
 before(async () => { env = await setupUi(); });
@@ -61,7 +62,7 @@ uiTest('#3183 an ASM chart edited live by the owner and an editor: a box moved a
     assert.deepEqual(await model(ep), merged);
     // the owner's page writes it to the disk, and its HDL made again from it
     await until(async () => same(await disk(), merged), 'the merge on the disk');
-    await until(async () => (await readWs(env, 'LiveAsm', 'src/speed_ctrl.vhd')) === generate(merged, 'vhdl', { source: 'speed_ctrl.asm.json' }).code, 'the HDL made again');
+    await until(async () => readStamp(await readWs(env, 'LiveAsm', 'src/speed_ctrl.vhd')).body === generate(merged, 'vhdl', { source: 'speed_ctrl.asm.json' }).code, 'the HDL made again');
     // each one's Undo: their own change only, on both sides
     await ep.eval(() => window.Silinx.active.asmEditor.undo());
     await until(async () => { const m = await model(page); return node(m, 's2').name === 'WAIT_RELEASE' && node(m, 's1').x === node(merged, 's1').x; }, 'Rui\'s change undone at the owner\'s');

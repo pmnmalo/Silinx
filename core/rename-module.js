@@ -121,7 +121,7 @@ export async function renameModule(P, name, oldName, newName, { to = null, hidde
   const hdl = [];
   if (newName !== oldName) {
     for (const f of Object.keys(views).filter(f => changed.has(f) && views[f].generatedFile)) {
-      const r = await syncDrawing(P, name, moved.get(f) || f);
+      const r = await syncDrawing(P, name, moved.get(f) || f, null, { own: true });   // (its HDL renamed here: not an edit of the user's, #5872)
       if (r?.messages.length) hdl.push(...r.messages);
     }
   }
