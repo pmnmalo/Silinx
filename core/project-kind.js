@@ -7,7 +7,7 @@
 // MCP server. Isomorphic module (browser + Node).
 
 import { systemsOn, SYSTEMS_OFF } from './build-channel.js';
-import { SYSTEM_ORDER, CIRCUIT_EXAMPLES } from './examples.js';
+import { SYSTEM_ORDER, CIRCUIT_EXAMPLES, CIRCUIT_ORDER } from './examples.js';
 import { profileOf, systemProfile, withProfile } from './project-profile.js';
 
 export const DESIGN_KIND = 'design';
@@ -40,6 +40,8 @@ export function createRefusal(given, template = 'empty') {
   // (a Circuit example, #5757: drawings only, made with no board)
   if (kind === DESIGN_KIND && !empty && !CIRCUIT_EXAMPLES.includes(template)) return `a design and simulation project starts empty or from a Circuit example (${CIRCUIT_EXAMPLES.join(', ')})`;
   if (given === 'fpga' && SYSTEM_EXAMPLES.includes(template)) return `an FPGA project starts from an FPGA example: ${template} is a System example`;
+  // (a Circuit version: a Circuit project's alone, #5757)
+  if ((given === 'fpga' || newSystemKind(given)) && CIRCUIT_ORDER.includes(template)) return `${template} is a Circuit example: a Circuit project starts from it (mode circuit)`;
   // (Systems not in a release yet, #5202: core/build-channel.js)
   if ((kind === SYSTEM_KIND || SYSTEM_EXAMPLES.includes(template)) && !systemsOn()) return SYSTEMS_OFF;
   if (kind === SYSTEM_KIND && !empty && !SYSTEM_EXAMPLES.includes(template)) return `a System project starts empty or from a System example (${SYSTEM_EXAMPLES.join(', ')})`;

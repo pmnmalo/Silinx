@@ -7,7 +7,7 @@
 import { before, after } from 'node:test';
 import assert from 'node:assert/strict';
 import { setupUi, uiTest, makeProject } from './harness.js';
-import { EXAMPLE_ORDER } from '../../core/examples.js';
+import { EXAMPLE_ORDER, CIRCUIT_ORDER } from '../../core/examples.js';
 import { newCircuit } from '../../core/circuit.js';
 
 let env;
@@ -26,7 +26,7 @@ uiTest('#5202 a release: New Project\'s System card disabled with its reason, no
   assert.deepEqual(await page.eval(() => [...document.querySelectorAll('.dlg-overlay .kind-card')].map(c => [c.dataset.kind, c.querySelector('input').disabled])), [['design', false], ['fpga', false], ['system', true]]);   // (the three modes, #5754: Embedded / SoC a System's profile)
   await page.dialogButton('Next >');
   await page.waitFor(() => !!document.querySelector('.dlg-overlay .wiz-main select'), [], { what: 'Start from' });
-  assert.deepEqual(await page.eval(() => [...document.querySelectorAll('.dlg-overlay .wiz-main select option')].map(o => o.value)), ['empty', ...EXAMPLE_ORDER]);
+  assert.deepEqual(await page.eval(() => [...document.querySelectorAll('.dlg-overlay .wiz-main select option')].map(o => o.value)), ['empty', ...EXAMPLE_ORDER, ...CIRCUIT_ORDER]);   // (the Circuit versions, hidden for a Board project, #5779)
   await page.dialogButton('Cancel');
   await page.waitNoDialog();
   await page.eval(async () => (await import('/js/i18n.js')).setLanguage('pt'));

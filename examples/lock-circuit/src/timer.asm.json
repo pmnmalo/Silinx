@@ -1,0 +1,185 @@
+{
+  "version": 1,
+  "name": "timer",
+  "lang": "vhdl",
+  "clock": "clk",
+  "reset": {
+    "name": "rst",
+    "active": "high",
+    "sync": true
+  },
+  "encoding": "binary",
+  "generics": [],
+  "inputs": [
+    {
+      "name": "start",
+      "width": 1
+    },
+    {
+      "name": "tick",
+      "width": 1
+    },
+    {
+      "name": "secs",
+      "width": 4
+    }
+  ],
+  "outputs": [
+    {
+      "name": "done",
+      "width": 1,
+      "default": "0"
+    },
+    {
+      "name": "left",
+      "width": 4,
+      "default": "0"
+    }
+  ],
+  "registers": [
+    {
+      "name": "cnt",
+      "width": 4,
+      "init": "0"
+    }
+  ],
+  "nodes": [
+    {
+      "id": "s1",
+      "type": "state",
+      "x": 200,
+      "y": 80,
+      "name": "IDLE",
+      "actions": []
+    },
+    {
+      "id": "d1",
+      "type": "decision",
+      "x": 200,
+      "y": 190,
+      "cond": "start"
+    },
+    {
+      "id": "o1",
+      "type": "output",
+      "x": 200,
+      "y": 300,
+      "actions": [
+        "cnt = 0"
+      ]
+    },
+    {
+      "id": "s2",
+      "type": "state",
+      "x": 200,
+      "y": 410,
+      "name": "COUNT",
+      "actions": [
+        "left = secs - cnt"
+      ]
+    },
+    {
+      "id": "d2",
+      "type": "decision",
+      "x": 200,
+      "y": 520,
+      "cond": "tick"
+    },
+    {
+      "id": "d3",
+      "type": "decision",
+      "x": 200,
+      "y": 630,
+      "cond": "cnt == secs - 1"
+    },
+    {
+      "id": "o2",
+      "type": "output",
+      "x": 200,
+      "y": 740,
+      "actions": [
+        "done = 1"
+      ]
+    },
+    {
+      "id": "o3",
+      "type": "output",
+      "x": 430,
+      "y": 630,
+      "actions": [
+        "cnt = cnt + 1"
+      ]
+    }
+  ],
+  "edges": [
+    {
+      "id": "e1",
+      "from": "s1",
+      "to": "d1",
+      "port": "next"
+    },
+    {
+      "id": "e2",
+      "from": "d1",
+      "to": "o1",
+      "port": "true"
+    },
+    {
+      "id": "e3",
+      "from": "d1",
+      "to": "s1",
+      "port": "false"
+    },
+    {
+      "id": "e4",
+      "from": "o1",
+      "to": "s2",
+      "port": "next"
+    },
+    {
+      "id": "e5",
+      "from": "s2",
+      "to": "d2",
+      "port": "next"
+    },
+    {
+      "id": "e6",
+      "from": "d2",
+      "to": "d3",
+      "port": "true"
+    },
+    {
+      "id": "e7",
+      "from": "d2",
+      "to": "s2",
+      "port": "false"
+    },
+    {
+      "id": "e8",
+      "from": "d3",
+      "to": "o2",
+      "port": "true"
+    },
+    {
+      "id": "e9",
+      "from": "d3",
+      "to": "o3",
+      "port": "false"
+    },
+    {
+      "id": "e10",
+      "from": "o2",
+      "to": "s1",
+      "port": "next"
+    },
+    {
+      "id": "e11",
+      "from": "o3",
+      "to": "s2",
+      "port": "next"
+    }
+  ],
+  "initial": "s1",
+  "description": "The lock-out timer: started (start) by a failure, it counts the seconds gone (cnt, at each second's tick) up\nto the penalty (secs seconds, the C function's: it is read at each tick, so its few clock cycles of latency do not\nmatter), shows the seconds left (left) and says done in the last one.",
+  "generatedFile": "src/timer.vhd"
+}

@@ -11,7 +11,9 @@ import { scratchEnv, startApp } from './server-helpers.js';
 import { unlabelled } from './mcp-label.js';
 import { buildChannel, setBuildChannel, systemsOn, channelFromEnv, SYSTEMS_IN_RELEASE, SYSTEMS_OFF } from '../core/build-channel.js';
 import { createRefusal, offeredExamples, SYSTEM_EXAMPLES } from '../core/project-kind.js';
-import { EXAMPLE_ORDER } from '../core/examples.js';
+import { EXAMPLE_ORDER, CIRCUIT_ORDER } from '../core/examples.js';
+// (the examples a release offers: the FPGA ones, then the Circuit versions, #5757)
+const OFFERED = [...EXAMPLE_ORDER, ...CIRCUIT_ORDER];
 
 
 let tmp, app;
@@ -57,12 +59,12 @@ test('#5202 the kinds\' rules and the examples offered, in each channel', () => 
 });
 
 test('#5202 the local server in a release: /templates without the System example, a System project refused; its page told the channel', async () => {
-  assert.deepEqual((await app.call('GET', '/templates')).body, [...EXAMPLE_ORDER, ...SYSTEM_EXAMPLES]);
+  assert.deepEqual((await app.call('GET', '/templates')).body, [...OFFERED, ...SYSTEM_EXAMPLES]);
   const page = await fetch(`${app.origin}/build-channel.js`);
   assert.deepEqual([page.status, page.headers.get('content-type'), await page.text()], [200, 'text/javascript; charset=utf-8', 'globalThis.SILINX_CHANNEL = "dev";\n']);
   setBuildChannel('release');
   try {
-    assert.deepEqual((await app.call('GET', '/templates')).body, EXAMPLE_ORDER);
+    assert.deepEqual((await app.call('GET', '/templates')).body, OFFERED);
     for (const body of [{ name: 'Cd', kind: 'system' }, { name: 'Cd', template: 'uart-avr' }]) {
       const r = await app.call('POST', '/projects', body);
       assert.deepEqual([r.status, r.body.error], [400, OFF], JSON.stringify(body));
@@ -84,7 +86,7 @@ test('#5202 the MCP server in a release: new_project kind system, the System exa
     await refused('simulate', { project: 'ua' });
     await refused('simulate', { project: 'ua', top: 'uart_avr.sys.json' });
     const ex = await call('list_examples');
-    assert.deepEqual(ex.data.examples.map(e => e.name), EXAMPLE_ORDER);
+    assert.deepEqual(ex.data.examples.map(e => e.name), OFFERED);
     assert.doesNotMatch(ex.text, /uart-avr|System project/);
     // (the boards as a circuit's parts, #5215: not listed, not placed)
     const parts = await call('circuit_parts');

@@ -119,7 +119,7 @@ uiTest('#5041 #5133 #4702 #5754 #5757 New Project: the mode first, three cards w
   await page.click('.dlg-overlay .kind-card[data-kind=design] input');
   await page.dialogButton('Next >');
   assert.deepEqual(await shownLabels(page), ['Name:', 'Location:', 'Start from:']);
-  assert.deepEqual(await startFrom(page), ['empty', 'gates', 'breadboard']);
+  assert.deepEqual(await startFrom(page), ['empty', 'gates', 'breadboard', 'traffic-circuit', 'blinky-circuit', 'stopwatch-circuit', 'lock-circuit']);   // (the Circuit versions, #5779)
   await page.dialogButton('< Back');
   assert.equal(await page.eval(() => document.querySelector('.dlg-overlay .kind-card input:checked').value), 'design');
   await page.dialogButton('Cancel');
@@ -178,4 +178,46 @@ uiTest('#5757 New Project: a Circuit project from the gates example, no board, n
   await showProcesses(page, 'gates');
   assert.deepEqual(await fpgaShown(page), NOTHING);
   assert.deepEqual(await warnings(page), []);
+});
+
+// (#5779: a Circuit version of an example, made by New Project ▸ Circuit; in Portuguese its Start from's option)
+async function circuitExample(page, name, l, example) {
+  await openWizard(page, l);
+  await page.click('.dlg-overlay .kind-card[data-kind=design] input');
+  await page.dialogButton(l.next);
+  await page.fill('.dlg-overlay .wiz-main input[type=text]', name);
+  await page.fill('.dlg-overlay .wiz-main select', example);
+  await page.dialogButton(l.next);
+  await page.dialogButton(l.next);
+  await page.dialogButton(l.finish);
+  await page.waitNoDialog();
+  await page.waitFor((n) => window.Silinx.project?.name === n && document.querySelector('#hier .row.top-mod'), [name], { what: `${name} open` });
+}
+
+uiTest('#5779 New Project ▸ Circuit ▸ traffic-circuit: a Circuit project, its drawings its rows, nothing of HDL or FPGA shown, no warning', E, async (page) => {
+  await circuitExample(page, 'CrossingC', L.en, 'traffic-circuit');
+  const pj = await page.eval(() => window.Silinx.project);
+  assert.deepEqual([pj.kind, pj.board, pj.constraints, pj.top, pj.simTop], ['design', null, null, 'crossing', 'tb_crossing']);
+  // (its top a schematic, its controller a state diagram, its lamps a truth table, its timer the palette's counter)
+  await page.waitFor(() => ['crossing', 'fsm - traffic', 'lights - lamps'].every(t => [...document.querySelectorAll('#hier .row .lbl')].some(e => e.textContent === t)), [], { what: 'its rows' });
+  await showProcesses(page, 'crossing');
+  assert.deepEqual(await fpgaShown(page), NOTHING);
+  assert.deepEqual(await warnings(page), []);
+});
+
+uiTest('#5779 in Portuguese: New Project ▸ Circuito ▸ lock-circuit, its Start from\'s option translated; no warning', E, async (page) => {
+  await page.eval(async () => (await import('/js/i18n.js')).setLanguage('pt'));
+  try {
+    await openWizard(page, L.pt);
+    await page.click('.dlg-overlay .kind-card[data-kind=design] input');
+    await page.dialogButton(L.pt.next);
+    assert.ok(await page.eval(() => [...document.querySelectorAll('.dlg-overlay .wiz-main select option')].some(o => o.value === 'lock-circuit' && !o.hidden && /^Exemplo: lock-circuit$/.test(o.textContent))));
+    await page.dialogButton(L.pt.cancel);
+    await page.waitNoDialog();
+    await circuitExample(page, 'CofreC', L.pt, 'lock-circuit');
+    assert.equal(await page.eval(() => window.Silinx.project.top), 'safe');
+    assert.deepEqual(await warnings(page), []);
+  } finally {
+    await page.eval(async () => (await import('/js/i18n.js')).setLanguage('en'));
+  }
 });

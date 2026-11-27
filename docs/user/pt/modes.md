@@ -15,8 +15,13 @@ Modo…** (Project ▸ Change Mode…).
 ## Começar um projeto
 
 - **Circuito**: um projeto vazio (o seu topo um desenho: um esquemático, uma máquina de estados, uma tabela de verdade,
-  um circuito…), ou um dos exemplos de Circuito, **gates** (portas lógicas desenhadas num esquemático) e
-  **breadboard** (chips 74LS ligados numa breadboard), criados sem placa.
+  um circuito…), ou um dos exemplos de Circuito, criados sem placa: **gates** (portas lógicas desenhadas num
+  esquemático), **breadboard** (chips 74LS ligados numa breadboard), e as versões de Circuito de quatro exemplos FPGA,
+  só desenhos, cada uma com uma bancada de teste que a verifica: **traffic-circuit** (o diagrama de estados da
+  passadeira e a tabela de verdade das luzes, o seu temporizador um contador da paleta), **blinky-circuit** (um knight
+  rider: um contador, portas XOR e um descodificador), **stopwatch-circuit** (dois contadores de décadas, cada um um
+  contador e um comparador, começados e parados por um flip-flop T) e **lock-circuit** (a fechadura de combinação: um
+  diagrama de estados, uma tabela de verdade, um fluxograma ASM, uma rede de Petri e um 74LS175 numa breadboard).
 - **Placa**: o seu cartão pergunta o **Tipo de Placa** (Board Type), FPGA, Arduino, PIC24, Raspberry Pi Pico ou ESP32,
   e a página das definições lista as placas desse tipo. Uma placa FPGA faz o projeto FPGA de todas as versões anteriores
   (vazio ou a partir de qualquer exemplo FPGA, blinky, pong, uart…). Uma placa de processador não precisa de nenhum

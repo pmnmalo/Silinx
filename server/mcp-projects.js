@@ -90,12 +90,12 @@ export const PROJECT_TOOLS = [
         const pj = JSON.parse(fs.readFileSync(path.join(dir, n, 'silinx.json'), 'utf8'));
         // (a System example: its System its top, no board nor device, #4702)
         if (isSystemProject(pj)) return { name: n, kind: SYSTEM_KIND, modes: exampleModes(n), top: null, simTop: null, board: null, device: null, files: (pj.files || []).length };
-        return { name: n, modes: exampleModes(n), top: pj.top, simTop: pj.simTop || null, board: pj.board || null, device: pj.device ? `${pj.device.part}${pj.device.package}${pj.device.speed}` : null, files: (pj.files || []).length };
+        return { name: n, modes: exampleModes(n), top: pj.top, simTop: pj.simTop || null, board: pj.board || null, device: pj.device && !isDesignOnly(pj) ? `${pj.device.part}${pj.device.package}${pj.device.speed}` : null, files: (pj.files || []).length };
       };
       // (the examples only, as New Project's Start from: not the test designs, #5108)
       const examples = offeredExamples(orderExamples(P.templateNames(P.EXAMPLES_DIR))).map(n => about(P.EXAMPLES_DIR, n));   // (#5202)
       // (its modes, #5757: a Circuit example's circuit too)
-      const text = examples.map(e => e.kind ? `${e.name}: a System example (FPGA and microcontroller nodes in a System), ${e.files} file(s)` : `${e.name}: top ${e.top}${e.simTop ? `, test bench ${e.simTop}` : ''}, ${e.board || 'no board'} (${e.device}), ${e.files} file(s)${e.modes.includes('circuit') ? '; a Circuit example too' : ''}`);
+      const text = examples.map(e => e.kind ? `${e.name}: a System example (FPGA and microcontroller nodes in a System), ${e.files} file(s)` : e.modes.join() === 'circuit' ? `${e.name}: a Circuit example (drawings, no board), top ${e.top}, test bench ${e.simTop}, ${e.files} file(s)` : `${e.name}: top ${e.top}${e.simTop ? `, test bench ${e.simTop}` : ''}, ${e.board || 'no board'} (${e.device}), ${e.files} file(s)${e.modes.includes('circuit') ? '; a Circuit example too' : ''}`);
       return { text: text.join('\n'), data: { examples } };
     },
   },
@@ -118,7 +118,9 @@ export const PROJECT_TOOLS = [
     description: 'Make a new project in the workspace from an example (list_examples), optionally for another board (list_devices: basys2, nexys2, basys3…): its pins are then the board\'s.',
     inputSchema: { type: 'object', properties: { name: STR('The new project\'s name: a letter, then up to 63 letters, digits, - and _.'), example: STR('The example (list_examples).'), mode: { type: 'string', enum: ['circuit', 'board', 'system'], description: 'Its mode (list_examples).' }, board: STR('The board (list_devices; default: the example\'s).'), variant: STR('The board\'s variant (default: the board\'s), e.g. 100 or 250 for the Basys2.') }, required: ['name', 'example'], additionalProperties: false },
     annotations: { readOnlyHint: false, destructiveHint: false },
-    async run({ name, example, board, variant, mode }) {
+    async run({ name, example, board, variant, mode: given }) {
+      // (a Circuit version, #5757: Circuit mode, its only one, unless another is given)
+      const mode = given ?? (/^[a-z0-9_-]+$/i.test(String(example || '')) && exampleModes(example).length === 1 && exampleModes(example)[0] === 'circuit' ? 'circuit' : undefined);
       // (one of its modes, #5757: a Circuit example made with no board)
       if (mode !== undefined && /^[a-z0-9_-]+$/i.test(String(example || '')) && !exampleModes(example).includes(mode)) throw toolError(`${example} is not a ${mode} example (its modes: ${exampleModes(example).join(', ')})`);
       if (mode === 'circuit') {
