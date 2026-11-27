@@ -7,8 +7,8 @@
 //   board (#2666), over it on a narrow window, behind the bar's ☰ Properties (#2713); the VGA monitor wraps below the board when the width runs short, and the
 //   board's area scrolls (web/css/tasks.css); the Design pane is not shown in Emulate.
 // - Its Processes (#1204): the top module's I/O Pin Planning (its Table, Board and Text views, its Check, #5642; opened
-//   in Emulate) and Emulate on Board with its models, as in Implement: the task's side panel, as Implement's
-//   (web/js/tasks.js, #1399).
+//   in Emulate) and Emulate with its models, as in Implement: the task's side panel, as Implement's (web/js/tasks.js,
+//   #1399); under the project, its device and its top module, no source's badge (#5789).
 // - The emulator's own bar stays its controls (Model, Engine, Run, Step, Power cycle, Clock), right under the task's
 //   bar; its status (the emulated time and rate) in its status line, its last line, as every document's and as in the
 //   ISE style interface (#2763, #3920: no longer below the board, #1022); its Messages box is in the message centre (#798).

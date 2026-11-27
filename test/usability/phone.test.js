@@ -133,12 +133,12 @@ uiTest('usability: phone: the uart: its module read only, its bench simulated an
   await T.pane('console');
   assert.deepEqual(await page.eval(() => [document.getElementById('warn-count').textContent, document.getElementById('err-count').textContent]), ['', '']);
 
-  // the board emulated: the Silinx interface's Emulate (its side panel: Emulate on Board), the ISE style's More tools ▸
+  // the board emulated: the Silinx interface's Emulate (its side panel: Emulate), the ISE style's More tools ▸
   // Emulate Behavioral Model
   if (silinx) {
     await T.tap('#task-tabs .task-btn[data-task="emu"]');
     await page.waitFor(() => document.documentElement.dataset.pane === 'side', [], { what: 'Emulate\'s side panel' });
-    await T.tap('button.btn', { text: (await tr(page, ['Emulate on Board']))[0] });
+    await T.tap('button.btn', { text: (await tr(page, ['Emulate']))[0] });
   } else await T.more((await tr(page, ['Emulate Behavioral Model']))[0]);
   await page.waitFor(() => window.Silinx.active?.id === 'emulator' && window.Silinx.active.view?.outputs && document.documentElement.dataset.pane === 'doc', [], { what: 'the emulator running, the Document pane', timeout: 120000 });
   await sleep(1500);

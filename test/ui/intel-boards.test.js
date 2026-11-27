@@ -60,7 +60,7 @@ uiTest('#5376 Design Properties: the DE boards, experimental; the DE0-CV\'s pins
   await page.setView('impl');
   await page.treeRow('#hier', 'top');
   const labels = await procLabels(page);
-  for (const present of ['I/O Pin Planning', 'Synthesize - Quartus', 'View RTL Schematic', 'Check Syntax', 'Implement Design', 'Place & Route', 'Generate Post-Place & Route Static Timing', 'Generate Programming File', 'Emulate on Board'])
+  for (const present of ['I/O Pin Planning', 'Synthesize - Quartus', 'View RTL Schematic', 'Check Syntax', 'Implement Design', 'Place & Route', 'Generate Post-Place & Route Static Timing', 'Generate Programming File', 'Emulate'])
     assert.ok(labels.includes(present), `${present}: ${labels}`);
   for (const absent of ['Synthesize - Yosys', 'Synthesize - XST', 'Translate', 'Map', 'View Technology Schematic', 'Generate Post-Synthesis Simulation Model', 'Configure Target Device'])
     assert.ok(!labels.some(l => l.startsWith(absent)), `${absent}: ${labels}`);

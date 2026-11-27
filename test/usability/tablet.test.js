@@ -147,12 +147,12 @@ const hundredths = (t) => Number(t.replace(/[^\d]/g, '') || 0);
 
 uiTest('usability: tablet: the stopwatch on the Board Emulator by taps: Engine ▸ Compiled, its ☰ Properties, started, stopped (the time kept), cleared', E, async (page) => {
   const { T, lines } = await tabletProject(page, 'stopwatch', 'UsabTabletSw');
-  // Emulate: the Silinx interface's task, its side panel (shown with no board open, #5299) and Emulate on Board in it;
+  // Emulate: the Silinx interface's task, its side panel (shown with no board open, #5299) and Emulate in it;
   // the ISE style's toolbar button
   if (await tasks(page)) {
     await T.tap(`${await page.eval(() => (document.getElementById('task-tabs')?.getClientRects().length ? '#task-tabs' : '#task-switch'))} .task-btn[data-task="emu"]`);
     await page.waitFor(() => document.documentElement.dataset.task === 'emu', [], { what: 'Emulate' });
-    await T.tap('button.btn', { text: (await tr(page, ['Emulate on Board']))[0] });
+    await T.tap('button.btn', { text: (await tr(page, ['Emulate']))[0] });
   } else await T.tap('#toolbar .tb-btn[data-cmd=board]');
   await page.waitFor(() => window.Silinx.active?.id === 'emulator' && window.Silinx.active.view?.outputs, [], { what: 'the emulator', timeout: 120000 });
   await sleep(1500);
@@ -212,7 +212,7 @@ uiTest('usability: tablet: Emulate tapped: a way to start the emulator shown (#5
   await page.waitFor(() => document.documentElement.dataset.task === 'emu', [], { what: 'Emulate' });
   // (its side panel shown, no board open yet; the board opened folds it, its room)
   assert.equal(await page.eval(() => document.documentElement.dataset.side), 'open');
-  await T.tap('button.btn', { text: (await tr(page, ['Emulate on Board']))[0] });
+  await T.tap('button.btn', { text: (await tr(page, ['Emulate']))[0] });
   await page.waitFor(() => window.Silinx.active?.id === 'emulator' && window.Silinx.active.view?.outputs, [], { what: 'the emulator', timeout: 120000 });
   await page.waitFor(() => document.documentElement.dataset.side === 'folded', [], { what: 'the side panel folded for the board' });
   await sleep(1500);

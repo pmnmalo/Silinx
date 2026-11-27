@@ -1,8 +1,10 @@
 // UI (#1204): Tasks ▸ Emulate has its Processes at the top of its side column, under a tab named Emulate (#1212): the top
 // module's I/O Pin Planning (alone since #5642: no User Constraints folder, its Text view and Check button instead of
-// Edit Constraints (Text) and Check Constraints; opened in Emulate) and Emulate on Board with
+// Edit Constraints (Text) and Check Constraints; opened in Emulate) and Emulate (Emulate on Board before #5789) with
 // its models, the same as Implement's (web/js/processes.js emulateProcesses), each run by a double-click, its state
-// the Processes panel's; in Portuguese; folded with the side panel; none in the ISE style interface. No warnings.
+// the Processes panel's; under the design's hierarchy (#5789): the project, its device, its top module, no source's
+// badge, their names not translated; in Portuguese; folded with the side panel; none in the ISE style interface. No
+// warnings.
 import { before, after } from 'node:test';
 import assert from 'node:assert/strict';
 import { setupUi, uiTest, makeProject } from './harness.js';
@@ -38,11 +40,13 @@ const row = (page, label) => page.eval((b, l) => {
   const r = [...document.querySelectorAll(`${b} .task-emu-tree .row`)].find((x) => x.querySelector('.lbl').textContent === l);
   r.dispatchEvent(new MouseEvent('dblclick', { bubbles: true }));
 }, BOX, label);
-const EN = ['I/O Pin Planning', 'Emulate on Board',
-  '  Emulate Behavioral Model (RTL)', '  Emulate Post-Synthesis Model', '  Emulate Post-Translate Model', '  Emulate Post-Map Model',
-  '  Emulate Post-Place & Route Model'];
+// (the project, the blinky template's Basys2's device, its top module, then the processes, #5789)
+const HIER = ['EmuProcs', '  xc3s250e-4-cp132', '    top'];
+const EN = [...HIER, '      I/O Pin Planning', '      Emulate',
+  '        Emulate Behavioral Model (RTL)', '        Emulate Post-Synthesis Model', '        Emulate Post-Translate Model', '        Emulate Post-Map Model',
+  '        Emulate Post-Place & Route Model'];
 
-uiTest('#1204 #5642 Tasks ▸ Emulate: its Processes, the top\'s I/O Pin Planning and Emulate on Board, run from there; in Portuguese; ISE style none', E, async (page) => {
+uiTest('#1204 #5642 #5789 Tasks ▸ Emulate: the project, its device, its top (no badge), then its I/O Pin Planning and Emulate, run from there; in Portuguese; ISE style none', E, async (page) => {
   await makeProject(env, { name: 'EmuProcs', template: 'blinky' });
   await page.setViewport(1680, 1050);   // (the side panel, the board and the Watch side by side, #1399)
   await tasksInterface(page);
@@ -50,16 +54,25 @@ uiTest('#1204 #5642 Tasks ▸ Emulate: its Processes, the top\'s I/O Pin Plannin
   await page.click('#task-switch .task-btn[data-task="emu"]');
   // its page: its text, no button: the emulation from the side panel (#1420)
   assert.equal(await page.eval(() => [...document.querySelectorAll('#task-empty button')].filter((b) => b.getClientRects().length).length), 0);
-  // above its processes, I/O Pin Planning and Emulate on Board (#1424)
+  // above its processes, I/O Pin Planning and Emulate (#1424, #5789)
   await page.waitFor(() => !document.querySelector('#task-emu-bar [data-act=emulate]')?.disabled, [], { what: 'on' });
   assert.deepEqual(await page.eval(() => {
     const b = [...document.querySelectorAll('#task-emu-bar .btn')].filter((x) => x.getClientRects().length), t = document.querySelector('#task-emu-panel .task-emu-tree').getBoundingClientRect();
     return { buttons: b.map((x) => x.textContent), above: b.every((x) => x.getBoundingClientRect().bottom <= t.top + 1) };
-  }), { buttons: ['I/O Pin Planning', 'Emulate on Board'], above: true });
+  }), { buttons: ['I/O Pin Planning', 'Emulate'], above: true });
   await page.click('#task-emu-bar [data-act=emulate]');
   await page.waitConsole(/Board Emulator: 'top'/, { timeout: 30000 });
   await page.waitFor((b) => document.querySelectorAll(`${b} .task-emu-tree li`).length > 0, [BOX], { what: 'Emulate\'s Processes' });
   assert.deepEqual(await procs(page), { shown: true, side: true, tab: 'Emulate,Files', rows: EN });   // (its Files tab after it, #4609)
+  // (the hierarchy's rows: the Design pane's icons, no source's badge, no state; nothing run by a double-click, #5789)
+  assert.deepEqual(await page.eval((b) => ({
+    icons: [...document.querySelectorAll(`${b} .task-emu-tree li`)].slice(0, 3).map((li) => !!li.querySelector(':scope > .row').children[2]?.innerHTML),
+    badges: document.querySelectorAll(`${b} .task-emu-tree .badges, ${b} .task-emu-tree .badge`).length,
+    meta: document.querySelectorAll(`${b} .task-emu-tree .meta`).length,
+  }), BOX), { icons: [true, true, true], badges: 0, meta: 0 });
+  const docs = await page.eval(() => window.SilinxApp.S.docs.length);
+  for (const r of ['EmuProcs', 'xc3s250e-4-cp132', 'top']) await row(page, r);
+  assert.equal(await page.eval(() => window.SilinxApp.S.docs.length), docs, 'the hierarchy\'s rows run nothing');
   // the side panel as Implement's (its width, its tab's icon, #1399); the Watch beside the board, as before
   const emuSide = await page.eval(() => [Math.round(document.getElementById('left').getBoundingClientRect().width), !!document.querySelector('#task-emu-tab .tab-ico svg')]);
   assert.equal(await page.eval(() => document.querySelector('.doc:not([hidden]) .emu-side .emu-box h4')?.textContent), 'Watch');
@@ -79,7 +92,8 @@ uiTest('#1204 #5642 Tasks ▸ Emulate: its Processes, the top\'s I/O Pin Plannin
   await page.click('#task-switch .task-btn[data-task="emu"]');
   await page.eval(async () => (await import('/js/i18n.js')).setLanguage('pt'));
   await page.waitFor(() => document.querySelector('#task-emu-tab .tab-lbl')?.textContent === 'Emular', [], { what: 'Portuguese' });
-  assert.deepEqual((await procs(page)).rows.slice(0, 2), ['Planeamento de Pinos de E/S', 'Emular na Placa']);
+  assert.deepEqual((await procs(page)).rows.slice(0, 5), [...HIER, '      Planeamento de Pinos de E/S', '      Emular']);
+  assert.equal(await page.eval(() => document.querySelector('#task-emu-bar [data-act=emulate]').textContent), 'Emular');
   await page.eval(async () => (await import('/js/i18n.js')).setLanguage('en'));
   // (the Board Emulator in front again: I/O Pin Planning is Emulate's document too, #5642, in front since)
   await page.eval(() => window.SilinxApp.activateDoc(window.SilinxApp.findDoc('emulator')));

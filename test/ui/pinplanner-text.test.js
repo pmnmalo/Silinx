@@ -123,9 +123,9 @@ uiTest('#5642 Tasks ▸ Emulate: I/O Pin Planning (its bar\'s, its tree\'s) open
   await page.openProject('PinEmu');
   await page.click('#task-switch .task-btn[data-task="emu"]');
   await page.waitFor(() => !document.querySelector('#task-emu-bar [data-act=pins]')?.disabled && document.querySelectorAll('#task-emu-panel .task-emu-tree li').length, [], { what: 'Emulate\'s processes' });
-  // its tree: I/O Pin Planning alone before Emulate on Board
-  assert.deepEqual(await page.eval(() => [...document.querySelectorAll('#task-emu-panel .task-emu-tree > ul > li > .row .lbl, #task-emu-panel .task-emu-tree > li > .row .lbl')].map((e) => e.textContent).slice(0, 2)),
-    ['I/O Pin Planning', 'Emulate on Board']);
+  // its tree: I/O Pin Planning alone before Emulate, under the top module (#5789)
+  assert.deepEqual(await page.eval(() => [...[...document.querySelectorAll('#task-emu-panel .task-emu-tree li')].find((li) => li.querySelector(':scope > .row .lbl').textContent === 'top')
+    .querySelectorAll(':scope > ul > li > .row .lbl')].map((e) => e.textContent)), ['I/O Pin Planning', 'Emulate']);
   // its bar's button: in Emulate
   await page.click('#task-emu-bar [data-act=pins]');
   await page.waitFor((d) => window.Silinx.active?.id === 'pins' && document.querySelectorAll(`${d} .pp-table tr`).length > 1, [D], { what: 'I/O Pin Planning' });

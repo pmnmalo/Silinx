@@ -1,5 +1,5 @@
 // UI: a Gowin device in the interface (#2303): the picker with its speed grade and the synthesis locked, the processes of its
-// toolchain only (Configure Target Device its SRAM's, #2298: test/ui/program-open.test.js; Emulate on Board, #3704), its constraints CST (read, written, checked), Generate Programming File
+// toolchain only (Configure Target Device its SRAM's, #2298: test/ui/program-open.test.js; Emulate, #3704), its constraints CST (read, written, checked), Generate Programming File
 // to its .fs (gowin_pack, Silinx's port) in the server's real flow and the Design Summary's programming file and reports, in
 // English and Portuguese; the Tang Nano 9K's pins written as a CST by Update Constraints.
 import { before, after } from 'node:test';
@@ -60,8 +60,8 @@ uiTest('#2303 a Gowin project: its processes, its constraints CST, Generate Prog
   assert.ok(labels.includes('Implement Design') && labels.includes('Generate Programming File'), String(labels));
   assert.ok(!labels.includes('Map'), String(labels));
   assert.ok(labels.includes('Configure Target Device'), String(labels));   // (#2298)
-  // Emulate on Board (#3704): the HDL on the board's pins; its RTL model, its Post-Synthesis and Post-Place & Route models too (#2299, #4362)
-  for (const present of ['Emulate on Board', 'Emulate Behavioral Model (RTL)', 'Emulate Post-Synthesis Model', 'Emulate Post-Place & Route Model']) assert.ok(labels.includes(present), `${present}: ${labels}`);
+  // Emulate (#3704): the HDL on the board's pins; its RTL model, its Post-Synthesis and Post-Place & Route models too (#2299, #4362)
+  for (const present of ['Emulate', 'Emulate Behavioral Model (RTL)', 'Emulate Post-Synthesis Model', 'Emulate Post-Place & Route Model']) assert.ok(labels.includes(present), `${present}: ${labels}`);
   for (const absent of ['Emulate Post-Translate Model', 'Emulate Post-Map Model']) assert.ok(!labels.includes(absent), `${absent}: ${labels}`);
   // (the models' Simulate rows, the Simulation view's: #4362's Post-Place & Route one too)
   await page.setView('sim');

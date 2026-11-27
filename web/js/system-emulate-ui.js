@@ -1,5 +1,5 @@
 // The Emulate task of a System project (#5581, docs/SYSTEMS.md, Emulation): its panel's tree (web/js/processes.js draws
-// it, as an FPGA project's I/O Pin Planning and Emulate on Board): the System's row, its Emulation Properties (the nodes
+// it, as an FPGA project's I/O Pin Planning and Emulate): the System's row, its Emulation Properties (the nodes
 // that run: silinx.json's system.emulate.nodes, core/system-alone.js) and Emulate System (the ticked nodes); then a row
 // per node, its emulation's options and runs only (#5597: no source file, no compiling, the Design's and Implement's):
 // each node's Emulate Node (that node alone, in the same System Emulator); a terminal runs with what it is linked to.
@@ -32,7 +32,7 @@ export const nodeModelProcs = (file, n) => ['rtl', ...nodeModels(n)].map(m => ({
 // compiling are the Design's and Implement's)
 function nodeProcesses(file, n) {
   // (an FPGA node's I/O Pin Planning (#5642: opened in Emulate), its emulation's options: its board's pins, its constraints file, #5581)
-  // (an FPGA node's models under its Emulate Node, as an FPGA project's under Emulate on Board, #5612: the node run on
+  // (an FPGA node's models under its Emulate Node, as an FPGA project's under Emulate, #5612: the node run on
   // that one; Emulate Node, on the Emulation Properties')
   const models = n.kind === 'fpga' ? nodeModelProcs(file, n) : [];
   const kids = [...(n.kind === 'fpga' ? [nodeConstraintsProcs(n, 'emu')] : []), { id: `emu-node-${n.id}`, label: 'Emulate Node', ico: 'emulate', run: () => emulate(file, [n.id]), ...(models.length ? { children: models } : {}) }];

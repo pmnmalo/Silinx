@@ -9,8 +9,10 @@ ecrã, e os seus interruptores e botões repetem-se por baixo dela, grandes o ba
 
 ![O exemplo stopwatch numa Basys2 emulada](../../images/emulator-basys2-pt.webp)
 
-*Emular* (a tarefa Emular da interface Silinx) ou *Emular na Placa ▸ Emular Modelo Comportamental (RTL)* (a interface
-ao estilo do ISE) abre-o com o módulo de topo do projeto.
+*Emular* (a tarefa Emular da interface Silinx) ou *Emular ▸ Emular Modelo Comportamental (RTL)* (a interface
+ao estilo do ISE) abre-o com o módulo de topo do projeto. O painel lateral de Emular mostra o projeto, o seu
+dispositivo e o seu módulo de topo, com os processos da emulação por baixo: Planeamento de Pinos de E/S, e Emular com
+os seus modelos.
 
 ## Placas
 

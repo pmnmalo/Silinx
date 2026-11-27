@@ -1,4 +1,4 @@
-// UI: the Board Emulator on the 7-series' boards (#3704): a Basys 3 project has Emulate on Board in its processes (its RTL
+// UI: the Board Emulator on the 7-series' boards (#3704): a Basys 3 project has Emulate (Emulate on Board before #5789) in its processes (its RTL
 // model only: the flow makes no simulation model), the Silinx toolbar's Emulate and the Tasks interface's Emulate task; the
 // emulator opens on the board drawn as the real one (#3706), its pins the XDC's, and reacts: the
 // switches and the centre button drive the LEDs, SW0 the digit. In Portuguese; both interfaces and the Tasks interface. Its warnings Check Syntax's only.
@@ -71,30 +71,30 @@ async function reacts(page) {
   await settled(page, { leds: LEDS(2, 4), digit: ZERO }, 'SW0 off: the digit 0');
 }
 
-uiTest('#3704 a Basys 3 project: Emulate on Board (its RTL model only), the toolbar\'s Emulate; the emulator on the XDC\'s pins, reacting; in Portuguese', E, async (page) => {
+uiTest('#3704 a Basys 3 project: Emulate (its RTL model only), the toolbar\'s Emulate; the emulator on the XDC\'s pins, reacting; in Portuguese', E, async (page) => {
   await basys3(page, 'Emu7');
   await page.setView('impl');
   await page.treeRow('#hier', 'emu7');
   const labels = await page.eval(() => [...document.querySelectorAll('#procs .row')].map((x) => x.textContent.trim().replace(/^▾/, '')));
-  for (const present of ['Emulate on Board', 'Emulate Behavioral Model (RTL)']) assert.ok(labels.includes(present), `${present}: ${labels}`);
+  for (const present of ['Emulate', 'Emulate Behavioral Model (RTL)']) assert.ok(labels.includes(present), `${present}: ${labels}`);
   assert.ok(!labels.some((l) => /^Emulate Post-/.test(l)), String(labels));
   // (the Silinx interface's toolbar: its Emulate on)
   if (await page.eval(() => !!document.querySelector('#toolbar .m-step[data-step="emulate"]'))) {
     assert.equal(await page.eval(() => document.querySelector('#toolbar .m-step[data-step="emulate"]').disabled), false);
   }
-  await page.treeRow('#procs', 'Emulate on Board', { dbl: true, exact: true });
+  await page.treeRow('#procs', 'Emulate', { dbl: true, exact: true });
   await reacts(page);
   // in Portuguese: the process's name
   await page.eval(async () => (await import('/js/i18n.js')).setLanguage('pt'));
   await page.setView('impl');
   await page.treeRow('#hier', 'emu7');
   const pt = await page.eval(() => [...document.querySelectorAll('#procs .row')].map((x) => x.textContent.trim().replace(/^▾/, '')));
-  assert.ok(pt.includes('Emular na Placa') && pt.includes('Emular Modelo Comportamental (RTL)'), String(pt));
+  assert.ok(pt.includes('Emular') && pt.includes('Emular Modelo Comportamental (RTL)'), String(pt));
   await page.eval(async () => (await import('/js/i18n.js')).setLanguage('en'));
   await warnings(page);
 });
 
-uiTest('#3704 the Tasks interface: a Basys 3 project has the Emulate task; Emulate on Board opens the emulator, which reacts; in Portuguese', E, async (page) => {
+uiTest('#3704 the Tasks interface: a Basys 3 project has the Emulate task; Emulate opens the emulator, which reacts; in Portuguese', E, async (page) => {
   await page.eval(() => localStorage.setItem('silinx.ui', 'tasks'));
   await page.reload();
   await page.waitFor(() => window.SilinxApp && document.querySelector('#menubar .item') && window.Silinx?.startupChecked, [], { what: 'app boot' });
@@ -102,16 +102,18 @@ uiTest('#3704 the Tasks interface: a Basys 3 project has the Emulate task; Emula
   await basys3(page, 'Emu7Tasks');
   assert.deepEqual(await page.eval(() => [...document.querySelectorAll('#task-switch .task-btn')].map((b) => b.dataset.task)), ['edit', 'sim', 'emu', 'impl']);
   await page.click('#task-switch .task-btn[data-task="emu"]');
-  await page.waitFor(() => !document.querySelector('#task-emu-bar [data-act=emulate]')?.disabled, [], { what: 'Emulate on Board on' });
-  // its processes: the top's I/O Pin Planning (no User Constraints folder, #5642) and Emulate on Board, its RTL model only
+  await page.waitFor(() => !document.querySelector('#task-emu-bar [data-act=emulate]')?.disabled, [], { what: 'Emulate on' });
+  // its processes: the top's I/O Pin Planning (no User Constraints folder, #5642) and Emulate, its RTL model only; under
+  // the project, the device and the top module (#5789)
   await page.waitFor(() => document.querySelectorAll('#task-emu-panel .task-emu-tree li').length > 0, [], { what: 'Emulate\'s Processes' });
+  const dev = await page.eval(() => { const d = window.Silinx.project.device; return `${d.part}${d.speed}-${d.package}`; });
   assert.deepEqual(await page.eval(() => [...document.querySelectorAll('#task-emu-panel .task-emu-tree .row .lbl')].map((x) => x.textContent)),
-    ['I/O Pin Planning', 'Emulate on Board', 'Emulate Behavioral Model (RTL)']);
+    ['Emu7Tasks', dev, 'emu7', 'I/O Pin Planning', 'Emulate', 'Emulate Behavioral Model (RTL)']);
   await page.click('#task-emu-bar [data-act=emulate]');
   await reacts(page);
   await page.eval(async () => (await import('/js/i18n.js')).setLanguage('pt'));
   await page.waitFor(() => document.querySelector('#task-switch .task-btn[data-task="emu"]')?.textContent.includes('Emular'), [], { what: 'Portuguese' });
-  assert.equal(await page.eval(() => document.querySelector('#task-emu-bar [data-act=emulate]').textContent), 'Emular na Placa');
+  assert.equal(await page.eval(() => document.querySelector('#task-emu-bar [data-act=emulate]').textContent), 'Emular');
   await page.eval(async () => (await import('/js/i18n.js')).setLanguage('en'));
   await page.eval(() => localStorage.removeItem('silinx.ui'));
   await warnings(page);

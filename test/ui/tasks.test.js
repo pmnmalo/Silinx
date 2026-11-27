@@ -1114,7 +1114,7 @@ uiTest('#917 #1378 Tasks ▸ Simulate: no test bench, the module and the model c
   await noWarnings(page);
 }, { build: DEV });
 
-// #923: Implement lists the implementation's processes only (Emulate on Board is the Emulate task's; Configure Target
+// #923: Implement lists the implementation's processes only (Emulate is the Emulate task's; Configure Target
 // Device Implement's since #1172, no Program task); the Design Summary's cards, their captions with them, never overlap
 const procRows = (page) => page.eval(() => [...document.querySelectorAll('#procs .lbl')].filter((l) => l.getClientRects().length).map((l) => l.textContent));
 uiTest('#923 #1172 Tasks ▸ Implement: no Emulate processes, Configure Target Device there; the Design Summary\'s cards do not overlap', E, async (page) => {
@@ -1128,7 +1128,7 @@ uiTest('#923 #1172 Tasks ▸ Implement: no Emulate processes, Configure Target D
   let procs = await procRows(page);
   // (no Generate Post-… Simulation Model: Simulate generates them, #1265)
   assert.ok(procs.includes('Generate Programming File') && !procs.includes('Generate Post-Synthesis Simulation Model'), procs.join(', '));
-  for (const p of ['Emulate on Board', 'Emulate Behavioral Model (RTL)', 'Emulate Post-Synthesis Model']) assert.ok(!procs.includes(p), `${p} in Implement`);
+  for (const p of ['Emulate', 'Emulate Behavioral Model (RTL)', 'Emulate Post-Synthesis Model']) assert.ok(!procs.includes(p), `${p} in Implement`);
   for (const p of ['Configure Target Device', 'Manage Configuration Project (iMPACT)']) assert.ok(procs.includes(p), `${p} in Implement`);
   // no card over another, its caption included, at every width from a tablet's to a lab desktop's
   const overlaps = () => page.eval(() => {
@@ -1162,7 +1162,7 @@ uiTest('#923 #1172 Tasks ▸ Implement: no Emulate processes, Configure Target D
   await page.eval(async () => (await import('/js/silinx.js')).setInterface('ise'));
   await page.waitFor(() => !document.documentElement.dataset.layout);
   procs = await procRows(page);
-  assert.ok(procs.includes('Emulate on Board') && procs.includes('Configure Target Device'), procs.join(', '));
+  assert.ok(procs.includes('Emulate') && procs.includes('Configure Target Device'), procs.join(', '));
   await env.server.api('PUT', '/api/toolchain', { mode: 'local' });
   await noWarnings(page);
 }, { build: DEV, timeout: 180000 });
