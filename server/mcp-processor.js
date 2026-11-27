@@ -4,8 +4,9 @@
 // its starter firmware written), its firmware built, emulated (simulate) and programmed as a System's node is. Systems'
 // machinery: off in a release (#5202).
 import * as P from './projects.js';
-import { toolError } from './mcp-util.js';
-import { processorProject, processorProjectText } from '../core/processor-board.js';
+import { toolError, readProject } from './mcp-util.js';
+import { processorProject, processorProjectText, processorBoardOf } from '../core/processor-board.js';
+import { addShield, shieldText } from '../core/processor-shield.js';
 import { systemsOn, SYSTEMS_OFF } from '../core/build-channel.js';
 
 /** A new Board project `name` for the processor board `board` (`runtime`: a Pico's Python firmware): its result. */
@@ -21,4 +22,14 @@ export async function newProcessorProject(name, board, { runtime, variant, langu
   for (const w of r.writes) await P.writeFile(name, w.path, w.text);
   await P.updateProject(name, () => r.project);
   return { text: processorProjectText(name, board, r.firmware), data: { project: name, mode: 'board', board, node: r.node, firmware: r.firmware, system: r.writes[0].path, trusted: false } };
+}
+
+/** edit_system's add_shield (#5898), as the board's row's Add Shield: the shield of the Board project `name` written (its
+ *  circuit, its System `file`); its lines. */
+export async function addShieldTo(name, file) {
+  const pj = await readProject(name);
+  const r = addShield(pj, { path: file, text: await P.readFile(name, file) });
+  if (r.error) throw toolError(`add_shield: ${r.error} (nothing written)`);
+  for (const w of r.writes) await P.writeFile(name, w.path, w.text);
+  return shieldText(name, processorBoardOf(pj), r.circuit);
 }

@@ -81,7 +81,7 @@ export const SYSTEM_PT = {
   'Simulation Properties': 'Propriedades da Simulação', 'The nodes Simulate System runs:': 'Os nós que Simular o Sistema corre:',
   'Run time (ms):': 'Tempo de execução (ms):', 'Stimulus file:': 'Ficheiro de estímulos:', 'The run time: from 1 to 10000 ms': 'O tempo de execução: de 1 a 10000 ms',
   // (the Emulate task's tree of a System, #5581: web/js/system-emulate-ui.js)
-  'Emulate Node': 'Emular o Nó', 'Emulation Properties…': 'Propriedades da Emulação…', 'Emulation Properties': 'Propriedades da Emulação',
+  'Add Shield': 'Adicionar Shield', 'Emulate Node': 'Emular o Nó', 'Emulation Properties…': 'Propriedades da Emulação…', 'Emulation Properties': 'Propriedades da Emulação',
   'The nodes Emulate System runs:': 'Os nós que Emular o Sistema corre:', 'Tick at least one node': 'Marque pelo menos um nó',
   'Emulate System': 'Emular o Sistema',
   'Terminals': 'Terminais', '☰ Terminals': '☰ Terminais', 'Show / hide the terminals panel': 'Mostrar / ocultar o painel dos terminais',
@@ -195,4 +195,11 @@ export const SYSTEM_PT_PATTERNS = [
   [/^(\S+): (\S+): the PS's starter program written$/, '$1: $2: o programa inicial do PS escrito'],
   [/^a PS program is a Zynq board's \(the Zybo Z7, the Arty Z7\): this project's board is (\S+)$/, 'um programa do PS é de uma placa Zynq (a Zybo Z7, a Arty Z7): a placa deste projeto é $1'],
   [/^a PS program is a Zynq board's \(the Zybo Z7, the Arty Z7\): this project's board is none \(a System's FPGA node: its PS program in its Properties\)$/, 'um programa do PS é de uma placa Zynq (a Zybo Z7, a Arty Z7): este projeto não tem placa (num nó FPGA de um Sistema: o seu programa do PS nas suas Propriedades)'],
+  // (a processor board's shield, #5898: core/processor-shield.js)
+  [/^(.+): a shield for its (.+), (\S+): wire its buttons, switches, displays and LEDs to the board's pins; Emulate Node runs the board with it\.$/,
+    "$1: um shield para a sua $2, $3: ligue os seus botões, interruptores, mostradores e LEDs aos pinos da placa; o Emular o Nó corre a placa com ele."],
+  [/^(.+): a shield is a processor board's Board project's \(an Arduino, a Raspberry Pi Pico or an ESP32 alone\)$/, "$1: um shield é de um projeto Placa de uma placa de processador (um Arduino, um Raspberry Pi Pico ou um ESP32 sozinho)"],
+  [/^(.+): the (.+) has its own buttons and display, and no shield$/, '$1: a $2 tem os seus próprios botões e mostrador, e nenhum shield'],
+  [/^(.+) has a shield already: (\S+)$/, '$1 já tem um shield: $2'],
+  [/^(.+): its System has no node of its board$/, '$1: o seu Sistema não tem nenhum nó da sua placa'],
 ];
