@@ -351,7 +351,8 @@ for Xilinx FPGAs supported by ISE 14.7.
   no board is selected (with a warning; with a board they must be assigned).
 - **Devices**: every FPGA family ISE 14.7 WebPACK implements — Spartan-3, Spartan-3E,
   Spartan-3A/3AN, Spartan-3A DSP, Spartan-6, Virtex-4/5/6, Artix-7, Kintex-7 and Zynq-7000
-  (WebPACK parts); the 7-series, the Spartan-7 too, are AMD Vivado's (#3895, [below](toolchains.md#the-artix-7-boards-with-amd-vivado)). Full flows verified to a bitstream on Spartan-3E and Spartan-6. Beyond ISE, the
+  (WebPACK parts); the 7-series, the Spartan-7 too, are AMD Vivado's (#3895, [below](toolchains.md#the-artix-7-boards-with-amd-vivado)), the
+  Artix-7's XC7A35T / XC7A100T and the Zynq-7000's XC7Z010 / XC7Z020 the Silinx toolchain's too (#3146, #4680). Full flows verified to a bitstream on Spartan-3E and Spartan-6. Beyond ISE, the
   Lattice iCE40 (LP, HX, Ultra, UltraPlus) builds with the Silinx toolchain's nextpnr-ice40 and icepack, and the Lattice
   ECP5 (LFE5U, LFE5UM, LFE5UM5G) with nextpnr-ecp5 and ecppack (Project Trellis); the Gowin GW1NR-9C with
   nextpnr-himbaechel-gowin (Project Apicula) and gowin_pack, Silinx's JavaScript port of Apicula's (#2303); the Cologne Chip
@@ -359,7 +360,7 @@ for Xilinx FPGAs supported by ISE 14.7.
 - **Boards and I/O Pin Planning**: Digilent Basys2, Nexys2, Nexys3, Atlys, Cmod S6; Xilinx
   Spartan-3E / Spartan-3A / Spartan-3 starter kits (the Spartan-3A's has no 7-segment display: ISE's build of an
   example that drives one puts it on its expansion headers, J18, J20 and FX2 J17, and says each pin, #3872); Numato
-  Mimas V2 and Elbert V2; Papilio One; EDGE Spartan 6 (#3873); Digilent Basys 3, Nexys A7, Arty S7 and Zybo Z7 (#3895);
+  Mimas V2 and Elbert V2; Papilio One; EDGE Spartan 6 (#3873); Digilent Basys 3, Nexys A7, Arty S7, Zybo Z7 (#3895) and Arty Z7 (#4682);
   1BitSquared iCEBreaker (iCE40, its pins written as a PCF; a 1BitSquared iCEBreaker + PmodVGA for VGA); Radiona ULX3S
   (ECP5, its pins written as an LPF; a Radiona ULX3S + VGA for VGA); Sipeed Tang Nano 9K (Gowin, its pins written as a CST; a
   Sipeed Tang Nano 9K + VGA for VGA); Cologne Chip GateMate FPGA Evaluation Board (GateMate, its pins written as a CCF; a Cologne
