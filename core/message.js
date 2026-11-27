@@ -13,6 +13,8 @@
 //   action:   { label, run } a button of the line (Trust Project), or null
 //   process:  the process that wrote it ("Synthesize - XST"), or null
 //   run:      the run of that process it belongs to (its header's line: a rerun replaces its entries), or null
+//   time:     when it was written (ms since the epoch, #5035: the console's line's, a shared project's owner's), only
+//             when its writer gives it
 // No DOM nor Node API: the page, the server and the MCP server import it.
 import { MESSAGE_LINE } from './tool-descriptors.js';
 import { messageLocation, projectPath } from './message-location.js';
@@ -26,7 +28,7 @@ const OF_CLASS = Object.freeze({ err: 'error', warn: 'warning', info: 'info', ok
 export const severityOfClass = cls => OF_CLASS[cls] ?? 'text';
 
 /** A message (its fields above; a field out of its values: its default, a source the application's). */
-export function makeMessage({ text = '', severity = 'text', source = 'app', tool = null, location = null, action = null, process = null, run = null } = {}) {
+export function makeMessage({ text = '', severity = 'text', source = 'app', tool = null, location = null, action = null, process = null, run = null, time = null } = {}) {
   const loc = location && typeof location.file === 'string' && location.file && Number.isInteger(location.line) && location.line > 0
     ? { file: location.file, line: location.line, ...(Number.isInteger(location.col) && location.col > 0 ? { col: location.col } : {}) } : null;
   return {
@@ -38,7 +40,22 @@ export function makeMessage({ text = '', severity = 'text', source = 'app', tool
     action: action && typeof action.label === 'string' ? action : null,
     process: typeof process === 'string' && process ? process : null,
     run: typeof run === 'string' && run ? run : null,
+    ...(validTime(time) ? { time } : {}),
   };
+}
+
+// (a time: ms since the epoch, a whole number)
+const validTime = t => Number.isSafeInteger(t) && t >= 0;
+
+const two = n => String(n).padStart(2, '0');
+/** A message's time as the console shows it (#5035): `14:03:27` (local time), with its day and month for one of
+ *  another day than `now`'s (`20/11 23:58:01`); '' with no time. */
+export function messageTime(time, now = Date.now()) {
+  if (!validTime(time)) return '';
+  const d = new Date(time), n = new Date(now);
+  const clock = `${two(d.getHours())}:${two(d.getMinutes())}:${two(d.getSeconds())}`;
+  const sameDay = d.getFullYear() === n.getFullYear() && d.getMonth() === n.getMonth() && d.getDate() === n.getDate();
+  return sameDay ? clock : `${two(d.getDate())}/${two(d.getMonth() + 1)} ${clock}`;
 }
 
 /** A console line's message (#4749: made where it is written, web/js/console.js log): its severity its class's (`cls`),
@@ -61,7 +78,7 @@ export function lineMessage(text, { cls = '', location = null, paths = [], ...fi
 /** A message's entry of the Errors / Warnings tabs (#4749: made from the message, its line never read again): an
  *  error's or a warning's `{ severity, tool, message, file, line, col?, inText, src, run, action }` (the text without
  *  its prefix; its tool's, else Silinx; its location's file and line, inText when its text names them already; src its
- *  source, the console's filter; action its button), else null (a line of the scripts' "=== SILINX FAILED" marker
+ *  source, the console's filter; action its button; time its message's, when it has one, #5035), else null (a line of the scripts' "=== SILINX FAILED" marker
  *  neither: the errors are their own lines, #4728). */
 export function entryOf(msg) {
   if (msg.severity !== 'error' && msg.severity !== 'warning') return null;
@@ -74,7 +91,7 @@ export function entryOf(msg) {
     severity: msg.severity, tool: msg.tool || 'Silinx', message,
     file: at?.file ?? null, line: at?.line ?? 0, ...(at?.col ? { col: at.col } : {}),
     inText: !!at && messageLocation(message)?.line === at.line,
-    src: msg.source, run: msg.run, action: msg.action,
+    src: msg.source, run: msg.run, action: msg.action, ...(validTime(msg.time) ? { time: msg.time } : {}),
   };
 }
 

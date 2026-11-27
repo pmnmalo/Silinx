@@ -10,7 +10,7 @@ import { shownDiag } from './design-only.js';
 import { isTrusted, refusedProject } from '/core/trust.js';
 import { needsWinUsb, WINUSB_GUIDE } from '/core/webusb-support.js';
 import { severityOf } from '/core/log-severity.js';
-import { lineMessage, entryOf } from '/core/message.js';
+import { lineMessage, entryOf, messageTime } from '/core/message.js';
 import { lineSource, isShown, shownSourcesNow, showCommandLines } from './messages.js';
 import { docsState } from './state-docs.js';
 import { designState } from './state-design.js';
@@ -50,8 +50,10 @@ export const trustAction = name => ({ label: 'Trust Project', trust: name, run: 
 // draw: the line as it is drawn, in the interface's language (#4749, step 5: its message's text stays English, what the
 // followers and the MCP get; drawn again when the language changes); none: an application's line (src 'app') its
 // translation (appText), any other line (a tool's output) as it is.
+// time: when the lines were written (#5035: ms since the epoch; a shared project's owner's, its followers' copies); none:
+// now. Shown before each line (but an empty one), muted, not part of its text (a CSS ::before of its data-time).
 // Returns the lines' elements.
-export function log(text, cls = '', { diag = true, action = null, src = null, goto = null, run = undefined, process = undefined, location = null, draw = null, link = true } = {}) {
+export function log(text, cls = '', { diag = true, action = null, src = null, goto = null, run = undefined, process = undefined, location = null, draw = null, link = true, time = undefined } = {}) {
   const el = $('console-log');
   const atBottom = el.scrollTop + el.clientHeight >= el.scrollHeight - 4;
   const refused = !action && cls === 'err' && refusedProject(text);
@@ -64,6 +66,7 @@ export function log(text, cls = '', { diag = true, action = null, src = null, go
   // (the design's sources, and a CPU node's sketch files, which are none of its sources: an Arduino node's, #5503)
   const paths = [...(designState.sources || []).map(s => s.path), ...(filesState.fileTree || []).filter(f => /\.(ino|c|cc|cpp|h|hpp)$/.test(f))];
   const drawn = draw || (src === 'app' ? appText : null);
+  const at = Number.isSafeInteger(time) && time >= 0 ? time : Date.now();
   lines.forEach((line, i) => {
     if (run === undefined) startsRun(line);
     else if (RUN_HEADER.test(line)) dropRun(run);   // (a run's own header: its last run's entries dropped, #4728)
@@ -71,8 +74,9 @@ export function log(text, cls = '', { diag = true, action = null, src = null, go
     let source = src;
     if (!source) [source, lineCur] = lineSource(line, lineCur);
     // (its action: the first of the line's, #4962)
-    const msg = lineMessage(line, { cls, source, location, paths, action: i === lines.length - 1 ? msgAction : null, process: lineProcess, run: lineRun });
+    const msg = lineMessage(line, { cls, source, location, paths, action: i === lines.length - 1 ? msgAction : null, process: lineProcess, run: lineRun, time: at });
     const div = h('div', { class: `ln ${cls}`, 'data-src': source, ...(src ? { 'data-own-src': '' } : {}) }, drawn ? drawn(line) : line);
+    if (line.trim()) stamp(div, at);
     div.message = msg;
     if (drawn) div.draw = () => drawn(line);
     el.append(div);
@@ -99,6 +103,27 @@ export function log(text, cls = '', { diag = true, action = null, src = null, go
   if (atBottom) el.scrollTop = el.scrollHeight;
   return divs;
 }
+
+// A line's or an entry's time (#5035): its data-time, drawn before it by the CSS (web/css/messages.css), `14:03:27`, the
+// day too for one of another day (core/message.js messageTime); drawn again when the day changes.
+function stamp(el, ms) {
+  el.dataset.ms = String(ms);
+  el.dataset.time = messageTime(ms);
+}
+let dayTimer = null;
+function redrawTimesAtMidnight() {
+  clearTimeout(dayTimer);
+  const next = new Date();
+  next.setHours(24, 0, 1, 0);
+  dayTimer = setTimeout(() => {
+    for (const el of document.querySelectorAll('#console-body [data-ms]')) el.dataset.time = messageTime(Number(el.dataset.ms));
+    redrawTimesAtMidnight();
+  }, next - Date.now());
+}
+if (typeof document !== 'undefined') redrawTimesAtMidnight();
+// (an entry's time: its message's, else when it was first listed: a check's, a simulation's, an editor's problem)
+const entryTimes = new WeakMap();
+const entryTime = d => d.time ?? entryTimes.get(d) ?? (entryTimes.set(d, Date.now()), entryTimes.get(d));
 
 // An error's or a warning's line that names a project's file and line (#5221: Check Syntax's, synthesis', simulation's):
 // a link, clicked, to its file at that line, as its entry of the Errors / Warnings tabs is (a drawing's Check line its
@@ -320,6 +345,7 @@ export function renderDiagnostics({ quiet = false } = {}) {
         h('span', { 'data-no-i18n': true }, d.file && !d.inText ? `: ${d.draw?.() ?? d.message}` : d.draw?.() ?? d.message), hint?.toggle,
         ...diagFixes(d).map(f => h('span', { class: 'diag-fix', role: 'button', 'data-no-i18n': true, onclick: e => { e.stopPropagation(); applyDiagFix(d, f); } }, `${t('Fix:')} ${t(f.title)}`)),
         actionButton(d));
+      stamp(row, entryTime(d));
       // (an editor's problem: its item selected, editor-problems.js)
       row.addEventListener('click', () => (d.goto ? d.goto() : d.file && app.openFile(d.file, d.line, d.col)));
       el.append(row);
