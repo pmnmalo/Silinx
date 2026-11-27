@@ -273,7 +273,8 @@ function compareH(cx, e, a) {
 function callH(cx, e) {
   const args = (e.args || []).map(x => exprH(cx, x));
   switch (e.name) {
-    case '$signed': { const s = toSlv(args[0], args[0].w); return atom(`signed(${s.c})`, 'sgn', { w: s.w }); }
+    // (an aggregate qualified, signed'(0 => a): a conversion of one is not VHDL, #5853)
+    case '$signed': { const s = toSlv(args[0], args[0].w); return atom(s.others ? `signed'${s.c}` : `signed(${s.c})`, 'sgn', { w: s.w }); }
     case '$unsigned': { const s = toSlv(args[0], args[0].w); return atom(`unsigned(${s.c})`, 'uns', { w: s.w }); }
     case '$time': case '$realtime': return atom('now', 'time');
   }
