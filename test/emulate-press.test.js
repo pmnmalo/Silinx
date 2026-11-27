@@ -1,10 +1,14 @@
 // A push button of the Board Emulator held down as long as a real press (#3109, core/emulate-press.js): pressEnd's
 // board time at every speed, pressHolds' releases held back, let go and flushed; and the clock example on the
 // compiled engine, run as the emulator runs it slower than real time: a short click is taken by its 20 ms debouncer
-// once held, missed when let go at once (the old emulator).
+// once held, missed when let go at once (the old emulator); at most a second of the user's time at the rate the board
+// runs (#5849): the event-driven engine's button let go within a second, not after 5,000,000 cycles.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { PRESS_MS, pressEnd, pressHolds } from '../core/emulate-press.js';
+import { PRESS_MS, HOLD_MAX_MS, pressEnd, pressHolds } from '../core/emulate-press.js';
+import { compile, elaborate } from '../core/compile.js';
+import { Simulator } from '../core/simulator.js';
+import * as V from '../core/values.js';
 import { example, exampleUcf } from './examples-lib.mjs';
 import { designOf } from './compiled-diff.js';
 import { parseUcf } from '../packages/silinx-fpga/src/ucf.js';
@@ -25,6 +29,57 @@ test('pressEnd: 100 ms of the board\'s time at real speed and Max speed, of the 
   assert.equal(pressEnd({ from: 3 * P, speed: 10, period: P }), 4 * P);          // 10 Hz: one cycle
   assert.equal(pressEnd({ from: 0, speed: 1, period: P }), P);                   // 1 Hz: one cycle, not a tenth
   assert.equal(pressEnd({ from: 0, speed: 'real', period: 83333 }), 1200005 * 83333);   // 12 MHz (iCEBreaker): 1,200,005 cycles
+});
+
+test('#5849 pressEnd: at most a second of the user\'s time at the rate the board runs, the board\'s 100 ms when it runs faster, unknown rate as before', () => {
+  assert.equal(HOLD_MAX_MS, 1000);
+  // the event-driven engine at Max speed, 70,000 cycles a second: 70,000 cycles, not 5,000,000
+  assert.equal(pressEnd({ from: 0, speed: 'max', period: P, rate: 70000 }), 70000 * P);
+  assert.equal(pressEnd({ from: 5 * P, speed: 'real', period: P, rate: 160000 }), 160005 * P);
+  // the compiled engine at half of real time (#3109's case): 25,000,000 cycles a second, the board's 100 ms kept
+  assert.equal(pressEnd({ from: 0, speed: 'real', period: P, rate: 25e6 }), 100e9);
+  // faster than real time (Max speed): the board's 100 ms
+  assert.equal(pressEnd({ from: 0, speed: 'max', period: P, rate: 200e6 }), 100e9);
+  // a set speed the engine keeps up with: its 100 ms; one it cannot: a second of what it runs
+  assert.equal(pressEnd({ from: 0, speed: 1e4, period: P, rate: 1e4 }), 1000 * P);
+  assert.equal(pressEnd({ from: 0, speed: 1e5, period: P, rate: 3000 }), 3000 * P);
+  // the rate not known (0, none): as before; a crawl: one cycle at least
+  assert.equal(pressEnd({ from: 0, speed: 'max', period: P, rate: 0 }), 100e9);
+  assert.equal(pressEnd({ from: 0, speed: 'max', period: P }), 100e9);
+  assert.equal(pressEnd({ from: 0, speed: 'max', period: P, rate: 0.2 }), P);
+});
+
+test('#5849 the event-driven engine at Max speed: BTN0 clicked and let go is back at 0 within a second of the user\'s time, the design seeing it', () => {
+  const SRC = `library ieee; use ieee.std_logic_1164.all;
+entity b is port (clk : in std_logic; btn : in std_logic_vector(3 downto 0); led : out std_logic_vector(3 downto 0)); end b;
+architecture rtl of b is begin
+  process (clk) begin if rising_edge(clk) then led <= btn; end if; end process;
+end rtl;`;
+  const d = elaborate(compile([{ path: 'b.vhd', lang: 'vhdl', text: SRC }]), 'b');
+  const port = (n) => d.top.ports.find((p) => p.name === n).sig;
+  // the emulator's frames: 60 a second, the engine at 60,000 cycles a second (1,000 a frame)
+  const RATE = 60000, FRAME = RATE / 60;
+  const run = (old) => {
+    const sim = new Simulator(d), holds = pressHolds();
+    sim.addClock(port('clk'), { period: P });
+    let btn = '0000';
+    const set = (on) => { btn = on ? '0001' : '0000'; sim.force(port('btn'), V.fromInt(on ? 1 : 0, 4)); };
+    const frame = () => { sim.run(sim.now + FRAME * P); holds.tick(sim.now); };
+    set(false); frame();
+    // a click of a frame (16 ms), let go
+    holds.press('btn0', { now: sim.now });
+    set(true); frame();
+    assert.equal(V.toBin(port('led').val), '0001', 'the press seen');
+    holds.release('btn0', { until: (from) => pressEnd({ from, speed: 'max', period: P, rate: old ? 0 : RATE }), now: sim.now, go: () => set(false) });
+    let frames = 0;
+    while (btn !== '0000' && frames < 600) { frame(); frames++; }   // (up to 10 s of the user's time)
+    frame();
+    return { frames, btn, led: V.toBin(port('led').val) };
+  };
+  // let go after a second of the user's time (60 frames, the press's own frame counted), the design's LED0 off
+  assert.deepEqual(run(false), { frames: 59, btn: '0000', led: '0000' });
+  // the old hold: 5,000,000 cycles, more than 80 s at this rate: still down after 10 s
+  assert.deepEqual(run(true), { frames: 600, btn: '0001', led: '0001' });
 });
 
 test('pressHolds: a release held back until the board\'s time is at it, at once when it is, or goes back (a power cycle); a new press drops it; flush lets all go', () => {

@@ -15,7 +15,7 @@ export { noMenu };
 export function mountBoardParts(ctx) {
   const {
     board, title, after, bitFor, compiled, hasLcd, holds, inVal, knobEnd, lcdView, main, manual, period, powered, refresh,
-    resLabel, resOf, runCycles, running, setInputBit, setPower, sim, speed, tip, wiring, setKnobEnd, setLcdView
+    resLabel, rate = () => 0, resOf, runCycles, running, setInputBit, setPower, sim, speed, tip, wiring, setKnobEnd, setLcdView
   } = ctx;
 
   // ---- interactive parts (placed by the board layout below)
@@ -35,10 +35,11 @@ export function mountBoardParts(ctx) {
     const el = h('div', { class: cls, title: `${tip(res, k)} — press and hold (Shift+click keeps it pressed)` });
     let latched = false;
     const set = (on) => { el.classList.toggle('on', on); setInputBit(b, on !== low(b)); };
-    // (let go: held down, lit, until the design saw a real press, #3109; paused too, until it ran with it, #5331)
+    // (let go: held down, lit, until the design saw a real press, #3109; paused too, until it ran with it, #5331; at most
+    // a second at the rate the board runs, #5849)
     const up = () => {
       if (latched) return;
-      holds.release(el, { until: (from) => pressEnd({ from, speed: speed(), period }), now: sim.now, go: () => set(false) });
+      holds.release(el, { until: (from) => pressEnd({ from, speed: speed(), period, rate: rate() }), now: sim.now, go: () => set(false) });
     };
     el.addEventListener('pointerdown', (e) => {
       e.preventDefault();

@@ -62,7 +62,8 @@ export function mountEmuPaint(ctx) {
       if (w.val.textContent !== t) w.val.textContent = t;
     }
     const nowMs = performance.now();
-    if (nowMs - rateWin().t > 1000) { rateWin().rate = rateWin().cyc * 1000 / (nowMs - rateWin().t); setRateWin({ t: nowMs, cyc: 0, rate: rateWin().rate }); }
+    // (the rate measured while it runs only: a pause's time not counted, #5849, a press's longest hold its)
+    if (running() && nowMs - rateWin().t > 1000) { rateWin().rate = rateWin().cyc * 1000 / (nowMs - rateWin().t); setRateWin({ t: nowMs, cyc: 0, rate: rateWin().rate }); }
     const r = running() ? rateWin().rate : 0;
     if (!powered()) { setStat('Power off'); statAt = -Infinity; return; }
     if (running() && sim.finished !== 'error' && nowMs - statAt < STAT_MS) { logLines(); return; }
