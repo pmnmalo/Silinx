@@ -23,6 +23,7 @@ import { sendError } from './http-errors.js';
 import { channelScript } from './build-channel.js';
 import { VERSION } from '../core/version.js';
 import { ISOLATION_HEADERS } from '../core/cross-origin.js';
+import { textTag } from '../core/text-tag.js';
 
 const ROOT = path.join(path.dirname(fileURLToPath(import.meta.url)), '..');
 
@@ -286,12 +287,17 @@ export async function createApp({ host = '127.0.0.1', token = null, codes = crea
     const text = await P.readFile(req.params.p, req.query.path);   // read first: an error must go out as JSON, not text/plain
     res.type('text/plain').send(text);
   }));
-  api.put('/projects/:p/file', wrap(async req => {
+  api.put('/projects/:p/file', wrap(async (req, res) => {
     // a text body, or JSON's text; anything else (no content type, octet-stream, JSON without text) is P.writeFile's
     // 400, never an empty file (#4727)
     const body = typeof req.body === 'string' ? req.body : req.body?.text;
-    await P.writeFile(req.params.p, req.query.path, body);
-    return { ok: true };
+    // (If-Match: the tag of the text the writer read, #5915; written over that text only, else a 412 with the tag now)
+    const ifMatch = req.get('If-Match') || null;
+    try { await P.writeFile(req.params.p, req.query.path, body, { ifMatch }); } catch (e) {
+      if (e.status === 412 && 'tag' in e) return res.status(412).json({ error: e.message, tag: e.tag });
+      throw e;
+    }
+    return { ok: true, tag: textTag(body) };
   }));
   api.post('/projects/:p/rename', wrap(async req => {
     const { from, to } = req.body || {};

@@ -181,6 +181,8 @@ export const WIZARDS_PT_PATTERNS = [
     "O armazenamento deste navegador tem $1 projeto(s): $2. Copiá-los para a pasta '$3'? Mover… copia-os e depois apaga-os do armazenamento deste navegador, depois de confirmar."],
   [/^Delete (\d+) project\(s\) from this browser's storage: (.*)\? They are now in the folder '(.*)'; this cannot be undone\.$/,
     "Apagar $1 projeto(s) do armazenamento deste navegador: $2? Estão agora na pasta '$3'; não se pode desfazer."],
+  // a file changed meanwhile by another writer (core/text-tag.js, #5915)
+  [/^'(.+)' was changed meanwhile \(by another window, tab or tool\): not written over; reopen it to see that change, or save again to keep yours$/, "'$1' foi alterado entretanto (por outra janela, separador ou ferramenta): não escrito por cima; reabra-o para ver essa alteração, ou guarde de novo para manter a sua"],
   // a document a newer Silinx saved (core/doc-format.js, #4756)
   [/^(.+) was saved by a newer Silinx \(its format (\d+); this one reads up to (\d+)\): opened read-only, so that it is not saved in the older format and loses nothing: update Silinx to change it$/, '$1 foi guardado por um Silinx mais recente (o seu formato $2; este lê até ao $3): aberto só de leitura, para não ser guardado no formato antigo nem perder nada: atualize o Silinx para o alterar'],
   [/^(.+) is in an older format \((\d+); this Silinx writes (\d+)\): it is read in the new one and written so on its next save, a version of the project kept first$/, '$1 está num formato antigo ($2; este Silinx escreve o $3): é lido no novo e escrito assim ao guardá-lo, guardada antes uma versão do projeto'],

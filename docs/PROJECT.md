@@ -80,7 +80,7 @@ reload (#4754).
 | PUT | /projects/:p | replace project json |
 | DELETE | /projects/:p | move project to `.trash` inside workspace |
 | GET | /projects/:p/file?path=... | raw file text |
-| PUT | /projects/:p/file?path=... | write raw text body |
+| PUT | /projects/:p/file?path=... | write raw text body -> `{ ok, tag }`; with `If-Match: <tag>` (`core/text-tag.js`, #5915) written over the text read only, else a 412 `{ error, tag }` (the System editor and `edit_system` use it) |
 | DELETE | /projects/:p/file?path=... | delete file (and remove from files list) |
 | GET | /projects/:p/sources | `[{ path, lang, role, text }]` all HDL sources (for the in-browser compiler) |
 | GET | /devices | the parts of every ISE 14.7 WebPACK family, the 7-series families AMD Vivado builds (Artix-7, Spartan-7, Kintex-7, Zynq-7000), the iCE40, ECP5 and Gowin families + boards database (server/devices.js) |
