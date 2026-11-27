@@ -602,6 +602,13 @@ export const THIRD_PARTY = [
     "standalone": false
   },
   {
+    "name": "pynq-z1-ps7_init",
+    "version": "fd3c16e",
+    "license": "GPL-2.0-or-later",
+    "url": "https://github.com/xupgit/Zynq-Design-using-Vivado/blob/fd3c16e/labsolutions/embedded/2018_1_pynq_labsolution/lab_4/lab_4.sdk/system_wrapper_hw_platform_2/ps7_init_gpl.c",
+    "ported": true
+  },
+  {
     "name": "qs",
     "version": "6.16.1",
     "license": "BSD-3-Clause",
@@ -727,6 +734,13 @@ export const THIRD_PARTY = [
     "license": "MIT",
     "url": "jshttp/type-is",
     "standalone": false
+  },
+  {
+    "name": "u-boot-zybo-z7-ps7_init",
+    "version": "1a4bf17",
+    "license": "GPL-2.0-or-later",
+    "url": "https://github.com/u-boot/u-boot/blob/1a4bf17b0298257b35611453e44f53c72a55f8a7/board/xilinx/zynq/zynq-zybo-z7/ps7_init_gpl.c",
+    "ported": true
   },
   {
     "name": "unpipe",
