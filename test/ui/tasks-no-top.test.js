@@ -46,7 +46,7 @@ uiTest('#1224 Tasks ▸ Implement with no top module: said so, Set Top Module…
   await page.dialogButton('OK');
   await page.waitFor(() => window.Silinx.project.top === 'top' && [...document.querySelectorAll('#procs .lbl')].some((e) => e.textContent.startsWith('Synthesize')), [], { what: 'the top set, its processes' });
   assert.equal(await note(page), null, 'no note with a top');
-  assert.equal((await rows(page))[0], 'Design Summary/Reports', 'the Design Summary with a top (#1287)');
+  assert.equal((await rows(page))[3], 'Design Summary/Reports', 'the Design Summary with a top (#1287), under the project, its device and its top (#5789)');
   assert.equal((await env.server.api('GET', '/api/projects/NoTop')).top, 'top');
   // the Design Summary opened at once, in front, as when Implement is chosen with a top (#1372)
   await page.waitFor(() => window.Silinx.active?.id === 'summary' && document.documentElement.dataset.task === 'impl', [], { what: 'the Design Summary in front' });
