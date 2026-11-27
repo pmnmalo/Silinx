@@ -236,7 +236,7 @@ Names and behaviour as Vitis HLS makes them (UG1399, "Interface synthesis"):
 | (clock and reset) | `ap_clk`, `ap_rst` (active high, synchronous) — none for a combinational module (#1900); `ap_rst_n` (active low) when the top has an `axis` port (#1894) |
 | the block protocol `ap_ctrl_hs` (default) | `ap_start` in; `ap_done`, `ap_idle`, `ap_ready` out |
 | `#pragma HLS INTERFACE ap_ctrl_chain port=return` | `ap_ctrl_hs`'s and `ap_continue` in (#1965): `ap_done` and `ap_return` held after a call until `ap_continue` is 1, no new call meanwhile; `ap_ready` one cycle; `ap_idle` also 0 while `ap_start` is 1; `ap_clk` and `ap_rst` even when combinational (its latency 0), as Vitis HLS 2025.2 |
-| `#pragma HLS INTERFACE ap_ctrl_none port=return` | no block protocol ports (a sequential module: `ap_clk` and `ap_rst` only, running by itself, #1900) |
+| `#pragma HLS INTERFACE ap_ctrl_none port=return` | no block protocol ports (a sequential module: `ap_clk` and `ap_rst` only, running by itself, #1900: a function with a stream, or pipelined, #5841) |
 | the returned value | `ap_return` (its type's width) |
 | a scalar argument `int a` | input `a` (`ap_none`) |
 | a pointer argument only read | input `p` (`ap_none`) |
@@ -277,8 +277,11 @@ are read when `ap_start` is 1 in the idle state; the call's last state has `ap_d
 cycle, `ap_return` valid; a pointer output's `_ap_vld` is 1 for one cycle after each write, its value then valid.
 With `ap_ctrl_none` (#1900) a sequential function with a stream argument has only `ap_clk` and `ap_rst`: it runs by
 itself, starting its next call when one is done (Vitis HLS's free-running kernel), and the co-simulation feeds its
-streams and waits for each call's values; one with no stream keeps `ap_ctrl_hs`, with a warning (its calls could not
-be told apart: Vitis HLS's co-simulation refuses it too).
+streams and waits for each call's values. A pipelined function (`#pragma HLS PIPELINE`) with no stream runs by itself
+too, a call every II cycles (#5841): no state register, its arguments read every cycle (an argument such as `call` says
+when a call does something), and at II=1 and a depth of 1 the co-simulation gives each C call one clock cycle. Any other
+sequential function with no stream keeps `ap_ctrl_hs`, with a warning (its calls could not be told apart: Vitis HLS's
+co-simulation refuses it too).
 A function with a loop called by the top, or given an array, is **inlined** into it (#1632): its loops are the
 top's (each call its own), its array parameters the arguments (a memory too), its pointer and reference parameters
 the variables passed, its by-value parameters local variables, its `static` variables one register per function

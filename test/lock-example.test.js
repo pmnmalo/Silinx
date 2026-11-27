@@ -48,7 +48,7 @@ test('#5111 lock: every kind of source; each drawing the base of its HDL file, t
   const sch = JSON.parse(read('src/control.sch.json'));
   assert.deepEqual(sch.symbols.filter((s) => s.type === 'module').map((s) => s.params.module).sort(), ['alarm', 'digit_ok', 'lock', 'timer']);
   // the C and the C++: modules with Vitis HLS's ports, no warning
-  for (const [f, ports] of [['src/penalty.c', [['fails', 'in', 2], ['ap_return', 'out', 4]]], ['src/typed.cpp', [['clear', 'in', 1], ['digit', 'in', 4], ['shown', 'out', 16], ['shown_ap_vld', 'out', 1]]]]) {
+  for (const [f, ports] of [['src/penalty.c', [['fails', 'in', 2], ['ap_return', 'out', 4]]], ['src/typed.cpp', [['call', 'in', 1], ['clear', 'in', 1], ['digit', 'in', 4], ['shown', 'out', 16], ['shown_ap_vld', 'out', 1]]]]) {
     for (const lang of ['vhdl', 'verilog']) {
       const r = cToHdl(read(f), { file: f, lang });
       assert.deepEqual(r.diagnostics, [], `${f} ${lang}`);
@@ -69,6 +69,11 @@ test('#5111 lock: the C and the C++ test benches: C simulation PASS, C/RTL co-si
       const r = cosimulate(read(f), { file: f, lang });
       assert.deepEqual([r.ok, r.pass, r.mismatches, r.errors], [true, true, [], []], `${f} ${lang}`);
     }
+  }
+  // (typed running by itself, #5841: a call each clock cycle; its RTL made wrong, a digit not shifted in, found)
+  for (const lang of ['vhdl', 'verilog']) {
+    const bad = cosimulate(read('src/typed.cpp'), { file: 'src/typed.cpp', lang, alter: (h) => h.replace(lang === 'vhdl' ? /shift_left\(resize\((\w+), 16\), 4\)/ : /\{4'b0, (\w+)\} << 4/, lang === 'vhdl' ? 'resize($1, 16)' : "{4'b0, $1}") });
+    assert.deepEqual([bad.ok, bad.pass, bad.mismatches.length > 0], [true, false, true], lang);
   }
   const wrong = simulateC(read('src/penalty.c').replace('{0, 3, 6, 9}', '{0, 3, 5, 9}'), { file: 'src/penalty.c' });
   assert.match(wrong.output, /\nFAIL: 1 wrong result\(s\)\n$/);

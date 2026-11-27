@@ -74,7 +74,6 @@ architecture Structural of top is
     signal fails               : STD_LOGIC_VECTOR (1 downto 0);
     signal secs_now, left      : STD_LOGIC_VECTOR (3 downto 0);
     signal secs                : STD_LOGIC_VECTOR (3 downto 0) := "0000";
-    signal secs_done           : STD_LOGIC;
     signal shown_now           : STD_LOGIC_VECTOR (15 downto 0);
     signal shown               : STD_LOGIC_VECTOR (15 downto 0) := x"FFFF";
     signal shown_vld, call     : STD_LOGIC;
@@ -110,15 +109,14 @@ begin
         port map ( clk => clk, rst => rst, enter => enter, clear => clear, digit => digit, tick => sec_tick, secs => secs,
                    opened => opened, locked => locked, alarm => alarm, fails => fails, left => left );
 
-    -- the penalty of the failures so far (C), kept when each call is done
+    -- the penalty of the failures so far (C): logic alone, no block protocol (ap_ctrl_none)
     u_penalty : entity work.penalty
-        port map ( ap_clk => clk, ap_rst => rst, ap_start => '1', ap_done => secs_done, ap_idle => open, ap_ready => open,
-                   fails => fails, ap_return => secs_now );
-    -- the digits typed (C++): a call at each Enter, or a Clear to blank them
+        port map ( fails => fails, ap_return => secs_now );
+    -- the digits typed (C++), running by itself (ap_ctrl_none): a call at each Enter, or a Clear to blank them
     call <= enter or clear;
     u_typed : entity work.typed
-        port map ( ap_clk => clk, ap_rst => rst, ap_start => call, ap_done => open, ap_idle => open, ap_ready => open,
-                   clear => clear, digit => digit, shown => shown_now, shown_ap_vld => shown_vld );
+        port map ( ap_clk => clk, ap_rst => rst, call => call, clear => clear, digit => digit,
+                   shown => shown_now, shown_ap_vld => shown_vld );
     led <= digit & '0' & locked & alarm & opened;
 
     -- the alarm: blank; the seconds left of a lock-out on the right digit (F: blank); else the digits typed
@@ -128,11 +126,11 @@ begin
         port map ( clk => clk, digits => digits, points => "0000",
                    seg => seg, dp => dp, an => an );
 
-    -- the penalty and the digits shown, kept when their calls are done
+    -- the penalty, registered, and the digits shown, kept when a call changes them
     process (clk)
     begin
         if rising_edge(clk) then
-            if secs_done = '1' then secs <= secs_now; end if;
+            secs <= secs_now;
             if rst = '1' then shown <= x"FFFF"; elsif shown_vld = '1' then shown <= shown_now; end if;
         end if;
     end process;

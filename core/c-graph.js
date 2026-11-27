@@ -105,6 +105,8 @@ export class Graph {
       if (n.op === 'slice') return n.hi + 1;
       if (n.op === 'ext') return Math.min(n.w, a.w);
       if ((n.op === 'shl' && k === 1) || (n.op === 'mux' && k === 0)) return a.w;
+      // (a shift left by a constant: its operand's top bits shifted out, never read, XST's Xst:646 on them, #5841)
+      if (n.op === 'shl' && k === 0 && this.nodes[n.args[1]].op === 'const') return Math.max(1, n.w - Number(this.nodes[n.args[1]].k));
       return ['add', 'sub', 'and', 'or', 'xor', 'not', 'neg', 'shl', 'mux'].includes(n.op) ? n.w : a.w;
     };
     for (const n of [...order].reverse()) {
@@ -119,7 +121,8 @@ export class Graph {
       if (!['add', 'sub', 'and', 'or', 'xor', 'not', 'neg', 'shl', 'mux'].includes(n.op)) continue;
       n.args = n.args.map((id, k) => {
         const a = this.nodes[id];
-        if ((n.op === 'shl' && k === 1) || (n.op === 'mux' && k === 0) || a.w === n.w) return id;
+        // (a shift's operand narrower than it: widened by the shift itself, not by a signal of its own, #5841)
+        if ((n.op === 'shl' && k === 1) || (n.op === 'mux' && k === 0) || a.w === n.w || (n.op === 'shl' && a.w < n.w)) return id;
         // (new nodes, not hash-consed: the keys of the nodes narrowed are their old widths')
         const id2 = this.nodes.length;
         this.nodes.push(a.op === 'const' ? { id: id2, op: 'const', args: [], w: n.w, s: a.s, k: wrap(a.k, { w: n.w, s: a.s }) } : { id: id2, op: 'ext', args: [id], w: n.w, s: a.s });
