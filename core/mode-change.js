@@ -18,6 +18,7 @@ import { resolveBoard } from './devices.js';
 import { VIEW_RE } from './view-hdl.js';
 import { SYSTEMS_OFF } from './build-channel.js';
 import { mcuBoard, writeSystem as systemText } from './system-doc.js';
+import { SHIELD_ID, shieldable } from './processor-shield.js';
 
 const RANK = Object.fromEntries(MODES.map((m, i) => [m.id, i]));
 /** Whether going from the mode `from` to `to` goes down (a warning: something is lost). */
@@ -92,7 +93,9 @@ function fromSystem(pj, files, texts, keep) {
   if (keep && !kept) return { error: `the System has no node '${keep}' (its nodes: ${nodes.map(n => n.id).join(', ') || 'none'})` };
   if (!kept) return { error: `the System of '${pj.name}' has no FPGA nor design node to keep: its nodes are ${nodes.map(n => `${n.id} (${n.kind})`).join(', ') || 'none'}` };
   if (!['fpga', 'design', 'mcu'].includes(kept.kind)) return { error: `${kept.id} is a ${kept.kind} node: only an FPGA, a design or a microcontroller node can be kept` };
-  const others = nodes.filter(n => n !== kept);
+  // (a microcontroller kept with its shield, #5898: core/processor-shield.js, its circuit node `shield`)
+  const shield = kept.kind === 'mcu' && shieldable(kept.board) ? nodes.find(n => n.kind === 'circuit' && n.id === SHIELD_ID) ?? null : null;
+  const others = nodes.filter(n => n !== kept && n !== shield);
   const theirs = p => others.some(n => relInNode(p, n.id) != null);
   const out = { ...structuredClone(pj), files: (pj.files || []).filter(f => !theirs(f.path)), top: kept.module || '' };
   delete out.fpga;
@@ -105,9 +108,9 @@ function fromSystem(pj, files, texts, keep) {
   ];
   // (a microcontroller kept: a processor board's project, #5756: its System that one node, rewritten; its board named)
   if (kept.kind === 'mcu') {
-    const one = { ...r.model, nodes: [{ ...kept, x: 0, y: 0, interfaces: kept.interfaces }], links: [] };
+    const one = { ...r.model, nodes: [{ ...kept, x: 0, y: 0, interfaces: kept.interfaces }, ...(shield ? [{ ...shield, x: 320, y: 0, interfaces: [] }] : [])], links: [] };
     return { project: { ...out, board: kept.board, top: '' }, kept: kept.id, write: { path: r.system, text: systemText(one) },
-      lost: lost.map(l => l.replace(/^its System document (\S+) \(it stays in the folder, out of the flow\)$/, 'its System document $1 rewritten with the node alone')) };
+      lost: lost.map(l => l.replace(/^its System document (\S+) \(it stays in the folder, out of the flow\)$/, `its System document $1 rewritten with the node alone${shield ? ' and its shield' : ''}`)) };
   }
   if (kept.kind === 'design') return { project: { ...asDesignProject(withProfile(out, 'logic')), top: kept.module || '' }, kept: kept.id, lost };
   const b = kept.board ? resolveBoard(kept.board, { variant: kept.variant }) : null;

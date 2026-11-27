@@ -80,7 +80,7 @@ async function readSystemFile(name, file) {
 
 const SYS_FILE = STR('The System document (.sys.json).');
 const EDIT = { type: 'object', properties: {
-  action: { type: 'string', enum: EDIT_ACTIONS },
+  action: { type: 'string', enum: [...EDIT_ACTIONS, 'add_shield'] },
   node: { type: 'string' }, interface: { type: 'string' }, link: { type: 'string' },
   fields: { type: 'object', description: 'kind id board module variant pins firmware runtime circuit spiHz (a circuit\'s SPI clock) ps (a Zynq\'s PS program <id>/ps/*.c, made if new) lang usb x y; name, its kind\'s fields; a b (node.interface)' },
 }, required: ['action'], additionalProperties: false };
@@ -88,7 +88,7 @@ const EDIT = { type: 'object', properties: {
 export const SYSTEM_TOOLS = [
   {
     name: 'edit_system', title: 'Edit a System',
-    description: 'Edit a System project\'s System in order (one refused: none): add_, change_, remove_ a node (fpga, mcu, terminal, circuit, broker: those its profile allows), interface (uart, gpio, spi, i2c), link; checked. Files in <id>/.',
+    description: 'Edit a System project\'s System in order (one refused: none): add_, change_, remove_ a node (fpga, mcu, terminal, circuit, broker: those its profile allows), interface (uart, gpio, spi, i2c), link; checked. Files in <id>/. add_shield (alone): a processor board\'s Board project\'s shield, a circuit around its board.',
     inputSchema: { type: 'object', properties: { project: PROJECT, file: SYS_FILE, edits: { type: 'array', maxItems: 100, items: EDIT },
       delete_folders: { type: 'boolean' } }, required: ['project', 'file', 'edits'], additionalProperties: false },
     annotations: { readOnlyHint: false, destructiveHint: true, idempotentHint: false },
@@ -97,6 +97,14 @@ export const SYSTEM_TOOLS = [
       const profile = systemRuleProfile(await readProject(name));   // (a node kind its profile does not allow refused, #5910)
       const before = system, renames = [];
       if (!Array.isArray(edits) || !edits.length) throw toolError('edits: a list of { action, … }');
+      // (a processor board's shield, #5898: its circuit written, the System's circuit node added; core/processor-shield.js)
+      if (edits.some(e => e?.action === 'add_shield')) {
+        if (edits.length > 1) throw toolError('add_shield: an edit alone (nothing written)');
+        const said = await (await import('./mcp-processor.js')).addShieldTo(name, file);
+        const { lines, errors, warnings } = await checkSystemFile(name, file, await P.readFile(name, file));
+        return { text: [said, ...lines].join('\n'), data: { project: name, file, edits: ['add_shield shield'], ok: !errors.length, errors, warnings }, isError: false,
+          untrusted: 'the System\'s names and its problems, which quote them' };
+      }
       const said = [];
       for (const [k, e] of edits.entries()) {
         const r = editSystem(system, e || {}, { profile });

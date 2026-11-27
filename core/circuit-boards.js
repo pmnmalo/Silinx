@@ -22,6 +22,9 @@ export const BOARD_ART = {
   'arduino-uno': { w: 486, h: 378, pitch: 18, pin1: [151.2, 18] },     // (2.7 x 2.1 inch; SCL 0.84 inch from its left edge)
   'arduino-nano': { w: 415.2, h: 175.2, pitch: 24, pin1: [39.6, 159.6] },   // (1.73 x 0.73 inch)
   'esp32-devkitc': { w: 514, h: 264, pitch: 24, pin1: [41, 252] },       // (54.4 x 27.9 mm; its headers 1 inch apart, #5495)
+  // (51 x 21 mm, #5898: its 20 pins a side 0.1 inch apart, 1.37 mm from its ends, its rows 0.7 inch apart)
+  pico: { w: 482, h: 198, pitch: 24, pin1: [13, 183] },
+  'pico-w': { w: 482, h: 198, pitch: 24, pin1: [13, 183] },
   basys2: { w: 840, h: 556, pitch: 19.4, pin1: [113, 48] },
   nexys2: { w: 860, h: 720, pitch: 15.5, pin1: [299.5, 49.5] },
 };
@@ -68,6 +71,18 @@ function esp32() {
   return { type: 'esp32-devkitc', title: 'ESP32 DevKitC', kind: 'board', board: b.id, vio: b.vio, prefix: 'E', size: artSize('esp32-devkitc'),
     pins, bridges: power(pins) };
 }
+// a Raspberry Pi Pico (or Pico W, #5898), seen from above, its micro-USB socket on the left: its pins 1–20 (GP0, GP1, GND,
+// GP2…GP15) along its bottom edge, 21–40 (GP16…GP22, RUN, GP26…GP28, ADC_VREF, 3V3, 3V3_EN, GND, VSYS, VBUS) back along its
+// top edge, 0.7 inch above (it straddles a breadboard's channel); VBUS its USB's 5 V, RUN, ADC_VREF, 3V3_EN and VSYS not
+// simulated
+const PICO_PINS = ['GP0', 'GP1', 'GND', 'GP2', 'GP3', 'GP4', 'GP5', 'GND', 'GP6', 'GP7', 'GP8', 'GP9', 'GND', 'GP10', 'GP11', 'GP12', 'GP13', 'GND', 'GP14', 'GP15',
+  'GP16', 'GP17', 'GND', 'GP18', 'GP19', 'GP20', 'GP21', 'GND', 'GP22', 'RUN', 'GP26', 'GP27', 'GND', 'GP28', 'ADC_VREF', '3V3', '3V3_EN', 'GND', 'VSYS', 'VBUS'];
+function pico(id) {
+  const b = mcuBoard(id), V = { volts: b.vio };
+  const pins = PICO_PINS.map((s, i) => (s === 'VBUS' ? pin(i + 1, s, 'vcc', 39 - i, -7, { supply: true, volts: 5 })
+    : pin(i + 1, s, ...mcuPin(b, s), i < 20 ? i : 39 - i, i < 20 ? 0 : -7, mcuMore(b, s, V))));
+  return { type: id, title: b.name, kind: 'board', board: b.id, vio: b.vio, prefix: 'RP', dip: 40, size: artSize(id), pins, bridges: power(pins) };
+}
 // a microcontroller's pin: its direction (a board's pin; a supply's terminal; one not simulated) and what it is
 function mcuPin(b, name) {
   if (name === '5V' || name === '3V3') return ['vcc'];
@@ -107,5 +122,5 @@ function fpgaBoard(f) {
     pins, bridges: power(pins) };
 }
 
-/** The boards as parts: the Arduinos, the ESP32, then the FPGA boards. */
-export const BOARD_PARTS = [uno(), nano(), esp32(), ...FPGA_BOARDS.map(fpgaBoard)];
+/** The boards as parts: the Arduinos, the ESP32, the Picos (#5898), then the FPGA boards. */
+export const BOARD_PARTS = [uno(), nano(), esp32(), pico('pico'), pico('pico-w'), ...FPGA_BOARDS.map(fpgaBoard)];

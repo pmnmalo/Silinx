@@ -28,7 +28,10 @@ Modo…** (Project ▸ Change Mode…).
   campo da FPGA, e o projeto começa com um firmware que faz piscar o LED da placa (um programa em assembly para um Arduino, um em MicroPython ou CircuitPython
   para um Pico, em MicroPython para um ESP32; o PIC24 começa sem nenhum: o seu `.hex` é do MPLAB X). Selecione a linha
   da placa no painel Design para o seu **Emular Nó** (Emulate Node), **Simular Nó** (Simulate Node) e **Programar Nó**
-  (Program Node).
+  (Program Node). Um Arduino, um Pico ou um ESP32 não tem botões, interruptores nem mostrador seus: o **Adicionar Shield**
+  (Add Shield) da sua linha põe um circuito à sua volta (`shield/shield.circ.json`: uma placa de ensaio, a sua
+  alimentação e a placa), onde os seus botões, interruptores, mostradores de 7 segmentos, LCD e LEDs se ligam aos seus
+  pinos; o Emular Nó e o Simular Nó da sua linha correm então a placa com o seu shield.
 - **Sistema**: um Sistema vazio, ou um exemplo de Sistema (uart-avr, spi-avr, i2c-avr, regs-avr, uart-pic24, adc-pmod,
   uart-pico).
 

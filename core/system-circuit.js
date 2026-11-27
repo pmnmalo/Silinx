@@ -7,6 +7,7 @@
 // for the System's check (core/system-check-circuit.js) and its plan (core/system-build.js). Isomorphic module.
 import { partDef } from './circuit-parts.js';
 import { circuitNets } from './circuit-net.js';
+import { mcuBoard } from './system-doc.js';
 
 const lc = (s) => String(s).toLowerCase();
 const portBase = (name) => { const m = /^(.+?)<(\d+)>$/.exec(name); return m ? { base: m[1], bit: Number(m[2]) } : { base: name, bit: null }; };
@@ -30,7 +31,8 @@ export function circuitNodePins(sys, n, m, { ports = null } = {}) {
     if (d?.kind !== 'board') continue;
     const id = boardNodeId(p), T = sys.nodes.find((x) => x.id === id);
     if (!T) { err(`${n.id}: its circuit's ${p.id} (${d.title}) names no node: its label, ${id}, is to be a node's id`); continue; }
-    const mcu = d.board.startsWith('arduino');
+    // (a microcontroller's board: an Arduino's, an ESP32's, a Pico's, #5898)
+    const mcu = !!mcuBoard(d.board);
     if (mcu ? T.kind !== 'mcu' || T.board !== d.board : T.kind !== 'fpga' || T.board !== d.board) {
       err(`${n.id}: its circuit's ${p.id} is ${d.title === 'Arduino Uno' || d.title === 'Arduino Nano' ? 'an' : 'a'} ${d.title}, the node ${T.id} ${T.kind === 'mcu' || T.kind === 'fpga' ? `is on ${T.board ?? 'no board'}` : `is a ${T.kind} node`}`);
       continue;

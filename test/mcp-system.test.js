@@ -127,7 +127,7 @@ test('#4700 edit_system: edits applied in order, written, checked (its warnings)
   assert.deepEqual([bad.isError, bad.text], [true, "edit_system: edit 1 (add_link): no node 'nope' in the System (nothing written)"]);
   assert.deepEqual((await ok('check_system', { project: 'u', file: 'e.sys.json' })).data.system.links.length, 1);
   const none = await call('edit_system', { project: 'u', file: 'e.sys.json', edits: [{ action: 'spin' }] });
-  assert.deepEqual([none.isError, none.text], [true, 'edit_system: edits[0].action: one of add_node, change_node, remove_node, add_interface, change_interface, remove_interface, add_link, change_link, remove_link']);
+  assert.deepEqual([none.isError, none.text], [true, 'edit_system: edits[0].action: one of add_node, change_node, remove_node, add_interface, change_interface, remove_interface, add_link, change_link, remove_link, add_shield']);   // (a processor board's shield, #5898)
 });
 
 test('#5488 edit_system: a node\'s base language given when added and changed, said by check_system; one not its kind\'s refused', async () => {
