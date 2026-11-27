@@ -35,7 +35,10 @@ export function templateLabels(src) {
 const SAMPLES = ['2', 'x', "'x'", 'src/a.vhd', 'a', 'S0', '2 ns'];
 // (a sample in each ${…}, or a conditional's k-th string)
 const filled = (tpl, s, k) => tpl.replace(SUB, (m, e) => { const lits = [...e.matchAll(/'([^']*)'/g)].map((x) => x[1]); return lits.length && /\?/.test(e) ? lits[k % lits.length] : s; });
-const sampled = (tpl) => SAMPLES.some((s) => [0, 1].some((k) => { const x = filled(tpl, s, k); return t(x) !== x; }));
+// (a line of the console as it draws it, web/js/console.js appText: its ERROR: / WARNING: / INFO: tag kept, the rest translated, #5828)
+const TAGGED = /^(\s*(?:ERROR|WARNING|INFO)\s*:\s*)(.*)$/s;
+const tr = (x) => { const m = TAGGED.exec(x); return m ? m[1] + t(m[2]) : t(x); };
+const sampled = (tpl) => SAMPLES.some((s) => [0, 1].some((k) => { const x = filled(tpl, s, k); return tr(x) !== x; }));
 
 // a template whose samples do not fit its translation (a closed set of values, a name's form): a real text of it
 const EXAMPLES = {  '${doc.path || doc.title} could not be saved. Close it and lose the unsaved changes?': 'src/top.vhd could not be saved. Close it and lose the unsaved changes?',
@@ -129,6 +132,8 @@ const EXAMPLES = {  '${doc.path || doc.title} could not be saved. Close it and l
   'Source Properties - ${shown}': 'Source Properties - src/top.vhd',
   'This site now serves ${PRODUCT} ${servedLabel(served)}.': 'This site now serves Silinx 15.30.0.',
   'Reachability graph${states > 200 ? \' (the first 200 markings)\' : \'\'}': 'Reachability graph (the first 200 markings)',
+  // (a console line, tagged: #4998's warning, the name refused as core/schname.js says it)
+  'WARNING: the I/O marker ${p.name} is not renamed: ${taken}': "WARNING: the I/O marker L_1 is not renamed: 'L' is already the name of another I/O marker: an I/O marker is a port of the module, drawn once; to use L in other places, give those wires the net name L. Choose another name.",
   'Time offsets are relative to the current simulation time (${fmtTime(sim.now)}); default unit is ns.': 'Time offsets are relative to the current simulation time (1.5 us); default unit is ns.',
 };
 // the same in both languages (a name, a number, a unit)
@@ -143,6 +148,9 @@ test('#4748 the scan reads the template literals of the label forms', () => {
   assert.deepEqual(templateLabels(src).sort(), ['${f} is too large', 'Undo ${x}', '${n} boxes selected', '${m.name} created', 'cannot open ${path}: ${e.message}'].sort());
   // (a sample, or a conditional's own strings)
   assert.equal(filled("${flash ? 'Programming the SPI flash' : 'Programming the FPGA'} failed: ${e}", 'x', 1), 'Programming the FPGA failed: x');
+  // (a tagged console line: its tag kept, the rest translated, as the console draws it, #5828)
+  assert.equal(tr('WARNING: Type a name.'), 'WARNING: Escreva um nome.');
+  assert.equal(tr('ERROR: Type a name.'), 'ERROR: Escreva um nome.');
 });
 
 test('#4748 every template literal label of web/js has a Portuguese translation (its real text checked when listed)', () => {
@@ -151,7 +159,7 @@ test('#4748 every template literal label of web/js has a Portuguese translation 
     seen.add(tpl);
     if (SAME.has(tpl)) continue;
     const ex = EXAMPLES[tpl];
-    if (ex !== undefined ? t(ex) === ex : !sampled(tpl)) missing.push(`${f}: ${tpl}`);
+    if (ex !== undefined ? tr(ex) === ex : !sampled(tpl)) missing.push(`${f}: ${tpl}`);
   }
   assert.ok(seen.size > 150, `${seen.size} templates`);
   assert.deepEqual(missing, []);

@@ -26,6 +26,16 @@ test('vhdl indent: the examples\' VHDL files, each line as indented by hand (but
     });
   }
   assert.deepEqual(off, [
+    // (#5829: a selected assignment's choices continued, aligned by hand under the first)
+    'examples/adc-pmod/fpga/adc_display.vhd:65: 4 13',
+    'examples/adc-pmod/fpga/adc_display.vhd:66: 4 13',
+    'examples/adc-pmod/fpga/adc_display.vhd:67: 4 13',
+    'examples/adc-pmod/fpga/adc_display.vhd:70: 4 10',
+    'examples/adc-pmod/fpga/adc_display.vhd:71: 4 10',
+    'examples/adc-pmod/fpga/adc_display.vhd:72: 4 10',
+    'examples/adc-pmod/fpga/adc_display.vhd:76: 4 11',
+    'examples/adc-pmod/fpga/adc_display.vhd:77: 4 11',
+    'examples/adc-pmod/fpga/adc_display.vhd:78: 4 11',
     'examples/breadboard/sim/tb_breadboard.vhd:46: 15 17',
     'examples/gates/sim/tb_gates.vhd:39: 15 17',
     'examples/gates/sim/tb_gates.vhd:44: 15 17',
