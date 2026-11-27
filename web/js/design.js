@@ -419,6 +419,7 @@ function moduleContextMenu(e, mod, file) {
     // (its HDL or C in the user's editor, #4017: not a drawing's, which the drawing makes)
     designState.hdlToSch?.[file] || designOnly() ? null : editorItem(file),
     { label: 'Rename…', action: () => renameDialog(file, mod) },
+    { label: 'Duplicate…', action: () => import('./design-duplicate.js').then(m => m.duplicateDialog(file)) },   // (a copy of its module, #5862)
     { label: checkLabel(), action: () => checkSyntax(mod, isSimView) },
     designOnly() ? null : { label: 'View RTL Schematic', action: () => openSchematic(mod) },   // (none in a design project, #3891)
     // (its symbol in the schematics, the Symbol Editor's: its pins' order and sides, #3755)
@@ -466,6 +467,7 @@ export function fileContextMenu(e, file) {
     { label: 'Open', action: () => openFile(file) },
     textFile(file) ? editorItem(file) : null,   // (#4017)
     { label: 'Rename…', action: () => renameDialog(file) },
+    { label: 'Duplicate…', action: () => import('./design-duplicate.js').then(m => m.duplicateDialog(file)) },   // (#5862)
     // (a System of an FPGA project: the project made a System project, it its top, #5402)
     isSystemFile(file) && !systemProject() && systemsOn() ? { label: 'Set as Top Module', action: async () => (await import('./system-top-ui.js')).makeSystemTop(file) } : null,
     /\.(vhdl?|v|sv|c)$/i.test(file) && !designOnly() ? { label: 'Check Syntax', action: () => checkFileSyntax(file) } : null,   // (.c: Silinx HLS, #1524)

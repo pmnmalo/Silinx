@@ -1,7 +1,7 @@
 // UI: several sources selected in the Design pane (#5720), as ISE's and a file manager's trees: Ctrl+click (Cmd+click on
 // a Mac) adds a row or takes it out, Shift+click selects a range, a plain click or Esc goes back to one row; the rows
 // marked and aria-selected, the tree aria-multiselectable, the Processes pane following the row clicked last. The menu
-// of a selection: Open and Remove from Project for all, the commands of one source disabled; Delete removes the
+// of a selection: Open, Remove from Project and Duplicate (#5862) for all, the commands of one source disabled; Delete removes the
 // selection. Remove from Project's question names the sources and offers to keep the files in the project folder (the
 // default) or to delete them too (into the workspace's .trash): a drawing's HDL file goes with it, the console says what
 // was removed and what was deleted, Undo brings it all back (the deleted files written again). In Portuguese too.
@@ -112,7 +112,7 @@ uiTest('#5720 Remove from Project of a selection (its menu): the files kept in t
   await rowClick(page, 'st', { modifiers: CTRL });
   // the selection's menu: the commands of several sources; those of one disabled
   await rowClick(page, 'c', { button: 'right' });
-  assert.deepEqual(await menuItems(page), ['Open', 'Remove from Project', 'Rename… (disabled)', 'Set as Top Module (disabled)', 'Source Properties… (disabled)']);
+  assert.deepEqual(await menuItems(page), ['Open', 'Remove from Project', 'Duplicate', 'Rename… (disabled)', 'Set as Top Module (disabled)', 'Source Properties… (disabled)']);
   await page.click('body > .menu-popup .mi', { text: 'Remove from Project' });
   await page.waitDialog('Remove Source');
   assert.equal(await question(page), "Remove these 3 sources from the project?\n'src/b.vhd'\n'src/c.vhd'\n'src/st.fsm.json' and its HDL file 'src/st.vhd'\n(The files stay in the project folder: Undo or Add to Project in the Files view brings them back.)\n\nRemove and Delete Files moves them to the workspace's .trash folder.");
@@ -207,7 +207,7 @@ uiTest('#5720 in Portuguese: a selection\'s menu, the question and its buttons, 
     await rowClick(page, 'a');
     await rowClick(page, 'c', { modifiers: SHIFT });
     await rowClick(page, 'b', { button: 'right' });
-    assert.deepEqual(await menuItems(page), ['Abrir', 'Remover do Projeto', 'Mudar o Nome… (disabled)', 'Definir como Módulo de Topo (disabled)', 'Propriedades da Fonte… (disabled)']);
+    assert.deepEqual(await menuItems(page), ['Abrir', 'Remover do Projeto', 'Duplicar', 'Mudar o Nome… (disabled)', 'Definir como Módulo de Topo (disabled)', 'Propriedades da Fonte… (disabled)']);
     await page.click('body > .menu-popup .mi', { text: 'Remover do Projeto' });
     await page.waitDialog('Remover Fonte');
     assert.equal(await question(page), "Remover estas 3 fontes do projeto?\n'src/a.vhd'\n'src/b.vhd'\n'src/c.vhd'\n(Os ficheiros ficam na pasta do projeto: Anular ou Acrescentar ao Projeto na vista Ficheiros repõe-nos.)\n\nRemover e Apagar Ficheiros move-os para a pasta .trash da área de trabalho.");

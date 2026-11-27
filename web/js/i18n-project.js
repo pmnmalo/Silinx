@@ -13,6 +13,10 @@ const renamed = (p) => p.replace(/^module '(.+)' renamed to '(.+)' \((\d+) file\
 
 export const PROJECT_PT = {
   'Rename: nothing to rename.': 'Mudar o Nome: nada a mudar.',
+  // Duplicate… (#5862, web/js/design-duplicate.js, core/duplicate-source.js)
+  'Duplicate…': 'Duplicar…', 'The copy is a module of its own, with this name, added to the project.': 'A cópia é um módulo próprio, com este nome, acrescentado ao projeto.',
+  'The copy is added to the project.': 'A cópia é acrescentada ao projeto.', 'Choose a file to duplicate.': 'Escolha um ficheiro a duplicar.',
+  'build/ is written by Silinx itself.': 'build/ é escrita pelo próprio Silinx.',
 };
 
 export const PROJECT_PT_PATTERNS = [
@@ -51,6 +55,16 @@ export const PROJECT_PT_PATTERNS = [
   [/^(Undo|Redo): (.+)\.$/, (m, w, a) => `${w === 'Undo' ? 'Anular' : 'Refazer'}: ${t(a)}.`],
   // Rename… (web/js/rename.js, core/rename-module.js)
   [/^Rename: (.+)\.$/, (m, parts) => `Mudar o Nome: ${parts.split('; ').map(renamed).join('; ')}.`],
+  // Duplicate… (#5862): the copy, its modules, the files with it; its refusals
+  [/^Duplicate: (.+)\.$/, (m, p) => `Duplicar: ${p.replace(/module '(.+?)' copied as '(.+?)'/g, "módulo '$1' copiado como '$2'").replace(/ \((.+) with it\)$/, ' (com $1)')}.`],
+  [/^(\S+) is written by Silinx itself: it is not duplicated\.$/, '$1 é escrito pelo próprio Silinx: não é duplicado.'],
+  [/^(\S+) is not a text file: it is not duplicated\.$/, '$1 não é um ficheiro de texto: não é duplicado.'],
+  [/^(\S+) cannot be read: it is not duplicated\.$/, '$1 não pode ser lido: não é duplicado.'],
+  [/^no file '(.+)' in the project$/, "nenhum ficheiro '$1' no projeto"],
+  [/^(\S+) declares the package '(.+)': a copy would declare it twice\.$/, "$1 declara o pacote '$2': uma cópia declará-lo-ia duas vezes."],
+  [/^(\S+) declares (several modules|no module): only its file's name is chosen\.$/, (m, f, w) => `${f} declara ${w === 'no module' ? 'nenhum módulo' : 'vários módulos'}: só se escolhe o nome do seu ficheiro.`],
+  [/^The copy keeps the file's kind: its name ends in (\S+)\.$/, 'A cópia mantém o tipo do ficheiro: o seu nome termina em $1.'],
+  [/^no free name for a copy of (\S+)$/, 'nenhum nome livre para uma cópia de $1'],
   // Export Project (web/js/menus.js)
   [/^Exported (\S+): the whole Silinx project \(silinx\.json \+ all project files, (\d+) KB\)\.$/, 'Exportado $1: o projeto Silinx inteiro (silinx.json + todos os ficheiros do projeto, $2 KB).'],
   [/^Exported (\S+): Xilinx ISE project (\S+) \+ its sources \((\d+) KB\)\.$/, 'Exportado $1: o projeto Xilinx ISE $2 + as suas fontes ($3 KB).'],
