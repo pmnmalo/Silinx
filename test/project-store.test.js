@@ -56,7 +56,7 @@ test('#3780 a design and simulation project: the server\'s (silinx.json text, sr
   assert.equal(server['silinx.json'], projectJsonText('Drawn', pj));
   assert.deepEqual([pj.kind, pj.board, pj.constraints], ['design', null, null]);
   // (the same refusals, the same messages)
-  for (const [args, message] of [[{ name: 'D2', kind: 'other' }, 'unknown project kind \'other\''], [{ name: 'D3', kind: 'design', template: 'blinky' }, 'a design and simulation project starts empty or from a Circuit example (gates, breadboard)']]) {
+  for (const [args, message] of [[{ name: 'D2', kind: 'other' }, 'unknown project kind \'other\''], [{ name: 'D3', kind: 'design', template: 'blinky' }, 'a design and simulation project starts empty or from a Circuit example (gates, breadboard, traffic-circuit, blinky-circuit, stopwatch-circuit, lock-circuit)']]) {
     await assert.rejects(ops.create(args), { message });
     await assert.rejects(P.createProject(args), { message });
   }
@@ -98,7 +98,7 @@ test('folder: a project from each example is the server\'s, file for file', asyn
     await P.createProject({ name, template: t });
     assert.deepEqual(under(await dump(root), name), sorted(diskTree(P.projectDir(name))), t);
   }
-  assert.deepEqual(Object.keys(EXAMPLES).sort(), ['blinky', 'breadboard', 'clock', 'gates', 'i2c-avr', 'isqrt', 'lock', 'micro80', 'pong', 'regs-avr', 'spi-avr', 'stopwatch', 'traffic', 'uart', 'uart-avr', 'uart-pic24', 'vga', 'adc-pmod', 'uart-pico', 'uart-esp32'].sort());
+  assert.deepEqual(Object.keys(EXAMPLES).sort(), ['blinky', 'breadboard', 'clock', 'gates', 'i2c-avr', 'isqrt', 'lock', 'micro80', 'pong', 'regs-avr', 'spi-avr', 'stopwatch', 'traffic', 'uart', 'uart-avr', 'uart-pic24', 'vga', 'adc-pmod', 'uart-pico', 'uart-esp32', 'traffic-circuit', 'blinky-circuit', 'stopwatch-circuit', 'lock-circuit'].sort());   // (the Circuit versions, #5779)
 });
 
 // (#3710) an example made for another board (the Mimas V2: 100 MHz, its buttons and switches active low): its top's
@@ -106,7 +106,8 @@ test('folder: a project from each example is the server\'s, file for file', asyn
 test('folder: a project from each example for the Mimas V2: its top\'s generics the board\'s, as the server writes them', async () => {
   const { root, ops } = folder();
   // (a System example has no board: refused with one, test/system-example.test.js, #4702)
-  for (const t of Object.keys(EXAMPLES).filter(t => EXAMPLES[t].json.kind !== 'system')) {
+  // (nor a Circuit version: no board, #5757)
+  for (const t of Object.keys(EXAMPLES).filter(t => !['system', 'design'].includes(EXAMPLES[t].json.kind))) {
     const name = `Mimas_${t}`;
     await ops.create({ name, template: t, board: 'mimas-v2', device: { family: 'spartan6', part: 'xc6slx9', package: 'csg324', speed: '-2' } });
     await P.createProject({ name, template: t, board: 'mimas-v2', device: { family: 'spartan6', part: 'xc6slx9', package: 'csg324', speed: '-2' } });

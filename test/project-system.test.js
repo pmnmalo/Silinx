@@ -64,7 +64,7 @@ test('#5416 phase 3: the corpus has its kinds of projects', () => {
 test('#5416 phase 3: every project of the corpus its System; one node as silinx.json says; its check; nothing written', () => {
   const dirs = [...new Set(DESCRIPTIONS.map(f => path.join(ROOT, path.dirname(f))))];
   const before = snapshot(dirs);
-  let implicit = 0, systems = 0;
+  let implicit = 0, systems = 0, designs = 0;
   for (const rel of DESCRIPTIONS) {
     const { pj, files, texts } = project(rel);
     const r = projectSystem(pj, { files, texts });
@@ -78,6 +78,13 @@ test('#5416 phase 3: every project of the corpus its System; one node as silinx.
       const [n] = r.model.nodes;
       // (every board of the corpus is one of the board lists': its variant from the device, never in its id, #5439)
       if (pj.board) assert.ok(resolveBoard(pj.board, { part: pj.device?.part }), `${rel}: no FPGA board '${pj.board}'`);
+      if (pj.kind === 'design') {
+        // (a Circuit example's: its design node, no board, device nor constraints, alone with no warning, #5779)
+        designs++;
+        assert.deepEqual([n.id, n.kind, n.implicit, n.module, n.board, n.device, n.constraints], ['design', 'design', true, pj.top, null, null, null], rel);
+        assert.deepEqual(checkSystem(r.model).map(said), [], rel);
+        continue;
+      }
       assert.deepEqual([n.id, n.kind, n.implicit, n.module, n.board, n.device, n.constraints],
         ['fpga', 'fpga', true, pj.top || null, pj.board ?? null, pj.device ?? null, pj.constraints ?? null], rel);
       const variant = pj.board ? resolveBoard(pj.board, { part: pj.device?.part })?.variant?.id ?? null : null;
@@ -99,6 +106,7 @@ test('#5416 phase 3: every project of the corpus its System; one node as silinx.
   }
   assert.equal(systems, 8);   // (the System examples: uart-avr, spi-avr, i2c-avr, regs-avr, uart-pic24, adc-pmod, uart-pico, uart-esp32)
   assert.equal(implicit, DESCRIPTIONS.length - 8);
+  assert.equal(designs, 4);   // (the Circuit examples: traffic-circuit, blinky-circuit, stopwatch-circuit, lock-circuit, #5779)
   assert.deepEqual(snapshot(dirs), before);
 });
 

@@ -27,7 +27,7 @@ import zlib from 'node:zlib';
 import crypto from 'node:crypto';
 import { createZip, readZip } from '../../core/zip.js';
 import { TRACKER_SOURCES, WORKERS_SOURCES } from '../../server/csp.js';
-import { EXAMPLE_ORDER } from '../../core/examples.js';
+import { EXAMPLE_ORDER, CIRCUIT_ORDER } from '../../core/examples.js';
 import { SYSTEM_EXAMPLES } from '../../core/project-kind.js';
 import { systemPlan } from '../../core/system-build.js';
 import { normalizeSystem } from '../../core/system-doc.js';
@@ -146,7 +146,7 @@ uiTest('standalone edition (dist build): loads from file://, creates a project f
   assert.match(await page.eval(() => document.querySelector('.dlg-overlay .wiz-main .hint:last-child').textContent), /^Projects are kept in this browser's storage \(/);
   // the templates: the examples, embedded too, and nothing else (not the test designs, #5108); the System one last
   // (#4702)
-  assert.deepEqual(await page.eval(() => [...document.querySelector('.dlg-overlay .wiz-main select').options].map((o) => o.value)), ['empty', ...EXAMPLE_ORDER, ...SYSTEM_EXAMPLES]);
+  assert.deepEqual(await page.eval(() => [...document.querySelector('.dlg-overlay .wiz-main select').options].map((o) => o.value)), ['empty', ...EXAMPLE_ORDER, ...CIRCUIT_ORDER, ...SYSTEM_EXAMPLES]);
   await page.fill('.dlg-overlay .wiz-main input[type=text]', 'Solo');
   await page.fill('.dlg-overlay .wiz-main select', 'blinky', { index: 0 });
   await page.dialogButton('Next >');

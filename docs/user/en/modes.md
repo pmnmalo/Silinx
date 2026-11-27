@@ -14,8 +14,12 @@ first, with three cards, and a project can move to another mode later with **Pro
 ## Starting a project
 
 - **Circuit**: an empty project (its top a drawing: a schematic, a state machine, a truth table, a circuit…), or one of
-  the Circuit examples, **gates** (logic gates drawn as a schematic) and **breadboard** (74LS chips wired on a
-  breadboard), made with no board.
+  the Circuit examples, made with no board: **gates** (logic gates drawn as a schematic), **breadboard** (74LS chips
+  wired on a breadboard), and the Circuit versions of four FPGA examples, drawings only, each with a test bench that
+  checks it: **traffic-circuit** (the crossing's state diagram and lamps' truth table, its timer a counter of the
+  palette), **blinky-circuit** (a knight rider: a counter, XOR gates and a decoder), **stopwatch-circuit** (two decade
+  counters, each a counter and a comparator, started and stopped by a T flip-flop) and **lock-circuit** (the
+  combination lock: a state diagram, a truth table, an ASM chart, a Petri net and a 74LS175 on a breadboard).
 - **Board**: its card asks the **Board Type**, FPGA, Arduino, PIC24, Raspberry Pi Pico or ESP32, and the settings page
   lists that type's boards. An FPGA board makes the FPGA project of every release before (start it empty or from any
   FPGA example, blinky, pong, uart…). A processor board needs no FPGA field, and the project starts with a firmware that

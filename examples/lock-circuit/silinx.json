@@ -1,0 +1,63 @@
+{
+  "name": "lock-circuit",
+  "version": 1,
+  "device": {
+    "family": "spartan3e",
+    "part": "xc3s250e",
+    "package": "cp132",
+    "speed": "-4"
+  },
+  "board": null,
+  "top": "safe",
+  "simTop": "tb_safe",
+  "files": [
+    {
+      "path": "src/lock.vhd",
+      "lang": "vhdl",
+      "role": "design"
+    },
+    {
+      "path": "src/digit_ok.vhd",
+      "lang": "vhdl",
+      "role": "design"
+    },
+    {
+      "path": "src/timer.vhd",
+      "lang": "vhdl",
+      "role": "design"
+    },
+    {
+      "path": "src/alarm.vhd",
+      "lang": "vhdl",
+      "role": "design"
+    },
+    {
+      "path": "src/sync.vhd",
+      "lang": "vhdl",
+      "role": "design"
+    },
+    {
+      "path": "src/control.vhd",
+      "lang": "vhdl",
+      "role": "design"
+    },
+    {
+      "path": "src/safe.vhd",
+      "lang": "vhdl",
+      "role": "design"
+    },
+    {
+      "path": "sim/tb_safe.vhd",
+      "lang": "vhdl",
+      "role": "sim"
+    }
+  ],
+  "constraints": null,
+  "stimuli": {},
+  "impl": {
+    "optMode": "Speed",
+    "optLevel": 1,
+    "startupClk": "JtagClk"
+  },
+  "kind": "design"
+}

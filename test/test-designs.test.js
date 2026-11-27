@@ -10,7 +10,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { TEST_DESIGNS, TEST_DESIGN_ORDER, orderTestDesigns } from '../core/test-designs.js';
-import { EXAMPLE_ORDER } from '../core/examples.js';
+import { EXAMPLE_ORDER, CIRCUIT_ORDER } from '../core/examples.js';
 import { SYSTEM_EXAMPLES } from '../core/project-kind.js';
 import { simulateC } from '../core/c-interp.js';
 import { cToHdl } from '../core/c-hdl.js';
@@ -36,7 +36,7 @@ test('#1746 the test designs: the folders those of core/test-designs.js, in its 
   assert.deepEqual(orderTestDesigns(P.templateNames(DIR)), TEST_DESIGN_ORDER);
   assert.equal(TEST_DESIGNS.length, 15);
   assert.deepEqual(TEST_DESIGN_ORDER.filter((n) => EXAMPLE_ORDER.includes(n)), []);
-  assert.deepEqual(P.templateNames(P.EXAMPLES_DIR).length, EXAMPLE_ORDER.length + SYSTEM_EXAMPLES.length);   // (the System ones, #4702)
+  assert.deepEqual(P.templateNames(P.EXAMPLES_DIR).length, EXAMPLE_ORDER.length + CIRCUIT_ORDER.length + SYSTEM_EXAMPLES.length);   // (the System ones, #4702; the Circuit versions, #5757)
   assert.deepEqual(orderTestDesigns(['zeta', 'sort', 'alpha', 'bus_taps']), ['bus_taps', 'sort', 'alpha', 'zeta']);
   assert.deepEqual(TEST_DESIGNS.map((d) => d.kind), [...Array(7).fill('schematic'), ...Array(3).fill('fsm'), ...Array(5).fill('c')]);
   // every name a project name the New Project wizard takes (its default name)
@@ -129,9 +129,9 @@ test('#1746 a test design for a board: its UCF written (its constraints folder m
 
 test('#5108 the MCP server as New Project: list_examples lists the examples only; new_project_from_example refuses a test design', async () => {
   const ex = await tool('list_examples', {});
-  assert.deepEqual(ex.data.examples.map((e) => e.name), [...EXAMPLE_ORDER, ...SYSTEM_EXAMPLES]);
+  assert.deepEqual(ex.data.examples.map((e) => e.name), [...EXAMPLE_ORDER, ...CIRCUIT_ORDER, ...SYSTEM_EXAMPLES]);
   assert.deepEqual(Object.keys(ex.data), ['examples']);
-  assert.deepEqual(ex.text.split('\n').map((l) => l.split(':')[0]), [...EXAMPLE_ORDER, ...SYSTEM_EXAMPLES]);
+  assert.deepEqual(ex.text.split('\n').map((l) => l.split(':')[0]), [...EXAMPLE_ORDER, ...CIRCUIT_ORDER, ...SYSTEM_EXAMPLES]);
   assert.doesNotMatch(ex.text, /Test design|vending|gcd/);
   for (const d of ['vending', 'gcd', 'full_adder']) await assert.rejects(tool('new_project_from_example', { name: 'X', example: d }), new RegExp(`^Error: unknown example '${d}' \\(list_examples\\)$`));
   await assert.rejects(tool('new_project_from_example', { name: 'X', example: '../test-designs/gcd' }), /unknown example '\.\.\/test-designs\/gcd' \(list_examples\)/);

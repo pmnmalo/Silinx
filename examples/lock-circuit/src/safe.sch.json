@@ -1,0 +1,738 @@
+{
+ "version": 7,
+ "name": "safe",
+ "lang": "vhdl",
+ "sheet": {
+  "w": 1400,
+  "h": 800
+ },
+ "symbols": [
+  {
+   "id": "S1",
+   "type": "constant",
+   "x": 420,
+   "y": 560,
+   "rot": 0,
+   "mirror": false,
+   "name": "wait",
+   "params": {
+    "value": "3",
+    "width": 4
+   }
+  },
+  {
+   "id": "S2",
+   "type": "module",
+   "x": 260,
+   "y": 40,
+   "rot": 0,
+   "mirror": false,
+   "name": "synchroniser",
+   "params": {
+    "module": "sync",
+    "generics": {},
+    "ports": [
+     {
+      "name": "clk",
+      "dir": "in",
+      "width": 1
+     },
+     {
+      "name": "d",
+      "dir": "in",
+      "width": 4
+     },
+     {
+      "name": "q",
+      "dir": "out",
+      "width": 4
+     }
+    ]
+   }
+  },
+  {
+   "id": "S3",
+   "type": "module",
+   "x": 700,
+   "y": 220,
+   "rot": 0,
+   "mirror": false,
+   "name": "controller",
+   "params": {
+    "module": "control",
+    "generics": {},
+    "ports": [
+     {
+      "name": "clk",
+      "dir": "in",
+      "width": 1
+     },
+     {
+      "name": "rst",
+      "dir": "in",
+      "width": 1
+     },
+     {
+      "name": "enter",
+      "dir": "in",
+      "width": 1
+     },
+     {
+      "name": "clear",
+      "dir": "in",
+      "width": 1
+     },
+     {
+      "name": "digit",
+      "dir": "in",
+      "width": 4
+     },
+     {
+      "name": "tick",
+      "dir": "in",
+      "width": 1
+     },
+     {
+      "name": "secs",
+      "dir": "in",
+      "width": 4
+     },
+     {
+      "name": "opened",
+      "dir": "out",
+      "width": 1
+     },
+     {
+      "name": "locked",
+      "dir": "out",
+      "width": 1
+     },
+     {
+      "name": "alarm",
+      "dir": "out",
+      "width": 1
+     },
+     {
+      "name": "fails",
+      "dir": "out",
+      "width": 2
+     },
+     {
+      "name": "left",
+      "dir": "out",
+      "width": 4
+     }
+    ]
+   }
+  }
+ ],
+ "wires": [
+  {
+   "id": "W1",
+   "points": [
+    {
+     "x": 60,
+     "y": 120
+    },
+    {
+     "x": 100,
+     "y": 120
+    }
+   ]
+  },
+  {
+   "id": "W2",
+   "points": [
+    {
+     "x": 60,
+     "y": 180
+    },
+    {
+     "x": 100,
+     "y": 180
+    }
+   ]
+  },
+  {
+   "id": "W3",
+   "points": [
+    {
+     "x": 60,
+     "y": 60
+    },
+    {
+     "x": 100,
+     "y": 60
+    }
+   ]
+  },
+  {
+   "id": "W4",
+   "points": [
+    {
+     "x": 60,
+     "y": 300
+    },
+    {
+     "x": 100,
+     "y": 300
+    }
+   ]
+  },
+  {
+   "id": "W5",
+   "points": [
+    {
+     "x": 60,
+     "y": 360
+    },
+    {
+     "x": 100,
+     "y": 360
+    }
+   ]
+  },
+  {
+   "id": "W6",
+   "points": [
+    {
+     "x": 60,
+     "y": 420
+    },
+    {
+     "x": 100,
+     "y": 420
+    }
+   ]
+  },
+  {
+   "id": "W7",
+   "points": [
+    {
+     "x": 1260,
+     "y": 260
+    },
+    {
+     "x": 1220,
+     "y": 260
+    }
+   ]
+  },
+  {
+   "id": "W8",
+   "points": [
+    {
+     "x": 1260,
+     "y": 320
+    },
+    {
+     "x": 1220,
+     "y": 320
+    }
+   ]
+  },
+  {
+   "id": "W9",
+   "points": [
+    {
+     "x": 1260,
+     "y": 380
+    },
+    {
+     "x": 1220,
+     "y": 380
+    }
+   ]
+  },
+  {
+   "id": "W10",
+   "points": [
+    {
+     "x": 1260,
+     "y": 440
+    },
+    {
+     "x": 1220,
+     "y": 440
+    }
+   ]
+  },
+  {
+   "id": "W11",
+   "points": [
+    {
+     "x": 1260,
+     "y": 500
+    },
+    {
+     "x": 1220,
+     "y": 500
+    }
+   ]
+  },
+  {
+   "id": "W12",
+   "points": [
+    {
+     "x": 460,
+     "y": 570
+    },
+    {
+     "x": 500,
+     "y": 570
+    }
+   ]
+  },
+  {
+   "id": "W13",
+   "points": [
+    {
+     "x": 260,
+     "y": 60
+    },
+    {
+     "x": 220,
+     "y": 60
+    }
+   ]
+  },
+  {
+   "id": "W14",
+   "points": [
+    {
+     "x": 260,
+     "y": 80
+    },
+    {
+     "x": 220,
+     "y": 80
+    }
+   ]
+  },
+  {
+   "id": "W15",
+   "points": [
+    {
+     "x": 380,
+     "y": 60
+    },
+    {
+     "x": 420,
+     "y": 60
+    }
+   ]
+  },
+  {
+   "id": "W16",
+   "points": [
+    {
+     "x": 700,
+     "y": 240
+    },
+    {
+     "x": 660,
+     "y": 240
+    }
+   ]
+  },
+  {
+   "id": "W17",
+   "points": [
+    {
+     "x": 700,
+     "y": 260
+    },
+    {
+     "x": 660,
+     "y": 260
+    }
+   ]
+  },
+  {
+   "id": "W18",
+   "points": [
+    {
+     "x": 700,
+     "y": 280
+    },
+    {
+     "x": 660,
+     "y": 280
+    }
+   ]
+  },
+  {
+   "id": "W19",
+   "points": [
+    {
+     "x": 700,
+     "y": 300
+    },
+    {
+     "x": 660,
+     "y": 300
+    }
+   ]
+  },
+  {
+   "id": "W20",
+   "points": [
+    {
+     "x": 700,
+     "y": 320
+    },
+    {
+     "x": 660,
+     "y": 320
+    }
+   ]
+  },
+  {
+   "id": "W21",
+   "points": [
+    {
+     "x": 700,
+     "y": 340
+    },
+    {
+     "x": 660,
+     "y": 340
+    }
+   ]
+  },
+  {
+   "id": "W22",
+   "points": [
+    {
+     "x": 700,
+     "y": 360
+    },
+    {
+     "x": 660,
+     "y": 360
+    }
+   ]
+  },
+  {
+   "id": "W23",
+   "points": [
+    {
+     "x": 840,
+     "y": 240
+    },
+    {
+     "x": 880,
+     "y": 240
+    }
+   ]
+  },
+  {
+   "id": "W24",
+   "points": [
+    {
+     "x": 840,
+     "y": 260
+    },
+    {
+     "x": 880,
+     "y": 260
+    }
+   ]
+  },
+  {
+   "id": "W25",
+   "points": [
+    {
+     "x": 840,
+     "y": 280
+    },
+    {
+     "x": 880,
+     "y": 280
+    }
+   ]
+  },
+  {
+   "id": "W26",
+   "points": [
+    {
+     "x": 840,
+     "y": 300
+    },
+    {
+     "x": 880,
+     "y": 300
+    }
+   ]
+  },
+  {
+   "id": "W27",
+   "points": [
+    {
+     "x": 840,
+     "y": 320
+    },
+    {
+     "x": 880,
+     "y": 320
+    }
+   ]
+  }
+ ],
+ "labels": [
+  {
+   "id": "L1",
+   "x": 80,
+   "y": 120,
+   "net": "clk"
+  },
+  {
+   "id": "L2",
+   "x": 80,
+   "y": 180,
+   "net": "rst"
+  },
+  {
+   "id": "L3",
+   "x": 80,
+   "y": 60,
+   "net": "sw"
+  },
+  {
+   "id": "L4",
+   "x": 80,
+   "y": 300,
+   "net": "enter"
+  },
+  {
+   "id": "L5",
+   "x": 80,
+   "y": 360,
+   "net": "clear"
+  },
+  {
+   "id": "L6",
+   "x": 80,
+   "y": 420,
+   "net": "tick"
+  },
+  {
+   "id": "L7",
+   "x": 1240,
+   "y": 260,
+   "net": "opened"
+  },
+  {
+   "id": "L8",
+   "x": 1240,
+   "y": 320,
+   "net": "locked"
+  },
+  {
+   "id": "L9",
+   "x": 1240,
+   "y": 380,
+   "net": "alarm"
+  },
+  {
+   "id": "L10",
+   "x": 1240,
+   "y": 440,
+   "net": "fails"
+  },
+  {
+   "id": "L11",
+   "x": 1240,
+   "y": 500,
+   "net": "left"
+  },
+  {
+   "id": "L12",
+   "x": 480,
+   "y": 570,
+   "net": "secs(3:0)"
+  },
+  {
+   "id": "L13",
+   "x": 240,
+   "y": 60,
+   "net": "clk"
+  },
+  {
+   "id": "L14",
+   "x": 240,
+   "y": 80,
+   "net": "sw(3:0)"
+  },
+  {
+   "id": "L15",
+   "x": 400,
+   "y": 60,
+   "net": "digit(3:0)"
+  },
+  {
+   "id": "L16",
+   "x": 680,
+   "y": 240,
+   "net": "clk"
+  },
+  {
+   "id": "L17",
+   "x": 680,
+   "y": 260,
+   "net": "rst"
+  },
+  {
+   "id": "L18",
+   "x": 680,
+   "y": 280,
+   "net": "enter"
+  },
+  {
+   "id": "L19",
+   "x": 680,
+   "y": 300,
+   "net": "clear"
+  },
+  {
+   "id": "L20",
+   "x": 680,
+   "y": 320,
+   "net": "digit(3:0)"
+  },
+  {
+   "id": "L21",
+   "x": 680,
+   "y": 340,
+   "net": "tick"
+  },
+  {
+   "id": "L22",
+   "x": 680,
+   "y": 360,
+   "net": "secs(3:0)"
+  },
+  {
+   "id": "L23",
+   "x": 860,
+   "y": 240,
+   "net": "opened"
+  },
+  {
+   "id": "L24",
+   "x": 860,
+   "y": 260,
+   "net": "locked"
+  },
+  {
+   "id": "L25",
+   "x": 860,
+   "y": 280,
+   "net": "alarm"
+  },
+  {
+   "id": "L26",
+   "x": 860,
+   "y": 300,
+   "net": "fails(1:0)"
+  },
+  {
+   "id": "L27",
+   "x": 860,
+   "y": 320,
+   "net": "left(3:0)"
+  }
+ ],
+ "ports": [
+  {
+   "id": "P1",
+   "name": "clk",
+   "dir": "in",
+   "width": 1,
+   "x": 60,
+   "y": 120
+  },
+  {
+   "id": "P2",
+   "name": "rst",
+   "dir": "in",
+   "width": 1,
+   "x": 60,
+   "y": 180
+  },
+  {
+   "id": "P3",
+   "name": "sw",
+   "dir": "in",
+   "width": 4,
+   "x": 60,
+   "y": 60
+  },
+  {
+   "id": "P4",
+   "name": "enter",
+   "dir": "in",
+   "width": 1,
+   "x": 60,
+   "y": 300
+  },
+  {
+   "id": "P5",
+   "name": "clear",
+   "dir": "in",
+   "width": 1,
+   "x": 60,
+   "y": 360
+  },
+  {
+   "id": "P6",
+   "name": "tick",
+   "dir": "in",
+   "width": 1,
+   "x": 60,
+   "y": 420
+  },
+  {
+   "id": "P7",
+   "name": "opened",
+   "dir": "out",
+   "width": 1,
+   "x": 1260,
+   "y": 260
+  },
+  {
+   "id": "P8",
+   "name": "locked",
+   "dir": "out",
+   "width": 1,
+   "x": 1260,
+   "y": 320
+  },
+  {
+   "id": "P9",
+   "name": "alarm",
+   "dir": "out",
+   "width": 1,
+   "x": 1260,
+   "y": 380
+  },
+  {
+   "id": "P10",
+   "name": "fails",
+   "dir": "out",
+   "width": 2,
+   "x": 1260,
+   "y": 440
+  },
+  {
+   "id": "P11",
+   "name": "left",
+   "dir": "out",
+   "width": 4,
+   "x": 1260,
+   "y": 500
+  }
+ ],
+ "description": "A combination lock (code 2 0 2 6), each part a drawing: the switches synchronised by a 74LS175 on a breadboard (sync), then the control (a schematic: the lock's state diagram, the digit check's truth table, the timer's ASM chart, the alarm's Petri net).\nA wrong digit locks it for 3 seconds (the constant wait); three wrong digits sound the alarm until reset.\nsw(3:0): the digit; enter, clear: presses (pulses of one clock cycle); tick: a second.",
+ "generatedFile": "src/safe.vhd"
+}

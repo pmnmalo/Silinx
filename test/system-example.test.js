@@ -46,13 +46,13 @@ test('#4702 the kinds\' rules: a System project empty or from a System example; 
   assert.equal(createRefusal(null, 'uart'), null);
   assert.equal(createRefusal('system', 'uart'), 'a System project starts empty or from a System example (uart-avr, spi-avr, i2c-avr, regs-avr, uart-pic24, adc-pmod, uart-pico, uart-esp32)');
   assert.equal(createRefusal(null, 'uart-avr'), null);   // (the example's kind)
-  assert.equal(createRefusal('design', 'uart-avr'), 'a design and simulation project starts empty or from a Circuit example (gates, breadboard)');
+  assert.equal(createRefusal('design', 'uart-avr'), 'a design and simulation project starts empty or from a Circuit example (gates, breadboard, traffic-circuit, blinky-circuit, stopwatch-circuit, lock-circuit)');
   // (fpga a profile's id, #5440: an FPGA project, never from a System example)
   assert.equal(createRefusal('fpga', 'uart-avr'), 'an FPGA project starts from an FPGA example: uart-avr is a System example');
   assert.equal(createRefusal('fpga', 'uart'), null);
   assert.equal(boardRefusal({ name: 'uart-avr', kind: 'system' }, { board: 'basys2' }), 'uart-avr: a System project has no board: its System names each FPGA node\'s');
   assert.equal(boardRefusal({ name: 'uart', board: 'basys2' }, { board: 'nexys2' }), null);
-  assert.equal(createRefusal('design', 'uart'), 'a design and simulation project starts empty or from a Circuit example (gates, breadboard)');
+  assert.equal(createRefusal('design', 'uart'), 'a design and simulation project starts empty or from a Circuit example (gates, breadboard, traffic-circuit, blinky-circuit, stopwatch-circuit, lock-circuit)');
   assert.equal(createRefusal('pico', 'empty'), 'unknown project kind \'pico\'');
   const j = newProjectJson('sys1', { kind: 'system' });
   assert.deepEqual([j.kind, j.profile, j.board, j.constraints, j.top, isSystemProject(j)], [undefined, 'system', null, null, '', true]);   // (its profile, #5440)

@@ -1,0 +1,183 @@
+{
+  "kind": "petri",
+  "version": 1,
+  "name": "alarm",
+  "lang": "vhdl",
+  "description": "The failures counted by a token: it moves one place on at each failure (fail) and goes back to none when the lock\nopens (opened). Its place is the number of failures (fails, for the penalty); the third one takes it to alarm, where it\nstays until reset.",
+  "clock": "clk",
+  "reset": {
+    "name": "rst",
+    "active": "high",
+    "sync": true
+  },
+  "inputs": [
+    {
+      "name": "fail",
+      "width": 1
+    },
+    {
+      "name": "opened",
+      "width": 1
+    }
+  ],
+  "outputs": [
+    {
+      "name": "fails",
+      "width": 2
+    },
+    {
+      "name": "alarm",
+      "width": 1
+    }
+  ],
+  "places": [
+    {
+      "id": "p1",
+      "name": "none",
+      "x": 100,
+      "y": 140,
+      "tokens": 1,
+      "capacity": 1,
+      "outputs": {}
+    },
+    {
+      "id": "p2",
+      "name": "one",
+      "x": 280,
+      "y": 140,
+      "tokens": 0,
+      "capacity": 1,
+      "outputs": {
+        "fails": "1"
+      }
+    },
+    {
+      "id": "p3",
+      "name": "two",
+      "x": 460,
+      "y": 140,
+      "tokens": 0,
+      "capacity": 1,
+      "outputs": {
+        "fails": "2"
+      }
+    },
+    {
+      "id": "p4",
+      "name": "alarmed",
+      "x": 640,
+      "y": 140,
+      "tokens": 0,
+      "capacity": 1,
+      "outputs": {
+        "fails": "3",
+        "alarm": "1"
+      }
+    }
+  ],
+  "transitions": [
+    {
+      "id": "t1",
+      "name": "fail1",
+      "x": 190,
+      "y": 140,
+      "guard": "fail",
+      "outputs": {}
+    },
+    {
+      "id": "t2",
+      "name": "fail2",
+      "x": 370,
+      "y": 140,
+      "guard": "fail",
+      "outputs": {}
+    },
+    {
+      "id": "t3",
+      "name": "fail3",
+      "x": 550,
+      "y": 140,
+      "guard": "fail",
+      "outputs": {}
+    },
+    {
+      "id": "t4",
+      "name": "forgive1",
+      "x": 190,
+      "y": 260,
+      "guard": "opened",
+      "outputs": {}
+    },
+    {
+      "id": "t5",
+      "name": "forgive2",
+      "x": 280,
+      "y": 300,
+      "guard": "opened",
+      "outputs": {}
+    }
+  ],
+  "arcs": [
+    {
+      "id": "a1",
+      "from": "p1",
+      "to": "t1",
+      "weight": 1
+    },
+    {
+      "id": "a2",
+      "from": "t1",
+      "to": "p2",
+      "weight": 1
+    },
+    {
+      "id": "a3",
+      "from": "p2",
+      "to": "t2",
+      "weight": 1
+    },
+    {
+      "id": "a4",
+      "from": "t2",
+      "to": "p3",
+      "weight": 1
+    },
+    {
+      "id": "a5",
+      "from": "p3",
+      "to": "t3",
+      "weight": 1
+    },
+    {
+      "id": "a6",
+      "from": "t3",
+      "to": "p4",
+      "weight": 1
+    },
+    {
+      "id": "a7",
+      "from": "p2",
+      "to": "t4",
+      "weight": 1
+    },
+    {
+      "id": "a8",
+      "from": "t4",
+      "to": "p1",
+      "weight": 1
+    },
+    {
+      "id": "a9",
+      "from": "p3",
+      "to": "t5",
+      "weight": 1
+    },
+    {
+      "id": "a10",
+      "from": "t5",
+      "to": "p1",
+      "weight": 1
+    }
+  ],
+  "generatedFile": "src/alarm.vhd"
+}

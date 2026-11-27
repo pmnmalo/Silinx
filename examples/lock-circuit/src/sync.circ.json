@@ -1,0 +1,454 @@
+{
+  "format": "silinx-circuit",
+  "version": 1,
+  "name": "sync",
+  "lang": "vhdl",
+  "parts": [
+    {
+      "id": "P1",
+      "type": "supply",
+      "x": -4,
+      "y": -4
+    },
+    {
+      "id": "BB1",
+      "type": "breadboard-full",
+      "x": 0,
+      "y": 0
+    },
+    {
+      "id": "CK1",
+      "type": "clock",
+      "x": 1,
+      "y": 0,
+      "label": "clk",
+      "hz": 1
+    },
+    {
+      "id": "S1",
+      "type": "logic-switch",
+      "x": 4,
+      "y": 0,
+      "label": "d[0]",
+      "on": false
+    },
+    {
+      "id": "S2",
+      "type": "logic-switch",
+      "x": 6,
+      "y": 0,
+      "label": "d[1]",
+      "on": false
+    },
+    {
+      "id": "S3",
+      "type": "logic-switch",
+      "x": 8,
+      "y": 0,
+      "label": "d[2]",
+      "on": false
+    },
+    {
+      "id": "S4",
+      "type": "logic-switch",
+      "x": 10,
+      "y": 0,
+      "label": "d[3]",
+      "on": false
+    },
+    {
+      "id": "U1",
+      "type": "74175",
+      "x": 15,
+      "y": 7
+    },
+    {
+      "id": "D1",
+      "type": "led",
+      "x": 25,
+      "y": 10,
+      "label": "q[0]",
+      "color": "red"
+    },
+    {
+      "id": "D2",
+      "type": "led",
+      "x": 28,
+      "y": 10,
+      "label": "q[1]",
+      "color": "red"
+    },
+    {
+      "id": "D3",
+      "type": "led",
+      "x": 31,
+      "y": 10,
+      "label": "q[2]",
+      "color": "red"
+    },
+    {
+      "id": "D4",
+      "type": "led",
+      "x": 34,
+      "y": 10,
+      "label": "q[3]",
+      "color": "red"
+    }
+  ],
+  "wires": [
+    {
+      "id": "w1",
+      "points": [
+        [
+          -4,
+          -4
+        ],
+        [
+          0,
+          -4
+        ]
+      ],
+      "color": "red"
+    },
+    {
+      "id": "w2",
+      "points": [
+        [
+          -4,
+          -3
+        ],
+        [
+          0,
+          -3
+        ]
+      ],
+      "color": "black"
+    },
+    {
+      "id": "w3",
+      "points": [
+        [
+          30,
+          -4
+        ],
+        [
+          31,
+          -4
+        ]
+      ],
+      "color": "red"
+    },
+    {
+      "id": "w4",
+      "points": [
+        [
+          30,
+          -3
+        ],
+        [
+          31,
+          -3
+        ]
+      ],
+      "color": "black"
+    },
+    {
+      "id": "w5",
+      "points": [
+        [
+          30,
+          14
+        ],
+        [
+          31,
+          14
+        ]
+      ],
+      "color": "black"
+    },
+    {
+      "id": "w6",
+      "points": [
+        [
+          30,
+          15
+        ],
+        [
+          31,
+          15
+        ]
+      ],
+      "color": "red"
+    },
+    {
+      "id": "w7",
+      "points": [
+        [
+          62,
+          -4
+        ],
+        [
+          64,
+          -4
+        ],
+        [
+          64,
+          15
+        ],
+        [
+          62,
+          15
+        ]
+      ],
+      "color": "red"
+    },
+    {
+      "id": "w8",
+      "points": [
+        [
+          62,
+          -3
+        ],
+        [
+          63,
+          -3
+        ],
+        [
+          63,
+          14
+        ],
+        [
+          62,
+          14
+        ]
+      ],
+      "color": "black"
+    },
+    {
+      "id": "w9",
+      "points": [
+        [
+          15,
+          0
+        ],
+        [
+          15,
+          -4
+        ]
+      ],
+      "color": "red"
+    },
+    {
+      "id": "w10",
+      "points": [
+        [
+          22,
+          8
+        ],
+        [
+          22,
+          14
+        ]
+      ],
+      "color": "black"
+    },
+    {
+      "id": "w11",
+      "points": [
+        [
+          1,
+          1
+        ],
+        [
+          22,
+          0
+        ]
+      ],
+      "color": "yellow"
+    },
+    {
+      "id": "w12",
+      "points": [
+        [
+          15,
+          8
+        ],
+        [
+          15,
+          15
+        ]
+      ],
+      "color": "red"
+    },
+    {
+      "id": "w13",
+      "points": [
+        [
+          4,
+          1
+        ],
+        [
+          18,
+          8
+        ]
+      ],
+      "color": "blue"
+    },
+    {
+      "id": "w14",
+      "points": [
+        [
+          6,
+          1
+        ],
+        [
+          19,
+          8
+        ]
+      ],
+      "color": "blue"
+    },
+    {
+      "id": "w15",
+      "points": [
+        [
+          8,
+          1
+        ],
+        [
+          19,
+          0
+        ]
+      ],
+      "color": "blue"
+    },
+    {
+      "id": "w16",
+      "points": [
+        [
+          10,
+          1
+        ],
+        [
+          18,
+          0
+        ]
+      ],
+      "color": "blue"
+    },
+    {
+      "id": "w17",
+      "points": [
+        [
+          16,
+          8
+        ],
+        [
+          25,
+          7
+        ]
+      ],
+      "color": "blue"
+    },
+    {
+      "id": "w18",
+      "points": [
+        [
+          26,
+          7
+        ],
+        [
+          26,
+          14
+        ]
+      ],
+      "color": "black"
+    },
+    {
+      "id": "w19",
+      "points": [
+        [
+          21,
+          8
+        ],
+        [
+          28,
+          7
+        ]
+      ],
+      "color": "blue"
+    },
+    {
+      "id": "w20",
+      "points": [
+        [
+          29,
+          7
+        ],
+        [
+          29,
+          14
+        ]
+      ],
+      "color": "black"
+    },
+    {
+      "id": "w21",
+      "points": [
+        [
+          21,
+          0
+        ],
+        [
+          31,
+          7
+        ]
+      ],
+      "color": "blue"
+    },
+    {
+      "id": "w22",
+      "points": [
+        [
+          32,
+          7
+        ],
+        [
+          32,
+          14
+        ]
+      ],
+      "color": "black"
+    },
+    {
+      "id": "w23",
+      "points": [
+        [
+          16,
+          0
+        ],
+        [
+          34,
+          7
+        ]
+      ],
+      "color": "blue"
+    },
+    {
+      "id": "w24",
+      "points": [
+        [
+          35,
+          7
+        ],
+        [
+          35,
+          14
+        ]
+      ],
+      "color": "black"
+    }
+  ],
+  "description": "The digit's four switches synchronised to the clock: a 74175, four D flip-flops on one clock (CLK the board's), its CLR̅ high (on +). Each switch can change at any time; the flip-flops give the rest of the lock a digit that changes only on a clock edge.",
+  "generatedFile": "src/sync.vhd"
+}
