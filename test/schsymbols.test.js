@@ -612,3 +612,21 @@ test('#681 symbols with a width in their name: ADD8, SUB16, COMP4, CNT8; bus pin
   assert.equal(name('inv', { width: 4 }), 'INV');
   assert.equal(name('nosuch', {}), 'NOSUCH');
 });
+
+// #5850: an ENCODER's V and a DECODER's outputs left open get no assignment (once a signal of their own, assigned and
+// never read: Check Syntax's Silinx:646 warning); the outputs connected as before
+test('#5850 an ENCODER\'s V and a DECODER\'s outputs left open: nothing assigned to them, every signal read', () => {
+  for (const lang of ['vhdl', 'verilog']) {
+    const { doc } = buildDoc('openout', lang, [{ type: 'encoder', params: { n: 3, mode: 'priority' }, open: ['V'] },
+      { type: 'decoder', params: { n: 3, en: true }, open: ['D5', 'D6', 'D7'] }]);
+    const g = generateHdl(doc, { lang });
+    assert.deepEqual(g.diagnostics.map(d => `${d.severity} ${d.message}`), [], lang);
+    const decl = lang === 'vhdl' ? /^\s*signal (\w+)/gm : /^\s*wire(?: \[[^\]]+\])? (\w+);/gm;
+    const names = [...g.code.matchAll(decl)].map(m => m[1]);
+    for (const n of names) assert.ok(g.code.match(new RegExp(`\\b${n}\\b`, 'g')).length >= 3, `${lang}: ${n} assigned and read\n${g.code}`);
+    // (the encoder's OR of its inputs, V, is gone; its A and the decoder's D0..D4 are there)
+    assert.doesNotMatch(g.code, lang === 'vhdl' ? /I0 or I1 or I2/ : /I0 \| I1 \| I2/);
+    for (const o of ['U1_A0', 'U1_A2', 'U2_D0', 'U2_D4']) assert.match(g.code, new RegExp(`\\b${o}\\b`), `${lang} ${o}`);
+    assert.doesNotMatch(g.code, /\bD5\b.*(<=|=)/);
+  }
+});

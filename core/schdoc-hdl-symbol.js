@@ -110,7 +110,7 @@ export function mountSymbolHdl(ctx) {
   });
 
   const { symbolCases } = mountSymbolCases({
-    INN, OUTN, PW, assign, body, ci, clsOf, diags, extra, fresh, inNet, name, netName, outRead, symbolCasesMore,
+    INN, OUTN, PW, assign, body, ci, clsOf, diags, extra, fresh, inNet, isolated, name, netName, nl, outRead, symbolCasesMore,
     warnOpen, zero
   });
 
