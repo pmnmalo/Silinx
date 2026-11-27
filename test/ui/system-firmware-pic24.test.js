@@ -1,5 +1,5 @@
 // UI (#5482): a System's PIC24 node's firmware compiled from the Design pane, by XC16 on the local server (a stand-in for
-// it: test/fixtures/xc16-stub, config.json's paths.xc16): the uart-pic24 example's pic node, given a C program, has
+// it: test/fixtures/xc16-stub, config.json's paths.xc16): the uart-fpga-pic24 example's pic node, given a C program, has
 // Compile Firmware (its Program Node still MPLAB IPE's, disabled); run, its lines in the console, its .hex the node's
 // firmware, no warning; a program with a warning and an error: their exact lines in the console, by file and line, in the
 // Errors and Warnings tabs' rows; in Portuguese; the browser edition says XC16 compiles it, in Portuguese too. Both
@@ -12,7 +12,7 @@ import { setupUi, uiTest, makeProject } from './harness.js';
 import { ROOT } from '../server-helpers.js';
 
 const STUB = path.join(ROOT, 'test/fixtures/xc16-stub/v2.10/bin');
-const LCD_HEX = fs.readFileSync(path.join(ROOT, 'examples/uart-pic24/pic/lcd_uart.hex'), 'utf8');
+const LCD_HEX = fs.readFileSync(path.join(ROOT, 'examples/uart-fpga-pic24/pic/lcd_uart.hex'), 'utf8');
 let env;
 before(async () => {
   env = await setupUi();
@@ -26,7 +26,7 @@ const said = async (page) => (await lines(page)).filter((l) => /^(WARNING|ERROR)
 
 uiTest('#5482 a PIC24 node\'s Compile Firmware from its row: XC16, its .hex the node\'s firmware, its errors and warnings in the console; Portuguese; the browser edition', E, async (page) => {
   if (process.platform === 'win32') return;   // (the stand-in for XC16 is a script run by its #! line)
-  await makeProject(env, { name: 'PicFw', template: 'uart-pic24' });
+  await makeProject(env, { name: 'PicFw', template: 'uart-fpga-pic24' });
   const dir = path.join(env.server.workspace, 'PicFw');
   fs.writeFileSync(path.join(dir, 'pic/main.c'), '#include <xc.h>\n\nint main(void) {\n  for (;;);\n}\n');
   fs.writeFileSync(path.join(dir, 'pic/lcd_uart.hex'), ':00000001FF\n');

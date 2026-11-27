@@ -156,7 +156,7 @@ uiTest('Start page: no Open Example entries (#776); New Project… lists the sev
   // hidden too (a Circuit project's, #5779)
   assert.deepEqual(await page.eval(() => [...document.querySelector('.dlg-overlay .wiz-main select').options].map((o) => [o.value, o.textContent, o.hidden])),
     [['empty', 'Empty project', false], ...['gates', 'breadboard', 'traffic', 'blinky', 'pong', 'stopwatch', 'clock', 'vga', 'isqrt', 'uart', 'micro80', 'lock'].map((t) => [t, `Example: ${t}`, false]),
-      ...['traffic-circuit', 'blinky-circuit', 'stopwatch-circuit', 'lock-circuit'].map((t) => [t, `Example: ${t}`, true]), ['uart-avr', 'Example: uart-avr', true], ['spi-avr', 'Example: spi-avr', true], ['i2c-avr', 'Example: i2c-avr', true], ['regs-avr', 'Example: regs-avr', true], ['uart-pic24', 'Example: uart-pic24', true], ['adc-pmod', 'Example: adc-pmod', true], ['uart-pico', 'Example: uart-pico', true], ['uart-esp32', 'Example: uart-esp32', true]]);
+      ...['traffic-circuit', 'blinky-circuit', 'stopwatch-circuit', 'lock-circuit'].map((t) => [t, `Example: ${t}`, true]), ['uart-avr', 'Example: uart-avr', true], ['spi-avr', 'Example: spi-avr', true], ['i2c-avr', 'Example: i2c-avr', true], ['regs-avr', 'Example: regs-avr', true], ['uart-fpga-pic24', 'Example: uart-fpga-pic24', true], ['adc-pmod', 'Example: adc-pmod', true], ['uart-fpga-pico', 'Example: uart-fpga-pico', true], ['uart-fpga-esp32', 'Example: uart-fpga-esp32', true]]);
   await page.fill('.dlg-overlay .wiz-main input[type=text]', 'PongN2');
   await page.dialogButton('Next >');
   await page.waitFor(() => document.querySelector('.dlg-overlay .wiz-main h3')?.textContent === 'Project Settings');

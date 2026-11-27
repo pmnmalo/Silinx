@@ -21,6 +21,7 @@ import { fsFailure } from './fs-error.js';
 import { mapLimit, filesOf } from './concurrent.js';
 import { PROJECT_NAME_RE, projectNameError, sameProject } from '../core/project-name.js';
 import { DESIGN_KIND, boardRefusal, circuitExample, createRefusal, newSystemKind } from '../core/project-kind.js';
+import { exampleName } from '../core/examples.js';
 import { newSystemFile } from '../core/system-doc.js';
 import { newProjectJson, projectJsonText } from '../core/project-defaults.js';
 import { renameProblem, renamedFile } from '../core/project-rename.js';
@@ -52,7 +53,8 @@ export const PROJECT_FILE = 'silinx.json';
 
 /** An example's description and files: { project, files: { path: text } } (silinx.json apart; #2826: a link to it
  *  opens the project of that name as it is when it has the same files). */
-export function exampleFiles(name) {
+export function exampleFiles(given) {
+  const name = exampleName(given);   // (an example's old name, #5894)
   const dir = path.join(EXAMPLES_DIR, String(name));
   if (!/^[a-z0-9_-]+$/i.test(String(name)) || !fsSync.existsSync(path.join(dir, PROJECT_FILE))) throw new HttpError(404, `unknown example '${name}'`);
   const files = {};
@@ -386,7 +388,8 @@ async function copyDir(src, dst, { skipRoot = null } = {}) {
 // trusted project (#2956, core/trust.js); the user's own (neither an import's nor the MCP's) recorded as trusted (#4735)
 // madeBy 'mcp': a project the MCP server makes, untrusted too, its messages saying so (#2981)
 // kind 'design': a design and simulation project (#3780, core/project-kind.js): an empty one, no board, no constraints
-export async function createProject({ name, template = 'empty', device, board, kind = null, fromOutside = false, madeBy = null }) {
+export async function createProject({ name, template: given = 'empty', device, board, kind = null, fromOutside = false, madeBy = null }) {
+  const template = exampleName(given);   // (an example's old name, #5894)
   // (a design project starts empty, a System one empty or from a System example: core/project-kind.js, #4702)
   const refused = createRefusal(kind, template);
   if (refused) throw new HttpError(400, refused);

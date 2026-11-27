@@ -3,7 +3,7 @@
 // the plan, the FPGA nodes first, its plan's state its mark (✓ up to date or given, ! out of date) and its plan's line its
 // tip: the FPGA's I/O Pin Planning (alone, #5642), Synthesize, Implement Design, Generate Programming File and Program Node, the Uno's
 // firmware given (uno/hello.hex: no Compile Firmware) and Program Node; its bar's Build All and Program All the System's
-// (each run said, the server's answer stubbed in the page); Build Plan in the console, one line a node; the uart-pic24
+// (each run said, the server's answer stubbed in the page); Build Plan in the console, one line a node; the uart-fpga-pic24
 // example's PIC24: its firmware given and its Program Node disabled, its tip why (MPLAB IPE), said on a double-click;
 // Portuguese. The ISE style: the PIC24's row's Program Node disabled, its tip. No warnings.
 import { before, after } from 'node:test';
@@ -38,7 +38,7 @@ const FPGA_ROWS = ['  fpga (Digilent Basys2)', '    I/O Pin Planning',
 
 uiTest('#5581 a System\'s Implement: its tree, each node\'s plan state its mark, its bar\'s Build All and Program All, Build Plan; a PIC24\'s Program Node off, said why; Portuguese; the ISE style\'s', E, async (page) => {
   await makeProject(env, { name: 'SysImplTree', template: 'uart-avr' });
-  await makeProject(env, { name: 'SysImplPic', template: 'uart-pic24' });
+  await makeProject(env, { name: 'SysImplPic', template: 'uart-fpga-pic24' });
   // (the FPGA node built before, its build's record lost: out of date)
   const built = path.join(env.server.workspace, 'SysImplTree/build/nodes/fpga');
   fs.mkdirSync(path.join(built, 'build'), { recursive: true });
@@ -101,9 +101,9 @@ uiTest('#5581 a System\'s Implement: its tree, each node\'s plan state its mark,
     await page.waitConsole(/^INFO: pic: a PIC24 is not programmed by Silinx yet: load its pic\/lcd_uart\.hex with MPLAB IPE$/m);
     // Portuguese
     await page.eval(async () => (await import('/js/i18n.js')).setLanguage('pt'));
-    await page.waitFor(() => document.querySelector('#procs .lbl')?.textContent === 'uart_pic24 (Sistema)', [], { what: 'Portuguese' });
+    await page.waitFor(() => document.querySelector('#procs .lbl')?.textContent === 'uart_fpga_pic24 (Sistema)', [], { what: 'Portuguese' });
     const pt = await rows(page);
-    assert.deepEqual(pt.slice(0, 5), ['uart_pic24 (Sistema)', '  Plano de Construção', '  Placas Ligadas', '  Construir Tudo', '  Programar Tudo']);
+    assert.deepEqual(pt.slice(0, 5), ['uart_fpga_pic24 (Sistema)', '  Plano de Construção', '  Placas Ligadas', '  Construir Tudo', '  Programar Tudo']);
     assert.deepEqual(pt.slice(pt.findIndex((r) => r.startsWith('  pic '))), ['  pic (Explorer 16/32) [ok]', '    Programa (firmware): lcd_uart.hex (off)', '    Programar Nó (off)']);
     assert.equal(await page.eval(() => [...document.querySelectorAll('#procs .row')].filter((r) => r.querySelector('.lbl').textContent === 'Programar Nó')[1].title),
       'pic: um PIC24 ainda não é programado pelo Silinx: carregue o seu pic/lcd_uart.hex com o MPLAB IPE');

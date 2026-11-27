@@ -14,7 +14,7 @@ const FWDT = 0x0abf20, FWDT_OFF = 0xffff9f;
 const START = ['goto main', '.org 0x200', 'main: mov #0x0900, w15'];
 
 /** A program's .hex (its source's lines, from address 0): its words, then the configuration word FWDT (the watchdog
- *  off): an example's firmware (examples/uart-pic24/pic/lcd_uart.asm). */
+ *  off): an example's firmware (examples/uart-fpga-pic24/pic/lcd_uart.asm). */
 export function asmHex(lines) {
   const { words } = pic24Assemble(lines);
   return writeHex(words).replace(/:00000001FF\n$/, '') + writeHex([FWDT_OFF], FWDT >> 1);

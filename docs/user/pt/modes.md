@@ -29,8 +29,9 @@ Modo…** (Project ▸ Change Mode…).
   para um Pico, em MicroPython para um ESP32; o PIC24 começa sem nenhum: o seu `.hex` é do MPLAB X). Selecione a linha
   da placa no painel Design para o seu **Emular Nó** (Emulate Node), **Simular Nó** (Simulate Node) e **Programar Nó**
   (Program Node).
-- **Sistema**: um Sistema vazio, ou um exemplo de Sistema (uart-avr, spi-avr, i2c-avr, regs-avr, uart-pic24, adc-pmod,
-  uart-pico).
+- **Sistema**: um Sistema vazio, ou um exemplo de Sistema (uart-avr, spi-avr, i2c-avr, regs-avr, uart-fpga-pic24, adc-pmod,
+  uart-fpga-pico, uart-fpga-esp32: antes chamados uart-pic24, uart-pico e uart-esp32, nomes que ainda os abrem, também
+  num link).
 
 Os Sistemas, e com eles as placas de processador, estão na versão de desenvolvimento até estarem estáveis.
 
