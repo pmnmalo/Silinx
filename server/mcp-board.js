@@ -49,6 +49,16 @@ const PROM_OPS = ['program', 'verify', 'read', 'erase', 'reconfigure'];
 // machine's address), then any path left, and the Docker image's name (an account's on a registry)
 const pathless = t => String(t ?? '').replace(/docker image '?[^\s',)]+'?/gi, 'its Docker image').replace(/(^|[\s'"(=])(~|\$\w+|[A-Za-z]:)?[\\/][^\s'",;)]*/g, '$1<path>');
 
+// a Zynq board's PS program loaded over JTAG and started: program_board ps's result
+async function runPsProgram(name, { node, tool, position, connected }, signal) {
+  if (tool !== undefined || position !== undefined || connected !== undefined) throw toolError('ps: a PS program is loaded by OpenOCD over the board\'s JTAG (no tool, position or connected)');
+  const { startPsRun } = await import('./zynq-ps-run.js');
+  const job = await waited(() => startPsRun(name, node === undefined ? {} : { node }), signal, 'the PS program\'s run');
+  const redact = await redactor(), lines = job.lines.map(redact), ok = job.status === 'ok';
+  const head = ok ? `Started the PS program${node ? ` of node ${node}` : ''} (${job.result?.elf}).` : `The PS program was not started: ${redact(job.error || 'see the log')}`;
+  return { text: [head, ...lines].join('\n'), isError: !ok, data: { ok, lines, ...(job.result || {}) } };
+}
+
 export const BOARD_TOOLS = [
   {
     name: 'program_board', title: 'Program the board',
@@ -60,9 +70,12 @@ export const BOARD_TOOLS = [
       force: { type: 'boolean', description: 'Program a bitstream built for another device than the project\'s anyway (default false), warned.' },
       node: STR('A System node (* all).'),
       connected: STR('Its board by hand: a serial number or port.'),
+      ps: { type: 'boolean', description: 'A Zynq\'s PS program (run_process ps\'s ELF) loaded over JTAG and started by OpenOCD (node: in a System).' },
     }, required: ['project'], additionalProperties: false },
     annotations: { readOnlyHint: false, destructiveHint: true, idempotentHint: true, openWorldHint: false },
-    async run({ project: name, tool, position, force = false, node, connected }, { signal } = {}) {
+    async run({ project: name, tool, position, force = false, node, connected, ps }, { signal } = {}) {
+      // (a Zynq board's PS program loaded and started by OpenOCD, #4687: server/zynq-ps-run.js, Run PS Program)
+      if (ps) return runPsProgram(name, { node, tool, position, connected }, signal);
       // (a System's node, or every one, on its board, #5489, #5447: server/system-program.js, Program All / Program Node)
       if (node !== undefined) return programNodes(name, { node, connected, tool, position, force }, signal);
       if (connected !== undefined) throw toolError('connected: the board of a System node (node)');
@@ -141,7 +154,7 @@ export const BOARD_TOOLS = [
   },
   {
     name: 'toolchain_info', title: 'What Toolchain Settings found',
-    description: 'Toolchain Settings\' state, read only: the ISE mode (silinx: the Silinx toolchain, no ISE; local, docker, ssh), whether ISE 14.7, Vivado, arduino-cli, XC16 and arm-none-eabi-gcc can run, and why not. No host, user or path is shown; the settings are changed only in the interface (Toolchain Settings, the gear in the toolbar): this computer\'s.',
+    description: 'Toolchain Settings\' state, read only: the ISE mode (silinx: the Silinx toolchain, no ISE; local, docker, ssh), whether ISE 14.7, Vivado, arduino-cli, XC16, arm-none-eabi-gcc and OpenOCD can run, and why not. No host, user or path is shown; the settings are changed only in the interface (Toolchain Settings, the gear in the toolbar): this computer\'s.',
     inputSchema: { type: 'object', properties: {}, additionalProperties: false },
     annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false },
     async run() {
@@ -160,12 +173,16 @@ export const BOARD_TOOLS = [
       const xc16 = { available: x.available, via: x.via, version: x.version, reason: said(x.reason), local: said(x.local.reason), remote: said(x.remote.reason) };
       // (a Zynq board's PS program's, #4687: this computer's arm-none-eabi-gcc or the ISE machine's image, as XC16's)
       const g = await (await import('./zynq-ps-compile.js')).detectArmGcc();
+      // (… and its run's, #4687: OpenOCD)
+      const o = await (await import('./zynq-ps-run.js')).detectOpenocd();
+      const openocd = { available: o.available, version: o.version, reason: said(o.reason) };
       const armGcc = { available: g.available, via: g.via, version: g.version, reason: said(g.reason), local: said(g.local.reason), remote: said(g.remote.reason) };
       return { text: [`ISE: mode ${ise.mode}, ${ise.available ? 'available' : 'not available'}: ${ise.reason}.`,
         `AMD Vivado: ${vivado.available ? 'available' : 'not available'}${vivado.reason ? `: ${vivado.reason}` : ''}.`,
         `Arduino (Compile Firmware): ${arduino.available ? 'available' : 'not available'}: ${arduino.reason}.`,
         `XC16${xc16.version ? ` ${xc16.version}` : ''} (a PIC24's Compile Firmware): ${xc16.available ? `available, ${xc16.via === 'local' ? 'on this computer' : 'on the ISE machine'}` : 'not available'}: ${xc16.reason}.`,
-        `arm-none-eabi-gcc${armGcc.version ? ` ${armGcc.version}` : ''} (a Zynq's Compile PS Program): ${armGcc.available ? `available, ${armGcc.via === 'local' ? 'on this computer' : 'on the ISE machine'}` : 'not available'}: ${armGcc.reason}.`].join('\n'), data: { ise, vivado, arduino, xc16, armGcc } };
+        `arm-none-eabi-gcc${armGcc.version ? ` ${armGcc.version}` : ''} (a Zynq's Compile PS Program): ${armGcc.available ? `available, ${armGcc.via === 'local' ? 'on this computer' : 'on the ISE machine'}` : 'not available'}: ${armGcc.reason}.`,
+        `OpenOCD${openocd.version ? ` ${openocd.version}` : ''} (a Zynq's Run PS Program): ${openocd.available ? 'available' : 'not available'}: ${openocd.reason}.`].join('\n'), data: { ise, vivado, arduino, xc16, armGcc, openocd } };
     },
   },
   {

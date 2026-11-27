@@ -304,6 +304,8 @@ export function registerImplRoutes(api, { wrap, projects: P }) {
   api.post('/projects/:p/firmware', checkBody(FIRMWARE_BODY), wrap(async req => ({ job: (await (await import('./avr-compile.js')).startFirmwareCompile(req.params.p, req.body)).id })));
   // (a Zynq board's PS program compiled by arm-none-eabi-gcc: server/zynq-ps-compile.js, #4687)
   api.post('/projects/:p/ps', checkBody(PS_BODY), wrap(async req => ({ job: (await (await import('./zynq-ps-compile.js')).startPsCompile(req.params.p, req.body)).id })));
+  // (… loaded over JTAG and started by OpenOCD: server/zynq-ps-run.js, #4687)
+  api.post('/projects/:p/ps-run', checkBody(PS_BODY), wrap(async req => ({ job: (await (await import('./zynq-ps-run.js')).startPsRun(req.params.p, req.body)).id })));
 
   // (a System built by its plan, the FPGA nodes first: server/system-build-all.js and server/system-plan.js, #5489)
   api.get('/projects/:p/build-plan', wrap(async req => (await import('./system-plan.js')).readBuildPlan(req.params.p)));

@@ -2,7 +2,8 @@
 // node's row, of its PS row and of a Board project's on a Zynq board (its PS row, its ps/ files), the local server's job
 // (server/zynq-ps-compile.js, arm-none-eabi-gcc: POST /projects/:p/ps with { node }, none in a Board project), its errors
 // and warnings in the console as a run of its own, by file and line; its ELF in the build folder, which #4687's next part
-// loads over JTAG. The browser edition has no compiler (#5904): it says a server is needed.
+// loads over JTAG: Run PS Program, the local server's OpenOCD (server/zynq-ps-run.js, POST /projects/:p/ps-run), loaded
+// and started on CPU 0. The browser edition has no compiler (#5904): it says a server is needed.
 import { S } from './app.js';
 import { api, followJob } from './api.js';
 import { logError, startRun } from './console.js';
@@ -11,7 +12,12 @@ import { procState } from './state-proc.js';
 import { saveAll } from './processes.js';
 import { isPsPath, psOfBoard } from '/core/zynq-ps.js';
 
-const NAME = 'Compile PS Program';
+const RUNS = {
+  compile: { name: 'Compile PS Program', call: (p, n) => api.psProgram(p, n),
+    browser: 'a Zynq\'s PS program is compiled by arm-none-eabi-gcc on the local server or its ISE machine (the browser edition has no compiler): run Silinx\'s server' },
+  run: { name: 'Run PS Program', call: (p, n) => api.psRun(p, n),
+    browser: 'a Zynq\'s PS program is loaded and started by the local server\'s OpenOCD for now (the browser edition has no compiler): run Silinx\'s server' },
+};
 const cls = line => (/^ERROR/.test(line) ? 'err' : /^WARNING/.test(line) ? 'warn' : '');
 
 /** The PS program a selection of the Design pane compiles: { node } (a System's Zynq node's id, or null: a Board
@@ -26,15 +32,17 @@ function psTarget(sel) {
 /** Its process (Compile PS Program), or none. */
 export const psProcesses = sel => {
   const t = psTarget(sel);
-  return t ? [{ id: 'ps-compile', label: NAME, ico: 'process', run: () => runPsProgram(t.node) }] : [];
+  return t ? [{ id: 'ps-compile', label: RUNS.compile.name, ico: 'process', run: () => runPs(t.node, 'compile') },
+    { id: 'ps-run', label: RUNS.run.name, ico: 'board', run: () => runPs(t.node, 'run') }] : [];
 };
 
-/** The PS program of the node `node` (a System's Zynq node's id; null: a Board project's) compiled; whether it ended
- *  well. One run at a time, as an implementation. */
-async function runPsProgram(node = null) {
+/** The PS program of the node `node` (a System's Zynq node's id; null: a Board project's) compiled ('compile') or
+ *  loaded and started ('run'); whether it ended well. One run at a time, as an implementation. */
+async function runPs(node = null, kind = 'compile') {
+  const { name: NAME, call, browser } = RUNS[kind];
   if (procState.busy) { logError('A process is already running (use Stop to cancel it)'); return false; }
   if (api.standalone) {
-    logError(`${NAME}: a Zynq's PS program is compiled by arm-none-eabi-gcc on the local server or its ISE machine (the browser edition has no compiler): run Silinx's server`);
+    logError(`${NAME}: ${browser}`);
     return false;
   }
   // (the program as the editor shows it: saved first)
@@ -43,7 +51,7 @@ async function runPsProgram(node = null) {
   const what = node ? `${NAME} (System node ${node})` : NAME;
   const R = startRun({ process: what, source: 'impl' });
   try {
-    const { job } = await api.psProgram(S.project.name, node);
+    const { job } = await call(S.project.name, node);
     runState.currentJob = job;
     runState.stopRequested = false;
     const res = await followJob(job, line => R.log(line, cls(line)));

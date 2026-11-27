@@ -71,12 +71,13 @@ export async function detectArmGcc(cfg = null, opts = {}) {
   return { available: false, via: null, path: l.path, version: l.version, image: null, reason: `${l.reason}; ${remote.reason}`, ...both };
 }
 
-// the project's node whose PS program is compiled: a System's FPGA node on a Zynq board (`node`, its id), a Board
-// project's implicit node (no `node`)
-async function psNodeOf(name, node) {
+/** The project's node whose PS program is compiled or run: a System's FPGA node on a Zynq board (`node`, its id), a
+ *  Board project's implicit node (no `node`); { files, node }. `tool`: the program the refusal of an untrusted project
+ *  names. */
+export async function psNodeOf(name, node, tool = GCC) {
   const pj = await P.readProject(name);
   // (a compiler run on the project's own text, its includes read from this computer: a trusted project's only, as ISE's, #2830)
-  if (!isTrusted(pj)) throw new P.HttpError(403, untrustedMessage(name, GCC, pj));
+  if (!isTrusted(pj)) throw new P.HttpError(403, untrustedMessage(name, tool, pj));
   const files = await P.fileTree(name);
   const file = files.find(isSystemFile);
   const text = file ? await P.readFile(name, file).catch(() => '') : '';

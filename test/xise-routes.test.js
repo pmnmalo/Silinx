@@ -23,9 +23,9 @@ test('#405 ISE project routes: mounted alone, the .xise and zip routes', () => {
 test('#405 ISE project routes: registerImplRoutes registers them after its own, then Merge Contribution\'s (#4206), the versions\' (#5740), then KiCad\'s libraries\' (#4285)', () => {
   const { api, calls } = recorder();
   registerImplRoutes(api, { wrap: f => f, projects });
-  assert.equal(calls.length, 42);   // (a Zynq's PS program, #4687; the project's versions' five, #5740, #5741; program's and prom's with the project in the address, #4754; an Arduino node's firmware, #5503; a System's build plan and build, its connected boards, its program plan and programming, #5489)
+  assert.equal(calls.length, 43);   // (a Zynq's PS program compiled and run, #4687; the project's versions' five, #5740, #5741; program's and prom's with the project in the address, #4754; an Arduino node's firmware, #5503; a System's build plan and build, its connected boards, its program plan and programming, #5489)
   assert.ok(calls.includes('get /projects/:p/build-plan') && calls.includes('post /projects/:p/build'), 'a System\'s build plan and Build All (#5489)');
-  assert.ok(calls.includes('post /projects/:p/ps'), 'a Zynq\'s PS program compiled (#4687)');
+  assert.ok(calls.includes('post /projects/:p/ps') && calls.includes('post /projects/:p/ps-run'), 'a Zynq\'s PS program compiled and run (#4687)');
   assert.ok(calls.includes('post /projects/:p/capture'), 'the capture of the logic analyzer (#3176)');
   assert.deepEqual(calls.slice(-17, -12), ['get /projects/:p/export.xise', 'post /import-xise /projects/import-xise', 'get /projects/:p/export.zip', 'post /import-zip /projects/import-zip', 'post /projects/:p/sync-xise']);
   assert.deepEqual(calls.slice(-12, -9), ['post /projects/:p/merge-preview', 'post /projects/:p/merge', 'post /projects/:p/undo-merge']);

@@ -1,0 +1,20 @@
+#!/usr/bin/env node
+// A stand-in for OpenOCD (#4687, test/zynq-ps-run-server.test.js): `--version` (to stderr, as OpenOCD prints it), and
+// `-f <script>` run in its folder: its arguments and the script's files written to args.json there (the files its
+// load_image lines name, each found, with its size); OpenOCD's lines of a load; STUB_OPENOCD_NO_BOARD=1: no cable found,
+// exit 1.
+import fs from 'node:fs';
+const a = process.argv.slice(2);
+if (a[0] === '--version') { console.error('Open On-Chip Debugger 0.12.0'); process.exit(0); }
+const tcl = fs.readFileSync(a[a.indexOf('-f') + 1], 'utf8');
+const images = [...tcl.matchAll(/^load_image (\S+) (\S+) bin$/gm)].map((m) => ({ file: m[1], addr: m[2], size: fs.statSync(m[1]).size }));
+fs.writeFileSync('args.json', JSON.stringify({ args: a, images }));
+console.error('Open On-Chip Debugger 0.12.0');
+console.error('Info : clock speed 6000 kHz');
+if (process.env.STUB_OPENOCD_NO_BOARD === '1') {
+  console.error('Error: unable to open ftdi device with vid 0403, pid 6010, description \'*\', serial \'*\' at bus location \'*\'');
+  process.exit(1);
+}
+console.error('Info : JTAG tap: zynq.dap tap/device found: 0x4ba00477');
+console.error('Warn : zynq.cpu1: ran after reset and before halt ...');
+for (const i of images) console.log(`${i.size} bytes written at address ${i.addr}`);

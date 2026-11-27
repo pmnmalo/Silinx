@@ -875,6 +875,16 @@ DAP makes then goes through the plan's guard, which refuses any other address: o
 and the OCM, on the APB-AP only CPU 0's debug registers. A WAIT is retried with more idle clocks, a FAULT clears its
 sticky error and is said. The tests run it on a simulated Zybo Z7 chain (`test/fixtures/zynq-dap-sim.js`).
 
+**Run PS Program** (the Design pane's PS row, a Zynq node's row, a Board project's `ps/` files; the MCP's `program_board`
+with `ps`) runs it on the board through the user's [OpenOCD](https://openocd.org) (`server/zynq-ps-run.js`; config.json's
+`paths.openocd`, the PATH or Homebrew's folders; Silinx does not install it, and says so when it is missing). The program
+is the ELF Compile PS Program made, refused when there is none or it is older than its sources. OpenOCD's Tcl
+(`core/zynq-ps-openocd.js`) is written from the same checked plan, refused the same way before OpenOCD runs: the board's
+Digilent FT2232H, OpenOCD's `target/zynq_7000.cfg`, then the engine's steps (`mww` / `mmw` for ps7_init, `load_image` and
+`verify_image` of the segments' files, `reg cpsr 0x1d3`, `resume` at the entry). Both are written to the build folder's
+`run/`. The tests run the script's writes and the engine's on two simulated chips and compare them. The board needs its
+boot-mode jumper on JTAG. The browser edition will run Silinx's own engine over WebUSB once it can compile (#5904).
+
 ### The build and programming plan
 
 A System has a **build plan** (#5489, `core/system-plan.js`): each FPGA and microcontroller node's steps, the FPGA nodes
