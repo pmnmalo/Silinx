@@ -61,8 +61,11 @@ const SUMMARY_PROC = { id: 'summary', label: 'Design Summary/Reports', ico: 'sum
 // toolchain's 7-series back end, on trial: the 7-series an experimental family, #3146; a Vivado-only family's, #3895, whatever it says)
 export const vivadoMode = () => !api.standalone && vivadoDevice(S.project?.device) && (S.project?.synthTool !== 'silinx' || !openFlowDevice(S.project?.device));
 /** An Intel device's on the local server: Intel Quartus Prime's (#5378); the browser edition has none. */
-export const quartusMode = () => !api.standalone && quartusDevice(S.project?.device);
-export const openMode = () => !vivadoMode() && !quartusMode() && (openOnlyDevice(S.project?.device) || (S.project?.synthTool ? S.project.synthTool === 'silinx' : api.standalone || S.toolchain?.config?.mode === 'silinx'));
+// (an Intel device: Quartus's on the local server, #5378; a Cyclone V part of nextpnr-mistral's the Silinx toolchain's when it is the
+// project's synthesis tool, and in the browser edition, #5377)
+const openIntel = () => quartusDevice(S.project?.device) && openFlowDevice(S.project?.device) && (api.standalone || S.project?.synthTool === 'silinx');
+export const quartusMode = () => !api.standalone && quartusDevice(S.project?.device) && !openIntel();
+export const openMode = () => !vivadoMode() && !quartusMode() && (openOnlyDevice(S.project?.device) || openIntel() || (S.project?.synthTool ? S.project.synthTool === 'silinx' : api.standalone || S.toolchain?.config?.mode === 'silinx'));
 /** The project's tool (its descriptor, web/js/tool-descriptors.js): what the process tree and the tasks are built from. */
 export const projectTool = () => toolOf(S.project?.device, openMode(), { standalone: api.standalone, designOnly: designOnly() });
 // Tasks ▸ Implement: the top module's processes, whatever the Design pane has selected since (#1208)

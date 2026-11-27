@@ -196,8 +196,11 @@ export async function startImplementation(name, body = {}) {
   // 7-series back end, on trial, #3146; a toolchain asked for Vivado: its)
   // (a Vivado-only family's, #3895: the Spartan-7, the Kintex-7: Vivado's whatever the project's synthesis tool;
   // the Silinx toolchain or ISE asked for: an error)
-  // (an Intel device, #5378: Intel Quartus Prime's alone; another toolchain asked for: an error)
-  if (isQuartusDevice(project.device)) {
+  // (an Intel device, #5378: Intel Quartus Prime's, another toolchain asked for an error; but a Cyclone V part of the Silinx
+  // toolchain's, #5377, by it when it is asked for or is the project's synthesis tool)
+  const openIntel = isQuartusDevice(project.device) && openFlowDevice(project.device) && ['silinx', 'open'].includes(choice);
+  if (isQuartusDevice(project.device) && ['silinx', 'open'].includes(body.toolchain) && !openIntel) throw bad(noOpenFlowMessage(project.device));
+  if (isQuartusDevice(project.device) && !openIntel) {
     if (body.toolchain && body.toolchain !== 'quartus') throw bad(`Intel Quartus Prime implements the ${String(project.device.part).toUpperCase()} (${familyName(deviceFamily(project.device))}), not ${body.toolchain} (toolchain: 'quartus')`);
     try { steps = quartusSteps(steps); } catch (e) { throw bad(e.message); }
     if (!isTrusted(project)) throw bad(untrustedMessage(name, 'Intel Quartus Prime', project), 403);

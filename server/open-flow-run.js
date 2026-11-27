@@ -10,7 +10,7 @@
 // build/open/report.json after every step (what the Design Summary shows).
 import fs from 'node:fs';
 import path from 'node:path';
-import { yosysWorkers, nextpnrNode, nextpnrS6Node, nextpnrXc7Node, ice40Io, ecp5Io, gowinIo, gatemateIo, loadDeviceCache, loadDb, loadBitDbS6, loadBitDbXc7 } from '../packages/silinx-fpga/src/node.js';
+import { yosysWorkers, nextpnrNode, nextpnrS6Node, nextpnrXc7Node, ice40Io, ecp5Io, gowinIo, gatemateIo, mistralIo, loadDeviceCache, loadDb, loadBitDbS6, loadBitDbXc7 } from '../packages/silinx-fpga/src/node.js';
 import { runOpenFlow } from '../core/flow-ide.js';
 import { loadIce40, loadOwn, ownPackageFile } from './nextpnr-ice40-fetch.js';
 
@@ -34,7 +34,8 @@ const io = {
   nextpnr: { spartan3e: nextpnrNode(), spartan6: nextpnrS6Node(), ice40: ice40Io(() => loadIce40({ log: line => console.log(line) })),
     xc7: nextpnrXc7Node(), ecp5: ecp5Io(() => loadOwn('@yowasp/nextpnr-ecp5', { log: line => console.log(line) })),
     gowin: gowinIo(() => loadOwn('@yowasp/nextpnr-himbaechel-gowin', { log: line => console.log(line) }), file => ownPackageFile('@yowasp/nextpnr-himbaechel-gowin', file)),
-    gatemate: gatemateIo(() => loadOwn('@yowasp/nextpnr-himbaechel-gatemate', { log: line => console.log(line) })) },   // (the nextpnr engine's, spec.engine 'nextpnr', #2136, #2138; the iCE40's, #2295; the 7-series', #3146; the ECP5's, #2302)
+    gatemate: gatemateIo(() => loadOwn('@yowasp/nextpnr-himbaechel-gatemate', { log: line => console.log(line) })),
+    cyclone5: mistralIo(() => loadOwn('@silinx/nextpnr-mistral', { log: line => console.log(line) }), file => ownPackageFile('@silinx/nextpnr-mistral', file)) },   // (the nextpnr engine's, spec.engine 'nextpnr', #2136, #2138; the iCE40's, #2295; the 7-series', #3146; the ECP5's, #2302; the Cyclone V's, #5377)
   write: (name, data) => {
     const f = fileOf(name);
     fs.mkdirSync(path.dirname(f), { recursive: true });   // (netgen/synthesis/…)

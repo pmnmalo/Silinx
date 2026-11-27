@@ -22,6 +22,7 @@ export const OWN_TOOLS = {
   '@yowasp/nextpnr-ecp5': { tools: 'nextpnr-ecp5 and ecppack', mb: 30, dir: 'nextpnr-ecp5' },
   '@yowasp/nextpnr-himbaechel-gowin': { tools: 'nextpnr-himbaechel-gowin and gowin_pack', mb: 32, dir: 'nextpnr-himbaechel-gowin' },
   '@yowasp/nextpnr-himbaechel-gatemate': { tools: 'nextpnr-himbaechel-gatemate and gmpack', mb: 4, dir: 'nextpnr-himbaechel-gatemate' },
+  '@silinx/nextpnr-mistral': { tools: 'nextpnr-mistral', mb: 66, dir: 'nextpnr-mistral' },
 };
 const ICE40 = '@yowasp/nextpnr-ice40';
 const toolOf = name => OWN_TOOLS[name] || { tools: name, mb: '?', dir: name.split('/').pop() };

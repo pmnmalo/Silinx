@@ -25,9 +25,12 @@ const UNTRUSTED = 'project \'c5\' was made through the MCP server (by an assista
 
 test('list_devices: the six DE boards and the MAX 10, Cyclone IV E and Cyclone V, marked experimental, Quartus\'s flow', async () => {
   const all = await ok('list_devices');
-  const mark = ' [experimental: Intel Quartus Prime\'s flow]';
-  for (const line of ['de10-lite: Terasic DE10-Lite (10m50daf484c7g)', 'de0-cv: Terasic DE0-CV (5ceba4f23c7)', 'de1-soc: Terasic DE1-SoC (5csema5f31c6)',
-    'de10-nano: Terasic DE10-Nano (5cseba6u23i7)', 'de0-nano: Terasic DE0-Nano (ep4ce22f17c6)', 'de2-115: Terasic DE2-115 (ep4ce115f29c7)']) assert.ok(all.text.includes(`\n  ${line}${mark}\n`), line);
+  const mark = ' [experimental: Intel Quartus Prime\'s flow]', both = ' [experimental: Intel Quartus Prime\'s flow; the Silinx toolchain\'s too]';
+  // (the Cyclone V boards' parts nextpnr-mistral's too, #5377)
+  for (const line of ['de10-lite: Terasic DE10-Lite (10m50daf484c7g)', 'de0-cv: Terasic DE0-CV (5ceba4f23c7)*', 'de1-soc: Terasic DE1-SoC (5csema5f31c6)*',
+    'de10-nano: Terasic DE10-Nano (5cseba6u23i7)*', 'de0-nano: Terasic DE0-Nano (ep4ce22f17c6)', 'de2-115: Terasic DE2-115 (ep4ce115f29c7)']) {
+    assert.ok(all.text.includes(`\n  ${line.replace('*', '')}${line.endsWith('*') ? both : mark}\n`), line);
+  }
   assert.match(all.text, /\n {2}MAX 10 \(max10\) \[experimental: Intel Quartus Prime's flow\]:\n {4}10m50da: f484 c7g\n/);
   assert.match(all.text, /\n {2}Cyclone IV E \(cyclone4e\) \[experimental: Intel Quartus Prime's flow\]:\n {4}ep4ce22: f17 c6\n {4}ep4ce115: f29 c7\n/);
   assert.match(all.text, /\n {2}Cyclone V \(cyclone5\) \[experimental: Intel Quartus Prime's flow\]:\n {4}5ceba4: f23 c7\n {4}5csema5: f31 c6\n {4}5cseba6: u23 i7(\n|$)/);
@@ -61,6 +64,15 @@ test('set_design_properties: the DE10-Lite, its pins written as a QSF, the examp
   await fails('set_design_properties', { project: 'b1', synth_tool: 'xst' }, 'the 10M50DA is implemented by Intel Quartus Prime: no XST');
   // a device with no board: the EP4CE22, its constraints a QSF; a speed grade it has not refused
   await ok('new_project', { name: 'n1' });
+  // (#5377: on a Cyclone V part of nextpnr-mistral's, the Silinx toolchain may be its synthesis tool, kept until another is given;
+  // not on the others)
+  const c = await ok('set_design_properties', { project: 'n1', part: '5ceba4', package: 'f23', speed: 'c7', synth_tool: 'silinx' });
+  assert.equal(c.text, 'Device set to 5CEBA4F23C7; synthesis tool silinx.');
+  assert.equal((await ok('set_design_properties', { project: 'n1', part: '5csema5', package: 'f31', speed: 'c6' })).text, 'Device set to 5CSEMA5F31C6; synthesis tool silinx.');
+  assert.equal((await ok('set_design_properties', { project: 'n1', synth_tool: 'quartus' })).text, 'Device set to 5CSEMA5F31C6; synthesis tool quartus.');
+  await fails('set_design_properties', { project: 'n1', part: 'ep4ce22', package: 'f17', speed: 'c6', synth_tool: 'silinx' },
+    'the Silinx toolchain has no back end for the EP4CE22 (Cyclone IV E): Intel Quartus Prime implements it (Synthesis Tool: Quartus, on the local server): no Silinx synthesis tool');
+  await fails('set_design_properties', { project: 'n1', synth_tool: 'xst' }, 'the 5CSEMA5 is implemented by Intel Quartus Prime: no XST');
   const d = await ok('set_design_properties', { project: 'n1', part: 'ep4ce22', package: 'f17', speed: 'c6' });
   assert.equal(d.text, 'Device set to EP4CE22F17C6; synthesis tool quartus.');
   assert.equal((await P.readProject('n1')).constraints, 'constraints/top.qsf');

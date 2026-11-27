@@ -55,6 +55,8 @@ function describe(d) {
   const url = (pkg.homepage || repo).replace(/^git\+/, '').replace(/^git:\/\//, 'https://').replace(/\.git$/, '').replace(/^github:/, 'https://github.com/') || `https://www.npmjs.com/package/${d.name}`;
   const file = fs.readdirSync(d.dir).find(f => /^(licen[cs]e|copying)(\.(md|txt|markdown))?$/i.test(f)) || fs.readdirSync(d.dir).find(f => /^licen[cs]e/i.test(f));
   let text = file ? fs.readFileSync(path.join(d.dir, file), 'utf8').replace(/\r\n/g, '\n').trim() : '';
+  // the licences of what the package bundles, each in a file of its own (LICENSE-mistral: @silinx/nextpnr-mistral's Mistral, #5377)
+  for (const f of fs.readdirSync(d.dir).filter(f => /^licen[cs]e-.+/i.test(f) && f !== file).sort()) text += `\n\n${fs.readFileSync(path.join(d.dir, f), 'utf8').replace(/\r\n/g, '\n').trim()}`;
   // no licence file in the package: the text kept in scripts/licences/ (e.g. @yowasp/yosys: YoWASP,
   // Yosys and ABC, which its WebAssembly build contains)
   const kept = path.join(root, 'scripts', 'licences', `${d.name.replace('/', '__')}.txt`);

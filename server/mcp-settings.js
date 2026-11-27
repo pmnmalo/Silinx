@@ -122,9 +122,10 @@ export const SETTINGS_TOOLS = [
       const fams = family ? [D.findFamily(family)].filter(Boolean) : D.FAMILIES;
       if (family && !fams.length) throw toolError(`unknown family '${family}' (${D.FAMILIES.map(f => f.id).join(', ')})`);
       // (an experimental family's boards and devices, #3142: listed and marked, as the dialogs show them; the 7-series' flow
-      // AMD Vivado's, #1649, #3895)
+      // AMD Vivado's, #1649, #3895; an Intel one's Intel Quartus Prime's, #5378, a Cyclone V part of nextpnr-mistral's the Silinx
+      // toolchain's too, #5377)
       const R = await parts(), exp = o => (o ? { experimental: true } : {});
-      const mark = (o, device) => (!o.experimental ? '' : R.vivadoDevice(device) ? ' [experimental: AMD Vivado\'s flow]' : R.quartusDevice(device) ? ' [experimental: Intel Quartus Prime\'s flow]' : ' [experimental: no implementation flow yet]');
+      const mark = (o, device) => (!o.experimental ? '' : R.vivadoDevice(device) ? ' [experimental: AMD Vivado\'s flow]' : R.quartusDevice(device) ? ` [experimental: Intel Quartus Prime's flow${R.openFlowDevice(device) ? '; the Silinx toolchain\'s too' : ''}]` : ' [experimental: no implementation flow yet]');
       const boards = D.BOARDS.map(b => ({ id: b.id, name: b.name, device: deviceName(D.resolveBoard(b.id).device), ...exp(R.experimentalDevice(b.device)),
         variants: (b.variants || []).map(v => ({ id: v.id, label: v.label, device: deviceName(v.device), ...(v.default ? { default: true } : {}) })) }));
       const families = fams.map(f => ({ id: f.id, name: f.displayName || f.name, ...exp(f.experimental),
@@ -225,9 +226,11 @@ export const SETTINGS_TOOLS = [
       const experimental = R.experimentalDevice(next);
       // (the Artix-7: AMD Vivado's on this server, #1649)
       const vivado = R.vivadoDevice(next);
-      // (an Intel device, #5378: Intel Quartus Prime's alone, as the dialog locks it)
-      const quartus = R.quartusDevice(next);
-      if (quartus && synthTool && synthTool !== 'quartus') throw toolError(`the ${next.part.toUpperCase()} is implemented by Intel Quartus Prime: no ${{ xst: 'XST', vivado: 'Vivado', silinx: 'Silinx synthesis tool' }[synthTool]}`);
+      // (an Intel device, #5378: Intel Quartus Prime's, as the dialog offers it; a Cyclone V part of the Silinx toolchain's, #5377,
+      // its synthesis tool Silinx too)
+      const quartus = R.quartusDevice(next), openIntel = quartus && R.openFlowDevice(next);
+      if (quartus && synthTool === 'silinx' && !openIntel) throw toolError(`${R.noOpenFlowMessage(next)}: no Silinx synthesis tool`);
+      if (quartus && synthTool && !['quartus', ...(openIntel ? ['silinx'] : [])].includes(synthTool)) throw toolError(`the ${next.part.toUpperCase()} is implemented by Intel Quartus Prime: no ${{ xst: 'XST', vivado: 'Vivado', silinx: 'Silinx synthesis tool' }[synthTool]}`);
       if (synthTool === 'quartus' && !quartus) throw toolError(`Intel Quartus Prime implements the Intel FPGAs (the MAX 10, the Cyclone IV E, the Cyclone V), not the ${next.part.toUpperCase()}`);
       if (experimental && synthTool === 'xst') throw toolError(vivado ? `the ${next.part.toUpperCase()} is implemented by AMD Vivado: no XST` : `${R.noFlowMessage(next)}: no XST`);
       if (synthTool === 'vivado' && !vivado) throw toolError(`AMD Vivado implements the 7-series devices of Vivado ML Standard (the Artix-7, the Spartan-7, the Kintex-7, the Zynq-7000), not the ${next.part.toUpperCase()}`);
@@ -236,7 +239,7 @@ export const SETTINGS_TOOLS = [
       if (vivadoOnly && synthTool === 'silinx') throw toolError(`${R.noOpenFlowMessage(next)}: no Silinx synthesis tool`);
       // (#3146) the Artix-7's synthesis tool: the one given, else the project's when it was one of the Artix-7's, else AMD Vivado;
       // a Vivado-only family's Vivado; another family's never Vivado (the project's, from an Artix-7: Silinx)
-      const synthOf = () => (quartus ? { synthTool: 'quartus' } : vivadoOnly ? { synthTool: 'vivado' } : vivado ? { synthTool: synthTool || (R.vivadoDevice(pj.device) && R.openFlowDevice(pj.device) && ['vivado', 'silinx'].includes(pj.synthTool) ? pj.synthTool : 'vivado') }
+      const synthOf = () => (quartus ? { synthTool: openIntel && (synthTool || pj.synthTool) === 'silinx' && (synthTool || R.quartusDevice(pj.device)) ? 'silinx' : 'quartus' } : vivadoOnly ? { synthTool: 'vivado' } : vivado ? { synthTool: synthTool || (R.vivadoDevice(pj.device) && R.openFlowDevice(pj.device) && ['vivado', 'silinx'].includes(pj.synthTool) ? pj.synthTool : 'vivado') }
         : R.openOnlyDevice(next) || experimental ? { synthTool: 'silinx' } : synthTool ? { synthTool } : pj.synthTool === 'vivado' ? { synthTool: 'silinx' } : {});
       const warnings = [];
       const deviceChanged = next.part !== pj.device?.part || next.package !== pj.device?.package;

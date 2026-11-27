@@ -59,6 +59,7 @@ const LAYOUT = {
   nextpnrGowinPackage: (({ resolved: url, integrity }) => ({ url, integrity }))(JSON.parse(rd('package-lock.json')).packages['node_modules/@yowasp/nextpnr-himbaechel-gowin']),
   // (the GateMate's, #2431)
   nextpnrGatematePackage: (({ resolved: url, integrity }) => ({ url, integrity }))(JSON.parse(rd('package-lock.json')).packages['node_modules/@yowasp/nextpnr-himbaechel-gatemate']),
+  nextpnrMistralPackage: (({ resolved: url, integrity }) => ({ url, integrity }))(JSON.parse(rd('package-lock.json')).packages['node_modules/@silinx/nextpnr-mistral']),
   site: new URL(arg('--assets-url') || (BUILD ? `${PUBLISHED}dev/` : PUBLISHED)).href,
 };
 // the assets this version publishes (writeAssets): their folder under assets/, where they come from, which files

@@ -65,6 +65,8 @@ export const VIVADO_TARGETS = [{ board: 'arty-s7' }, { board: 'zybo-z7' }, { boa
 // (#5378) and programmed with openFPGALoader (#5379); the examples' 4-digit display (seg, an, dp) on the GPIO header (an external
 // display, as the other boards' Pmods), their HEX displays not used; their buttons the KEYs (active low: BTN_LOW)
 export const INTEL_TARGETS = [{ board: 'de10-lite' }, { board: 'de0-cv' }, { board: 'de1-soc' }, { board: 'de10-nano' }, { board: 'de0-nano' }, { board: 'de2-115' }];
+// the ones the Silinx toolchain builds too (#5377): the Cyclone V's of Mistral's database, through nextpnr-mistral
+export const MISTRAL_TARGETS = [{ board: 'de0-cv' }, { board: 'de1-soc' }, { board: 'de10-nano' }];
 /** The board an example runs on for a target: vga on the iCEBreaker with its PmodVGA, on the ULX3S with its VGA. */
 const VGA_BOARDS = { icebreaker: 'icebreaker-vga', ulx3s: 'ulx3s-vga', tangnano9k: 'tangnano9k-vga', 'gatemate-evb': 'gatemate-evb-vga' };
 export const exampleBoard = (name, t) => (name === 'vga' && VGA_BOARDS[t.board] ? { ...t, board: VGA_BOARDS[t.board] } : t);

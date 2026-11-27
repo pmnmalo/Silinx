@@ -121,6 +121,14 @@ export const THIRD_PARTY = [
     "standalone": false
   },
   {
+    "name": "@silinx/nextpnr-mistral",
+    "version": "0.1.0",
+    "license": "ISC AND BSD-3-Clause",
+    "url": "https://github.com/pmnmalo/nextpnr-spartan",
+    "standalone": false,
+    "downloaded": true
+  },
+  {
     "name": "@trystero-p2p/core",
     "version": "0.27.0",
     "license": "MIT",

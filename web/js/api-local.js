@@ -426,7 +426,8 @@ export const api = {
     // (a design and simulation project, #3780: no flow, the server's message)
     if (isDesignOnly(p.json)) return fakeJob('implement', [`ERROR: ${DESIGN_ONLY_MESSAGES.flow(name)}`], 'error', DESIGN_ONLY_MESSAGES.flow(name));
     // (the Artix-7's: the Silinx toolchain's 7-series back end, #3143)
-    if (experimentalDevice(p.json.device) && !vivadoDevice(p.json.device)) return fakeJob('implement', [`ERROR: ${noFlowMessage(p.json.device)}`], 'error', noFlowMessage(p.json.device));
+    // (an experimental family with no back end here; the Cyclone V's parts of nextpnr-mistral's are the Silinx toolchain's, #5377)
+    if (experimentalDevice(p.json.device) && !vivadoDevice(p.json.device) && !openFlowDevice(p.json.device)) return fakeJob('implement', [`ERROR: ${noFlowMessage(p.json.device)}`], 'error', noFlowMessage(p.json.device));
     // (the Spartan-7's, the Kintex-7's: AMD Vivado's alone, on the local server, #3895)
     if (vivadoDevice(p.json.device) && !openFlowDevice(p.json.device)) return fakeJob('implement', [`ERROR: ${noOpenFlowMessage(p.json.device)}`], 'error', noOpenFlowMessage(p.json.device));
     if (p.json.synthTool === 'xst' && !openOnlyDevice(p.json.device)) return fakeJob('implement', NEED_ISE, 'error', 'XST needs Xilinx ISE 14.7 (choose Silinx as the synthesis tool in Design Properties)');
@@ -446,7 +447,7 @@ export const api = {
     // a workspace folder: the build's files also go into the project's build/ folder
     const folder = store.kind === 'folder' ? store : null;
     const writes = [];
-    if (folder && p.json.top) for (const f of [`build/${p.json.top}.bit`, `build/${p.json.top}.bin`, `build/${p.json.top}.fs`, `build/${p.json.top}_pins.ucf`]) await folder.removePath(name, f).catch(() => {});
+    if (folder && p.json.top) for (const f of [`build/${p.json.top}.bit`, `build/${p.json.top}.bin`, `build/${p.json.top}.fs`, `build/${p.json.top}.rbf`, `build/${p.json.top}_pins.ucf`]) await folder.removePath(name, f).catch(() => {});
     if (folder) await folder.removePath(name, BUILD_VIEW).catch(() => {});
     let reported = false;
     const json = p.json, files = { ...p.files };
