@@ -10,7 +10,8 @@ import path from 'node:path';
 
 /** The folders a CIRCUITPY drive may be mounted at, on `platform`, for the user `user`. */
 export function driveCandidates({ platform = process.platform, user = os.userInfo().username, ls = d => fs.readdirSync(d) } = {}) {
-  const named = dir => { try { return ls(dir).filter(n => /^CIRCUITPY/i.test(n)).map(n => path.join(dir, n)); } catch { return []; } };
+  // (macOS's and Linux's folders: POSIX paths whatever the host, #5835)
+  const named = dir => { try { return ls(dir).filter(n => /^CIRCUITPY/i.test(n)).map(n => path.posix.join(dir, n)); } catch { return []; } };
   if (platform === 'darwin') return named('/Volumes');
   if (platform === 'win32') return [...'DEFGHIJKLMNOPQRSTUVWXYZ'].map(l => `${l}:\\`);
   return [`/media/${user}`, `/run/media/${user}`, '/media', '/mnt'].flatMap(named);
