@@ -8,6 +8,7 @@ import { nodeLangs, langError, LANG_NAMES, relInNode, renamedPath } from './syst
 import { usbError } from './usb-id.js';
 import { RUNTIME_NAMES } from './rp2040-firmware.js';
 import { psOfBoard, psProgramError, psSummary } from './zynq-ps.js';
+import { nodeKindRefusal } from './project-profile.js';
 
 const lc = s => String(s).toLowerCase();
 const copy = sys => normalizeSystem(JSON.parse(JSON.stringify(sys)));
@@ -315,11 +316,12 @@ export function removeLink(sys, id) {
 /** The MCP server's edit_system's actions, each an edit above. */
 export const EDIT_ACTIONS = ['add_node', 'change_node', 'remove_node', 'add_interface', 'change_interface', 'remove_interface', 'add_link', 'change_link', 'remove_link'];
 
-/** An edit by its action ({ action, node, interface, link, fields }, edit_system's arguments). */
-export function editSystem(sys, { action, node = null, interface: iface = null, link = null, fields = {} } = {}) {
+/** An edit by its action ({ action, node, interface, link, fields }, edit_system's arguments); `profile`, the project's
+ *  (profileOf's): a node it does not allow refused (#5910). */
+export function editSystem(sys, { action, node = null, interface: iface = null, link = null, fields = {} } = {}, { profile = null } = {}) {
   const need = (v, what) => (v == null || v === '' ? { error: `${action}: which ${what}? (${what})` } : null);
   switch (action) {
-    case 'add_node': return addNode(sys, fields);
+    case 'add_node': { const why = profile && nodeKindRefusal(profile, fields?.kind); return why ? { error: why } : addNode(sys, fields); }
     case 'change_node': return need(node, 'node') || changeNode(sys, node, fields);
     case 'remove_node': return need(node, 'node') || removeNode(sys, node);
     case 'add_interface': return need(node, 'node') || addInterface(sys, node, fields);

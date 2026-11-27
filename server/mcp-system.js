@@ -7,6 +7,7 @@ import { toolError, STR, PROJECT, projectText, readProject, elaborateView } from
 import { readSystem, writeSystem, isSystemFile } from '../core/system-doc.js';
 import { systemsOn, SYSTEMS_OFF } from '../core/build-channel.js';
 import { editSystem, describeSystem, EDIT_ACTIONS } from '../core/system-edit.js';
+import { systemRuleProfile } from '../core/project-profile.js';
 import { analyzeSystem, systemCheckLines, wiringLines } from '../core/system-check.js';
 import { ucfPort } from '../core/board-constraints.js';
 import { normalizeCircuit } from '../core/circuit.js';
@@ -87,17 +88,18 @@ const EDIT = { type: 'object', properties: {
 export const SYSTEM_TOOLS = [
   {
     name: 'edit_system', title: 'Edit a System',
-    description: 'Edit a System project\'s System in order (one refused: none): add_, change_, remove_ a node (fpga, mcu, terminal, circuit), interface (uart, gpio, spi, i2c), link; checked. Files in <id>/.',
+    description: 'Edit a System project\'s System in order (one refused: none): add_, change_, remove_ a node (fpga, mcu, terminal, circuit, broker: those its profile allows), interface (uart, gpio, spi, i2c), link; checked. Files in <id>/.',
     inputSchema: { type: 'object', properties: { project: PROJECT, file: SYS_FILE, edits: { type: 'array', maxItems: 100, items: EDIT },
       delete_folders: { type: 'boolean' } }, required: ['project', 'file', 'edits'], additionalProperties: false },
     annotations: { readOnlyHint: false, destructiveHint: true, idempotentHint: false },
     async run({ project: name, file, edits, delete_folders: deleteFolders = false }) {
       let { system } = await readSystemFile(name, file);
+      const profile = systemRuleProfile(await readProject(name));   // (a node kind its profile does not allow refused, #5910)
       const before = system, renames = [];
       if (!Array.isArray(edits) || !edits.length) throw toolError('edits: a list of { action, … }');
       const said = [];
       for (const [k, e] of edits.entries()) {
-        const r = editSystem(system, e || {});
+        const r = editSystem(system, e || {}, { profile });
         if (r.error) throw toolError(`edit ${k} (${e?.action ?? '?'}): ${r.error} (nothing written)`);
         if (e.action === 'change_node' && r.id !== e.node) renames.push({ from: e.node, to: r.id });
         system = r.system;

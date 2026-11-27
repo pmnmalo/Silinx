@@ -5,7 +5,7 @@
 // rule kept); the Systems' profiles off in a release.
 import { test, after } from 'node:test';
 import assert from 'node:assert/strict';
-import { PROFILES, profileOf, withProfile, profileRefusal, offeredProfiles, profileOn, narrows } from '../core/project-profile.js';
+import { PROFILES, profileOf, withProfile, profileRefusal, offeredProfiles, profileOn, narrows, nodeKindRefusal, profileChangedText, systemRuleProfile } from '../core/project-profile.js';
 import { changeProfile } from '../core/profile-change.js';
 import { isDesignOnly, isSystemProject } from '../core/project-kind.js';
 import { setBuildChannel, SYSTEMS_OFF } from '../core/build-channel.js';
@@ -26,7 +26,7 @@ const sysProject = (profile, kinds) => {
 test('#5440 the profiles: each the node kinds it allows, each containing the one before', () => {
   assert.deepEqual(PROFILES.map(p => [p.id, p.label]), [['logic', 'Digital Logic'], ['fpga', 'FPGA'], ['embedded', 'Embedded / SoC'], ['system', 'System']]);
   for (let i = 1; i < PROFILES.length; i++) assert.ok(PROFILES[i - 1].nodes.every(k => PROFILES[i].nodes.includes(k)), PROFILES[i].id);
-  assert.deepEqual(PROFILES.map(p => p.nodes.length), [2, 3, 4, 5]);
+  assert.deepEqual(PROFILES.map(p => p.nodes.length), [2, 3, 4, 6]);
   assert.deepEqual(IDS.flatMap(a => IDS.filter(b => narrows(a, b)).map(b => `${a}>${b}`)), ['fpga>logic', 'embedded>logic', 'embedded>fpga', 'system>logic', 'system>fpga', 'system>embedded']);
 });
 
@@ -93,4 +93,22 @@ test('#5440 the profiles in a release: Digital Logic and FPGA only; the Systems\
     for (const to of ['embedded', 'system']) assert.equal(changeProfile(FPGA, to).error, SYSTEMS_OFF);
     assert.equal(changeProfile(LOGIC, 'fpga', { fpga: { board: 'basys2' } }).error, undefined);
   } finally { setBuildChannel('dev'); }
+});
+
+test('#5910 the System profile allows the MQTT broker; a node kind a profile does not allow, refused with its message', () => {
+  assert.deepEqual(PROFILES.at(-1).nodes, ['design', 'circuit', 'fpga', 'mcu', 'terminal', 'broker']);
+  assert.equal(profileChangedText('s', 'system'), 's: System now: its System may have design, circuit, fpga, mcu, terminal, broker nodes (nothing converted, nothing deleted).');
+  assert.deepEqual(['design', 'circuit', 'fpga', 'mcu', 'terminal', 'broker'].map(k => nodeKindRefusal('system', k)), [null, null, null, null, null, null]);
+  assert.equal(nodeKindRefusal('embedded', 'terminal'), 'an Embedded / SoC project\'s System has no terminal node (Embedded / SoC allows design, circuit, fpga, mcu: Design Properties\' Project Kind changes it)');
+  assert.equal(nodeKindRefusal('embedded', 'broker'), 'an Embedded / SoC project\'s System has no broker node (Embedded / SoC allows design, circuit, fpga, mcu: Design Properties\' Project Kind changes it)');
+  assert.equal(nodeKindRefusal('fpga', 'mcu'), 'an FPGA project\'s System has no mcu node (FPGA allows design, circuit, fpga: Design Properties\' Project Kind changes it)');
+  assert.equal(nodeKindRefusal('logic', 'fpga'), 'a Digital Logic project\'s System has no fpga node (Digital Logic allows design, circuit: Design Properties\' Project Kind changes it)');
+  assert.equal(nodeKindRefusal('robot', 'fpga'), null);
+  // (a System with a broker: System still; narrowed, the broker named as any node the profile does not allow)
+  const [b, ctx] = sysProject('system', ['fpga', 'mcu', 'broker']);
+  assert.equal(changeProfile(b, 'embedded', ctx).error, 'the project \'s\' cannot be Embedded / SoC: its node broker2 (broker) is not allowed (Embedded / SoC allows design, circuit, fpga, mcu)');
+  assert.deepEqual(changeProfile(b, 'system', ctx), { project: b });
+  // (the profile a System document keeps to: a System project's, an Embedded / SoC one's; a Digital Logic or an FPGA
+  // project's System document is not its System: none)
+  assert.deepEqual([{ profile: 'system' }, { profile: 'embedded' }, { kind: 'system' }, FPGA, LOGIC].map(systemRuleProfile), ['system', 'embedded', 'system', null, null]);
 });

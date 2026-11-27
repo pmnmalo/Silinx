@@ -195,3 +195,16 @@ test('#5488 a node\'s base language: its kind\'s default when added, given or ch
   const t = addNode(s, { kind: 'terminal' }).system;
   assert.deepEqual(changeNode(t, 'term', { lang: 'c' }), { error: "term: a Serial terminal node has no field 'lang' (id, x, y)" });
 });
+
+test('#5910 edit_system\'s add_node with the project\'s profile: a node kind it does not allow refused, the others added', () => {
+  const s = newSystem('p');
+  const why = k => `an Embedded / SoC project's System has no ${k} node (Embedded / SoC allows design, circuit, fpga, mcu: Design Properties' Project Kind changes it)`;
+  for (const kind of ['terminal', 'broker']) assert.deepEqual(editSystem(s, { action: 'add_node', fields: { kind } }, { profile: 'embedded' }), { error: why(kind) });
+  for (const kind of ['fpga', 'mcu']) assert.deepEqual(editSystem(s, { action: 'add_node', fields: { kind } }, { profile: 'embedded' }), addNode(s, { kind }));
+  // (a System project: every kind, the broker too; no profile given: no rule, as before)
+  for (const kind of ['terminal', 'broker', 'mcu']) assert.deepEqual(editSystem(s, { action: 'add_node', fields: { kind } }, { profile: 'system' }), addNode(s, { kind }));
+  assert.deepEqual(editSystem(s, { action: 'add_node', fields: { kind: 'broker' } }), addNode(s, { kind: 'broker' }));
+  // (the other actions: the profile not asked)
+  const m = ok(addNode(s, { kind: 'terminal' })).system;
+  assert.deepEqual(editSystem(m, { action: 'remove_node', node: 'term0' }, { profile: 'embedded' }), removeNode(m, 'term0'));
+});

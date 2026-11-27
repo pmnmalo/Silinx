@@ -4,6 +4,7 @@
 //   import { mountSystemEditor } from './system-editor.js';
 //   const ed = mountSystemEditor(container, { model, onChange(model), onProblems(diags), onCheck(diags), onMessage(text, isError),
 //     check(model) -> diags, modules() -> [name], portsOf(module) -> [{ name, dir }], firmwares(id) -> [path], circuits(id) -> [path], psPrograms(id) -> [path] (a node's folder's, #5488; a Zynq node's PS's, #4686), readOnly, banner,
+//     nodeKinds (the node kinds its project's profile allows: the others' tools not offered, #5910),
 //     mountSim(host, { system() }) -> its simulation view (system-sim-view.js), wires(model) -> its wires (#5216) });
 //   ed.getModel(); ed.renames() (its nodes renamed since ed.savedAs(), #5488); ed.setModel(m); ed.undo(); ed.redo(); ed.canUndo(); ed.canRedo(); ed.fit(); ed.check(); ed.select({ kind, id });
 //   ed.deleteSelection(); ed.canDelete(); ed.showSim(); ed.sim (its simulation view, open); ed.setView('system' | 'wiring');
@@ -116,7 +117,11 @@ export function mountSystemEditor(container, opts = {}) {
   }
   if (!opts.onEmulate) emuBtn.hidden = true;
   if (!opts.wires) wiringBtn.hidden = true;
-  if (readOnly) { for (const b of [...Object.values(tools).slice(1), delBtn]) b.hidden = true; root.classList.add('asm-readonly'); if (opts.banner) toolbar.append(opts.banner); }
+  // (a node tool its project's profile does not allow, not offered, #5910: opts.nodeKinds, its profile's node kinds)
+  const offered = t => !PLACE[t] || !opts.nodeKinds || opts.nodeKinds.includes(PLACE[t].kind);
+  const editTools = () => [...Object.entries(tools).slice(1).filter(([t]) => offered(t)).map(([, b]) => b), delBtn];
+  for (const [t, b] of Object.entries(tools)) if (!offered(t)) b.hidden = true;
+  if (readOnly) { for (const b of editTools()) b.hidden = true; root.classList.add('asm-readonly'); if (opts.banner) toolbar.append(opts.banner); }
 
   // ---------------------------------------------------------------- edits, history
   const exists = s => (s.kind === 'node' ? M.nodes.some(n => n.id === s.id) : s.kind === 'link' ? M.links.some(l => l.id === s.id)
@@ -155,6 +160,7 @@ export function mountSystemEditor(container, opts = {}) {
     render();
   }
   function placeNode(at) {
+    if (!offered(tool)) return;
     const r = addNode(M, { ...PLACE[tool], module: tool === 'fpga' ? (opts.modules?.() || [])[0] ?? null : null, circuit: tool === 'circuit' ? (opts.circuits?.(freeId(M, 'circuit')) || [])[0] ?? null : null, x: snap(at.x - NODE_W / 2), y: snap(at.y - 20) });
     if (apply(r)) { sel = { kind: 'node', id: r.id }; setTool('select'); }
   }
@@ -172,7 +178,7 @@ export function mountSystemEditor(container, opts = {}) {
   function setView(v) {
     shown = v === 'wiring' && opts.wires ? 'wiring' : 'system';
     wiringBtn.classList.toggle('active', shown === 'wiring');
-    if (!readOnly) for (const b of [...Object.values(tools).slice(1), delBtn]) b.hidden = shown === 'wiring';
+    if (!readOnly) for (const b of editTools()) b.hidden = shown === 'wiring';
     if (shown === 'wiring' && sel?.kind !== 'link') sel = null;
     setTool('select');
     fit();
