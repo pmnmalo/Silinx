@@ -318,10 +318,11 @@ uiTest('open, switch and close projects (Open Project dialog, Recent Projects, S
   await page.dialogButton('Cancel');
   await page.waitNoDialog();
   assert.equal(await page.eval(() => window.Silinx.project?.name ?? null), before0);
-  // Open with no row chosen: nothing opened either
+  // no row chosen: Open disabled (#5785: one project only), nothing opened either (#5843)
   await page.menu('File', 'Open Project…');
   await page.waitDialog('Open Project');
-  await page.dialogButton('Open');
+  assert.equal(await page.eval(() => [...[...document.querySelectorAll('.dlg-overlay')].pop().querySelectorAll('.dlg-buttons .btn')].find((b) => b.textContent === 'Open').disabled), true);
+  await page.dialogButton('Cancel');
   await page.waitNoDialog();
   assert.equal(await page.eval(() => window.Silinx.project?.name ?? null), before0);
   // select a row, Open
