@@ -108,3 +108,43 @@ uiTest('#4686 a System\'s Zynq node: its PS program in its Properties, New PS Pr
     'WARNING: b2: no constraints file b2/uart.ucf yet: its module\'s ports are on no pin of its board (its I/O Pin Planning)']);
   assert.deepEqual(page.console.filter((c) => c.type === 'warning' || c.type === 'warn' || c.type === 'error').map((c) => c.text), []);
 });
+
+// (#4687, part 4) a Zynq node's PS UART: + PS UART in its Properties (none on a Basys 2's, none once it has one), its
+// properties (its MIO pins, the board's USB serial port), saved as the format has it; Portuguese
+uiTest('#4687 a System\'s Zynq node: + PS UART, its properties (its MIO pins), saved; none on a Basys 2\'s; Portuguese', E, async (page) => {
+  await makeProject(env, { name: 'ZynqUart', template: 'uart', files: { 'zynq.sys.json': SYS } });
+  const pj = await env.server.api('GET', '/api/projects/ZynqUart');
+  delete pj.fileTree;
+  await env.server.api('PUT', '/api/projects/ZynqUart', { ...pj, kind: 'system', board: null, constraints: null, top: null });
+  await page.openProject('ZynqUart');
+  await page.leftTab('design');
+  await page.waitFor(() => [...document.querySelectorAll('#hier .row .badge')].some((b) => b.textContent === 'System'), [], { what: 'the System\'s row' });
+  await page.click('#hier .row .badge', { text: 'System' });
+  await page.waitFor((ed) => document.querySelector(ed), [ED], { what: 'the System editor' });
+  const addButton = () => page.eval((ed) => document.querySelector(`${ed} .asm-side .sys-add-ps-uart`)?.title ?? null, ED);
+  await page.click(`${ED} .sys-node[data-id="b2"] .sys-head`);
+  await page.waitFor((ed) => document.querySelector(`${ed} .sys-selection h3`)?.textContent === 'FPGA b2', [ED], { what: 'b2\'s properties' });
+  assert.equal(await addButton(), null);
+  await page.click(`${ED} .sys-node[data-id="zybo"] .sys-head`);
+  await page.waitFor((ed) => document.querySelector(`${ed} .sys-selection h3`)?.textContent === 'FPGA zybo', [ED], { what: 'zybo\'s properties' });
+  assert.equal(await addButton(), 'Add its processing system\'s UART: the board\'s USB serial port, for a serial terminal');
+  await page.eval((ed) => { const b = document.querySelector(`${ed} .asm-side .sys-add-ps-uart`); b.scrollIntoView(); b.click(); }, ED);   // (at the side panel's foot)
+  await page.waitFor((ed) => document.querySelector(`${ed} .sys-selection h3`)?.textContent === 'PS UART zybo.PS_UART1', [ED], { what: 'its PS UART selected' });
+  const props = () => page.eval((ed) => { const p = document.querySelector(`${ed} .asm-side .sys-ps-pins`); return [p.textContent, p.closest('.asm-field').querySelector('.asm-fhint').textContent, document.querySelector(`${ed} .asm-side .sys-baud`).value]; }, ED);
+  assert.deepEqual(await props(), ['MIO 48 (TX), MIO 49 (RX)', 'its PS\'s UART, the board\'s USB serial port: link it to a serial terminal', '115200']);
+  // in Portuguese
+  await page.eval(async () => (await import('/js/i18n.js')).setLanguage('pt'));
+  await page.waitFor((ed) => document.querySelector(`${ed} .sys-selection h3`)?.textContent === 'UART do PS zybo.PS_UART1', [ED], { what: 'Portuguese' });
+  assert.equal((await props())[1], 'a UART do seu PS, a porta série USB da placa: ligue-a a um terminal série');
+  await page.eval(async () => (await import('/js/i18n.js')).setLanguage('en'));
+  await page.waitFor((ed) => document.querySelector(`${ed} .sys-selection h3`)?.textContent === 'PS UART zybo.PS_UART1', [ED], { what: 'English' });
+  // (no second one; saved as the format has it)
+  await page.click(`${ED} .sys-node[data-id="zybo"] .sys-head`);
+  await page.waitFor((ed) => document.querySelector(`${ed} .sys-selection h3`)?.textContent === 'FPGA zybo', [ED], { what: 'zybo\'s properties again' });
+  assert.equal(await addButton(), null);
+  await page.eval(() => window.SilinxApp.saveAll());
+  let m = null;
+  for (let i = 0; i < 100 && !m?.nodes?.[0]?.interfaces?.length; i++) { m = JSON.parse(await readWs(env, 'ZynqUart', 'zynq.sys.json')); await new Promise((r) => setTimeout(r, 100)); }
+  assert.deepEqual(m.nodes[0].interfaces, [{ name: 'PS_UART1', kind: 'uart', ps: true, baud: 115200, frame: '8N1' }]);
+  assert.deepEqual(page.console.filter((c) => c.type === 'warning' || c.type === 'warn' || c.type === 'error').map((c) => c.text), []);
+});

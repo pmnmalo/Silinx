@@ -63,7 +63,8 @@ export function inCpuNode(pj, { files = [], texts = {} } = {}) {
   if (!model) return () => false;
   // (a Zynq board's PS's program, its node's ps/, a Board project's at its root: 'ps', #4686)
   const zynq = model.nodes.filter((n) => n.kind === 'fpga' && psOfBoard(n.board, n.variant));
-  const inPs = (path) => zynq.some((n) => isPsPath(n.implicit ? path : relInNode(path, n.id)));
+  // (a node's project, core/system-node.js nodeProject: its PS's folder, psDir, <id>/ps, #4687)
+  const inPs = (path) => zynq.some((n) => (n.implicit ? isPsPath(path) || (pj?.psDir != null && relInNode(path, pj.psDir) != null) : isPsPath(relInNode(path, n.id))));
   const ids = implicit ? [] : model.nodes.filter((n) => isCpuLang(baseLang(n, pj?.preferredLanguage))).map((n) => n.id);
   if (!ids.length && !zynq.length) return () => false;
   return (path) => (inPs(path) ? 'ps' : ids.length > 0 && nodeOfPath(path, ids) != null);

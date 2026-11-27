@@ -33,7 +33,7 @@ Modo…** (Project ▸ Change Mode…).
   alimentação e a placa), onde os seus botões, interruptores, mostradores de 7 segmentos, LCD e LEDs se ligam aos seus
   pinos; o Emular Nó e o Simular Nó da sua linha correm então a placa com o seu shield.
 - **Sistema**: um Sistema vazio, ou um exemplo de Sistema (uart-avr, spi-avr, i2c-avr, regs-avr, uart-pic24, adc-pmod,
-  uart-pico).
+  uart-pico, uart-esp32, uart-zynq).
 
 Os Sistemas, e com eles as placas de processador, estão na versão de desenvolvimento até estarem estáveis.
 

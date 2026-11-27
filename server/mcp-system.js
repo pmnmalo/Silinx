@@ -83,7 +83,7 @@ const SYS_FILE = STR('The System document (.sys.json).');
 const EDIT = { type: 'object', properties: {
   action: { type: 'string', enum: [...EDIT_ACTIONS, 'add_shield'] },
   node: { type: 'string' }, interface: { type: 'string' }, link: { type: 'string' },
-  fields: { type: 'object', description: 'kind id board module variant pins firmware runtime circuit spiHz (a circuit\'s SPI clock) ps (a Zynq\'s PS program <id>/ps/*.c, made if new) lang usb x y; name, its kind\'s fields; a b (node.interface)' },
+  fields: { type: 'object', description: 'kind id board module variant pins firmware runtime circuit spiHz (a circuit\'s SPI clock) ps (a Zynq\'s PS program <id>/ps/*.c, made if new; add_interface: true, its PS UART) lang usb x y; name, its kind\'s fields; a b (node.interface)' },
 }, required: ['action'], additionalProperties: false };
 
 export const SYSTEM_TOOLS = [

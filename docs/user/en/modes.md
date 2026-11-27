@@ -31,7 +31,7 @@ first, with three cards, and a project can move to another mode later with **Pro
   where its buttons, switches, 7-segment displays, LCD and LEDs are wired to its pins; its row's Emulate Node and
   Simulate Node then run the board with its shield.
 - **System**: an empty System, or a System example (uart-avr, spi-avr, i2c-avr, regs-avr, uart-pic24, adc-pmod,
-  uart-pico).
+  uart-pico, uart-esp32, uart-zynq).
 
 Systems, and with them the processor boards, are in the development build until they are stable.
 

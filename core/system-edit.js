@@ -204,6 +204,22 @@ export function addInterface(sys, id, f = {}) {
   const out = copy(sys), n = nodeOf(out, id);
   if (!n) return { error: `no node '${id}' in the System` };
   const kind = f.kind ?? 'uart';
+  // (a Zynq's PS UART, #4687: on its board's MIO, no ports; named as its PS's, PS_UART1; 115200 baud, the starter's)
+  if (f.ps) {
+    const ps = n.kind === 'fpga' ? psOfBoard(n.board, n.variant) : null;
+    if (!ps) return { error: `${id}: a PS UART is a Zynq board's FPGA node's (the Zybo Z7, the Arty Z7)` };
+    if (kind !== 'uart') return { error: `${id}: a PS interface is a UART (its PS's UART${ps.uart.id})` };
+    if (f.tx != null || f.rx != null) return { error: `${id}: a PS UART's pins are its board's MIO ${ps.uart.tx} (TX) and ${ps.uart.rx} (RX), not tx and rx ports` };
+    const had = n.interfaces.find((i) => i.kind === 'uart' && i.ps);
+    if (had) return { error: `${id}: its PS UART is there already (${had.name})` };
+    const name = f.name ?? `PS_UART${ps.uart.id}`;
+    if (n.interfaces.some(i => lc(i.name) === lc(name))) return { error: `${id}: an interface named '${name}' is there already` };
+    const it = { name, kind, ps: true, baud: PS_BAUD, frame: UART_DEFAULTS.frame, ...pick(f, ['baud', 'frame']) };
+    const bad = ifaceError(n, it);
+    if (bad) return { error: bad };
+    n.interfaces.push(it);
+    return { system: normalizeSystem(out), id: `${id}.${name}` };
+  }
   if (n.kind === 'mcu' && kind === 'uart') return { error: `${id}: a microcontroller's UARTs are its board's (${n.interfaces.filter(i => i.kind === 'uart').map(i => i.name).join(', ') || 'none'})` };
   if (n.kind === 'terminal') return { error: `${id}: a serial terminal has one UART, its own` };
   if (n.kind === 'broker') return { error: `${id}: an MQTT broker has one interface, its own` };
@@ -227,6 +243,8 @@ export function addInterface(sys, id, f = {}) {
   n.interfaces.push(it);
   return { system: normalizeSystem(out), id: `${id}.${name}` };
 }
+/** A PS UART's baud: the starter program's (core/zynq-ps.js psStarter). */
+const PS_BAUD = 115200;
 const pick = (o, keys) => Object.fromEntries(keys.filter(k => o[k] !== undefined).map(k => [k, o[k]]));
 function freeIfaceName(n, kind) {
   const used = new Set(n.interfaces.map(i => lc(i.name)));
@@ -241,7 +259,7 @@ export function changeInterface(sys, id, name, fields = {}) {
   if (!n) return { error: `no node '${id}' in the System` };
   const f = n.interfaces.find(i => i.name === name);
   if (!f) return { error: `${id}: no interface '${name}'` };
-  const keys = f.kind === 'uart' ? (n.kind === 'fpga' ? ['name', 'tx', 'rx', 'baud', 'frame'] : ['baud', 'frame'])
+  const keys = f.kind === 'uart' ? (n.kind === 'fpga' && !f.ps ? ['name', 'tx', 'rx', 'baud', 'frame'] : f.ps ? ['name', 'baud', 'frame'] : ['baud', 'frame'])
     : f.kind === 'spi' ? (n.kind === 'fpga' ? ['name', 'sck', 'mosi', 'miso', 'ss', 'hz', 'mode'] : ['hz', 'mode'])
     : f.kind === 'i2c' ? (n.kind === 'fpga' ? ['name', 'scl', 'sda', 'hz'] : ['hz']) : ['name', 'pins', 'dir'];
   for (const k of Object.keys(fields)) if (!keys.includes(k)) return { error: `${id}.${name}: this interface has no field '${k}' to change (${keys.join(', ')})` };
@@ -351,7 +369,9 @@ function ifaceText(n, f) {
     const at = k => `${k.toUpperCase()} ${s?.[k] ?? '?'}${n.kind === 'fpga' && n.pins?.[s?.[k]] ? ` (${n.pins[s[k]]})` : ''}`;
     return `${f.name}: I²C ${f.hz} Hz, ${['scl', 'sda'].map(at).join(', ')}`;
   }
-  const pins = n.kind === 'fpga' ? `, TX ${f.tx ?? '?'}${n.pins?.[f.tx] ? ` (${n.pins[f.tx]})` : ''}, RX ${f.rx ?? '?'}${n.pins?.[f.rx] ? ` (${n.pins[f.rx]})` : ''}`
+  const ps = f.ps ? psOfBoard(n.board, n.variant) : null;
+  const pins = ps ? `, its PS's UART${ps.uart.id}: TX MIO ${ps.uart.tx}, RX MIO ${ps.uart.rx}, the board's USB serial port`
+    : n.kind === 'fpga' ? `, TX ${f.tx ?? '?'}${n.pins?.[f.tx] ? ` (${n.pins[f.tx]})` : ''}, RX ${f.rx ?? '?'}${n.pins?.[f.rx] ? ` (${n.pins[f.rx]})` : ''}`
     : n.kind === 'mcu' ? (b => (b?.uarts[f.name] ? `, TX ${b.uarts[f.name].tx}, RX ${b.uarts[f.name].rx}` : ''))(mcuBoard(n.board)) : '';
   return `${f.name}: UART ${f.baud} baud ${f.frame}${pins}`;
 }

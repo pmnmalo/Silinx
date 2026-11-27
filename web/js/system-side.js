@@ -72,7 +72,9 @@ export function mountSystemSide(ctx) {
         btn('+ UART', 'Add a UART interface: its TX and RX ports', () => take(addInterface(M(), n.id, { kind: 'uart' }), 'iface'), 'asm-small sys-add-uart'),
         btn('+ GPIO', 'Add GPIO wires: their ports and direction', () => take(addInterface(M(), n.id, { kind: 'gpio' }), 'iface'), 'asm-small sys-add-gpio'),
         btn('+ SPI', 'Add an SPI bus, the peripheral: its SCK, MOSI, MISO and SS ports', () => take(addInterface(M(), n.id, { kind: 'spi', ...spiPorts(n) }), 'iface'), 'asm-small sys-add-spi'),
-        btn('+ I²C', 'Add an I²C bus, the peripheral: its SCL port and its SDA, an inout port', () => take(addInterface(M(), n.id, { kind: 'i2c', ...i2cPorts(n) }), 'iface'), 'asm-small sys-add-i2c')));
+        btn('+ I²C', 'Add an I²C bus, the peripheral: its SCL port and its SDA, an inout port', () => take(addInterface(M(), n.id, { kind: 'i2c', ...i2cPorts(n) }), 'iface'), 'asm-small sys-add-i2c'),
+        // (a Zynq's PS UART, #4687: its board's USB serial port)
+        ...(psOfBoard(n.board, n.variant) && !n.interfaces.some(i => i.ps) ? [btn('+ PS UART', 'Add its processing system\'s UART: the board\'s USB serial port, for a serial terminal', () => take(addInterface(M(), n.id, { kind: 'uart', ps: true }), 'iface'), 'asm-small sys-add-ps-uart')] : [])));
     } else if (n.kind === 'mcu') {
       const b = mcuBoard(n.board), arch = b?.arch, pic = arch === 'pic24', py = arch === 'rp2040' || arch === 'esp32', cp = n.runtime === 'circuitpython';
       // (its folder's, #5488; a PIC24's .hex only, #5484; a Pico's program, its .py, #5494)
@@ -107,10 +109,13 @@ export function mountSystemSide(ctx) {
     const n = M().nodes.find(x => x.id === nid), f = n?.interfaces.find(x => x.name === name);
     if (!f) return [];
     const change = fields => take(changeInterface(M(), nid, name, fields), 'iface');
-    const out = [h('h3', {}, `${{ uart: 'UART', gpio: 'GPIO', spi: 'SPI', i2c: 'I²C', mqtt: 'MQTT' }[f.kind] || f.kind} ${nid}.${name}`)];
+    const out = [h('h3', {}, `${f.ps ? 'PS UART' : { uart: 'UART', gpio: 'GPIO', spi: 'SPI', i2c: 'I²C', mqtt: 'MQTT' }[f.kind] || f.kind} ${nid}.${name}`)];
     if (n.kind === 'fpga' || f.kind === 'gpio') out.push(field('Name', text(f.name, v => change({ name: v }))));
     if (f.kind === 'uart') {
-      if (n.kind === 'fpga') {
+      // (a Zynq's PS UART, #4687: its board's MIO pins, its USB serial port; no ports of the module)
+      const ps = f.ps ? psOfBoard(n.board, n.variant) : null;
+      if (ps) out.push(field('Pins', h('span', { class: 'mono sys-ps-pins', 'data-no-i18n': '' }, `MIO ${ps.uart.tx} (TX), MIO ${ps.uart.rx} (RX)`), 'its PS\'s UART, the board\'s USB serial port: link it to a serial terminal'));
+      else if (n.kind === 'fpga') {
         const ports = opts.portsOf?.(n.module) || [];
         const portChoice = (v, dir) => choose(v || '', [['', '(none)'], ...ports.filter(p => p.dir === dir || p.dir === 'inout').map(p => [p.name, p.name]), ...(v && !ports.some(p => p.name === v) ? [[v, v]] : [])], x => change({ [dir === 'out' ? 'tx' : 'rx']: x }), `sys-${dir === 'out' ? 'tx' : 'rx'}`);
         out.push(field('TX (an output of the module)', portChoice(f.tx, 'out')), field('RX (an input of the module)', portChoice(f.rx, 'in')));

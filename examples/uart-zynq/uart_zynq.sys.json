@@ -1,0 +1,60 @@
+{
+  "format": "silinx-system",
+  "version": 2,
+  "name": "uart_zynq",
+  "nodes": [
+    {
+      "id": "zybo",
+      "kind": "fpga",
+      "module": "leds",
+      "board": "zybo-z7",
+      "variant": "20",
+      "constraints": "zybo/leds.xdc",
+      "pins": {
+        "clk": "K17",
+        "sw<0>": "G15",
+        "sw<1>": "P15",
+        "sw<2>": "W13",
+        "led<0>": "M14",
+        "led<1>": "M15",
+        "led<2>": "G14",
+        "led<3>": "D18"
+      },
+      "ps": "zybo/ps/main.c",
+      "lang": "vhdl",
+      "interfaces": [
+        {
+          "name": "PS_UART1",
+          "kind": "uart",
+          "ps": true,
+          "baud": 115200,
+          "frame": "8N1"
+        }
+      ],
+      "x": 0,
+      "y": 0
+    },
+    {
+      "id": "term",
+      "kind": "terminal",
+      "interfaces": [
+        {
+          "name": "serial",
+          "kind": "uart",
+          "baud": 115200,
+          "frame": "8N1"
+        }
+      ],
+      "x": 320,
+      "y": 0
+    }
+  ],
+  "links": [
+    {
+      "id": "serial",
+      "kind": "uart",
+      "a": "zybo.PS_UART1",
+      "b": "term.serial"
+    }
+  ]
+}
