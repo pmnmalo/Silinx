@@ -2,7 +2,7 @@
 // System, its top, a canvas of nodes and the typed links between their interfaces. Its format read and written here; its
 // check is core/system-check.js. Isomorphic module (browser + Node).
 //
-//   { format: 'silinx-system', version: 1, name,
+//   { format: 'silinx-system', version: 2, name,
 //     nodes: [ { id, kind: 'fpga', module, board, variant?, constraints?: <its constraints file, in its folder>, ps?: <a Zynq
 //                board's PS's program, a .c of its folder's ps/, #4686>, lang, interfaces, x, y }
 //              { id, kind: 'mcu', board: 'arduino-uno' | 'arduino-nano' | 'explorer-1632' | 'pico' | 'esp32-devkitc', firmware: <a .hex / .elf of the project; a Pico's .py>, runtime?: 'circuitpython', lang, usb, interfaces, x, y }

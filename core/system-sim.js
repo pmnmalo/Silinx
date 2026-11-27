@@ -27,8 +27,9 @@
 // latency is exact instead: every change reaches the other ends at t + latency, and no window is longer than the
 // latency, so that the run is the same at every quantum (at the cost of narrow windows while the links are idle).
 // The run is deterministic: the nodes in their order, the changes in time order, a delivery a window's edge. It is
-// isomorphic (browser, Node), synchronous and needs no
-// SharedArrayBuffer: the whole system runs in one Web Worker (core/system-sim-remote.js).
+// isomorphic (browser, Node) and synchronous (runAsync: an ESP32 node's run under JSPI): the whole system runs in one
+// Web Worker (core/system-host.js); no SharedArrayBuffer but an ESP32 node's Worker + Atomics back end
+// (core/esp32-engine.js).
 //
 // The node contract (core/system-contract.js, #5485) is these adapters' run(t1, inputEvents): ContractNode puts one
 // behind it; a node of the contract only is put behind an adapter here (NodeEngine), and its lookahead bounds the
