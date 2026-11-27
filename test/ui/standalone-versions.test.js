@@ -1,7 +1,9 @@
 // UI: a project's versions in the browser edition (#5740: kept in the browser's IndexedDB, web/js/versions-local.js),
 // the site over HTTP: Save Version… keeps one; a file changed and saved; Versions… lists it; Restore Project puts it
 // back (the open editor reads it again), the project before it kept as a version, the version's file that differs from
-// now listed first (#5741); the page loaded again, the versions are still there. The exact console lines; no warnings, no error of the page's scripts. (The interface:
+// now listed first (#5741); the page loaded again, the versions are still there; its index damaged in IndexedDB, the
+// versions listed from their records, said, and the index rebuilt by the next save (#5908). The exact console lines; no
+// other warnings, no error of the page's scripts. (The interface:
 // SILINX_UI_INTERFACE.)
 import { before, after } from 'node:test';
 import assert from 'node:assert/strict';
@@ -67,5 +69,27 @@ uiTest('#5740 browser edition: Save Version…, a change, Versions… and Restor
   assert.match(after[0], /^\d+ \| restored version 1 \|  \| ~1$/);
   await page.dialogButton('Close');
   assert.deepEqual(await problems(page), []);
+  // #5908: the index's record damaged in IndexedDB: the versions listed from their own records, said; the next save
+  // sets it aside and rebuilds it, in one transaction
+  const n = after.length;
+  await page.eval(async () => {
+    const dbName = (await indexedDB.databases()).map(d => d.name).find(x => /versions$/.test(x));
+    const db = await new Promise((r, j) => { const o = indexedDB.open(dbName); o.onsuccess = () => r(o.result); o.onerror = () => j(o.error); });
+    const keys = await new Promise(r => { const q = db.transaction('kv').objectStore('kv').getAllKeys(); q.onsuccess = () => r(q.result); });
+    const key = keys.find(k => k.endsWith('\u0000Kept\u0000index'));
+    await new Promise(r => { const tx = db.transaction('kv', 'readwrite'); tx.objectStore('kv').put('{"version":1,"ne', key); tx.oncomplete = r; });
+    db.close();
+  });
+  await page.menu('Project', 'Versions…');
+  await page.waitDialog('Versions of Kept');
+  assert.equal((await rows(page)).length, n, 'every version, from its record');
+  await page.waitConsole(new RegExp(`^WARNING: the versions' index of 'Kept' was damaged \\(not JSON\\): rebuilt, ${n} version\\(s\\) taken from their own records; no version that could be read is lost$`, 'm'));
+  await page.dialogButton('Close');
+  await page.menu('Project', 'Save Version…');
+  await page.waitDialog('Save Version');
+  await page.fill('.dlg-overlay input[type=text]', 'after');
+  await page.dialogButton('OK');
+  await page.waitConsole(new RegExp(`^WARNING: the versions' index of 'Kept' was damaged \\(not JSON\\): set aside as index-damaged-[^ ]+ and rebuilt, ${n} version\\(s\\) taken from their own records; no version that could be read is lost$`, 'm'));
+  await page.waitConsole(new RegExp(`^Version ${n + 1} of Kept saved: after\\.$`, 'm'));
   assert.deepEqual(page.console.filter((c) => c.type === 'error').map((c) => c.text), []);
 }, { url: () => 'about:blank', timeout: 240000 });

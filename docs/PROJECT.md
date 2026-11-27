@@ -57,6 +57,12 @@ A project is a directory under the workspace (default `~/Silinx-projects`, overr
   `Speed` and 1 **Fast** (one mapping, its critical LUTs made shallower, one placement: a project with none is Fast too), `Area` and 2 **Area** (the
   default of a new project: the smaller of the usual mapping's netlist and Speed's, one placement), `Speed` and 2 **Speed** (every mapping for speed, the state machines of 8 states or more one-hot, the
   fastest kept; several placements, the fastest kept). `Area` at 1, of a project made before, is Area.
+* The project's **versions** (#5740) are kept in its hidden folder `.silinx/versions/`: `texts/<sha-256>` (each text
+  once), `v/<id>.json` (each version's own record) and `index.json`, written after them, atomically. A change of the
+  versions runs under the project's lock (the local server's processes, a lock file with a stale timeout; the browser's
+  tabs, a Web Lock; IndexedDB, one transaction). An index read back is checked (#5908): an entry that cannot be read is
+  left out and the others kept; a damaged index is set aside (`index.json.damaged-<time>`), never written over, and
+  rebuilt from the records, said in the console and by the MCP's version tools; a version's number is never given again.
 * Generated implementation output lives in `<project>/build/` (ISE work dir), bitstream `build/<top>.bit`.
 
 ## HTTP API (server/)
@@ -87,7 +93,7 @@ reload (#4754).
 | POST | /import-zip?name= | a project's zip (the body) imported as the project `name` (`/projects/import-zip`: kept) |
 | POST | /import-xise | `{ name, xise, files }` (`/projects/import-xise`: kept) |
 | POST | /projects/:p/merge | `{ zip (base64), resolve?, label? }`: Merge Contribution… (the zip as the body with `?label=` and `X-Silinx-Resolve`: kept) |
-| GET | /projects/:p/versions | `{ versions }`: the project's versions, newest first (#5740) |
+| GET | /projects/:p/versions | `{ versions, warning? }`: the project's versions, newest first (#5740); `warning`: a damaged index's repair (#5908) |
 | POST | /projects/:p/versions | `{ label?, author?, reason? }` -> `{ version, saved }`: Save Version… (`reason`: `manual`, or `before-…` before one of the page's risky commands) |
 | GET | /projects/:p/versions/:id | `{ version, json, files }`: a version's project |
 | GET | /projects/:p/versions/:id/diff | `{ version, files: [{ path, state }], json }`: what differs between a version and the project now (#5741) |

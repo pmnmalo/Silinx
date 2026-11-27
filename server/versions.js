@@ -1,6 +1,6 @@
 // A server's projects' versions (#5740, core/versions.js): kept in the project's hidden folder, .silinx/versions/
-// (index.json, and texts/<sha-256>: each text once), which the file routes, the file tree, the export and the shares never
-// see, as the snapshots' (#4182); it goes with the project when it is renamed, and with it to the .trash. Used by the
+// (index.json, texts/<sha-256>: each text once, v/<id>.json: each version's own record, #5908), which the file routes,
+// the file tree, the export and the shares never see, as the snapshots' (#4182); it goes with the project when it is renamed, and with it to the .trash. Used by the
 // version routes and the MCP's version tools, with the same messages; the automatic versions: a save once a project is
 // quiet (every write of the server's: the page's, the MCP's, git's), and one before each risky command (versionBefore).
 import fsp from 'node:fs/promises';
@@ -14,8 +14,14 @@ const dirOf = (P, name) => path.join(P.projectDir(name), '.silinx', 'versions');
 /** core/versions.js's backend on a server's projects (P: server/projects.js). */
 export function folderBackend(P) {
   const text = (name, h) => { if (!isHash(h)) throw new Error('not a text\'s hash'); return path.join(dirOf(P, name), 'texts', h); };
+  const entryFile = (name, id) => { if (!/^\d{1,9}$/.test(String(id))) throw new Error('not a version\'s number'); return path.join(dirOf(P, name), 'v', `${id}.json`); };
   return {
-    async readIndex(name) { try { return JSON.parse(await fsp.readFile(path.join(dirOf(P, name), 'index.json'), 'utf8')); } catch { return null; } },
+    // (none: null; not JSON: its text, a damaged index to set aside and rebuild, #5908)
+    async readIndex(name) {
+      let t;
+      try { t = await fsp.readFile(path.join(dirOf(P, name), 'index.json'), 'utf8'); } catch { return null; }
+      try { return JSON.parse(t); } catch { return t; }
+    },
     async writeIndex(name, ix) {
       await fsp.mkdir(dirOf(P, name), { recursive: true });
       await P.writeAtomic(path.join(dirOf(P, name), 'index.json'), `${JSON.stringify(ix)}\n`);   // (whole or not at all)
@@ -28,14 +34,34 @@ export function folderBackend(P) {
       await P.writeAtomic(f, t);
     },
     dropText: (name, h) => fsp.rm(text(name, h), { force: true }),
+    // each version's own object, v/<id>.json, written before the index: what a damaged index is rebuilt from (#5908)
+    async listEntries(name) {
+      const dir = path.join(dirOf(P, name), 'v');
+      const names = await fsp.readdir(dir).catch(() => []);
+      const out = [];
+      for (const f of names.filter(n => /^\d{1,9}\.json$/.test(n))) { try { out.push(JSON.parse(await fsp.readFile(path.join(dir, f), 'utf8'))); } catch { /* unreadable: left out */ } }
+      return out;
+    },
+    async putEntry(name, entry) {
+      await fsp.mkdir(path.join(dirOf(P, name), 'v'), { recursive: true });
+      await P.writeAtomic(entryFile(name, entry.id), `${JSON.stringify(entry)}\n`);
+    },
+    dropEntry: (name, id) => fsp.rm(entryFile(name, id), { force: true }),
+    // (a damaged index kept beside, never written over: index.json.damaged-<time>)
+    async setAside(name) {
+      const to = `index.json.damaged-${new Date().toISOString().replace(/[:.]/g, '-')}`;
+      try { await fsp.rename(path.join(dirOf(P, name), 'index.json'), path.join(dirOf(P, name), to)); } catch { return null; }
+      return `.silinx/versions/${to}`;
+    },
     forget: name => fsp.rm(dirOf(P, name), { recursive: true, force: true }),
   };
 }
 
 const stores = new WeakMap();
-/** The versions of a server's projects (one store a process, its writes one after the other). */
+/** The versions of a server's projects (one store a process; its changes one after the other under the project's lock,
+ *  across processes too: the web server's, the MCP server's, the CLI's, #5908). */
 export function serverVersions(P) {
-  if (!stores.has(P)) stores.set(P, versionStore(folderBackend(P)));
+  if (!stores.has(P)) stores.set(P, versionStore(folderBackend(P), { lock: P.lockProject }));
   return stores.get(P);
 }
 
