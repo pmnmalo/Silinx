@@ -78,6 +78,7 @@ export function regsContextMenu(e, file) {
     { label: 'Open', action: () => openRegs(file) },
     designState.view === 'sim' ? null : topMenuItem(drawnTop(file), () => setViewAsTop(file)),
     { label: 'Rename…', action: () => renameDialog(file) },
+    { label: 'Duplicate…', action: () => import('./design-duplicate.js').then(m => m.duplicateDialog(file)) },   // (#5862)
     clashItem(file),
     { label: 'Remove from Project', action: () => removeModule(file) },
   ].filter(Boolean), e.clientX, e.clientY);

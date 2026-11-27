@@ -141,6 +141,8 @@ export function setupMenus() {
       { label: `${wiz.addSourceTitle()}…`, action: () => wiz.addSourceDialog(), disabled: hasPj },   // (Import Source… in the Silinx interface, #1501)
       // the project folder's files not in the project (the Silinx interface's Files page has it too, #1214, #2450)
       { label: 'Add to Project…', action: () => addFromFolderDialog(), disabled: hasPj },
+      // (the selected source or file copied, #5862)
+      { label: 'Duplicate…', action: () => import('./design-duplicate.js').then(m => m.duplicateDialog(panes.sel?.file)), disabled: () => !S.project || !panes.sel?.file },
       // (another person's copy of the project merged into it, and undone, #4206)
       { label: 'Merge Contribution…', action: () => import('./merge-dialog.js').then(m => m.mergeContributionDialog()), disabled: hasPj },
       { label: 'Undo Merge', action: () => import('./merge-dialog.js').then(m => m.undoMerge()), disabled: hasPj },

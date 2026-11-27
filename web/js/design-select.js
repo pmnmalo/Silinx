@@ -4,7 +4,7 @@
 // a plain click or Esc goes back to one row. The rows selected are marked (.msel) and aria-selected, the tree
 // aria-multiselectable; the row clicked last is the selection's current one (.sel: the Processes pane follows it). Only
 // the rows of a source take part (a module's, a drawing's, a file's: treeItem's `source`, { file, pair }). A selection's
-// menu has the commands that apply to several sources (Open, Remove from Project), the others shown disabled; Delete
+// menu has the commands that apply to several sources (Open, Remove from Project, Duplicate: #5862), the others shown disabled; Delete
 // removes the selection from the project (web/js/design-remove.js), or the row selected.
 import { popupMenu, runAction } from './ui.js';
 import { removal, removeSources } from './design-remove.js';
@@ -74,6 +74,8 @@ export function selectionMenu(e, row) {
   popupMenu([
     { label: 'Open', action: () => { for (const r of rows) r.openIt?.(); } },
     { label: 'Remove from Project', action: () => removeSources(sourcesOf(rows)) },
+    // (each one under its own name, #5862)
+    { label: 'Duplicate', action: () => import('./design-duplicate.js').then(m => m.duplicateSources(sourcesOf(rows).map(r => r.file))) },
     '-',
     { label: 'Rename…', disabled: true },
     { label: 'Set as Top Module', disabled: true },

@@ -34,6 +34,17 @@ async function fixMissingTops(name) {
   return messages.map(m => `${m.level === 'warn' ? 'WARNING' : 'INFO'}: ${m.text}`);
 }
 
+// Duplicate (rename_file's copy, #5862): core/duplicate-source.js, the interface's Duplicate's
+async function duplicate(name, from, to) {
+  const a = await sourcePath(name, from, 'duplicated');
+  const b = to === undefined ? null : await sourcePath(name, to, null, { last: false });
+  const { duplicateSource } = await import('../core/duplicate-source.js');
+  const design = isDesignOnly(await P.readProject(name));   // (a design project's: its HDL never named, #3891)
+  let r;
+  try { r = await duplicateSource(P, name, a, { to: b, hidden: design ? hdlSideFile : null }); } catch (e) { throw toolError(e.message); }
+  return { text: [r.message, ...r.hdl].join('\n'), data: { project: name, from: r.from, to: r.to, copy: true, files: design ? r.files.filter(f => !hdlSideFile(f)) : r.files, modules: r.modules.map(([o, n]) => ({ from: o, to: n })) } };
+}
+
 // a path of the project as the project lists it, inside it, not hidden; not silinx.json nor build/ (verb: what the
 // tool does with it)
 async function sourcePath(name, rel, verb, opts) {
@@ -126,11 +137,13 @@ export const SOURCE_TOOLS = [
   },
   {
     name: 'rename_file', title: 'Rename a file or a folder',
-    description: 'Rename or move a file or a folder of a project, as Rename does: the project\'s list of files, its constraints file and the drawings\' links to their HDL follow. A module is renamed by rename_module.',
-    inputSchema: { type: 'object', properties: { project: PROJECT, from: STR('The file\'s or folder\'s path in the project.'), to: STR('Its new path in the project.') }, required: ['project', 'from', 'to'], additionalProperties: false },
+    description: 'Rename or move a file or a folder of a project, as Rename does: the project\'s list of files, its constraints file and the drawings\' links to their HDL follow. A module is renamed by rename_module. copy: Duplicate instead, a file\'s copy in the project, its modules renamed (to: by default name_copy).',
+    inputSchema: { type: 'object', properties: { project: PROJECT, from: STR('The file\'s or folder\'s path in the project.'), to: STR('Its new path in the project.'), copy: { type: 'boolean', description: 'A copy (Duplicate): a module named after to.' } }, required: ['project', 'from'], additionalProperties: false },
     annotations: { readOnlyHint: false, destructiveHint: false },
-    async run({ project: name, from, to }) {
+    async run({ project: name, from, to, copy }) {
       await readProject(name);
+      if (copy) return duplicate(name, from, to);
+      if (typeof to !== 'string' || !to) throw toolError('to: the new path in the project');
       const a = await sourcePath(name, from, 'renamed'), b = await sourcePath(name, to, null, { last: false });
       if (/^build(\/|$)/i.test(a) || /^build(\/|$)/i.test(b)) throw toolError('build/ is written by Silinx itself');
       // (the new name by the import gate's rules: P.renameFile, as the interface's Rename, #2973)
