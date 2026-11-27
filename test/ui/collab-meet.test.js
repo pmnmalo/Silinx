@@ -2,7 +2,8 @@
 // their page (its link …#follow=<room>.<key>.host.<owner's key>); a follower opens the link and is in, with no code:
 // the owner found at the meeting point, the project read only, the owner's editor followed, an edit arriving; an
 // impostor with the link at the meeting point (a page posing as the owner, its proof forged) is ignored. Then, the
-// owner gone, another follower finds no one: after MEET_MS the codes take over (Connect to the Owner), with a warning.
+// owner gone, another follower finds no one: after MEET_MS Connect to the Owner closes, with an error (no codes
+// exchanged by hand any longer, #5868: its only button Cancel).
 // The meeting point is the tests' own, between the pages of one browser context (core/collab-meet.js channelMeeting:
 // a BroadcastChannel), never the public trackers. The second follower in Portuguese. And a follower's connection to
 // the owner lost (#3835): "Reconnecting to Ana…" meanwhile, the owner found again at the meeting point, the owner's
@@ -103,19 +104,20 @@ uiTest('#3227 the meeting point: a follower opens the link and is in, an imposto
     assert.deepEqual(await warnings(fp), ['WARNING: Ana\'s project "Met" is no longer followed (the owner stopped sharing): what you see is as it was then.']);
     assert.deepEqual(fp.errors, []);
   } finally { await fp.close(); }
-  // another follower, with no owner there: the meeting point's dialog in Portuguese, then the codes after 15 s
+  // another follower, with no owner there: the meeting point's dialog in Portuguese, Cancel its only button (#5868: no
+  // codes); after 15 s it closes, with an error
   await page.eval(() => localStorage.setItem('silinx.lang', 'pt'));
   const fp2 = await follow(page, link, 'Eva', 'Seguir');
   try {
     await fp2.waitDialog('Ligar ao Dono');
     assert.deepEqual(await fp2.eval(() => [...document.querySelectorAll('.dlg-overlay .dlg-body p, .dlg-overlay .dlg-buttons .btn')].map((e) => e.textContent)),
-      ['A procurar o dono no ponto de encontro…', 'Se não for encontrado aí, troca códigos com ele em vez disso.', 'Trocar Códigos em Vez Disso', 'Cancelar']);
+      ['A procurar o dono no ponto de encontro…', 'Cancelar']);
     const t0 = Date.now();
-    await fp2.waitFor(() => document.querySelector('.dlg-overlay textarea[data-field=code]')?.value || null, [], { what: 'the codes', timeout: 30000 });
-    assert.ok(Date.now() - t0 > 10000, `the codes after ${Date.now() - t0} ms`);
-    await fp2.waitConsole(/^WARNING: Follow a shared project: the owner was not found at the meeting point \(in 15 s\): exchange codes with them instead\.$/m);
-    await fp2.dialogButton('Cancelar');
-    assert.deepEqual(await warnings(fp2), ['WARNING: Follow a shared project: the owner was not found at the meeting point (in 15 s): exchange codes with them instead.']);
+    await fp2.waitConsole(/^ERROR: Follow a shared project: the owner was not found at the meeting point \(in 15 s\): is its owner's page still sharing it\? Open the link again\.$/m, { timeout: 30000 });
+    assert.ok(Date.now() - t0 > 10000, `given up after ${Date.now() - t0} ms`);
+    await fp2.waitNoDialog();
+    assert.equal(await fp2.eval(() => !!document.querySelector('.dlg-overlay textarea')), false);
+    assert.deepEqual(await warnings(fp2), ['ERROR: Follow a shared project: the owner was not found at the meeting point (in 15 s): is its owner\'s page still sharing it? Open the link again.']);
     assert.deepEqual(fp2.errors, []);
   } finally { await fp2.close(); }
   assert.deepEqual(await warnings(page), []);

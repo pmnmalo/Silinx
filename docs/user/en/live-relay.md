@@ -4,12 +4,13 @@
 
 When you share a project live from the Silinx site, your page hosts it. Your followers connect to your page
 **directly** (peer to peer, WebRTC) when their network lets them. Before that, they have to find your page. They can do
-it in three ways:
+it in two ways:
 
 - **a relay of your own**, which also carries the messages of a follower whose direct path does not connect (a network
   that lets no UDP through, as many school and company networks do);
-- the public meeting point (WebTorrent trackers run by others), when you give no relay;
-- a code exchanged by hand (*Add a User…*), as the last resort.
+- the public meeting point (WebTorrent trackers run by others), when you give no relay.
+
+Opening the link is all your followers do: their page finds yours, or says it did not find it.
 
 A relay of your own on Cloudflare's free plan takes a few minutes to set up and needs no server. Everyone sets up their
 own: a teacher for their classes, a student for their group. What it costs against the free plan counts on the
@@ -90,7 +91,7 @@ relay)** and **Live via your Cloudflare relay**; a few sentences right below the
 by default once the relay is set up: the window shows its address (never its key) below *Your name*, and *Change…* opens *Set Up a
 Cloudflare Relay…* again. With no relay set up, the window says so and offers *Set Up a Cloudflare Relay…*, and *Start
 Sharing* waits until there is one. **Live peer to peer (no relay)** needs no setup: your followers find you at the public
-meeting point and connect browser to browser, or send you a code (*Add a User…*); it may fail on networks that block
+meeting point and connect browser to browser; it may fail on networks that block
 direct connections. The window remembers the way you chose last. The link names the relay, so your followers need
 nothing but the link: no key, no account.
 

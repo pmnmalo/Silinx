@@ -28,7 +28,6 @@ const MARKERS = [
 const ALLOW = {
   'core/import-gate.js': { why: 'the gate itself' },
   'core/zip.js': { why: 'the zip reader the gate calls (gateZip), with its caps and its check of each entry' },
-  'core/collab-codes.js': { why: 'a WebRTC session description a follower or the owner pastes (#3227): sealed with the link\'s key, its size capped inflated; never a project\'s file' },
   'web/js/api.js': { why: 'the local server\'s client: it sends the zip or the .xise to the server, which gates them', via: 'server/xise-routes.js' },
   'web/js/wizards.js': { why: 'Import Source\'s files go through core/import-source.js importSourceFile, which gates each one (gateFile, #3546)' },
   'web/js/project-zip-dialogs.js': { why: 'Import Project… (#3703): the files picked go to api.importZip / importXise, gated by the server (server/xise-routes.js) or the browser edition (web/js/api-local.js); its own zip read lists the entries\' names only, to preselect the software, none inflated nor kept', via: 'web/js/api-local.js' },

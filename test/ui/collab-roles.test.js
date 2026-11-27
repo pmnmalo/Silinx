@@ -55,7 +55,7 @@ uiTest('#3997 the Sharing menu: a viewer made an editor, then a viewer again (th
     await page.waitConsole(/^Rui follows your project "Roles"\.$/m);
     // the owner's menu: Rui's Viewer | Editor (#4849, test/ui/collab-roles-menu.test.js); no role command in it (#4646)
     await page.waitFor(() => document.querySelector('.collab-presence .collab-btn')?.textContent === 'Sharing (1)', [], { what: 'Sharing (1)' });
-    assert.deepEqual(await menu(page), [['Ana', 'you'], ['Rui', 'ViewerEditor'], '-', ['Show Sharing Link…', ''], ['Renew Editor Link', ''], ['Add a User…', ''], ['Stop Sharing', '']]);
+    assert.deepEqual(await menu(page), [['Ana', 'you'], ['Rui', 'ViewerEditor'], '-', ['Show Sharing Link…', ''], ['Renew Editor Link', ''], ['Stop Sharing', '']]);
     await page.eval(() => document.body.click());
     // (the viewer's own menu: themselves a viewer)
     assert.deepEqual((await menu(rp)).slice(0, 2), [['Ana', 'owner'], ['Rui', 'you']]);

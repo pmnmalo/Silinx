@@ -676,7 +676,7 @@ uiTest('standalone edition (file://) in a user\'s browser (Chrome without --allo
 }, { url: () => 'about:blank', timeout: 300000 });
 
 // #418: the Board Emulator in the browser edition compiles the design with the site's Yosys (its assets)
-uiTest('#3227 browser edition: Share Project… hosts the room in the page (its link …#view=<room>.<key>.host.<owner\'s key>), Add a User… in the Sharing menu', E, async (page) => {
+uiTest('#3227 browser edition: Share Project… hosts the room in the page (its link …#view=<room>.<key>.host.<owner\'s key>), the follower in with no code (#5868)', E, async (page) => {
   await page.goto(siteUrl);
   await page.waitFor(() => window.SilinxApp && document.querySelector('#menubar .item') && window.Silinx.devices, [], { what: 'site boot' });
   await page.menu('File', 'New Project…');
@@ -706,7 +706,8 @@ uiTest('#3227 browser edition: Share Project… hosts the room in the page (its 
   assert.ok(link.startsWith(siteUrl) && /#view=[A-Za-z0-9_-]{22}\.[A-Za-z0-9_-]{43}\.host\.[A-Za-z0-9_-]{86}&owner=[A-Za-z0-9_-]{86}$/.test(link), link);
   assert.deepEqual(await page.eval(() => [...document.querySelectorAll('.dlg-overlay .dlg-buttons .btn')].map((b) => b.textContent)), ['Start Sharing', 'Stop Sharing', 'Close']);
   assert.equal(await page.eval(() => document.querySelector('.dlg-overlay .collab-hosted').hidden), false);
-  await page.waitConsole(/^This page hosts the shared project: its followers find it at the meeting point when they open the link, or send you a code/m);
+  await page.waitConsole(/^This page hosts the shared project: its followers find it at the meeting point when they open the link; it lasts while this page is open\.$/m);
+  assert.equal(await page.eval(() => document.querySelector('.dlg-overlay .collab-hosted').textContent), 'This page hosts it: its followers find it when they open the link.');
   // (the meeting point's Trystero in the site's bundle, #3227)
   assert.ok((await fs.readFile(path.join(site, 'index.html'), 'utf8')).includes('Trystero'), 'Trystero bundled');
   // a follower opens the link in the site: the project opened, read only (#3320: the start-up's storage refused it)

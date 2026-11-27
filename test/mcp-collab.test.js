@@ -68,6 +68,16 @@ test('the tools are listed, with their schemas', () => {
   assert.equal(byName.share_project.inputSchema.properties.editors.type, 'boolean');
 });
 
+test('#5868 no codes exchanged by hand, no Add a User…: share_project and follow_project take no code nor a user to add, nor say so', () => {
+  const byName = Object.fromEntries(TOOLS.map(t => [t.name, t]));
+  for (const name of ['share_project', 'follow_project']) {
+    const t = byName[name];
+    assert.deepEqual(Object.keys(t.inputSchema.properties).filter(k => /code|add_?user|answer|offer/i.test(k)), [], name);
+    assert.doesNotMatch(JSON.stringify(t), /Add a User|Take a Code|exchanged by hand|a follower's code|the owner's code/i, name);
+    assert.deepEqual(t.inputSchema.properties.action?.enum?.filter(v => /code|add/i.test(v)) ?? [], [], name);
+  }
+});
+
 test('share_project start: a page follows it (the project, its files, the owner\'s name); a change on disk arrives; status lists the follower; stop ends it', async () => {
   await ok('new_project_from_example', { name: 'traffic', example: 'traffic' });
   const r = await ok('share_project', { project: 'traffic', name: 'Teacher', server: base });

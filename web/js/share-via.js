@@ -3,7 +3,7 @@
 // your Cloudflare relay (#4543: its followers meet the page there and connect to it directly when they can, through
 // the relay otherwise), set up first in the Collaboration tab (web/js/relay-setup.js, kept in web/js/relay-setting.js:
 // its address shown, Change… opens the guide, its key never shown), or peer to peer, no relay (#3227: the public
-// meeting point, or codes exchanged by hand, Add a User…). The way chosen kept per viewer: by default the Cloudflare
+// meeting point). The way chosen kept per viewer: by default the Cloudflare
 // relay when one is set up, peer to peer otherwise.
 import { h } from './ui.js';
 import { prefKey } from './prefs.js';

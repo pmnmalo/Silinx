@@ -2,14 +2,15 @@
 // waits there for its followers, and a follower's page, opening a link with the owner's key (…host.<owner's key>),
 // finds the owner there, so opening the link is enough (core/collab-meet.js: the owner's proof, every other peer
 // ignored). The meeting point is Trystero's torrent strategy (@trystero-p2p/torrent, public WebTorrent trackers), with
-// the STUN servers of the codes' WebRTC (collab-rtc.js); this browser's setting silinx.collab.meeting = 'local' takes a
-// meeting point between this browser's pages instead (the tests'). The codes exchanged by hand stay as the fall-back:
-// the follower's after MEET_MS with no owner, or at their choice (Exchange Codes Instead). Every message in the console.
+// the STUN servers of collab-rtc.js; this browser's setting silinx.collab.meeting = 'local' takes a meeting point
+// between this browser's pages instead (the tests'). The owner not found there in MEET_MS, the follower is told so (no
+// codes exchanged by hand any longer, #5868: the meeting point finds both pages, or no WebRTC passes between them). Every
+// message in the console.
 // A relay of the owner's settings (#4543: Share Project…'s Relay:, a link's `&relay=`) is the meeting point instead
 // (core/collab-meet-relay.js): peer to peer when a direct path works, through the relay otherwise.
 //   meetFollowers(share, hostKey): the owner's page at the meeting point (its followers attached to its room); a
 //                    follower's path changed at a relay's: share.onVia() (#4643)
-//   findOwner(link) -> a WebSocket class for followRoom, 'codes' (the codes instead) or null (cancelled); the class's
+//   findOwner(link) -> a WebSocket class for followRoom, or null (not found, or cancelled); the class's
 //                    rejoin(): the owner found there again, with no dialog (#3835: its connection lost, made again)
 //   ownerFound(link, ms) -> that class, the owner found there with no dialog, tried for `ms` (#4850: a page reloaded)
 //   publicServers(link) -> the follow dialog's line naming the public servers a hosted room's follower reaches (#3361)
@@ -53,7 +54,7 @@ export async function meetFollowers(share, hostKey) {
   try {
     return await meetAsHost({ meeting: await meetingPoint(share.meetAt), room: share.session.room, key: share.session.key, hostKey, maxReceive: FOLLOWER_JOIN, attach: end => share.hosted?.follower(end), onVia: () => share.onVia?.() });
   } catch (e) {
-    collabLog(`WARNING: Share Project: ${share.meetAt ? `the relay at ${new URL(share.meetAt.address).host}` : 'the meeting point'} is out of reach (${e.message}): each follower connects with a code instead (Add a User…).`, 'warn');
+    collabLog(`WARNING: Share Project: ${share.meetAt ? `the relay at ${new URL(share.meetAt.address).host}` : 'the meeting point'} is out of reach (${e.message}): no follower can connect to this page.`, 'warn');
     return null;
   }
 }
@@ -72,23 +73,21 @@ export async function ownerFound(link, ms) {
   }
 }
 
-/** A follower looking for the owner at the meeting point, MEET_MS at most; the codes on their choice or after. */
+/** A follower looking for the owner at the meeting point, MEET_MS at most: a WebSocket class, or null (not found,
+ *  said in the console, or cancelled). */
 export async function findOwner(link) {
   const ac = new AbortController();
   let found = null, gaveUp = false;
-  const buttons = [{ label: 'Exchange Codes Instead', value: () => (found ? 'found' : 'codes') }, { label: 'Cancel', value: null }];
+  const buttons = [{ label: 'Cancel', value: () => (found ? 'found' : gaveUp ? 'gave up' : null) }];
   const meet = meetingPoint(link.relay ? { address: link.relay } : null).then(meeting => meetOwner({ meeting, room: link.room, key: link.key, host: link.host, ms: MEET_MS, signal: ac.signal, maxReceive: OWNER_MAX }));
   meet.then(ws => { if (ac.signal.aborted) { new ws().close(); return; } found = ws; buttons[0].el?.click(); }, e => { gaveUp = !ac.signal.aborted && e.message; buttons[0].el?.click(); });
   const how = await dialog({
     title: 'Connect to the Owner',
-    body: h('div', { class: 'collab-dlg' },
-      h('p', {}, 'Looking for the owner at the meeting point…'),
-      h('p', {}, 'If they cannot be found there, you exchange codes with them instead.')),
+    body: h('div', { class: 'collab-dlg' }, h('p', {}, 'Looking for the owner at the meeting point…')),
     buttons,
   });
   if (how === 'found') { collabLog('Follow a shared project: the owner was found at the meeting point.', 'info'); found.rejoin = () => ownerAgain(link); return found; }
   ac.abort();
-  if (how === null) return null;
-  collabLog(gaveUp ? `WARNING: Follow a shared project: ${gaveUp} (in ${MEET_MS / 1000} s): exchange codes with them instead.` : 'Follow a shared project: codes exchanged with the owner instead of the meeting point.', gaveUp ? 'warn' : 'info');
-  return 'codes';
+  if (how === 'gave up') collabLog(`ERROR: Follow a shared project: ${gaveUp} (in ${MEET_MS / 1000} s): is its owner's page still sharing it? Open the link again.`, 'err');
+  return null;
 }
