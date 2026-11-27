@@ -27,7 +27,7 @@ export const TT_PT = {
   // editor body
   'Truth table': 'Tabela de verdade', 'Notes': 'Notas', 'Notes (saved with the table)': 'Notas (guardadas com a tabela)',
   'Click an output cell to change it: 0 → 1 → X (don\'t care).': 'Clique numa célula de saída para a mudar: 0 → 1 → X (indiferente).',
-  'Select this output': 'Selecionar esta saída', 'Expression': 'Expressão', 'Fill Table': 'Preencher Tabela',
+  'Select this output': 'Selecionar esta saída', 'An input: the first is the most significant bit of a row': 'Uma entrada: a primeira é o bit mais significativo de cada linha', 'Expression': 'Expressão', 'Fill Table': 'Preencher Tabela',
   'Fill the column of this output from the expression': 'Preencher a coluna desta saída a partir da expressão',
   'Karnaugh map': 'Mapa de Karnaugh',
   // the variables' order on the map (#2924)
@@ -90,6 +90,7 @@ export const TT_PT_PATTERNS = [
   [/^\((\d+) prime implicant\(s\)\)$/, '($1 implicante(s) primo(s))'],
   [/^— the truth table has errors: (.+)$/, '— a tabela de verdade tem erros: $1'],
   [/^— (.+) has errors$/, '— $1 tem erros'],
+  [/^(.+) is read only: its columns are not moved\.$/, '$1 é só de leitura: as suas colunas não são movidas.'],   // (#5863)
   // the status line (#2763)
   [/^(\d+) inputs? · (\d+) outputs? · (\d+) rows$/, (m, i, o, r) => `${i} entrada${i === '1' ? '' : 's'} · ${o} saída${o === '1' ? '' : 's'} · ${r} linhas`],
 ];

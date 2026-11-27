@@ -665,7 +665,7 @@ export function reshapeTable(docIn, inputs, outputs) {
     table[o] = col;
   }
   const exprs = {};
-  for (const o of outputs) { const k = Object.keys(doc.exprs || {}).find(x => x.toLowerCase() === o.toLowerCase()); if (k && inputs.length === n0 && inputs.every((v, j) => v === old[j])) exprs[o] = doc.exprs[k]; }
+  for (const o of outputs) { const k = Object.keys(doc.exprs || {}).find(x => x.toLowerCase() === o.toLowerCase()); if (k && inputs.length === n0 && inputs.every(v => old.includes(v))) exprs[o] = doc.exprs[k]; }   // (the same inputs, reordered too: #5863)
   return { ...doc, inputs: [...inputs], outputs: [...outputs], table, exprs, ...newOutputForms(doc, inputs, outputs) };
 }
 
@@ -683,6 +683,19 @@ export function shapeTable(docIn, inputs, outputs) {
   const errs = validateTable(next).filter(x => x.severity === 'error');
   if (errs.length) throw new LogicError(errs[0].message);
   return next;
+}
+
+/** The table with its input (`kind` 'inputs') or output ('outputs') column `from` moved to place `to` (#5863: its
+ *  editor's column dragged, Alt+Shift+← / →): shapeTable's with the names reordered, an input's rows sorted again in the
+ *  new order, each row's values kept with its input combination. Throws a LogicError on a column or a place out of range. */
+export function moveColumn(docIn, kind, from, to) {
+  const doc = normalizeTable(docIn);
+  if (kind !== 'inputs' && kind !== 'outputs') throw new LogicError(`${kind}: inputs or outputs`);
+  const names = [...doc[kind]];
+  const ok = i => Number.isInteger(i) && i >= 0 && i < names.length;
+  if (!ok(from) || !ok(to)) throw new LogicError(`No ${kind === 'inputs' ? 'input' : 'output'} column ${ok(from) ? to : from} (it has ${names.length})`);
+  names.splice(to, 0, ...names.splice(from, 1));
+  return shapeTable(doc, kind === 'inputs' ? names : doc.inputs, kind === 'outputs' ? names : doc.outputs);
 }
 
 /**
