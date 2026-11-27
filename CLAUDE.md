@@ -98,11 +98,14 @@ the code and the lessons learnt.
   file of every module it changes (`.github/workflows/pr-tests.yml`, `scripts/related-tests.mjs`, #637: the
   unit test files that import a changed file, directly or through a test helper; for a module no test imports, those of its importers, up to the modules tests import, #3544; a changed test; the UI test
   of a changed page script; for a data file (the bit database, a device description, an example), the tests of
-  the modules that read it and of their importers, #772; and always the repository-wide tests, `REPO_WIDE`, #3461);
+  the modules that read it and of their importers, #772; for an MCP tool's module (`server/mcp*.js`), the
+  `test/mcp*.test.js` that call one of its tools by name, #5951; and always the repository-wide tests, `REPO_WIDE`,
+  #3461: the fast checks that scan the whole repository, code size, translations, unused exports, colours, the MCP
+  tools' size, docs, workflows, pins…, seconds each);
   a hub (`HUBS` in the script, #4166: web/js's modules imported by 15 page scripts or more, `i18n.js`, `app.js`,
   `ui.js`, `drawings.js`…) selects only its own UI test, not those of its importers nor those that name it, which
-  are the nightly's (its unit tests as any module's); at most 6 parts of a pull request run at once
-  (`max-parallel`, #4166). `main` requires its check, `related-tests`. Before pushing, run the same files
+  are the nightly's (its unit tests as any module's); at most 12 parts of a pull request run at once
+  (`max-parallel`, #4166, #5951). `main` requires its check, `related-tests`. Before pushing, run the same files
   locally: `node scripts/related-tests.mjs origin/main HEAD`.
 - **Merging is the maintainer's** (#1872): the maintainer, or a session the maintainer runs, merges a pull request
   when `related-tests` is green, into `main` (rebased, fast-forward, no merge commit; rebase the branch first if

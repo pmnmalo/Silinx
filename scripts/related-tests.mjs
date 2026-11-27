@@ -17,7 +17,9 @@
 // fileURLToPath(import.meta.url)), '..', 'db'), a constant holding one, new URL('../db/', import.meta.url)), and
 // of the modules that import one of those, at any depth. A changed module no test imports (#3544: about 60, the
 // translators', the HLS's, the simulator's parts) counts through its importers, up to the modules a test imports
-// (untestedReach). And always the repository's checks (REPO_WIDE, #3461): the
+// (untestedReach). A changed module of the MCP server's tools (server/mcp-new-source.js) selects the MCP tests that call
+// one of its tools by name (call('new_source', …): through server/mcp.js, no import of theirs, #5951). And always the
+// repository's checks (REPO_WIDE, #3461): the
 // tests that scan the whole repository, which a pull request can break with a file none of them imports.
 // The hubs (HUBS, #4166: the page scripts most of the others import, web/js/i18n.js, app.js, ui.js, drawings.js…)
 // select fewer UI tests: a hub's change selects only its own UI test (test/ui/<name>.test.js, when the hub itself
@@ -148,6 +150,12 @@ export const HUBS = ['ui', 'dom', 'app', 'api', 'console', 'prefs', 'wizards', '
 /** The page scripts that import each hub, at least (HUBS; test/related-tests.test.js checks it on the repository). */
 export const HUB_IMPORTERS = 15;
 
+/** The MCP tools a module of the server defines (#5951): each tool's name, as its definition gives it with its title
+ *  ({ name: 'new_source', title: 'New Source', … }). */
+export function mcpTools(text) {
+  return [...String(text).matchAll(/\bname:\s*'([a-z][a-z0-9_]*)',\s*title:/g)].map(m => m[1]);
+}
+
 export function relatedTests(files, changed, { hubs = HUBS } = {}) {
   const hub = f => hubs.includes(f);
   // (a page script's absolute import, as the server serves it: /core/… the repository's core/, /js/… web/js/, #2093)
@@ -200,6 +208,14 @@ export function relatedTests(files, changed, { hubs = HUBS } = {}) {
     for (const [t, text] of Object.entries(files))
       if ((isUnit(t) || (isUi(t) && !hub(f))) && t !== f && names.some(r => r.test(text))) (isUnit(t) ? unit : ui).add(t);
   }
+  // the MCP tests that call a changed module's tool by name (#5951: New Source's change broke five, which reach
+  // server/mcp-new-source.js through server/mcp.js, no import of theirs)
+  for (const f of changed) {
+    if (!/^server\/mcp[^/]*\.js$/.test(f) || files[f] == null) continue;
+    const names = mcpTools(files[f]).map(quoted);
+    if (!names.length) continue;
+    for (const [t, text] of Object.entries(files)) if (/^test\/mcp[^/]*\.test\.js$/.test(t) && names.some(r => r.test(text))) unit.add(t);
+  }
   // the size of every source (#405): a source changed may have grown past the limit
   if (files['test/code-size.test.js'] != null && changed.some(f => /^(core|packages\/silinx-(?:fpga|hdl|pic24)\/src|web\/js|server|scripts)\/.+\.m?js$/.test(f))) unit.add('test/code-size.test.js');
   // the imports of every source (#1678, #407): a source changed may import across the package's API or the research
@@ -225,16 +241,22 @@ export function relatedTests(files, changed, { hubs = HUBS } = {}) {
 /** The repository's checks (#3461): the unit test files that scan the whole repository (its tracked files, a folder of
  *  it) rather than test a module, run on every pull request: a file none of them imports can break one (a new file
  *  holding the old name, a fragment, an address), and the break showed in the next pull request (#3365, #3434,
- *  #3447, #3457, #3454's). Each runs in seconds (measured with an empty HOME, 2026-11-11). Left out:
- *  test/hdl-boundary.test.js, which reads only the front end's modules, each named in it (a change of one selects it).
+ *  #3447, #3457, #3454's, #5951). Each runs in seconds (measured with an empty HOME, 2026-11-11; #5951's 2026-11-27).
+ *  Left out: test/hdl-boundary.test.js, which reads only the front end's modules, each named in it (a change of one
+ *  selects it); test/docs-drift.test.js, which imports the modules and names the files it checks (selected by them).
  *  The time of each, then what it scans: */
 export const REPO_WIDE = [
+  'test/build-docs-site.test.js',       // 0.2 s: the user's guide, every page of docs/user (#4504)
   'test/changelog-fragments.test.js',   // 1.3 s: changes/, the fragments' format
   'test/changelog.test.js',             // 1.1 s: CHANGELOG.md and the tags; the fragments of changes/ as a build's changes
+  'test/check-pins.test.js',            // 0.3 s: every pin the tracked files declare (#5649)
   'test/circuit-coverage.test.js',      // 0.3 s: every circuit part checked against its datasheet, the tests' tables read (#4602)
   'test/code-size.test.js',             // 2 s: the size of every source and function (#405, #3542)
+  'test/docs-images.test.js',           // 0.2 s: docs/images, every picture a document shows (#4499)
   'test/docs.test.js',                  // 1.2 s: every Markdown file's links, paths and menus
   'test/family-conditions.test.js',     // 0.2 s: web/js's conditions on a family's name
+  'test/hex-colours.test.js',           // 0.2 s: web/js's hex colours, each file under its limit (#4763)
+  'test/i18n-templates.test.js',        // 0.2 s: web/js's template-literal labels translated (#4748)
   'test/layering.test.js',              // 0.7 s: every source's imports (the research)
   'test/mcp-tools-size.test.js',        // 0.2 s: every MCP tool's descriptions, of server/mcp.js's TOOLS (#4752): a tool's module
                                         // changed (server/mcp-board.js) selects it through no import (#5096)
@@ -246,6 +268,8 @@ export const REPO_WIDE = [
   'test/url-pathname.test.js',          // 0.3 s: the tests' and research's paths, no file URL's pathname (#3732)
   'test/web-i18n.test.js',              // 1.3 s: web/js's labels translated
   'test/web-markup-interpolations.test.js', // 0.2 s: web/js's markup templates, each value escaped (#3728)
+  'test/workflows-permissions.test.js', // 0.2 s: every workflow's token and install (#479)
+  'test/workflows.test.js',             // 0.2 s: every workflow's hardening
 ];
 
 /** The tests of a change and the repository's checks (REPO_WIDE, those of the repository's files). */
