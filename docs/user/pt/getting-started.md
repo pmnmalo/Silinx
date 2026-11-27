@@ -263,10 +263,11 @@ localmente (Forma 2), precisam de até mais duas coisas. O seu professor pode j�
      corre um script (demora 20–60 minutos, uma vez). O ISE não pode ser partilhado, por isso cada
      pessoa cria a sua cópia.
 
-   As placas da série 7, a Basys 3 e a Nexys A7 (Artix-7), a Arty S7 (Spartan-7) e a Zybo Z7 (Zynq-7000), são
+   As placas da série 7, a Basys 3 e a Nexys A7 (Artix-7), a Arty S7 (Spartan-7), a Zybo Z7 e a Arty Z7 (Zynq-7000), são
    construídas pelo **AMD Vivado** ML Standard (gratuito para estes dispositivos) com o Silinx a correr localmente, com
-   o Vivado como ferramenta de síntese (Synthesis Tool); a Basys 3 e a Nexys A7 também pela cadeia de ferramentas
-   Silinx, também no browser (ver o README, *The Artix-7 boards with AMD Vivado*).
+   o Vivado como ferramenta de síntese (Synthesis Tool); todas menos a Arty S7 também pela cadeia de ferramentas
+   Silinx, também no browser (ver o README, *The Artix-7 boards with AMD Vivado*). Nas placas Zynq, é a sua lógica
+   programável: o seu Cortex-A9 ainda não está configurado.
 2. **O controlador USB da placa** para a programar:
    - **Windows:** instale o Digilent **Adept 2** (Runtime + Utilities) a partir de digilent.com.
    - **macOS (Basys2):** num Terminal, dentro da pasta `silinx`, execute

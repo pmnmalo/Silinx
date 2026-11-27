@@ -84,6 +84,21 @@ the Cortex-A9, is not set up yet (#4679). Every example builds on both with no w
 but micro80, which reaches 106–109 MHz on nextpnr's estimate (#4877; Vivado meets 125 MHz on it) and says so. So does
 **the Digilent Arty Z7-20 / 10** (#4682; its programmable logic, the same parts), its examples' display and extra switches
 on its Pmods and its shield header, micro80 and pong below 125 MHz there (106–124 MHz).
+
+On these **Zynq-7000 boards** (#4679, phase a):
+
+- **What is there:** their programmable logic (the PL), as an Artix-7's: the examples, the Silinx toolchain in the
+  local server and the browser (the XC7Z010's and XC7Z020's bit and chip databases, #4680), AMD Vivado on the local
+  server. *Configure Target Device* loads the `.bit` over JTAG: the chain is the processing system's ARM DAP (IDCODE
+  0x4BA00477, IR 4) then the PL's TAP, which iMPACT's view and openFPGALoader find (#4683). The Board Emulator draws both
+  boards as they are, the examples' display, LEDs and switches on a breadboard on their Pmods (#4684, #5641).
+- **What is not there yet:** the processing system (the dual Cortex-A9): no `ps7_init`, no C program, no AXI between
+  the PS and the PL, no boot image (BOOT.bin) from the SD card or the QSPI flash; the PS's UART, its MIO LED and
+  buttons are drawn but not wired. They come as the Zynq node of a System project (roadmaps #4679 and #5412: the PS
+  configured from Silinx, a bare-metal C program run over JTAG, a register map generated for both sides, the C run
+  against the PL's simulation).
+- **Timing:** the boards' clock is 125 MHz (the Ethernet PHY's); micro80 (its light8080 core) and pong on the Arty Z7
+  are below it by nextpnr's estimate and say so (#4877, #3803); Vivado meets it.
 It takes **the Radiona ULX3S-12f / 25f / 45f / 85f** too (Lattice ECP5, LFE5U in CABGA381): Yosys's `synth_ecp5`, nextpnr-ecp5
 and ecppack (Project Trellis), to `build/<top>.bit`, its pins written as an LPF, loaded into the FPGA by *Configure Target Device* (the
 local server's openFPGALoader -b ulx3s, or the browser over WebUSB, #2298). The examples run on it with their seven-segment display on its GPIO header J1; vga on the
@@ -146,11 +161,12 @@ in a mode of its own, `vivado` in `~/.silinx/config.json` (`PUT /api/toolchain`)
 - Under x86 emulation (an Apple-silicon Mac) an example takes 2 to 10 minutes from synthesis to bitstream.
 - The board is programmed with openFPGALoader (`-b basys3`). Vivado runs on the local server only, not in the browser.
 
-The other 7-series families of Vivado ML Standard are Vivado's too (#3895), with no flow of the Silinx toolchain: the
-**Spartan-7** (XC7S6 to XC7S100; the Digilent **Arty S7**-50 and -25), the **Zynq-7000** (XC7Z007S to XC7Z030; the
-Digilent **Zybo Z7**-20 and -10: its programmable logic only, the .bit over JTAG, no processing system set up) and the
-**Kintex-7** (XC7K70T, XC7K160T; no board). Their Synthesis Tool is Vivado alone. The examples' display, LEDs and
-switches these boards lack are on their Pmods. The Virtex-7 is no free edition's: ISE 14.7's flow.
+The other 7-series families of Vivado ML Standard are Vivado's too (#3895): the **Spartan-7** (XC7S6 to XC7S100; the
+Digilent **Arty S7**-50 and -25), the **Zynq-7000** (XC7Z007S to XC7Z030; the Digilent **Zybo Z7**-20 / -10 and **Arty
+Z7**-20 / -10: their programmable logic only, the .bit over JTAG, no processing system set up; the XC7Z010 and XC7Z020
+the Silinx toolchain's too, above) and the **Kintex-7** (XC7K70T, XC7K160T; no board). The Spartan-7's, the Kintex-7's
+and the other Zynq-7000 parts' Synthesis Tool is Vivado alone. The examples' display, LEDs and switches these boards
+lack are on their Pmods. The Virtex-7 is no free edition's: ISE 14.7's flow.
 
 ## The Intel boards with Intel Quartus Prime
 

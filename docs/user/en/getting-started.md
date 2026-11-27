@@ -249,10 +249,10 @@ In the browser (Way 1) nothing more is needed for the Basys2 and Nexys2. Running
      you download the ISE installer and licence with your own free AMD account and run one script
      (it takes 20–60 minutes, once). ISE cannot be shared, so everyone builds their own copy.
 
-   The 7-series boards, the Basys 3 and the Nexys A7 (Artix-7), the Arty S7 (Spartan-7) and the Zybo Z7 (Zynq-7000),
-   are built by **AMD Vivado** ML Standard (free for these parts) with Silinx running locally, its Synthesis Tool
-   Vivado; the Basys 3 and the Nexys A7 by the Silinx toolchain too, in the browser as well (the README, *The Artix-7
-   boards with AMD Vivado*).
+   The 7-series boards, the Basys 3 and the Nexys A7 (Artix-7), the Arty S7 (Spartan-7), the Zybo Z7 and the Arty Z7
+   (Zynq-7000), are built by **AMD Vivado** ML Standard (free for these parts) with Silinx running locally, its Synthesis
+   Tool Vivado; all but the Arty S7 by the Silinx toolchain too, in the browser as well (the README, *The Artix-7
+   boards with AMD Vivado*). On the Zynq boards that is their programmable logic: their Cortex-A9 is not set up yet.
 2. **The board's USB driver** to program it:
    - **Windows:** install Digilent **Adept 2** (Runtime + Utilities) from digilent.com.
    - **macOS (Basys2):** in a Terminal, inside the `silinx` folder, run
