@@ -53,7 +53,7 @@ export class GateError extends Error {
 
 const KINDS = [
   ['hdl', /\.(v|vh|vhd|vhdl|sv|svh)$/i],
-  ['c', /\.(c|h|cc|cpp|cxx|hpp|hh)$/i],
+  ['c', /\.(c|h|cc|cpp|cxx|hpp|hh|ino)$/i],   // (an Arduino sketch's .ino too, #5873)
   ['asm', /\.(asm|s)$/i],   // (a microcontroller's assembly: the AVR examples' firmware, core/system-layout.js sourceLang, #5535)
   ['python', /\.py$/i],     // (a microcontroller node's MicroPython program, core/system-layout.js sourceLang, #5551)
   ['constraints', /\.(ucf|pcf|lpf|cst|ccf|xdc|qsf|sdc)$/i],

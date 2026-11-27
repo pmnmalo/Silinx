@@ -12,7 +12,8 @@ import { isSystemProject } from '/core/project-kind.js';
 import { systemsOn } from '/core/build-channel.js';
 import { mcuBoard, readSystem } from '/core/system-doc.js';
 import { projectNodes } from '/core/project-nodes.js';
-import { nodeOfPath, nodeFilesOf, sourcePlace, LANG_NAMES, relInNode } from '/core/system-layout.js';
+import { nodeOfPath, nodeFilesOf, LANG_NAMES, relInNode } from '/core/system-layout.js';
+import { devicePlace, deviceKind, sourceTypesOf, importsOf } from '/core/source-types.js';
 import { panes } from './state-panes.js';
 import { openSystem, systemContextMenu } from './system-open.js';
 import { cpuCode, isCpuDrawing } from './design-cpu.js';
@@ -32,15 +33,16 @@ const boardName = n => (n.kind === 'mcu' ? mcuBoard(n.board)?.name : S.devices?.
 /** The folder of the open System project's first microcontroller node (#5488: its id), or null. */
 export const mcuFolder = () => (systemProject() ? shownNodes().nodes.find(n => n.kind === 'mcu')?.id ?? null : null);
 
-/** Where New Source puts a source of the folder kind `dir` in the open System project (#5488, core/system-layout.js
- *  sourcePlace): the selected node's folder (a node's row, or a row of a file in its folder), else the first FPGA
- *  node's, with its base language: { node, location, lang }, or null (not a System project, no such node). */
-export function newSourcePlace(dir) {
+/** Where New Source and Import Source put a source of the folder kind `dir` in the open System project (#5488, #5873:
+ *  core/source-types.js devicePlace): the node `node`'s folder (a [New] or [Import] tag's), else the selected node's (a
+ *  node's row, or a row of a file in its folder), else the first FPGA node's, else the first node with sources, with its
+ *  base language and its kind of device: { node, location, lang, kind }, or null (not a System project, no such node). */
+export function newSourcePlace(dir, node = null) {
   if (!systemProject()) return null;
   const { system: f, nodes } = shownNodes();
   const sys = f ? readSystem(designState.viewTexts?.[f] || '').system : null;
-  const sel = panes.sel, id = sel?.node ?? nodeOfPath(sel?.file, nodes.map(n => n.id));
-  return sourcePlace(sys, { id, dir, preferred: S.project?.preferredLanguage });
+  const sel = panes.sel, id = node ?? sel?.node ?? nodeOfPath(sel?.file, nodes.map(n => n.id));
+  return devicePlace(sys, { id, dir, preferred: S.project?.preferredLanguage });
 }
 
 /** Why the open System project's System cannot be read (`<file>: <why>`: one of version 1, #5488, or damaged), or null. */
@@ -68,7 +70,18 @@ export function topRow(treeItem, select, { sim, dev, menu }) {
   if (sys) return sys;
   const [n] = shownNodes().nodes;
   const label = n?.kind === 'design' ? 'Design' : !sim ? dev : 'Behavioral';
-  return { item: treeItem({ label, ico: !sim ? 'chip' : 'sim', open: true, key: 'device', onSelect: () => select({ type: 'device' }), onContext: menu }), owned: [], fill: null };
+  return { item: treeItem({ label, ico: !sim ? 'chip' : 'sim', open: true, key: 'device', tags: sourceTags(n), onSelect: () => select({ type: 'device' }), onContext: menu }), owned: [], fill: null };
+}
+
+/** A device's row's [New] and [Import] (#5873, core/source-types.js): New Source and Import Source for the node `n` (a
+ *  System's: `node` its id, its folder), each when its kind of device has any (a PIC24's no New, a terminal's none). */
+function sourceTags(n, node = null) {
+  const kind = deviceKind(n), tasks = document.documentElement.dataset.layout === 'tasks';
+  const wizard = (f, o) => () => import('./wizards.js').then(w => w[f](o));
+  return [
+    ...(sourceTypesOf(kind).length ? [{ id: 'new', text: 'New', title: 'New Source…', run: wizard('newSourceWizard', { node }) }] : []),
+    ...(importsOf(kind).length ? [{ id: 'import', text: 'Import', title: tasks ? 'Import Source…' : 'Add Copy of Source…', run: wizard('addSourceDialog', { node }) }] : []),
+  ];
 }
 
 /** A Zynq board's processing system's row (#4686): `PS (Cortex-A9)`, its program's files (ps/'s) under it, the files of
@@ -101,7 +114,7 @@ function systemRow(treeItem, select) {
   const menu = e => systemContextMenu(e, f);
   // (a processor board's Board project, #5756: its one node the top row, its board's; no System row)
   const single = processorBoardOf(S.project) && nodes.length === 1 ? nodes[0] : null;
-  const nodeRow = (n, cls) => treeItem({ label: n.id, meta: n.board ? `(${boardName(n)})` : '', ico: NODE_ICON[n.kind] || 'system', open: true, key: `node:${f}:${n.id}`, cls,
+  const nodeRow = (n, cls) => treeItem({ label: n.id, meta: n.board ? `(${boardName(n)})` : '', ico: NODE_ICON[n.kind] || 'system', open: true, key: `node:${f}:${n.id}`, cls, tags: sourceTags(n, n.id),
     onSelect: () => select({ type: 'node', file: f, node: n.id, kind: n.kind, module: n.module, board: n.board, variant: n.variant, lang: n.lang }), onOpen: () => openSystem(f), onContext: menu });
   const item = single ? nodeRow(single, 'top-mod') : treeItem({ label: sys?.name || f.split('/').pop(), ico: 'system', open: true, key: `sys:${f}`, cls: 'top-mod',
     badges: [{ text: 'System', base: true, title: 'Open', open: () => openSystem(f), context: menu }],

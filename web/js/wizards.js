@@ -9,7 +9,8 @@ import { S, app } from './app.js';
 import { appLog, commandError } from './console.js';   // (the application's lines, under every filter, #4729)
 import { THIRD_PARTY } from '/core/third-party.js';
 import { drawnHdlPath, isView } from '/core/view-hdl.js';
-import { IMPORT_SOURCE_ACCEPT, IMPORT_SOURCE_ROLES, assignImported, importSourceFile } from '/core/import-source.js';
+import { IMPORT_SOURCE_ROLES, assignImported, importSourceFile, importSourcePath } from '/core/import-source.js';
+import { importAcceptOf, importRefusal } from '/core/source-types.js';
 import { reservedNameDiags } from './processes.js';
 import { countEvent, siteCounts } from './analytics.js';
 import { confirmDeviceChange } from './device-change.js';
@@ -411,9 +412,13 @@ export { newSourceWizard } from './new-source.js';
 
 /** Add Copy of Source's name: Import Source in the Silinx interface (the Tasks layout, #1501), ISE's in the ISE style one. */
 export const addSourceTitle = () => (document.documentElement.dataset.layout === 'tasks' ? 'Import Source' : 'Add Copy of Source');
-/** Add Copy of Source… (`role`: the association first chosen; `title`: Import Test Bench, Simulation only, #1385, #1501). */
-export async function addSourceDialog({ role: first = 'design', title = addSourceTitle() } = {}) {
-  const inp = h('input', { type: 'file', multiple: true, accept: IMPORT_SOURCE_ACCEPT });
+/** Add Copy of Source… (`role`: the association first chosen; `title`: Import Test Bench, Simulation only, #1385, #1501;
+ *  `node`: a System's node, an [Import] tag's, #5873: else the selected one, else the project's first). The files of the
+ *  device's kind only (core/source-types.js), in its node's folder. */
+export async function addSourceDialog({ role: first = 'design', title = addSourceTitle(), node = null } = {}) {
+  const at = (await import('./design-system.js')).newSourcePlace('src', node);
+  const device = at?.kind ?? (designOnly() ? 'design' : 'fpga');
+  const inp = h('input', { type: 'file', multiple: true, accept: importAcceptOf(device) });
   const role = select(IMPORT_SOURCE_ROLES, typeof first === 'string' ? first : 'design');
   // (the Silinx interface asks no association: Import Source's All, Import Test Bench's Simulation only, #1501)
   const ask = document.documentElement.dataset.layout !== 'tasks';
@@ -428,7 +433,9 @@ export async function addSourceDialog({ role: first = 'design', title = addSourc
   for (const f of inp.files) {
     // through the import gate (#2830): a file it refuses is not added, said in the console; a drawing named with a
     // reserved word refused (#679) (core/import-source.js)
-    const c = importSourceFile(f.name, new Uint8Array(await f.arrayBuffer()), role.value);
+    const why = !refusedHere(importSourcePath(f.name, role.value, at?.node)) && importRefusal(device, f.name);   // (an HDL file in a design project: refusedHere's, below)
+    if (why) { commandError(title, why); continue; }
+    const c = importSourceFile(f.name, new Uint8Array(await f.arrayBuffer()), role.value, at?.node);
     if (c.refused === 'gate') { appLog(`WARNING: ${c.message}`, 'warn'); continue; }
     if (c.refused) { await commandError(title, c.message); continue; }
     if (refusedHere(c.path)) continue;   // (an HDL file in a design and simulation project, #3780: the console says why)
@@ -439,7 +446,7 @@ export async function addSourceDialog({ role: first = 'design', title = addSourc
   }
   if (!written.length) return;
   // the association (role) of exactly the files written, and the constraints file
-  const pj = assignImported(await api.project(S.project.name), written, role.value, tree);
+  const pj = assignImported(await api.project(S.project.name), written, role.value, tree, at?.node);
   delete pj.fileTree;
   await api.saveProject(pj.name, pj);
   await app.reloadProject();

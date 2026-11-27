@@ -13,7 +13,7 @@ after(async () => { await env?.teardown?.(); });
 const E = () => env;
 
 const TYPES = ['Boolean Algebra', 'Module (HDL)', 'Schematic', 'Finite State Machine (FSM)', 'Algorithmic State Machine (ASM)', 'Petri Net',
-  'Clock Manager (DCM / PLL)', 'Block Memory', 'Test Bench', 'Implementation Constraints File', 'Memory Initialization File (.mem)',
+  'Clock Manager (DCM / PLL)', 'Block Memory', 'Test Bench', 'Memory Initialization File (.mem)',
   'C Function (HLS)', 'C++ Function (HLS)'];
 
 // the File Name and Location page now: its checkboxes, its labels, its text

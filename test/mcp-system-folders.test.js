@@ -108,6 +108,20 @@ test('#5488 new_source in a System project: the first FPGA node\'s folder, its b
   assert.equal(await made({ name: 'tb_count', type: 'test_bench', module: 'count' }), 'fpga/sim/tb_count.v');
   // (a folder of no node's, or a node with no HDL: the project's preferred language)
   assert.equal(await made({ name: 'misc', location: 'other' }), 'other/misc.vhd');
-  assert.equal(await made({ name: 'glue', location: 'uno' }), 'uno/glue.vhd');
   assert.equal(await made({ name: 'mine', language: 'vhdl' }), 'fpga/mine.vhd');
+  // (#5873: each node its device's types only, in its folder: node, else the location's node; an HDL module not an
+  // Arduino's, nothing written)
+  const refused = async (args, message) => { const r = await call('new_source', { project: 'ns', type: 'module', ...args }); assert.equal(r.isError, true, r.text); assert.equal(r.text, `new_source: ${message}`); };
+  await refused({ name: 'glue', location: 'uno' }, 'Module (HDL): not a source of an AVR (Arduino)');
+  await refused({ name: 'glue', node: 'uno' }, 'Module (HDL): not a source of an AVR (Arduino)');
+  await refused({ name: 'fw', type: 'python', node: 'uno' }, 'Python Program: not a source of an AVR (Arduino)');
+  assert.ok(!fs.existsSync(path.join(P.projectDir('ns'), 'uno/glue.vhd')));
+  const sketch = await ok('new_source', { project: 'ns', type: 'sketch', name: 'morse', node: 'uno' });
+  assert.deepEqual([sketch.text, sketch.data.path], ['Created Arduino Sketch \'uno/morse.ino\'.', 'uno/morse.ino']);
+  assert.equal(fs.readFileSync(path.join(P.projectDir('ns'), 'uno/morse.ino'), 'utf8'), '// morse.ino: an Arduino sketch.\n\nvoid setup() {\n}\n\nvoid loop() {\n}\n');
+  assert.equal(await made({ name: 'util', type: 'c_source', location: 'uno' }), 'uno/util.c');
+  assert.equal(await made({ name: 'fw', type: 'assembly', node: 'uno' }), 'uno/fw.asm');
+  assert.equal(await made({ name: 'adder', node: 'fpga' }), 'fpga/adder.v');
+  await refused({ name: 'x', node: 'nope' }, 'node: no node \'nope\' in the System (uno, fpga)');
+  await refused({ name: 'x', node: 'uno', location: 'fpga' }, 'location: not in the node uno\'s folder');
 });

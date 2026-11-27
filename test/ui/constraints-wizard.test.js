@@ -1,4 +1,4 @@
-// UI: the Constraints Wizard of the other families (#2296), New Source ▸ Implementation Constraints File ▸ Wizard > on a
+// UI: the Constraints Wizard of the other families (#2296), opened directly since New Source makes no constraints file (#5873, #5877), on a
 // board of theirs: the CST Wizard on the Tang Nano 9K (each bit on a pin of the board, its I/O standard its bank's, its pull
 // and drive; a LED of the 1.8 V bank at LVCMOS33 refused, Check Constraints' message; the file written, the project's), the
 // PCF Wizard on the iCEBreaker (a pull-up only), I/O Pin Planning's columns of a PCF; in Portuguese.
@@ -6,7 +6,7 @@ import { before, after } from 'node:test';
 import assert from 'node:assert/strict';
 import { setupUi, uiTest, makeProject, readWs } from './harness.js';
 import { TEXTS, untranslated } from './i18n-check.js';
-import { newSourceWizardOf } from './new-source-helpers.js';
+import { constraintsWizardOf } from './new-source-helpers.js';
 
 let env;
 before(async () => { env = await setupUi(); });
@@ -27,7 +27,7 @@ const logWarnings = (page) => page.eval(() => [...document.querySelectorAll('#co
 uiTest('#2296 CST Wizard on the Tang Nano 9K: the bits on its pins with their banks\' I/O standards, a drive and a pull; a 1.8 V LED at LVCMOS33 refused; the project\'s CST', E, async (page) => {
   await makeProject(env, { name: 'CwTang', board: 'tangnano9k', device: TANGNANO, top: 'blink', constraints: 'constraints/top.cst', files: { 'src/blink.v': BLINK } });
   await page.openProject('CwTang');
-  await newSourceWizardOf(page, 'Implementation Constraints File', 'pins', 'CST Wizard');
+  await constraintsWizardOf(page, 'pins', 'CST Wizard');
   assert.deepEqual(await steps(page), ['Ports and Pins', 'Summary']);
   assert.deepEqual(await heads(page), ['Signal', 'Direction', 'Pin', 'I/O Std.', 'Pull', 'Drive']);
   assert.deepEqual(await rows(page), ['clk in 52 LVCMOS33  ', 'btn_n<1> in 4 LVCMOS18  ', 'btn_n<0> in 3 LVCMOS18  ', 'led_n<1> out 11 LVCMOS18  ', 'led_n<0> out 10 LVCMOS18  ']);
@@ -70,7 +70,7 @@ uiTest('#2296 CST Wizard on the Tang Nano 9K: the bits on its pins with their ba
 uiTest('#2296 PCF Wizard on the iCEBreaker: a pull-up only; I/O Pin Planning\'s columns of a PCF; in Portuguese', E, async (page) => {
   await makeProject(env, { name: 'CwIce', board: 'icebreaker', device: UP5K, top: 'blink', constraints: 'constraints/top.pcf', files: { 'src/blink.v': BLINK } });
   await page.openProject('CwIce');
-  await newSourceWizardOf(page, 'Implementation Constraints File', 'pins', 'PCF Wizard');
+  await constraintsWizardOf(page, 'pins', 'PCF Wizard');
   assert.deepEqual(await heads(page), ['Signal', 'Direction', 'Pin', 'Pull']);
   assert.deepEqual(await page.eval(() => [...document.querySelector('.dlg-overlay .uw-pull').options].map((o) => o.value)), ['', 'up']);
   // (btn_n<1>: no pin on the board, left without one)

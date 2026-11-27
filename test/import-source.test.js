@@ -3,7 +3,7 @@
 // the project's description after the copies.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { IMPORT_SOURCE_ACCEPT, IMPORT_SOURCE_ROLES, importSourcePath, importSourceTakes, isConstraintsFile, importSourceFile, assignImported } from '../core/import-source.js';
+import { IMPORT_SOURCE_ROLES, importSourcePath, isConstraintsFile, importSourceFile, assignImported } from '../core/import-source.js';
 import { gateFile } from '../core/import-gate.js';
 
 const enc = s => new TextEncoder().encode(s);
@@ -17,11 +17,13 @@ test('importSourcePath: constraints to constraints/, a simulation source to sim/
   assert.ok(isConstraintsFile('x.UCF') && !isConstraintsFile('x.vhd'));
 });
 
-test('importSourceTakes: the dialog\'s accepted files only', () => {
-  assert.equal(IMPORT_SOURCE_ACCEPT, '.v,.vhd,.vhdl,.ucf,.pcf,.lpf,.cst,.ccf,.qsf,.mem,.hex,.asm.json,.json');
-  for (const f of ['a.v', 'a.VHD', 'a.vhdl', 'a.ucf', 'a.pcf', 'a.lpf', 'a.cst', 'a.qsf', 'a.mem', 'a.hex', 'a.asm.json', 'a.fsm.json']) assert.ok(importSourceTakes(f), f);
-  for (const f of ['a.sv', 'a.exe', 'a.c', 'a', 'a.xdc', 'v']) assert.ok(!importSourceTakes(f), f);
+test('the associations; a System node\'s copies in its folder (#5873): its sources at its root, constraints/ and sim/ in it', () => {
   assert.deepEqual(IMPORT_SOURCE_ROLES.map(r => r[0]), ['design', 'impl', 'sim']);
+  assert.equal(importSourcePath('top.vhd', 'design', 'fpga1'), 'fpga1/top.vhd');
+  assert.equal(importSourcePath('tb.v', 'sim', 'fpga1'), 'fpga1/sim/tb.v');
+  assert.equal(importSourcePath('pins.ucf', 'design', 'fpga1'), 'fpga1/constraints/pins.ucf');
+  assert.equal(importSourcePath('blink.ino', 'design', 'uno'), 'uno/blink.ino');
+  assert.equal(importSourceFile('main.py', enc('print(1)\n'), 'design', 'pico').path, 'pico/main.py');
 });
 
 test('importSourceFile: the gate\'s file (as gateFile gives it), its warning; a refusal of the gate; a drawing named with a reserved word', () => {
@@ -50,4 +52,6 @@ test('assignImported: the association of the files written only; a constraints f
   assert.deepEqual(a, { files: [{ path: 'src/a.vhd', role: 'design' }, { path: 'src/b.vhd', role: 'impl' }], constraints: 'constraints/old.ucf' });
   assert.equal(assignImported(pj(), ['constraints/new.ucf'], 'design', ['src/a.vhd']).constraints, 'constraints/new.ucf');
   assert.equal(assignImported({ files: [] }, ['constraints/x.ucf'], 'design', []).constraints, 'constraints/x.ucf');
+  // (a System node's constraints are its own: the project's not set, #5873)
+  assert.equal(assignImported({ files: [] }, ['f1/constraints/x.ucf'], 'design', [], 'f1').constraints, undefined);
 });

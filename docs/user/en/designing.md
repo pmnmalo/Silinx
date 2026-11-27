@@ -3,8 +3,11 @@
 [User's guide](README.md) · English · [Português](../pt/designing.md)
 
 A Silinx project is made of modules, and each module is written or drawn the way that suits it best. A drawing is
-the module's source: Silinx generates its VHDL or Verilog from it, always up to date. *New Source…* (the Design
-pane) adds a module of any kind, most of them with a wizard.
+the module's source: Silinx generates its VHDL or Verilog from it, always up to date. *[New]* on the device's row
+of the Design pane (or *Project ▸ New Source…*) adds a module of any kind the device takes, most of them with a wizard,
+and *[Import]* copies files in; on a System, each node's row has its own, its sources in its folder: an FPGA's HDL,
+drawings, wizards and C / C++ for Silinx HLS; an Arduino's sketch, C, C++ and assembly; a Pico's or an ESP32's Python;
+a PIC24's .hex, imported. A constraints file is not a new source: I/O Pin Planning makes it.
 
 ## VHDL and Verilog
 

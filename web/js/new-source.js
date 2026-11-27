@@ -1,24 +1,23 @@
 // The New Source wizard (moved from wizards.js, #405): the source type, its file name and location, then the
 // type's pages; Finish writes the skeleton source. The Wizard > button of the File Name and Location page opens the
 // type's wizard instead (#958), at its own pages: the name, the location and the language are this page's (#2082).
-import { constraintsFormatOf } from '/packages/silinx-fpga/src/parts.js';
 import { api } from './api.js';
 import { icons, icon } from './icons.js';
 import { h } from './ui.js';
 import { uutInfo } from '/core/uut-info.js';
 import { S, app } from './app.js';
-import { appLog } from './console.js';
+import { appLog, commandError } from './console.js';
 import { isView } from '/core/view-hdl.js';
 import { reservedError } from '/core/reserved.js';
 import { wizard, field, select, replaceGuard, closeBeforeReplace, moduleElsewhere, drawnHdlTaken } from './wizards.js';
 import { NAME_RE, FILE_RE, sourceBase } from '/core/ident.js';
 import { designOnly } from './design-only.js';
 import { panes } from './state-panes.js';
-import { filesState } from './state-files.js';
 import { designState } from './state-design.js';
 import { systemsOn } from '/core/build-channel.js';
 import { newSourcePlace } from './design-system.js';
 import { psOfBoard, boardPsRefusal, withBoardPs } from '/core/zynq-ps.js';
+import { sourceTypesOf, noSourcesText } from '/core/source-types.js';
 export { cTemplate, cppTemplate } from './c-templates.js';
 
 const SOURCE_TYPES = [
@@ -39,48 +38,52 @@ const SOURCE_TYPES = [
   // (the 7-series' XADC, #5385: shown for a device that has one)
   { id: 'xadcwiz', label: 'XADC (analog inputs)', ico: 'template', ext: null, dir: 'src', wiz: 'xadc', only: true, get hidden() { return !/^(artix7|kintex7|spartan7|zynq)/.test(S.project?.device?.family || ''); } },
   { id: 'tb', label: 'Test Bench', ico: 'vhdl', ext: null, dir: 'sim', wiz: 'testbench' },
-  { id: 'ucf', label: 'Implementation Constraints File', ico: 'ucf', ext: '.ucf', dir: 'constraints', wiz: 'ucf' },
-  // (the Constraints Wizard in the device's format, #2296: the PCF, LPF, CST, CCF, XDC and QSF Wizards)
-  { id: 'pcf', label: 'Implementation Constraints File', ico: 'ucf', ext: '.pcf', dir: 'constraints', hidden: true, wiz: 'ucf' },   // (the iCE40's: its device shows it for UCF's, #2296)
-  { id: 'lpf', label: 'Implementation Constraints File', ico: 'ucf', ext: '.lpf', dir: 'constraints', hidden: true, wiz: 'ucf' },   // (the ECP5's, #2302)
-  { id: 'cst', label: 'Implementation Constraints File', ico: 'ucf', ext: '.cst', dir: 'constraints', hidden: true, wiz: 'ucf' },   // (the Gowin's, #2303)
-  { id: 'ccf', label: 'Implementation Constraints File', ico: 'ucf', ext: '.ccf', dir: 'constraints', hidden: true, wiz: 'ucf' },   // (the GateMate's, #2431)
-  { id: 'xdc', label: 'Implementation Constraints File', ico: 'ucf', ext: '.xdc', dir: 'constraints', hidden: true, wiz: 'ucf' },   // (the 7-series', #3142)
-  { id: 'qsf', label: 'Implementation Constraints File', ico: 'ucf', ext: '.qsf', dir: 'constraints', hidden: true, wiz: 'ucf' },   // (the Intel families', #5376)
+  // (no constraints file, #5873: I/O Pin Planning makes the user's constraints, #5642)
   { id: 'mem', label: 'Memory Initialization File (.mem)', ico: 'file', ext: '.mem', dir: 'src' },
   { id: 'lab', label: 'Guided Lab', ico: 'help', ext: '.lab.json', dir: 'labs' },   // (a teacher's, its steps checked: #3179)
   { id: 'c', label: 'C Function (HLS)', ico: 'file', ext: '.c', dir: 'src' },   // (Silinx HLS, compatible with Vitis HLS: #1531)
   { id: 'cpp', label: 'C++ Function (HLS)', ico: 'file', ext: '.cpp', dir: 'src' },   // (#1590)
   // (a Zynq board's PS's program, #4686: a Board project's on a Zybo Z7 or an Arty Z7)
   { id: 'ps', label: 'PS Program (Zynq)', ico: 'file', ext: '.c', dir: 'ps', get hidden() { return !psOfBoard(S.project?.board); } },
+  // a microcontroller's program (#5873, core/source-types.js): an Arduino's sketch, C, C++ and assembly; a Pico's or an
+  // ESP32's Python
+  { id: 'sketch', label: 'Arduino Sketch', ico: 'file', ext: '.ino', dir: 'src' },
+  { id: 'c_source', label: 'C Source', ico: 'file', ext: '.c', dir: 'src' },
+  { id: 'cpp_source', label: 'C++ Source', ico: 'file', ext: '.cpp', dir: 'src' },
+  { id: 'assembly', label: 'Assembly', ico: 'file', ext: '.asm', dir: 'src' },
+  { id: 'python', label: 'Python Program', ico: 'file', ext: '.py', dir: 'src' },
   // not in the list any more; newSourceWizard({ type: 'vhdl-pkg' }) still creates one
   { id: 'vhdl-pkg', label: 'VHDL Package', ico: 'vhdl', ext: '.vhd', dir: 'src', hidden: true },
 ];
-// a design and simulation project's (#3780)
-const DESIGN_TYPES = ['tt', 'circuit', 'sch', 'fsm', 'asm', 'petri', 'lab'];
-// the constraints files' types: one shown, the device's format's
-const CONSTRAINTS = ['ucf', 'pcf', 'lpf', 'cst', 'ccf', 'xdc', 'qsf'];
+// a microcontroller's program's files: no HDL, no language asked
+const FIRMWARE = ['sketch', 'c_source', 'cpp_source', 'assembly', 'python'];
 
 // name, location, lang, atFile: a wizard's < Back (#2082): New Source again at the File Name and Location page, as left
 // New Source's types as core/new-source-text.js (the MCP's new_source) names them
-const KIND_OF = { hdl: 'module', 'vhdl-pkg': 'package', tb: 'test_bench', ucf: 'constraints', pcf: 'constraints', lpf: 'constraints',
-  cst: 'constraints', ccf: 'constraints', xdc: 'constraints', qsf: 'constraints', mem: 'mem', lab: 'lab', c: 'c', cpp: 'cpp', ps: 'ps', sch: 'schematic', asm: 'asm',
-  fsm: 'fsm', petri: 'petri', circuit: 'circuit', tt: 'boolean', regmap: 'regmap' };
+// (and core/source-types.js's, which says what each device takes: the wizards' too)
+const KIND_OF = { hdl: 'module', 'vhdl-pkg': 'package', tb: 'test_bench', mem: 'mem', lab: 'lab', c: 'c', cpp: 'cpp', ps: 'ps', sch: 'schematic', asm: 'asm',
+  fsm: 'fsm', petri: 'petri', circuit: 'circuit', tt: 'boolean', regmap: 'regmap', clkwiz: 'clock_manager', bramwiz: 'block_memory', xadcwiz: 'xadc',
+  sketch: 'sketch', c_source: 'c_source', cpp_source: 'cpp_source', assembly: 'assembly', python: 'python' };
 
-export async function newSourceWizard({ type, name = '', location = null, lang = null, atFile = false } = {}) {
+/** New Source (`node`: a System's node, a [New] tag's, #5873: else the selected one, else the project's first). */
+export async function newSourceWizard({ type, name = '', location = null, lang = null, atFile = false, node = null } = {}) {
   if (!S.project) return;
   // old type ids (vhdl, verilog, vhdl-tb, verilog-tb) still accepted: they preset the language; the old wizard types
   // (modwiz, schwiz, pnwiz, tbwiz) select the type whose Wizard button opens that wizard (#958)
   const LEGACY = { vhdl: ['hdl', 'vhdl'], verilog: ['hdl', 'verilog'], 'vhdl-tb': ['tb', 'vhdl'], 'verilog-tb': ['tb', 'verilog'],
     modwiz: ['hdl'], schwiz: ['sch'], pnwiz: ['petri'], tbwiz: ['tb'] };
-  const cons = constraintsFormatOf(S.project.device), consType = id => (id === 'ucf' ? cons : id);   // (the device's format: UCF, PCF, LPF, CST, CCF or XDC)
-  // (a design and simulation project, #3780: its drawings and its labs only, a Schematic by default; no language)
-  const design = designOnly(), ofKind = t => !design || DESIGN_TYPES.includes(t.id);
-  let st = SOURCE_TYPES.filter(ofKind).find(t => t.id === consType(LEGACY[type]?.[0] || type)) || SOURCE_TYPES.find(t => t.id === (design ? 'sch' : 'hdl'));   // default: Module (HDL)
-  const shown = () => SOURCE_TYPES.filter(t => ofKind(t) && (CONSTRAINTS.includes(t.id) ? t.id === cons : !t.hidden || t === st));
+  // the types of the device (#5873, core/source-types.js): a design and simulation project's its drawings and its labs
+  // only, a Schematic by default, no language (#3780); a microcontroller's its program's; a PIC24's none
+  const design = designOnly(), at = newSourcePlace('src', node);
+  const device = at?.kind ?? (design ? 'design' : 'fpga'), offered = sourceTypesOf(device);
+  if (!offered.length) return commandError('New Source', noSourcesText(device));
+  // (in the device's order: a microcontroller's program first)
+  const listed = SOURCE_TYPES.filter(t => offered.includes(KIND_OF[t.id])).sort((a, b) => offered.indexOf(KIND_OF[a.id]) - offered.indexOf(KIND_OF[b.id]));
+  let st = listed.find(t => t.id === (LEGACY[type]?.[0] || type)) || listed.find(t => t.id === (design ? 'sch' : 'hdl')) || listed.find(t => !t.hidden);   // default: Module (HDL); a microcontroller's first
+  const shown = () => listed.filter(t => !t.hidden || t === st);
   // language of HDL modules and test benches (Define Module / Associate Source pages)
-  // (a System project's: in the selected node's folder, in its base language, #5488)
-  const placeOf = t => newSourcePlace(t.dir);
+  // (a System project's: in the node's folder, in its base language, #5488)
+  const placeOf = t => newSourcePlace(t.dir, at?.node ?? null);
   const hdl = l => (l === 'vhdl' || l === 'verilog' ? l : null);
   const langSel = select([['vhdl', 'VHDL'], ['verilog', 'Verilog']], lang || LEGACY[type]?.[1] || hdl(placeOf(st)?.lang) || (S.project.preferredLanguage === 'verilog' ? 'verilog' : 'vhdl'));
   const extOf = t => t.ext ?? (langSel.value === 'verilog' ? '.v' : '.vhd');
@@ -117,7 +120,7 @@ export async function newSourceWizard({ type, name = '', location = null, lang =
   // the same page for every type (#2140): its type, the file name, the location and the language (an HDL file's, the
   // extension follows it, or a drawing's HDL; the project's preferred language by default); the rest on the next
   // pages or in the type's wizard
-  const fileGrid = h('div', { class: 'form-grid' }, ...field('Source type:', typeShown), ...field('File name:', fname), ...field('Location:', loc), ...(design ? [] : field('Language:', langSel)));
+  const fileGrid = h('div', { class: 'form-grid' }, ...field('Source type:', typeShown), ...field('File name:', fname), ...field('Location:', loc), ...(device === 'fpga' ? field('Language:', langSel) : []));
   const typeShownAt = () => { typeShown.textContent = st.label; };
   const pFile = {
     title: 'File Name and Location',
@@ -134,7 +137,7 @@ export async function newSourceWizard({ type, name = '', location = null, lang =
       // a guided lab: in the project's labs folder, the file's name its id (core/labs.js isLabFile)
       if (st.id === 'lab' && loc.value.trim().replace(/\/+$/, '') !== 'labs') return 'A guided lab is in the labs folder: Location labs.';
       if (st.id === 'ps') { const why = boardPsRefusal(S.project, p); if (why) return why; }   // (in ps/, #4686)
-      if (!['hdl', ...CONSTRAINTS, 'mem', 'lab', 'ps'].includes(st.id)) {
+      if (!['hdl', 'mem', 'lab', 'ps', ...FIRMWARE].includes(st.id)) {
         const r = reservedError(n.split('/').pop().replace(/[^A-Za-z0-9_]/g, '_'));
         if (r) return `${r}: choose another name.`;
       }
@@ -154,7 +157,7 @@ export async function newSourceWizard({ type, name = '', location = null, lang =
   // names after it (a test bench's is asked on its wizard's first page; a UCF names no module)
   const wizardError = () => {
     const e = fileError();
-    if (e || ['tb', ...CONSTRAINTS].includes(st.id)) return e;
+    if (e || st.id === 'tb') return e;
     const mod = identOf(nameOf().split('/').pop());
     const r = reservedError(mod);
     if (r) return `${r}: choose another name.`;
@@ -268,14 +271,11 @@ export async function newSourceWizard({ type, name = '', location = null, lang =
     file: n, lang: langSel.value, pj,
     ...(kind === 'module' ? { entity: entName.value.trim(), arch: archName.value.trim(), ports } : {}),
     ...(kind === 'test_bench' ? { uut: uutInfo(designState.modules.find(x => x.name === uutName)) } : {}),
-    ...(kind === 'constraints' ? { format: st.id } : {}),
   });
-  const noUcf = !filesState.fileTree.includes(pj.constraints);
   await closeBeforeReplace(path);
   await api.writeFile(pj.name, path, text);   // registers the new file in silinx.json
   // reload first: saving the project settings from the old copy would drop that registration
   await app.reloadProject();
-  if (CONSTRAINTS.includes(st.id) && noUcf) { S.project.constraints = path; await app.saveProjectJson(); await app.reloadProject(); }
   // (a Zynq board's PS program: the project's first its PS's, #4686)
   if (st.id === 'ps' && !S.project.ps) { Object.assign(S.project, withBoardPs(S.project, path)); await app.saveProjectJson(); await app.reloadProject(); }
   if (st.id === 'tb') app.showInSim(n);   // selected in the Simulation view, ready to simulate
@@ -300,7 +300,6 @@ async function openWizard(wiz, { name, location, lang, ext, back }) {
     case 'circuit': return (await import('./circuit-wizard.js')).circuitWizard(o);
     case 'fsm': return (await import('./chart-wizards.js')).fsmWizard(o);
     case 'asm': return (await import('./chart-wizards.js')).asmWizard(o);
-    case 'ucf': return (await import('./ucf-wizard.js')).ucfWizard({ path: `${location}/${name}${ext}`, back });
     case 'boolean': return (await import('./tt-wizard.js')).booleanWizard({ path: `${location}/${name}${ext}`, name: o.name, lang, back });
     case 'testbench': return (await import('./tbwizard.js')).testBenchWizard({ module: panes.sel?.module, name: name || null, location, lang, back });
     case 'clock': return (await import('./clock-wizard.js')).clockWizard(o);

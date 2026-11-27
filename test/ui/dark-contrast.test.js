@@ -269,10 +269,9 @@ for (const theme of ['dark', 'light']) {
     const types = await page.eval(() => [...document.querySelectorAll('.dlg-overlay .src-types .st')].map((e) => e.textContent.trim()));
     assert.ok(types.length >= 10, types.join(' | '));
     await closeDialogs(page);
-    // every type, then the Module, Schematic, FSM, ASM, Petri Net, Test Bench and UCF wizards through the Wizard >
+    // every type, then the Module, Schematic, FSM, ASM, Petri Net and Test Bench wizards through the Wizard >
     // button (#958, #2082)
-    const runs = [...types.map((t) => [t, false]), ...['Boolean Algebra', 'Module (HDL)', 'Schematic', 'Finite State Machine (FSM)', 'Algorithmic State Machine (ASM)', 'Petri Net', 'Test Bench',
-      'Implementation Constraints File'].map((t) => [types.find((x) => x.endsWith(t)), true])];
+    const runs = [...types.map((t) => [t, false]), ...['Boolean Algebra', 'Module (HDL)', 'Schematic', 'Finite State Machine (FSM)', 'Algorithmic State Machine (ASM)', 'Petri Net', 'Test Bench'].map((t) => [types.find((x) => x.endsWith(t)), true])];
     for (const [k, [type, wiz]] of runs.entries()) {
       await page.menu('Project', 'New Source…');
       await page.waitDialog('New Source');

@@ -285,7 +285,7 @@ function viewOfModule(name, file) {
 // mark: git's (#3195, web/js/git.js gitMark): M changed, N new, C in conflict since the last commit, at the row's end
 // source: the file a row stands for ({ file, pair }: Remove from Project's, a module's drawing with its HDL file when pair),
 // in a selection of several rows (#5720, design-select.js)
-export function treeItem({ label, meta, ico, open = false, onSelect, onOpen, onContext, cls = '', key, badges = [], module = null, mark = null, source = null }) {
+export function treeItem({ label, meta, ico, open = false, onSelect, onOpen, onContext, cls = '', key, badges = [], tags = [], module = null, mark = null, source = null }) {
   // (a tree's item, #4761: its row the selection, said by the tree's aria-activedescendant; expanded or not, when it has
   // items under it)
   const li = h('li', { role: 'treeitem', id: `tree-item-${++treeIds}`, 'aria-selected': 'false' });
@@ -299,10 +299,18 @@ export function treeItem({ label, meta, ico, open = false, onSelect, onOpen, onC
     el.addEventListener('contextmenu', e => { e.preventDefault(); e.stopPropagation(); if (inSelection(row)) return selectionMenu(e, row); selectRow(row, key, onSelect); b.context(e); });
     return el;
   });
+  // (a device's row: its [New] and [Import], #5873: New Source and Import Source for that device)
+  const acts = tags.map(t => {
+    const el = h('button', { type: 'button', class: 'row-tag', tabindex: '-1', title: t.title, 'data-tag': t.id }, t.text);
+    el.addEventListener('click', e => { e.stopPropagation(); selectRow(row, key, onSelect); t.run(); });
+    el.addEventListener('dblclick', e => e.stopPropagation());
+    return el;
+  });
   // (the badges next to the name, the file in brackets last: in a narrow pane it gives way first)
   // (a module's row: its module's name, which a link's top= selects, #2871)
   const row = h('div', { class: `row ${cls}`, 'data-key': key, ...(module ? { 'data-module': module } : {}) }, tw, icon(ico), h('span', { class: 'lbl' }, label),
     views.length ? h('span', { class: 'badges' }, views) : null, meta ? h('span', { class: 'meta' }, meta) : null,
+    acts.length ? h('span', { class: 'row-tags' }, acts) : null,
     mark ? h('span', { class: `git-mark git-${mark.state}`, title: mark.title }, mark.text) : null);
   const ul = h('ul', { role: 'group' });
   if (!open) ul.hidden = true;
