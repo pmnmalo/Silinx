@@ -9,10 +9,9 @@
 // - hierarchyTree: rows of the same shape drawn as a tree of their own (Simulate's, web/js/tasks-sim-panel.js).
 import { h } from './ui.js';
 import { icon } from './icons.js';
-import { instancesOf, moduleInfo } from './app.js';
 import { designState } from './state-design.js';
-import { instanceOrder } from '/core/hier-order.js';
-import { isDesignOnly } from '/core/project-kind.js';
+import { instanceOrder } from '../../core/hier-order.js';   // (relative: tasks.js loads in Node too, #4843)
+import { isDesignOnly } from '../../core/project-kind.js';
 
 /** A device as the Design pane names it: xc3s250e-4-cp132. */
 const deviceName = d => `${d.part}${d.speed}-${d.package}`;
@@ -28,13 +27,15 @@ export function hierarchyDefs(pj, rows, task) {
 export const topDef = (top, procs, task) => row(`${task}-top`, top, 'moduleTop', procs);
 
 /** The objects of the module `name`: its instances (`inst - module`, as the Design pane names them), each with its own
- *  under it; a circuit's parts none (#4216). */
-export function objectsOf(name, depth = 0) {
+ *  under it; a circuit's parts none (#4216). `app`: web/js/app.js's (its moduleInfo, instancesOf: not imported, this
+ *  module loads in Node too). */
+export function objectsOf(app, name, depth = 0) {
+  const { moduleInfo, instancesOf } = app;
   const info = moduleInfo(name);
   if (!info?.mod || depth > 30) return [];
   return instanceOrder(instancesOf(info.mod)).filter(k => !designState.partModules?.has(String(k.module).toLowerCase())).map(k => ({
     label: String(k.name).toLowerCase() !== String(k.module).toLowerCase() ? `${k.name} - ${k.module}` : k.module,
-    ico: 'module', raw: true, children: objectsOf(k.module, depth + 1),
+    ico: 'module', raw: true, children: objectsOf(app, k.module, depth + 1),
   }));
 }
 

@@ -47,7 +47,7 @@ export function mountSimPanel(app, { simulate }) {
   document.getElementById('workspace').append(panel);
 
   // a test bench's row (simulated when clicked, its menu), its objects under it
-  const bench = name => ({ label: name, ico: 'moduleTop', raw: true, li: 'task-sim-bench', data: { 'data-bench': name }, children: objectsOf(name), row: r => {
+  const bench = name => ({ label: name, ico: 'moduleTop', raw: true, li: 'task-sim-bench', data: { 'data-bench': name }, children: objectsOf(app, name), row: r => {
     r.title = `Simulate ${name}`;
     clickable(r, () => app.setTop(name, true).then(() => simulate()));   // (its twisty folds it: not a click of the row)
     r.addEventListener('contextmenu', e => { e.preventDefault(); popupMenu(benchItems(app, name), e.clientX, e.clientY); });
