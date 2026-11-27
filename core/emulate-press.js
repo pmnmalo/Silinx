@@ -2,20 +2,27 @@
 // takes a press once the button stayed down for some milliseconds of the board's time (the examples': 20 ms,
 // a million cycles at 50 MHz), and the emulator, slower than real time (the event-driven engine much slower),
 // let a short click go after far fewer cycles. A button let go is released once the design has seen it for
-// PRESS_MS of the board's time (at the chosen speed, at least one clock cycle); a longer press at once.
+// PRESS_MS of the board's time (at the chosen speed, at least one clock cycle); a longer press at once. Never longer
+// than HOLD_MAX_MS of the user's time at the rate the board runs (#5849): the event-driven engine, at some 50,000
+// to 160,000 cycles a second, took 30 to 100 seconds for a press's 5,000,000 cycles, the button seen stuck.
 //
 // Isomorphic ES module (browser + Node), no DOM.
 
 /** How long a press lasts at least, in the board's time at real speed (a real press: about 100 ms). */
 export const PRESS_MS = 100;
 
+/** How long a button let go is held down at most, in the user's time (#5849). */
+export const HOLD_MAX_MS = 1000;
+
 /**
  * The board's time (ps) at which a button pressed at `from` (ps) may be released: PRESS_MS later at the
  * board's real speed (speed 'real' or 'max': the board's own time), PRESS_MS of the user's time at a set
- * speed (`speed` cycles a second), never less than one clock cycle (`period`, ps).
+ * speed (`speed` cycles a second); at most HOLD_MAX_MS of the user's time at the rate the board runs (`rate`,
+ * cycles a second, measured; unknown: 0 or none), never less than one clock cycle (`period`, ps).
  */
-export function pressEnd({ from, speed, period }) {
-  const cycles = typeof speed === 'number' ? speed * PRESS_MS / 1000 : PRESS_MS * 1e9 / period;
+export function pressEnd({ from, speed, period, rate = 0 }) {
+  let cycles = typeof speed === 'number' ? speed * PRESS_MS / 1000 : PRESS_MS * 1e9 / period;
+  if (rate > 0) cycles = Math.min(cycles, rate * HOLD_MAX_MS / 1000);
   return from + Math.max(1, Math.ceil(cycles)) * period;
 }
 

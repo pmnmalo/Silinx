@@ -217,6 +217,13 @@ function compiledHost() {
 
 /** The board's switches and buttons, on or not, in the board's order (#4002: a shared project's viewer's board given
  *  the owner's); running or paused, the clock's rate: added to the emulator's API, `api` (main: the board's area). */
+// (the cycles a second the board runs, for a press's longest hold, #5849: the last second's, else since it ran; 0: not known)
+function runRate(win, running) {
+  if (win.rate > 0 || !running) return win.rate;
+  const dt = performance.now() - win.t;
+  return dt > 0 && win.cyc > 0 ? win.cyc * 1000 / dt : 0;
+}
+
 function withBoardControls(main, running, speed, setRunning, api) {
   const inputs = () => [...main.querySelectorAll('.emu-sw, .emu-btn')];
   return Object.defineProperties(Object.assign(api, { inputElements: inputs, run: (on) => { if (!!on !== running()) setRunning(!!on); } }), {
@@ -311,7 +318,7 @@ export function mountEmulator(container, { design, board, assignments, title = '
   const { digits, leds, powerSwitches, vgaWired } = mountBoardParts({
     board, title, after: (...a) => after(...a), bitFor, compiled: () => compiled, hasLcd, holds, inVal, knobEnd: () => knobEnd,
     lcdView: () => lcdView, main, manual, period, powered: () => powered, refresh: (...a) => refresh(...a), resLabel,
-    resOf, runCycles: (...a) => runCycles(...a), running: () => running, setInputBit, speed: () => speed,
+    resOf, runCycles: (...a) => runCycles(...a), running: () => running, setInputBit, speed: () => speed, rate: () => runRate(rateWin, running),
     setPower: (...a) => setPower(...a), sim, tip, wiring, setKnobEnd: (v) => { knobEnd = v; },
     setLcdView: (v) => { lcdView = v; }
   });
@@ -406,6 +413,7 @@ export function mountEmulator(container, { design, board, assignments, title = '
     resetBtn.disabled = !powered;
     lastT = performance.now();
     cyclesAcc = 0;
+    rateWin = { t: lastT, cyc: 0, rate: rateWin.rate };   // (a new window: the pause's time not in the rate, #5849)
     unschedule();
     schedule();
     refresh();

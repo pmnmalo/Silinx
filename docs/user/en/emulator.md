@@ -48,7 +48,9 @@ menu hides it (*Modules on the headers*).
 ## Pressing the buttons
 
 A button clicked (or tapped) stays down, lit, until the design has run with it as long as a real press, a tenth of a
-second of the board's time, so that a design's debouncer takes it however slow the emulator runs. A click made while
+second of the board's time, so that a design's debouncer takes it when the emulator runs slower than real time; never
+longer than a second, though: the event-driven engine, far slower, lets it go after a second, and a debounced design
+then needs the button held down longer (Shift+click). A click made while
 the emulator is paused is kept in the same way: the button stays down, and the design takes the press once it runs
 again (*Run*). **Shift+click** holds a button down until it is Shift+clicked again; *Power cycle* lets
 every button go.

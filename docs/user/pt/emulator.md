@@ -40,7 +40,9 @@ suas Pmods, e emulado como as peças da própria placa; o menu da barra de ferra
 ## Carregar nos botões
 
 Um botão clicado (ou tocado) fica em baixo, aceso, até o projeto ter corrido com ele tanto quanto um toque real, uma
-décima de segundo do tempo da placa, para que o debouncer do projeto o apanhe por mais devagar que o emulador corra.
+décima de segundo do tempo da placa, para que o debouncer do projeto o apanhe quando o emulador corre mais devagar que
+o tempo real; nunca mais de um segundo, porém: o motor por eventos, muito mais lento, solta-o ao fim de um segundo, e
+um projeto com debouncer precisa então do botão em baixo durante mais tempo (Shift+clique).
 Um clique feito com o emulador em pausa é guardado da mesma maneira: o botão fica em baixo, e o projeto apanha o toque
 quando voltar a correr (*Executar*). **Shift+clique** mantém um botão em baixo até novo Shift+clique; o
 *Desligar/ligar* solta todos os botões.
