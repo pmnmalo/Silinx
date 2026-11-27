@@ -87,9 +87,10 @@ test('new_source, constraints_wizard and check_constraints on the DE1-SoC: QSF f
   await ok('add_to_project', { project: 's1', path: 'src/top.vhd' });
   await ok('set_top', { project: 's1', top: 'top' });
   const dir = P.projectDir('s1');
-  const s = await ok('new_source', { project: 's1', type: 'constraints', name: 'extra' });
-  assert.equal(s.text, 'Created Implementation Constraints File \'constraints/extra.qsf\'.');
-  assert.match(fs.readFileSync(path.join(dir, 'constraints/extra.qsf'), 'utf8'), /^# Quartus Prime pin assignments \(QSF\) for s1\n# Target: 5CSEMA5F31C6\n/);
+  // (new_source makes no constraints file since #5873, I/O Pin Planning and the wizard below do: its template, as it was)
+  const nc = await call('new_source', { project: 's1', type: 'constraints', name: 'extra' });
+  assert.ok(nc.isError && /^new_source: type: one of /.test(nc.text), nc.text);
+  assert.match(await (await import('../core/new-source-text.js')).sourceText('constraints', { pj: await P.readProject('s1') }), /^# Quartus Prime pin assignments \(QSF\) for s1\n# Target: 5CSEMA5F31C6\n/);
   const w = await ok('constraints_wizard', { project: 's1', module: 'top', name: 'c2', pins: { clk: 'PIN_AF14', 'sw<0>': 'PIN_AB12', 'sw<1>': 'PIN_AC12', 'led<0>': 'PIN_V16', 'led<1>': 'PIN_W16' } });
   assert.match(w.text, /^QSF Wizard: created constraints\/c2\.qsf for top: /);
   const c2 = fs.readFileSync(path.join(dir, 'constraints/c2.qsf'), 'utf8');

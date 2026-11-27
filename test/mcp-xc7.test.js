@@ -77,9 +77,10 @@ test('new_project, new_project_from_example and new_source on the 7-series: XDC 
   const dir = P.projectDir('v3');
   assert.deepEqual(fs.readdirSync(path.join(dir, 'constraints')), ['top.xdc']);
   assert.match(fs.readFileSync(path.join(dir, 'constraints/top.xdc'), 'utf8'), /\nset_property -dict \{ PACKAGE_PIN N19 IOSTANDARD LVCMOS33 \} \[get_ports \{vga_red\[2\]\}\]\n/);
-  const s = await ok('new_source', { project: 'v3', type: 'constraints', name: 'extra' });
-  assert.equal(s.text, 'Created Implementation Constraints File \'constraints/extra.xdc\'.');
-  assert.match(fs.readFileSync(path.join(dir, 'constraints/extra.xdc'), 'utf8'), /^# Xilinx Design Constraints for v3\n# Target: xc7a35t-1-cpg236\n/);
+  // (new_source makes no constraints file since #5873, I/O Pin Planning and the wizard below do: its template, as it was)
+  const nc = await call('new_source', { project: 'v3', type: 'constraints', name: 'extra' });
+  assert.ok(nc.isError && /^new_source: type: one of /.test(nc.text), nc.text);
+  assert.match(await (await import('../core/new-source-text.js')).sourceText('constraints', { pj: await P.readProject('v3') }), /^# Xilinx Design Constraints for v3\n# Target: xc7a35t-1-cpg236\n/);
   // (the XDC Wizard, #2296: the board's pins and their I/O standards, as the project's own)
   const w = await ok('constraints_wizard', { project: 'v3', module: 'vga', name: 'c2' });
   assert.match(w.text, /^XDC Wizard: created constraints\/c2\.xdc for vga: /);

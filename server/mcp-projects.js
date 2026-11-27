@@ -214,7 +214,7 @@ export const PROJECT_TOOLS = [
   },
   {
     name: 'project_info', title: 'A project\'s settings and files',
-    description: 'Where a project is stored (stored: its folder) and its last back-up (lastBackup: { at, how: export or github }, null when none was recorded); its nodes and System, top module, test bench, device, board, constraints file, its files (path, language, role: design, sim or impl), the roots of its hierarchy in the Implementation and Simulation views as the Design pane lists them, and the files the implementation and the Board Emulator read beside the HDL (flowFiles: its constraints, then the memory images); when shared live by share_project: sharing, its mode and its followers (each p2p or relay); documents: its documents\' formats (newer: read only; older: migrated on the next save).',
+    description: 'Where a project is stored (stored) and its last back-up (lastBackup: { at, how: export or github }, or null); its nodes and System, top module, test bench, device, board, constraints file, files (path, language, role: design, sim or impl), the roots of its Implementation and Simulation hierarchies as the Design pane lists them, and the files the implementation and the Board Emulator read beside the HDL (flowFiles: constraints, then memory images); shared live (share_project): sharing, its mode and followers (p2p or relay); documents: its documents\' formats (newer: read only; older: migrated on the next save).',
     inputSchema: { type: 'object', properties: { project: PROJECT }, required: ['project'], additionalProperties: false },
     annotations: { readOnlyHint: true },
     async run({ project: name }) {
@@ -260,7 +260,7 @@ export const PROJECT_TOOLS = [
   },
   {
     name: 'write_file', title: 'Write a file of a project',
-    description: 'Write (create or replace) a file of a project. A new HDL file is added to the project (in sim/ or named tb_…: a simulation source). A drawing (.sch, .asm, .fsm, .tt, .bool or .pn .json) makes its HDL (a C node\'s: its C) again, as on save; one with errors leaves it as it was; one whose HDL file is taken gets none (said). A truth table\'s "kmapOrder": "rows" lays its Karnaugh maps\' variables out MSB → LSB by rows, then columns (left out: by columns, then rows). A state diagram\'s transition: "bend" (px, a signed bow) and a self-loop\'s "angle" (degrees); neither changes its HDL. A schematic instance with an empty "name" gets the next free inst_n. An open editor keeps its text until reopened.',
+    description: 'Write (create or replace) a project file. A new HDL file is added (in sim/ or named tb_…: a simulation source). A drawing (.sch, .asm, .fsm, .tt, .bool, .pn .json) makes its HDL (a C node\'s: its C) again, as on save; with errors it leaves it as it was; with its HDL file taken it gets none (said). A truth table\'s "kmapOrder": "rows" lays its Karnaugh maps\' variables out MSB → LSB by rows, then columns (default: columns, then rows). A state diagram\'s transition "bend" (px, signed) and self-loop "angle" (degrees) change no HDL. A schematic instance with an empty "name" gets the next free inst_n. An open editor keeps its text until reopened.',
     inputSchema: { type: 'object', properties: { project: PROJECT, path: STR('The file\'s path in the project, e.g. src/counter.vhd.'), text: STR('The whole text of the file.') }, required: ['project', 'path', 'text'], additionalProperties: false },
     annotations: { readOnlyHint: false, destructiveHint: true, idempotentHint: true },
     async run({ project: name, path: rel, text }) {

@@ -57,8 +57,10 @@ test('set_design_properties: the ULX3S, its pins written as an LPF, the example\
 test('new_source constraints: the LPF template; the Xilinx primitives\' wizards refuse the ECP5', async () => {
   await ok('new_project', { name: 'e' });
   await ok('set_design_properties', { project: 'e', board: 'none', part: 'lfe5u-45f', package: 'cabga381', speed: '-8' });
-  assert.equal((await ok('new_source', { project: 'e', type: 'constraints', name: 'pins' })).text, 'Created Implementation Constraints File \'constraints/pins.lpf\'.');
-  assert.match(fs.readFileSync(path.join(P.projectDir('e'), 'constraints/pins.lpf'), 'utf8'), /^# Logical preference file for e\n# Target: lfe5u-45f-8-cabga381\n#\n# Example:\n# LOCATE COMP "clk" SITE "G2";\n/);
+  // (new_source makes no constraints file since #5873, I/O Pin Planning and the wizard below do: its template, as it was)
+  const nc = await call('new_source', { project: 'e', type: 'constraints', name: 'pins' });
+  assert.ok(nc.isError && /^new_source: type: one of /.test(nc.text), nc.text);
+  assert.match(await (await import('../core/new-source-text.js')).sourceText('constraints', { pj: await P.readProject('e') }), /^# Logical preference file for e\n# Target: lfe5u-45f-8-cabga381\n#\n# Example:\n# LOCATE COMP "clk" SITE "G2";\n/);
   // (the LPF Wizard, #2296: test/mcp-constraints.test.js; this project has no module yet)
   await fails('constraints_wizard', { project: 'e' }, 'The project has no design module.');
   await fails('clock_manager', { project: 'e' }, 'The Clocking Wizard makes a DCM for the Spartan-3E and a PLL for the Spartan-6: choose one of them as the target device (set_design_properties).');
