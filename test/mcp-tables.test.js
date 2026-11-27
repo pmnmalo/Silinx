@@ -2,13 +2,14 @@
 // it uses set as the editor sets them (core/logic-choice.js setOutputLogic), the table written and its HDL file made again
 // (traffic's lamps: its VHDL module follows); related_view's results say them; the errors. Its inputs and outputs set as its
 // Inputs and Outputs boxes set them (core/logic.js shapeTable): one name changed in place a rename, its
-// column or its rows kept (#5165), names added or removed following their names; its refusals, nothing written.
+// column or its rows kept (#5165), names added or removed following their names, reordered as the editor's headers dragged
+// (#5863: moveColumn); its refusals, nothing written.
 import { test, before, after } from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
 import { scratchEnv } from './server-helpers.js';
-import { newTable, normalizeTable, setOutputLogic, generateTableHdl, shapeTable } from '../core/logic.js';
+import { newTable, normalizeTable, setOutputLogic, generateTableHdl, shapeTable, moveColumn } from '../core/logic.js';
 
 let tmp;
 const { handle } = await import('../server/mcp.js');
@@ -112,6 +113,26 @@ test('set_output_logic, inputs and outputs: traffic\'s lamps, blink renamed flas
   assert.equal(r.isError, false, r.text);
   const after = JSON.parse(read('l', 'src/lamps.bool.json'));
   assert.deepEqual([after.inputs, after.table], [['phase2', 'phase1', 'phase0', 'flash'], before.table]);
+});
+
+test('set_output_logic, inputs and outputs reordered: the rows sorted again as the editor\'s headers dragged (moveColumn, #5863)', async () => {
+  // traffic's lamps: blink moved first, then the outputs reversed; each the editor's move, its HDL's ports in the new order
+  await call('new_project_from_example', { name: 'o', example: 'traffic' });
+  const before = normalizeTable(JSON.parse(read('o', 'src/lamps.bool.json')));
+  const ins = before.inputs, last = ins.length - 1;
+  let r = await call('set_output_logic', { project: 'o', path: 'src/lamps.bool.json', inputs: [ins[last], ...ins.slice(0, last)] });
+  assert.equal(r.isError, false, r.text);
+  const moved = moveColumn(before, 'inputs', last, 0);
+  assert.equal(r.text.split('\n')[0], `src/lamps.bool.json: inputs ${moved.inputs.join(', ')}; outputs ${moved.outputs.join(', ')}`);
+  assert.deepEqual(normalizeTable(JSON.parse(read('o', 'src/lamps.bool.json'))), moved);
+  assert.notDeepEqual(moved.table, before.table);
+  assert.match(read('o', r.data.hdl.file), new RegExp(`${moved.inputs.join(', ')} : in`));
+  r = await call('set_output_logic', { project: 'o', path: 'src/lamps.bool.json', outputs: [...moved.outputs].reverse() });
+  assert.equal(r.isError, false, r.text);
+  let doc = moved;
+  for (let i = 0; i < moved.outputs.length - 1; i++) doc = moveColumn(doc, 'outputs', moved.outputs.length - 1, i);
+  assert.deepEqual(normalizeTable(JSON.parse(read('o', 'src/lamps.bool.json'))), doc);
+  assert.deepEqual(doc.table, moved.table);
 });
 
 test('set_output_logic: an output renamed and its logic set at once, the logic of the new name', async () => {

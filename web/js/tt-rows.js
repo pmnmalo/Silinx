@@ -2,15 +2,26 @@
 // VIRTUAL_ROWS rows; a larger table (2^n rows, up to 16 inputs) scrolls in a box of its own, only the rows in view drawn
 // (and a few around them), as it scrolls, between two spacers of the height of the rows left out.
 import { h } from './ui.js';
+import { t as tr } from './i18n.js';
+import { COL_HINT } from './tt-col-drag.js';
 
 const VIRTUAL_ROWS = 256;
 const ROW_H = 20, AROUND = 20;   // (a row's height in a large table, its CSS's; the rows drawn above and below the view)
 
-/** The table of model M in `host`: its rows, output `out` selected; select(o) and cycle(o, r) on a click. */
-export function renderTtTable(host, { M, out, select, cycle }) {
+/** The table of model M in `host`: its rows, output `out` selected; select(o) and cycle(o, r) on a click (its headers'
+ *  tips without how to move them when read only). */
+export function renderTtTable(host, { M, out, select, cycle, readOnly = false }) {
   const n = M.inputs.length, rows = 2 ** n, big = rows > VIRTUAL_ROWS;
-  const head = h('tr', {}, h('th', { class: 'tt-idx' }, '#'), ...M.inputs.map(v => h('th', { class: 'tt-in' }, v)),
-    ...M.outputs.map(o => h('th', { class: `tt-out${o === out ? ' sel' : ''}`, title: 'Select this output', onclick: () => select(o) }, o)));
+  // (the headers moved by a drag or Alt+Shift+← / →, #5863: web/js/tt-col-drag.js; their tips translated here, the table
+  // being data-no-i18n)
+  const col = (kind, i, tip) => ({ class: 'tt-col', 'data-kind': kind, 'data-i': String(i), tabindex: '0', title: tr(readOnly ? tip : `${tip}\n${COL_HINT}`) });
+  const head = h('tr', {}, h('th', { class: 'tt-idx' }, '#'), ...M.inputs.map((v, i) => {
+    const c = col('inputs', i, 'An input: the first is the most significant bit of a row');
+    return h('th', { ...c, class: `tt-in ${c.class}` }, v);
+  }), ...M.outputs.map((o, i) => {
+    const c = col('outputs', i, 'Select this output');
+    return h('th', { ...c, class: `tt-out ${c.class}${o === out ? ' sel' : ''}`, onclick: () => select(o) }, o);
+  }));
   const row = r => {
     const bits = r.toString(2).padStart(n, '0');
     return h('tr', {}, h('td', { class: 'tt-idx' }, String(r)), ...[...bits].map(b => h('td', { class: 'tt-in' }, b)),

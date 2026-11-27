@@ -1,7 +1,8 @@
 // The MCP server's tool of a truth table's outputs (server/mcp.js, #2674): set_output_logic, what the Boolean Algebra
 // editor's tick box on a result (an output's HDL logic, #2951) and its Karnaugh map's solution selector (the minimal
 // solution used, #2950) do, through the same function (core/logic-choice.js setOutputLogic), and what its Inputs and
-// Outputs boxes do (core/logic.js shapeTable: one name changed in place a rename, #5165; one tool for both, within
+// Outputs boxes do (core/logic.js shapeTable: one name changed in place a rename, #5165; the names reordered, its columns'
+// headers dragged, #5863: an input's rows sorted again, as moveColumn; one tool for both, within
 // tools/list's budget, #4752); the table written and its HDL file made again, as write_file does.
 import * as P from './projects.js';
 import { toolError, readProject, STR, PROJECT, projectText } from './mcp-util.js';
@@ -13,7 +14,7 @@ const FORMS_TEXT = 'sop, pos (minimal: Karnaugh\'s, past 6 inputs Quine-McCluske
 export const TABLE_TOOLS = [
   {
     name: 'set_output_logic', title: 'Set a truth table\'s ports, an output\'s HDL logic or solution',
-    description: `Set a truth table's (.bool.json, .tt.json) output's HDL logic, as its editor's tick box on a result (${FORMS_TEXT}; a new output: gates), and / or the minimal solution its SOP or POS uses (k from 0, as related_view lists them); or its inputs and outputs, as its Inputs and Outputs boxes (columns follow their names; one name changed in place: a rename). The table and its HDL written.`,
+    description: `Set a truth table's (.bool.json, .tt.json) output's HDL logic, as its editor's tick box on a result (${FORMS_TEXT}; a new output: gates), and / or the minimal solution its SOP or POS uses (k from 0, as related_view lists them); or its inputs and outputs, as its Inputs and Outputs boxes (columns follow their names, reordered as its headers dragged; one name changed in place: a rename). The table and its HDL written.`,
     inputSchema: { type: 'object', properties: {
       project: PROJECT, path: STR('The truth table (.bool.json or .tt.json).'), output: STR('The output\'s name.'),
       inputs: NAMES('Its inputs, MSB first.'), outputs: NAMES('Its outputs.'),

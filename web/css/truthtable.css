@@ -32,6 +32,13 @@
 .tt-table th.tt-out { cursor: pointer; background: #e8f0ff; }
 .tt-table th.tt-out.sel { background: #c9dbfb; }
 .tt-table td.tt-idx, .tt-table th.tt-idx { color: var(--muted, #777); }
+/* a column's header dragged (#5863): a finger drags it rather than scroll; the mark where it will land */
+.tt-table th.tt-col { touch-action: none; user-select: none; cursor: grab; }
+.tt-table th.tt-col.tt-drag-src { opacity: 0.5; cursor: grabbing; }
+.tt-table th.tt-col.tt-drop-before { box-shadow: inset 3px 0 0 var(--accent, #1f6feb); }
+.tt-table th.tt-col.tt-drop-after { box-shadow: inset -3px 0 0 var(--accent, #1f6feb); }
+.tt-readonly .tt-table th.tt-col { cursor: default; }
+.tt-readonly .tt-table th.tt-out.tt-col { cursor: pointer; }
 /* solid lines between the row number (#), the inputs and the outputs (#1120; :first-of-type was the row's first cell, the #) */
 .tt-table .tt-idx + .tt-in, .tt-table .tt-in + :is(.tt-out, .tt-cell) { border-left: 2px solid var(--border, #999); }
 .tt-table td.tt-cell { cursor: pointer; user-select: none; min-width: 26px; font-weight: bold; }
