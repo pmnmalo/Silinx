@@ -307,35 +307,61 @@ function split(rest) {
   return out.map(operand);
 }
 
-/** The program's words (from program address `org`) and its labels' addresses. */
-export function pic24Assemble(lines, { org = 0, symbols = {} } = {}) {
+// a line's statement assembled into put(): a directive or an instruction (its errors thrown, its line's text before)
+function statement(s, raw, env, put) {
+  const [head, rest = ''] = s.split(/\s+(.*)/);
+  if (head.toLowerCase() === '.word') { put(value(rest, env)); return; }
+  if (head.toLowerCase() === '.org') {
+    const a = value(rest, env);
+    if (a < env.pc || a & 1) fail(`.org ${rest}: not an even address after 0x${env.pc.toString(16)}`);
+    while (env.pc < a) put(0xffffff);   // (the erased flash between)
+    return;
+  }
+  const [mn, ...sfx] = head.toUpperCase().split('.');
+  const enc = TABLE[mn] ?? fail(`no instruction ${mn}: ${raw}`);
+  let out;
+  try { out = enc({ m: mn, sfx: sfx.filter((x) => x !== 'W'), ops: rest ? split(rest) : [], env, pc: env.pc }); } catch (e) { throw new Error(`${raw.trim()}: ${e.message}`); }
+  for (const w of out) put(w);
+}
+
+/**
+ * A source assembled (its lines, or its text): { words (the program's, from program address `org`), labels (their
+ * addresses), errors, warnings } (each { file, line, message }, the line counted from 1). Every line is assembled
+ * though an earlier one failed; a label defined twice is an error at its second line, naming the first (#5893).
+ */
+export function assemble(lines, { org = 0, symbols = {}, file = '' } = {}) {
   const src = (Array.isArray(lines) ? lines : String(lines).split('\n'));
   const env = { labels: {}, symbols: { ...SYMBOLS, ...Object.fromEntries(Object.entries(symbols).map(([k, v]) => [k.toUpperCase(), v])) }, pass: 1 };
+  const where = {}, errors = [];
+  const error = (line, message) => errors.push({ file, line, message });
   let words;
   for (env.pass = 1; env.pass <= 2; env.pass++) {
     words = [];
-    let pc = org;
-    const put = (w) => { words.push(w & 0xffffff); pc += 2; };
-    for (const raw of src) {
+    env.pc = org;
+    const put = (w) => { words.push(w & 0xffffff); env.pc += 2; };
+    src.forEach((raw, i) => {
       let s = raw.replace(/;.*/, '').trim();
       let m;
-      while ((m = /^([A-Za-z_.$][\w.$]*):\s*/.exec(s))) { if (env.pass === 1) env.labels[m[1]] = pc; s = s.slice(m[0].length); }
-      if (!s) continue;
-      const [head, rest = ''] = s.split(/\s+(.*)/);
-      if (head.toLowerCase() === '.word') { put(value(rest, env)); continue; }
-      if (head.toLowerCase() === '.org') {
-        const a = value(rest, env);
-        if (a < pc || a & 1) fail(`.org ${rest}: not an even address after 0x${pc.toString(16)}`);
-        while (pc < a) put(0xffffff);   // (the erased flash between)
-        continue;
+      while ((m = /^([A-Za-z_.$][\w.$]*):\s*/.exec(s))) {
+        if (env.pass === 1) {
+          if (m[1] in where) error(i + 1, `the label '${m[1]}' is defined twice: at line ${where[m[1]]} and at line ${i + 1}`);
+          else { where[m[1]] = i + 1; env.labels[m[1]] = env.pc; }
+        }
+        s = s.slice(m[0].length);
       }
-      const [mn, ...sfx] = head.toUpperCase().split('.');
-      const enc = TABLE[mn] ?? fail(`no instruction ${mn}: ${raw}`);
-      let out;
-      env.pc = pc;
-      try { out = enc({ m: mn, sfx: sfx.filter((x) => x !== 'W'), ops: rest ? split(rest) : [], env, pc }); } catch (e) { throw new Error(`${raw.trim()}: ${e.message}`); }
-      for (const w of out) put(w);
-    }
+      if (!s) return;
+      try { statement(s, raw, env, put); } catch (e) { if (env.pass === 2) error(i + 1, e.message); }
+    });
   }
-  return { words: Uint32Array.from(words), labels: env.labels };
+  return { words: Uint32Array.from(words), labels: env.labels, errors, warnings: [] };
+}
+
+/** An error or a warning as a line of text: 'file:line: message' ('line N: message' with no file). */
+export const asmMessage = ({ file, line, message }) => `${file ? `${file}:${line}` : `line ${line}`}: ${message}`;
+
+/** The program's words (from program address `org`) and its labels' addresses; its first error thrown. */
+export function pic24Assemble(lines, options) {
+  const r = assemble(lines, options);
+  if (r.errors.length) throw new Error(asmMessage(r.errors[0]));
+  return { words: r.words, labels: r.labels };
 }

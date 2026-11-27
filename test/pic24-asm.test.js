@@ -234,3 +234,43 @@ test('#5480 the assembler: CALL and GOTO\'s second word, PUSH and POP as MOV, la
   assert.throws(() => pic24Assemble(['frob w0']), /no instruction FROB/);
   assert.throws(() => pic24Assemble(['bra nowhere']), /unknown symbol: nowhere/);
 });
+
+// #5930: the assembler is silinx-pic24's; its errors are collected by line, a label defined twice refused (#5893)
+test('#5930 silinx-pic24 exports the assembler; the tests\' helper is the same function', async () => {
+  const api = await import('../packages/silinx-pic24/src/index.js');
+  assert.equal(api.pic24Assemble, pic24Assemble);
+  const r = api.assemble(['main: mov #0x1234, w0', 'bra main'], { file: 'blink.s' });
+  assert.deepEqual([...r.words], [0x212340, 0x37fffe]);
+  assert.deepEqual(r.labels, { main: 0 });
+  assert.deepEqual(r.errors, []);
+  assert.deepEqual(r.warnings, []);   // no warnings
+});
+
+test('#5930 a label defined twice is refused, naming both lines; a branch no longer jumps silently into the last one', async () => {
+  const { assemble } = await import('../packages/silinx-pic24/src/index.js');
+  const src = ['start: mov #1, w0', 'wait: dec w0, w0', 'bra nz, wait', '', 'wait: nop', 'bra start'];
+  const r = assemble(src, { file: 'lock.s' });
+  assert.deepEqual(r.errors, [{ file: 'lock.s', line: 5, message: 'the label \'wait\' is defined twice: at line 2 and at line 5' }]);
+  assert.deepEqual(r.warnings, []);
+  assert.equal(r.labels.wait, 2);   // (its first place kept)
+  assert.throws(() => pic24Assemble(src), /^Error: line 5: the label 'wait' is defined twice: at line 2 and at line 5$/);
+  // two labels on one line are two labels, not a repeat
+  assert.deepEqual(assemble(['a: b: nop', 'bra a', 'bra b']).errors, []);
+});
+
+test('#5930 every line\'s error is reported with its file and line, the later lines assembled though an earlier one failed', async () => {
+  const { assemble, asmMessage } = await import('../packages/silinx-pic24/src/index.js');
+  const r = assemble(['mov #1, w0', 'frob w1', 'add w0, #32, w1', 'loop: bra loop', 'bra nowhere', '.org 1'], { file: 'x.s' });
+  assert.deepEqual(r.errors.map(asmMessage), [
+    'x.s:2: no instruction FROB: frob w1',
+    'x.s:3: add w0, #32, w1: lit5 32 not in 0..31',
+    'x.s:5: bra nowhere: unknown symbol: nowhere',
+    'x.s:6: .org 1: not an even address after 0x4',
+  ]);
+  assert.deepEqual(r.warnings, []);
+  assert.equal(r.labels.loop, 2);   // (a failed line takes no word: the next ones placed as if it were not there)
+  assert.equal(asmMessage({ file: '', line: 3, message: 'm' }), 'line 3: m');
+  // a branch out of reach
+  const far = assemble(['bra far', '.org 0x10002', 'far: nop']);
+  assert.deepEqual(far.errors.map(asmMessage), ['line 1: bra far: branch 32768 not in -32768..32767']);
+});

@@ -4,7 +4,7 @@
 export { CPU } from './cpu.js';
 export { Pic24Node } from './node.js';
 export { parseHex, writeHex } from './hex.js';
-export { pic24Assemble } from './asm.js';
+export { assemble, asmMessage, pic24Assemble } from './asm.js';
 export { readConfig } from './config.js';
 export { irqPriority, irqFlag, irqEnabled, setIrqFlag, ENTRY_CYCLES } from './interrupts.js';
 export * as device from './device.js';
