@@ -62,7 +62,7 @@ async function runPsProgram(name, { node, tool, position, connected }, signal) {
 export const BOARD_TOOLS = [
   {
     name: 'program_board', title: 'Program the board',
-    description: 'Program the project\'s board (Configure Target Device) with the file run_process bitstream made: a .bit into the FPGA\'s SRAM (Spartan-3E / 6, 7-series, the ULX3S\'s ECP5), a Gowin\'s .fs into its SRAM, an iCE40\'s .bin into the board\'s SPI flash, by its programmer (openFPGALoader, djtgcfg, adepttool, xc3sprog, iMPACT: tool). Another device\'s file is refused unless force. node: a System\'s, each on its board by USB id (Program All / Program Node), an FPGA over JTAG, an Arduino by arduino-cli upload. A trusted project only. Returns the log.',
+    description: 'Program the project\'s board (Configure Target Device) with run_process bitstream\'s file: a .bit into the FPGA\'s SRAM (Spartan-3E / 6, 7-series, the ULX3S\'s ECP5), a Gowin\'s .fs into its SRAM, an iCE40\'s .bin into the board\'s SPI flash, by its programmer (openFPGALoader, djtgcfg, adepttool, xc3sprog, iMPACT: tool). Another device\'s file is refused unless force. node: a System\'s, each on its board by USB id (Program All / Program Node), an FPGA over JTAG, an Arduino by arduino-cli upload. A trusted project only. Returns the log.',
     inputSchema: { type: 'object', properties: {
       project: PROJECT,
       tool: { type: 'string', enum: TOOLS, description: 'The programmer (default: the board\'s, else Toolchain Settings\').' },
@@ -70,7 +70,7 @@ export const BOARD_TOOLS = [
       force: { type: 'boolean', description: 'Program a bitstream built for another device than the project\'s anyway (default false), warned.' },
       node: STR('A System node (* all).'),
       connected: STR('Its board by hand: a serial number or port.'),
-      ps: { type: 'boolean', description: 'A Zynq\'s PS program (run_process ps\'s ELF) loaded over JTAG and started by OpenOCD (node: in a System).' },
+      ps: { type: 'boolean', description: 'A Zynq\'s PS program (run_process ps) loaded and started, by OpenOCD.' },
     }, required: ['project'], additionalProperties: false },
     annotations: { readOnlyHint: false, destructiveHint: true, idempotentHint: true, openWorldHint: false },
     async run({ project: name, tool, position, force = false, node, connected, ps }, { signal } = {}) {
@@ -154,7 +154,7 @@ export const BOARD_TOOLS = [
   },
   {
     name: 'toolchain_info', title: 'What Toolchain Settings found',
-    description: 'Toolchain Settings\' state, read only: the ISE mode (silinx: the Silinx toolchain, no ISE; local, docker, ssh), whether ISE 14.7, Vivado, arduino-cli, XC16, arm-none-eabi-gcc and OpenOCD can run, and why not. No host, user or path is shown; the settings are changed only in the interface (Toolchain Settings, the gear in the toolbar): this computer\'s.',
+    description: 'Toolchain Settings\' state, read only: the ISE mode (silinx: no ISE; local, docker, ssh), whether ISE 14.7, Vivado, arduino-cli, XC16, arm-none-eabi-gcc and OpenOCD can run, and why not. No host, user or path is shown; the settings are changed only in the interface (Toolchain Settings): this computer\'s.',
     inputSchema: { type: 'object', properties: {}, additionalProperties: false },
     annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false },
     async run() {
@@ -187,7 +187,7 @@ export const BOARD_TOOLS = [
   },
   {
     name: 'serial_terminal', title: 'A real board\'s serial terminal',
-    description: 'A real board\'s USB serial port, as a System terminal\'s Real Board: send text, read the answer for listen_ms (default 2000). The port: given, or a System node\'s board by USB id (a terminal: its link\'s board), at its UART\'s baud and frame. Through arduino-cli\'s monitor.',
+    description: 'A real board\'s USB serial port, as a System terminal\'s Real Board: send text, read the answer for listen_ms (2000). The port: given, or a System node\'s board by USB id (a terminal: its link\'s board), at its UART\'s baud and frame. Through arduino-cli\'s monitor.',
     inputSchema: { type: 'object', properties: {
       project: PROJECT, node: STR('A System node.'), port: STR('A port address (COM3).'), baud: { type: 'integer', minimum: 1 }, frame: { type: 'string', pattern: '^[5-8][NEOneo][12]$' },
       send: STR('Text sent (\\n: Enter).'), send_after_ms: { type: 'integer', minimum: 0, maximum: 30000 }, listen_ms: { type: 'integer', minimum: 0, maximum: 30000 },

@@ -92,6 +92,7 @@ export const newSystem = name => ({ format: SYSTEM_FORMAT, version: SYSTEM_VERSI
 function normalInterface(f) {
   const out = { name: String(f?.name ?? ''), kind: String(f?.kind ?? '') };
   if (out.kind === 'uart') {
+    if (f.ps === true) out.ps = true;   // (a Zynq's PS UART: its board's MIO pins and USB serial port, #4687)
     for (const k of ['tx', 'rx']) if (f[k] != null) out[k] = String(f[k]);
     out.baud = f.baud; out.frame = f.frame;
   } else if (out.kind === 'gpio') {

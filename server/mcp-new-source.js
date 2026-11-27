@@ -90,7 +90,7 @@ function portsOf(list) {
 export const NEW_SOURCE_TOOLS = [
   {
     name: 'new_source', title: 'New Source',
-    description: 'Add a new source, as New Source does: module (with its ports), test_bench (of a module), package (VHDL), mem, c or cpp (Silinx HLS), ps (a Zynq board\'s PS program), an empty drawing (schematic, fsm or an FSM Wizard template, asm, petri, boolean: a truth table, circuit: a breadboard or a template\'s assembly, regmap), lab (labs/<name>.lab.json); a microcontroller\'s sketch, c_source, cpp_source, assembly (AVR) or python (Pico, ESP32). The device\'s types only (a System\'s: node). In VHDL or Verilog (default: the Preferred Language), from the wizard\'s templates; edit it with write_file. An existing file is kept.',
+    description: 'Add a new source, as New Source does: module (with its ports), test_bench (of a module), package (VHDL), mem, c or cpp (Silinx HLS), ps (a Zynq\'s PS program), an empty drawing (schematic, fsm or an FSM Wizard template, asm, petri, boolean: a truth table, circuit: a breadboard or a template\'s assembly, regmap), lab (labs/<name>.lab.json); a microcontroller\'s sketch, c_source, cpp_source, assembly (AVR) or python (Pico, ESP32). The device\'s types only (a System\'s: node). In VHDL or Verilog (default: the Preferred Language), from the wizard\'s templates; edit it with write_file. An existing file is kept.',
     inputSchema: { type: 'object', properties: {
       project: PROJECT, type: { type: 'string', enum: Object.keys(TYPES), description: 'The source\'s type.' },
       name: STR('Its file name, without the extension (letters, digits, _ and -; a letter first).'),

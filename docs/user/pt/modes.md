@@ -30,7 +30,7 @@ Modo…** (Project ▸ Change Mode…).
   da placa no painel Design para o seu **Emular Nó** (Emulate Node), **Simular Nó** (Simulate Node) e **Programar Nó**
   (Program Node).
 - **Sistema**: um Sistema vazio, ou um exemplo de Sistema (uart-avr, spi-avr, i2c-avr, regs-avr, uart-pic24, adc-pmod,
-  uart-pico).
+  uart-pico, uart-esp32, uart-zynq).
 
 Os Sistemas, e com eles as placas de processador, estão na versão de desenvolvimento até estarem estáveis.
 

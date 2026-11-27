@@ -7,7 +7,7 @@
 export const EXAMPLE_ORDER = ['gates', 'breadboard', 'traffic', 'blinky', 'pong', 'stopwatch', 'clock', 'vga', 'isqrt', 'uart', 'micro80', 'lock'];
 
 /** The System examples, in their order after the FPGA ones (core/project-kind.js SYSTEM_EXAMPLES, #5214). */
-export const SYSTEM_ORDER = ['uart-avr', 'spi-avr', 'i2c-avr', 'regs-avr', 'uart-pic24', 'adc-pmod', 'uart-pico', 'uart-esp32'];
+export const SYSTEM_ORDER = ['uart-avr', 'spi-avr', 'i2c-avr', 'regs-avr', 'uart-pic24', 'adc-pmod', 'uart-pico', 'uart-esp32', 'uart-zynq'];
 
 /** The Circuit versions of the FPGA examples (#5757's 4a, roadmap #5753), Circuit projects of their own: drawings only (a
  *  schematic of the palette's symbols, state diagrams, truth tables, an ASM chart, a Petri net, a breadboard), no board,

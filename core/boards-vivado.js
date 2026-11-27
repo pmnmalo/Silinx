@@ -62,7 +62,7 @@ const ZYBO_Z7 = {
     { id: '20', label: 'Zybo Z7-20 (XC7Z020)', device: { family: 'zynq', part: 'xc7z020', package: 'clg400', speed: '-1' }, default: true },
     { id: '10', label: 'Zybo Z7-10 (XC7Z010)', device: { family: 'zynq', part: 'xc7z010', package: 'clg400', speed: '-1' } },
   ],
-  deviceNotes: 'The Zybo Z7 (Rev. B), its programmable logic only: no processing system set up (the PS7, its block design, a boot image). Its USB-UART and its QSPI flash are the PS\'s.',
+  deviceNotes: 'The Zybo Z7 (Rev. B): its programmable logic, and its processing system set up by Silinx (its PS program, bare-metal C in the on-chip memory, over JTAG; no DDR, no boot image). Its USB-UART and its QSPI flash are the PS\'s.',
   // (#4683: in cascade, TDI first: the ARM DAP, the processing system's debug port, then the PL's TAP)
   jtagChain: [{ name: 'arm_dap', role: 'dap' }, { name: 'xc7z020/xc7z010', role: 'fpga' }],
   // its processing system, as Silinx's ps7_init sets it up (core/zynq-ps7.js, #4686; Digilent's board preset's clocks):
@@ -103,7 +103,7 @@ const ARTY_Z7 = {
     { id: '20', label: 'Arty Z7-20 (XC7Z020)', device: { family: 'zynq', part: 'xc7z020', package: 'clg400', speed: '-1' }, default: true },
     { id: '10', label: 'Arty Z7-10 (XC7Z010)', device: { family: 'zynq', part: 'xc7z010', package: 'clg400', speed: '-1' } },
   ],
-  deviceNotes: 'The Arty Z7 (Rev. B), its programmable logic only: no processing system set up (the PS7, its block design, a boot image). Its USB-UART and its QSPI flash are the PS\'s.',
+  deviceNotes: 'The Arty Z7 (Rev. B): its programmable logic, and its processing system set up by Silinx (its PS program, bare-metal C in the on-chip memory, over JTAG; no DDR, no boot image). Its USB-UART and its QSPI flash are the PS\'s.',
   // (#4683: the Zybo Z7's chain, the ARM DAP then the PL's TAP)
   jtagChain: [{ name: 'arm_dap', role: 'dap' }, { name: 'xc7z020/xc7z010', role: 'fpga' }],
   // its processing system, as Silinx's ps7_init sets it up (core/zynq-ps7.js, #4686; as the PYNQ-Z1's, its twin): a

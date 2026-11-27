@@ -875,6 +875,13 @@ DAP makes then goes through the plan's guard, which refuses any other address: o
 and the OCM, on the APB-AP only CPU 0's debug registers. A WAIT is retried with more idle clocks, a FAULT clears its
 sticky error and is said. The tests run it on a simulated Zybo Z7 chain (`test/fixtures/zynq-dap-sim.js`).
 
+**The PS's UART** is the node's interface `{ name: 'PS_UART1', kind: 'uart', ps: true, baud: 115200, frame: '8N1' }`
+(the Zybo Z7's UART1; the Arty Z7's `PS_UART0`): no ports of the module, its pins its board's MIO (48 and 49 on the Zybo
+Z7), which reach the board's USB serial port only. It is added by the System editor's **+ PS UART** in the node's
+Properties, or by the MCP's `edit_system` (`add_interface` with `fields.ps`); one a node. It links to a serial terminal
+only (to another node's UART: refused), with no wires. The Cortex-A9 is not simulated, so Simulate and Emulate leave
+that link out, which the check says; on the board, the terminal's Real Board reaches it (#4687, part 4).
+
 **Run PS Program** (the Design pane's PS row, a Zynq node's row, a Board project's `ps/` files; the MCP's `program_board`
 with `ps`) runs it on the board through the user's [OpenOCD](https://openocd.org) (`server/zynq-ps-run.js`; config.json's
 `paths.openocd`, the PATH or Homebrew's folders; Silinx does not install it, and says so when it is missing). The program
@@ -1098,6 +1105,12 @@ The local server does the same for the MCP's `serial_terminal` (`server/serial-m
     over UART (UART(2), GPIO17 and GPIO16, 9600 baud) and prints each byte it receives, the FPGA's echo and its BTN0's
     "Hello from Silinx!", in its console; the FPGA (the uart example's module) shows them on its LEDs. Both sides at 3.3 V.
     It teaches a UART from Python, the same program on the real board.
+11. **`uart-zynq`** (#4687). A Zybo Z7 alone, its two sides in one node. Its PL (`zybo/leds.vhd`): LD0–LD2 follow
+    SW0–SW2, LD3 blinks from the 125 MHz clock. Its PS's program (`zybo/ps/main.c`, the starter) says "Hello from the
+    Cortex-A9 of Digilent Zybo Z7" on the board's USB serial port at 115200 baud and blinks LD4. Its PS UART is linked
+    to a serial terminal. The Cortex-A9 is not simulated: Simulate runs the PL, the terminal stays silent, and the check
+    says the link is left out. On the board, Compile PS Program, Run PS Program and the terminal's Real Board show the
+    hello. It teaches the Zynq's two sides, bare-metal C on its Cortex-A9.
 
 A scenario test fits `grade` and the labs: press the Arduino's button, expect "OK" on the FPGA's UART.
 
