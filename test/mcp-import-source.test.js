@@ -115,12 +115,12 @@ test('import_source: its errors (outside the exchange folder, no such file, a fi
   fs.writeFileSync(path.join(tmp, 'outside.vhd'), INV);
   await fails('import_source', { project: 'p', files: ['../outside.vhd'] }, 'files: \'../outside.vhd\' is outside the exchange folder (SILINX_MCP_FOLDER sets another)');
   await fails('import_source', { project: 'p', files: ['nothere.vhd'] }, 'files: no file \'<exchange folder>/nothere.vhd\'');
-  await fails('import_source', { project: 'p', files: ['x.exe'] }, 'files: \'<exchange folder>/x.exe\' is not a file Import Source takes (.v, .vhd, .vhdl, .ucf, .pcf, .lpf, .cst, .ccf, .qsf, .mem, .hex, .asm.json, .json)');
+  await fails('import_source', { project: 'p', files: ['x.exe'] }, 'files: x.exe: not a file of an FPGA (.v, .vhd, .vhdl, .ucf, .pcf, .lpf, .cst, .ccf, .xdc, .qsf, .mem, .hex, .json)');
   await fails('import_source', { project: 'p', files: [] }, 'files: the files to copy, in the exchange folder');
   await fails('import_source', { project: 'p', files: ['inv.vhd'], association: 'all' }, 'association: one of design, impl, sim');   // (the arguments' central check, #3535)
   await fails('import_source', { project: 'nothere', files: ['inv.vhd'] }, 'no project \'nothere\' in the workspace');
   // (one file refused: none copied)
-  await fails('import_source', { project: 'p', files: ['tb_inv.vhd', 'x.exe'] }, 'files: \'<exchange folder>/x.exe\' is not a file Import Source takes (.v, .vhd, .vhdl, .ucf, .pcf, .lpf, .cst, .ccf, .qsf, .mem, .hex, .asm.json, .json)');
+  await fails('import_source', { project: 'p', files: ['tb_inv.vhd', 'x.exe'] }, 'files: x.exe: not a file of an FPGA (.v, .vhd, .vhdl, .ucf, .pcf, .lpf, .cst, .ccf, .xdc, .qsf, .mem, .hex, .json)');
 });
 
 test('import_source and import_project: no hidden file or folder of the exchange folder, by its name or through a link', async () => {
@@ -134,4 +134,19 @@ test('import_source and import_project: no hidden file or folder of the exchange
   await fails('import_project', { name: 'h2', from: '.private' }, 'from: \'.private\' is a hidden file or folder (\'.private\'), which no tool reads nor writes');
   assert.deepEqual((await P.fileTree('h')).filter(f => /key|inv/.test(f)), []);
   assert.equal(fs.existsSync(P.projectDir('h2')), false);
+});
+
+test('#5873 import_source in a System: each node its device\'s files, in its folder (node, else the first FPGA node); a node of none refused, nothing copied', async () => {
+  await P.createProject({ name: 'sys', template: 'uart-avr' });
+  put('morse.ino', 'void setup() {}\nvoid loop() {}\n'); put('inv.vhd', INV); put('main.py', 'print(1)\n'); put('pins.ucf', 'NET "a" LOC = "P11" ;\n');
+  const uno = await ok('import_source', { project: 'sys', files: ['morse.ino'], node: 'uno' });
+  assert.deepEqual(uno.data.added.map(a => a.path), ['uno/morse.ino']);
+  const fpga = await ok('import_source', { project: 'sys', files: ['inv.vhd', 'pins.ucf'] });
+  assert.deepEqual(fpga.data.added.map(a => a.path), ['fpga/inv.vhd', 'fpga/constraints/pins.ucf']);
+  assert.equal((await P.readProject('sys')).constraints ?? null, null);   // (a node's constraints its own)
+  await fails('import_source', { project: 'sys', files: ['inv.vhd'], node: 'uno' }, 'files: inv.vhd: not a file of an AVR (Arduino) (.ino, .c, .cpp, .h, .hpp, .asm, .hex, .json)');
+  await fails('import_source', { project: 'sys', files: ['main.py'], node: 'fpga' }, 'files: main.py: not a file of an FPGA (.v, .vhd, .vhdl, .ucf, .pcf, .lpf, .cst, .ccf, .xdc, .qsf, .mem, .hex, .json)');
+  await fails('import_source', { project: 'sys', files: ['main.py'], node: 'nope' }, 'node: no node \'nope\' in the System (uno, fpga)');
+  await fails('import_source', { project: 'p', files: ['inv.vhd'], node: 'fpga' }, 'node: a System project\'s node');
+  assert.deepEqual((await P.fileTree('sys')).filter(f => /main\.py$|uno\/inv/.test(f)), []);
 });

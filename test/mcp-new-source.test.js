@@ -28,6 +28,9 @@ before(async () => {
   await ok('new_project', { name: 'p', board: 'basys2' });
 });
 
+// new_source's types (#5873: no constraints file; a microcontroller's program's)
+const TYPES = 'module, test_bench, package, mem, c, cpp, schematic, fsm, asm, petri, boolean, circuit, regmap, lab, sketch, c_source, cpp_source, assembly, python';
+
 test('new_source: a module with its ports and its test bench, in VHDL and in Verilog: compiled, elaborated, simulated', async () => {
   const ports = [{ name: 'clk', dir: 'in' }, { name: 'rst', dir: 'in' }, { name: 'q', dir: 'out', msb: 7, lsb: 0 }];
   for (const [lang, L, ext] of [['vhdl', 'VHDL', 'vhd'], ['verilog', 'Verilog', 'v']]) {
@@ -195,27 +198,23 @@ test('write_file: a drawing with no generatedFile over its module\'s HDL file: n
   assert.match(read('src/own.vhd'), /f <= a and b;/);
 });
 
-test('new_source: a package, a constraints file (the project\'s, having none), a .mem, a C and a C++ function', async () => {
+test('new_source: a package, a .mem, a C and a C++ function; no constraints file (#5873: I/O Pin Planning\'s)', async () => {
   assert.equal((await ok('new_source', { project: 'p', type: 'package', name: 'defs' })).text, 'Created VHDL Package \'src/defs.vhd\'.');
   assert.match(read('src/defs.vhd'), /package defs is[\s\S]*package body defs is/);
-  const c = await ok('new_source', { project: 'p', type: 'constraints', name: 'pins' });
-  assert.equal(c.text, 'Created Implementation Constraints File \'constraints/pins.ucf\'.');
-  assert.equal((await P.readProject('p')).constraints, 'constraints/pins.ucf');
-  // a second one: the project keeps its own
-  await ok('new_source', { project: 'p', type: 'constraints', name: 'more' });
-  assert.equal((await P.readProject('p')).constraints, 'constraints/pins.ucf');
+  await fails({ type: 'constraints', name: 'pins' }, `type: one of ${TYPES}`);
+  assert.ok(!fs.existsSync(path.join(P.projectDir('p'), 'constraints/pins.ucf')));
   assert.equal((await ok('new_source', { project: 'p', type: 'mem', name: 'rom' })).text, 'Created Memory Initialization File (.mem) \'src/rom.mem\'.');
   assert.equal(read('src/rom.mem'), '// memory initialization file ($readmemh format)\n00\n01\n02\n03\n');
   for (const [type, label, ext] of [['c', 'C Function (HLS)', 'c'], ['cpp', 'C++ Function (HLS)', 'cpp']]) {
     assert.equal((await ok('new_source', { project: 'p', type, name: `f_${type}` })).text, `Created ${label} 'src/f_${type}.${ext}'.`);
     assert.equal(await checks(`f_${type}`), `Process "Check Syntax" of <f_${type}> completed successfully (18 signals, 14 processes).`);
   }
-  // an iCE40's constraints: a PCF
-  await ok('new_project', { name: 'ice' });
-  await ok('set_design_properties', { project: 'ice', board: 'none', part: 'ice40hx1k', package: 'vq100' });
-  assert.equal((await ok('new_source', { project: 'ice', type: 'constraints', name: 'pins' })).text, 'Created Implementation Constraints File \'constraints/pins.pcf\'.');
-  // (its text New Source's PCF template, not the UCF's: #3142)
-  assert.match(fs.readFileSync(path.join(P.projectDir('ice'), 'constraints/pins.pcf'), 'utf8'), /^# Physical constraints for ice\n# Target: ice40hx1k-vq100\n/);
+  // (an FPGA's types only: a microcontroller's program refused, nothing written; node a System's)
+  for (const [type, label] of [['sketch', 'Arduino Sketch'], ['c_source', 'C Source'], ['cpp_source', 'C++ Source'], ['assembly', 'Assembly'], ['python', 'Python Program']]) {
+    await fails({ type, name: 'fw' }, `${label}: not a source of an FPGA`);
+  }
+  assert.deepEqual(fs.readdirSync(path.join(P.projectDir('p'), 'src')).filter((f) => f.startsWith('fw')), []);
+  await fails({ type: 'module', name: 'm9', node: 'fpga' }, 'node: a System project\'s node');
 });
 
 test('new_source: a name typed with its drawing\'s extension, .circ.json as .sch.json, is the file\'s name (#4120)', async () => {
@@ -243,7 +242,7 @@ test('new_source: the wizard\'s refusals; an existing file not replaced', async 
   await fails({ type: 'test_bench', name: 'tb_x', module: 'nosuch' }, 'no module \'nosuch\' in the project\'s HDL files');
   await fails({ type: 'test_bench', name: 'tb_y' }, 'module: the module the test bench tests (the project has no top)');
   await fails({ type: 'package', name: 'pk', language: 'verilog' }, 'a package is VHDL\'s');
-  await fails({ type: 'netlist', name: 'n' }, 'type: one of module, test_bench, package, constraints, mem, c, cpp, schematic, fsm, asm, petri, boolean, circuit, regmap, lab');
+  await fails({ type: 'netlist', name: 'n' }, `type: one of ${TYPES}`);
   // a drawing's HDL file taken
   await ok('write_file', { project: 'p', path: 'src/spare.vhd', text: '-- a file\n' });
   await fails({ type: 'asm', name: 'spare' }, 'src/spare.vhd already exists: the HDL generated from the new source would be written there. Choose another name.');

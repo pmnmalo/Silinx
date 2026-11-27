@@ -399,7 +399,7 @@ function taskButton(t) {
 
 // the task switchers, the task's bar and the page of a task with no document: there in the Tasks interface
 // only (the other interfaces' pages, their tests and their translations do not have them)
-const PARTS = ['task-switch', 'task-tabs', 'task-bar', 'task-empty', 'task-sim-panel', 'task-sim-split', 'task-impl-bar', 'task-procs-tab', 'task-emu-tab', 'task-emu-panel', 'task-view', 'task-impl-files', 'task-flow-files-tab', 'task-src-bar', 'task-files-bar', 'task-close-bar'];   // (their ids)
+const PARTS = ['task-switch', 'task-tabs', 'task-bar', 'task-empty', 'task-sim-panel', 'task-sim-split', 'task-impl-bar', 'task-procs-tab', 'task-emu-tab', 'task-emu-panel', 'task-view', 'task-impl-files', 'task-flow-files-tab', 'task-files-bar', 'task-close-bar'];   // (their ids)
 const PAGE_NAME = { start: 'Start', design: 'Design', test: 'Test', files: 'Files', libraries: 'Libraries', teaching: 'Teaching', collab: 'Collaboration', procs: 'Implementation', emu: 'Emulate' };
 function build() {
   const $ = id => document.getElementById(id);
@@ -457,11 +457,9 @@ function build() {
   // Implement's and Emulate's Files, a tab after theirs, as Simulate's (#4609, web/js/tasks-flow-files.js; Implement's page
   // in its Processes panel, below)
   mountFlowFiles(app, { tabs: $('left-tabs') });
-  // the Design page: New Source and Import Source above the tree (#1210, #1501; Design's only, web/css/tasks.css)
+  // (the Design page's New Source and Import Source: each device's row's [New] and [Import], #5873, web/js/design-system.js;
+  // above the tree before, #1210, #1501)
   const wizard = f => () => import('./wizards.js').then(w => w[f]());
-  $('hier').before(h('div', { id: 'task-src-bar' },
-    h('button', { class: 'btn', type: 'button', onclick: wizard('newSourceWizard') }, 'New Source…'),
-    h('button', { class: 'btn', type: 'button', onclick: wizard('addSourceDialog') }, 'Import Source…')));
   // and Check Design and Close Project at its end, under the tree (#1309; Check Design: the top module's Check Syntax,
   // its whole hierarchy, whatever the tree selects)
   $('hier').after(h('div', { id: 'task-close-bar' },
@@ -590,7 +588,7 @@ export function initTasks(a) {
   // unset), and once a second (#1423)
   // (a System project's Emulate: Emulate System, its I/O Pin Planning a node's, #5581: web/js/processes.js marks the bar)
   const sysEmu = b => b.closest('#task-emu-bar, #task-impl-bar')?.dataset.system === '1';
-  const barsNow = () => { for (const b of document.querySelectorAll('#task-src-bar button, #task-files-bar button, #task-close-bar button, #task-impl-bar button, #task-emu-bar button')) b.disabled = !app.S.project || (sysEmu(b) ? b.dataset.act === 'pins' && !b.closest('#task-impl-bar') : ['check-design', 'pins', 'emulate'].includes(b.dataset.act) && !app.S.project.top); };
+  const barsNow = () => { for (const b of document.querySelectorAll('#task-files-bar button, #task-close-bar button, #task-impl-bar button, #task-emu-bar button')) b.disabled = !app.S.project || (sysEmu(b) ? b.dataset.act === 'pins' && !b.closest('#task-impl-bar') : ['check-design', 'pins', 'emulate'].includes(b.dataset.act) && !app.S.project.top); };
   for (const ev of ['silinx:project-opened', 'silinx:design-changed']) addEventListener(ev, () => { if (on()) barsNow(); });
   new MutationObserver(() => { if (on()) barsNow(); }).observe($('procs'), { childList: true });
   setInterval(() => { if (on()) { refreshDots(); if (current() === 'sim') { if (simPanel) simPanel.refresh(); else refreshBench(app); tagDocs(); } const g = document.querySelector('#task-empty button'); if (g) g.disabled = !mainEnabled();

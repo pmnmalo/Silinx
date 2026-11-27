@@ -6,7 +6,8 @@ import { cTemplate, cppTemplate } from './c-templates.js';
 import { constraintsFormatOf } from '../packages/silinx-fpga/src/parts.js';
 
 /** The kinds of source (the MCP's new_source's types). */
-export const SOURCE_KINDS = ['module', 'package', 'test_bench', 'constraints', 'mem', 'c', 'cpp', 'schematic', 'asm', 'fsm', 'petri', 'circuit', 'boolean', 'regmap', 'lab'];
+export const SOURCE_KINDS = ['module', 'package', 'test_bench', 'constraints', 'mem', 'c', 'cpp', 'schematic', 'asm', 'fsm', 'petri', 'circuit', 'boolean', 'regmap', 'lab',
+  'sketch', 'c_source', 'cpp_source', 'assembly', 'python'];
 const CONSTRAINTS = { ucf: T.ucfTemplate, pcf: T.pcfTemplate, lpf: T.lpfTemplate, cst: T.cstTemplate, ccf: T.ccfTemplate, xdc: T.xdcTemplate, qsf: T.qsfTemplate };
 // a drawing's or a C function's name from the file's
 const ident = n => String(n).replace(/[^A-Za-z0-9_]/g, '_');
@@ -16,7 +17,7 @@ const ident = n => String(n).replace(/[^A-Za-z0-9_]/g, '_');
  * 'verilog'; a module's entity, arch (VHDL) and ports; a test bench's uut (core/uut-info.js uutInfo); a constraints file's
  * format (ucf, pcf, lpf, cst, ccf, xdc, qsf; the device's when not given); a circuit's template ({ id, params }: the Digital
  * Electronic Circuit Wizard's assembly; none, a half breadboard and its supply), a state diagram's (the FSM Wizard's;
- * none, an empty diagram). Throws for an unknown kind.
+ * none, an empty diagram); a microcontroller's sketch, C, C++, assembly or Python file, empty. Throws for an unknown kind.
  */
 export async function sourceText(kind, { file, lang = 'vhdl', pj = {}, entity, arch, ports = [], uut, format, template } = {}) {
   const n = ident(file);
@@ -41,6 +42,12 @@ export async function sourceText(kind, { file, lang = 'vhdl', pj = {}, entity, a
     case 'boolean': return JSON.stringify({ ...(await import('./logic.js')).newTable(n, ['a', 'b', 'c'], ['f']), lang }, null, 2);
     case 'regmap': return (await import('./regmap.js')).writeRegmap((await import('./regmap.js')).newRegmap(n, 'spi', lang));   // (#5288)
     case 'lab': return `${JSON.stringify((await import('./labs.js')).newLab(file, { top: pj.top, simTop: pj.simTop }), null, 2)}\n`;
+    // a microcontroller's (#5873: core/source-types.js): its program's files, empty
+    case 'sketch': return `// ${file}.ino: an Arduino sketch.\n\nvoid setup() {\n}\n\nvoid loop() {\n}\n`;
+    case 'c_source': return `// ${file}.c: a C source of the program.\n`;
+    case 'cpp_source': return `// ${file}.cpp: a C++ source of the program.\n`;
+    case 'assembly': return `; ${file}.asm: an AVR assembly program (avra).\nloop:\n    rjmp loop\n`;
+    case 'python': return `# ${file}.py: a Python program (MicroPython or CircuitPython).\n`;
     default: throw new Error(`no source of kind '${kind}'`);
   }
 }

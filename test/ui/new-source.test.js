@@ -19,14 +19,13 @@ const E = () => env;
 
 // (the digital electronic circuit second, #4061)
 const TYPES = ['Boolean Algebra', 'Digital Electronic Circuit', 'Module (HDL)', 'Schematic', 'Finite State Machine (FSM)', 'Algorithmic State Machine (ASM)', 'Petri Net', 'Register Map',
-  'Clock Manager (DCM / PLL)', 'Block Memory', 'Test Bench', 'Implementation Constraints File', 'Memory Initialization File (.mem)', 'Guided Lab',
+  'Clock Manager (DCM / PLL)', 'Block Memory', 'Test Bench', 'Memory Initialization File (.mem)', 'Guided Lab',   // (no constraints file, #5873)
   'C Function (HLS)', 'C++ Function (HLS)'];
 // each type: its wizard's dialog (null: none), only a wizard (Next > disabled)
 const WIZARD = {
   'Boolean Algebra': 'Boolean Algebra Wizard', 'Module (HDL)': 'Module Wizard', 'Schematic': 'Schematic Wizard', 'Finite State Machine (FSM)': 'FSM Wizard',
   'Algorithmic State Machine (ASM)': 'ASM Wizard', 'Petri Net': 'Petri Net Wizard', 'Digital Electronic Circuit': 'Digital Electronic Circuit Wizard',
   'Clock Manager (DCM / PLL)': 'Clocking Wizard', 'Block Memory': 'Block Memory', 'Test Bench': 'Test Bench Wizard',
-  'Implementation Constraints File': 'UCF Wizard',
 };
 // each wizard's pages opened from New Source: its own, no "Name and Language" (#2082)
 const STEPS = {
@@ -134,7 +133,7 @@ uiTest('New Source (#958, #2082): Wizard > opens each type\'s wizard at its own 
     await waitNewSourcePage(page, 'File Name and Location');
     assert.equal(await page.dialogCount(), 1, type);
     assert.deepEqual(await page.eval(() => [[...document.querySelectorAll('.dlg-overlay .wiz-main .form-grid > label')].find((l) => l.textContent === 'Source type:')?.nextElementSibling.textContent,
-      ...[...document.querySelectorAll('.dlg-overlay .wiz-main input[type=text]')].slice(0, 2).map((i) => i.value)]), [type, 'w_one', type === 'Test Bench' ? 'sim' : type === 'Implementation Constraints File' ? 'constraints' : 'src'], type);
+      ...[...document.querySelectorAll('.dlg-overlay .wiz-main input[type=text]')].slice(0, 2).map((i) => i.value)]), [type, 'w_one', type === 'Test Bench' ? 'sim' : 'src'], type);
     await page.dialogButton('Cancel');
     await page.waitNoDialog();
   }

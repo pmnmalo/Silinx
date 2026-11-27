@@ -3,8 +3,12 @@
 [Guia do utilizador](README.md) · [English](../en/designing.md) · Português
 
 Um projeto do Silinx é feito de módulos, e cada módulo é escrito ou desenhado da forma que melhor lhe convém. Um
-desenho é a fonte do módulo: o Silinx gera dele o VHDL ou o Verilog, sempre atualizado. *Nova Fonte…* (o painel
-Projeto) acrescenta um módulo de qualquer tipo, quase todos com um assistente.
+desenho é a fonte do módulo: o Silinx gera dele o VHDL ou o Verilog, sempre atualizado. *[Novo]* na linha do
+dispositivo do painel Projeto (ou *Projeto ▸ Nova Fonte…*) acrescenta um módulo de qualquer tipo que o dispositivo
+aceite, quase todos com um assistente, e *[Importar]* copia ficheiros para lá; num Sistema, cada nó tem os seus, as
+suas fontes na sua pasta: numa FPGA HDL, desenhos, assistentes e C / C++ para o Silinx HLS; num Arduino um sketch, C,
+C++ e assembly; num Pico ou num ESP32 Python; num PIC24 o seu .hex, importado. Um ficheiro de restrições não é uma
+fonte nova: faz-se com o I/O Pin Planning.
 
 ## VHDL e Verilog
 

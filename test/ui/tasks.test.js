@@ -1824,7 +1824,7 @@ for (const theme of ['light', 'dark']) uiTest(`#1409 Tasks (${theme}): the side 
   await page.waitFor(() => document.querySelector('#doc-tabs .tab')?.getClientRects().length > 0, [], { what: 'the Design Summary' });
   assert.equal(await docTabs(), impl.tabs, 'the documents\' tabs as high as the side panel\'s');
   await go('edit');
-  const edit = await look('#left', '#left-tabs', '#left-tabs .tab.active .tab-lbl', '#task-src-bar', '#task-src-bar .btn', '#hier .row');
+  const edit = await look('#left', '#left-tabs', '#left-tabs .tab.active .tab-lbl', '#task-close-bar', '#task-close-bar .btn', '#hier .row');
   await go('emu');
   const emu = await look('#left', '#left-tabs', '#task-emu-tab .tab-lbl', '#task-emu-bar', '#task-emu-bar .btn', '#task-emu-panel .row');
   await go('sim');
@@ -1832,14 +1832,18 @@ for (const theme of ['light', 'dark']) uiTest(`#1409 Tasks (${theme}): the side 
   const sim = await look('#task-sim-panel', '#task-sim-panel .task-sim-tabs', '#task-sim-panel .task-sim-tabs .tab.active .tab-lbl', '#task-sim-panel .task-sim-src-bar', '#task-sim-panel .task-sim-src-bar .btn', '#task-sim-panel .row');
   assert.equal(impl.width, 380);
   assert.deepEqual([impl.tabs, impl.bar, impl.button, impl.row, impl.indent, impl.inset], [38, 40, '32 12px', '26 13px', 8, 6]);
-  for (const [name, x] of Object.entries({ edit, sim, emu })) assert.deepEqual(x, impl, `${name} as Implement's`);
+  for (const [name, x] of Object.entries({ sim, emu })) assert.deepEqual(x, impl, `${name} as Implement's`);
+  // (Design's bar is its Check Design and Close Project under the tree, a pixel higher, its border: none above the tree
+  // since #5873)
+  assert.deepEqual({ ...edit, bar: impl.bar }, impl, 'edit as Implement\'s');
+  assert.equal(edit.bar, impl.bar + 1);
   // a simulation: its side panel as with none (its width, tabs, bar, rows), its tabs as high as the documents' beside it
   await page.click('#task-sim-panel .task-sim-bench .row');
   await page.waitFor(() => [...document.querySelectorAll('.doc .isim-left .isim-tree .row')].some((r) => r.getClientRects().length), [], { what: 'the simulation', timeout: 60000 });
   const running = await look('.doc:not([hidden]) .isim-left', '.doc:not([hidden]) .isim-left .task-sim-tabs', '.doc:not([hidden]) .isim-left .task-sim-tabs .tab.active .tab-lbl',
     '.doc:not([hidden]) .isim-left .task-sim-src-bar', '.doc:not([hidden]) .isim-left .task-sim-src-bar .btn', '.doc:not([hidden]) .isim-left .isim-tree .row');
   assert.deepEqual(running, impl, 'Simulate\'s side panel with a simulation as with none');
-  // the Start page: its buttons a bar as Design's, its commands' icons shown (none were: 0 px wide)
+  // the Start page: its buttons a bar as the other tasks', its commands' icons shown (none were: 0 px wide)
   await go('edit');
   await page.leftTab('start');
   await page.waitFor(() => document.querySelector('#start-page .start-box h3')?.getClientRects().length > 0, [], { what: 'the Start page' });
@@ -1849,7 +1853,7 @@ for (const theme of ['light', 'dark']) uiTest(`#1409 Tasks (${theme}): the side 
       // (the entries shown: Share Project… is the ISE style's, hidden here, #3479)
       icons: [...new Set([...document.querySelectorAll('#start-page .entry .ico')].filter((e) => e.getClientRects().length).map((e) => Math.round(e.getBoundingClientRect().width)))] };
   });
-  assert.deepEqual(start, { bar: edit.bar, button: edit.button, icons: [16] });
+  assert.deepEqual(start, { bar: impl.bar, button: edit.button, icons: [16] });   // (the bars' height above a tree, Implement's: Design has none, #5873)
   // the Files page: its rows as the trees', its folders' icon the app's
   await page.leftTab('files');
   await page.waitFor(() => document.querySelector('#files-page tr[data-file]')?.getClientRects().length > 0, [], { what: 'the Files page' });
