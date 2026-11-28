@@ -40,7 +40,7 @@ uiTest('#5482 a PIC24 node\'s Compile Firmware from its row: XC16, its .hex the 
   await page.waitConsole(/^Process "Compile Firmware \(System node pic\)" completed successfully$/m, { timeout: 60000 });
   const all = await lines(page);
   for (const l of ['System node pic: its program (1 C and assembly file(s) of pic/) for the PIC24FJ1024GB610 (Explorer 16/32), by XC16 2.10 on this computer, -O1 (XC16\'s free licence: -O0 to -O2), in build/nodes/pic/firmware/.',
-    'System node pic: its firmware pic/lcd_uart.hex, 393 program word(s).']) assert.ok(all.includes(l), all.join('\n'));
+    'System node pic: its firmware pic/lcd_uart.hex, 394 program word(s).']) assert.ok(all.includes(l), all.join('\n'));
   assert.equal(fs.readFileSync(path.join(dir, 'pic/lcd_uart.hex'), 'utf8'), LCD_HEX);
   assert.deepEqual(await said(page), [], 'no warning');
   // a warning and an error: their lines, by file and line, the Errors and Warnings tabs' rows
