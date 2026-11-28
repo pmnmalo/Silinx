@@ -4,6 +4,39 @@ What changed in each version of silinx-pic24, the Silinx PIC24 emulator. The new
 are its own (semver, 0.x until its API is stable), apart from Silinx's. What changed since the last release is in
 [changes/](changes/).
 
+## 0.3.3
+
+In short:
+
+- BSET, BCLR, BTG, BTST, BTSTS, BTSS and BTSC on a file register test and change the bit XC16 means: a C program's
+  waits on a flag and its port bits work.
+- The assembler reads xc16-as's syntax and links a program as XC16 does: `assembleProgram(source)` gives its `.hex`.
+- A PIC24F assembler: `assemble(source, { file })` gives a program's words, its labels, and its errors by file and line.
+
+In detail:
+
+- **A bit instruction on f, its bit as XC16 encodes it (#6017):** in `bbbf ffff ffff fffb` the last `b` is bit4<3> (and
+  a byte's address's LSB), the first three bit4<2:0>; the emulator (`exec-bit.js`) and the assembler (`asm.js`) took
+  the last `b` as bit4<0>, so XC16's `btst.b IFS0, #3` tested bit 6 and a drawing's program never saw Timer1's tick.
+  The assembler's tests and the uart-fpga-pic24 example's `.hex` follow; a test runs XC16 2.10's own words.
+- **xc16-as's syntax and XC16's linker's places (#5931):** the directives `.include "p24FJ1024GB610.inc"`, `.text`,
+  `.section`, `.bss` with `.space` / `.skip` (data labels from 0x0800), `.global`, `.equ` / `.set`, `.word` (16 bits:
+  a wider value refused) and `.pword` (24), `.align`, `.end`, and `config __FWDT, FWDTEN_OFF` (the settings ANDed, a word
+  set twice warned); expressions with C's operators and xc16-as's `tblpage()`, `tbloffset()`, `handle()` (`asm-expr.js`);
+  the PIC24FJ1024GB610's registers, bits, vectors and configuration words by name (`gb610-names.js`: Silinx's own, from
+  the emulator's register map; checked against XC16's by #5937). `assembleProgram(source, { file })`: a source with a
+  `.global __reset` is linked as XC16's linker links it, its code from 0x200, the reset vector a GOTO __reset, each vector its
+  `.global` handler's or `__DefaultInterrupt`'s (a RESET after the program when the source has none), its configuration
+  words; a handler not `.global` warned (XC16 would leave its vector to the default); an older source as it is, from 0.
+  `.word` in the emulator's tests' programs that held whole program words is `.pword`.
+- **The assembler is the package's (#5930):** the emulator's tests' PIC24F assembler (the instruction set's every form,
+  its encodings checked against DS70000157) moved into `src/asm.js` as it was, and exported: `pic24Assemble` (its first
+  error thrown, `line N: …`) and `assemble`, which reports every line's error as `{ file, line, message }` (written
+  `file:line: message` by `asmMessage`) and assembles the lines after one that failed. A label defined twice is now
+  an error naming both lines (it used to keep its last place silently, so a `bra` could jump into another routine:
+  #5893). Tests: pic24-asm (the package's export, a label defined twice, the errors by line, a branch out of reach,
+  no warnings).
+
 ## 0.3.2
 
 In detail:
