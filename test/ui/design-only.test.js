@@ -63,7 +63,7 @@ uiTest('#3780 New Project: Design and simulation only, no board, no device, no H
   await page.openProject('Drawn');
   await page.waitFor(() => window.Silinx.project?.name === 'Drawn' && window.Silinx.project.top === 'top' && document.querySelector('#hier .row.top-mod'), [], { what: 'project Drawn open, its top' });
   const pj = await page.eval(() => window.Silinx.project);
-  assert.deepEqual([pj.kind, pj.board, pj.constraints, pj.top], ['design', null, null, 'top']);
+  assert.deepEqual([pj.profile, pj.board, pj.constraints, pj.top], ['logic', null, null, 'top']);   // (its profile, #5907)
   const s = await shown(page);
   assert.deepEqual(s.rows.slice(0, 3), [['Drawn', []], ['Design', []], ['top', ['Schematic']]]);
   assert.ok(s.files.includes('src/top.sch.json') && !s.files.some(f => /\.(vhdl?|v|ucf)$/.test(f)), String(s.files));
@@ -137,7 +137,7 @@ uiTest('#3780 #4103 Design Properties: its Project Kind makes a design project a
   await page.waitDialog('Update Constraints');
   await page.dialogButton('No');
   await page.waitNoDialog();
-  await page.waitFor(() => !window.Silinx.project.kind && window.Silinx.project.board === 'basys2' && !document.documentElement.dataset.projectKind, [], { what: 'an FPGA project' });
+  await page.waitFor(() => window.Silinx.project.profile === 'fpga' && window.Silinx.project.board === 'basys2' && !document.documentElement.dataset.projectKind, [], { what: 'an FPGA project' });
   await page.waitConsole(/DrawnBoth: an FPGA project now: its HDL and its implementation shown\./);
   let s = await shown(page);
   assert.deepEqual(s.rows.find(r => r[0] === 'traffic'), ['traffic', ['FSM', 'Schematic', 'VHDL']]);
@@ -149,7 +149,7 @@ uiTest('#3780 #4103 Design Properties: its Project Kind makes a design project a
   await pick('design');
   await page.dialogButton('OK');
   await page.waitNoDialog();
-  await page.waitFor(() => window.Silinx.project.kind === 'design' && document.documentElement.dataset.projectKind === 'design', [], { what: 'a design project again' });
+  await page.waitFor(() => window.Silinx.project.profile === 'logic' && document.documentElement.dataset.projectKind === 'design', [], { what: 'a design project again' });
   s = await shown(page);
   assert.deepEqual([s.rows.find(r => r[0] === 'traffic'), s.steps], [['traffic', ['FSM', 'Schematic']], ['check', 'simulate']]);
   assert.deepEqual(await page.eval(() => [window.Silinx.project.board, window.Silinx.project.constraints]), [null, null]);
@@ -173,7 +173,7 @@ uiTest('#3780 #4103 Design Properties: its Project Kind makes a design project a
   await page.dialogButton('Cancel');
   await page.waitNoDialog();
   assert.deepEqual(await warnings(page), []);
-  assert.equal(await page.eval(() => window.Silinx.project.kind), undefined);
+  assert.equal(await page.eval(() => window.Silinx.project.profile), 'fpga');
 });
 
 uiTest('#3780 in Portuguese: the refusal of an HDL file (New Project\'s kind in Portuguese: test/ui/project-kind-step.test.js)', E, async (page) => {

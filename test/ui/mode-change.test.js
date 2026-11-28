@@ -51,7 +51,7 @@ uiTest('#5755 Change Mode: blinky Board → System, its files in fpga/, nothing 
   assert.equal((await dlg(page)).down, true);
   await page.dialogButton('Change Mode');
   await page.waitNoDialog();
-  await page.waitFor(() => window.Silinx.project?.board === 'basys2' && !window.Silinx.project.profile, [], { what: 'a Board project again' });
+  await page.waitFor(() => window.Silinx.project?.board === 'basys2' && window.Silinx.project.profile === 'fpga', [], { what: 'a Board project again' });   // (its profile written, #5907)
   const pj = await page.eval(() => window.Silinx.project);
   assert.deepEqual([pj.top, pj.constraints], ['top', 'fpga/constraints/top.ucf']);
   await page.waitFor(() => /lost: its System document/.test(window.__console()), [], { what: 'its warning' });
@@ -71,7 +71,7 @@ uiTest('#5755 Change Mode: a Circuit project given a board, its constraints from
     note: ['Nothing is lost:', 'its board basys2', 'its constraints file constraints/top.ucf, to be written'], down: false, ok: true });
   await page.dialogButton('Change Mode');
   await page.waitNoDialog();
-  await page.waitFor(() => window.Silinx.project?.board === 'basys2' && !window.Silinx.project.kind, [], { what: 'a Board project' });
+  await page.waitFor(() => window.Silinx.project?.board === 'basys2' && window.Silinx.project.profile === 'fpga', [], { what: 'a Board project' });
   await until(() => there('ModeC', 'constraints/top.ucf'), 'its constraints written');
   await page.waitFor(() => /Board now/.test(window.__console()), [], { what: 'its line' });
   assert.deepEqual(await warnings(page), []);

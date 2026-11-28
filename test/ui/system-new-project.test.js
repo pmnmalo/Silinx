@@ -43,7 +43,7 @@ async function newSystemProject(page, name, template) {
 uiTest('#4702 New Project ▸ System from uart-avr: its System open, its Design row, simulated: the Arduino\'s hello echoed', E, async (page) => {
   await newSystemProject(page, 'CoNew', 'uart-avr');
   assert.equal(await page.eval(() => window.Silinx.active.id), 'sys:uart_avr.sys.json');
-  assert.equal(await page.eval(() => window.SilinxApp.S.project.kind), 'system');
+  assert.equal(await page.eval(() => window.SilinxApp.S.project.profile), 'system');   // (its profile, #5907)
   await page.waitFor(() => ['uart_avr', 'uart'].every(n => [...document.querySelectorAll('#hier .row .lbl')].some(l => l.textContent.trim() === n)), [], { what: 'its Design rows' });
   await page.click(`${ED} .sys-sim-btn`);
   await page.click(`${ED} .sys-run-for`);
