@@ -40,7 +40,7 @@ uiTest('#5111 New Project from the lock example: every kind of source in the Des
   await page.waitFor(() => ['top', 'control', 'lock', 'digit_ok', 'alarm', 'timer', 'sync', 'penalty', 'typed', 'debounce', 'sevenseg'].every((n) => window.SilinxApp.S.modules.some((m) => m.name === n)), [], { what: 'every module', timeout: 30000 });
   assert.deepEqual(await rows(page), ['top [VHDL*]', 'u_clear - debounce [VHDL*]', 'u_control - control [Schematic*] [VHDL]', 'u_alarm - alarm [Petri*] [FSM] [VHDL]',
     'u_check - digit_ok [Algebra*] [Schematic] [VHDL]', 'u_lock - lock [FSM*] [Schematic] [VHDL]', 'u_timer - timer [ASM*] [VHDL]', 'u_display - sevenseg [Verilog*] [VHDL]',
-    'u_enter - debounce [VHDL*]', 'u_penalty - penalty [C*] [ASM] [VHDL]', 'u_sync - sync [Circuit*] [Schematic] [VHDL]', 'u_u1 - sync_sn74ls175 [VHDL*]',
+    'u_enter - debounce [VHDL*]', 'u_penalty - penalty [C*] [VHDL]', 'u_sync - sync [Circuit*] [Schematic] [VHDL]', 'u_u1 - sync_sn74ls175 [VHDL*]',
     'u_core - sync_sn74ls175_core [VHDL*]', 'u_typed - typed [C++*] [ASM] [VHDL]']);
   // the test bench, Simulate Behavioral Model (longer than ISim's first run: run all)
   await page.setView('sim');

@@ -947,6 +947,15 @@ test('#3527 regression: follow_project leaves a room whose owner sends a part of
   await ok('share_project', { project: 'rootsEd', action: 'stop' });
 });
 
+test('#6034 a share\'s refusal of an editor\'s change said once, as many times as the editor\'s client sends it again', async () => {
+  const { refusalOnce } = await import('../server/mcp-collab.js');
+  const meta = 'an editor\'s change was refused: it changes a part of the document that an editor does not ("meta")';
+  const builds = 'an editor\'s change was refused: it builds on changes the owner does not have';
+  const w = ['a line of the versions'];
+  for (const m of [meta, meta, builds, meta, builds]) refusalOnce(w, m);
+  assert.deepEqual(w, ['a line of the versions', meta, builds]);
+});
+
 test('#3835 follow_project: its connection lost is made again; meanwhile connected: false, said, a write merged and sent once it is back', async () => {
   await ok('new_project_from_example', { name: 'trafficRc', example: 'traffic' });
   const { data: { editLink } } = await ok('share_project', { project: 'trafficRc', name: 'Ana', server: base, editors: true });

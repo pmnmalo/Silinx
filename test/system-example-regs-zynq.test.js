@@ -134,6 +134,8 @@ test('#4688 regs-zynq made with the MCP server: checked (no warning), simulated 
   assert.deepEqual([b.data.errors, b.data.warnings], [[], []]);
   assert.ok(b.text.includes('System node zybo: its PL\'s top counter_zynq (zybo/counter_zynq.vhd), written by Silinx: the PS7, its M_AXI_GP0 on the registers of zybo/cnt_regs.regs.json, and counter.'), b.text);
   assert.ok(fs.existsSync(path.join(P.projectDir('rz'), 'build/nodes/zybo/zybo/counter_zynq.vhd')));
+  // (the stand-in for arm-none-eabi-gcc is a script run by its #! line: not on Windows, as test/system-example-zynq.test.js's, #6011)
+  if (process.platform === 'win32') return;
   await P.updateProject('rz', (p) => ({ ...p, trusted: true }));
   const ps = await ok('run_process', { project: 'rz', process: 'ps', node: 'zybo' });
   assert.deepEqual([ps.data.errors, ps.data.warnings], [[], []]);
