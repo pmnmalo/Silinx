@@ -1,6 +1,7 @@
 // Silinx - a drawing's generated code by its node's base language (#5486, roadmap #5479): in a System's microcontroller
 // node whose base language is C or C++ (core/system-layout.js baseLang, #5488), a drawing's file is a unit of its node's
-// Arduino program made through the synchronous reactive model (core/reactive-from.js, core/reactive-c.js generateUnit),
+// Arduino program made through the synchronous reactive model (core/reactive-from.js, core/reactive-c.js generateUnit; a
+// PIC24's on its registers, core/reactive-c-pic24.js, #5552),
 // next to it as `<module>.c` (`.cpp` in C++), its <module>_init() and <module>_tick() called by the node's one sketch
 // (core/reactive-c-main.js); in one of MicroPython a MicroPython program (core/reactive-py.js, #5487), `<module>.py`; elsewhere its
 // HDL (core/view-hdl.js), as before. A schematic, a circuit and a register map are hardware: refused in a CPU node. The
@@ -13,6 +14,7 @@
 import { viewHdl } from './view-hdl.js';
 import { SCHEMATIC_ON_CPU, drawingKind, reactiveFromFile } from './reactive-from.js';
 import { generateUnit } from './reactive-c.js';
+import { generatePic24Unit } from './reactive-c-pic24.js';
 import { generateMicroPython } from './reactive-py.js';
 import { PY_BOARDS } from './reactive-py-pins.js';
 import { mcuBoard } from './system-doc.js';
@@ -102,9 +104,11 @@ const pyBoardOf = (board) => (/^esp32/i.test(board ?? '') ? 'esp32' : /pico|rp20
 export function drawingC(path, text, { lang = 'c', pins = {}, board = null, tickMs } = {}) {
   // (notMade: no generator yet for the node's board, said when the drawing is adopted, not an error of the drawing)
   const fail = (module, messages, notMade = false) => ({ path, lang, text: '', module, target: null, errors: messages.map((m) => `${path}: ${m}`), warnings: [], pins: {}, ports: [], ...(notMade ? { notMade } : {}) });
-  // (the generated C is the Arduino's: a PIC24's, on its registers, is #5552's)
+  // (the generated C is the Arduino's, or a PIC24's on its registers, #5552; XC16 compiles C, not C++)
   const b = board && lang !== 'micropython' ? mcuBoard(board) : null;
-  if (b && b.arch !== 'avr') return fail(null, [`a drawing's C for the ${b.name}'s ${b.mcu} is not made yet (#5552): only an Arduino's sketch is`], true);
+  const pic = b?.arch === 'pic24';
+  if (b && b.arch !== 'avr' && !pic) return fail(null, [`a drawing's C for the ${b.name}'s ${b.mcu} is not made yet: only an Arduino's and a PIC24's are`], true);
+  if (pic && lang === 'cpp') return fail(null, [`the ${b.name}'s ${b.mcu} runs C (XC16's): its node's language is C, not C++`], true);
   const r = reactiveFromFile(path, text);
   if (r.errors) return fail(null, r.errors.map((d) => d.message));
   const py = lang === 'micropython';
@@ -114,10 +118,10 @@ export function drawingC(path, text, { lang = 'c', pins = {}, board = null, tick
   // (a port its node names but not the drawing: not the drawing's)
   const own = notPy ? {} : Object.fromEntries(Object.entries(pins).filter(([p]) => [...r.model.inputs, ...r.model.outputs].some((x) => x.name === p)));
   const opts = { pins: own, ...(tickMs ? { tickMs } : {}) };
-  const g = py ? generateMicroPython(r.model, { ...opts, board: pyBoard || 'esp32' }) : generateUnit(r.model, { pins: own, lang });
+  const g = py ? generateMicroPython(r.model, { ...opts, board: pyBoard || 'esp32' }) : pic ? generatePic24Unit(r.model, { pins: own }) : generateUnit(r.model, { pins: own, lang });
   if (g.errors) return fail(r.model.name, g.errors);
   const warnings = [...(notPy ? [notPy] : []), ...g.warnings].map((w) => `${path}: ${w}`);
-  return { path, lang, text: g.code, module: r.model.name, target: drawnCodePath(path, r.model.name, codeExt(lang)), errors: [], warnings, pins: g.pins, ports: reactivePorts(r.model, py ? PY_BOARDS[g.board].vio : UNO_VOLTS) };
+  return { path, lang, text: g.code, module: r.model.name, target: drawnCodePath(path, r.model.name, codeExt(lang)), errors: [], warnings, pins: g.pins, ports: reactivePorts(r.model, py ? PY_BOARDS[g.board].vio : pic ? b.vio : UNO_VOLTS) };
 }
 
 /** A drawing's generated code by its node's base language: drawingC's on a CPU node, else viewHdl's (its options). */

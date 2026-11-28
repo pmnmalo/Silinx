@@ -49,7 +49,7 @@ test('#5484 edit_system adds an Explorer 16/32 linked to a terminal; check_syste
   assert.equal(s.text.split('\n')[0], 'Simulate System: 20 ms simulated.');
 });
 
-test('#5484 a PIC24 node with no firmware, or an .elf: said by simulate and check_system; a drawing in its folder, its C not made', async () => {
+test('#5484 a PIC24 node with no firmware, or an .elf: said by simulate and check_system; #5552 a drawing in its folder, its C and the node\'s main.c made', async () => {
   await ok('edit_system', { project: 'p', file: SYS, edits: [{ action: 'change_node', node: 'pic', fields: { firmware: null } }] });
   const none = await call('simulate', { project: 'p', top: SYS, time_ns: 1e6 });
   assert.deepEqual([none.isError, none.text], [true, `simulate: ${SYS}: pic: no firmware: a .hex of the project (XC16's)`]);
@@ -59,7 +59,9 @@ test('#5484 a PIC24 node with no firmware, or an .elf: said by simulate and chec
   const fsm = JSON.parse(fs.readFileSync(new URL('../examples/traffic/src/traffic.fsm.json', import.meta.url), 'utf8'));
   delete fsm.generatedFile;
   const w = await ok('write_file', { project: 'p', path: 'pic/traffic.fsm.json', text: JSON.stringify(fsm, null, 2) });
-  assert.equal(w.text.split('\n').slice(1).join('\n'), "WARNING: pic/traffic.fsm.json: a drawing's C for the Explorer 16/32's PIC24FJ1024GB610 is not made yet (#5552): only an Arduino's sketch is");
+  assert.deepEqual(w.text.split('\n').slice(1), ['pic/traffic.c generated from pic/traffic.fsm.json', 'pic/main.c generated from pic\'s drawings']);
+  const main = await ok('read_file', { project: 'p', path: 'pic/main.c' });
+  assert.ok(main.text.includes('      traffic_tick();'), main.text);
 });
 
 test('#5484 simulate with controls on an Explorer 16/32: S3 pressed, R6 and the temperature set; its LEDs, buttons and LCD said; wrong controls refused', async () => {

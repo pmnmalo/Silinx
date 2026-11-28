@@ -23,23 +23,53 @@ export const TICK_MS = 10;   // the default tick, ms
 const C_WORDS = 'auto break case char const continue default do double else enum extern float for goto if inline int long register restrict return short signed sizeof static struct switch typedef union unsigned void volatile while bool true false class delete friend new operator private protected public template this throw try catch namespace using virtual explicit mutable typename asm alignas alignof and or not xor bitand bitor compl'.split(' ');
 const ARDUINO = 'setup loop pinMode digitalRead digitalWrite analogRead analogWrite analogReference millis micros delay delayMicroseconds tone noTone shiftIn shiftOut pulseIn attachInterrupt detachInterrupt interrupts noInterrupts random randomSeed map constrain min max abs sq sqrt pow sin cos tan round bit bitRead bitWrite bitSet bitClear lowByte highByte byte word boolean String Serial HIGH LOW INPUT OUTPUT INPUT_PULLUP LED_BUILTIN PI A0 A1 A2 A3 A4 A5 A6 A7 uint8_t uint16_t uint32_t int8_t int16_t int32_t UINT32_C'.split(' ');
 const OWN = 'state stepMachine lastTick readInputs writeOutputs resetMachine readBits writeBits State TICK_MS'.split(' ');
-const TAKEN = new Set([...C_WORDS, ...ARDUINO, ...OWN]);
+/** C's words and the unit's own names: a HAL's are its own (core/reactive-c-pic24.js). */
+export const C_TAKEN = [...C_WORDS, ...OWN];
+
+/**
+ * The Arduino's HAL: its words, its pins (core/reactive-c-pins.js), its header, a port's pins declared, read, written and
+ * set as inputs or outputs (by the Arduino API's pinMode, digitalRead, digitalWrite). A HAL of another board (the PIC24's,
+ * core/reactive-c-pic24.js, #5552) has the same members.
+ */
+const ARDUINO_HAL = {
+  taken: new Set([...C_TAKEN, ...ARDUINO]), api: 'the Arduino API', init: 'setup()\'s',
+  caller: (name) => `the node's sketch calls it every tick, its setup() ${name}_init()`,
+  assign: (model, given) => assignPins([...model.inputs, ...model.outputs], given),
+  include: ['#include <Arduino.h>'],
+  // (a unit's: A0 by its number, C's initializer a constant; its names static, its node's other units' apart)
+  declare(p, pins, name, unit) {
+    const ps = pins.map((x) => (unit && x[0] === 'A' ? `${14 + Number(x.slice(1))} /* ${x} */` : apiPin(x)));
+    const st = unit ? 'static ' : '';
+    return [p.width === 1 ? `${st}const uint8_t ${name} = ${ps[0]};` : `${st}const uint8_t ${name}[${p.width}] = { ${ps.join(', ')} };`];
+  },
+  helpers(model) {
+    const L = [];
+    if (model.inputs.some((i) => i.width > 1)) L.push('', '// a number from its pins, bit 0 first', 'static uint32_t readBits(const uint8_t *pins, uint8_t n) {', '  uint32_t v = 0;',
+      '  for (uint8_t i = 0; i < n; i++) if (digitalRead(pins[i]) == HIGH) v |= (uint32_t)1 << i;', '  return v;', '}');
+    if (model.outputs.some((o) => o.width > 1)) L.push('', '// a number to its pins, bit 0 first', 'static void writeBits(const uint8_t *pins, uint8_t n, uint32_t v) {',
+      '  for (uint8_t i = 0; i < n; i++) digitalWrite(pins[i], (v >> i) & 1 ? HIGH : LOW);', '}');
+    return L;
+  },
+  read: (i, c, name) => [i.width === 1 ? `  ${c} = digitalRead(${name}) == HIGH;` : `  ${c} = readBits(${name}, ${i.width});`],
+  write: (o, c, name) => [o.width === 1 ? `  digitalWrite(${name}, ${c} ? HIGH : LOW);` : `  writeBits(${name}, ${o.width}, ${c});`],
+  mode: (p, out, name) => [p.width === 1 ? `  pinMode(${name}, ${out ? 'OUTPUT' : 'INPUT'});` : `  for (uint8_t i = 0; i < ${p.width}; i++) pinMode(${name}[i], ${out ? 'OUTPUT' : 'INPUT'});`],
+};
 
 const lines = (body, ind) => body.map((l) => (l ? ind + l : l));
 const bitsOf = (w) => `${w} bit${w === 1 ? '' : 's'}`;
 
 /** The C names of the model's symbols: { names: Map(name -> C name), warnings }. */
-function cNames(model) {
+function cNames(model, hal) {
   const names = new Map(), warnings = [], seen = new Set();
   const all = [...model.inputs, ...model.outputs, ...model.vars, ...model.consts];
   for (const x of all) seen.add(x.name);
   for (const x of all) {
     let c = x.name;
-    if (TAKEN.has(c) || /^(PIN|S)_/.test(c)) {
+    if (hal.taken.has(c) || /^(PIN|S)_/.test(c)) {
       c = `${x.name}_v`;
       while (seen.has(c)) c += '_';
       seen.add(c);
-      warnings.push(`'${x.name}' is a word of C or of the Arduino API, or a name of the sketch's: it is ${c} in the sketch`);
+      warnings.push(`'${x.name}' is a word of C or of ${hal.api}, or a name of the sketch's: it is ${c} in the sketch`);
     }
     names.set(x.name, c);
   }
@@ -74,15 +104,15 @@ export function generateArduino(model, { pins: given = {}, tickMs = TICK_MS } = 
  * The model as a unit of its node's program: { code, filename (<name>.c, or .cpp in C++), functions ([<name>_init,
  * <name>_tick]), pins, warnings } or { errors }. opts: { pins, lang: 'c' | 'cpp' }.
  */
-export function generateUnit(model, { pins: given = {}, lang = 'c' } = {}) { return generate(model, { pins: given, unit: lang === 'cpp' ? 'cpp' : 'c' }); }
+export function generateUnit(model, { pins: given = {}, lang = 'c', hal } = {}) { return generate(model, { pins: given, unit: lang === 'cpp' ? 'cpp' : 'c', hal }); }
 
-function generate(model, { pins: given, tickMs = TICK_MS, unit = null }) {
+function generate(model, { pins: given, tickMs = TICK_MS, unit = null, hal = ARDUINO_HAL }) {
   const problems = validateReactive(model).filter((d) => d.severity === 'error').map((d) => d.message);
   if (problems.length) return { errors: problems };
   if (!(Number.isInteger(tickMs) && tickMs >= 1)) return { errors: [`The tick is ${tickMs} ms: a whole number of milliseconds, 1 or more`] };
-  const pa = assignPins([...model.inputs, ...model.outputs], given);
+  const pa = hal.assign(model, given);
   if (pa.errors.length) return { errors: pa.errors };
-  const { names, warnings } = cNames(model);
+  const { names, warnings } = cNames(model, hal);
   const width = new Map([...model.inputs, ...model.outputs, ...model.vars].map((x) => [x.name, x.width]).concat(model.consts.map((c) => [c.name, 32])));
   const sym = (n) => ({ c: names.get(n) ?? n, width: width.get(n) ?? 1 });
   const nextOf = new Set([...readAfterSet(model), ...model.vars.filter((v) => v.timer).map((v) => v.name), ...model.outputs.filter((o) => o.registered).map((o) => o.name)]);
@@ -128,7 +158,7 @@ function generate(model, { pins: given, tickMs = TICK_MS, unit = null }) {
   const pinsText = (list) => list.map((p) => `${p.name} ${pa.pins[p.name].join(' ')}`).join(', ');
   const L = [
     `// ${model.name}: ${what}, generated by Silinx from the ${kind} ${model.source || model.name} (edit the drawing, not this file).`,
-    ...(unit ? [`// One tick each call of ${model.name}_tick() (the node's sketch calls it every tick, its setup() ${model.name}_init()): the`,
+    ...(unit ? [`// One tick each call of ${model.name}_tick() (${hal.caller(model.name)}): the`,
       '// inputs read once at its start, the outputs written to their pins at its end (Silinx\'s synchronous reactive model:',
       '// docs/SYSTEMS.md).']
       : ['// One tick every TICK_MS milliseconds: the inputs read once at its start, the outputs written to their pins at its end',
@@ -137,13 +167,8 @@ function generate(model, { pins: given, tickMs = TICK_MS, unit = null }) {
   if (model.inputs.length) L.push(`// Inputs: ${pinsText(model.inputs)}.`);
   if (model.outputs.length) L.push(`// Outputs: ${pinsText(model.outputs)}.`);
   if ([...model.inputs, ...model.outputs].some((p) => p.width > 1)) L.push('// (a port of several bits: its pins bit 0 first)');
-  L.push('', '#include <Arduino.h>', '', '// ---- the pins');
-  for (const p of [...model.inputs, ...model.outputs]) {
-    // (a unit's: A0 by its number, C's initializer a constant; its names static, its node's other units' apart)
-    const ps = pa.pins[p.name].map((x) => (unit && x[0] === 'A' ? `${14 + Number(x.slice(1))} /* ${x} */` : apiPin(x)));
-    const st = unit ? 'static ' : '';
-    L.push(p.width === 1 ? `${st}const uint8_t ${pinName(p)} = ${ps[0]};` : `${st}const uint8_t ${pinName(p)}[${p.width}] = { ${ps.join(', ')} };`);
-  }
+  const pinLines = [...model.inputs, ...model.outputs].flatMap((p) => hal.declare(p, pa.pins[p.name], pinName(p), unit));
+  L.push('', ...hal.include, ...(pinLines.length ? ['', '// ---- the pins', ...pinLines] : []));
   if (!unit) L.push('', `const unsigned long TICK_MS = ${tickMs};   // the tick's period`);
   if (model.consts.length) L.push('', '// ---- the constants', ...model.consts.map((c) => `${unit ? 'static ' : ''}const uint32_t ${cn(c.name)} = ${cConst(c.value)};`));
   if (model.states.length) {
@@ -159,15 +184,11 @@ function generate(model, { pins: given, tickMs = TICK_MS, unit = null }) {
     if (model.states.length) L.push(`static enum ${stateType} state;`);
     for (const v of model.vars) L.push(decl(v, [bitsOf(v.width), v.timer ? 'a timer: ticks counted' : '', v.comment || ''].filter(Boolean).join(', ')));
   }
-  const multiIn = model.inputs.some((i) => i.width > 1), multiOut = model.outputs.some((o) => o.width > 1);
-  if (multiIn) L.push('', '// a number from its pins, bit 0 first', 'static uint32_t readBits(const uint8_t *pins, uint8_t n) {', '  uint32_t v = 0;',
-    '  for (uint8_t i = 0; i < n; i++) if (digitalRead(pins[i]) == HIGH) v |= (uint32_t)1 << i;', '  return v;', '}');
-  if (multiOut) L.push('', '// a number to its pins, bit 0 first', 'static void writeBits(const uint8_t *pins, uint8_t n, uint32_t v) {',
-    '  for (uint8_t i = 0; i < n; i++) digitalWrite(pins[i], (v >> i) & 1 ? HIGH : LOW);', '}');
+  L.push(...hal.helpers(model));
   L.push('', 'static void readInputs(void) {');
-  for (const i of model.inputs) L.push(i.width === 1 ? `  ${cn(i.name)} = digitalRead(${pinName(i)}) == HIGH;` : `  ${cn(i.name)} = readBits(${pinName(i)}, ${i.width});`);
+  for (const i of model.inputs) L.push(...hal.read(i, cn(i.name), pinName(i), pa.pins[i.name]));
   L.push('}', '', 'static void writeOutputs(void) {');
-  for (const o of model.outputs) L.push(o.width === 1 ? `  digitalWrite(${pinName(o)}, ${cn(o.name)} ? HIGH : LOW);` : `  writeBits(${pinName(o)}, ${o.width}, ${cn(o.name)});`);
+  for (const o of model.outputs) L.push(...hal.write(o, cn(o.name), pinName(o), pa.pins[o.name]));
   L.push('}', '', '// the reset state', 'static void resetMachine(void) {');
   if (model.states.length) L.push(`  state = S_${model.initial};`);
   for (const v of model.vars) L.push(`  ${cn(v.name)} = ${cConst(v.init)};`);
@@ -191,9 +212,9 @@ function generate(model, { pins: given, tickMs = TICK_MS, unit = null }) {
   }
   L.push('  writeOutputs();');
   for (const x of nexts) L.push(`  ${cn(x.name)} = ${cn(x.name)}_next;`);
-  L.push('}', '', unit ? `// setup()'s: the pins' modes, the reset state\nvoid ${model.name}_init(void) {` : 'void setup() {');
-  for (const i of model.inputs) L.push(i.width === 1 ? `  pinMode(${pinName(i)}, INPUT);` : `  for (uint8_t i = 0; i < ${i.width}; i++) pinMode(${pinName(i)}[i], INPUT);`);
-  for (const o of model.outputs) L.push(o.width === 1 ? `  pinMode(${pinName(o)}, OUTPUT);` : `  for (uint8_t i = 0; i < ${o.width}; i++) pinMode(${pinName(o)}[i], OUTPUT);`);
+  L.push('}', '', unit ? `// ${hal.init}: the pins' modes, the reset state\nvoid ${model.name}_init(void) {` : 'void setup() {');
+  for (const i of model.inputs) L.push(...hal.mode(i, false, pinName(i), pa.pins[i.name]));
+  for (const o of model.outputs) L.push(...hal.mode(o, true, pinName(o), pa.pins[o.name]));
   if (unit) {
     L.push('  resetMachine();', '}', '', '// one tick', `void ${model.name}_tick(void) {`, '  stepMachine();', '}', '');
     return { code: L.join('\n'), filename: `${model.name}.${unit}`, functions: [`${model.name}_init`, `${model.name}_tick`], pins: pa.pins, warnings: [...pa.warnings, ...warnings] };
