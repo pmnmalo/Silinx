@@ -5,6 +5,7 @@
 // Silinx zip (the import's checks); the student's work is kept: a project of that name with the same files is opened
 // as it is, one that differs is replaced only when the user says so. Every message in the console.
 import { api } from './api.js';
+import { exampleName } from '/core/examples.js';
 import { confirmDlg, dialog, h } from './ui.js';
 import { S, app } from './app.js';
 import { applyViewState } from './view-state.js';
@@ -72,7 +73,7 @@ async function designOf(source) {
     source = { kind: 'design', design: await loadGist(source, { fetch: (...a) => fetch(...a), api: globalThis.SILINX_GITHUB?.api || 'https://api.github.com' }) };
   }
   if (source.kind === 'example') {
-    const { name } = source;
+    const name = exampleName(source.name);   // (an example's old name, #5894)
     if (!(await api.templates()).includes(name)) throw fail(`no example '${name}'`);
     const ex = await api.exampleFiles(name);
     return { name, project: ex.project, files: ex.files, make: (as = name) => api.createProject({ name: as, template: name }) };

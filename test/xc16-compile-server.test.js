@@ -1,6 +1,6 @@
 // A System's PIC24 node's firmware compiled by XC16 (#5482, server/xc16-compile.js): XC16 found on this computer (its
 // bin folder in config.json, a stand-in for it: test/fixtures/xc16-stub) or in its Docker image on the ISE machine (over
-// ssh: the fake ssh and docker of server-helpers.js), which one used and why the other not; the uart-pic24 example's
+// ssh: the fake ssh and docker of server-helpers.js), which one used and why the other not; the uart-fpga-pic24 example's
 // pic node's C compiled to its .hex (its folder, the node's firmware; set when it had none), run by the PIC24 emulator;
 // the job's exact lines (gcc's, the assembler's and the linker's errors and warnings by the project's file and line, no
 // warning when there is none); the refusals; the MCP's run_process firmware and toolchain_info. With the real XC16, when
@@ -15,7 +15,7 @@ import { parseHex } from '../packages/silinx-pic24/src/hex.js';
 
 const STUB = path.join(ROOT, 'test/fixtures/xc16-stub/v2.10/bin');
 const WIN = process.platform === 'win32' ? 'the stand-in for XC16 is a script run by its #! line, not on Windows' : false;
-const LCD_HEX = fs.readFileSync(path.join(ROOT, 'examples/uart-pic24/pic/lcd_uart.hex'), 'utf8');
+const LCD_HEX = fs.readFileSync(path.join(ROOT, 'examples/uart-fpga-pic24/pic/lcd_uart.hex'), 'utf8');
 let tmp, fakes;
 before(async () => { tmp = await scratchEnv('silinx-xc16-'); fakes = await makeFakes(tmp); await writeConfig({ mode: 'silinx', paths: { xc16: STUB } }); });
 after(() => tmp && fs.rmSync(tmp, { recursive: true, force: true }));
@@ -30,7 +30,7 @@ const MAIN = '#include <xc.h>\n\nint main(void) {\n  TRISA = 0;\n  for (;;) LATA
 let made = 0;
 async function project(files = { 'pic/main.c': MAIN }) {
   const name = `up${++made}`;
-  await P.createProject({ name, template: 'uart-pic24' });
+  await P.createProject({ name, template: 'uart-fpga-pic24' });
   for (const [f, t] of Object.entries(files)) await P.writeFile(name, f, t);
   return name;
 }
@@ -113,13 +113,13 @@ test('#5482 XC16\'s errors and warnings: gcc\'s, the assembler\'s, the linker\'s
 
 test('#5482 a node with no firmware gets the one made, <id>/<id>.hex: its System document written', { skip: WIN }, async () => {
   const name = await project();
-  const file = 'uart_pic24.sys.json';
+  const file = 'uart_fpga_pic24.sys.json';
   const sys = readSystem(await P.readFile(name, file)).system;
   sys.nodes.find(n => n.id === 'pic').firmware = null;
   await P.writeFile(name, file, writeSystem(sys));
   const j = await run(name);
   assert.equal(j.status, 'ok', j.lines.join('\n'));
-  assert.deepEqual(j.lines.slice(-2), [`System node pic: its firmware pic/pic.hex, ${WORDS} program word(s).`, 'System node pic: its firmware set to pic/pic.hex in uart_pic24.sys.json.']);
+  assert.deepEqual(j.lines.slice(-2), [`System node pic: its firmware pic/pic.hex, ${WORDS} program word(s).`, 'System node pic: its firmware set to pic/pic.hex in uart_fpga_pic24.sys.json.']);
   assert.equal(readSystem(await P.readFile(name, file)).system.nodes.find(n => n.id === 'pic').firmware, 'pic/pic.hex');
   // (the build plan: up to date, compiled by XC16)
   const c = await tool('check_system').run({ project: name, file });
@@ -234,7 +234,7 @@ test('#5552 a drawing in the pic node: its C and the node\'s main.c made (MCP wr
   assert.ok(r.text.includes('System node pic: its program (2 C and assembly file(s) of pic/) for the PIC24FJ1024GB610 (Explorer 16/32), by XC16 2.10 on this computer, -O1 (XC16\'s free licence: -O0 to -O2), in build/nodes/pic/firmware/.'), r.text);
   const args = JSON.parse(fs.readFileSync(path.join(P.projectDir(name), 'build/nodes/pic/firmware/xc16-gcc.json'), 'utf8'));
   assert.deepEqual(args.filter(a => a.startsWith('src/')), ['src/lock.c', 'src/main.c']);
-  const c = await tool('check_system').run({ project: name, file: 'uart_pic24.sys.json' });
+  const c = await tool('check_system').run({ project: name, file: 'uart_fpga_pic24.sys.json' });
   assert.deepEqual(c.data.plan.nodes.find(e => e.id === 'pic').sources, ['pic/lock.c', 'pic/lock.fsm.json', 'pic/main.c']);
   assert.equal(c.data.plan.lines.find(l => /^ {2}pic:/.test(l)), '  pic: up to date; compiled by XC16 to pic/lcd_uart.hex, programmed by a PICkit (MPLAB IPE)');
   // (the drawing deleted: its C no longer called, the node's main.c removed before the compile, nothing left to compile)

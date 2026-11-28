@@ -38,14 +38,14 @@ test('#4702 uart-avr: its FPGA module the uart example\'s sources, its firmware 
   assert.deepEqual([pj.kind, pj.board, pj.constraints, pj.top], ['system', null, null, '']);   // (the example's own silinx.json: a kind of before #5440, read as the System profile)
   const sys = readSystem(fs.readFileSync(path.join(EX, 'uart_avr.sys.json'), 'utf8'));
   assert.deepEqual(sys.system.links, [{ id: 'serial', kind: 'uart', a: 'uno.Serial', b: 'fpga.uart' }]);
-  assert.deepEqual(SYSTEM_EXAMPLES, ['uart-avr', 'spi-avr', 'i2c-avr', 'regs-avr', 'uart-pic24', 'adc-pmod', 'uart-pico', 'uart-esp32', 'uart-zynq', 'regs-zynq']);
+  assert.deepEqual(SYSTEM_EXAMPLES, ['uart-avr', 'spi-avr', 'i2c-avr', 'regs-avr', 'uart-fpga-pic24', 'adc-pmod', 'uart-fpga-pico', 'uart-fpga-esp32', 'uart-zynq', 'regs-zynq']);
 });
 
 test('#4702 the kinds\' rules: a System project empty or from a System example; a new one\'s silinx.json and System', () => {
   assert.equal(createRefusal('system', 'empty'), null);
   assert.equal(createRefusal('system', 'uart-avr'), null);
   assert.equal(createRefusal(null, 'uart'), null);
-  assert.equal(createRefusal('system', 'uart'), 'a System project starts empty or from a System example (uart-avr, spi-avr, i2c-avr, regs-avr, uart-pic24, adc-pmod, uart-pico, uart-esp32, uart-zynq, regs-zynq)');
+  assert.equal(createRefusal('system', 'uart'), 'a System project starts empty or from a System example (uart-avr, spi-avr, i2c-avr, regs-avr, uart-fpga-pic24, adc-pmod, uart-fpga-pico, uart-fpga-esp32, uart-zynq, regs-zynq)');
   assert.equal(createRefusal(null, 'uart-avr'), null);   // (the example's kind)
   assert.equal(createRefusal('design', 'uart-avr'), 'a design and simulation project starts empty or from a Circuit example (gates, breadboard, traffic-circuit, blinky-circuit, stopwatch-circuit, lock-circuit)');
   // (fpga a profile's id, #5440: an FPGA project, never from a System example)
@@ -62,7 +62,7 @@ test('#4702 the kinds\' rules: a System project empty or from a System example; 
 });
 
 test('#4702 uart-avr made with the MCP server: its System checked (the 5 V warning) and simulated (the Arduino\'s hello echoed)', async () => {
-  // (listed after the FPGA examples, as the System ones: uart-avr, spi-avr, i2c-avr, regs-avr, uart-pic24, adc-pmod, uart-pico, uart-esp32, uart-zynq, regs-zynq)
+  // (listed after the FPGA examples, as the System ones: uart-avr, spi-avr, i2c-avr, regs-avr, uart-fpga-pic24, adc-pmod, uart-fpga-pico, uart-fpga-esp32, uart-zynq, regs-zynq)
   const ex = await ok('list_examples', {});
   assert.deepEqual(ex.text.split('\n').slice(-10, -6), ['uart-avr: a System example (FPGA and microcontroller nodes in a System), 5 file(s)', 'spi-avr: a System example (FPGA and microcontroller nodes in a System), 1 file(s)', 'i2c-avr: a System example (FPGA and microcontroller nodes in a System), 1 file(s)', 'regs-avr: a System example (FPGA and microcontroller nodes in a System), 2 file(s)']);
   assert.deepEqual(ex.data.examples.at(-10), { name: 'uart-avr', kind: 'system', modes: ['system'], top: null, simTop: null, board: null, device: null, files: 5 });
@@ -177,8 +177,8 @@ test('#5288 regs-avr: its map\'s slave generated from it, its firmware regs.asm 
   assert.ok(e.data.boards.fpga.leds[0] > 0 && e.data.boards.fpga.leds[0] < 0.05, `LD0: ${e.data.boards.fpga.leds[0]}`);
 });
 
-test('#5484 uart-pic24: its firmware lcd_uart.asm assembled, its FPGA module uart-avr\'s; made with the MCP server, checked (no warning: 3.3 V on both sides), simulated (the PIC24\'s hello echoed) and emulated (its LCD the echo, BTN0\'s message, its LEDs the last byte)', async () => {
-  const UP = path.join(ROOT, 'examples/uart-pic24');
+test('#5484 uart-fpga-pic24: its firmware lcd_uart.asm assembled, its FPGA module uart-avr\'s; made with the MCP server, checked (no warning: 3.3 V on both sides), simulated (the PIC24\'s hello echoed) and emulated (its LCD the echo, BTN0\'s message, its LEDs the last byte)', async () => {
+  const UP = path.join(ROOT, 'examples/uart-fpga-pic24');
   const { assembleProgram } = await import('../packages/silinx-pic24/src/index.js');
   // (its .hex Silinx's PIC24 assembler's build of its xc16-as source, #5931, with no error or warning)
   const built = assembleProgram(fs.readFileSync(path.join(UP, 'pic/lcd_uart.asm'), 'utf8'), { file: 'lcd_uart.asm' });
@@ -186,12 +186,12 @@ test('#5484 uart-pic24: its firmware lcd_uart.asm assembled, its FPGA module uar
   assert.equal(fs.readFileSync(path.join(UP, 'pic/lcd_uart.hex'), 'utf8'), built.hex);
   for (const f of fs.readdirSync(path.join(EX, 'fpga'))) assert.equal(fs.readFileSync(path.join(UP, 'fpga', f), 'utf8'), fs.readFileSync(path.join(EX, 'fpga', f), 'utf8'), f);
   const ex = await ok('list_examples', {});
-  assert.equal(ex.text.split('\n').at(-6), 'uart-pic24: a System example (FPGA and microcontroller nodes in a System), 5 file(s)');
-  await ok('new_project_from_example', { name: 'up', example: 'uart-pic24' });
-  const c = await ok('check_system', { project: 'up', file: 'uart_pic24.sys.json' });
-  assert.deepEqual(c.text.split('\n'), ['System uart_pic24: 2 nodes, 1 link', 'node pic: Explorer 16/32, firmware pic/lcd_uart.hex, in C', '  UART: UART 9600 baud 8N1, TX RF5, RX RF4',
+  assert.equal(ex.text.split('\n').at(-6), 'uart-fpga-pic24: a System example (FPGA and microcontroller nodes in a System), 5 file(s)');
+  await ok('new_project_from_example', { name: 'up', example: 'uart-fpga-pic24' });
+  const c = await ok('check_system', { project: 'up', file: 'uart_fpga_pic24.sys.json' });
+  assert.deepEqual(c.text.split('\n'), ['System uart_fpga_pic24: 2 nodes, 1 link', 'node pic: Explorer 16/32, firmware pic/lcd_uart.hex, in C', '  UART: UART 9600 baud 8N1, TX RF5, RX RF4',
     'node fpga: FPGA, module uart on basys2-250, in VHDL', '  uart: UART 9600 baud 8N1, TX tx (A3), RX rx (J3)', 'link serial: UART pic.UART ↔ fpga.uart',
-    'serial TX: pic RF5 → fpga rx (pin J3)', 'serial TX: fpga tx (pin A3) → pic RF4', 'Process "Check System" of uart_pic24.sys.json completed successfully.']);
+    'serial TX: pic RF5 → fpga rx (pin J3)', 'serial TX: fpga tx (pin A3) → pic RF4', 'Process "Check System" of uart_fpga_pic24.sys.json completed successfully.']);
   const s = await ok('simulate', { project: 'up', time_ns: 40e6 });
   const text = w => String.fromCharCode(...s.data.traffic.find(t => t.wire === w).bytes.map(b => b.byte));
   assert.deepEqual([text('serial_pic'), text('serial_fpga')], ['Hi from PIC24!\r\n', 'Hi from PIC24!\r\n']);
@@ -206,16 +206,16 @@ test('#5484 uart-pic24: its firmware lcd_uart.asm assembled, its FPGA module uar
   assert.deepEqual([b.data.warnings, b.data.errors], [[], []]);
 });
 
-test('#5495 uart-esp32: its FPGA module uart-avr\'s; made with the MCP server, checked (no warning: 3.3 V on both sides), simulated (the ESP32\'s hello echoed into its console) and emulated (BTN0\'s message too)', async () => {
-  const UE = path.join(ROOT, 'examples/uart-esp32');
+test('#5495 uart-fpga-esp32: its FPGA module uart-avr\'s; made with the MCP server, checked (no warning: 3.3 V on both sides), simulated (the ESP32\'s hello echoed into its console) and emulated (BTN0\'s message too)', async () => {
+  const UE = path.join(ROOT, 'examples/uart-fpga-esp32');
   for (const f of fs.readdirSync(path.join(EX, 'fpga'))) assert.equal(fs.readFileSync(path.join(UE, 'fpga', f), 'utf8'), fs.readFileSync(path.join(EX, 'fpga', f), 'utf8'), f);
   const ex = await ok('list_examples', {});
-  assert.equal(ex.text.split('\n').at(-3), 'uart-esp32: a System example (FPGA and microcontroller nodes in a System), 5 file(s)');
-  await ok('new_project_from_example', { name: 'ue', example: 'uart-esp32' });
-  const c = await ok('check_system', { project: 'ue', file: 'uart_esp32.sys.json' });
-  assert.deepEqual(c.text.split('\n'), ['System uart_esp32: 2 nodes, 1 link', 'node esp: ESP32 DevKitC, program esp/main.py, in MicroPython', '  UART2: UART 9600 baud 8N1, TX GPIO17, RX GPIO16',
+  assert.equal(ex.text.split('\n').at(-3), 'uart-fpga-esp32: a System example (FPGA and microcontroller nodes in a System), 5 file(s)');
+  await ok('new_project_from_example', { name: 'ue', example: 'uart-fpga-esp32' });
+  const c = await ok('check_system', { project: 'ue', file: 'uart_fpga_esp32.sys.json' });
+  assert.deepEqual(c.text.split('\n'), ['System uart_fpga_esp32: 2 nodes, 1 link', 'node esp: ESP32 DevKitC, program esp/main.py, in MicroPython', '  UART2: UART 9600 baud 8N1, TX GPIO17, RX GPIO16',
     'node fpga: FPGA, module uart on basys2-250, in VHDL', '  uart: UART 9600 baud 8N1, TX tx (A3), RX rx (J3)', 'link serial: UART esp.UART2 ↔ fpga.uart',
-    'serial TX: esp GPIO17 → fpga rx (pin J3)', 'serial TX: fpga tx (pin A3) → esp GPIO16', 'Process "Check System" of uart_esp32.sys.json completed successfully.']);
+    'serial TX: esp GPIO17 → fpga rx (pin J3)', 'serial TX: fpga tx (pin A3) → esp GPIO16', 'Process "Check System" of uart_fpga_esp32.sys.json completed successfully.']);
   // (its hello from its 4th line, 4 µs; each byte echoed, printed as it comes)
   const s = await ok('simulate', { project: 'ue', time_ns: 40e6 });
   assert.deepEqual([s.data.terminals, s.data.warnings, s.data.errors], [{ 'esp.repl': 'Hello from ESP32!\r\n' }, [], []]);
@@ -328,17 +328,17 @@ test('#5612 an FPGA node emulated on its Post-Synthesis model with the MCP serve
   assert.deepEqual(r.data.emulateModels, {});
 });
 
-test('#5697 uart-pico: uart-avr\'s System with a Pico on CircuitPython; made with the MCP server, checked (no warning: 3.3 V on both sides), simulated (the Pico\'s hello echoed, its console the echo; the byte the FPGA read while the Pico booted) and emulated (BTN0\'s message on its console)', async () => {
-  const UP = path.join(ROOT, 'examples/uart-pico');
+test('#5697 uart-fpga-pico: uart-avr\'s System with a Pico on CircuitPython; made with the MCP server, checked (no warning: 3.3 V on both sides), simulated (the Pico\'s hello echoed, its console the echo; the byte the FPGA read while the Pico booted) and emulated (BTN0\'s message on its console)', async () => {
+  const UP = path.join(ROOT, 'examples/uart-fpga-pico');
   for (const f of fs.readdirSync(path.join(EX, 'fpga'))) assert.equal(fs.readFileSync(path.join(UP, 'fpga', f), 'utf8'), fs.readFileSync(path.join(EX, 'fpga', f), 'utf8'), f);
   process.env.SILINX_RP2040_CACHE ??= path.join((await import('node:os')).tmpdir(), 'silinx-rp2040');
   const ex = await ok('list_examples', {});
-  assert.equal(ex.text.split('\n').at(-4), 'uart-pico: a System example (FPGA and microcontroller nodes in a System), 5 file(s)');
-  await ok('new_project_from_example', { name: 'upi', example: 'uart-pico' });
-  const c = await ok('check_system', { project: 'upi', file: 'uart_pico.sys.json' });
-  assert.deepEqual(c.text.split('\n'), ['System uart_pico: 2 nodes, 1 link', 'node pico: Raspberry Pi Pico, CircuitPython, program pico/code.py', '  UART0: UART 9600 baud 8N1, TX GP0, RX GP1',
+  assert.equal(ex.text.split('\n').at(-4), 'uart-fpga-pico: a System example (FPGA and microcontroller nodes in a System), 5 file(s)');
+  await ok('new_project_from_example', { name: 'upi', example: 'uart-fpga-pico' });
+  const c = await ok('check_system', { project: 'upi', file: 'uart_fpga_pico.sys.json' });
+  assert.deepEqual(c.text.split('\n'), ['System uart_fpga_pico: 2 nodes, 1 link', 'node pico: Raspberry Pi Pico, CircuitPython, program pico/code.py', '  UART0: UART 9600 baud 8N1, TX GP0, RX GP1',
     'node fpga: FPGA, module uart on basys2-250, in VHDL', '  uart: UART 9600 baud 8N1, TX tx (A3), RX rx (J3)', 'link serial: UART pico.UART0 ↔ fpga.uart',
-    'serial TX: pico GP0 → fpga rx (pin J3)', 'serial TX: fpga tx (pin A3) → pico GP1', 'Process "Check System" of uart_pico.sys.json completed successfully.']);
+    'serial TX: pico GP0 → fpga rx (pin J3)', 'serial TX: fpga tx (pin A3) → pico GP1', 'Process "Check System" of uart_fpga_pico.sys.json completed successfully.']);
   const s = await ok('simulate', { project: 'upi', time_ns: 400e6 });
   const text = w => String.fromCharCode(...s.data.traffic.find(t => t.wire === w).bytes.map(b => b.byte));
   // (the FPGA's first byte the one it read while the Pico booted, its TX held low by the RP2040's pull-down at reset:
@@ -351,4 +351,23 @@ test('#5697 uart-pico: uart-avr\'s System with a Pico on CircuitPython; made wit
   const b = await ok('simulate', { project: 'upi', time_ns: 480e6, controls: [{ node: 'fpga', control: 'btn0', on: true, at_ns: 400e6 }, { node: 'fpga', control: 'btn0', on: false, at_ns: 430e6 }] });
   assert.equal(b.data.terminals['pico.repl'], 'code.py output:\r\necho: Hello from the Pico!\r\necho: Hello from Silinx!\r\n');
   assert.deepEqual([b.data.warnings, b.data.errors], [[], []]);
+});
+
+test('#5894 the System examples renamed uart-fpga-<board>: their old names still make them (the MCP, a link, the server); an old name no alias of, refused as before', async () => {
+  const { exampleName, EXAMPLE_ALIASES } = await import('../core/examples.js');
+  assert.deepEqual(EXAMPLE_ALIASES, { 'uart-pic24': 'uart-fpga-pic24', 'uart-pico': 'uart-fpga-pico', 'uart-esp32': 'uart-fpga-esp32' });
+  assert.deepEqual(['uart-pic24', 'uart-pico', 'uart-esp32', 'uart-fpga-pico', 'uart', 'nothere'].map(exampleName), ['uart-fpga-pic24', 'uart-fpga-pico', 'uart-fpga-esp32', 'uart-fpga-pico', 'uart', 'nothere']);
+  for (const old of Object.keys(EXAMPLE_ALIASES)) assert.ok(!fs.existsSync(path.join(ROOT, 'examples', old)), `${old}: no folder of its own now`);
+  const P = await import('../server/projects.js');
+  // (the MCP's new_project_from_example, by an old name: its System the new one's)
+  await ok('new_project_from_example', { name: 'old_pico', example: 'uart-pico' });
+  assert.ok(fs.existsSync(path.join(P.projectDir('old_pico'), 'uart_fpga_pico.sys.json')));
+  // (a link to an old name)
+  const o = await ok('open_link', { link: '#open=example:uart-esp32', name: 'old_esp' });
+  assert.ok(fs.existsSync(path.join(P.projectDir('old_esp'), 'uart_fpga_esp32.sys.json')), o.text);
+  // (the server's store, its example's files)
+  await P.createProject({ name: 'old_pic', template: 'uart-pic24' });
+  assert.ok(fs.existsSync(path.join(P.projectDir('old_pic'), 'uart_fpga_pic24.sys.json')));
+  assert.ok(P.exampleFiles('uart-pic24').files['pic/lcd_uart.asm'].includes('uart-fpga-pic24 example'));
+  await assert.rejects(P.createProject({ name: 'nope', template: 'uart-nothere' }), { message: 'unknown template \'uart-nothere\'' });
 });

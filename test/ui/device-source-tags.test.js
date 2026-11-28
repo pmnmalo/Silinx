@@ -122,7 +122,7 @@ uiTest('#5873 a System: its FPGA node\'s and its Arduino\'s [New] and [Import], 
 });
 
 uiTest('#5873 a PIC24 node: [Import] only (its .hex); New Source on it says why it makes none', E, async (page) => {
-  await makeProject(env, { name: 'TagsPic', template: 'uart-pic24' });
+  await makeProject(env, { name: 'TagsPic', template: 'uart-fpga-pic24' });
   await page.openProject('TagsPic');
   await page.leftTab('design');
   await page.waitFor(() => document.querySelectorAll('#hier .row-tags').length === 2, [], { what: 'the nodes\' tags' });

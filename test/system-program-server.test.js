@@ -135,8 +135,8 @@ test('#5489 the refusals: an untrusted project, no such node, a node not built; 
 });
 
 test('#5581 the Implement tree\'s, by the MCP: each node\'s plan state (its mark) by check_system; the PIC24\'s Program Node refused, its tip\'s text', { skip: POSIX_ONLY }, async () => {
-  await P.createProject({ name: 'pic', template: 'uart-pic24' });
-  const sys = await TOOLS.find(t => t.name === 'check_system').run({ project: 'pic', file: 'uart_pic24.sys.json' });
+  await P.createProject({ name: 'pic', template: 'uart-fpga-pic24' });
+  const sys = await TOOLS.find(t => t.name === 'check_system').run({ project: 'pic', file: 'uart_fpga_pic24.sys.json' });
   assert.deepEqual(sys.data.plan.nodes.map(e => [e.id, e.state]), [['fpga', 'not built'], ['pic', 'given']]);
   boards([ADEPT], []);
   const r = await TOOLS.find(t => t.name === 'program_board').run({ project: 'pic', node: 'pic' });
@@ -146,7 +146,7 @@ test('#5581 the Implement tree\'s, by the MCP: each node\'s plan state (its mark
 });
 
 test('#5697 a CircuitPython node: its program as code.py and its folder\'s other .py files onto the Pico\'s CIRCUITPY drive; none mounted: how to copy them; MCP: program_board', { skip: POSIX_ONLY }, async () => {
-  await P.createProject({ name: 'cpy', template: 'uart-pico' });
+  await P.createProject({ name: 'cpy', template: 'uart-fpga-pico' });
   await P.writeFile('cpy', 'pico/lib/util.py', 'def double(x):\n    return 2 * x\n');
   const drive = path.join(tmp, 'CIRCUITPY');
   fs.mkdirSync(drive, { recursive: true });

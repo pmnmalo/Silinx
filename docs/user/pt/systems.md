@@ -20,10 +20,10 @@ ligados por UART e GPIO.
   RTL, e Sintetizar, Implementar e Gerar o Ficheiro de Programação na sua própria placa, em `build/nodes/<id>/`, #5446);
   a linha do Sistema tem Ver/Editar, Verificar, Emular e Implementar o Sistema (todos os nós FPGA). Abre no
   **editor de Sistema**: as ferramentas põem um nó FPGA, um Arduino Uno ou Nano, uma Explorer 16/32, um Raspberry Pi
-  **Pico**, um **Pico W** ou uma **ESP32** DevKitC (em MicroPython, a ESP32 comportamental, o seu Python num MicroPython em WebAssembly com o Pin, UART, Timer, PWM, ADC, SPI e I2C do seu `machine`: exemplo **uart-esp32**; o seu programa um `.py` da sua pasta, corrido no firmware do próprio MicroPython, que o servidor
+  **Pico**, um **Pico W** ou uma **ESP32** DevKitC (em MicroPython, a ESP32 comportamental, o seu Python num MicroPython em WebAssembly com o Pin, UART, Timer, PWM, ADC, SPI e I2C do seu `machine`: exemplo **uart-fpga-esp32**; o seu programa um `.py` da sua pasta, corrido no firmware do próprio MicroPython, que o servidor
   local descarrega uma vez; o que imprime aparece num terminal próprio, o seu REPL; um Pico em CircuitPython, o Programa
   (firmware) das suas Propriedades: o seu programa o `code.py` da sua unidade CIRCUITPY, com os outros ficheiros da sua
-  pasta, como na placa; Programar o Nó copia-os para a unidade CIRCUITPY de um Pico real; o exemplo **uart-pico**), um
+  pasta, como na placa; Programar o Nó copia-os para a unidade CIRCUITPY de um Pico real; o exemplo **uart-fpga-pico**), um
   **Broker MQTT** (a interface MQTT de um Pico W ligada a ele: o seu programa usa `network` e `umqtt.simple` como na
   placa real; Experimentar mostra as mensagens do broker, e uma linha lá escrita, `tópico mensagem`, é publicada), um terminal série; **Ligação** junta
   duas interfaces do mesmo tipo (um clique numa, depois na outra); o painel de Propriedades indica o módulo, a placa e
