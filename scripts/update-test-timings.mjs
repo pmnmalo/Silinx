@@ -16,24 +16,26 @@ import { TIMINGS, readTimings, testFiles, unitFiles } from './test-shard.mjs';
 
 const ROOT = path.join(path.dirname(fileURLToPath(import.meta.url)), '..');
 
-const usability = f => f.startsWith('test/usability/');
-
 /** The timings of the existing files from the parts' JSON objects, sorted by file; a file measured more
- *  than once (a UI file, in each interface) the longest. The usability files and the others are measured by runs
- *  of their own (#5295): those of the two this run measured none of keep their times of before (keep). */
+ *  than once (a UI file, in each interface) the longest. A file this run did not measure keeps its time of before
+ *  (keep): the usability files and the others are measured by runs of their own (#5295), and a part cut off by its
+ *  step's time limit measures only its first files (#5836). */
 export function merge(parts, files, keep = {}) {
   const all = {};
   for (const p of parts) for (const [f, t] of Object.entries(p)) if (typeof t === 'number') all[f] = Math.max(all[f] ?? 0, t);
-  const measured = new Set(Object.keys(all).map(usability));
-  for (const [f, t] of Object.entries(keep)) if (!measured.has(usability(f)) && typeof t === 'number') all[f] = t;
+  for (const [f, t] of Object.entries(keep)) if (!(f in all) && typeof t === 'number') all[f] = t;
   return Object.fromEntries(files.filter(f => f in all).map(f => [f, all[f]]));
 }
 
-/** Every test-times.json under a folder (the downloaded artifacts). */
-export function readParts(dir) {
+/** Every test-times.json under a folder (the downloaded artifacts); one that is not JSON (a part cut off by its step's
+ *  time limit, its file never finished, #5836) left out, its path in `skipped`: its files keep their times. */
+export function readParts(dir, skipped = []) {
   const out = [];
-  for (const e of fs.readdirSync(dir, { withFileTypes: true, recursive: true }))
-    if (e.isFile() && e.name === 'test-times.json') out.push(JSON.parse(fs.readFileSync(path.join(e.parentPath ?? e.path, e.name), 'utf8')));
+  for (const e of fs.readdirSync(dir, { withFileTypes: true, recursive: true })) {
+    if (!e.isFile() || e.name !== 'test-times.json') continue;
+    const f = path.join(e.parentPath ?? e.path, e.name);
+    try { out.push(JSON.parse(fs.readFileSync(f, 'utf8'))); } catch { skipped.push(path.relative(dir, f)); }
+  }
   return out;
 }
 
@@ -46,7 +48,9 @@ function main() {
     execFileSync('gh', ['run', 'download', args[0], '--pattern', 'unit-times-*', '--pattern', 'ui-times-*',
       '--pattern', 'usability-times-*', '--dir', dir], { cwd: ROOT, stdio: 'inherit' });
   } else { console.error('usage: node scripts/update-test-timings.mjs <run id> | --from <folder>'); process.exit(2); }
-  const parts = readParts(dir);
+  const skipped = [];
+  const parts = readParts(dir, skipped);
+  if (skipped.length) console.log(`left out, not JSON (a part cut off?): ${skipped.join(', ')}`);
   if (!parts.length) { console.error(`no test-times.json in ${dir}`); process.exit(1); }
   const files = [...unitFiles(ROOT), ...testFiles(ROOT, 'test/ui'), ...testFiles(ROOT, 'test/usability')].sort();
   const t = merge(parts, files, readTimings(ROOT));
