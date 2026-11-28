@@ -68,6 +68,9 @@ source "$EMSDK/emsdk_env.sh" >/dev/null 2>&1
 W="-w -Wno-error=implicit-function-declaration -Wno-error=implicit-int -Wno-error=int-conversion -Wno-error=incompatible-function-pointer-types"
 export CFLAGS="-O2 -g0 $W" CXXFLAGS="-O2 -g0 -std=gnu++98 $W" ac_cv_func_psignal=yes ac_cv_func_strsignal=yes
 BUILD_CC="cc -w -Wno-error=implicit-function-declaration -Wno-error=implicit-int"
+# (the build machine's own flags: CFLAGS above are clang's, Emscripten's, and a Linux runner's gcc refuses
+# -Wno-error=incompatible-function-pointer-types)
+export CFLAGS_FOR_BUILD="-O2 -w" CXXFLAGS_FOR_BUILD="-O2 -w -std=gnu++98"
 # a tool: a classic module (createTool(options), no ES module, so that a page loads it from its text under Silinx's CSP),
 # its old function-pointer casts emulated (binutils' bfd_true), its memory grown as it needs
 LINK="-sALLOW_MEMORY_GROWTH=1 -sMODULARIZE=1 -sEXPORT_NAME=createTool -sFORCE_FILESYSTEM=1 -sEXIT_RUNTIME=1 -sINVOKE_RUN=0 -sEXPORTED_RUNTIME_METHODS=FS,callMain -sENVIRONMENT=web,worker,node -sINITIAL_MEMORY=32MB -sSTACK_SIZE=8MB -sEMULATE_FUNCTION_POINTER_CASTS=1"
