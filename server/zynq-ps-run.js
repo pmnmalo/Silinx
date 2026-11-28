@@ -12,6 +12,7 @@ import { createJob, getJob, capture, runCommand } from './jobs.js';
 import { loadConfig, which } from './toolchain.js';
 import { psNodeOf } from './zynq-ps-compile.js';
 import { psOfBoard } from '../core/zynq-ps.js';
+import { nodePs, psClocksError } from '../core/zynq-ps-clocks.js';
 import { psBuildDir, psElf, psProgram } from '../core/zynq-ps-compile.js';
 import { psLoadPlan } from '../core/zynq-ps-load.js';
 import { openocdMessages, psOpenocdScript } from '../core/zynq-ps-openocd.js';
@@ -58,7 +59,9 @@ async function elfOf(name, node, files) {
 export async function startPsRun(name, { node } = {}) {
   const { files, node: n } = await psNodeOf(name, node, 'OpenOCD');
   const elf = await elfOf(name, n, files);
-  const plan = psLoadPlan({ elf: psElf(elf.bytes), ps: psOfBoard(n.board, n.variant) });
+  const why = psClocksError(n.psClocks, psOfBoard(n.board, n.variant));
+  if (why) throw new P.HttpError(400, `the PS program is not loaded: ${n.implicit ? 'the project' : n.id}: ${why}`);
+  const plan = psLoadPlan({ elf: psElf(elf.bytes), ps: nodePs(n) });   // (its PS's clocks its own, #5896)
   if (plan.error) throw new P.HttpError(400, `the PS program is not loaded: ${plan.error}`);
   const script = psOpenocdScript(plan);
   if (script.error) throw new P.HttpError(400, script.error);

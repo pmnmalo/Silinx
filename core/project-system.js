@@ -24,7 +24,7 @@ function implicitNode(pj) {
   const variant = variantOf(pj.board, pj.device);
   // (a Zynq board's PS's program, at the project's root, ps/…, #4686)
   return { id: 'fpga', kind: 'fpga', module: pj.top || null, board: pj.board ?? null, ...(variant != null ? { variant: String(variant) } : {}),
-    device: pj.device ?? null, constraints: pj.constraints ?? null, ...(pj.ps ? { ps: String(pj.ps) } : {}), lang: baseLang({ kind: 'fpga' }, pj.preferredLanguage), ...at };
+    device: pj.device ?? null, constraints: pj.constraints ?? null, ...(pj.ps ? { ps: String(pj.ps) } : {}), ...(pj.psClocks ? { psClocks: pj.psClocks } : {}), lang: baseLang({ kind: 'fpga' }, pj.preferredLanguage), ...at };
 }
 
 /** A project's System: { model ({ format, version, name, nodes, links }, or null when its System document is missing or

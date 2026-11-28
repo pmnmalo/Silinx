@@ -9,6 +9,7 @@
 import { resolveBoard } from './devices.js';
 import { relInNode, relPathError } from './system-layout.js';
 import { ps7Init } from './zynq-ps7.js';
+import { nodePs, psClocksError } from './zynq-ps-clocks.js';
 
 const PS_DIR = 'ps';
 /** The PS's program's path: the node's `<id>/ps/main.c`, a Board project's (no id) `ps/main.c`. */
@@ -33,8 +34,12 @@ export function psProgramError(path, id) {
 /** The PS problems of FPGA node `n` (its `ps`), each a sentence: its board with no PS, its program's place, a program the
  *  project has not (`files`: the project's paths; null: not checked), its board's PS that cannot be set up. */
 export function psProblems(n, files = null) {
-  if (!n?.ps) return [];
-  const ps = psOfBoard(n.board, n.variant), out = [];
+  const out = [];
+  // (its PS's clocks of its own, #5896: made by its board's PLLs or said)
+  const clocks = n?.psClocks && psClocksError(n.psClocks, psOfBoard(n.board, n.variant));
+  if (clocks) out.push(`${n.id}: ${clocks}`);
+  if (!n?.ps) return out;
+  const ps = nodePs(n);
   if (n.board && !ps) out.push(`${n.id}: the board ${n.board} has no processing system (its PS's program ${n.ps})`);
   const where = psProgramError(n.ps, n.implicit ? null : n.id);
   if (where) out.push(`${n.id}: ${where}`);
@@ -48,7 +53,7 @@ const mhz = (hz) => `${Math.round(hz / 1e5) / 10} MHz`;
 /** The PS of FPGA node `n` in a few words (describeSystem's): its program, its CPU's clock, its UART on the MIO; or null. */
 export function psSummary(n) {
   if (!n?.ps) return null;
-  const ps = psOfBoard(n.board, n.variant), init = ps && ps7Init(ps);
+  const ps = nodePs(n), init = ps && ps7Init(ps);
   if (!ps || init.error) return `its PS's program ${n.ps}`;
   return `its PS's program ${n.ps}: the Cortex-A9 at ${mhz(init.clocks.cpu)}, UART${ps.uart.id} on MIO ${ps.uart.tx} (TX) and ${ps.uart.rx} (RX), FCLK0 ${mhz(init.clocks.fclk0)}`;
 }
