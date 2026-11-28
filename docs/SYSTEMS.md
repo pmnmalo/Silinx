@@ -861,7 +861,8 @@ places, as ISE's ways (`detectXc16`; the MCP's `toolchain_info` says which one i
   installer, reached over ssh as ISE's image is (`ssh.host`; the node's build folder sent to `ssh.remoteDir`, its
   `out/` brought back, the remote folder removed).
 
-config.json's `xc16.mode` (`local` or `ssh`) chooses one; without it, this computer's when it has one.
+config.json's `xc16.mode` (`local` or `ssh`) chooses one; without it, this computer's when it has one. `docker` is the
+image in this computer's own Docker (the ISE runner's nightly tests, #6019: its build folder at `/work`, no ssh).
 
 - The commands are the XC16 C Compiler User's Guide's: `xc16-gcc -mcpu=24FJ1024GB610 -omf=elf -O1 -Wall -o out/<id>.elf
   <sources> -T <install>/support/PIC24F/gld/p24FJ1024GB610.gld -Wl,--heap=512,-Map=out/<id>.map` (the command line
@@ -887,6 +888,10 @@ config.json's `xc16.mode` (`local` or `ssh`) chooses one; without it, this compu
   cleared meanwhile. A hand-written C file with a `main()` in the folder is the node's program instead. XC16 compiles C:
   a PIC24 node's language is C, not C++. The tests check the C against the model tick by tick: this computer's C
   compiler with a stand-in `<xc.h>`, and XC16's `.hex` on silinx-pic24 when XC16 is there.
+  The ISE runner's nightly (`ise.yml`, #6019) runs the tests of the real compilers on its images
+  (`SILINX_TEST_COMPILERS=docker`, `test/compilers-lib.mjs`): these, the starter's link, and every Zynq and PIC24
+  example's program with no warning, XC16's `.hex` of uart-pic24 run on silinx-pic24 as Silinx's own; an image missing
+  fails them.
 
 ### Compiling a Zynq board's PS program
 
@@ -901,8 +906,8 @@ installer's `/Applications/ArmGNUToolchain/<version>/arm-none-eabi/bin`. Or, as 
 `silinx/arm-none-eabi:12.2` on the ISE machine (config.json's `armGcc.image`; built there from Debian bookworm's
 `gcc-arm-none-eabi` and `libnewlib-arm-none-eabi`, never shipped), reached over ssh: the build folder sent to
 `ssh.remoteDir`, its `build.sh` run in the image, its `out/` brought back, the remote folder removed. config.json's
-`armGcc.mode` (`local` or `ssh`) chooses one; without it, this computer's when it has one. The MCP's `toolchain_info` says
-which one is used and why the other is not. The browser edition has no compiler: it needs a server (clang and lld in
+`armGcc.mode` (`local` or `ssh`) chooses one; without it, this computer's when it has one; `docker`, as XC16's, the image in
+this computer's own Docker. The MCP's `toolchain_info` says which one is used and why the other is not. The browser edition has no compiler: it needs a server (clang and lld in
 WebAssembly: #5904).
 
 - The program: the C (`.c`, `.h`) and assembly (`.s`, `.S`) of the node's `ps/` (a Board project's `ps/` at its root), copied

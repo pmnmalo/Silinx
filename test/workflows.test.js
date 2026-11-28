@@ -375,3 +375,29 @@ test('workflows: a workflow_run trigger runs after the repository\'s own workflo
     }
   }
 });
+
+test('workflows: the ISE runner\'s nightly runs the real compilers\' tests on its own Docker\'s images, after the ISE tests, no host in it; an image missing fails them (#6019)', async () => {
+  const yml = read('ise.yml');
+  const body = jobs(yml).ise.join('\n');
+  const { XC16_IMAGE } = await import('../core/xc16-compile.js');
+  const { ARM_GCC_IMAGE } = await import('../core/zynq-ps-compile.js');
+  const images = `      - name: The compilers' images\n        if: \${{ !cancelled() }}\n        run: docker image inspect --format '{{.Id}} {{.Size}}' ${XC16_IMAGE} ${ARM_GCC_IMAGE}\n`;
+  const FILES6019 = ['test/reactive-pic24.test.js', 'test/zynq-ps-compile.test.js', 'test/examples-compilers.test.js'];
+  const tests = `      - name: Compiler tests\n        if: \${{ !cancelled() }}\n        env:\n          SILINX_TEST_COMPILERS: docker\n        run: node --test --test-reporter=spec ${FILES6019.join(' ')}`;
+  assert.ok(body.includes(images), 'the images checked');
+  assert.ok(body.includes(tests), 'the tests run on this computer\'s Docker');
+  const at = (s) => body.indexOf(s);
+  assert.ok(at('- name: ISE tests') < at('- name: The compilers\' images') && at('- name: The compilers\' images') < at('- name: Compiler tests'), 'after the ISE tests');
+  // (the runner's own Docker, its images as ISE's: no host, user or address in the workflow)
+  assert.deepEqual(yml.match(/SILINX_(TEST_COMPILERS|ISE_HOST): .*/g), ['SILINX_ISE_HOST: local    # the ISE Docker image on the runner itself', 'SILINX_TEST_COMPILERS: docker']);
+  assert.doesNotMatch(yml, /\b\d{1,3}(\.\d{1,3}){3}\b|[\w-]+@[\w-]+\.[\w.-]+/);
+  // (each file asks for the compilers through test/compilers-lib.mjs: its tests fail, not skip, without them; and is
+  // one of the workflow's inputs, as the helper is)
+  const only = yml.match(/\n {6}only: (\S+)\n/)[1].split(',');
+  for (const f of FILES6019) {
+    const src = fs.readFileSync(path.join(ROOT, f), 'utf8');
+    assert.ok(src.includes("from './compilers-lib.mjs'") && src.includes('assertThere(') && src.includes('skipWithout('), f);
+    assert.ok(only.includes(f), `${f} among the workflow's inputs`);
+  }
+  assert.ok(only.includes('test/compilers-lib.mjs'));
+});

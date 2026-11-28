@@ -2,8 +2,9 @@
 // project's ps/ at its root; a user's startup or linker script in place of Silinx's), the refusals, the compiler's
 // command, its messages by the project's file (the OCM overflowed said as such), its ELF checked in the on-chip memory.
 // Silinx's startup code and the starter program assembled and compiled for the Cortex-A9 by the host's clang where it
-// targets ARM, with no warning; linked by arm-none-eabi-gcc where it is installed (each skipped, said why, elsewhere).
-import { test } from 'node:test';
+// targets ARM, with no warning; linked by arm-none-eabi-gcc where it is installed or its image asked for (#6019; each
+// skipped, said why, elsewhere).
+import { test, after } from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
@@ -12,10 +13,39 @@ import { execFileSync, spawnSync } from 'node:child_process';
 import { OCM, STACK, PS_STARTUP, PS_LINKER_SCRIPT, ARM_GCC_IMAGE, PINNED, psProgram, psBuildDir, psCommand, psFileOf, psMessages, psElf, psScript } from '../core/zynq-ps-compile.js';
 import { psOfBoard, psStarter } from '../core/zynq-ps.js';
 import { writeElf32 } from './fixtures/arm-gcc-stub/elf.mjs';
+import { scratchEnv } from './server-helpers.js';
+import { assertThere, compilersConfig, skipWithout } from './compilers-lib.mjs';
 
 const zybo = { id: 'zybo', kind: 'fpga', board: 'zybo-z7', variant: '20' };
 const board = { id: 'top', kind: 'fpga', board: 'arty-z7', implicit: true };
 const B = new Uint8Array([0xfe, 0xff, 0xff, 0xea]);
+
+// arm-none-eabi-gcc: this computer's, or its image (SILINX_TEST_COMPILERS, test/compilers-lib.mjs: this computer's Docker,
+// the ISE runner's nightly, or the ISE machine's over ssh, #6019), found as Compile PS Program finds it
+// (before the first test: a test started by a later top-level await would see after()'s clean-up)
+const tmp = await scratchEnv('silinx-ps-gcc-');
+after(() => fs.rmSync(tmp, { recursive: true, force: true }));
+const { detectArmGcc } = await import('../server/zynq-ps-compile.js');
+const { runInImage, runInLocalImage } = await import('../server/image-remote.js');
+const { runCommand } = await import('../server/jobs.js');
+const CFG = compilersConfig();
+const gcc = await detectArmGcc(CFG);
+
+// a build folder linked by the compiler found (its build.sh in the image): its exit code, its output
+async function link(dir, prog, units) {
+  const text = [];
+  const quiet = { cancelled: false, procs: new Set(), log: (l) => text.push(String(l)) };
+  const onLine = (l) => text.push(l);
+  let code;
+  if (gcc.via === 'local') code = await runCommand(quiet, ...psCommand({ gcc: gcc.path, prog, units }), { cwd: dir, echo: false, onLine });
+  else {
+    fs.writeFileSync(path.join(dir, 'build.sh'), psScript({ prog, units }));
+    code = gcc.via === 'docker' ? await runInLocalImage(quiet, { root: dir, image: gcc.image, docker: gcc.docker }, onLine)
+      : await runInImage(quiet, CFG, { remote: `ps-link-test-${process.pid}`, root: dir, image: gcc.image, who: 'the test', tool: 'arm-none-eabi-gcc' }, onLine, (l) => text.push(l));
+  }
+  return { code, text: text.join('\n') };
+}
+
 
 test('#4687 the program\'s sources: a System node\'s ps/, a Board project\'s ps/; its startup and linker script Silinx\'s or the user\'s', () => {
   const files = ['zybo/ps/main.c', 'zybo/ps/uart.h', 'zybo/ps/lib/fifo.c', 'zybo/ps/boot.s', 'zybo/top.vhd', 'zybo/ps.c', 'other/ps/x.c', 'ps/main.c'];
@@ -107,20 +137,16 @@ test('#4687 Silinx\'s startup assembled and the starter compiled for the Cortex-
   } finally { fs.rmSync(dir, { recursive: true, force: true }); }
 });
 
-const gcc = spawnSync('arm-none-eabi-gcc', ['--version']).status === 0 ? null : 'no arm-none-eabi-gcc on this computer';
-
-test('#4687 the starter linked by arm-none-eabi-gcc with Silinx\'s startup and linker script: no warning, its ELF in the OCM', { skip: gcc || false }, () => {
-  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'silinx-ps-gcc-'));
-  try {
-    fs.mkdirSync(path.join(dir, 'silinx')); fs.mkdirSync(path.join(dir, 'src')); fs.mkdirSync(path.join(dir, 'out'));
-    fs.writeFileSync(path.join(dir, 'silinx/startup.S'), PS_STARTUP);
-    fs.writeFileSync(path.join(dir, 'silinx/ps.ld'), PS_LINKER_SCRIPT);
-    fs.writeFileSync(path.join(dir, 'src/main.c'), psStarter(psOfBoard('zybo-z7'), 'Digilent Zybo Z7'));
-    const [cmd, args] = psCommand({ gcc: 'arm-none-eabi-gcc', prog: psProgram(zybo, ['zybo/ps/main.c']), units: ['src/main.c'] });
-    const r = spawnSync(cmd, args, { cwd: dir, encoding: 'utf8' });
-    assert.deepEqual([r.status, psMessages(`${r.stdout}\n${r.stderr}`)], [0, { errors: [], warnings: [] }]);
-    const e = psElf(fs.readFileSync(path.join(dir, 'out/zybo.elf')));
-    assert.equal(e.error, undefined);
-    assert.equal(e.entry, 0);
-  } finally { fs.rmSync(dir, { recursive: true, force: true }); }
+test('#4687 the starter linked by arm-none-eabi-gcc with Silinx\'s startup and linker script: no warning, its ELF in the OCM', { skip: skipWithout(gcc, 'arm-none-eabi-gcc'), timeout: 300000 }, async () => {
+  assertThere(gcc, 'arm-none-eabi-gcc');
+  const dir = fs.mkdtempSync(path.join(tmp, 'link-'));
+  fs.mkdirSync(path.join(dir, 'silinx')); fs.mkdirSync(path.join(dir, 'src')); fs.mkdirSync(path.join(dir, 'out'));
+  fs.writeFileSync(path.join(dir, 'silinx/startup.S'), PS_STARTUP);
+  fs.writeFileSync(path.join(dir, 'silinx/ps.ld'), PS_LINKER_SCRIPT);
+  fs.writeFileSync(path.join(dir, 'src/main.c'), psStarter(psOfBoard('zybo-z7'), 'Digilent Zybo Z7'));
+  const r = await link(dir, psProgram(zybo, ['zybo/ps/main.c']), ['src/main.c']);
+  assert.deepEqual([r.code, psMessages(r.text)], [0, { errors: [], warnings: [] }], r.text);
+  const e = psElf(fs.readFileSync(path.join(dir, 'out/zybo.elf')));
+  assert.equal(e.error, undefined);
+  assert.equal(e.entry, 0);
 });

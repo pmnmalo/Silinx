@@ -3,10 +3,10 @@
 // Arduino's are (test/reactive-avr.test.js). Without XC16, a stand-in: this computer's C compiler with a <xc.h> of the
 // port registers as plain variables, the unit's ticks driven by a harness (its PORTx the inputs, its LATx read back), with
 // no compiler warning (-Wall, as XC16's), its pins' TRISx and ANSx set by its init; and the node's main.c, compiled
-// against it. With XC16 (this computer's, or the ISE machine's image: SILINX_TEST_XC16_CONFIG a config.json with its
-// ssh and xc16 settings), each drawing with the node's main.c compiled by Compile Firmware and its .hex run on
+// against it. With XC16 (this computer's, or its image: SILINX_TEST_COMPILERS, test/compilers-lib.mjs: this computer's
+// Docker, the ISE runner's nightly, or the ISE machine's over ssh), each drawing with the node's main.c compiled by Compile Firmware and its .hex run on
 // silinx-pic24: every TICK_MS of Timer1 a tick, the inputs on its pins, its outputs on its pins the model's. Skipped,
-// said why, without them.
+// said why, without them (failed when SILINX_TEST_COMPILERS asked for the image, #6019).
 import { test, before, after } from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
@@ -19,6 +19,7 @@ import { assignPic24Pins, generatePic24Unit, pic24Main, pic24Pin, PIC24_FCY } fr
 import { Pic24Node } from '../packages/silinx-pic24/src/index.js';
 import { EDGES, EXAMPLE_DRAWINGS, randomVectors, readJson, runModel, timerModel } from './reactive-lib.mjs';
 import { scratchEnv, waitJob, writeConfig } from './server-helpers.js';
+import { assertThere, compilersConfig, skipWithout } from './compilers-lib.mjs';
 
 const modelOf = (kind, doc) => { const r = drawingToReactive(kind, doc); assert.equal(r.errors, undefined); return r.model; };
 const MODELS = () => [...EXAMPLE_DRAWINGS.map(([kind, file]) => modelOf(kind, readJson(file))), ...EDGES.map(([kind, make]) => modelOf(kind, make())), timerModel()];
@@ -124,18 +125,17 @@ test('#5552 the node\'s main.c: each unit\'s init, then every tick of Timer1 (Fc
 
 // ---------------------------------------------------------------------------------------------------- XC16
 let tmp, P, jobs, xc;
-const given = process.env.SILINX_TEST_XC16_CONFIG;
 {
   tmp = await scratchEnv('silinx-reactive-pic24-xc16-');
-  const cfg = given ? JSON.parse(fs.readFileSync(given, 'utf8')) : {};
-  await writeConfig({ mode: 'silinx', ...(given ? { ssh: cfg.ssh, xc16: cfg.xc16 ?? { mode: 'ssh' } } : {}) });
+  await writeConfig({ mode: 'silinx', ...compilersConfig() });
   ({ detectXc16: xc } = await import('../server/xc16-compile.js'));
 }
 const real = await xc();
 after(() => tmp && fs.rmSync(tmp, { recursive: true, force: true }));
-const NO_XC16 = !real.available && `no XC16 here (${real.reason})`;
+const NO_XC16 = skipWithout(real, 'XC16');
 
 test('#5552 XC16: each drawing with the node\'s main.c compiled with no warning, its .hex run on silinx-pic24: each tick of Timer1 its outputs the model\'s', { skip: NO_XC16, timeout: 600000 }, async () => {
+  assertThere(real, 'XC16');
   P = await import('../server/projects.js');
   jobs = await import('../server/jobs.js');
   const { startFirmwareCompile } = await import('../server/avr-compile.js');

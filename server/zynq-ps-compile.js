@@ -18,7 +18,7 @@ import { isSystemFile } from '../core/system-doc.js';
 import { isTrusted, untrustedMessage } from '../core/trust.js';
 import { psOfBoard } from '../core/zynq-ps.js';
 import { ARM_GCC_IMAGE, PS_LINKER_SCRIPT, PS_STARTUP, OCM, psBuildDir, psCommand, psElf, psFileOf, psMessages, psProgram, psScript } from '../core/zynq-ps-compile.js';
-import { runInImage } from './image-remote.js';
+import { localImage, runInImage, runInLocalImage } from './image-remote.js';
 
 const GCC = 'arm-none-eabi-gcc';
 // (where Homebrew puts it, besides PATH: a server started from the Dock has a short PATH; Arm's macOS installer's)
@@ -50,24 +50,26 @@ async function localGcc(cfg, opts) {
 /**
  * Can a PS program be compiled, and where? As XC16's (server/xc16-compile.js detectXc16): this computer's
  * arm-none-eabi-gcc, or its Docker image on the ISE machine (config.json's armGcc.image, ARM_GCC_IMAGE by default) over
- * ssh; config.json's armGcc.mode ('local' or 'ssh') chooses one, else this computer's when it has one. { available, via
- * ('local' | 'ssh' | null), path, version, image, reason, local: { available, reason }, remote: { available, reason } }.
+ * ssh; config.json's armGcc.mode ('local' or 'ssh') chooses one, else this computer's when it has one; 'docker' the image in
+ * this computer's Docker (the ISE runner's nightly tests, #6019). { available, via ('local' | 'ssh' | 'docker' | null),
+ * path, version, image, reason, local: { available, reason }, remote: { available, reason } }.
  */
 export async function detectArmGcc(cfg = null, opts = {}) {
   cfg ??= await loadConfig();
-  const mode = ['local', 'ssh'].includes(cfg.armGcc?.mode) ? cfg.armGcc.mode : 'auto';
+  const mode = ['local', 'ssh', 'docker'].includes(cfg.armGcc?.mode) ? cfg.armGcc.mode : 'auto';
   const image = cfg.armGcc?.image || ARM_GCC_IMAGE;
-  const l = mode === 'ssh' ? { available: false, path: null, version: null, reason: 'not used (config.json\'s armGcc.mode is ssh)' } : await localGcc(cfg, opts);
-  let remote;
+  const l = mode === 'ssh' || mode === 'docker' ? { available: false, path: null, version: null, reason: `not used (config.json's armGcc.mode is ${mode})` } : await localGcc(cfg, opts);
+  let remote, docker = null;
   if (mode === 'local') remote = { available: false, reason: 'not used (config.json\'s armGcc.mode is local)' };
   else if (!IMAGE.test(image)) remote = { available: false, reason: 'config.json\'s armGcc.image is not an image\'s name' };
+  else if (mode === 'docker') ({ docker, ...remote } = await localImage(image));
   else if (!cfg.ssh?.host) remote = { available: false, reason: 'no ISE machine (no ssh host in the toolchain settings)' };
   else if (!which('ssh')) remote = { available: false, reason: 'ssh not found' };
   else remote = { available: true, reason: `the image ${image} on the ISE machine, over ssh` };
   const both = { local: { available: l.available, reason: l.reason }, remote };
   if (l.available) return { available: true, via: 'local', path: l.path, version: l.version, image: null, reason: `${l.reason}${remote.available ? ' (the ISE machine\'s image not used)' : ''}`, ...both };
-  // (the image's version its tag's: silinx/arm-none-eabi:12.2)
-  if (remote.available) return { available: true, via: 'ssh', path: null, version: /:v?(\d+(?:\.\d+)*)$/.exec(image)?.[1] || null, image, reason: `${GCC} in ${remote.reason} (${l.reason})`, ...both };
+  // (the image's version its tag's: silinx/arm-none-eabi:12.2; `docker` this computer's, the image in its Docker)
+  if (remote.available) return { available: true, via: mode === 'docker' ? 'docker' : 'ssh', path: null, version: /:v?(\d+(?:\.\d+)*)$/.exec(image)?.[1] || null, image, reason: `${GCC} in ${remote.reason} (${l.reason})`, ...both, ...(docker ? { docker } : {}) };
   return { available: false, via: null, path: l.path, version: l.version, image: null, reason: `${l.reason}; ${remote.reason}`, ...both };
 }
 
@@ -121,16 +123,17 @@ async function compilePs(job, name, files, node, tool) {
   const root = await buildDir(name, node, prog);
   const units = prog.units.map((f) => `src/${f.slice(prog.dir.length + 1)}`);
   const who = node.implicit ? 'The project' : `System node ${node.id}`;
-  job.log(`${who}: its PS program (${prog.units.length} C and assembly file(s) of ${prog.dir}/) for the Cortex-A9, by ${tool.via === 'ssh' ? `${GCC} in the image ${tool.image} on the ISE machine` : GCC}, with ${prog.startup ? `its ${prog.startup}` : 'Silinx\'s startup code'} and ${prog.script ? `its ${prog.script}` : 'Silinx\'s linker script (the on-chip memory)'}, in ${psBuildDir(node)}/.`);
+  job.log(`${who}: its PS program (${prog.units.length} C and assembly file(s) of ${prog.dir}/) for the Cortex-A9, by ${tool.via === 'local' ? GCC : `${GCC} in the image ${tool.image} ${tool.via === 'docker' ? 'in this computer\'s Docker' : 'on the ISE machine'}`}, with ${prog.startup ? `its ${prog.startup}` : 'Silinx\'s startup code'} and ${prog.script ? `its ${prog.script}` : 'Silinx\'s linker script (the on-chip memory)'}, in ${psBuildDir(node)}/.`);
   const text = [];
   // (its lines the console's once parsed: the job's own log not the compiler's raw output, which names the build folder)
   const quiet = { get cancelled() { return job.cancelled; }, procs: job.procs, log: (l) => text.push(String(l)) };
   const onLine = (l) => text.push(l);
   let code;
-  if (tool.via === 'ssh') {
+  if (tool.via !== 'local') {
     await fs.writeFile(path.join(root, 'build.sh'), psScript({ prog, units }));
     const who = node.implicit ? 'the project' : node.id;
-    code = await runInImage(quiet, await loadConfig(), { remote: `${name}.${node.implicit ? 'ps' : node.id}.arm`, root, image: tool.image, who, tool: GCC }, onLine, (l) => job.log(l));
+    if (tool.via === 'docker') code = await runInLocalImage(quiet, { root, image: tool.image, docker: tool.docker }, onLine);
+    else code = await runInImage(quiet, await loadConfig(), { remote: `${name}.${node.implicit ? 'ps' : node.id}.arm`, root, image: tool.image, who, tool: GCC }, onLine, (l) => job.log(l));
   } else {
     const [cmd, args] = psCommand({ gcc: tool.path, prog, units });
     code = await runCommand(quiet, cmd, args, { cwd: root, echo: false, onLine });
@@ -139,7 +142,7 @@ async function compilePs(job, name, files, node, tool) {
   const { errors, warnings } = psMessages(text.join('\n'), (p) => psFileOf(p, root, prog));
   for (const l of [...errors, ...warnings]) job.log(l);
   if (code !== 0) {
-    if (tool.via === 'ssh' && text.some((l) => /No such image|Unable to find image/i.test(l))) job.log(`ERROR: the image ${tool.image} is not on the ISE machine (build it there from Debian's gcc-arm-none-eabi and libnewlib-arm-none-eabi)`);
+    if (tool.via !== 'local' && text.some((l) => /No such image|Unable to find image/i.test(l))) job.log(`ERROR: the image ${tool.image} is not ${tool.via === 'docker' ? 'in this computer\'s Docker' : 'on the ISE machine'} (build it there from Debian's gcc-arm-none-eabi and libnewlib-arm-none-eabi)`);
     else if (!errors.length) job.log(`ERROR: ${GCC} failed (exit code ${code}): ${text.filter((l) => l.trim() && !/^\$ /.test(l)).slice(-3).join(' ').slice(0, 300) || 'no message'}`);
     throw new Error(`its PS program did not compile (${errors.length || 1} error(s), ${warnings.length} warning(s))`);
   }

@@ -186,6 +186,42 @@ test('#5482 XC16 in its image on the ISE machine: the build folder sent over ssh
   }
 });
 
+test('#6019 XC16 in its image in this computer\'s Docker (xc16.mode docker, the ISE runner\'s): build.sh run there on the build folder, its .hex made; the image missing said; toolchain_info says so', { skip: WIN }, async () => {
+  const dlog = path.join(tmp, 'docker-local.log');
+  const was = process.env.PATH;
+  // (the stand-in found in the "image" on its PATH: the fake docker runs it here)
+  process.env.PATH = isolatedPath(fakes.docker, STUB, path.dirname(process.execPath));
+  Object.assign(process.env, { FAKE_DOCKER_LOG: dlog });
+  await writeConfig({ mode: 'silinx', paths: { xc16: STUB }, xc16: { mode: 'docker' } });
+  try {
+    const d = await detectXc16();
+    assert.deepEqual([d.available, d.via, d.image, d.version, d.docker, d.reason, d.local.reason], [true, 'docker', 'silinx/xc16:2.10', '2.10', path.join(fakes.docker, 'docker'),
+      'XC16 in the image silinx/xc16:2.10 in this computer\'s Docker (not used (config.json\'s xc16.mode is docker))', 'not used (config.json\'s xc16.mode is docker)']);
+    const name = await project({ 'pic/main.c': '#warning check the baud\nint main(void) { for (;;); }\n' });
+    const j = await run(name);
+    assert.equal(j.status, 'ok', j.lines.join('\n'));
+    assert.deepEqual(j.lines, [
+      'System node pic: its program (1 C and assembly file(s) of pic/) for the PIC24FJ1024GB610 (Explorer 16/32), by XC16 in the image silinx/xc16:2.10 in this computer\'s Docker, -O1 (XC16\'s free licence: -O0 to -O2), in build/nodes/pic/firmware/.',
+      'WARNING: pic/main.c:1:2: #warning check the baud',
+      `System node pic: its firmware pic/lcd_uart.hex, ${WORDS} program word(s).`,
+    ]);
+    assert.equal(fileOf(name, 'pic/lcd_uart.hex'), LCD_HEX);
+    const calls = fs.readFileSync(dlog, 'utf8').trim().split('\n');
+    assert.deepEqual(calls.map(c => c.split(' ')[0]), ['image', 'image', 'run'], calls.join('\n'));
+    assert.equal(calls[2], `run --rm --pull=never --network none --cap-drop ALL --security-opt no-new-privileges --pids-limit 512 -v ${path.join(P.projectDir(name), 'build/nodes/pic/firmware')}:/work -w /work silinx/xc16:2.10 bash build.sh`);
+    const t = await tool('toolchain_info').run({});
+    assert.equal(t.text.split('\n')[4], 'XC16 2.10 (a PIC24\'s Compile Firmware): available, in this computer\'s Docker: XC16 in the image silinx/xc16:2.10 in this computer\'s Docker (not used (config.json\'s xc16.mode is docker)).');
+    // (the image not in this computer's Docker: not there, said; Compile Firmware refused)
+    process.env.FAKE_DOCKER_NO_IMAGE = '1';
+    assert.deepEqual((await detectXc16()).remote, { available: false, reason: 'the image silinx/xc16:2.10 is not in this computer\'s Docker' });
+    await assert.rejects(startFirmwareCompile(name, { node: 'pic' }), { message: 'Compile Firmware needs XC16 on the local server or the ISE machine: not used (config.json\'s xc16.mode is docker); the image silinx/xc16:2.10 is not in this computer\'s Docker' });
+  } finally {
+    process.env.PATH = was;
+    for (const k of ['FAKE_DOCKER_LOG', 'FAKE_DOCKER_NO_IMAGE']) delete process.env[k];
+    await writeConfig({ mode: 'silinx', paths: { xc16: STUB } });
+  }
+});
+
 test('#5482 MCP: run_process firmware on a PIC24 node, its errors, warnings and locations as the console\'s; toolchain_info says XC16', { skip: WIN }, async () => {
   const name = await project({ 'pic/main.c': '#warning check the baud\nint main(void) { for (;;); }\n' });
   const r = await tool('run_process').run({ project: name, process: 'firmware', node: 'pic' });
