@@ -17,7 +17,7 @@ const yml = read('.github/workflows/silinx-avr-gcc.yml');
 const pic = read('.github/workflows/silinx-pic24-release.yml');
 
 test('#5934 silinx-avr-gcc: built on its pull requests, published from its tag only, no token', () => {
-  assert.match(yml, /\non:\n {2}pull_request:\n {4}paths: \[packages\/silinx-avr-gcc\/build\/\*\*, \.github\/workflows\/silinx-avr-gcc\.yml\]\n {2}push:\n {4}tags: \['silinx-avr-gcc-v\*'\]\npermissions:\n {2}contents: read\n/);
+  assert.match(yml, /\non:\n {2}pull_request:\n {4}paths: \[packages\/silinx-avr-gcc\/build\/\*\*, \.github\/workflows\/silinx-avr-gcc\.yml\]\n {2}push:\n {4}tags: \['silinx-avr-gcc-v\*'\]\n {2}workflow_dispatch: +#[^\n]*\npermissions:\n {2}contents: read\n/);
   const jobs = jobsOf(yml);
   assert.deepEqual(Object.keys(jobs), ['build', 'publish']);
   assert.deepEqual(jobPermissions(yml, jobs.build), { contents: 'read' });
