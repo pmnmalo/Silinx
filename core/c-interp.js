@@ -10,6 +10,12 @@
 //              each pointer's value before (ptrIn) and after (ptrOut), each array's values before and after (#1527), the
 //              steps it took (#1899)
 //     error: { line, col, message } when the run stopped (a division by zero, an index outside an array, an endless loop)
+//
+// A processor's program (program: true, a Zynq PS's bare-metal C, #4689): nothing synthesized (no top, no HLS checks); an
+// integer cast to a pointer, *(volatile uint32_t *)0xE0001000, a memory-mapped register, each read and write of it
+// mmio.read(addr, bytes, steps) -> its value and mmio.write(addr, bytes, value, steps), value a BigInt, steps the run's so
+// far; clock: { every, fn(steps) } called every `every` steps. A hook that throws Stop ends the run (ok, stopped: its
+// message), a program that never returns.
 import { checkC } from './c-check.js';
 import { loadBlackboxes, withModels } from './c-blackbox.js';
 import { typeOf } from './c-types.js';
@@ -21,24 +27,28 @@ import { DEEP_MESSAGE, isStackOverflow, MAX_ARRAY_ELEMENTS, arrayMessage } from 
 const MAX_STEPS = 20_000_000;
 
 class Halt extends Error { constructor(loc, message) { super(message); this.loc = loc; } }
+/** Thrown by a program's hook (mmio, clock): the run ends there, as asked (#4689). */
+export class Stop extends Error {}
 class Return { constructor(value) { this.value = value; } }
 const BREAK = Symbol('break'), CONTINUE = Symbol('continue');
 
 // (files: the test bench's data files, { path: text }, read by fopen; its run's written files in the result's files, #1598)
-export function simulateC(source, { file = 'input.c', maxSteps = MAX_STEPS, entry = 'main', headers = null, top = null, files = null, blackboxes = null, directives = null } = {}) {
+export function simulateC(source, { file = 'input.c', maxSteps = MAX_STEPS, entry = 'main', headers = null, top = null, files = null, blackboxes = null, directives = null, program = false, mmio = null, clock = null } = {}) {
   // (syn.blackbox: its C model, the C simulation's, #1903)
   const bbs = loadBlackboxes(blackboxes, headers);
   if (bbs.diagnostics.some((d) => d.severity === 'error')) return { ok: false, output: '', exitCode: null, calls: [], error: null, steps: 0, top: null, diagnostics: bbs.diagnostics };
   // (the top the C source's, not a C model's function, the last one defined once they are added, #2989)
   const own = withModels(source, headers, bbs.list).source;
-  if (!top && own !== source) top = checkC(source, file, { headers, ...(directives ? { directives } : {}) }).top;
+  if (!top && !program && own !== source) top = checkC(source, file, { headers, ...(directives ? { directives } : {}) }).top;
   source = own;
-  const checked = checkC(source, file, { headers, top, ...(directives ? { directives } : {}) });
+  const checked = checkC(source, file, { headers, top, ...(directives ? { directives } : {}), ...(program ? { program } : {}) });
   // (a test bench with no function to synthesize still runs)
   const errors = checked.diagnostics.filter((d) => d.severity === 'error' && !/^no function to synthesize/.test(d.message));
   if (errors.length) return { ok: false, output: '', exitCode: null, calls: [], error: null, steps: 0, top: checked.top, diagnostics: checked.diagnostics };
   const m = new Machine(checked, maxSteps);
   m.files = files || headers || {};
+  m.mmio = program ? mmio : null;
+  m.clock = clock;
   const r = m.run(entry);
   return { ...r, top: checked.top, diagnostics: [...checked.diagnostics, ...[...m.warned.values()].map((d) => ({ ...d, file: d.file || file }))], files: Object.fromEntries(m.fs) };
 }
@@ -104,7 +114,10 @@ class Machine {
     // (stdio's streams: stdout and stderr in the output, stdin empty)
     for (const [n, std] of [['stdout', 'out'], ['stderr', 'out'], ['stdin', 'in']]) this.globals.set(n, { isFile: true, fh: std === 'in' ? { name: 'stdin', text: '', pos: 0, w: false } : { std }, t: { w: 32, s: true } });
   }
-  tick(n) { if (++this.steps > this.maxSteps) throw new Halt(n?.loc, `the C simulation stopped after ${this.maxSteps.toLocaleString('en')} steps (an endless loop?)`); }
+  tick(n) {
+    if (++this.steps > this.maxSteps) throw new Halt(n?.loc, `the C simulation stopped after ${this.maxSteps.toLocaleString('en')} steps (an endless loop?)`);
+    if (this.clock && this.steps % this.clock.every === 0) this.clock.fn(this.steps);
+  }
   fail(n, message) { throw new Halt(n?.loc, message); }
   find(name) {
     const f = this.frames.at(-1);
@@ -183,6 +196,7 @@ class Machine {
       return { ok: true, output: this.out.join(''), exitCode: r ? Number(convert(r.v ?? 0n, { w: 32, s: true })) : 0, calls: this.calls, error: null, steps: this.steps };
     } catch (e) {
       if (e instanceof Exit) return { ok: true, output: this.out.join(''), exitCode: e.code, calls: this.calls, error: null, steps: this.steps };
+      if (e instanceof Stop) return { ok: true, output: this.out.join(''), exitCode: null, calls: this.calls, error: null, steps: this.steps, stopped: e.message || 'stopped' };
       // (the stack ran out: the calls too deep for it, at the function it ran in, #3558)
       if (isStackOverflow(e)) { const at = e.fn?.loc; return { ok: false, output: this.out.join(''), exitCode: null, calls: this.calls, error: { line: at?.line || 1, col: at?.col || 1, message: DEEP_MESSAGE }, steps: this.steps }; }
       if (!(e instanceof Halt)) throw e;

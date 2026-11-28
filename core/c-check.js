@@ -147,9 +147,13 @@ function checkSource(source, file, opts) {
   if (topPragma) top = topPragma.args.name || null;
   for (const f of funcs.values()) for (const st of f.body?.items || []) if (st.kind === 'pragma' && st.pragma.name === 'TOP') top = st.pragma.args.name || f.name;
   if (top && !funcs.get(top)?.body) { report(topPragma?.loc, `the top function '${top}' is not defined`); top = null; }
-  if (!top && opts.top && funcs.get(opts.top)?.body) top = opts.top;
-  if (!top) top = [...ast.items].reverse().find((it) => it.kind === 'func' && it.body && it.name !== 'main')?.name || null;
-  if (!top && !diags.some((d) => d.severity === 'error')) report({ line: 1, col: 1 }, 'no function to synthesize: Silinx HLS makes the top function into a module (main() is the test bench)');
+  // (a processor's program, a Zynq PS's, opts.program: nothing synthesized, every function its own, #4689)
+  if (opts.program) top = null;
+  else {
+    if (!top && opts.top && funcs.get(opts.top)?.body) top = opts.top;
+    if (!top) top = [...ast.items].reverse().find((it) => it.kind === 'func' && it.body && it.name !== 'main')?.name || null;
+    if (!top && !diags.some((d) => d.severity === 'error')) report({ line: 1, col: 1 }, 'no function to synthesize: Silinx HLS makes the top function into a module (main() is the test bench)');
+  }
 
   // ---------------------------------------------------------------- the call graph: what is synthesized
   const calls = new Map();   // name -> Set of the functions it calls
