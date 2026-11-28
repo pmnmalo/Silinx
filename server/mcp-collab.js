@@ -47,6 +47,13 @@ import { followedTry, tryLines } from '../core/collab-try.js';
 import { severityOf } from '../core/log-severity.js';
 import { ownerVersions, followVersion } from './mcp-collab-versions.js';
 
+/** A share's warning of an editor's change refused (#3527), added to `warnings` unless it is there already: an editor's client
+ * sends a refused change again at its next sync, refused again with the same words (twice on a slow machine, #6034). */
+export function refusalOnce(warnings, message) {
+  if (!warnings.includes(message)) warnings.push(message);
+  return warnings;
+}
+
 const DEFAULT_SERVER = 'http://127.0.0.1:8642';
 const ARRIVE_MS = 15_000;
 const shares = new Map();    // project -> { session, link, server, mode, off }
@@ -269,9 +276,9 @@ export const COLLAB_TOOLS = [
       publishProject(doc, { ...all, owner, bases });
       const token = own ? own.key : key ? String(key) : await tokenOf(origin);
       let session;
-      // (an editor's change the owner refused among them too, #3527)
+      // (an editor's change the owner refused among them too, #3527; said once, refusalOnce)
       const warnings = [];
-      const onEvent = ev => { if (ev.type === 'error' && ev.message) warnings.push(ev.message); };
+      const onEvent = ev => { if (ev.type === 'error' && ev.message) refusalOnce(warnings, ev.message); };
       try {
         session = await shareRoom({ url: relayUrl(origin, 'share'), token, doc, user: { name: owner }, editors: !!editors, WebSocket: await WebSocketImpl(), onEvent });
       } catch (e) { throw toolError(`cannot share through ${origin}: ${e.message} (is Silinx running there? silinx serve)`); }

@@ -35,7 +35,9 @@ uiTest('#5500 the MQTT broker: its tool, a Pico W\'s + MQTT, linked; Try it: b\'
   assert.deepEqual(await page.eval((ed) => { const b = document.querySelector(`${ed} .sys-add-broker`); return [b.textContent.trim(), b.title]; }, ED),
     ['MQTT Broker', 'Click the canvas to add an MQTT broker: the Pico Ws\' messages, published and subscribed']);
   // b has no MQTT interface: its + MQTT adds it; then linked to the broker (whose interface takes every client)
-  await page.click(`${ED} .sys-node[data-id="b"] .sys-head`);
+  // (selected through the editor, #6034: a click on its head as the drawing settled now and then missed it, its + MQTT never
+  // shown; the clicks on the canvas are its own tests')
+  await page.eval(() => window.Silinx.active.systemEditor.select({ kind: 'node', id: 'b' }));
   await page.waitFor((ed) => document.querySelector(`${ed} .asm-side .sys-add-mqtt`), [ED], { what: 'its + MQTT' });
   await page.click(`${ED} .asm-side .sys-add-mqtt`);
   await page.waitFor((ed) => document.querySelector(`${ed} .sys-iface[data-id="b.mqtt"]`) && !document.querySelector(`${ed} .asm-side .sys-add-mqtt`), [ED], { what: 'b.mqtt' });
