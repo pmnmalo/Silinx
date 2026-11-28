@@ -46,6 +46,20 @@ async function systemOf(name) {
   return { pj, nodes: model.nodes.filter(n => n.kind === 'fpga') };
 }
 
+/**
+ * The FPGA node `id`'s reports (#5632): its build folder's (build/nodes/<id>/build/reports.json, the Silinx toolchain's),
+ * with { node, module, dir (its build folder, the project's path) }; { available: false, node, module, dir } before its
+ * first run. A node that is no FPGA node of the System refused.
+ */
+export async function nodeReports(name, id) {
+  const { nodes } = await systemOf(name);
+  const node = nodes.find(n => n.id === id);
+  if (!node) throw new P.HttpError(400, `no FPGA node '${id}' in the System of '${name}' (${nodes.map(n => n.id).join(', ') || 'none'})`);
+  const at = { node: node.id, module: node.module, dir: `build/nodes/${node.id}/build` };
+  try { return { ...JSON.parse(await fs.readFile(path.join(nodeDir(name, node.id), 'build', 'reports.json'), 'utf8')), ...at }; }
+  catch { return { available: false, ...at }; }
+}
+
 // the node's module's ports, as the constraints read them (its folder's sources only, #5488)
 async function portsOf(name, pj, node) {
   const mod = node.module;

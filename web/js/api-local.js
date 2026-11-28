@@ -481,7 +481,7 @@ export const api = {
     }).catch(e => { if (!e.cancelled) push(`ERROR:Silinx - ${e.message}`); job.status = 'error'; job.error = e.message; });
     return { job: id };
   },
-  reports: async name => ((await savedBuild(name))?.report || { available: false }),
+  reports: async (name, node) => (node ? { available: false } : (await savedBuild(name))?.report || { available: false }),   // (a node's: the local server's, #5632)
   fpgaView: async name => ((await savedBuild(name))?.view || { available: false, reason: 'no-ncd' }),
   buildFile: (name, path) => buildFileOf(name, path),
   bitinfo: async name => {

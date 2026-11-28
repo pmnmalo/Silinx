@@ -243,8 +243,10 @@ function captureLeftOut(job, project, tool) {
   if (project.capture) job.log(CAPTURE_LEFT_OUT(tool));
 }
 
-/** A project's reports (GET /projects/:p/reports; the MCP server's get_report): { available: false } before any run. */
-export async function projectReports(name) {
+/** A project's reports (GET /projects/:p/reports; the MCP server's get_report): { available: false } before any run. A
+ *  System's FPGA node's (`node`, its id, #5632): server/system-implement.js nodeReports. */
+export async function projectReports(name, { node } = {}) {
+  if (node != null && node !== '') return (await import('./system-implement.js')).nodeReports(name, String(node));
   const P = Projects;
   const project = await P.readProject(name);
   const buildDir = path.join(P.projectDir(name), 'build');
@@ -320,7 +322,7 @@ export function registerImplRoutes(api, { wrap, projects: P }) {
   api.post('/projects/:p/program-system', checkBody(PROGRAM_SYSTEM_BODY), wrap(async req => ({ job: (await (await import('./system-program.js')).startSystemProgram(req.params.p, req.body)).id })));
   api.post('/projects/:p/build', checkBody(FIRMWARE_BODY), wrap(async req => ({ job: (await (await import('./system-build-all.js')).startSystemBuild(req.params.p, req.body)).id })));
 
-  api.get('/projects/:p/reports', wrap(req => projectReports(req.params.p)));
+  api.get('/projects/:p/reports', wrap(req => projectReports(req.params.p, { node: req.query?.node })));
 
   // the logic analyzer's capture on the board (#3176, server/ila-board.js: adepttool, the MCP tool capture's): a job, its
   // lines the run's, its result { capture, file }

@@ -205,7 +205,7 @@ export const api = {
   buildSystem: (name, node) => req('POST', `/api/projects/${enc(name)}/build`, { node }),
   // the logic analyzer's capture on the board (#3176): { job }, its result { capture, file }
   capture: (name, opts) => req('POST', `/api/projects/${enc(name)}/capture`, captureBody(opts)),
-  reports: name => req('GET', `/api/projects/${enc(name)}/reports`),
+  reports: (name, node) => req('GET', `/api/projects/${enc(name)}/reports${node ? `?node=${encodeURIComponent(node)}` : ''}`),   // (a System's FPGA node's, #5632)
   fpgaView: name => req('GET', `/api/projects/${enc(name)}/fpga-view`),
   bitinfo: name => req('GET', `/api/projects/${enc(name)}/bitinfo`),
   // (the project in the address, as every project's route, #4754)

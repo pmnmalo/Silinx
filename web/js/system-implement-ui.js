@@ -34,5 +34,7 @@ export async function runNodeImpl(node, steps, name) {
     procState.busy = false; runState.currentJob = null;
     // (its node's build plan changed: the Implement tree's marks, #5581)
     (await import('./system-implement-tree.js')).planChanged({ draw: true });
+    // (its Design Summary, when open, read again, #5632)
+    if (node !== '*') (await import('./app.js')).findDoc(`summary:${node}`)?.refresh?.();
   }
 }

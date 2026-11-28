@@ -959,6 +959,14 @@ variant, module, pins, firmware or language; its place on the canvas does not co
 **nothing to build** or **not buildable** (said why). A node's build writes what it was built from, `built-from.json`
 in its build's folder (its description and its sources' hashes, taken when it starts), whichever process started it.
 
+An FPGA node's **reports** (#5632, `web/js/system-node-reports.js`, `server/system-implement.js` nodeReports) are its
+build folder's, `build/nodes/<id>/build/reports.json` and its files. In Implement's tree (the Tasks layout's), and in the
+Processes of its Design-pane row (the ISE style), the node has its **Design Summary/Reports**: its own document, with its
+module, device and board, its utilization and timing, and its reports' links in its build folder. Its steps' reports
+sit under them: **View Synthesis Report** under Synthesize, **View Static Timing Report** under Implement Design. A
+report not made yet is said in the console. An open node summary is read again after the node's run. The MCP's
+`get_report` takes `node`, reading the same summary and reports (`GET /projects/:p/reports?node=<id>`).
+
 - The System row's **Build Plan** says the plan in the console, one line a node:
   `fpga: out of date (fpga/uart.vhd changed since its last build); built by the Silinx toolchain to build/nodes/fpga/build/uart.bit, programmed over JTAG`.
 - **Build All** builds the nodes that are not up to date, in the plan's order, each said (`System node fpga: built,

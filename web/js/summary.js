@@ -8,8 +8,20 @@ import { toolOf } from './tool-descriptors.js';
 import { h } from './ui.js';
 import { S, app } from './app.js';
 import { procState } from './state-proc.js';
+import { shownSystem } from './design-system.js';
+import { nodeProject } from '/core/system-node.js';
+import { nodeConstraintsPath } from '/core/system-constraints.js';
 
-export function mountSummary(el) {
+// a System's FPGA node as its build sees it (#5632): an FPGA project, its top the node's module, its board and device the
+// node's (core/system-node.js nodeProject); null when the System shown has no such node
+function nodeView(id) {
+  const s = shownSystem(), n = s?.system?.nodes.find(x => x.id === id && x.kind === 'fpga');
+  return n ? { ...nodeProject(S.project, n, nodeConstraintsPath(n)), system: s.file } : null;
+}
+
+/** The Design Summary in `el`: the project's, or a System's FPGA node's (`node`, its id: its build folder's reports,
+ *  #5632). */
+export function mountSummary(el, { node = null } = {}) {
   const page = h('div', { class: 'page' });
   el.append(page);
   // each refresh numbered: only the latest draws, one answered after it (asked earlier: older reports) dropped, its caller
@@ -17,15 +29,16 @@ export function mountSummary(el) {
   let asked = 0, latest = null;
   const refresh = () => (latest = draw(++asked));
   const draw = async (n) => {
-    const pj = S.project;
+    const pj = node ? nodeView(node) : S.project;
     if (!pj) return;
     let rep = null;
-    try { rep = await api.reports(pj.name); } catch { /* none */ }
+    try { rep = await api.reports(S.project.name, node); } catch { /* none */ }
+    const base = node ? `build/nodes/${node}/build/` : 'build/';
     if (n !== asked) return latest;
     const part = S.devices?.parts.find(p => p.part === pj.device.part);
     const errs = procState.diags.filter(d => d.severity === 'error').length, warns = procState.diags.length - errs;
     page.innerHTML = '';
-    page.append(h('h2', {}, `${pj.name} Project Status`));
+    page.append(h('h2', {}, node ? `System node ${node} Status` : `${pj.name} Project Status`));
     const row = (a, b, c, d) => h('tr', {}, h('th', {}, a), h('td', {}, b ?? ''), h('th', {}, c ?? ''), h('td', {}, d ?? ''));
     const sum = rep?.summary || {};
     const implState = sum.bitstream ? 'Programming File Generated' : sum.routed ? 'Placed and Routed' : sum.mapped ? 'Mapped' : sum.synthesized ? 'Synthesized' : 'New';
@@ -36,7 +49,7 @@ export function mountSummary(el) {
     const vivado = rep?.source === 'vivado', quartus = rep?.source === 'quartus';   // (Intel Quartus Prime: an Intel device, #5378)
     // (its caption the Tasks interface's only, where the tables are cards side by side: their tops in line, #1409)
     page.append(h('table', { class: 'summary-table' }, h('caption', { class: 'summary-status' }, 'Project Status'),
-      row('Project File:', `${pj.name}/silinx.json`, 'Parser Errors:', h('span', { class: errs ? 'status-bad' : 'status-good' }, errs ? `${errs} Errors` : 'No Errors')),
+      row(node ? 'System File:' : 'Project File:', node ? `${S.project.name}/${pj.system}` : `${pj.name}/silinx.json`, 'Parser Errors:', h('span', { class: errs ? 'status-bad' : 'status-good' }, errs ? `${errs} Errors` : 'No Errors')),
       row('Module Name:', pj.top || '(not set)', 'Implementation State:', implState),
       row('Target Device:', deviceLabel(pj.device), 'Warnings:', warns ? `${warns} Warnings` : 'No Warnings'),
       row('Board:', board ? board.name : 'None Specified', 'Test Benches:', String((pj.files || []).filter(f => f.role === 'sim').length)),
@@ -110,7 +123,7 @@ export function mountSummary(el) {
         : open && /\.fasm$/.test(rep?.files?.routed || '') ? [['Synthesis Report (Yosys)', `open/${pj.top}_stat.txt`, rep?.synthesis], ['Routed Design (FASM)', 'open/routed.fasm', rep?.files?.routed], ['Static Timing Report', 'open/timing.txt', rep?.timing]]
         : open ? [['Synthesis Report (Yosys)', `open/${pj.top}_stat.txt`, rep?.synthesis], ['Placed Design (XDL)', 'open/placed.xdl', rep?.files?.placed], ['Routed Design (XDL)', 'open/routed.xdl', rep?.files?.routed], ['Static Timing Report', 'open/timing.txt', rep?.timing]]
         : [['Synthesis Report', `${pj.top}.syr`, rep?.synthesis], ['Map Report', `${pj.top}_map.mrp`, rep?.map], ['Place and Route Report', `${pj.top}.par`, rep?.par], ['Post-PAR Static Timing Report', `${pj.top}.twr`, rep?.timing], ['Bitgen Report', `${pj.top}.bgn`, rep?.bit]])
-        .map(([n, f, r]) => h('tr', {}, h('td', {}, n), h('td', {}, r ? h('a', { onclick: () => app.openFile(`build/${f}`) }, 'Current') : '')))));
+        .map(([n, f, r]) => h('tr', {}, h('td', {}, n), h('td', {}, r ? h('a', { onclick: () => app.openFile(`${base}${f}`) }, 'Current') : '')))));
     // quick links (ISE sidebar style)
     page.append(h('div', { style: { color: 'var(--grey-3)', marginTop: '8px' } },
       // (a 7-series device: AMD Vivado's, #1649)
