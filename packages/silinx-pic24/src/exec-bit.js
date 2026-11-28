@@ -74,10 +74,10 @@ function bsw(cpu, op) {
   rmw(cpu, p, sOf(op), 0, (v) => (one ? v | (1 << bit) : v & ~(1 << bit)));
 }
 
-// 0xA8-0xAC, 0xAE, 0xAF on f: a word's f at op<12:1> (the assembler turns a byte's bit into its word's), bit4 at
-// op<15:13> and op<0>
+// 0xA8-0xAC, 0xAE, 0xAF on f: a word's f at op<12:1> (the assembler turns a byte's bit into its word's), bit4<2:0> at
+// op<15:13> and bit4<3> at op<0>, a byte's address's LSB (XC16's encodings, #6017: `bclr.b 0x6a7, #5` 0xA9A6A7)
 function bitF(cpu, op) {
-  const t = op >>> 16, f = op & 0x1ffe, bit = (((op >> 13) & 7) << 1) | (op & 1), m = 1 << bit;
+  const t = op >>> 16, f = op & 0x1ffe, bit = ((op & 1) << 3) | ((op >> 13) & 7), m = 1 << bit;
   const v = cpu.rd(f, 0);
   switch (t) {
     case 0xa8: cpu.wr(f, v | m, 0); return;
