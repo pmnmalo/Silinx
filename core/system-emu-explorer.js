@@ -23,10 +23,13 @@ export function explorerBoard(n, b, driven) {
 }
 
 /** What the board shows: { leds: { D3: the share of the window it was lit… }, held: { S3: pressed… }, analog: { R6, TC1047A },
- *  lcd: [its two rows] }; lit(pin): a LED pin's share of the window at 1. */
+ *  lcd: [its two rows] }; lit(pin): a LED pin's share of the window at 1, as the PIC24 drove it. A LED whose pin the PIC24
+ *  does not drive now (an input: RA7, S5's too) follows the pin's level, its button's 0 or its pull-up's 1 (#5880: the
+ *  watched trace is the PIC24's drive only, a press never in it). */
 export function explorerState(sim, b, lit) {
   const x = explorerOf(sim.nodes.get(b.id));
-  return { leds: Object.fromEntries(Object.entries(b.leds).map(([d, pin]) => [d, lit(pin)])), held: { ...b.held }, analog: { ...b.analog },
+  const led = (pin) => (x && x.ports.driven(pin) == null ? (x.ports.level(pin) === 1 ? 1 : 0) : lit(pin));
+  return { leds: Object.fromEntries(Object.entries(b.leds).map(([d, pin]) => [d, led(pin)])), held: { ...b.held }, analog: { ...b.analog },
     lcd: x ? x.lcd.lines() : ['', ''] };
 }
 

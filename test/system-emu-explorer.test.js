@@ -2,7 +2,7 @@
 // board to emulate (its buttons, those whose pins a link drives left out; R6 and the TC1047A; its LEDs' pins watched),
 // what it shows over a window (each LED's share of it lit, the buttons held, R6 and the temperature, the LCD's rows), its
 // buttons pressed through the node's pins (S3 lighting D3 in its firmware), R6 and the temperature on the board's model
-// (the A/D converter reads them), the wrong part or value refused.
+// (the A/D converter reads them), the wrong part or value refused; D10 following RA7 while the PIC24 reads S5 there (#5880).
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { emulationBoards, withBoards, watchBoards, boardStates, setBoardInput } from '../core/system-emu.js';
@@ -11,12 +11,12 @@ import { systemPlan } from '../core/system-build.js';
 import { normalizeSystem } from '../core/system-doc.js';
 import { explorerOf } from '../core/system-sim-pic24.js';
 import { EXPLORER_ANALOG } from '../core/system-emu-explorer.js';
-import { explorerHex } from './pic24-node-lib.mjs';
+import { explorerHex, buttonsHex } from './pic24-node-lib.mjs';
 
 const MS = 1e9;
-function emulate(sys) {
+function emulate(sys, hex = explorerHex()) {
   const plan = systemPlan(sys, {});
-  const inputs = { plan, netlists: {}, firmware: Object.fromEntries(sys.nodes.filter((n) => n.kind === 'mcu').map((n) => [n.id, { name: n.firmware, data: explorerHex() }])) };
+  const inputs = { plan, netlists: {}, firmware: Object.fromEntries(sys.nodes.filter((n) => n.kind === 'mcu').map((n) => [n.id, { name: n.firmware, data: hex }])) };
   const boards = emulationBoards(sys, inputs);
   const r = systemFromInputs(sys, withBoards(inputs, boards));
   watchBoards(r.sim, boards);
@@ -78,4 +78,28 @@ test('#5484 an Explorer 16/32\'s button whose pin a link drives is no input; a w
   setBoardInput(sim, boards[0], 'S3', 1);
   sim.run(5 * MS);
   assert.deepEqual([sim.nodes.get('a').value('RA0'), sim.nodes.get('b').value('RA1')], [1, 1]);
+});
+
+test('#5880 regression: D10 and S5 share RA7; with RA7 an input, D10 follows its level: lit by its pull-up, off while S5 holds it low', () => {
+  // (buttonsHex: RA0..RA6 outputs, RA7 an input, S5 read there and shown on D7)
+  const { sim, boards } = emulate(one(), buttonsHex());
+  const [b] = boards;
+  sim.run(5 * MS);
+  boardStates(sim, boards, 0, 5 * MS);
+  sim.run(10 * MS);
+  let s = boardStates(sim, boards, 5 * MS, 10 * MS).pic;
+  assert.deepEqual([s.leds.D10, s.leds.D7], [1, 0], 'S5 let go: RA7 pulled up, D10 lit; the PIC24 reads 1');
+  setBoardInput(sim, b, 'S5', 1);
+  sim.run(15 * MS);
+  s = boardStates(sim, boards, 10 * MS, 15 * MS).pic;
+  assert.deepEqual([s.leds.D10, s.held], [0, { S5: true }], 'S5 held: RA7 at 0, D10 off (lit on the old code)');
+  assert.ok(s.leds.D7 > 0.99, `the PIC24 read S5: D7 ${s.leds.D7}`);
+  setBoardInput(sim, b, 'S5', 0);
+  sim.run(20 * MS);
+  s = boardStates(sim, boards, 15 * MS, 20 * MS).pic;
+  assert.deepEqual([s.leds.D10, s.held], [1, { S5: false }]);
+  assert.ok(s.leds.D7 < 0.01);
+  // (an LED the PIC24 drives: its trace's share, as before)
+  assert.deepEqual([s.leds.D3, s.leds.D4], [0, 0]);
+  assert.deepEqual(sim.log, []);
 });

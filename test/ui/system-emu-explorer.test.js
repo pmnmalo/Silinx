@@ -138,7 +138,10 @@ uiTest('#5618 regression: the Explorer 16/32\'s buttons S3 to S6 clicked, then h
       await page.mouse('mousePressed', at.x, at.y);
       await page.waitFor((x) => { const b = window.SilinxApp.findDoc('sysemu:pic.sys.json').emulator.state()?.boards.pic; return b?.held[x[0]] && b.leds[x[1]] > 0.9; }, [[s, d]], { what: `${theme}: ${s} held, ${d} lit`, timeout: 30000 });
       assert.equal(await page.eval((e, p) => document.querySelector(`${e} [data-node=pic] .sys-exp-btn[data-part=${p}]`).classList.contains('on'), EMU, s), true, `${s} drawn down`);
+      // (#5880: S5 holds RA7, D10's pin too, at 0: D10 off, drawn as D9, an LED off; lit again by RA7's pull-up once let go)
+      if (s === 'S5') await page.waitFor((e) => { const l = (p) => getComputedStyle(document.querySelector(`${e} [data-node=pic] .sys-exp-led[data-part=${p}]`)).backgroundColor; return window.SilinxApp.findDoc('sysemu:pic.sys.json').emulator.state().boards.pic.leds.D10 === 0 && l('D10') === l('D9'); }, [EMU], { what: `${theme}: S5 held, D10 off and drawn as D9`, timeout: 10000 });
       await page.mouse('mouseReleased', at.x, at.y);
+      if (s === 'S5') await page.waitFor(() => window.SilinxApp.findDoc('sysemu:pic.sys.json').emulator.state()?.boards.pic.leds.D10 === 1, [], { what: `${theme}: S5 let go, D10 lit by the pull-up`, timeout: 30000 });
       await page.waitFor((x) => { const b = window.SilinxApp.findDoc('sysemu:pic.sys.json').emulator.state()?.boards.pic; return b && !b.held[x[0]] && b.leds[x[1]] < 0.1; }, [[s, d]], { what: `${theme}: ${s} let go, ${d} off`, timeout: 30000 });
     }
   }
