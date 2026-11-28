@@ -329,13 +329,14 @@ function checkLinks(sys, nodes, { err, warn }, wiresOut) {
     const [a, b] = ends;
     if (a.at === b.at) { err(`${l.id}: both ends on ${a.at.n.id}: a link joins two nodes`, ref); continue; }
     if (!a.r || !b.r) continue;   // (an interface in error: said)
-    // (a Zynq's PS UART, #4687: its board's USB serial port, a terminal's only; its Cortex-A9 not simulated, no wires)
+    // (a Zynq's PS UART, #4687: its board's USB serial port, a terminal's only, no wires; its program simulated, the PS a
+    // node of the run of its own, #4689)
     const psEnd = [a, b].find((e) => e.r.f?.ps);
     if (psEnd) {
       const other = psEnd === a ? b : a;
       if (other.at.n.kind !== 'terminal') { err(`${l.id}: ${psEnd.name} is its board's USB serial port: link it to a serial terminal (${other.name} is a ${other.at.n.kind} node's)`, ref); continue; }
       uartWires(l, a, b, { err });
-      warn(`${l.id}: ${psEnd.name} is its PS's, whose Cortex-A9 is not simulated: Simulate and Emulate leave the link out (its terminal's Real Board reaches it)`, ref);
+      if (!psEnd.at.n.ps) warn(`${l.id}: ${psEnd.at.n.id} has no PS program: Simulate and Emulate leave the link out (its terminal's Real Board reaches it)`, ref);
       continue;
     }
     // (an MQTT link: a client and its broker, #5500; messages, no wires)

@@ -39,12 +39,14 @@ test('#4687 a PS UART refused: a board with no PS, a microcontroller, tx or rx p
   assert.equal(addInterface(once, 'zybo', { ps: true }).error, 'zybo: its PS UART is there already (PS_UART1)');
 });
 
-test('#4687 a PS UART described and checked: linked to a terminal, no wires, the link out of the simulation; refused to another node', () => {
+test('#4687 a PS UART described and checked: linked to a terminal, no wires; with no PS program, the link out of the simulation; refused to another node', () => {
   let s = addInterface(sys(zybo, term), 'zybo', { ps: true }).system;
   s = addLink(s, { a: 'zybo.PS_UART1', b: 'term.serial' }).system;
   assert.ok(describeSystem(s).includes('  PS_UART1: UART 115200 baud 8N1, its PS\'s UART1: TX MIO 48, RX MIO 49, the board\'s USB serial port'));
   assert.deepEqual(analyzeSystem(s, {}).wires, []);
-  assert.deepEqual(diags(s), ['warning: serial: zybo.PS_UART1 is its PS\'s, whose Cortex-A9 is not simulated: Simulate and Emulate leave the link out (its terminal\'s Real Board reaches it)']);
+  // (its node with no PS program: the link left out of the simulation, said; with one, simulated: no warning, #4689)
+  assert.deepEqual(diags(s), ['warning: serial: zybo has no PS program: Simulate and Emulate leave the link out (its terminal\'s Real Board reaches it)']);
+  assert.deepEqual(diags(normalizeSystem({ ...s, nodes: [{ ...s.nodes[0], ps: 'zybo/ps/main.c' }, s.nodes[1]] })), []);
   // (the terminal at another baud: said, as any UART link)
   const slow = normalizeSystem({ ...s, nodes: [s.nodes[0], { ...term, interfaces: [{ name: 'serial', kind: 'uart', baud: 9600, frame: '8N1' }] }] });
   assert.ok(diags(slow).includes('error: serial: zybo.PS_UART1 at 115200 baud, term.serial at 9600: a UART\'s ends at one baud'));
