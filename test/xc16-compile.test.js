@@ -12,7 +12,7 @@ import { XC16_DEVICES, XC16_OPT, XC16_HEAP, XC16_IMAGE, isPic24, nodeProgram, pi
 import { mcuBoard } from '../core/system-doc.js';
 
 const PIC = { id: 'pic', kind: 'mcu', board: 'explorer-1632', lang: 'c', firmware: 'pic/lcd_uart.hex' };
-const FILES = ['uart_pic24.sys.json', 'pic/lcd_uart.asm', 'pic/lcd_uart.hex', 'pic/main.c', 'pic/lcd.h', 'pic/lib/delay.s', 'pic/lib/start.S',
+const FILES = ['uart_fpga_pic24.sys.json', 'pic/lcd_uart.asm', 'pic/lcd_uart.hex', 'pic/main.c', 'pic/lcd.h', 'pic/lib/delay.s', 'pic/lib/start.S',
   'pic/notes.txt', 'pic/build/x.c', 'pic2/other.c', 'fpga/uart.vhd'];
 
 test('#5482 the device: the Explorer 16/32\'s PIC24FJ1024GB610, its family\'s linker script; -O1 the free licence\'s; a heap; the image', () => {

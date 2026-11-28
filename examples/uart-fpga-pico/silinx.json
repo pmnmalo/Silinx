@@ -1,5 +1,5 @@
 {
-  "name": "uart-pic24",
+  "name": "uart-fpga-pico",
   "version": 1,
   "kind": "system",
   "device": {

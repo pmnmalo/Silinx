@@ -4,7 +4,7 @@
 // it runs its .py on MicroPython's WebAssembly port (the console says which back end): the program's bytes in the terminal, its
 // console a terminal of its own, a line typed to the terminal echoed back in upper case; no warnings. Portuguese; both
 // interfaces. Emulate: the ESP32 DevKitC drawn (#5495), each of its pins' level. #5658: the same System on both back ends, the same run (each wire's bytes at the same times, the consoles); a
-// program with a Timer, a PWM, an SPI read and an I²C write no one acknowledges the same on both (#5495). The uart-esp32
+// program with a Timer, a PWM, an SPI read and an I²C write no one acknowledges the same on both (#5495). The uart-fpga-esp32
 // example: its hello echoed by the FPGA into the ESP32's console; + SPI gives its node SPI1.
 import { before, after } from 'node:test';
 import assert from 'node:assert/strict';
@@ -209,8 +209,8 @@ uiTest('#5881 #5884 regression: Try it, an ESP32 asking input(): a line typed in
   assert.deepEqual(page.console.filter((c) => c.type === 'warning' || c.type === 'warn' || c.type === 'error').map((c) => c.text), []);
 }, { timeout: 300000 });
 
-uiTest('#5495 the uart-esp32 example: Try it, its hello echoed by the FPGA into the ESP32\'s console; + SPI gives its node SPI1', E, async (page) => {
-  await makeProject(env, { name: 'UartEsp', template: 'uart-esp32' });
+uiTest('#5495 the uart-fpga-esp32 example: Try it, its hello echoed by the FPGA into the ESP32\'s console; + SPI gives its node SPI1', E, async (page) => {
+  await makeProject(env, { name: 'UartEsp', template: 'uart-fpga-esp32' });
   await page.openProject('UartEsp');
   await page.leftTab('design');
   await page.waitFor(() => [...document.querySelectorAll('#hier .row .badge')].some((b) => b.textContent === 'System'), [], { what: 'the System\'s row' });

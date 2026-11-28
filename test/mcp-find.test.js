@@ -109,7 +109,7 @@ test('#5911 find_in_project: a register map, an AVR\'s assembly, a Pico\'s Pytho
   for (const f of ['fpga/pwm_top.vhd', 'fpga/pwm_regs.vhd', 'uno/regs.asm']) assert.equal(by[f].count, words(await rd(f), 'duty'), f);
   assert.equal(by['fpga/pwm_regs.regs.json'].count, strings(JSON.parse(await rd('fpga/pwm_regs.regs.json'))).reduce((s, x) => s + words(x, 'duty'), 0));
   // (a Pico's program; an XDC and a circuit written in a project)
-  await ok('new_project_from_example', { name: 'pico', example: 'uart-pico' });
+  await ok('new_project_from_example', { name: 'pico', example: 'uart-fpga-pico' });
   const py = await ok('find_in_project', { project: 'pico', text: 'uart', whole_word: true });
   assert.equal(py.data.files.find(f => f.path === 'pico/code.py')?.count, words(await P.readFile('pico', 'pico/code.py'), 'uart'));
   await ok('write_file', { project: 'pico', path: 'extra/top.xdc', text: 'set_property PACKAGE_PIN W5 [get_ports zzclk]\n' });

@@ -1,5 +1,5 @@
 {
-  "name": "uart-esp32",
+  "name": "uart-fpga-esp32",
   "version": 1,
   "kind": "system",
   "device": {

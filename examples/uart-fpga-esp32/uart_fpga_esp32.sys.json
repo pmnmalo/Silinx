@@ -1,17 +1,17 @@
 {
   "format": "silinx-system",
   "version": 2,
-  "name": "uart_pic24",
+  "name": "uart_fpga_esp32",
   "nodes": [
     {
-      "id": "pic",
+      "id": "esp",
       "kind": "mcu",
-      "board": "explorer-1632",
-      "firmware": "pic/lcd_uart.hex",
-      "lang": "c",
+      "board": "esp32-devkitc",
+      "firmware": "esp/main.py",
+      "lang": "micropython",
       "interfaces": [
         {
-          "name": "UART",
+          "name": "UART2",
           "kind": "uart",
           "baud": 9600,
           "frame": "8N1"
@@ -46,7 +46,7 @@
     {
       "id": "serial",
       "kind": "uart",
-      "a": "pic.UART",
+      "a": "esp.UART2",
       "b": "fpga.uart"
     }
   ]

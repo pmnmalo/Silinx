@@ -30,8 +30,9 @@ first, with three cards, and a project can move to another mode later with **Pro
   its row's **Add Shield** puts a circuit around it (`shield/shield.circ.json`: a breadboard, its supply and the board),
   where its buttons, switches, 7-segment displays, LCD and LEDs are wired to its pins; its row's Emulate Node and
   Simulate Node then run the board with its shield.
-- **System**: an empty System, or a System example (uart-avr, spi-avr, i2c-avr, regs-avr, uart-pic24, adc-pmod,
-  uart-pico, uart-esp32, uart-zynq).
+- **System**: an empty System, or a System example (uart-avr, spi-avr, i2c-avr, regs-avr, uart-fpga-pic24, adc-pmod,
+  uart-fpga-pico, uart-fpga-esp32, uart-zynq; the first three named uart-pic24, uart-pico and uart-esp32 before, names that
+  still open them, in a link too).
 
 Systems, and with them the processor boards, are in the development build until they are stable.
 

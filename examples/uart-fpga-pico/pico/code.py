@@ -1,4 +1,4 @@
-# code.py: the Raspberry Pi Pico's program of the uart-pico example, run by CircuitPython from its CIRCUITPY drive.
+# code.py: the Raspberry Pi Pico's program of the uart-fpga-pico example, run by CircuitPython from its CIRCUITPY drive.
 # busio.UART on GP0 (TX) and GP1 (RX) at 9600 baud, 8N1: it sends "Hello from the Pico!" CR LF to the FPGA, which
 # echoes each byte back and shows it (its LEDs and its display); each line that comes back is printed on the console
 # (the Pico's USB serial port) and toggles the Pico's LED. The FPGA's BTN0 sends its own message: printed too.
