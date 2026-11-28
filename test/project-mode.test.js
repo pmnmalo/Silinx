@@ -9,6 +9,7 @@ import { fileURLToPath } from 'node:url';
 import { MODES, modeById, modeOf, modeOn, profileMode, newProjectProfile } from '../core/project-mode.js';
 import { PROFILES, profileOf, withProfile } from '../core/project-profile.js';
 import { SYSTEM_EXAMPLES, createRefusal } from '../core/project-kind.js';
+import { processorBoardOf } from '../core/processor-board.js';
 import { setBuildChannel, SYSTEMS_OFF } from '../core/build-channel.js';
 
 setBuildChannel('dev');
@@ -60,7 +61,8 @@ test('#5754 the examples and the test designs: a System example in System mode, 
       const f = path.join(base, n, 'silinx.json');
       if (!fs.existsSync(f)) continue;
       const pj = JSON.parse(fs.readFileSync(f, 'utf8'));
-      const want = SYSTEM_EXAMPLES.includes(n) || profileOf(pj) === 'system' || profileOf(pj) === 'embedded' ? 'system' : profileOf(pj) === 'logic' ? 'circuit' : 'board';
+      // (a processor board's example, #5874: a Board project of that board)
+      const want = processorBoardOf(pj) ? 'board' : SYSTEM_EXAMPLES.includes(n) || profileOf(pj) === 'system' || profileOf(pj) === 'embedded' ? 'system' : profileOf(pj) === 'logic' ? 'circuit' : 'board';
       assert.equal(modeOf(pj), want, `${dir}/${n}`);
     }
   }

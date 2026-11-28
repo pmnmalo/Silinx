@@ -1242,6 +1242,16 @@ The local server does the same for the MCP's `serial_terminal` (`server/serial-m
     on the terminal (#4689: with a shorter period and delay, as its tests do). It teaches memory-mapped
     registers between a processor and the logic, the Zynq's way.
 
+The processor boards alone have examples of their own (#5874, `core/examples.js` `PROCESSOR_EXAMPLES`): the FPGA
+examples' designs (blinky, traffic, stopwatch, clock, lock) with the same behaviour on the board's own parts, Board
+projects of one board (a System of its one microcontroller node, `core/processor-board.js`), listed by New Project's Board
+Type and the MCP's `list_examples` `board_type`, and made on any board of their type (`exampleOnBoard`). The Explorer
+16/32's are PIC24 assembly, their `.hex` made by the tests' assembler as `uart-fpga-pic24`'s (Silinx's own assembler:
+#5893); each runs on a 10 ms tick of Timer1, its buttons S3..S6 standing for the FPGA boards' buttons and switches, R6 for
+the lock's switches. The Arduino's, the Pico's and the ESP32's are to come with their shields (#5898: a circuit around
+the board), and each board's uart with its serial terminal. `test/processor-examples.test.js` runs each one,
+`test/ui/processor-examples.test.js` makes them in New Project.
+
 A scenario test fits `grade` and the labs: press the Arduino's button, expect "OK" on the FPGA's UART.
 
 ## Where each part runs

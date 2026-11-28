@@ -27,7 +27,7 @@ warnings."* Files go in and out of the projects only through an exchange folder:
 
 `node bin/silinx.js mcp` serves the projects of the Silinx workspace to an AI assistant (Claude
 Desktop, Claude Code, any client of the Model Context Protocol) over stdin / stdout. Its tools:
-`list_examples` (the examples, as New Project's Start from, each with its modes), `new_project_from_example` (`mode: circuit` for a Circuit example), `new_project` (an empty one: `mode` circuit, board or system, as New Project's cards; for an FPGA board, or a processor board alone), `set_top` (the top
+`list_examples` (the examples, as New Project's Start from, each with its modes and Board Type; `mode` and `board_type` list only those), `new_project_from_example` (`mode: circuit` for a Circuit example; a processor board's example on another board of its type with `board`), `new_project` (an empty one: `mode` circuit, board or system, as New Project's cards; for an FPGA board, or a processor board alone), `set_top` (the top
 module and the test bench, as *Set as Top Module*; the constraints from the board's pins, as *Update
 Constraints*; `unset_top`, as *Unset as Top Module*), `list_projects`, `project_info`, `read_file`, `write_file` (a drawing's HDL file made again from it, as its editor does),
 `list_devices` (the boards and devices), `set_design_properties` (its `mode`, as Project ▸ Change Mode…, down with `confirm`, [Project modes](modes.md); the board, the device, the synthesis tool, the Preferred Language, the Project Kind, as

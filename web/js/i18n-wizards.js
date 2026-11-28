@@ -255,4 +255,6 @@ export const WIZARDS_PT_PATTERNS = [
   [/^Board project '(.+)' made for the (.+): its firmware (\S+), which blinks its LED\.$/, "Projeto Placa '$1' criado para a $2: o seu firmware $3, que faz piscar o seu LED."],
   [/^Board project '(.+)' made for the (.+): no firmware yet: put its \.hex \(MPLAB X's\) in its folder (\S+) and make it the node's firmware \(its row ▸ Open, or the MCP's edit_system\)\.$/,
     "Projeto Placa '$1' criado para a $2: ainda sem firmware: ponha o seu .hex (do MPLAB X) na sua pasta $3 e faça dele o firmware do nó (a sua linha ▸ Abrir, ou o edit_system do MCP)."],
+  // (from a processor board's example, #5874: core/processor-board.js processorExampleText)
+  [/^Board project '(.+)' made from the example (\S+) for the (.+): its firmware (\S+)\.$/, "Projeto Placa '$1' criado a partir do exemplo $2 para a $3: o seu firmware $4."],
 ];

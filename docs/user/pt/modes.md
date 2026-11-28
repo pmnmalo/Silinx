@@ -26,7 +26,15 @@ Modo…** (Project ▸ Change Mode…).
   e a página das definições lista as placas desse tipo. Uma placa FPGA faz o projeto FPGA de todas as versões anteriores
   (vazio ou a partir de qualquer exemplo FPGA, blinky, pong, uart…). Uma placa de processador não precisa de nenhum
   campo da FPGA, e o projeto começa com um firmware que faz piscar o LED da placa (um programa em assembly para um Arduino, um em MicroPython ou CircuitPython
-  para um Pico, em MicroPython para um ESP32; o PIC24 começa sem nenhum: o seu `.hex` é do MPLAB X). Selecione a linha
+  para um Pico, em MicroPython para um ESP32; o PIC24 começa sem nenhum: o seu `.hex` é do MPLAB X), ou a partir de um
+  dos exemplos do seu Tipo de Placa: os desenhos dos exemplos FPGA, o mesmo comportamento nos LEDs, botões e ecrã da
+  própria placa, com o sufixo da placa no nome, para comparar a solução em hardware e em software do mesmo problema. A
+  Explorer 16/32 (PIC24) tem **blinky-pic24** (o knight rider, os seus passos no LCD), **traffic-pic24** (a passadeira),
+  **stopwatch-pic24** (com as suas voltas), **clock-pic24** e **lock-pic24** (o código escolhido com o potenciómetro R6),
+  em assembly, cada um com o seu `.hex`; os botões S3..S6 fazem as vezes dos botões e interruptores das placas FPGA, as
+  primeiras linhas de cada programa dizem quais. Os do Arduino, do Pico e do ESP32 vêm a seguir, nos seus shields.
+
+  Selecione a linha
   da placa no painel Design para o seu **Emular Nó** (Emulate Node), **Simular Nó** (Simulate Node) e **Programar Nó**
   (Program Node). Um Arduino, um Pico ou um ESP32 não tem botões, interruptores nem mostrador seus: o **Adicionar Shield**
   (Add Shield) da sua linha põe um circuito à sua volta (`shield/shield.circ.json`: uma placa de ensaio, a sua
@@ -69,5 +77,7 @@ nas **Propriedades do Projeto** (Design Properties).
 
 O servidor MCP faz o mesmo ([O Silinx para um assistente de IA](ai-mcp.md)): o `new_project` recebe `mode` (`circuit`,
 `board`, `system`) e uma placa de processador como `board`; o `new_project_from_example` recebe `mode circuit` para um
-exemplo de Circuito; o `list_examples` dá os modos de cada exemplo; o `set_design_properties` com `mode` muda o modo de um projeto, uma descida
+exemplo de Circuito; o `list_examples` dá os modos e o Tipo de Placa de cada exemplo (o seu `mode` e o seu `board_type`
+listam só esses), e o `new_project_from_example` cria o exemplo de uma placa de processador noutra placa do seu tipo
+(`board`); o `set_design_properties` com `mode` muda o modo de um projeto, uma descida
 só com `confirm`, a recusa a dizer o que se perderia; o `project_info` e o `list_projects` dão o modo de cada projeto.

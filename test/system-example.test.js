@@ -65,7 +65,7 @@ test('#4702 uart-avr made with the MCP server: its System checked (the 5 V warni
   // (listed after the FPGA examples, as the System ones: uart-avr, spi-avr, i2c-avr, regs-avr, uart-fpga-pic24, adc-pmod, uart-fpga-pico, uart-fpga-esp32, uart-zynq, regs-zynq)
   const ex = await ok('list_examples', {});
   assert.deepEqual(ex.text.split('\n').slice(-10, -6), ['uart-avr: a System example (FPGA and microcontroller nodes in a System), 5 file(s)', 'spi-avr: a System example (FPGA and microcontroller nodes in a System), 1 file(s)', 'i2c-avr: a System example (FPGA and microcontroller nodes in a System), 1 file(s)', 'regs-avr: a System example (FPGA and microcontroller nodes in a System), 2 file(s)']);
-  assert.deepEqual(ex.data.examples.at(-10), { name: 'uart-avr', kind: 'system', modes: ['system'], top: null, simTop: null, board: null, device: null, files: 5 });
+  assert.deepEqual(ex.data.examples.at(-10), { name: 'uart-avr', kind: 'system', modes: ['system'], boardType: null, top: null, simTop: null, board: null, device: null, files: 5 });
   await ok('new_project_from_example', { name: 'ua', example: 'uart-avr' });
   const warn = "serial: uno's D1, a 5 V output, drives fpga's rx (pin J3), a 3.3 V input of the FPGA (LVCMOS33): a level shifter or a divider on the real boards";
   const c = await ok('check_system', { project: 'ua', file: 'uart_avr.sys.json' });
