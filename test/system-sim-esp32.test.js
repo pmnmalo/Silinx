@@ -130,3 +130,27 @@ test('#5495 the check (an ESP32 in C refused, a .py its program), the editor\'s 
   assert.deepEqual([a.system.nodes[0].lang, a.system.nodes[0].interfaces], ['micropython', [{ name: 'UART2', kind: 'uart', baud: 9600, frame: '8N1' }]]);
   assert.deepEqual(systemBuildPlan(SYS(), { files: ['esp/main.py'] }).nodes.map(e => [e.id, e.programmer, e.state]), [['esp', 'repl', 'nothing to build']]);
 });
+
+test('#5881 regression: an output pin\'s value() its level, as on the board: led.value(not led.value()) toggles; an open drain\'s released 1 the line\'s', async () => {
+  const PY = ['from machine import Pin', 'import time', 'led = Pin(2, Pin.OUT)', 'led.value(1)', 'print("read", led.value())',
+    'for i in range(3):', '    led.value(not led.value())', '    print("on" if led.value() else "off")', '    time.sleep_ms(1)',
+    'od = Pin(4, Pin.OPEN_DRAIN)', 'od.value(0)', 'print("drain", od.value())', 'od.value(1)', 'print("released", od.value())', ''].join('\n');
+  const { r, rep } = await run(PY, 10, null, { ...SYS(), links: [] });
+  assert.deepEqual([rep.warnings, rep.errors], [[], []]);
+  assert.equal(rep.terminals['esp.repl'], 'read 1\noff\non\noff\ndrain 0\nreleased 0\n', 'its pins read back (released: GPIO4 not pulled up, floating: 0)');
+  assert.equal(r.sim.nodes.get('esp').value('GPIO2'), 0);
+});
+
+test('#5884 regression: input() reads a line typed to its console, as the board\'s REPL: an echo, its time passing while it waits; no stall', async () => {
+  const PY = ['while True:', '    s = input("> ")', '    print("got", s.upper())', ''].join('\n');
+  const { r } = await run(PY, 5, null, { ...SYS(), links: [] });
+  const repl = r.terminals.get('esp.repl');
+  repl.send([...Buffer.from('hello\n')]);
+  r.sim.run(r.sim.now + 5e9);
+  repl.send([...Buffer.from('silinx\n')]);
+  r.sim.run(r.sim.now + 5e9);
+  const rep = systemReport(r);
+  assert.deepEqual([rep.warnings, rep.errors], [[], []], 'no "did not answer in 30 s"');
+  assert.equal(rep.terminals['esp.repl'], '> hello\ngot HELLO\n> silinx\ngot SILINX\n> ');
+  assert.ok(r.sim.now >= 15e9, `its time went on: ${r.sim.now}`);
+});

@@ -104,3 +104,13 @@ test('#5494 the check (a Pico in C refused), the editor\'s Pico (MicroPython, it
   const plan = systemBuildPlan(SYS(), { files: ['pico/main.py'] });
   assert.deepEqual(plan.nodes.map(e => [e.id, e.programmer, e.state, e.reason]), [['pico', 'repl', 'nothing to build', 'a MicroPython program runs as it is']]);
 });
+
+test('#5881 regression: an output pin\'s value() its level, as on the Pico: after toggle() it reads back what it drives; an input still reads its link', async () => {
+  const PY = ['from machine import Pin', 'import time', 'led = Pin(25, Pin.OUT)', 'led.value(1)', 'print("read", led.value())',
+    'for i in range(3):', '    led.toggle()', '    print("on" if led.value() else "off")', '    time.sleep_ms(1)',
+    'led.value(not led.value())', 'print("flip", led.value())', 'b = Pin(1, Pin.IN, Pin.PULL_UP)', 'print("in", b.value())', ''].join('\n');
+  const { r, rep } = await run(PY, 300);
+  assert.deepEqual([rep.warnings, rep.errors], [[], []]);
+  assert.equal(rep.terminals['pico.repl'].replace(/^[\s\S]*?read/, 'read'), 'read 1\r\noff\r\non\r\noff\r\nflip 1\r\nin 1\r\n>>> ');
+  assert.equal(r.sim.nodes.get('pico').value('GP25'), 1);
+});

@@ -189,9 +189,12 @@ class Rp2040Node {
   }
 
   pinChanged(p) {
-    // (a floating input reads its pull-up, #5697: rp2040js's input stays low otherwise)
-    const g = this.mcu.gpio[gpOf(p)];
-    if (this.inVals.get(p) == null && g.rawInputValue !== g.pullupEnabled) g.setInputValue(g.pullupEnabled);
+    // (what the pin's input reads: an output its own level, as the RP2040's pad reads back what it drives (#5881:
+    // MicroPython's value() of an output read 0); a floating input its pull-up (#5697: rp2040js's input stays low
+    // otherwise); else the level set from outside)
+    const g = this.mcu.gpio[gpOf(p)], S = this.S, st = g.value;
+    const reads = st === S.High ? true : st === S.Low ? false : this.inVals.get(p) == null ? g.pullupEnabled : !!this.inVals.get(p);
+    if (g.rawInputValue !== reads) g.setInputValue(reads);
     const v = this.driven(p);
     if (v === this.last.get(p)) return;
     this.last.set(p, v);

@@ -28,6 +28,7 @@ class Esp32Program {
     this.out = [];
     this.pins = new Map();
     this.pulls = new Map();
+    this.outs = new Map();      // (an output pin's mode and level: { drain, value }, #5881)
     this.pending = [];
     this.rx = new Map();
     this.repl = [];
@@ -93,9 +94,16 @@ class Esp32Program {
       bus_wait: () => p.advance(Math.max(0, p.busEnd - p.vt)),
       bus_ready: key => { p.take(); return p.buses.has(key); },
       bus_take: key => { const v = p.buses.get(key); p.buses.delete(key); return v; },
-      pin_mode: (n, mode, pull) => { p.pulls.set(n, pull === 2 ? 1 : 0); p.out.push({ kind: 'mode', t: p.vt, pin: `GPIO${n}`, out: mode === 3 || mode === 7 }); },
-      pin_set: (n, v) => p.out.push({ kind: 'pin', t: p.vt, pin: `GPIO${n}`, value: v }),
-      pin_get: n => p.level(n),
+      pin_mode: (n, mode, pull) => {
+        p.pulls.set(n, pull === 2 ? 1 : 0);
+        if (mode === 3 || mode === 7) p.outs.set(n, { drain: mode === 7, value: p.outs.get(n)?.value ?? 0 }); else if (mode !== -1) p.outs.delete(n);
+        p.out.push({ kind: 'mode', t: p.vt, pin: `GPIO${n}`, out: mode === 3 || mode === 7 });
+      },
+      pin_set: (n, v) => { const o = p.outs.get(n); if (o) o.value = v; p.out.push({ kind: 'pin', t: p.vt, pin: `GPIO${n}`, value: v }); },
+      // (an output reads back the level it drives, as on the board; an open drain's released 1 the line's, #5881)
+      pin_get: n => { const o = p.outs.get(n); return o && !(o.drain && o.value) ? o.value : p.level(n); },
+      // (a line typed to its console while the program runs, for input(); null: none yet, #5884)
+      console_line: () => { p.take(); return p.repl.length ? p.repl.shift() : null; },
       uart_init: (id, baud, bits, parity, stop, tx, rx) => p.out.push({ kind: 'uart', t: p.vt, id, baud, bits, parity, stop, tx, rx }),
       uart_write: (id, bytes) => p.out.push({ kind: 'tx', t: p.vt, id, bytes: [...bytes] }),
       uart_any: id => { p.take(); return p.rx.get(id)?.length ?? 0; },

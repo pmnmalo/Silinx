@@ -81,3 +81,10 @@ test('#5495 an ESP32 emulated (simulate with controls, as Emulate System): its b
   assert.deepEqual(['GPIO2', 'GPIO4', 'GPIO17', 'GPIO5'].map((p) => esp.pins[p]), [1, 0, 1, null]);
   assert.deepEqual([e.data.warnings, e.data.errors], [[], []]);
 });
+
+test('#5881 #5884 regression: simulate an ESP32 whose program asks input() and reads an output back: the line typed to its console read, its LED toggled', async () => {
+  await ok('write_file', { project: 'p', path: 'esp/main.py', text: 'from machine import Pin\nled = Pin(2, Pin.OUT)\nname = input("name? ")\nled.value(not led.value())\nprint("hi", name, led.value())\n' });
+  const s = await ok('simulate', { project: 'p', top: SYS, time_ns: 20e6, type: { 'esp.repl': 'pedro\n' } });
+  assert.deepEqual([s.data.warnings, s.data.errors], [[], []]);
+  assert.equal(s.data.terminals['esp.repl'], 'name? pedro\nhi pedro 1\n');
+});
