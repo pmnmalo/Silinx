@@ -108,7 +108,9 @@ mkdir "$WORK/gcc-build"
 (cd "$WORK/gcc-build" && CC_FOR_BUILD="$BUILD_CC" CXX_FOR_BUILD="c++ -w -std=gnu++98" quiet gcc-configure emconfigure ../gcc/configure --build="$(../gcc/config.guess)" --host=i686-pc-linux-gnu --target=avr \
   --with-gmp="$H" --with-mpfr="$H" --with-mpc="$H" --with-gnu-as --with-gnu-ld --with-as="$AVR_BIN/avr-as" --with-ld="$AVR_BIN/avr-ld" --enable-fixed-point --enable-languages=c,c++ --disable-nls --disable-libssp --disable-libada \
   --disable-shared --with-avrlibc=yes --with-dwarf2 --disable-doc --disable-lto --disable-plugin --without-isl --disable-bootstrap)
-# (all-gcc as far as it goes: it stops at gcov-tool, which needs ftw and is not one of the package's; then the compilers)
+# (the build machine's libraries GCC's generators link, then all-gcc as far as it goes: it stops at gcov-tool, which needs
+# ftw and is not one of the package's; then the compilers)
+(cd "$WORK/gcc-build" && quiet gcc-build-libs make -j"$JOBS" all-build-libiberty all-build-libcpp all-build-fixincludes)
 (cd "$WORK/gcc-build" && { emmake make -k -j"$JOBS" all-gcc LDFLAGS="$LINK" > "$WORK/gcc-all.log" 2>&1 || true; })
 (cd "$WORK/gcc-build/gcc" && quiet gcc-make emmake make -j"$JOBS" cc1 cc1plus LDFLAGS="$LINK")
 
