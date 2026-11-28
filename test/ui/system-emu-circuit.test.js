@@ -27,7 +27,7 @@ uiTest('#5322 Emulate: a circuit node drawn beside the board, its switch clicked
   await makeProject(env, { name: 'CoEmuCirc', template: 'uart', files: { 'emu.sys.json': SYS, 'src/bench.circ.json': JSON.stringify(BENCH, null, 2) } });
   const pj = await env.server.api('GET', '/api/projects/CoEmuCirc');
   delete pj.fileTree;
-  await env.server.api('PUT', '/api/projects/CoEmuCirc', { ...pj, kind: 'system', board: null, constraints: null, top: null });
+  await env.server.api('PUT', '/api/projects/CoEmuCirc', { ...pj, profile: 'system', board: null, constraints: null, top: null });
   await page.openProject('CoEmuCirc');
   await page.eval(() => window.SilinxApp.openFile('emu.sys.json'));
   await page.waitFor((ed) => document.querySelector(ed), [ED], { what: 'the System editor' });

@@ -37,7 +37,7 @@ uiTest('#4700 the System editor: its Design row, a system built, saved and reope
   await makeProject(env, { name: 'CoSys', template: 'uart', files: { [FILE]: JSON.stringify(newSystem('uart_avr'), null, 2) } });
   const pj = await env.server.api('GET', '/api/projects/CoSys');
   delete pj.fileTree;
-  await env.server.api('PUT', '/api/projects/CoSys', { ...pj, kind: 'system', board: null, constraints: null, top: null });
+  await env.server.api('PUT', '/api/projects/CoSys', { ...pj, profile: 'system', board: null, constraints: null, top: null });
   await page.openProject('CoSys');
   await page.leftTab('design');
   // the Design pane: the System's row, nothing under it yet

@@ -43,7 +43,7 @@ uiTest('#5494 the Pico in the System editor: placed, its .py, linked to a termin
   await makeProject(env, { name: 'PicoSys', template: 'uart', files: { [FILE]: JSON.stringify(newSystem('pico'), null, 2), 'mcu/main.py': PY, 'mcu/old.hex': ':00000001FF\n' } });
   const pj = await env.server.api('GET', '/api/projects/PicoSys');
   delete pj.fileTree;
-  await env.server.api('PUT', '/api/projects/PicoSys', { ...pj, kind: 'system', board: null, constraints: null, top: null });
+  await env.server.api('PUT', '/api/projects/PicoSys', { ...pj, profile: 'system', board: null, constraints: null, top: null });
   await page.openProject('PicoSys');
   await page.leftTab('design');
   await page.waitFor(() => [...document.querySelectorAll('#hier .row .badge')].some((b) => b.textContent === 'System'), [], { what: 'the System\'s row' });
@@ -112,7 +112,7 @@ uiTest('#5697 the Pico\'s firmware CircuitPython in its Properties: saved, its h
   await makeProject(env, { name: 'CircuitSys', template: 'uart', files: { [FILE]: JSON.stringify(sys, null, 2), 'mcu/main.py': CP, 'mcu/lib/helper.py': 'WHO = "lib"\n' } });
   const pj = await env.server.api('GET', '/api/projects/CircuitSys');
   delete pj.fileTree;
-  await env.server.api('PUT', '/api/projects/CircuitSys', { ...pj, kind: 'system', board: null, constraints: null, top: null });
+  await env.server.api('PUT', '/api/projects/CircuitSys', { ...pj, profile: 'system', board: null, constraints: null, top: null });
   await page.openProject('CircuitSys');
   await page.leftTab('design');
   await page.waitFor(() => [...document.querySelectorAll('#hier .row .badge')].some((b) => b.textContent === 'System'), [], { what: 'the System\'s row' });

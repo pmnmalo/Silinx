@@ -28,7 +28,7 @@ uiTest('#5500 the MQTT broker: its tool, a Pico W\'s + MQTT, linked; Try it: b\'
   await makeProject(env, { name: 'NetSys', template: 'uart', files: { 'net.sys.json': SYS, 'a/main.py': A, 'b/main.py': B } });
   const pj = await env.server.api('GET', '/api/projects/NetSys');
   delete pj.fileTree;
-  await env.server.api('PUT', '/api/projects/NetSys', { ...pj, kind: 'system', board: null, constraints: null, top: null, system: { simulate: { ms: 1500 } } });
+  await env.server.api('PUT', '/api/projects/NetSys', { ...pj, profile: 'system', board: null, constraints: null, top: null, system: { simulate: { ms: 1500 } } });
   await page.openProject('NetSys');
   await page.eval(() => window.SilinxApp.openFile('net.sys.json'));
   await page.waitFor((ed) => document.querySelector(ed), [ED], { what: 'the System editor' });

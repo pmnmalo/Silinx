@@ -24,7 +24,7 @@ uiTest('#5486 a CPU node\'s C is not compiled by Silinx HLS: not a module of the
   } });
   const pj = await env.server.api('GET', '/api/projects/CpuC');
   delete pj.fileTree;
-  await env.server.api('PUT', '/api/projects/CpuC', { ...pj, kind: 'system', board: null, constraints: null, top: null });
+  await env.server.api('PUT', '/api/projects/CpuC', { ...pj, profile: 'system', board: null, constraints: null, top: null });
   await page.openProject('CpuC');
   await page.leftTab('design');
   await page.waitFor(() => [...document.querySelectorAll('#hier .row .lbl')].some((l) => l.textContent.trim() === 'uno'), [], { what: 'the nodes' });

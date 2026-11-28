@@ -33,7 +33,7 @@ uiTest('#5414 a System project\'s nodes as the Design pane\'s branches, each wit
   await makeProject(env, { name: 'Nodes', template: 'uart', files: { 'lab.sys.json': SYS, 'src/bench.circ.json': JSON.stringify(BENCH, null, 2), 'fw/hello.hex': HEX } });
   const pj = await env.server.api('GET', '/api/projects/Nodes');
   delete pj.fileTree;
-  await env.server.api('PUT', '/api/projects/Nodes', { ...pj, kind: 'system', board: null, constraints: null, top: null });
+  await env.server.api('PUT', '/api/projects/Nodes', { ...pj, profile: 'system', board: null, constraints: null, top: null });
   await page.openProject('Nodes');
   await page.leftTab('design');
   await page.waitFor(() => [...document.querySelectorAll('#hier .row .lbl')].some((l) => l.textContent.trim() === 'uno'), [], { what: 'the nodes' });

@@ -45,7 +45,7 @@ uiTest('#5495 #5658 the ESP32 in the System editor: placed, its .py, linked to a
   await makeProject(env, { name: 'EspSys', template: 'uart', files: { [FILE]: JSON.stringify(newSystem('esp'), null, 2), 'mcu/main.py': PY, 'mcu/old.hex': ':00000001FF\n' } });
   const pj = await env.server.api('GET', '/api/projects/EspSys');
   delete pj.fileTree;
-  await env.server.api('PUT', '/api/projects/EspSys', { ...pj, kind: 'system', board: null, constraints: null, top: null });
+  await env.server.api('PUT', '/api/projects/EspSys', { ...pj, profile: 'system', board: null, constraints: null, top: null });
   await page.openProject('EspSys');
   await page.leftTab('design');
   await page.waitFor(() => [...document.querySelectorAll('#hier .row .badge')].some((b) => b.textContent === 'System'), [], { what: 'the System\'s row' });
@@ -132,7 +132,7 @@ uiTest('#5658 the same ESP32 on JSPI and in a Worker through Atomics: the same r
   await makeProject(env, { name: 'EspTwo', template: 'uart', files: { [FILE]: sys, 'mcu/main.py': TICKS } });
   const pj = await env.server.api('GET', '/api/projects/EspTwo');
   delete pj.fileTree;
-  await env.server.api('PUT', '/api/projects/EspTwo', { ...pj, kind: 'system', board: null, constraints: null, top: null });
+  await env.server.api('PUT', '/api/projects/EspTwo', { ...pj, profile: 'system', board: null, constraints: null, top: null });
   await page.openProject('EspTwo');
   await page.leftTab('design');
   await page.waitFor(() => [...document.querySelectorAll('#hier .row .badge')].some((b) => b.textContent === 'System'), [], { what: 'the System\'s row' });
@@ -161,7 +161,7 @@ uiTest('#5495 #5658 an ESP32\'s Timer, PWM, SPI and I²C on JSPI and in a Worker
   await makeProject(env, { name: 'EspBus', template: 'uart', files: { [FILE]: sys, 'mcu/main.py': MACHINE } });
   const pj = await env.server.api('GET', '/api/projects/EspBus');
   delete pj.fileTree;
-  await env.server.api('PUT', '/api/projects/EspBus', { ...pj, kind: 'system', board: null, constraints: null, top: null });
+  await env.server.api('PUT', '/api/projects/EspBus', { ...pj, profile: 'system', board: null, constraints: null, top: null });
   await page.openProject('EspBus');
   await page.leftTab('design');
   await page.waitFor(() => [...document.querySelectorAll('#hier .row .badge')].some((b) => b.textContent === 'System'), [], { what: 'the System\'s row' });
@@ -207,7 +207,7 @@ uiTest('#5495 Emulate: the ESP32 DevKitC drawn, its headers\' pins each its leve
   await makeProject(env, { name: 'EspEmu', template: 'uart', files: { [FILE]: sys, 'mcu/main.py': ['from machine import Pin, UART', 'import time', 'u = UART(2, 9600)', 'Pin(2, Pin.OUT).value(1)', 'Pin(4, Pin.OUT).value(0)', 'while True:', '    time.sleep_ms(1)', '    u.any()', ''].join('\n') } });
   const pj = await env.server.api('GET', '/api/projects/EspEmu');
   delete pj.fileTree;
-  await env.server.api('PUT', '/api/projects/EspEmu', { ...pj, kind: 'system', board: null, constraints: null, top: null });
+  await env.server.api('PUT', '/api/projects/EspEmu', { ...pj, profile: 'system', board: null, constraints: null, top: null });
   await page.openProject('EspEmu');
   await page.eval((f) => window.SilinxApp.openFile(f), FILE);
   await page.waitFor((ed) => document.querySelector(ed), [ED], { what: 'the System editor' });

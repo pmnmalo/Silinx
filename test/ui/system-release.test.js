@@ -54,7 +54,7 @@ uiTest('#5202 a release: a System project\'s System not shown, its .sys.json ope
   await makeProject(env, { name: 'CdRel', template: 'uart', files: { 'cd.sys.json': sys } });
   const pj = await env.server.api('GET', '/api/projects/CdRel');
   delete pj.fileTree;
-  await env.server.api('PUT', '/api/projects/CdRel', { ...pj, kind: 'system', board: null, constraints: null, top: null });
+  await env.server.api('PUT', '/api/projects/CdRel', { ...pj, profile: 'system', board: null, constraints: null, top: null });
   await page.openProject('CdRel');
   await page.leftTab('design');
   await page.waitFor(() => document.querySelectorAll('#hier .row').length > 0, [], { what: 'the Design pane' });
