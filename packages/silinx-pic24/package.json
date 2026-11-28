@@ -1,6 +1,6 @@
 {
   "name": "silinx-pic24",
-  "version": "0.3.2",
+  "version": "0.3.3",
   "description": "A PIC24F emulator in JavaScript: the PIC24FJ1024GB610's core and its peripherals (ports, timers, input capture, output compare and PWM, UART, SPI, I2C, ADC, PMP) on the Explorer 16/32 board, running XC16's Intel HEX, with no dependency",
   "type": "module",
   "exports": {
