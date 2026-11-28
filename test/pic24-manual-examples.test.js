@@ -16,6 +16,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { cpuWith, get, set, hex4 } from './pic24-lib.mjs';
 import { implemented } from '../packages/silinx-pic24/src/decode.js';
+import { FIELD_NAMES } from '../packages/silinx-pic24/src/gb610-names.js';
 
 const ROOT = path.join(path.dirname(fileURLToPath(import.meta.url)), '..');
 const EXAMPLES = JSON.parse(fs.readFileSync(path.join(ROOT, 'test/fixtures/pic24-manual-examples.json'), 'utf8'));
@@ -26,6 +27,8 @@ function assemble(e) {
   const symbols = {};
   for (const k of [...Object.keys(e.before), ...Object.keys(e.after)]) if (/^RAM\d+$/.test(k)) symbols[k] = 0x1000 + 2 * parseInt(k.slice(3), 10);
   for (const [k, v] of Object.entries(e.symbols ?? {})) symbols[k] = parseInt(v, 16);
+  // (the manual's names are its registers: DISICNT the register, not XC16's .inc's bit field of that name, #6025)
+  for (const [k, [, at]] of Object.entries(FIELD_NAMES)) symbols[k] ??= at;
   const org = /^\.org (0x[0-9A-F]+)$/i.exec(e.code[0] ?? ''), at = org ? parseInt(org[1], 16) : e.before.PC ? parseInt(e.before.PC, 16) : 0x1000;
   for (let i = 0; ; i++) {
     try { return { ...cpuWith(e.code, { org: at, symbols }), symbols, at }; } catch (x) {

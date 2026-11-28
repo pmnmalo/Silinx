@@ -75,6 +75,18 @@ export const BITS = {
   ...flags,
 };
 
+// the names XC16's .inc also gives a register's bit field of the register's own name, [the field's position, the
+// register's address] (XC16 2.10's symbols for a program that includes p24FJ1024GB610.inc, #6025)
+const spiFields = Object.fromEntries([[1, 0x03f4], [2, 0x0410], [3, 0x042c]].flatMap(([n, b]) =>
+  [['BUFL', 12], ['BUFH', 14], ['BRGL', 16], ['URDTL', 24], ['URDTH', 26]].map(([r, o]) => [`SPI${n}${r}`, [0, b + o]])));
+/** The names that XC16's p24FJ1024GB610.inc defines as a register's bit field (its position, a constant of the program
+ *  that includes it) as well as the register: xc16-as reads the constant, so `mov w0, DSRPAG` writes W0 (f 0); the
+ *  register is _DSRPAG, the linker script's (#6025). name -> [the constant, the register's address]. */
+export const FIELD_NAMES = {
+  DSRPAG: [0, 0x0032], DSWPAG: [0, 0x0034], DISICNT: [0, 0x0052], TBLPAG: [0, 0x0054], DCOTUN: [0, 0x0108], ...spiFields,
+  IOCPDF: [3, 0x06d8], AD1DMBUF: [0, 0x075e], AD1RESDMA: [0, 0x075e], NVMADR: [1, 0x0762], NVMADRL: [1, 0x0762], NVMADRH: [0, 0x0764], NVMADRU: [0, 0x0764],
+};
+
 /** The configuration words' settings (the `config __FWDT, FWDTEN_OFF` directive's): word -> setting -> its value, the
  *  other bits ones (an erased word's), ANDed together. FWDT's FWDTEN (bits 5-6) and FOSCSEL's FNOSC (bits 0-2), as
  *  config.js reads them. */

@@ -75,6 +75,9 @@ syntax (`.include "p24FJ1024GB610.inc"`, `.global __reset`, `.text`, `.bss` with
 `config __FWDT, FWDTEN_OFF`, the device's registers and bits by name, `tblpage()` / `tbloffset()` / `handle()`) and links it
 as XC16's linker places it (the reset vector, the vector table's handlers and `__DefaultInterrupt`, the code from 0x200,
 the configuration words): `{ hex, words, labels, config, errors, warnings }`, its errors and warnings by file and line.
+The names are XC16's (#6025): a register is also `_NAME`, its linker script's; and 27 names that XC16's .inc gives a
+register's bit field as well as the register (`DSRPAG`, `DSWPAG`, `TBLPAG`, `DISICNT`, the SPI buffers, `NVMADR`…) are that
+field's position, as xc16-as reads them (`mov w0, DSRPAG` writes W0), each use warned of: the register is `_DSRPAG`.
 
 ```js
 import { assembleProgram, Pic24Node } from 'silinx-pic24';

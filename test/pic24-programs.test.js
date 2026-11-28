@@ -12,7 +12,7 @@ const START = [
   'goto main',
   '.org 0x200',
   // XC16's start-up in short: the stack, its limit, the EDS window's pages, every W written
-  'main: mov #0x0900, w15', 'mov #0x0ffe, w0', 'mov w0, splim', 'mov #1, w0', 'mov w0, dsrpag', 'mov w0, dswpag',
+  'main: mov #0x0900, w15', 'mov #0x0ffe, w0', 'mov w0, splim', 'mov #1, w0', 'mov w0, _dsrpag', 'mov w0, dswpag',
 ];
 
 function boot(lines, opts = {}) {
@@ -64,9 +64,9 @@ test('#5480 a table of constants in the program memory: summed through PSV (DSRP
   const table = [3, 141, 5926, 5358, 9793, 2384, 626, 4338];
   const { cpu, labels } = boot([
     // PSV: the table at program address 0x1000 is EA 0x9000 with DSRPAG 0x200 (0x1000 = 0x0000 << 15 | 0x1000)
-    'mov #0x200, w0', 'mov w0, dsrpag', 'mov #0x9000, w1', 'clr w2', `repeat #${table.length - 1}`, 'add w2, [w1++], w2',
+    'mov #0x200, w0', 'mov w0, _dsrpag', 'mov #0x9000, w1', 'clr w2', `repeat #${table.length - 1}`, 'add w2, [w1++], w2',
     // TBLRDL: TBLPAG 0, EA 0x1000
-    'clr w0', 'mov w0, tblpag', 'mov #0x1000, w1', 'clr w3', `mov #${table.length}, w4`,
+    'clr w0', 'mov w0, _tblpag', 'mov #0x1000, w1', 'clr w3', `mov #${table.length}, w4`,
     'tloop: tblrdl [w1++], w5', 'add w3, w5, w3', 'dec w4, w4', 'bra nz, tloop',
     'done: bra done',
     '.org 0x1000', ...table.map((v) => `.word ${v}`),
