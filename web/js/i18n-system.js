@@ -36,6 +36,9 @@ export const SYSTEM_PT = {
   '+ PS UART': '+ UART do PS', 'PS UART': 'UART do PS',
   "Add its processing system's UART: the board's USB serial port, for a serial terminal": 'Acrescentar a UART do seu sistema de processamento: a porta série USB da placa, para um terminal série',
   "its PS's UART, the board's USB serial port: link it to a serial terminal": 'a UART do seu PS, a porta série USB da placa: ligue-a a um terminal série',
+  'AXI4-Lite (Zynq PS)': 'AXI4-Lite (PS do Zynq)', 'Base address': 'Endereço base',   // (a register map on AXI4-Lite, #4688)
+  "The base address of its 4 KB window on the PS's M_AXI_GP0 (0x40000000 to 0x7FFFF000)": 'O endereço base da sua janela de 4 KB no M_AXI_GP0 do PS (0x40000000 a 0x7FFFF000)',
+  "Write the program's header of the map (its addresses, a read and a write for each register): an Arduino's in its node's folder, a Zynq PS's in its ps/": 'Escrever o cabeçalho do programa do mapa (os seus endereços, uma leitura e uma escrita por registo): o de um Arduino na pasta do seu nó, o do PS de um Zynq na sua ps/',
   'Compile PS Program': 'Compilar o Programa do PS', 'Run PS Program': 'Correr o Programa do PS',   // (a Zynq's, #4687)
   'Compile Firmware': 'Compilar Firmware', 'A process is already running (use Stop to cancel it)': 'Já está um processo em curso (use Parar para o cancelar)',   // (an Arduino node's sketch to its .hex, #5503)
   'Id': 'Identificador', 'Module': 'Módulo', 'Board': 'Placa', 'Variant': 'Variante', "(the board's)": '(a da placa)',
@@ -107,7 +110,7 @@ export const SYSTEM_PT = {
   'The bus the microcontroller reads and writes the registers on': 'O barramento em que o microcontrolador lê e escreve os registos',
   'Address': 'Endereço', 'The I²C address of the FPGA (7 bits: 0x08 to 0x77)': 'O endereço I²C da FPGA (7 bits: 0x08 a 0x77)',
   'Check the register map: its names, addresses, widths and resets': 'Verificar o mapa de registos: os nomes, endereços, larguras e valores iniciais',
-  'Header': 'Cabeçalho', "Write the Arduino's header of the map (firmware/<name>.h): its addresses, a read and a write for each register": 'Escrever o cabeçalho do Arduino do mapa (firmware/<nome>.h): os endereços, uma leitura e uma escrita para cada registo',
+  'Header': 'Cabeçalho',
   'Access': 'Acesso', 'Strobe': 'Impulso', 'A pulse <name>_wr, one clock cycle, when its last byte is written': 'Um impulso <nome>_wr, de um ciclo de relógio, quando o seu último byte é escrito',
   'Check Register Map': 'Verificar o Mapa de Registos',
   // the drawing

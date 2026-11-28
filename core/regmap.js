@@ -4,7 +4,7 @@
 // VHDL and Verilog, core/regmap-c.js the program's header). Its format read and written here, and its check.
 // Isomorphic module (browser + Node).
 //
-//   { format: 'silinx-regmap', version: 1, name, bus: 'spi' | 'i2c', address (I²C: 7 bits),
+//   { format: 'silinx-regmap', version: 1, name, bus: 'spi' | 'i2c' | 'axi', address (I²C: 7 bits), base (AXI: its window's),
 //     registers: [ { name, addr, width, access: 'rw' | 'ro' | 'wo', reset, strobe } ] }
 //
 // A register takes ceil(width / 8) byte addresses from addr, its bytes the least significant first. `rw`: an output of
@@ -14,28 +14,37 @@
 //     incremented after each; in a read, MISO gives the registers' bytes from the second byte on;
 //   I²C: a write [address + W, addr, data…], a read [address + W, addr] then a repeated START and [address + R, data…],
 //     the address incremented after each byte.
+//   AXI4-Lite (#4688, a Zynq's PL seen by its PS, core/regmap-axi.js): each register a 32-bit word at a word's offset in a
+//     4 KB window at `base` (M_AXI_GP0's 0x40000000 to 0x7FFFFFFF, 0x43C00000 by default as Vivado's), written byte by byte
+//     as WSTRB says; its program side volatile words at base + offset.
 
 const REGMAP_FORMAT = 'silinx-regmap';
 const REGMAP_VERSION = 1;
-const REGMAP_BUSES = ['spi', 'i2c'];
+const REGMAP_BUSES = ['spi', 'i2c', 'axi'];
+/** An AXI4-Lite map's window: its base by default (Vivado's first AXI peripheral's), the M_AXI_GP0's range, its size. */
+export const AXI_BASE = 0x43C00000;
+const AXI_GP0 = [0x40000000, 0x80000000], AXI_WINDOW = 0x1000;
 const REG_ACCESS = ['rw', 'ro', 'wo'];
 /** The highest byte address (7 bits: SPI's command byte has the R bit). */
 const REG_ADDR_MAX = 127;
 /** The bus's ports of the generated module: a register's name is none of them. */
-const BUS_PORTS = { spi: ['clk', 'sck', 'mosi', 'miso', 'ss'], i2c: ['clk', 'scl', 'sda'] };
+const BUS_PORTS = { spi: ['clk', 'sck', 'mosi', 'miso', 'ss'], i2c: ['clk', 'scl', 'sda'],
+  axi: ['s_axi_aclk', 's_axi_aresetn', ...['awaddr', 'awvalid', 'awready', 'wdata', 'wstrb', 'wvalid', 'wready', 'bresp', 'bvalid', 'bready', 'araddr', 'arvalid', 'arready', 'rdata', 'rresp', 'rvalid', 'rready'].map(s => `s_axi_${s}`)] };
 
 /** The names the generated module uses itself: a register's name is none of them (nor ends with _q). */
 const REGMAP_INTERNAL = ['sck_s', 'ss_s', 'mosi_s', 'scl_s', 'sda_s', 'rx', 'tx', 'rbyte', 'addr', 'bits', 'first', 'rd', 'b',
   'state', 'state_t', 'wnext', 'reading', 'pull', 'acked', 'rise', 'fall', 'i2c_address', 's_idle', 's_addr', 's_ptr', 's_wdata',
-  's_ack', 's_rdata', 's_rack', 'rtl'];
+  's_ack', 's_rdata', 's_rack', 'rtl', 'axi_awaddr', 'axi_araddr', 'axi_aw_en', 'axi_wr', 'axi_awready', 'axi_wready', 'axi_bvalid', 'axi_arready', 'axi_rvalid', 'axi_rdata'];
 
 const INTERNAL = new Set(REGMAP_INTERNAL);
+const hex32 = v => `0x${(Number(v) >>> 0).toString(16).toUpperCase().padStart(8, '0')}`;
 
 /** Whether `path` is a register map. */
 export const isRegmapFile = path => /\.regs\.json$/i.test(String(path || ''));
 
 /** A register's bytes (its addresses). */
 const regBytes = r => Math.max(1, Math.ceil(Number(r.width) / 8));
+// the bytes a register takes in its map's addresses: an AXI register a word
 
 /** A new register map named `name`, on SPI, with one register (lang: its HDL's). */
 export const newRegmap = (name, bus = 'spi', lang = null) => normalizeRegmap({ name, bus, lang, registers: [{ name: 'ctrl', addr: 0, width: 8, access: 'rw' }] });
@@ -51,7 +60,7 @@ const normalReg = r => {
 export function normalizeRegmap(m) {
   const bus = String(m?.bus ?? 'spi');
   return { format: REGMAP_FORMAT, version: REGMAP_VERSION, name: String(m?.name ?? 'regs'), bus,
-    ...(bus === 'i2c' ? { address: m?.address ?? 0x42 } : {}),
+    ...(bus === 'i2c' ? { address: m?.address ?? 0x42 } : {}), ...(bus === 'axi' ? { base: m?.base ?? AXI_BASE } : {}),
     registers: Array.isArray(m?.registers) ? m.registers.map(normalReg) : [],
     // (as a drawing's: its HDL's language, its HDL file, #5288)
     ...(m?.lang ? { lang: m.lang === 'verilog' ? 'verilog' : 'vhdl' } : {}), ...(m?.generatedFile ? { generatedFile: String(m.generatedFile) } : {}) };
@@ -90,6 +99,7 @@ export function checkRegmap(m) {
   const warn = message => out.push({ severity: 'warning', message });
   if (!IDENT.test(m.name) || RESERVED.has(m.name.toLowerCase())) err(`the map's name '${m.name}' is not a module's name: a letter, then letters, digits and single _`);
   if (!REGMAP_BUSES.includes(m.bus)) { err(`no bus '${m.bus}' (the buses: ${REGMAP_BUSES.join(', ')})`); return out; }
+  if (m.bus === 'axi' && !(Number.isInteger(m.base) && m.base % AXI_WINDOW === 0 && m.base >= AXI_GP0[0] && m.base + AXI_WINDOW <= AXI_GP0[1])) err(`the AXI base address '${typeof m.base === 'number' ? hex32(m.base) : m.base}' is not a 4 KB window's in M_AXI_GP0's 0x40000000 to 0x7FFFFFFF`);
   if (m.bus === 'i2c' && !(Number.isInteger(m.address) && m.address >= 0x08 && m.address <= 0x77)) err(`the I²C address '${m.address}' is not one of 0x08 to 0x77 (7 bits, the reserved ones left out)`);
   if (!m.registers.length) warn('the map has no registers');
   const names = new Map(), at = new Map(), ports = new Set(BUS_PORTS[m.bus]);
@@ -103,12 +113,16 @@ export function checkRegmap(m) {
     if (INTERNAL.has(lc) || /_q$/.test(lc)) { err(`${r.name}: a name the generated module uses itself (${REGMAP_INTERNAL.join(', ')}, and names ending with _q)`); continue; }
     if (!(Number.isInteger(r.width) && r.width >= 1 && r.width <= 32)) { err(`${r.name}: its width '${r.width}' is not 1 to 32 bits`); continue; }
     if (!REG_ACCESS.includes(r.access)) { err(`${r.name}: its access '${r.access}' is not rw (written and read back), ro (read only) or wo (written only)`); continue; }
-    const n = regBytes(r);
-    if (!(Number.isInteger(r.addr) && r.addr >= 0 && r.addr + n - 1 <= REG_ADDR_MAX)) { err(`${r.name}: its address '${r.addr}' is not 0 to ${REG_ADDR_MAX + 1 - n} (its ${n} byte(s) at 0 to ${REG_ADDR_MAX})`); continue; }
+    // (an AXI register: a word at a word's offset in its 4 KB window, #4688)
+    if (m.bus === 'axi') {
+      if (!(Number.isInteger(r.addr) && r.addr >= 0 && r.addr % 4 === 0 && r.addr < AXI_WINDOW)) { err(`${r.name}: its offset '${r.addr}' is not a word's: 0x000 to 0xffc, a multiple of 4`); continue; }
+    }
+    const n = m.bus === 'axi' ? 4 : regBytes(r);
+    if (m.bus !== 'axi' && !(Number.isInteger(r.addr) && r.addr >= 0 && r.addr + n - 1 <= REG_ADDR_MAX)) { err(`${r.name}: its address '${r.addr}' is not 0 to ${REG_ADDR_MAX + 1 - n} (its ${n} byte(s) at 0 to ${REG_ADDR_MAX})`); continue; }
     if (r.access !== 'ro' && !(Number.isInteger(r.reset) && r.reset >= 0 && r.reset < 2 ** r.width)) err(`${r.name}: its reset '${r.reset}' does not fit its ${r.width} bit(s)`);
     for (let k = 0; k < n; k++) {
       const o = at.get(r.addr + k);
-      if (o) { err(`${r.name} and ${o.name} both at address ${r.addr + k}`); break; }
+      if (o) { err(m.bus === 'axi' ? `${r.name} and ${o.name} both at offset ${hexByte(r.addr)}` : `${r.name} and ${o.name} both at address ${r.addr + k}`); break; }
       at.set(r.addr + k, r);
     }
   }

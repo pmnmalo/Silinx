@@ -608,7 +608,14 @@ bytes, the address incremented after each, a read's bytes on MISO from the secon
 the module `<name>` in VHDL and in Verilog (`core/regmap-hdl.js`: its lines sampled with `clk`, I²C's SDA an `inout`
 port pulled low or released), the Arduino's header `<name>.h` (`core/regmap-c.js`: its addresses, its read and write
 functions through `SPI` or `Wire`), and the accesses a link's transfers make (`core/regmap-decode.js`: `write duty =
-0xa5`, `read count → 0x0123`). The map is a drawing of the project (#5288, step 2): New Source ▸ Register Map; its HDL file always
+0xa5`, `read count → 0x0123`). On **AXI4-Lite** (`bus: 'axi'`, #4688, part 1), a Zynq's PL registers are seen by its PS's program: the map has a `base`
+(a 4 KB window in M_AXI_GP0's 0x40000000–0x7FFFFFFF, 0x43C00000 by default as Vivado's), each register a 32-bit word at
+a word's offset (0x000–0xffc). Its slave (`core/regmap-axi.js`, VHDL and Verilog) has `s_axi_aclk`, `s_axi_aresetn` and
+the AXI4-Lite channels (`s_axi_aw*`, `w*`, `b*`, `ar*`, `r*`, a 12-bit address), as Xilinx's slave template: a write
+taken when its address and data are both valid, byte by byte as WSTRB says, every response OKAY. Its header is the
+PS's (`core/regmap-c.js`: `volatile uint32_t` words at `<NAME>_BASE` + their offsets, a read and a write for each),
+which the editor's Header writes into the Zynq node's `ps/` (a Board project's `ps/`). The PL's top with the PS7 that
+drives it is #4688's part 2. The map is a drawing of the project (#5288, step 2): New Source ▸ Register Map; its HDL file always
 generated from it (`core/view-hdl.js`), its row in the Design pane (its **Registers** badge first); its editor a table
 (`web/js/regmap-editor.js`), its Check (the MCP's `check_drawing`), its Header button (the MCP's `related_view` header, written by `write_file`); the
 MCP edits it through `write_file`, as its editor saves it; Simulate System says a link's accesses when its FPGA end is
