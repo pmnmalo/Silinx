@@ -70,6 +70,10 @@ export function mountSystemSide(ctx) {
         };
         out.push(field('CPU clock (MHz)', clock('cpu', ps.clkHz * ps.armFdiv / ps.cpuDiv, 'sys-ps-cpu'), 'its ARM PLL divided by 1 to 63, at most 667 MHz; empty: its board\'s'),
           field('FCLK0, the PL\'s clock (MHz)', clock('fclk0', ps.fclk0Hz, 'sys-ps-fclk0'), 'the PL\'s clock from the PS: its IO PLL divided by two divisors; empty: its board\'s'));
+        // (its PS–PL register map, #4688: an AXI4-Lite .regs.json of its folder; with one its PL is built from Silinx's top)
+        const maps = [...new Set([...(opts.psMaps?.(n.id) || []), ...(n.psMap ? [n.psMap] : [])])];
+        out.push(field('PS–PL register map', choose(n.psMap || '', [['', '(none)'], ...maps.map(f => [f, f])], v => take(changeNode(M(), n.id, { psMap: v || null }), 'node'), 'sys-ps-map'),
+          'an AXI4-Lite register map of its folder: its PL built with the PS7, its M_AXI_GP0 on the map\'s registers'));
       }
       out.push(...usbFields(n));
       // its pins: its constraints file's, edited by its I/O Pin Planning (#5581: web/js/system-constraints-ui.js; its Text

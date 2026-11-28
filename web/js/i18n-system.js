@@ -127,6 +127,8 @@ export const SYSTEM_PT = {
   // (a Zynq board's processing system, #4686: its program in Properties, New Source, the Design pane)
   'PS program': 'Programa do PS', 'New PS Program': 'Novo Programa do PS', 'PS Program (Zynq)': 'Programa do PS (Zynq)', '(Cortex-A9)': '(Cortex-A9)',
   "a .c of its ps/: the Cortex-A9's program, its starter written when the System is saved": 'um .c da sua pasta ps/: o programa do Cortex-A9, o inicial escrito quando o Sistema é guardado',
+  'PS–PL register map': 'Mapa de registos PS–PL',
+  "an AXI4-Lite register map of its folder: its PL built with the PS7, its M_AXI_GP0 on the map's registers": 'um mapa de registos AXI4-Lite da sua pasta: a sua PL construída com o PS7, o seu M_AXI_GP0 nos registos do mapa',
   "Its processing system's program, ps/main.c: its starter (the UART says hello, an LED blinks), written when the System is saved": 'O programa do seu sistema de processamento, ps/main.c: o inicial (a UART diz olá, um LED pisca), escrito quando o Sistema é guardado',
 };
 export const SYSTEM_PT_PATTERNS = [

@@ -29,6 +29,15 @@ async function projectCircuits(name, sys, files) {
   return out;
 }
 
+// the FPGA nodes' PS–PL register maps' texts ({ path: text }, #4688: their bus checked; one that cannot be read left out)
+async function psMapTexts(name, sys, files) {
+  const out = {};
+  for (const p of new Set(sys.nodes.filter(n => n.kind === 'fpga' && n.psMap && files.includes(n.psMap)).map(n => n.psMap))) {
+    try { out[p] = await P.readFile(name, p); } catch { /* (not read: its place checked only) */ }
+  }
+  return out;
+}
+
 // the project's modules ({ name: ports, null when it does not elaborate }): every module of its sources, the FPGA nodes'
 // elaborated
 async function projectModules(name, sys) {
@@ -52,7 +61,7 @@ async function checkSystemFile(name, file, text) {
   const files = await P.fileTree(name);
   // (each FPGA node's pins its constraints file's, #5581)
   const constraints = await constraintsTexts(name, r.system, files);
-  const { diags, wires, ports } = analyzeSystem(r.system, { modules: await projectModules(name, r.system), files, circuits: await projectCircuits(name, r.system, files), constraints });
+  const { diags, wires, ports } = analyzeSystem(r.system, { modules: await projectModules(name, r.system), files, circuits: await projectCircuits(name, r.system, files), constraints, texts: await psMapTexts(name, r.system, files) });
   const json = d => ({ message: d.message, item: d.ref?.id ?? null });
   return { lines: systemCheckLines(file, diags), errors: diags.filter(d => d.severity === 'error').map(json), warnings: diags.filter(d => d.severity === 'warning').map(json), wires, ports };
 }
@@ -83,7 +92,7 @@ const SYS_FILE = STR('The System document (.sys.json).');
 const EDIT = { type: 'object', properties: {
   action: { type: 'string', enum: [...EDIT_ACTIONS, 'add_shield'] },
   node: { type: 'string' }, interface: { type: 'string' }, link: { type: 'string' },
-  fields: { type: 'object', description: 'kind id board module variant pins firmware runtime circuit spiHz (a circuit\'s SPI clock) ps (Zynq <id>/ps/*.c, made if new; add_interface: PS UART) psClocks (Hz: cpu fclk0) lang usb x y; name, its kind\'s fields; a b (node.interface)' },
+  fields: { type: 'object', description: 'kind id board module variant pins firmware runtime circuit spiHz (circuit SPI clock) ps (Zynq <id>/ps/*.c, made if new; add_interface: PS UART) psClocks (Hz: cpu fclk0) psMap (.regs.json) lang usb x y; name, its kind\'s fields; a b (node.interface)' },
 }, required: ['action'], additionalProperties: false };
 
 export const SYSTEM_TOOLS = [

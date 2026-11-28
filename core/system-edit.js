@@ -9,6 +9,7 @@ import { usbError } from './usb-id.js';
 import { RUNTIME_NAMES } from './rp2040-firmware.js';
 import { psOfBoard, psProgramError, psSummary } from './zynq-ps.js';
 import { psClocksError } from './zynq-ps-clocks.js';
+import { psMapError, psMapSummary } from './zynq-ps-map.js';
 import { nodeKindRefusal } from './project-profile.js';
 
 const lc = s => String(s).toLowerCase();
@@ -93,7 +94,7 @@ function renameEnds(sys, { node, to, iface = null, toIface = null }) {
 export function changeNode(sys, id, fields = {}) {
   const out = copy(sys), n = nodeOf(out, id);
   if (!n) return { error: `no node '${id}' in the System` };
-  const allowed = [...({ fpga: ['id', 'module', 'board', 'variant', 'pins', 'constraints', 'ps', 'psClocks', 'usb', 'x', 'y'], mcu: ['id', 'board', 'firmware', 'runtime', 'usb', 'x', 'y'], terminal: ['id', 'x', 'y'], circuit: ['id', 'circuit', 'spiHz', 'x', 'y'] }[n.kind] || ['id', 'x', 'y']),
+  const allowed = [...({ fpga: ['id', 'module', 'board', 'variant', 'pins', 'constraints', 'ps', 'psClocks', 'psMap', 'usb', 'x', 'y'], mcu: ['id', 'board', 'firmware', 'runtime', 'usb', 'x', 'y'], terminal: ['id', 'x', 'y'], circuit: ['id', 'circuit', 'spiHz', 'x', 'y'] }[n.kind] || ['id', 'x', 'y']),
     ...(nodeLangs(n.kind).length ? ['lang'] : [])];
   for (const k of Object.keys(fields)) if (!allowed.includes(k)) return { error: `${id}: a ${NODE_KIND_NAMES[n.kind] || n.kind} node has no field '${k}' (${allowed.join(', ')})` };
   if (fields.id != null && fields.id !== n.id) {
@@ -101,7 +102,7 @@ export function changeNode(sys, id, fields = {}) {
     if (bad) return { error: bad };
     renameEnds(out, { node: n.id, to: fields.id });
     // (its files with its folder, #5488)
-    for (const k of ['firmware', 'circuit', 'constraints', 'ps']) if (n[k]) n[k] = renamedPath(n[k], n.id, fields.id);
+    for (const k of ['firmware', 'circuit', 'constraints', 'ps', 'psMap']) if (n[k]) n[k] = renamedPath(n[k], n.id, fields.id);
     n.id = fields.id;
   }
   if (n.kind === 'mcu' && fields.board != null) {
@@ -152,6 +153,15 @@ export function changeNode(sys, id, fields = {}) {
     const why = psClocksError(next, psOfBoard(fields.board ?? n.board, fields.variant ?? n.variant));
     if (why) return { error: `${id}: ${why}` };
     if (Object.keys(next).length) n.psClocks = next; else delete n.psClocks;
+  }
+  // (its PS–PL register map, #4688: an AXI4-Lite .regs.json of its folder, on a board with a processing system; null or '' none)
+  if (fields.psMap !== undefined) {
+    if (!fields.psMap) delete n.psMap;
+    else {
+      const why = !psOfBoard(n.board, n.variant) ? `the board ${n.board ?? '(none)'} has no processing system` : psMapError(fields.psMap, n.id);
+      if (why) return { error: `${id}: ${why}` };
+      n.psMap = String(fields.psMap);
+    }
   }
   if (fields.variant !== undefined) { if (fields.variant == null || fields.variant === '') delete n.variant; else n.variant = String(fields.variant); }
   // (pins: set in its constraints file when the System is saved, #5581: core/system-constraints.js pinsToConstraints)
@@ -392,7 +402,7 @@ export function describeSystem(sys) {
     const what = n.kind === 'fpga' ? `FPGA, module ${n.module ?? '(none)'} on ${n.board ?? '(no board)'}${n.variant ? `-${n.variant}` : ''}`
       : n.kind === 'mcu' ? `${mcuBoard(n.board)?.name ?? n.board}, ${['rp2040', 'esp32'].includes(mcuBoard(n.board)?.arch) ? `${n.runtime ? `${RUNTIME_NAMES[n.runtime] ?? n.runtime}, ` : ''}program` : 'firmware'} ${n.firmware ?? '(none)'}` : n.kind === 'circuit' ? `circuit ${n.circuit ?? '(none)'}${n.spiHz ? `, its SPI clock ${n.spiHz} Hz` : ''}` : NODE_KIND_NAMES[n.kind] || n.kind;
     // (a CircuitPython node's language its firmware's, said, #5697; a Zynq board's PS, #4686)
-    const ps = n.kind === 'fpga' ? psSummary(n) : null;
+    const ps = n.kind === 'fpga' ? [psSummary(n), psMapSummary(n)].filter(Boolean).join('; ') || null : null;
     lines.push(`node ${n.id}: ${what}${n.lang && !n.runtime ? `, in ${LANG_NAMES[n.lang] ?? n.lang}` : ''}${ps ? `; ${ps}` : ''}`);
     for (const f of n.interfaces) lines.push(`  ${ifaceText(n, f)}`);
   }

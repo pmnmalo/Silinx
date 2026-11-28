@@ -627,7 +627,16 @@ wrapper and a block design would, with no block design. It holds:
   input of its width; an ro register from an output), its `clk` gets FCLK_CLK0 unless it is on a board's pin, and its
   other ports are the board's.
 A register the module has no port for, or the wrong direction or width, is said. It is compiled, elaborated and
-simulated against stand-ins of the PS7. Vivado's build with the real PS7 is #5985. The map is a drawing of the project (#5288, step 2): New Source ▸ Register Map; its HDL file always
+simulated against stand-ins of the PS7. Vivado's build with the real PS7 is #5985.
+
+A Zynq node uses the top when it has a **PS–PL register map** (#4688, part 2b, `core/zynq-ps-map.js`). Its `psMap` is
+an AXI4-Lite `.regs.json` of its folder, chosen in the node's Properties (the MCP's `edit_system` `change_node`
+`psMap`). The System's Check refuses it on a board with no PS, out of the node's folder, missing, or on another bus.
+The node's Implement (`server/system-implement.js`) writes the top, `<module>_zynq`, into its build folder
+(`build/nodes/<id>/<id>/`, never the project) for the Silinx toolchain (no fixed IO), and builds that in place of the
+module. A module whose ports do not meet the map's registers refuses the build, the port named.
+
+The map is a drawing of the project (#5288, step 2): New Source ▸ Register Map; its HDL file always
 generated from it (`core/view-hdl.js`), its row in the Design pane (its **Registers** badge first); its editor a table
 (`web/js/regmap-editor.js`), its Check (the MCP's `check_drawing`), its Header button (the MCP's `related_view` header, written by `write_file`); the
 MCP edits it through `write_file`, as its editor saves it; Simulate System says a link's accesses when its FPGA end is

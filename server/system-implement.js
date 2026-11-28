@@ -19,6 +19,9 @@ import { fpgaSources } from '../core/system-plan.js';
 import { withNodePins, nodeConstraintsPath } from '../core/system-constraints.js';
 import { constraintsTexts } from './system-constraints.js';
 import { takeBuildRecord, writeBuildRecord } from './system-plan.js';
+import { readRegmap } from '../core/regmap.js';
+import { zynqPlTop } from '../core/zynq-pl-top.js';
+import { baseLang } from '../core/system-layout.js';
 
 const running = new Map();   // project -> job id
 /** The implementation of the project `name` running, its job, or null (one build of a project at a time, #5489). */
@@ -72,6 +75,21 @@ async function portsOf(name, pj, node) {
   return d.top.ports.map(ucfPort);
 }
 
+// a Zynq node's PL top with its PS–PL register map (#4688, core/zynq-ps-map.js): the top Silinx writes (the PS7, its M_AXI_GP0 on
+// the map's AXI4-Lite slave, the module; its PS's fixed IO left out, the Silinx toolchain's), written into the node's build
+// folder and built in place of its module: { file, top, lang }; null with no map; an error the map's or the wiring's
+async function psMapTop(name, pj, node, dir) {
+  if (!node.psMap) return null;
+  const r = readRegmap(await P.readFile(name, node.psMap).catch(() => ''));
+  if (r.error) throw new Error(`${node.psMap}: ${r.error}`);
+  const lang = baseLang(node) === 'verilog' ? 'verilog' : 'vhdl';
+  const t = zynqPlTop({ module: { name: node.module, ports: await portsOf(name, pj, node) }, map: r.regmap, pins: node.pins || {}, lang, fixedIo: false });
+  if (t.errors.length) throw new Error(`${node.id}: ${t.errors.join('; ')}`);
+  const file = `${node.id}/${t.file}`;
+  await fs.writeFile(P.safeJoin(dir, file), t.code);
+  return { file, top: t.top, lang };
+}
+
 // one node made ready in its folder (the project's files copied, its constraints written) and implemented
 export async function implementOne(job, name, pj, node, steps) {
   const why = nodeRefusal(node);
@@ -88,8 +106,10 @@ export async function implementOne(job, name, pj, node, steps) {
   const own = P.safeJoin(src, node.id);
   if (await fs.stat(own).then(st => st.isDirectory(), () => false)) await fs.cp(own, P.safeJoin(dir, node.id), { recursive: true });
   if (!c.own) await fs.writeFile(P.safeJoin(dir, c.path), c.text);
-  const project = nodeProject(pj, node, c.path);
+  const plain = nodeProject(pj, node, c.path), ps = await psMapTop(name, pj, node, dir);
+  const project = ps ? { ...plain, top: ps.top, files: [...plain.files, { path: ps.file, lang: ps.lang, role: 'design' }] } : plain;
   job.log(`System node ${node.id}: its module ${node.module} on ${node.board}${node.variant ? ` (${node.variant})` : ''}, its constraints ${c.path}${c.own ? '' : ' from its pins'}, built in build/nodes/${node.id}/.`);
+  if (ps) job.log(`System node ${node.id}: its PL's top ${ps.top} (${ps.file}), written by Silinx: the PS7, its M_AXI_GP0 on the registers of ${node.psMap}, and ${node.module}.`);
   const out = await runOpenImplementation(job, { project, projectDir: dir, steps: openSteps(steps, { family: openFamilyOf(deviceFamily(project.device)) }) });
   if (record) await writeBuildRecord(name, node, record);
   return out;
