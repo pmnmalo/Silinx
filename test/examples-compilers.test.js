@@ -42,8 +42,8 @@ test('#6019 the examples\' processors\' nodes: the Zynq\'s with a PS program, th
 
 const errorsAndWarnings = (j) => j.lines.filter((l) => /^(ERROR|WARNING)/.test(l));
 // XC16's warnings on the PIC24 examples' programs: xc16-as deprecates the config directive, which an assembly program has
-// no other way to say (#pragma config is C's)
-const XC16_WARNINGS = { 'uart-fpga-pic24': ['WARNING: pic/lcd_uart.s:9: DEPRECATED. Please use #pragma config in a C file'] };
+// no other way to say (#pragma config is C's): one a word, FWDT's (line 9) and FICD's (line 10, the JTAG port off, #6027)
+const XC16_WARNINGS = { 'uart-fpga-pic24': [9, 10].map((n) => `WARNING: pic/lcd_uart.s:${n}: DEPRECATED. Please use #pragma config in a C file`) };
 
 test('#6019 every Zynq example\'s PS program linked by arm-none-eabi-gcc with no warning, its ELF in the on-chip memory', { skip: skipWithout(gcc, 'arm-none-eabi-gcc'), timeout: 600000 }, async () => {
   assertThere(gcc, 'arm-none-eabi-gcc');
