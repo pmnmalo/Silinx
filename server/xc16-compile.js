@@ -20,9 +20,11 @@ import * as P from './projects.js';
 import { capture, runCommand } from './jobs.js';
 import { loadConfig, which } from './toolchain.js';
 import { localImage, runInImage, runInLocalImage } from './image-remote.js';
-import { XC16_IMAGE, XC16_OPT, nodeProgram, pic24FileOf, xc16Commands, xc16Messages, xc16Script } from '../core/xc16-compile.js';
+import { XC16_IMAGE, XC16_OPT, jtagWarning, nodeProgram, pic24FileOf, xc16Commands, xc16Messages, xc16Script } from '../core/xc16-compile.js';
 import { mcuBoard } from '../core/system-doc.js';
 import { parseHex } from '../packages/silinx-pic24/src/hex.js';
+import { readConfig } from '../packages/silinx-pic24/src/config.js';
+import { FLASH_END } from '../packages/silinx-pic24/src/device.js';
 import { takeBuildRecord, writeBuildRecord } from './system-plan.js';
 import { pic24PlanSources } from '../core/system-plan.js';
 import { syncNodeMain } from '../core/node-main-sync.js';
@@ -148,8 +150,14 @@ export async function compilePic24(job, name, sys, node, tool) {
   }
   const hex = await fs.readFile(path.join(root, 'out', `${node.id}.hex`), 'utf8').catch(() => null);
   if (hex == null) throw new Error(`${node.id}: xc16-bin2hex made no out/${node.id}.hex`);
-  let words;
-  try { words = parseHex(hex).words; } catch (e) { throw new Error(`${node.id}: XC16's out/${node.id}.hex: ${e.message}`); }
+  let parsed;
+  try { parsed = parseHex(hex); } catch (e) { throw new Error(`${node.id}: XC16's out/${node.id}.hex: ${e.message}`); }
+  const words = parsed.words;
+  // (#6027: the JTAG port left on while the program uses port A, its configuration words the .hex's)
+  const config = readConfig(a => (a <= FLASH_END ? parsed.program[a >> 1] : parsed.config.get(a) ?? 0xffffff));
+  const texts = await Promise.all(prog.units.map(async f => ({ path: f, text: await fs.readFile(P.safeJoin(P.projectDir(name), f), 'utf8').catch(() => '') })));
+  const jtag = jtagWarning(node.id, config, texts);
+  if (jtag) { job.log(jtag); warnings.push(jtag); }
   await P.writeFile(name, prog.hex, hex);
   await writeBuildRecord(name, node, record);
   job.log(`System node ${node.id}: its firmware ${prog.hex}, ${words} program word(s).`);

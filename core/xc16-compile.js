@@ -116,3 +116,20 @@ export function pic24FileOf(p, dir, id) {
   f = f.replace(/^\/work\//, '').replace(/^\.\//, '');
   return f.startsWith('src/') ? `${id}/${f.slice(4)}` : null;
 }
+
+// a source's use of port A, comments left out: its registers (TRISA, LATA, PORTA, ODCA, their …bits) or one of the JTAG
+// pins' bits (_TRISA0, _LATA4, _RA5…)
+const PORT_A = /\b(?:TRISA|LATA|PORTA|ODCA)(?:bits)?\b|\b_(?:TRIS|LAT|ODC|R)A[0145]\b/;
+const uncommented = (text, asm) => (asm ? text.replace(/;.*$/gm, '') : text.replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/.*$/gm, ''));
+
+/**
+ * The warning of a program that leaves the JTAG port on (#6027: an erased FICD's JTAGEN; `config`, the .hex's
+ * readConfig's) while one of its sources ([{ path, text }]) uses port A, whose RA0, RA1, RA4 and RA5 (TMS, TCK, TDI,
+ * TDO; the Explorer 16/32's LEDs D3, D4, D7, D8) are then the JTAG port's; else null.
+ */
+export function jtagWarning(id, config, sources) {
+  if (!config?.jtag) return null;
+  const user = sources.find((s) => PORT_A.test(uncommented(String(s.text), /\.(s|S)$/.test(s.path))));
+  if (!user) return null;
+  return `WARNING: ${id}: its program leaves the JTAG port on (FICD's JTAGEN, erased) and ${user.path} uses port A: RA0, RA1, RA4 and RA5 (the LEDs D3, D4, D7, D8) are the JTAG port's TMS, TCK, TDI and TDO, not the program's (#pragma config JTAGEN = OFF; in assembly config __FICD, JTAGEN_OFF)`;
+}
