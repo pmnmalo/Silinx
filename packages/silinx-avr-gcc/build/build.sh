@@ -65,9 +65,11 @@ fi
 source "$EMSDK/emsdk_env.sh" >/dev/null 2>&1
 
 # the host's C, for clang 21 and these old sources; libiberty's psignal is Emscripten's own
-W="-w -Wno-error=implicit-function-declaration -Wno-error=implicit-int -Wno-error=int-conversion -Wno-error=incompatible-function-pointer-types"
+# (-Wno-X, not -Wno-error=X: gcc ignores a -Wno- option it does not know, as clang does, where it refuses an unknown
+# -Wno-error=; a Linux runner's gcc compiles the build machine's programs with these flags too)
+W="-w -Wno-implicit-function-declaration -Wno-implicit-int -Wno-int-conversion -Wno-incompatible-function-pointer-types"
 export CFLAGS="-O2 -g0 $W" CXXFLAGS="-O2 -g0 -std=gnu++98 $W" ac_cv_func_psignal=yes ac_cv_func_strsignal=yes
-BUILD_CC="cc -w -Wno-error=implicit-function-declaration -Wno-error=implicit-int"
+BUILD_CC="cc -w -Wno-implicit-function-declaration -Wno-implicit-int"
 # (the build machine's own flags: CFLAGS above are clang's, Emscripten's, and a Linux runner's gcc refuses
 # -Wno-error=incompatible-function-pointer-types)
 export CFLAGS_FOR_BUILD="-O2 -w" CXXFLAGS_FOR_BUILD="-O2 -w -std=gnu++98"

@@ -8,13 +8,15 @@
 # commit on main, its version the tag's with its changelog section (scripts/sync-version.mjs --package), then npm's
 # publish with provenance. No token: npm's trusted publishing authenticates this workflow by GitHub's OIDC token, the
 # package's trusted publisher on npmjs.com being this repository and this workflow (npm 11.5.1 or later, pinned by its
-# tarball's integrity, #3049). The OIDC token is the publish job's only (#2644).
+# tarball's integrity, #3049). The OIDC token is the publish job's only (#2644). By hand (Actions ▸ silinx-avr-gcc ▸ Run
+# workflow): the build, its oracle and tests on the chosen branch, main's before its tag; nothing published.
 name: silinx-avr-gcc
 on:
   pull_request:
     paths: [packages/silinx-avr-gcc/build/**, .github/workflows/silinx-avr-gcc.yml]
   push:
     tags: ['silinx-avr-gcc-v*']
+  workflow_dispatch:    # (by hand: the build, its oracle and tests on a branch's code, main's before a tag; no publishing)
 permissions:
   contents: read
 concurrency:
