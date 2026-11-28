@@ -138,3 +138,23 @@ test('#4688 regs-zynq made with the MCP server: checked (no warning), simulated 
   const ps = await ok('run_process', { project: 'rz', process: 'ps', node: 'zybo' });
   assert.deepEqual([ps.data.errors, ps.data.warnings], [[], []]);
 });
+
+test('#4689 regs-zynq simulated with its PS driving its PL (part 5c): the counter enabled, its period set, the counts the A9 reads back on the terminal at the counter\'s rate; no warning', { timeout: 600000 }, async () => {
+  await ok('new_project_from_example', { name: 'rs', example: 'regs-zynq' });
+  // (its period 10 clocks of FCLK0, 200 ns a step; its delay between prints 200 iterations: seconds of the A9 else)
+  const src = fs.readFileSync(path.join(EX, 'zybo/ps/main.c'), 'utf8').replace('CNT_PERIOD = 12500000u;', 'CNT_PERIOD = 10u;').replace('i < 20000000u', 'i < 200u');
+  await ok('write_file', { project: 'rs', path: 'zybo/ps/main.c', text: src });
+  const s = await ok('simulate', { project: 'rs', time_ns: 15e6 });
+  assert.deepEqual([s.data.warnings, s.data.errors], [[], []]);
+  const lines = s.data.terminals.term.split('\r\n');
+  assert.equal(lines[0], 'The PL\'s counter, driven by the Cortex-A9 of Digilent Zybo Z7');
+  const counts = lines.slice(1).filter((l) => /^count: \d+$/.test(l)).map((l) => Number(l.slice(7)));
+  assert.ok(counts.length >= 4, lines.join(' | '));
+  // (between two reads, the line before sent at 115200 baud (the FIFO full, each read waits for its room): "count: 7788\r\n",
+  // 13 bytes × 10 bits / 115207 baud = 1.128 ms, 5642 steps of 200 ns; the counter's rate is FCLK0's / its period, not the
+  // board's 125 MHz)
+  for (let i = 1; i < counts.length; i++) {
+    const step = `count: ${counts[i - 1]}\r\n`.length * 10 / (100e6 / (124 * 7)) / 200e-9;
+    assert.ok(Math.abs(counts[i] - counts[i - 1] - step) <= 3, `${counts[i - 1]} then ${counts[i]}: ${step} expected`);
+  }
+});

@@ -19,6 +19,7 @@ import { relInNode } from './system-layout.js';
 import { linkTraffic, usText, decodeSpi, spiWarnings, decodeI2c, i2cWarnings, wiredAnd } from './system-decode.js';
 import { regAccesses, accessText } from './regmap-decode.js';
 import { normalizeCircuit } from './circuit.js';
+import { readRegmap } from './regmap.js';
 
 import { sdText } from './circuit-sd.js';
 
@@ -40,7 +41,15 @@ export async function systemInputs(sys, { ports = {}, netlist, firmware, regmap 
   for (const n of sys.nodes.filter(x => x.kind === 'circuit' && x.circuit)) {
     try { circuits[n.id] = normalizeCircuit(JSON.parse(await circuit(n.circuit))); } catch (e) { return { error: `${n.id}: its circuit ${n.circuit} cannot be read: ${e.message}` }; }
   }
-  const plan = systemPlan(sys, { ports, circuits });
+  // (a Zynq node's PS–PL register map, its psMap: its registers between its PS and its module, #4689)
+  const psMaps = {};
+  for (const n of sys.nodes.filter(x => x.kind === 'fpga' && x.ps && x.psMap)) {
+    let r;
+    try { r = readRegmap(await firmware(n.psMap)); } catch (e) { return { error: `${n.id}: its PS–PL register map ${n.psMap} cannot be read: ${e.message}` }; }
+    if (r.error) return { error: `${n.id}: its PS–PL register map ${n.psMap}: ${r.error}` };
+    psMaps[n.id] = r.regmap;
+  }
+  const plan = systemPlan(sys, { ports, circuits, psMaps });
   if (plan.errors.length) return { error: plan.errors.join('; ') };
   const netlists = {}, fw = {};
   for (const f of plan.fpga) {

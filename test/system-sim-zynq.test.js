@@ -99,3 +99,34 @@ test('#4689 where a Zynq\'s PS cannot run: no SharedArrayBuffer, or a page not c
   assert.equal(zynqPsProblem({}, false), 'a Zynq\'s PS runs in a page cross-origin isolated: the page is not cross-origin isolated: its server sent no Cross-Origin-Opener-Policy and Cross-Origin-Embedder-Policy, or the browser refused them');
   assert.equal(zynqPsProblem({ SharedArrayBuffer, location: { protocol: 'file:' } }, false), 'a Zynq\'s PS runs in a page cross-origin isolated: the page is opened from a file, which cannot be cross-origin isolated: open the site or the local server');
 });
+
+test('#4689 the PS as the map\'s slave (part 5c): a write its register\'s pins at its time, a strobe one FCLK0 clock; reads rw as written, wo 0, ro the module\'s pins; a word with no register said', async () => {
+  const regs = [{ name: 'enable', addr: 0, width: 1, access: 'rw', reset: 0 }, { name: 'period', addr: 4, width: 32, access: 'rw', reset: 5 },
+    { name: 'count', addr: 8, width: 16, access: 'ro' }, { name: 'clear', addr: 12, width: 1, access: 'wo', reset: 0, strobe: true }];
+  const src = ['#include <stdint.h>', '#define R(o) (*(volatile uint32_t *)(0x40000000u + (o)))',
+    'int main(void) { uint32_t p0 = R(4); R(12) = 1; R(4) = 10; R(0) = 1; uint32_t c = R(8), p = R(4), w = R(12), u = R(0x100); R(0x104) = 1;',
+    '  R(4) = c * 100000 + p * 1000 + w * 100 + u * 10 + p0; return 0; }'].join('\n');
+  await prepareZynqPs(['zybo_ps']);
+  const node = new ZynqPsNode({ id: 'zybo_ps', ps: PS, program: { name: 'zybo/ps/main.c', data: src }, pl: { regs, fclkHz: 50e6 } });
+  made.push(node);
+  assert.deepEqual([node.inputs, node.outputs.length], [['rx', ...Array.from({ length: 16 }, (_, i) => `count[${i}]`)], 1 + 1 + 1 + 32 + 1 + 1]);
+  // (the module's count, 7, on the node's inputs)
+  for (let i = 0; i < 16; i++) node.setPin(`count[${i}]`, (7 >> i) & 1);
+  const out = node.advanceTo(1e8);
+  const bits = (pin) => out.filter((c) => c.pin === pin);
+  const period = Array.from({ length: 32 }, (_, i) => `period[${i}]`);
+  // (period's reset, 5, on its pins from 0; then 10; then the reads' sum)
+  const valueAt = (t) => period.reduce((v, p, i) => { const c = out.filter((x) => x.pin === p && x.t <= t).at(-1); return v + (c?.value ? 2 ** i : 0); }, 0);
+  assert.equal(valueAt(0), 5);
+  const last = out.at(-1).t;
+  assert.equal(valueAt(last), 7 * 100000 + 10 * 1000 + 0 + 0 + 5);
+  assert.deepEqual(bits('enable').map((c) => c.value), [1]);
+  // (the strobe: clear_wr high one clock of FCLK0, 20 ns, with clear's bit)
+  const wr = bits('clear_wr');
+  assert.deepEqual([wr.map((c) => c.value), wr[1].t - wr[0].t, bits('clear').map((c) => [c.t, c.value])], [[1, 0], 20000, [[wr[0].t, 1]]]);
+  assert.ok(out.every((c, i) => i === 0 || c.t >= out[i - 1].t), 'in time order');
+  assert.deepEqual(node.messages().map((m) => [m.kind, m.text]), [
+    ['warning', 'its program reads 0x40000100, where the PS–PL register map has no register: read as 0'],
+    ['warning', 'its program writes 0x40000104, where the PS–PL register map has no register: written to nothing'],
+    ['info', 'its program returned 0']]);
+});
