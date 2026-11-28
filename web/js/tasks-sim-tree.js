@@ -25,7 +25,7 @@ export function benchItems(app, name) {
     '-',
     { label: 'New Test Bench…', action: () => newBench(app) },
     design(app) ? null : { label: 'Import Test Bench…', action: addCopy },
-    { label: 'Remove from Project', action: () => import('./design.js').then(d => d.removeModule(file())) },
+    { label: 'Remove…', command: 'Remove from Project', action: () => import('./design.js').then(d => d.removeModule(file())) },   // (as the Design pane's, #5897, #5992)
     ...(design(app) ? [] : ['-', { label: 'Source Properties…', action: () => wizards().then(w => w.sourceProperties(file())) }]),
   ].filter(Boolean);
 }

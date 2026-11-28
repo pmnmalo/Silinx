@@ -76,7 +76,8 @@ export function scanPage(where, { menus = true, panes = true, editor = true } = 
     const paneOf = (r) => (r.closest('#procs, .task-emu-tree') ? 'Processes' : r.closest('#hier') ? 'Design' : r.closest('#files-page') ? 'Files' : r.closest('[id]')?.id || 'side panel');
     const kindOf = (r, pane) => `${pane}|${pane === 'Processes' ? r.querySelector('.lbl')?.textContent : r.querySelector('.ico, .icon, img, svg')?.outerHTML.slice(0, 80) || r.className}`;
     for (;;) {
-      const r = [...document.querySelectorAll('#left .row')].sort((a, b) => (paneOf(b) === 'Processes') - (paneOf(a) === 'Processes'))
+      // (Simulate's side panel too, out of #left: its test benches' menus, New Test Bench… among them since its bar went, #5992)
+      const r = [...document.querySelectorAll('#left .row, #task-sim-panel .row')].sort((a, b) => (paneOf(b) === 'Processes') - (paneOf(a) === 'Processes'))
         .find((x) => shown(x) && !seen.has(kindOf(x, paneOf(x))));
       if (!r) break;
       seen.add(kindOf(r, paneOf(r)));
