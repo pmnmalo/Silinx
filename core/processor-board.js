@@ -7,7 +7,7 @@
 // project (core/project-mode.js modeOf), its Design pane's top row the board (web/js/design-system.js), no System row.
 // It starts with a firmware that blinks the board's LED (the PIC24 none: no compiler for it here; its .hex is MPLAB X's).
 // Isomorphic module (browser + Node).
-import { MCU_BOARDS, mcuBoard, newSystem, writeSystem } from './system-doc.js';
+import { MCU_BOARDS, mcuBoard, newSystem, readSystem, writeSystem } from './system-doc.js';
 import { addNode } from './system-edit.js';
 import { withProfile } from './project-profile.js';
 import { isSystemProject } from './project-kind.js';
@@ -83,7 +83,8 @@ export function starterFiles(board, id, runtime = null) {
   if (b.arch === 'avr') return { firmware: `${id}/blink.hex`, files: [{ path: `${id}/blink.asm`, text: AVR_ASM }, { path: `${id}/blink.hex`, text: AVR_BLINK_HEX }] };
   if (b.arch === 'rp2040' && (runtime ?? b.runtimes?.[0]) === 'circuitpython') return { firmware: `${id}/code.py`, files: [{ path: `${id}/code.py`, text: CIRCUITPYTHON }] };
   if (b.arch === 'rp2040') return { firmware: `${id}/main.py`, files: [{ path: `${id}/main.py`, text: MICROPYTHON(b.name, board === 'pico-w' ? '"LED"' : 25) }] };
-  if (b.arch === 'esp32') return { firmware: `${id}/main.py`, files: [{ path: `${id}/main.py`, text: MICROPYTHON(b.name, 2).replace('its LED on', 'an LED on GPIO2 on') }] };
+  // (an ESP32's Pin has no toggle(), MicroPython's RP2040's only: its level kept by the program, #5875)
+  if (b.arch === 'esp32') return { firmware: `${id}/main.py`, files: [{ path: `${id}/main.py`, text: MICROPYTHON(b.name, 2).replace('its LED on', 'an LED on GPIO2 on').replace('led = Pin(2, Pin.OUT)\n', 'led = Pin(2, Pin.OUT)\non = False\n').replace('    led.toggle()\n', '    on = not on\n    led.value(on)\n') }] };
   return { firmware: null, files: [] };
 }
 
@@ -107,3 +108,26 @@ export function processorProject(pj, board, { runtime = null } = {}) {
 
 /** What a new processor board's project is, said (New Project's console line, the MCP's new_project's text). */
 export const processorProjectText = (name, board, firmware) => `Board project '${name}' made for the ${mcuBoard(board).name}: ${firmware ? `its firmware ${firmware}, which blinks its LED` : `no firmware yet: put its .hex (MPLAB X's) in its folder ${processorNodeId(board)}/ and make it the node's firmware (its row ▸ Open, or the MCP's edit_system)`}.`;
+
+/**
+ * A processor board's example (#5874: core/examples.js PROCESSOR_EXAMPLES), its project `pj` (its silinx.json) and its
+ * System document (`path`, `text`), made on the board `board` of its type (an Arduino's on the Uno or the Nano, a Pico's
+ * on the Pico or the Pico W; New Project's board, the MCP's new_project_from_example's): { project, writes ([{ path,
+ * text }]: its System document, its node's board changed; none on its own board) } or { error }. Its node keeps its id
+ * and its folder.
+ */
+export function exampleOnBoard(pj, { path, text }, board) {
+  const from = mcuBoard(pj?.board), to = mcuBoard(board);
+  if (!from) return { error: `${pj?.name}: not a processor board's project` };
+  const type = BOARD_TYPES.find(t => t.id === from.arch).label;
+  if (!to || to.arch !== from.arch) return { error: `'${board}' is not a board of its type, ${type} (${boardsOfType(from.arch).map(b => b.id).join(', ')})` };
+  if (board === pj.board) return { project: pj, writes: [] };
+  const r = readSystem(text);
+  if (r.error) return { error: `${path}: ${r.error}` };
+  const system = { ...r.system, nodes: r.system.nodes.map(n => (n.kind === 'mcu' && n.board === pj.board ? { ...n, board } : n)) };
+  return { project: { ...pj, board }, writes: [{ path, text: writeSystem(system) }] };
+}
+
+/** What a new project from a processor board's example is, said (New Project's console line, the MCP's
+ *  new_project_from_example's text, #5874). */
+export const processorExampleText = (name, example, board, firmware) => `Board project '${name}' made from the example ${example} for the ${mcuBoard(board).name}: its firmware ${firmware}.`;

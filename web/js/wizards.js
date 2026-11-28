@@ -222,11 +222,11 @@ export async function newProjectWizard({ template = 'empty' } = {}) {
   const fpgaList = [boardSel, catSel, dp.famSel, dp.partSel, dp.pkgSel, dp.spdSel, synthSel, simSel, langSel, stdSel];
   const fpgaFields = kindFields(() => isDesign() || kinds.system(), fpgaList);
   const syncKind = () => {
-    // (each mode its examples, #4702, #5757: a Circuit project's the drawings-only ones; a processor's Board Type none, #5756)
-    syncTemplates(tplSel, kinds.design() ? 'circuit' : kinds.system() ? 'system' : kinds.boardType() !== 'fpga' ? 'processor' : 'board');
+    // (each mode its examples, #4702, #5757: a Circuit project's the drawings-only ones; a Board project's its Board Type's, #5874)
+    syncTemplates(tplSel, kinds.design() ? 'circuit' : kinds.system() ? 'system' : 'board', kinds.boardType());
     fpgaFields();
     systemNote.style.display = kinds.system() ? '' : 'none';
-    proc.sync(fpgaList, kinds.boardType());
+    proc.sync(fpgaList, kinds.boardType(), tplSel.value !== 'empty');
   };
   const systemNote = h('div', { class: 'hint system-note', style: { display: 'none' } }, SYSTEM_NOTE);
   const p2 = {
@@ -255,7 +255,7 @@ export async function newProjectWizard({ template = 'empty' } = {}) {
     onShow: () => {
       summary.innerHTML = '';
       const b = db.boards.find(x => x.id === boardSel.value);
-      if (proc.chosen()) { summary.append(h('pre', { class: 'code-box' }, processorSummary(name.value.trim(), proc.chosen(), proc.runtimeSel.value))); return; }
+      if (proc.chosen()) { summary.append(h('pre', { class: 'code-box' }, processorSummary(name.value.trim(), proc.chosen(), proc.runtimeSel.value, tplSel.value))); return; }
       if (kinds.system()) {
         summary.append(h('pre', { class: 'code-box' }, `Project Navigator will create a new project with the following specifications.\n\n` +
           `Project:\n  Project Name: ${name.value.trim()}\n  Template:     ${tplSel.value}\n  Mode:         System\n\n` +
@@ -280,7 +280,7 @@ export async function newProjectWizard({ template = 'empty' } = {}) {
   if (!ok) return;
   try {
     if (st.replace) await removeExistingProject(name.value.trim());
-    if (proc.chosen()) { await createProcessorProject(name.value.trim(), proc.chosen(), proc.runtimeSel.value); countEvent('new-project'); app.showLeftPage('design'); toast(`Project ${name.value.trim()} created`, 'ok'); return; }
+    if (proc.chosen()) { await createProcessorProject(name.value.trim(), proc.chosen(), proc.runtimeSel.value, tplSel.value); countEvent('new-project'); app.showLeftPage('design'); toast(`Project ${name.value.trim()} created`, 'ok'); return; }
     // (an empty project of its mode, #5786: its top added with New Source, as any module)
     const design = isDesign(), asSystem = kinds.system();
     const pj = await api.createProject(asSystem ? { name: name.value.trim(), template: tplSel.value, kind: kinds.kind() } : design ? { name: name.value.trim(), template: tplSel.value, kind: DESIGN_KIND } : {
