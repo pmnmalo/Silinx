@@ -88,11 +88,12 @@ export const FIELD_NAMES = {
 };
 
 /** The configuration words' settings (the `config __FWDT, FWDTEN_OFF` directive's): word -> setting -> its value, the
- *  other bits ones (an erased word's), ANDed together. FWDT's FWDTEN (bits 5-6) and FOSCSEL's FNOSC (bits 0-2), as
- *  config.js reads them. */
+ *  other bits ones (an erased word's), ANDed together. FWDT's FWDTEN (bits 5-6), FOSCSEL's FNOSC (bits 0-2) and FICD's
+ *  JTAGEN (bit 5, #6027), as config.js reads them. */
 export const CONFIG_SETTINGS = {
   FWDT: { FWDTEN_OFF: 0xff9f, FWDTEN_ON_ACTIVE: 0xffbf, FWDTEN_SWON: 0xffdf, FWDTEN_ON: 0xffff },
   FOSCSEL: { FNOSC_FRC: 0xfff8, FNOSC_FRCPLL: 0xfff9, FNOSC_PRI: 0xfffa, FNOSC_PRIPLL: 0xfffb, FNOSC_SOSC: 0xfffc, FNOSC_LPRC: 0xfffd, FNOSC_DCO: 0xfffe, FNOSC_FRCDIV: 0xffff },
+  FICD: { JTAGEN_OFF: 0xffdf, JTAGEN_ON: 0xffff },
 };
 /** The configuration words' program addresses, by their names as `config` takes them (__FWDT). */
 export const CONFIG_ADDRESSES = Object.fromEntries(Object.entries(CONFIG_WORDS).map(([k, v]) => [`__${k}`, v]));

@@ -5,7 +5,7 @@
 // potentiometer's position on the LEDs. At Fcy = 1 MHz (forced): TAD = (ADCS + 1) µs.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { deviceWith } from './pic24-lib.mjs';
+import { deviceWith, withConfig } from './pic24-lib.mjs';
 import { Explorer1632, Pic24Node } from '../packages/silinx-pic24/src/index.js';
 import { pic24Assemble } from './pic24-asm.mjs';
 
@@ -88,7 +88,7 @@ test('#5481 a program on the Explorer 16/32: the potentiometer\'s position on th
     'wait: btss 0x0746, #0', 'bra wait',
     'mov 0x0712, w1', 'lsr w1, #2, w1', 'mov w1, 0x0666', 'bra loop',
   ]);
-  const node = new Pic24Node({ program: words, fcy: 1e6 });
+  const node = new Pic24Node({ program: withConfig(words), fcy: 1e6 });
   const board = new Explorer1632(node.device);
   for (const share of [0.1, 0.5, 1]) {
     board.setPotentiometer(share);

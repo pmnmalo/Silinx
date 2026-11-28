@@ -445,7 +445,7 @@ export function assembleProgram(lines, { file = '', symbols = {} } = {}) {
   }
   const flash = Uint32Array.from(words);
   let hex = writeHex(flash).replace(/:00000001FF\n$/, '');
-  for (const [addr, v] of Object.entries(r.config).sort((a, b) => a[0] - b[0])) hex += writeHex([v], Number(addr) >> 1).replace(/:00000001FF\n$/, '');
+  for (const [addr, v] of Object.entries(r.config).sort((a, b) => a[0] - b[0])) hex += writeHex([v], Number(addr)).replace(/:00000001FF\n$/, '');
   hex += ':00000001FF\n';
   return { words: flash, hex: errors.length ? null : hex, labels: r.labels, config: r.config, linked: probe, errors, warnings };
 }

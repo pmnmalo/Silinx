@@ -5,7 +5,7 @@
 // the node's events; a program lighting the LEDs from the buttons.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { deviceWith, runUntil } from './pic24-lib.mjs';
+import { deviceWith, withConfig, runUntil } from './pic24-lib.mjs';
 import { Explorer1632, EXPLORER_1632, Pic24Node } from '../packages/silinx-pic24/src/index.js';
 import { pic24Assemble } from './pic24-asm.mjs';
 
@@ -79,6 +79,23 @@ test('#5481 the Explorer 16/32: its buttons\' pins pulled up, a press pulls them
   assert.equal(EXPLORER_1632.buttons.S5, EXPLORER_1632.leds.D10, 'S5 and D10 share RA7');
 });
 
+test('#6027 the JTAG port, on in an erased FICD, takes RA0, RA1, RA4 and RA5 (TMS, TCK, TDI, TDO): the LEDs D3, D4, D7, D8 dark, a warning once a pin; JTAGEN off gives them back', async () => {
+  const prog = ['clr 0x066a', 'clr 0x0662', 'mov #0x00ff, w0', 'mov w0, 0x0666', 'clr 0x0662', 'done: bra done'];
+  for (const [ficd, lit, warnings] of [
+    [0xffffff, ['D5', 'D6', 'D9', 'D10'], ['TMS', 'TCK', 'TDI', 'TDO'].map((s, i) => `RA${[0, 1, 4, 5][i]} is the JTAG port's ${s} while FICD's JTAGEN is on (an erased FICD): the program's output on it does not reach the pin (#pragma config JTAGEN = OFF)`)],
+    [0xffffdf, ['D3', 'D4', 'D5', 'D6', 'D7', 'D8', 'D9', 'D10'], []],
+  ]) {
+    const { dev, cpu, labels } = await deviceWith(prog, { config: { FWDT: WDT_OFF, FICD: ficd } });
+    const board = new Explorer1632(dev);
+    runUntil(cpu, labels.done);
+    assert.equal(dev.mcu.config.jtag, ficd === 0xffffff);
+    assert.deepEqual(Object.entries(board.leds()).filter(([, on]) => on).map(([d]) => d), lit, `FICD ${ficd.toString(16)}`);
+    assert.deepEqual(['RA0', 'RA1', 'RA4', 'RA5'].map((p) => dev.ports.driven(p)), ficd === 0xffffff ? [null, null, null, null] : [1, 1, 1, 1]);
+    // (said once, though TRISA is written twice)
+    assert.deepEqual(cpu.log.map((e) => `${e.kind}: ${e.text}`), warnings.map((w) => `warning: ${w}`), `FICD ${ficd.toString(16)}: its warnings`);
+  }
+});
+
 test('#5481 a program on the Explorer 16/32: S3 (RD6) held lights D3, the LEDs\' changes the node\'s outputs at their times', () => {
   const { words } = pic24Assemble([
     'goto main', '.org 0x200',
@@ -86,7 +103,7 @@ test('#5481 a program on the Explorer 16/32: S3 (RD6) held lights D3, the LEDs\'
     'loop: btss 0x06a0, #6', 'bra pressed', 'bclr 0x0666, #0', 'bra loop',
     'pressed: bset 0x0666, #0', 'bra loop',
   ]);
-  const node = new Pic24Node({ program: words, fcy: 1e6 });
+  const node = new Pic24Node({ program: withConfig(words), fcy: 1e6 });
   new Explorer1632(node.device);
   const { outputs } = node.run(100e6, [{ t: 20e6, pin: 'RD6', value: 0 }, { t: 60e6, pin: 'RD6', value: 1 }]);
   const ra0 = outputs.filter((o) => o.pin === 'RA0');

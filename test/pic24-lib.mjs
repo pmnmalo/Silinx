@@ -71,15 +71,22 @@ export const hex4 = (v) => v.toString(16).toUpperCase().padStart(4, '0');
 
 const CONFIG_AT = { FSEC: 0x0abf00, FBSLIM: 0x0abf10, FSIGN: 0x0abf14, FOSCSEL: 0x0abf18, FOSC: 0x0abf1c, FWDT: 0x0abf20, FPOR: 0x0abf24, FICD: 0x0abf28, FDEVOPT1: 0x0abf2c };
 
+/** A program's words with its configuration words ({ FOSCSEL: 0xfffc09, … }; FICD's JTAGEN off, as the board's
+ *  programs set it, #6027, unless given; the others erased), the flash erased where it has none. */
+export function withConfig(words, config = {}) {
+  const program = [...words];
+  for (const [k, v] of Object.entries({ FICD: 0xffffdf, ...config })) program[CONFIG_AT[k] >> 1] = v;
+  return Array.from(program, (w) => w ?? 0xffffff);
+}
+
 /** The device (gb610.js) with a program from reset: GOTO 0x200, the code there, its vectors ({ irq: label }), its
- *  configuration words ({ FOSCSEL: 0xfffc09, … }; the others erased). { dev, mcu, cpu, labels }. */
+ *  configuration words ({ FOSCSEL: 0xfffc09, … }; FICD's JTAGEN off, as the board's programs set it, #6027, unless
+ *  given; the others erased). { dev, mcu, cpu, labels }. */
 export async function deviceWith(lines, { config = {}, vectors = {}, fcy, primaryHz } = {}) {
   const { createGb610 } = await import('../packages/silinx-pic24/src/gb610.js');
   const vec = Object.entries(vectors).flatMap(([n, l]) => [`.org ${0x14 + 2 * +n}`, `.word ${l}`]);
   const { words, labels } = pic24Assemble(['goto 0x200', ...vec, '.org 0x200', ...lines]);
-  const program = [...words];
-  for (const [k, v] of Object.entries(config)) program[CONFIG_AT[k] >> 1] = v;
-  const dev = createGb610({ program: Array.from(program, (w) => w ?? 0xffffff), fcy, primaryHz });
+  const dev = createGb610({ program: withConfig(words, config), fcy, primaryHz });
   return { dev, mcu: dev.mcu, cpu: dev.cpu, labels };
 }
 

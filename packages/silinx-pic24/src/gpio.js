@@ -3,6 +3,9 @@
 // IOCSTAT; the IOC interrupt (IRQ 19). A pin's level: a peripheral's output when one drives it (pps.js, the PMP…),
 // else its latch when TRIS makes it an output (an open drain's 1 released), else what drives it from outside
 // (setInput), else its weak pull-up or pull-down, else floating (it reads as 0). An analog pin (ANS) reads as 0.
+// The JTAG port, on while FICD's JTAGEN is (an erased FICD's, #6027), takes RA0, RA1, RA4 and RA5 (TMS, TCK, TDI,
+// TDO on the 100-pin device's pin diagram): the port drives none of them (no debugger shifting TDO), a warning said the
+// first time the program makes one an output.
 //
 // Not modelled: the pins' electrical levels and currents (a 5 V input on a 3.3 V pin), the input's Schmitt trigger
 // and its synchronisation delay (a read sees the level at once), the PMP's TTL buffers (PADCON's PMPTTL).
@@ -14,6 +17,7 @@ const OFF = { TRIS: 0, PORT: 2, LAT: 4, ODC: 6, ANS: 8, IOCP: 10, IOCN: 12, IOCF
 const PINS = { A: 0xc6ff, B: 0xffff, C: 0xf01e, D: 0xffff, E: 0x03ff, F: 0x31bf, G: 0xf3cf };
 const ANALOG = { A: 0x06c0, B: 0xffff, C: 0x6010, D: 0x00c0, E: 0x0210, F: 0, G: 0x03c0 };
 const PADCON = 0x065e, IOCSTAT = 0x0660, IOC_IRQ = 19;
+const JTAG_PINS = { RA0: 'TMS', RA1: 'TCK', RA4: 'TDI', RA5: 'TDO' };
 
 export class Ports {
   constructor(mcu) {
@@ -23,6 +27,7 @@ export class Ports {
     this.last = new Map();       // pin -> its level last seen (the IOC's edges, the outputs' changes)
     this.listeners = [];         // fn(pin, driven): an output's change (driven: 0, 1, null when released)
     this.levelListeners = [];    // fn(pin, level): a pin's level changed (an input's, PPS's)
+    this.jtag = mcu.config?.jtag ? JTAG_PINS : {};   // the pins the JTAG port takes: pin -> its signal
     PORTS.split('').forEach((p, k) => {
       const at = (r) => BASE + k * STRIDE + OFF[r], pins = PINS[p];
       mcu.register(at('TRIS'), { reset: pins, mask: pins, write: () => this.update(p) });
@@ -61,6 +66,7 @@ export class Ports {
 
   /** What the device drives on a pin: 0, 1, or null (an input, an open drain's 1). */
   driven(name) {
+    if (this.jtag[name]) return null;
     const o = this.overrides.get(name);
     if (o) return o.value;
     const { port, bit } = this.pin(name), m = 1 << bit;
@@ -130,6 +136,9 @@ export class Ports {
     for (let b = 0; b < 16; b++) {
       if (!((PINS[p] >> b) & 1)) continue;
       const name = `R${p}${b}`, d = this.driven(name), lv = this.level(name), was = this.last.get(name);
+      if (this.jtag[name] && !(this.reg(p, 'TRIS') & (1 << b))) {
+        this.mcu.cpu.say('warning', `${name} is the JTAG port's ${this.jtag[name]} while FICD's JTAGEN is on (an erased FICD): the program's output on it does not reach the pin (#pragma config JTAGEN = OFF)`, `jtag ${name}`);
+      }
       if (!was || was.driven !== d) for (const fn of this.listeners) fn(name, d);
       if (was && was.level !== lv) for (const fn of this.levelListeners) fn(name, lv);
       if (was && ioc && was.level != null && lv != null && was.level !== lv) {

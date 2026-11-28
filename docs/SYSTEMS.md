@@ -885,7 +885,8 @@ image in this computer's own Docker (the ISE runner's nightly tests, #6019: its 
   `<id>/main.c`, made from its drawings as an Arduino's `.ino` is, calls each unit's `<module>_init()`, then its
   `<module>_tick()` at every tick: Timer1 counts Fcy / 8 (Fcy 2 MHz, the FRC through its divider at reset, as XC16
   leaves the configuration words), its flag T1IF every 10 ms; the watchdog, on in the erased configuration, is
-  cleared meanwhile. A hand-written C file with a `main()` in the folder is the node's program instead. XC16 compiles C:
+  cleared meanwhile; the JTAG port, on in the erased configuration and on four of the LEDs (RA0, RA1, RA4, RA5), is
+  turned off (`#pragma config JTAGEN = OFF`, #6027). A hand-written C file with a `main()` in the folder is the node's program instead. XC16 compiles C:
   a PIC24 node's language is C, not C++. The tests check the C against the model tick by tick: this computer's C
   compiler with a stand-in `<xc.h>`, and XC16's `.hex` on silinx-pic24 when XC16 is there.
   The ISE runner's nightly (`ise.yml`, #6019) runs the tests of the real compilers on its images

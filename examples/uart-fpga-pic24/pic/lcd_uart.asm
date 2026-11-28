@@ -1,5 +1,5 @@
 ; lcd_uart.asm: the Explorer 16/32's firmware of the uart-fpga-pic24 example (a PIC24FJ1024GB610, Fcy 2 MHz: the FRC
-; divided, as its configuration words are erased but the watchdog's, off), its .hex built from it by Silinx's
+; divided, as its configuration words are erased but the watchdog's and the JTAG port's, off), its .hex built from it by Silinx's
 ; assembler. UART2 at 9600 baud, 8N1, on the USB-UART's pins through PPS (U2RX on RP10, RF4; U2TX on RP17, RF5), linked to the FPGA: it writes
 ; "PIC24 + FPGA" on the LCD's first row, sends "Hi from PIC24!" CR LF to the FPGA, then shows each byte it receives
 ; (the FPGA echoes each one back; its BTN0 sends "Hello from Silinx!") on the LCD's second row, a LF starting the row
@@ -7,6 +7,7 @@
 ; PIC24 assembler does.
     .include "p24FJ1024GB610.inc"
     config __FWDT, FWDTEN_OFF   ; the watchdog off (the other configuration words erased)
+    config __FICD, JTAGEN_OFF   ; the JTAG port off: RA0, RA1, RA4 and RA5 the LEDs D3, D4, D7, D8 (#6027)
     .global __reset
     .text
 __reset:

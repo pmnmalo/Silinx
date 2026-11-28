@@ -339,7 +339,7 @@ test('#5931 the sections: .text\'s instructions, .bss\'s data labels (.space), .
 });
 
 test('#5931 a program linked as XC16 links it: the reset vector, the vector table, __DefaultInterrupt, the configuration words', async () => {
-  const { assemble, assembleProgram, asmMessage, parseHex, readConfig } = await import('../packages/silinx-pic24/src/index.js');
+  const { assemble, assembleProgram, asmMessage, parseHex, readConfig, Pic24Node } = await import('../packages/silinx-pic24/src/index.js');
   const r = assembleProgram(XC16(['    mov #0x0900, w15', 'loop: bra loop', '    .global __T1Interrupt', '__T1Interrupt:', '    bclr IFS0, #T1IF', '    retfie']), { file: 'p.s' });
   assert.deepEqual([r.errors, r.warnings, r.linked], [[], [], true]);
   assert.deepEqual([...r.words.slice(0, 2)], [0x040200, 0x000000]);   // GOTO __reset (0x200)
@@ -351,6 +351,16 @@ test('#5931 a program linked as XC16 links it: the reset vector, the vector tabl
   assert.equal(hex.program[0x100], assemble(['mov #0x0900, w15']).words[0]);
   assert.equal(readConfig((a) => (a === 0x0abf20 ? r.config[0x0abf20] : 0xffffff)).watchdog, 'off');
   assert.equal(r.config[0x0abf20], 0xffff9f);
+  // #6037 regression: the .hex's configuration word at its own address (XC16's: byte 0x157E40, twice the program
+  // address), the device's watchdog off
+  assert.equal(hex.program[0x0abf20 >> 1], 0xffff9f);
+  assert.match(r.hex, /\n:020000040015E5\n:047E40009FFFFF00A1\n/);
+  assert.equal(new Pic24Node({ hex: r.hex }).config.watchdog, 'off');
+  // #6027: FICD's JTAGEN
+  const jtag = assembleProgram(['    config __FICD, JTAGEN_OFF', ...XC16(['loop: bra loop']).slice(1)], { file: 'j.s' });
+  assert.deepEqual([jtag.errors, jtag.warnings, jtag.config[0x0abf28]], [[], [], 0xffffdf]);
+  assert.equal(new Pic24Node({ hex: jtag.hex }).config.jtag, false);
+  assert.equal(new Pic24Node({ hex: r.hex }).config.jtag, true, 'an erased FICD: on');
   // its own __DefaultInterrupt; settings ANDed; a handler not .global (XC16 would not see it): said, its vector the default's
   const own = assembleProgram(XC16(['loop: bra loop', '__DefaultInterrupt: reset', '__U1RXInterrupt: retfie', '    config __FOSCSEL, FNOSC_PRI']), { file: 'q.s' });
   assert.deepEqual(own.errors, []);
@@ -362,6 +372,7 @@ test('#5931 a program linked as XC16 links it: the reset vector, the vector tabl
   assert.deepEqual(assembleProgram(['config __FWDTX, FWDTEN_OFF', 'config __FWDT, WINDIS_ON', 'nop'], { file: 'c.s' }).errors.map(asmMessage), [
     'c.s:1: config __FWDTX: no such configuration word (__FSEC, __FBSLIM, __FSIGN, __FOSCSEL, __FOSC, __FWDT, __FPOR, __FICD, __FDEVOPT1, __FBOOT)',
     'c.s:2: config __FWDT: no setting WINDIS_ON (FWDTEN_OFF, FWDTEN_ON_ACTIVE, FWDTEN_SWON, FWDTEN_ON)']);
+  assert.deepEqual(assembleProgram(['config __FICD, ICS_PGx1', 'nop'], { file: 'i.s' }).errors.map(asmMessage), ['i.s:1: config __FICD: no setting ICS_PGx1 (JTAGEN_OFF, JTAGEN_ON)']);
   const twice = assembleProgram(XC16(['nop', 'config __FWDT, FWDTEN_ON']), { file: 't.s' });
   assert.deepEqual(twice.warnings.map(asmMessage), ['t.s:7: config __FWDT set again (first at line 2)']);
   assert.equal(twice.config[0x0abf20], 0xffff9f, 'the settings ANDed, as XC16\'s');
