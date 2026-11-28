@@ -28,6 +28,14 @@ test('#5480 HEX: the extended linear addresses (a program word at 0x8000 is the 
   assert.deepEqual(parseHex(':020000040040BA\n:04000000AA00000052\n:00000001FF\n').warnings, ['1 program word(s) beyond the flash\'s end (0xABFFE) ignored']);
 });
 
+test('#6027 FICD\'s JTAGEN (bit 5): the JTAG port on when erased, off at 0', () => {
+  const at = (words) => (a) => words[a] ?? 0xffffff;
+  assert.equal(readConfig(at({})).jtag, true);
+  assert.equal(readConfig(at({ 0x0abf28: 0xffffdf })).jtag, false);
+  assert.equal(readConfig(at({ 0x0abf28: 0xffffff & ~0x20 & ~0x03 })).jtag, false, 'ICS\'s bits another field');
+  assert.equal(readConfig(at({ 0x0abf28: 0xfffffc })).jtag, true);
+});
+
 test('#5480 HEX: its errors (a checksum, no end of file, a malformed record, a record after the end)', () => {
   assert.throws(() => parseHex(':080000000002040000000000F3\n:00000001FF\n'), /line 1: a wrong checksum/);
   assert.throws(() => parseHex(':080000000002040000000000F2\n'), /no end-of-file record/);

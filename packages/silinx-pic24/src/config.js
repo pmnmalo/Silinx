@@ -1,6 +1,7 @@
 // silinx-pic24 - the configuration words read (#5480, DS30010074 section 30): the oscillator that FOSCSEL and FOSC
-// select, and so the instruction clock (Fcy = Fosc / 2), and the watchdog FWDT enables. An erased word reads as all
-// ones (its defaults: the FRC divided, the watchdog on, wdt.js's).
+// select, and so the instruction clock (Fcy = Fosc / 2), the watchdog FWDT enables, and the JTAG port FICD's JTAGEN
+// enables (#6027, register 30-10). An erased word reads as all ones (its defaults: the FRC divided, the watchdog on,
+// wdt.js's, the JTAG port on, gpio.js's).
 
 import { CONFIG_WORDS } from './device.js';
 
@@ -11,8 +12,9 @@ const MAX_FOSC = 32e6;
 
 const FNOSC = ['FRC', 'FRCPLL', 'PRI', 'PRIPLL', 'SOSC', 'LPRC', 'DCO', 'FRCDIV'];
 
-/** The configuration: each word's value (its low 16 bits), the oscillator { source, fosc, fcy } and the watchdog
- *  ('on', 'off', 'software', 'active'). progWord(addr): the program word at addr. */
+/** The configuration: each word's value (its low 16 bits), the oscillator { source, fosc, fcy }, the watchdog
+ *  ('on', 'off', 'software', 'active') and jtag (FICD's JTAGEN: the JTAG port on RA0, RA1, RA4, RA5). progWord(addr):
+ *  the program word at addr. */
 export function readConfig(progWord, { primaryHz = PRIMARY_HZ } = {}) {
   const words = {};
   for (const [name, addr] of Object.entries(CONFIG_WORDS)) words[name] = progWord(addr) & 0xffffff;
@@ -39,5 +41,6 @@ export function readConfig(progWord, { primaryHz = PRIMARY_HZ } = {}) {
   if (fosc > MAX_FOSC) { warnings.push(`the oscillator's ${fosc / 1e6} MHz is above the device's 32 MHz`); }
   const fwdten = (words.FWDT >> 5) & 3;
   const watchdog = ['off', 'active', 'software', 'on'][fwdten];
-  return { words, oscillator: { source, fosc, fcy: fosc / 2 }, watchdog, warnings };
+  const jtag = ((words.FICD >> 5) & 1) === 1;
+  return { words, oscillator: { source, fosc, fcy: fosc / 2 }, watchdog, jtag, warnings };
 }

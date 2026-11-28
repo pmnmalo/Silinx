@@ -1,6 +1,7 @@
 // Test helper (not a test file): the PIC24 node's firmware for the System's tests (#5484), XC16's Intel HEX made by the
-// tests' assembler (test/pic24-asm.mjs; compiling C with XC16 is #5482's), the watchdog off in its configuration words,
-// the oscillator the erased words' (the FRC divided: Fcy 2 MHz).
+// tests' assembler (test/pic24-asm.mjs; compiling C with XC16 is #5482's), the watchdog and the JTAG port off in its
+// configuration words (#6027: the JTAG port takes RA0, RA1, RA4, RA5), the oscillator the erased words' (the FRC
+// divided: Fcy 2 MHz).
 //
 //   buttonLedHex()   D3 (RA0) lit while S3 (RD6) is pressed; RA1 follows RD13 (S4, or a link); RA2 is RD8's inverse
 //   explorerHex()    the LCD's two rows written, then buttonLedHex's loop
@@ -9,15 +10,16 @@
 import { writeHex } from '../packages/silinx-pic24/src/index.js';
 import { pic24Assemble } from './pic24-asm.mjs';
 
-const FWDT = 0x0abf20, FWDT_OFF = 0xffff9f;
+const FWDT = 0x0abf20, FWDT_OFF = 0xffff9f, FICD = 0x0abf28, FICD_JTAG_OFF = 0xffffdf;
 // (the SFRs: TRISA 0x0662, LATA 0x0666, ANSA 0x066a; PORTD 0x06a0, ANSD 0x06a6; UART2's 0x03ae…; RPINR19, RPOR8)
 const START = ['goto main', '.org 0x200', 'main: mov #0x0900, w15'];
 
-/** A program's .hex (its source's lines, from address 0): its words, then the configuration word FWDT (the watchdog
- *  off): an example's firmware (examples/uart-fpga-pic24/pic/lcd_uart.asm). */
+/** A program's .hex (its source's lines, from address 0): its words, then the configuration words FWDT (the watchdog
+ *  off) and FICD (JTAGEN off): an example's firmware (examples/uart-fpga-pic24/pic/lcd_uart.asm). */
 export function asmHex(lines) {
   const { words } = pic24Assemble(lines);
-  return writeHex(words).replace(/:00000001FF\n$/, '') + writeHex([FWDT_OFF], FWDT >> 1);
+  const end = /:00000001FF\n$/;
+  return writeHex(words).replace(end, '') + writeHex([FWDT_OFF], FWDT).replace(end, '') + writeHex([FICD_JTAG_OFF], FICD);
 }
 /** A program's .hex, its lines after a GOTO to 0x200 and the stack set. */
 export const hexOf = (lines) => asmHex([...START, ...lines]);

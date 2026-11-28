@@ -103,7 +103,8 @@ export const pic24MainPath = (id) => `${id}/main.c`;
 /**
  * The PIC24 node's program, calling its drawings' units ([{ module, file }], in their files' order): its C, main.c.
  * Timer1 counts Fcy / 8 and its flag (IFS0's T1IF, bit 3) every TICK_MS milliseconds is a tick: each unit's tick, in
- * their order; the watchdog cleared meanwhile (enabled by the erased configuration words).
+ * their order; the watchdog cleared meanwhile (enabled by the erased configuration words). Its one configuration
+ * word: the JTAG port off (on in an erased FICD, it takes RA0, RA1, RA4 and RA5, four of the LEDs, #6027).
  */
 export function pic24Main(id, units, { tickMs = TICK_MS, mark = '' } = {}) {
   const period = (PIC24_FCY / 8 / 1000) * tickMs - 1;
@@ -111,7 +112,8 @@ export function pic24Main(id, units, { tickMs = TICK_MS, mark = '' } = {}) {
     `// ${id}: its program, ${mark} (${units.map((u) => u.file.split('/').pop()).join(', ')}): edit the drawings, not this file.`,
     '// main() calls each drawing\'s <module>_init(), then each one\'s <module>_tick() every TICK_MS milliseconds, timed by',
     '// Timer1 (XC16, the PIC24FJ1024GB610 of the Explorer 16/32).',
-    '', '#include <xc.h>', '', '// ---- the drawings\' functions (their files next to this one)', ...units.flatMap((u) => [`void ${u.module}_init(void);`, `void ${u.module}_tick(void);`]),
+    '', '#include <xc.h>', '', '#pragma config JTAGEN = OFF   // the JTAG port off: RA0, RA1, RA4, RA5 free for the LEDs D3, D4, D7, D8 (#6027)',
+    '', '// ---- the drawings\' functions (their files next to this one)', ...units.flatMap((u) => [`void ${u.module}_init(void);`, `void ${u.module}_tick(void);`]),
     '', `#define FCY ${PIC24_FCY}UL   // the instruction clock: the FRC (8 MHz) through its divider at reset, over 2`,
     `#define TICK_MS ${tickMs}   // the tick's period`,
     '', 'int main(void) {', ...units.map((u) => `  ${u.module}_init();`),

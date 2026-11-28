@@ -37,13 +37,16 @@ Left out: center-aligned PWM, dead time, auto-shutdown, the Faults and the casca
 event, a transaction); their slave modes; USB, the RTCC, the CRC, the comparators, the CTMU, DMA and the
 cryptographic engine; the timers' external clocks and gated mode.
 
-Two things that surprise a first program, as on the real device:
+Three things that surprise a first program, as on the real device:
 
 - RD6 and RD7 (the buttons S3 and S6) and RA6 and RA7 (the LEDs D9 and D10, S5) are analog at reset: they read 0
   until the program clears their bits in ANSD and ANSA (`ANSD = 0; ANSA = 0;` or `_ANSD6 = 0`…);
 - the watchdog is on when the configuration words are erased (FWDT's FWDTEN 11): a program without
   `#pragma config FWDTEN = OFF` (or `CLRWDT` in its loop) resets after about two minutes (the erased FWPSA and
   WDTPS: 128 x 32,768 periods of the 31 kHz LPRC).
+- the JTAG port is on when the configuration words are erased (FICD's JTAGEN 1): it takes RA0, RA1, RA4 and RA5
+  (TMS, TCK, TDI, TDO; the LEDs D3, D4, D7 and D8), which a program without `#pragma config JTAGEN = OFF` (or
+  `config __FICD, JTAGEN_OFF`) cannot drive; the emulator says so once a pin.
 
 Its references are Microchip's "16-bit MCU and DSC Programmer's Reference Manual" (DS70000157) and the
 PIC24FJ1024GA610/GB610 family's data sheet (DS30010074), MPLAB X's simulator its oracle
