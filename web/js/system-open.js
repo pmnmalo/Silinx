@@ -128,6 +128,7 @@ const portsOf = name => (designState.modules || []).find(m => m.name === name)?.
 const inNode = (f, id) => id == null || relInNode(f, id) != null;
 const firmwares = id => (filesState.fileTree || []).filter(f => /\.(hex|elf|py)$/i.test(f) && inNode(f, id));   // (a Pico's program a .py, #5494)
 const circuits = id => (filesState.fileTree || []).filter(f => /\.circ\.json$/i.test(f) && inNode(f, id));   // (a circuit node's, #5215)
+const psMaps = id => (filesState.fileTree || []).filter(f => /\.regs\.json$/i.test(f) && relInNode(f, id) != null);   // (a Zynq node's PS–PL maps, #4688)
 const psPrograms = id => (filesState.fileTree || []).filter(f => /\.c$/i.test(f) && isPsPath(relInNode(f, id)));   // (a Zynq node's PS's, #4686)
 
 export async function openSystem(path) {
@@ -155,7 +156,7 @@ export async function openSystem(path) {
         onProblems: diags => problems.set(diags),
         onCheck: diags => problems.log(diags),
         onMessage: (text, err) => log(err ? `WARNING: ${name}: ${text}` : `${name}: ${text}`, err ? 'warn' : 'info'),
-        check: checkProjectSystem, modules, portsOf, firmwares, circuits, psPrograms,
+        check: checkProjectSystem, modules, portsOf, firmwares, circuits, psPrograms, psMaps,
         nodeKinds: profileById(systemRuleProfile(S.project))?.nodes ?? null,   // (the node tools its profile allows, #5910)
         // (a project followed, #3181: read only, the follower's notice at the end of its toolbar; no live editing yet)
         ...(following() ? { readOnly: true, banner: followNotice() } : phoneOnly()),   // (a phone's, #5121)

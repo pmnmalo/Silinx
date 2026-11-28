@@ -24,6 +24,7 @@ import { usbError } from './usb-id.js';
 import { RUNTIME_NAMES } from './rp2040-firmware.js';
 import { withNodePins } from './system-constraints.js';
 import { psProblems, psOfBoard } from './zynq-ps.js';
+import { psMapProblems } from './zynq-ps-map.js';
 
 const node = id => ({ kind: 'node', id });
 const link = id => ({ kind: 'link', id });
@@ -67,16 +68,17 @@ export const checkSystem = (sys, ctx = {}) => analyzeSystem(sys, ctx).diags;
  * pin is: its resource's label) }), warnings (its level's) } of each
  * link whose ends resolve, in the links' order. `circuits`: the circuit nodes' circuits read ({ path: circuit }; null: their
  * boards and pins not checked, #5215). `constraints`: the project's FPGA nodes' constraints files ({ path: text }, #5581:
- * their pins read from them, core/system-constraints.js; null: the nodes' pins as the model has them).
+ * their pins read from them, core/system-constraints.js; null: the nodes' pins as the model has them). `texts`: the FPGA
+ * nodes' PS–PL register maps read ({ path: text }, #4688: their bus checked; null: their places only).
  */
-export function analyzeSystem(sys, { modules = null, files = null, circuits = null, constraints = null } = {}) {
+export function analyzeSystem(sys, { modules = null, files = null, circuits = null, constraints = null, texts = null } = {}) {
   const out = [], wires = [];
   // (the nodes' typed ports: { node: [port] }, each resolved pin of their interfaces once)
   const say = { err: (message, ref) => out.push({ severity: 'error', message, ref }), warn: (message, ref) => out.push({ severity: 'warning', message, ref }) };
   // (each FPGA node's pins its constraints file's, `constraints` the project's: { path: text }, #5581)
   const pinned = constraints ? withNodePins(sys, constraints) : null;
   if (pinned) sys = pinned.system;
-  const nodes = checkNodes(sys, { modules, files }, say);
+  const nodes = checkNodes(sys, { modules, files, texts }, say);
   const used = checkLinks(sys, nodes, say, wires);
   for (const id of checkCircuitNodes(sys, { circuits, modules }, wires, say)) used.add(id);
   // (a System of one node, a processor board's Board project's, #5756: nothing to join it to, no warning)
@@ -169,11 +171,13 @@ function checkInterface(n, f, at, { err, warn }) {
 }
 
 // an FPGA node: its module, its board, its ports' pins
-function checkFpga(n, at, { modules, files }, { err, warn }) {
+function checkFpga(n, at, { modules, files, texts }, { err, warn }) {
   const ref = node(n.id);
   if (!n.module) err(`${n.id}: an FPGA node with no module`, ref);
   // (a Zynq board's processing system: its program, its board's PS, #4686)
   for (const p of psProblems(n, files ?? null)) err(p, ref);
+  // (its PS–PL register map, #4688)
+  for (const p of psMapProblems(n, files ?? null, texts ?? null)) err(p, ref);
   const entry = n.module && modules ? Object.entries(modules).find(([k]) => lc(k) === lc(n.module)) : null;
   const ports = entry?.[1] ?? null;   // (null: a module whose ports are not known, not elaborated: not checked)
   if (n.module && modules && !entry) err(`${n.id}: no module '${n.module}' in the project`, ref);

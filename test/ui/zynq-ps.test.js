@@ -2,7 +2,8 @@
 // PS Program (Zynq) (none on another board) writes ps/main.c, its starter, the project's `ps`; the Design pane shows
 // its PS (Cortex-A9) with its program, which is no HLS module. A System project: an FPGA node on the Zybo Z7 has its PS
 // program in its Properties (none on another board), New PS Program names ps/main.c, its starter written when the
-// System is saved; the node's row shows its PS. No warnings; Portuguese; both interfaces.
+// System is saved; the node's row shows its PS; its PS–PL register map (#4688) in its Properties. No warnings;
+// Portuguese; both interfaces.
 import { before, after } from 'node:test';
 import assert from 'node:assert/strict';
 import { setupUi, uiTest, makeProject, readWs } from './harness.js';
@@ -183,5 +184,44 @@ uiTest('#5896 a System\'s Zynq node: its CPU clock and FCLK0 in its Properties, 
   let m = null;
   for (let i = 0; i < 100 && !m?.nodes?.[0]?.psClocks; i++) { m = JSON.parse(await readWs(env, 'ZynqClk', 'zynq.sys.json')); await new Promise((r) => setTimeout(r, 100)); }
   assert.deepEqual(m.nodes[0].psClocks, { fclk0: 100e6 });
+  assert.deepEqual(page.console.filter((c) => c.type === 'warning' || c.type === 'warn' || c.type === 'error').map((c) => c.text), []);
+});
+
+// (#4688, part 2b: a Zynq node's PS–PL register map, an AXI4-Lite .regs.json of its folder, in its Properties)
+const MAP = JSON.stringify({ format: 'silinx-regmap', version: 1, name: 'cnt_regs', bus: 'axi', registers: [{ name: 'enable', addr: 0, width: 1, access: 'rw', reset: 0 }] }, null, 2);
+const mapField = (page) => page.eval((ed) => {
+  const m = document.querySelector(`${ed} .asm-side .sys-ps-map`), f = m?.closest('.asm-field');
+  return m ? { label: f.querySelector('.asm-label').textContent, options: [...m.options].map((o) => o.value), value: m.value, hint: f.querySelector('.asm-fhint').textContent } : null;
+}, ED);
+
+uiTest('#4688 a System\'s Zynq node: its PS–PL register map in its Properties (its folder\'s maps), saved; none on another board; Portuguese', E, async (page) => {
+  await makeProject(env, { name: 'ZynqMap', template: 'uart', files: { 'zynq.sys.json': SYS, 'zybo/cnt_regs.regs.json': MAP, 'b2/other.regs.json': MAP } });
+  const pj = await env.server.api('GET', '/api/projects/ZynqMap');
+  delete pj.fileTree;
+  await env.server.api('PUT', '/api/projects/ZynqMap', { ...pj, profile: 'system', board: null, constraints: null, top: null });
+  await page.openProject('ZynqMap');
+  await page.leftTab('design');
+  await page.waitFor(() => [...document.querySelectorAll('#hier .row .badge')].some((b) => b.textContent === 'System'), [], { what: 'the System\'s row' });
+  await page.click('#hier .row .badge', { text: 'System' });
+  await page.waitFor((ed) => document.querySelector(ed), [ED], { what: 'the System editor' });
+  await page.click(`${ED} .sys-node[data-id="b2"] .sys-head`);
+  await page.waitFor((ed) => document.querySelector(`${ed} .sys-selection h3`)?.textContent === 'FPGA b2', [ED], { what: 'b2\'s properties' });
+  assert.equal(await mapField(page), null, 'no map on the Basys 2');
+  await page.click(`${ED} .sys-node[data-id="zybo"] .sys-head`);
+  await page.waitFor((ed) => document.querySelector(`${ed} .sys-selection h3`)?.textContent === 'FPGA zybo', [ED], { what: 'zybo\'s properties' });
+  const HINT = 'an AXI4-Lite register map of its folder: its PL built with the PS7, its M_AXI_GP0 on the map\'s registers';
+  assert.deepEqual(await mapField(page), { label: 'PS–PL register map', options: ['', 'zybo/cnt_regs.regs.json'], value: '', hint: HINT });
+  await page.eval((ed) => { const el = document.querySelector(`${ed} .asm-side .sys-ps-map`); el.value = 'zybo/cnt_regs.regs.json'; el.dispatchEvent(new Event('change', { bubbles: true })); }, ED);
+  await page.waitFor((ed) => document.querySelector(`${ed} .asm-side .sys-ps-map`)?.value === 'zybo/cnt_regs.regs.json', [ED], { what: 'its map chosen' });
+  await page.eval(() => window.SilinxApp.saveAll());
+  for (let i = 0; i < 100 && !(await readWs(env, 'ZynqMap', 'zynq.sys.json')).includes('psMap'); i++) await new Promise((r) => setTimeout(r, 100));
+  assert.equal(JSON.parse(await readWs(env, 'ZynqMap', 'zynq.sys.json')).nodes[0].psMap, 'zybo/cnt_regs.regs.json');
+  // in Portuguese
+  await page.eval(async () => (await import('/js/i18n.js')).setLanguage('pt'));
+  await page.waitFor((ed) => document.querySelector(`${ed} .asm-side .sys-ps-map`)?.closest('.asm-field').querySelector('.asm-label').textContent === 'Mapa de registos PS–PL', [ED], { what: 'Portuguese' });
+  assert.equal((await mapField(page)).hint, 'um mapa de registos AXI4-Lite da sua pasta: a sua PL construída com o PS7, o seu M_AXI_GP0 nos registos do mapa');
+  await page.eval(async () => (await import('/js/i18n.js')).setLanguage('en'));
+  // (the map has no problem: the check's warnings only its nodes' unlinked and unpinned)
+  assert.deepEqual((await problems(page)).filter((l) => /register map/.test(l)), []);
   assert.deepEqual(page.console.filter((c) => c.type === 'warning' || c.type === 'warn' || c.type === 'error').map((c) => c.text), []);
 });
