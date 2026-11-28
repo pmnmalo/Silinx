@@ -79,7 +79,7 @@ test('#4700 a node\'s fields: by its kind, its pins merged and removed, a varian
   assert.deepEqual(changeNode(s, 'mcu', { board: 'esp32' }), { error: "no microcontroller board 'esp32': arduino-uno, arduino-nano, explorer-1632, pico, pico-w, esp32-devkitc" });
   assert.deepEqual(changeNode(s, 'mcu', { module: 'uart' }), { error: "mcu: a Microcontroller node has no field 'module' (id, board, firmware, runtime, usb, x, y, lang)" });
   assert.deepEqual(changeNode(s, 'term', { board: 'basys2' }), { error: "term: a Serial terminal node has no field 'board' (id, x, y)" });
-  assert.deepEqual(changeNode(s, 'fpga', { firmware: 'a.hex' }), { error: "fpga: a FPGA node has no field 'firmware' (id, module, board, variant, pins, constraints, ps, usb, x, y, lang)" });
+  assert.deepEqual(changeNode(s, 'fpga', { firmware: 'a.hex' }), { error: "fpga: a FPGA node has no field 'firmware' (id, module, board, variant, pins, constraints, ps, psClocks, usb, x, y, lang)" });
   assert.deepEqual(changeNode(s, 'nope', {}), { error: "no node 'nope' in the System" });
 });
 

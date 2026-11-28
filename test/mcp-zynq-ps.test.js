@@ -70,3 +70,15 @@ test('#4686 new_source ps: a Board project on a Zynq board, its PS program in ps
   assert.deepEqual([r.isError, r.text], [true, 'new_source: a PS program is a Zynq board\'s (the Zybo Z7, the Arty Z7): this project\'s board is basys3']);
   assert.equal((await call('read_file', { project: 'b3', path: 'ps/main.c' })).isError, true);
 });
+
+test('#5896 edit_system: a Zynq node\'s PS clocks (fields.psClocks, Hz), check_system says them; one the PLLs cannot make refused, nothing written', async () => {
+  await ok('new_project_from_example', { name: 'c', example: 'uart' });
+  await ok('write_file', { project: 'c', path: 'zynq.sys.json', text: JSON.stringify(system, null, 2) });
+  await ok('edit_system', { project: 'c', file: 'zynq.sys.json', edits: [{ action: 'change_node', node: 'zybo', fields: { ps: 'zybo/ps/main.c', psClocks: { cpu: 444444444, fclk0: 100e6 } } }] });
+  const c = await ok('check_system', { project: 'c', file: 'zynq.sys.json' });
+  assert.ok(c.text.split('\n').includes('node zybo: FPGA, module uart on zybo-z7-20, in VHDL; its PS\'s program zybo/ps/main.c: the Cortex-A9 at 444.4 MHz, UART1 on MIO 48 (TX) and 49 (RX), FCLK0 100 MHz'), c.text);
+  const bad = await call('edit_system', { project: 'c', file: 'zynq.sys.json', edits: [{ action: 'change_node', node: 'zybo', fields: { psClocks: { fclk0: 7e6 } } }] });
+  assert.deepEqual([bad.isError, bad.text], [true, 'edit_system: edit 0 (change_node): zybo: FCLK0 at 7 MHz: its IO PLL\'s 1000 MHz divided by two divisors of 1 to 63: the nearest it makes, 6.993 MHz or 7.092 MHz (nothing written)']);
+  const doc = JSON.parse((await ok('read_file', { project: 'c', path: 'zynq.sys.json' })).text);
+  assert.deepEqual(doc.nodes[0].psClocks, { cpu: 444444444, fclk0: 100e6 });
+});

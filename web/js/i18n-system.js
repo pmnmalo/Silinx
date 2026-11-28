@@ -30,6 +30,9 @@ export const SYSTEM_PT = {
   'Connected Boards': 'Placas Ligadas', 'USB id': 'Identificador USB', 'USB serial': 'Número de série USB',   // (its nodes' boards by their USB id, #5489)
   "vendor:product, hexadecimal (empty: the board's)": 'fabricante:produto, em hexadecimal (vazio: o da placa)',
   'its board told apart from another of the same kind': 'distingue a sua placa de outra do mesmo tipo',
+  'CPU clock (MHz)': 'Relógio do CPU (MHz)', "FCLK0, the PL's clock (MHz)": 'FCLK0, o relógio da PL (MHz)',   // (a Zynq node's PS clocks, #5896)
+  "its ARM PLL divided by 1 to 63, at most 667 MHz; empty: its board's": 'o seu PLL ARM dividido por 1 a 63, no máximo 667 MHz; vazio: o da placa',
+  "the PL's clock from the PS: its IO PLL divided by two divisors; empty: its board's": 'o relógio da PL vindo do PS: o seu PLL de E/S dividido por dois divisores; vazio: o da placa',
   '+ PS UART': '+ UART do PS', 'PS UART': 'UART do PS',
   "Add its processing system's UART: the board's USB serial port, for a serial terminal": 'Acrescentar a UART do seu sistema de processamento: a porta série USB da placa, para um terminal série',
   "its PS's UART, the board's USB serial port: link it to a serial terminal": 'a UART do seu PS, a porta série USB da placa: ligue-a a um terminal série',

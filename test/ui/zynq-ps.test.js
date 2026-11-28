@@ -148,3 +148,40 @@ uiTest('#4687 a System\'s Zynq node: + PS UART, its properties (its MIO pins), s
   assert.deepEqual(m.nodes[0].interfaces, [{ name: 'PS_UART1', kind: 'uart', ps: true, baud: 115200, frame: '8N1' }]);
   assert.deepEqual(page.console.filter((c) => c.type === 'warning' || c.type === 'warn' || c.type === 'error').map((c) => c.text), []);
 });
+
+// (#5896) a Zynq node's PS clocks in its Properties: the CPU's and FCLK0, MHz, empty its board's (the placeholder); one
+// set, saved in Hz; one the PLLs cannot make refused in the console, with the nearest ones; Portuguese
+uiTest('#5896 a System\'s Zynq node: its CPU clock and FCLK0 in its Properties, saved in Hz; one out of reach refused; Portuguese', E, async (page) => {
+  await makeProject(env, { name: 'ZynqClk', template: 'uart', files: { 'zynq.sys.json': SYS } });
+  const pj = await env.server.api('GET', '/api/projects/ZynqClk');
+  delete pj.fileTree;
+  await env.server.api('PUT', '/api/projects/ZynqClk', { ...pj, profile: 'system', board: null, constraints: null, top: null });
+  await page.openProject('ZynqClk');
+  await page.leftTab('design');
+  await page.waitFor(() => [...document.querySelectorAll('#hier .row .badge')].some((b) => b.textContent === 'System'), [], { what: 'the System\'s row' });
+  await page.click('#hier .row .badge', { text: 'System' });
+  await page.waitFor((ed) => document.querySelector(ed), [ED], { what: 'the System editor' });
+  await page.click(`${ED} .sys-node[data-id="b2"] .sys-head`);
+  await page.waitFor((ed) => document.querySelector(`${ed} .sys-selection h3`)?.textContent === 'FPGA b2', [ED], { what: 'b2\'s properties' });
+  assert.equal(await page.eval((ed) => document.querySelector(`${ed} .asm-side .sys-ps-cpu`), ED), null, 'no PS clocks on a Basys 2');
+  await page.click(`${ED} .sys-node[data-id="zybo"] .sys-head`);
+  await page.waitFor((ed) => document.querySelector(`${ed} .sys-selection h3`)?.textContent === 'FPGA zybo', [ED], { what: 'zybo\'s properties' });
+  const fields = () => page.eval((ed) => ['.sys-ps-cpu', '.sys-ps-fclk0'].map((s) => { const i = document.querySelector(`${ed} .asm-side ${s}`), f = i.closest('.asm-field'); return [i.value, i.placeholder, f.querySelector('.asm-flabel, label')?.textContent ?? null, f.querySelector('.asm-fhint').textContent]; }), ED);
+  const f0 = await fields();
+  assert.deepEqual(f0.map(([v, p, , hint]) => [v, p, hint]), [['', '666.667', 'its ARM PLL divided by 1 to 63, at most 667 MHz; empty: its board\'s'], ['', '50', 'the PL\'s clock from the PS: its IO PLL divided by two divisors; empty: its board\'s']]);
+  const set = (sel, v) => page.eval((ed, sel, v) => { const i = document.querySelector(`${ed} .asm-side ${sel}`); i.value = v; i.dispatchEvent(new Event('change', { bubbles: true })); }, ED, sel, v);
+  await set('.sys-ps-fclk0', '100');
+  await page.waitFor((ed) => document.querySelector(`${ed} .asm-side .sys-ps-fclk0`)?.value === '100', [ED], { what: 'FCLK0 set' });
+  // (out of reach: the console says why, the nearest ones; the value as it was)
+  await set('.sys-ps-cpu', '500');
+  await page.waitConsole(/the CPU at 500 MHz: its ARM PLL's 1333\.333 MHz divided by 1 to 63, at most 667 MHz: the nearest it makes, 444\.444 MHz or 666\.667 MHz/);
+  // in Portuguese
+  await page.eval(async () => (await import('/js/i18n.js')).setLanguage('pt'));
+  await page.waitFor((ed) => document.querySelector(`${ed} .asm-side .sys-ps-cpu`)?.closest('.asm-field').querySelector('.asm-fhint').textContent.startsWith('o seu PLL ARM'), [ED], { what: 'Portuguese' });
+  await page.eval(async () => (await import('/js/i18n.js')).setLanguage('en'));
+  await page.eval(() => window.SilinxApp.saveAll());
+  let m = null;
+  for (let i = 0; i < 100 && !m?.nodes?.[0]?.psClocks; i++) { m = JSON.parse(await readWs(env, 'ZynqClk', 'zynq.sys.json')); await new Promise((r) => setTimeout(r, 100)); }
+  assert.deepEqual(m.nodes[0].psClocks, { fclk0: 100e6 });
+  assert.deepEqual(page.console.filter((c) => c.type === 'warning' || c.type === 'warn' || c.type === 'error').map((c) => c.text), []);
+});

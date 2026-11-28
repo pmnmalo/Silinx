@@ -4,7 +4,7 @@
 //
 //   { format: 'silinx-system', version: 2, name,
 //     nodes: [ { id, kind: 'fpga', module, board, variant?, constraints?: <its constraints file, in its folder>, ps?: <a Zynq
-//                board's PS's program, a .c of its folder's ps/, #4686>, lang, interfaces, x, y }
+//                board's PS's program, a .c of its folder's ps/, #4686>, psClocks?: { cpu, fclk0 } <its PS's clocks, Hz, #5896>, lang, interfaces, x, y }
 //              { id, kind: 'mcu', board: 'arduino-uno' | 'arduino-nano' | 'explorer-1632' | 'pico' | 'esp32-devkitc', firmware: <a .hex / .elf of the project; a Pico's .py>, runtime?: 'circuitpython', lang, usb, interfaces, x, y }
 //              { id, kind: 'terminal', interfaces, x, y }
 //              { id, kind: 'circuit', circuit: <a .circ.json of the project>, spiHz?: <its SPI parts' SCK (Hz), #5384>, interfaces: [], x, y } ],
@@ -120,6 +120,8 @@ function normalNode(n) {
     if (n.pins && typeof n.pins === 'object' && Object.keys(n.pins).length) out.pins = { ...n.pins };
     // (a Zynq board's processing system's program, #4686: core/zynq-ps.js)
     if (n.ps) out.ps = String(n.ps);
+    // (its PS's clocks of its own, #5896: core/zynq-ps-clocks.js)
+    if (n.psClocks && typeof n.psClocks === 'object') out.psClocks = Object.fromEntries(['cpu', 'fclk0'].filter((k) => n.psClocks[k] != null).map((k) => [k, Number(n.psClocks[k])]));
   } else if (out.kind === 'mcu') {
     out.board = n.board ?? null; out.firmware = n.firmware ?? null;
     if (n.runtime) out.runtime = String(n.runtime);

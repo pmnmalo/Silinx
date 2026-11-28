@@ -8,6 +8,7 @@ import { nodeLangs, langError, LANG_NAMES, relInNode, renamedPath } from './syst
 import { usbError } from './usb-id.js';
 import { RUNTIME_NAMES } from './rp2040-firmware.js';
 import { psOfBoard, psProgramError, psSummary } from './zynq-ps.js';
+import { psClocksError } from './zynq-ps-clocks.js';
 import { nodeKindRefusal } from './project-profile.js';
 
 const lc = s => String(s).toLowerCase();
@@ -92,7 +93,7 @@ function renameEnds(sys, { node, to, iface = null, toIface = null }) {
 export function changeNode(sys, id, fields = {}) {
   const out = copy(sys), n = nodeOf(out, id);
   if (!n) return { error: `no node '${id}' in the System` };
-  const allowed = [...({ fpga: ['id', 'module', 'board', 'variant', 'pins', 'constraints', 'ps', 'usb', 'x', 'y'], mcu: ['id', 'board', 'firmware', 'runtime', 'usb', 'x', 'y'], terminal: ['id', 'x', 'y'], circuit: ['id', 'circuit', 'spiHz', 'x', 'y'] }[n.kind] || ['id', 'x', 'y']),
+  const allowed = [...({ fpga: ['id', 'module', 'board', 'variant', 'pins', 'constraints', 'ps', 'psClocks', 'usb', 'x', 'y'], mcu: ['id', 'board', 'firmware', 'runtime', 'usb', 'x', 'y'], terminal: ['id', 'x', 'y'], circuit: ['id', 'circuit', 'spiHz', 'x', 'y'] }[n.kind] || ['id', 'x', 'y']),
     ...(nodeLangs(n.kind).length ? ['lang'] : [])];
   for (const k of Object.keys(fields)) if (!allowed.includes(k)) return { error: `${id}: a ${NODE_KIND_NAMES[n.kind] || n.kind} node has no field '${k}' (${allowed.join(', ')})` };
   if (fields.id != null && fields.id !== n.id) {
@@ -143,6 +144,14 @@ export function changeNode(sys, id, fields = {}) {
       if (why) return { error: `${id}: ${why}` };
       n.ps = String(fields.ps);
     }
+  }
+  // (its PS's clocks of its own, #5896: { cpu, fclk0 } Hz, merged; null or '' removing one, or them all)
+  if (fields.psClocks !== undefined) {
+    const next = fields.psClocks ? { ...(n.psClocks || {}), ...fields.psClocks } : {};
+    for (const k of Object.keys(next)) if (next[k] == null || next[k] === '') delete next[k];
+    const why = psClocksError(next, psOfBoard(fields.board ?? n.board, fields.variant ?? n.variant));
+    if (why) return { error: `${id}: ${why}` };
+    if (Object.keys(next).length) n.psClocks = next; else delete n.psClocks;
   }
   if (fields.variant !== undefined) { if (fields.variant == null || fields.variant === '') delete n.variant; else n.variant = String(fields.variant); }
   // (pins: set in its constraints file when the System is saved, #5581: core/system-constraints.js pinsToConstraints)

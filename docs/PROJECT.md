@@ -44,6 +44,9 @@ A project is a directory under the workspace (default `~/Silinx-projects`, overr
   its `ps/` (`ps/main.c`), as a System's FPGA node's `ps` is (`<id>/ps/main.c`, `core/zynq-ps.js`); the PL's build leaves
   `ps/` out, and Silinx HLS does not take its C. New Source's PS Program (Zynq) writes one (its starter), the first
   one the project's `ps`; the Design pane shows it under the PS (Cortex-A9). Absent: the PS is not used.
+* `psClocks` (#5896): a Board project on a Zynq board's own PS clocks, `{ cpu, fclk0 }` in Hz (each optional: its
+  board's when absent), as a System's FPGA node's `psClocks` (`core/zynq-ps-clocks.js`: the CPU's clock the ARM PLL / 1 to 63,
+  at most 667 MHz; FCLK0 the IO PLL / two divisors of 1 to 63; another refused with the nearest ones).
 * The project's **mode** (roadmap #5753, `core/project-mode.js`): Circuit, Board or System, read from its profile (one
   written field, #5907), never written itself: Circuit is the Digital Logic profile, Board the FPGA profile, System the Embedded / SoC and System
   profiles, except a **processor board's Board project** (#5756, `core/processor-board.js`): a System of its one

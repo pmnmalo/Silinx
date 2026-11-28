@@ -61,6 +61,15 @@ export function mountSystemSide(ctx) {
           'a .c of its ps/: the Cortex-A9\'s program, its starter written when the System is saved'));
         if (!n.ps) out.push(h('div', { class: 'asm-row' }, btn('New PS Program', 'Its processing system\'s program, ps/main.c: its starter (the UART says hello, an LED blinks), written when the System is saved',
           () => take(changeNode(M(), n.id, { ps: psProgramPath(n.id) }), 'node'), 'asm-small sys-new-ps')));
+        // (its PS's clocks of its own, #5896: MHz here, Hz in the document; empty, its board's)
+        const ps = psOfBoard(n.board, n.variant), mhz = hz => String(Math.round(hz / 1e3) / 1e3);
+        const clock = (k, def, cls) => {
+          const el = h('input', { type: 'number', class: `asm-input ${cls}`, value: n.psClocks?.[k] ? mhz(n.psClocks[k]) : '', min: '0', step: 'any', placeholder: mhz(def) });
+          el.addEventListener('change', () => take(changeNode(M(), n.id, { psClocks: { [k]: el.value === '' ? null : Math.round(+el.value * 1e6) } }), 'node'));
+          return el;
+        };
+        out.push(field('CPU clock (MHz)', clock('cpu', ps.clkHz * ps.armFdiv / ps.cpuDiv, 'sys-ps-cpu'), 'its ARM PLL divided by 1 to 63, at most 667 MHz; empty: its board\'s'),
+          field('FCLK0, the PL\'s clock (MHz)', clock('fclk0', ps.fclk0Hz, 'sys-ps-fclk0'), 'the PL\'s clock from the PS: its IO PLL divided by two divisors; empty: its board\'s'));
       }
       out.push(...usbFields(n));
       // its pins: its constraints file's, edited by its I/O Pin Planning (#5581: web/js/system-constraints-ui.js; its Text

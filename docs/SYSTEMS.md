@@ -906,6 +906,16 @@ DAP makes then goes through the plan's guard, which refuses any other address: o
 and the OCM, on the APB-AP only CPU 0's debug registers. A WAIT is retried with more idle clocks, a FAULT clears its
 sticky error and is said. The tests run it on a simulated Zybo Z7 chain (`test/fixtures/zynq-dap-sim.js`).
 
+**The PS's clocks** are its board's (core/boards-vivado.js `ps`) unless the node sets its own, `psClocks: { cpu,
+fclk0 }` in Hz (#5896, `core/zynq-ps-clocks.js`; a Board project's silinx.json the same). They are set in the node's
+Properties (CPU clock and FCLK0, in MHz) or through the MCP's `edit_system` (`fields.psClocks`). The PLLs stay the
+board's, so the CPU's clock is the ARM PLL divided by 1 to 63, at most the -1 speed grade's 667 MHz, and FCLK0 is the IO
+PLL divided by two divisors of 1 to 63. A frequency within 100 ppm of one they make is that one (142.857 MHz: 1000 / 7);
+another is refused with the nearest ones. ps7_init, the description and Run PS Program use the node's clocks. The tests
+check them against Vivado's ps7_init of the ZedBoard, the MicroZed and the ZC702 / ZC706 (IO PLL 1000 MHz, as the Zybo
+Z7's): the same frequencies, the same divisors' product. Vivado's pair differs by version (those N x 1, the Zybo Z7's 2018
+preset 5 x 4, Silinx's rule). A PL design that takes FCLK0 as its clock is for later.
+
 **The PS's UART** is the node's interface `{ name: 'PS_UART1', kind: 'uart', ps: true, baud: 115200, frame: '8N1' }`
 (the Zybo Z7's UART1; the Arty Z7's `PS_UART0`): no ports of the module, its pins its board's MIO (48 and 49 on the Zybo
 Z7), which reach the board's USB serial port only. It is added by the System editor's **+ PS UART** in the node's
