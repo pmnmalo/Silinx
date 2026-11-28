@@ -9,7 +9,7 @@
 //   const { words, labels } = pic24Assemble(['mov #0x1234, w0', 'loop: bra loop']);
 
 import { evaluate } from './asm-expr.js';
-import { REGISTERS, BITS, VECTORS, CONFIG_SETTINGS, CONFIG_ADDRESSES, LINK } from './gb610-names.js';
+import { REGISTERS, BITS, VECTORS, CONFIG_SETTINGS, CONFIG_ADDRESSES, LINK, FIELD_NAMES } from './gb610-names.js';
 import { writeHex } from './hex.js';
 
 const MODES = { direct: 0, ind: 1, postdec: 2, postinc: 3, predec: 4, preinc: 5, offset: 6 };
@@ -52,6 +52,12 @@ function value(expr, env) {
     lookup(t) {
       if (t in env.labels) return env.labels[t];
       const up = t.toUpperCase();
+      // (a name of the .inc's both a register and its bit field: its field's position, as xc16-as reads it, said, #6025)
+      if (up in FIELD_NAMES && env.fields.has(up) && env.pass === 2 && !env.warned.has(`${env.line}:${up}`)) {
+        env.warned.add(`${env.line}:${up}`);
+        const [v, at] = FIELD_NAMES[up];
+        env.warn(`'${t}' is ${v} here, as xc16-as reads it: XC16's p24FJ1024GB610.inc makes it the position of the register's bit field ${up}, not the register at 0x${at.toString(16).padStart(4, '0')} (_${up})`);
+      }
       if (up in env.symbols) return env.symbols[up];
       if (env.pass === 1) return 0;
       return fail(`unknown symbol: ${t}`);
@@ -330,7 +336,7 @@ const DIRECTIVES = {
   },
   '.space': (r, env, put) => { const n = value(r, env); if (env.section === 'text') fail('.space: in .bss (the program\'s words are .word / .pword)'); env.dpc += n; },
   '.skip': (r, env, put) => DIRECTIVES['.space'](r, env, put),
-  '.equ': (r, env) => { const [n, ...e] = r.split(','); if (!e.length) fail('.equ name, value'); env.symbols[n.trim().toUpperCase()] = value(e.join(','), env); },
+  '.equ': (r, env) => { const [n, ...e] = r.split(','); if (!e.length) fail('.equ name, value'); env.fields.delete(n.trim().toUpperCase()); env.symbols[n.trim().toUpperCase()] = value(e.join(','), env); },
   '.set': (r, env) => DIRECTIVES['.equ'](r, env),
   '.global': (r, env) => { for (const n of r.split(',')) env.globals.add(n.trim()); },
   '.globl': (r, env) => DIRECTIVES['.global'](r, env),
@@ -375,14 +381,19 @@ function statement(s, raw, env, put) {
  */
 export function assemble(lines, { org = 0, symbols = {}, file = '' } = {}) {
   const src = (Array.isArray(lines) ? lines : String(lines).split('\n'));
-  const base = { ...REGISTERS, ...BITS, ...SYMBOLS, ...Object.fromEntries(Object.entries(symbols).map(([k, v]) => [k.toUpperCase(), v])) };
+  const own = Object.fromEntries(Object.entries(symbols).map(([k, v]) => [k.toUpperCase(), v]));
+  // (the registers also as the linker script names them, _NAME; a name the .inc gives a bit field too its field's, #6025)
+  const regs = { ...REGISTERS, ...SYMBOLS, ...Object.fromEntries(Object.entries(FIELD_NAMES).map(([k, [, at]]) => [k, at])) };
+  const linker = Object.fromEntries(Object.entries(regs).map(([k, v]) => [`_${k}`, v]));
+  const fields = Object.fromEntries(Object.entries(FIELD_NAMES).map(([k, [v]]) => [k, v]));
+  const base = { ...REGISTERS, ...BITS, ...SYMBOLS, ...linker, ...fields, ...own };
   const env = { labels: {}, pass: 1 };
   const where = {}, errors = [], warnings = [];
   const error = (line, message) => errors.push({ file, line, message });
   let words;
   for (env.pass = 1; env.pass <= 2; env.pass++) {
     words = [];
-    Object.assign(env, { pc: org, dpc: LINK.DATA_BASE, section: 'text', symbols: { ...base }, globals: new Set(), config: new Map(), configLine: new Map(), ended: false });
+    Object.assign(env, { pc: org, dpc: LINK.DATA_BASE, section: 'text', symbols: { ...base }, fields: new Set(Object.keys(fields).filter((k) => !(k in own))), warned: new Set(), globals: new Set(), config: new Map(), configLine: new Map(), ended: false });
     env.warn = (message) => { if (env.pass === 2) warnings.push({ file, line: env.line, message }); };
     const put = (w) => { words.push(w & 0xffffff); env.pc += 2; };
     src.forEach((raw, i) => {

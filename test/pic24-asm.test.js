@@ -292,6 +292,35 @@ test('#5931 the device\'s names and xc16-as\'s expressions', async () => {
     ['n.s:1: mov #psvpage(x), w0: psvpage(): not supported yet', 'n.s:3: mov #(1 +, w0: an expression ends too soon: (1 +', 'n.s:4: mov #nothing, w0: unknown symbol: nothing']);
 });
 
+test('#6025 a name the .inc gives a register and its bit field (DSRPAG…): the field\'s position, as xc16-as reads it, said; the register _DSRPAG; an .equ\'s own', async () => {
+  const { assemble, asmMessage, assembleProgram } = await import('../packages/silinx-pic24/src/index.js');
+  const { FIELD_NAMES } = await import('../packages/silinx-pic24/src/gb610-names.js');
+  // (XC16 2.10's words for uart-fpga-pic24's `mov w0, DSRPAG` and `mov w0, DSWPAG`: f 0, W0 itself written)
+  const r = assemble(['mov w0, DSRPAG', 'mov w0, _DSRPAG', 'mov w0, dswpag', 'mov w0, _DSWPAG', 'mov #NVMADR, w1', 'mov w0, _LATA'], { file: 'p.s' });
+  assert.deepEqual([...r.words].map((w) => w.toString(16)), ['880000', '880190', '880000', '8801a0', '200011', '883330']);
+  assert.deepEqual(r.warnings.map(asmMessage), [
+    'p.s:1: \'DSRPAG\' is 0 here, as xc16-as reads it: XC16\'s p24FJ1024GB610.inc makes it the position of the register\'s bit field DSRPAG, not the register at 0x0032 (_DSRPAG)',
+    'p.s:3: \'dswpag\' is 0 here, as xc16-as reads it: XC16\'s p24FJ1024GB610.inc makes it the position of the register\'s bit field DSWPAG, not the register at 0x0034 (_DSWPAG)',
+    'p.s:5: \'NVMADR\' is 1 here, as xc16-as reads it: XC16\'s p24FJ1024GB610.inc makes it the position of the register\'s bit field NVMADR, not the register at 0x0762 (_NVMADR)',
+  ]);
+  assert.deepEqual(r.errors, []);
+  // (the 27 names, XC16 2.10's: each its constant, with its warning; its register as _NAME)
+  assert.equal(Object.keys(FIELD_NAMES).length, 27);
+  for (const [name, [v, at]] of Object.entries(FIELD_NAMES)) {
+    const x = assemble([`mov #${name}, w2`, `mov #_${name}, w3`]);
+    assert.deepEqual([...x.words], [0x200002 | (v << 4), 0x200003 | (at << 4)], name);
+    assert.equal(x.warnings.length, 1, name);
+  }
+  // (a program's own .equ, or its symbols, of the name: theirs, nothing said)
+  const own = assemble(['.equ TBLPAG, 0x54', 'mov w0, TBLPAG']), given = assemble(['mov w0, DISICNT'], { symbols: { DISICNT: 0x52 } });
+  assert.deepEqual([[...own.words], own.warnings, [...given.words], given.warnings], [[0x8802a0], [], [0x880290], []]);
+  // (the uart-fpga-pic24 example names the registers _DSRPAG and _DSWPAG: no warning, its words the register's)
+  const fs = await import('node:fs');
+  const ex = assembleProgram(fs.readFileSync(new URL('../examples/uart-fpga-pic24/pic/lcd_uart.asm', import.meta.url), 'utf8'), { file: 'lcd_uart.asm' });
+  assert.deepEqual([ex.errors, ex.warnings], [[], []]);
+  assert.ok([...ex.words].includes(0x880190) && [...ex.words].includes(0x8801a0) && ![...ex.words].includes(0x880000));
+});
+
 test('#5931 the sections: .text\'s instructions, .bss\'s data labels (.space), .word 16 bits and .pword 24, .align, .end', async () => {
   const { assemble, asmMessage } = await import('../packages/silinx-pic24/src/index.js');
   const r = assemble(['.bss', 'count: .space 2', 'buf: .space 8', '.align 4', 'last: .space 1', '.text', 'mov count, w0', 'mov w0, buf+2', '.word 0xbeef, 5', '.pword 0xabcdef', '.align 8', 'nop', '.end', 'frob']);

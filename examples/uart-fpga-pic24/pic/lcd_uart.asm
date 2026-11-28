@@ -32,8 +32,8 @@ __reset:
     mov #0x8300, w0
     mov w0, PMCON1           ; PMCON1: the EPMP on, master mode
     mov #4, w0
-    mov w0, DSRPAG           ; DSRPAG
-    mov w0, DSWPAG           ; DSWPAG
+    mov w0, _DSRPAG          ; DSRPAG (_DSRPAG: the .inc's DSRPAG is its bit field's position, 0, #6025)
+    mov w0, _DSWPAG          ; DSWPAG (as _DSRPAG)
     mov #0x8000, w1          ; the LCD
     mov #0x38, w0          ; function set: 8 bits, 2 rows
     rcall cmd
