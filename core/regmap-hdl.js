@@ -8,13 +8,18 @@
 //   const { code } = generateRegmap(map, { lang: 'vhdl' });
 
 import { regsByAddr, hexByte } from './regmap.js';
+import { axiVhdl, axiVerilog } from './regmap-axi.js';
 
 const bin = (v, w) => (v >>> 0).toString(2).padStart(w, '0').slice(-w);
+const hex32 = v => `0x${(Number(v) >>> 0).toString(16).toUpperCase().padStart(8, '0')}`;
 
-// the header: what the module is, its bus's protocol, its registers
-function header(m, V) {
+// the header: what the module is, its bus's protocol, its registers (an AXI4-Lite slave's too: core/regmap-axi.js)
+export function header(m, V) {
   const c = V ? '--' : '//', rule = c + '='.repeat(78), regs = regsByAddr(m);
-  const bus = m.bus === 'spi'
+  const bus = m.bus === 'axi'
+    ? [`${c} Bus         : AXI4-Lite slave (s_axi_*), 32-bit data, a 4 KB window at the base address ${hex32(m.base)}: each`,
+      `${c}               register a word at its offset, written byte by byte as WSTRB says; responses OKAY`]
+    : m.bus === 'spi'
     ? [`${c} Bus         : SPI, mode 0, MSB first, SS low for a transaction: a command byte (R << 7 | address),`,
       `${c}               then the data bytes, the address incremented after each; a read's bytes on MISO from`,
       `${c}               the second byte on`]
@@ -23,15 +28,15 @@ function header(m, V) {
       `${c}               each byte; SDA pulled low or released, never driven high`];
   const nw = Math.max(4, ...regs.map(r => r.name.length));
   return [rule, `${c} ${V ? 'Entity' : 'Module'}      : ${m.name}`,
-    `${c} Description : the registers of the register map ${m.name}.regs.json behind an ${m.bus === 'spi' ? 'SPI' : 'I2C'} slave`,
+    `${c} Description : the registers of the register map ${m.name}.regs.json behind an ${{ spi: 'SPI', i2c: 'I2C', axi: 'AXI4-Lite' }[m.bus]} slave`,
     `${c} Generator   : Silinx register map (edit the map, not this file).`, ...bus,
-    `${c} Clock       : clk (rising edge), the bus's lines sampled with it`, c, `${c} Registers (address, name, width, access):`,
+    m.bus === 'axi' ? `${c} Clock       : s_axi_aclk (rising edge); s_axi_aresetn low the registers' reset` : `${c} Clock       : clk (rising edge), the bus's lines sampled with it`, c, `${c} Registers (address, name, width, access):`,
     ...regs.map(r => `${c}   ${hexByte(r.addr)}  ${r.name.padEnd(nw)}  ${String(r.width).padStart(2)} bit(s)  ${r.access}${r.access === 'ro' ? '' : `  reset ${r.reset}`}${r.strobe ? `, ${r.name}_wr a pulse when written` : ''}`),
     rule];
 }
 
 // a register's byte k: its bits [lo, hi], how many
-const byteOf = (r, k) => { const lo = 8 * k, n = Math.min(8, r.width - lo); return { lo, hi: lo + n - 1, n }; };
+export const byteOf = (r, k) => { const lo = 8 * k, n = Math.min(8, r.width - lo); return { lo, hi: lo + n - 1, n }; };
 
 // ---- VHDL
 
@@ -200,5 +205,7 @@ function gI2c(regs, st) {
  *  (core/regmap.js checkRegmap): a map with errors gives a module that may not compile. */
 export function generateRegmap(m, { lang = 'vhdl' } = {}) {
   const V = lang === 'vhdl';
+  // (an AXI4-Lite slave, a Zynq's PL seen by its PS, #4688: core/regmap-axi.js)
+  if (m.bus === 'axi') return { code: V ? axiVhdl(m) : axiVerilog(m), file: `${m.name}.${V ? 'vhd' : 'v'}` };
   return { code: V ? vhdl(m) : verilog(m), file: `${m.name}.${V ? 'vhd' : 'v'}` };
 }

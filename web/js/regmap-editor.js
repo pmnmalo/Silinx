@@ -12,13 +12,15 @@
 import { h } from './ui.js';
 import { statusLine } from './status-line.js';
 import { toolWide } from './editor-icons.js';
-import { normalizeRegmap, newRegmap, checkRegmap, hexByte } from '/core/regmap.js';
+import { normalizeRegmap, newRegmap, checkRegmap, hexByte, AXI_BASE } from '/core/regmap.js';
 
 const ACCESS = [['rw', 'rw'], ['ro', 'ro'], ['wo', 'wo']];
 const bytesOf = r => Math.max(1, Math.ceil(Number(r.width) / 8));
 
 export function mountRegmapEditor(container, opts = {}) {
   let M = normalizeRegmap(opts.model || newRegmap('regs'));
+  // (the addresses a register takes: an AXI4-Lite map's a word, #4688)
+  const sizeOf = r => (M.bus === 'axi' ? 4 : bytesOf(r));
   let sel = M.registers[0]?.name ?? null;
   const readOnly = !!opts.readOnly;
   const hist = [JSON.stringify(M)];
@@ -31,17 +33,24 @@ export function mountRegmapEditor(container, opts = {}) {
 
   // ---------------------------------------------------------------- toolbar
   const bus = h('select', { class: 'asm-input regs-bus', title: 'The bus the microcontroller reads and writes the registers on' },
-    h('option', { value: 'spi' }, 'SPI'), h('option', { value: 'i2c' }, 'I²C'));
-  bus.addEventListener('change', () => edit({ ...M, bus: bus.value, address: bus.value === 'i2c' ? M.address ?? 0x42 : undefined }));
+    h('option', { value: 'spi' }, 'SPI'), h('option', { value: 'i2c' }, 'I²C'), h('option', { value: 'axi' }, 'AXI4-Lite (Zynq PS)'));
+  // (to AXI4-Lite: its registers on consecutive words, in their order, #4688)
+  const words = regs => [...regs].sort((a, b) => (a.addr ?? 0) - (b.addr ?? 0)).map((r, i) => ({ ...r, addr: 4 * i }));
+  bus.addEventListener('change', () => edit({ ...M, bus: bus.value, address: bus.value === 'i2c' ? M.address ?? 0x42 : undefined, base: bus.value === 'axi' ? M.base ?? AXI_BASE : undefined,
+    registers: bus.value === 'axi' && M.bus !== 'axi' ? words(M.registers) : M.registers }));
+  // (an AXI4-Lite map's base address, its 4 KB window on the Zynq PS's M_AXI_GP0, #4688)
+  const base = h('input', { type: 'text', class: 'asm-input mono regs-base', title: 'The base address of its 4 KB window on the PS\'s M_AXI_GP0 (0x40000000 to 0x7FFFF000)' });
+  base.addEventListener('change', () => { const v = Number(base.value.trim()); edit({ ...M, base: Number.isInteger(v) ? v : base.value.trim() }); });
+  const baseLabel = h('span', { class: 'asm-label regs-base-label' }, 'Base address');
   const address = h('input', { type: 'text', class: 'asm-input mono regs-address', title: 'The I²C address of the FPGA (7 bits: 0x08 to 0x77)' });
   address.addEventListener('change', () => { const v = Number(address.value.trim()); edit({ ...M, address: Number.isInteger(v) ? v : address.value.trim() }); });
   const addrLabel = h('span', { class: 'asm-label regs-address-label' }, 'Address');
   const toolbar = h('div', { class: 'asm-toolbar' },
     ...(readOnly ? [] : [btn('+ Register', 'Add a register after the last one', () => addRegister(), 'asm-wide regs-add'),
       btn('Remove', 'Remove the selected register', () => removeRegister(), 'regs-remove'), h('span', { class: 'asm-sep' })]),
-    h('span', { class: 'asm-label' }, 'Bus'), bus, addrLabel, address, h('span', { class: 'asm-sep' }),
+    h('span', { class: 'asm-label' }, 'Bus'), bus, addrLabel, address, baseLabel, base, h('span', { class: 'asm-sep' }),
     toolWide('check', 'Check', 'Check the register map: its names, addresses, widths and resets', () => opts.onCheck?.(check()), 'regs-check'),
-    btn('Header', 'Write the Arduino\'s header of the map (firmware/<name>.h): its addresses, a read and a write for each register', () => opts.onHeader?.(), 'asm-wide regs-header'),
+    btn('Header', 'Write the program\'s header of the map (its addresses, a read and a write for each register): an Arduino\'s in its node\'s folder, a Zynq PS\'s in its ps/', () => opts.onHeader?.(), 'asm-wide regs-header'),
     ...(opts.banner ? [h('span', { class: 'asm-spacer' }), opts.banner] : []));
   // ---------------------------------------------------------------- the table
   const table = h('table', { class: 'regs-table' });
@@ -64,6 +73,9 @@ export function mountRegmapEditor(container, opts = {}) {
     addrLabel.hidden = address.hidden = M.bus !== 'i2c';
     address.value = M.bus === 'i2c' ? (Number.isInteger(M.address) ? hexByte(M.address) : String(M.address ?? '')) : '';
     address.disabled = readOnly;
+    baseLabel.hidden = base.hidden = M.bus !== 'axi';
+    base.value = M.bus === 'axi' ? (Number.isInteger(M.base) ? `0x${M.base.toString(16).toUpperCase().padStart(8, '0')}` : String(M.base ?? '')) : '';
+    base.disabled = readOnly;
     table.replaceChildren(h('tr', {}, ...['Address', 'Name', 'Width', 'Access', 'Reset value', 'Strobe'].map(c => h('th', {}, c))),
       ...M.registers.map(r => {
         const access = h('select', { class: 'asm-input regs-access', disabled: readOnly }, ...ACCESS.map(([v, l]) => h('option', { value: v, selected: r.access === v }, l)));
@@ -79,7 +91,7 @@ export function mountRegmapEditor(container, opts = {}) {
           r.access === 'ro' ? h('td', {}) : cell(r, 'reset', r.reset, v => setReg(r.name, { reset: num(v) })),
           h('td', {}, strobe));
       }));
-    const bytes = M.registers.reduce((a, r) => a + bytesOf(r), 0);
+    const bytes = M.registers.reduce((a, r) => a + sizeOf(r), 0);
     const n = M.registers.length;
     setStatus([{ text: `${n} register${n === 1 ? '' : 's'} · ${bytes} byte${bytes === 1 ? '' : 's'}`, cls: 'asm-info' }]);
   }
@@ -104,7 +116,7 @@ export function mountRegmapEditor(container, opts = {}) {
     const used = new Set(M.registers.map(r => r.name.toLowerCase()));
     let i = 1;
     while (used.has(`reg${i}`)) i++;
-    const addr = M.registers.reduce((a, r) => Math.max(a, (Number.isInteger(r.addr) ? r.addr : 0) + bytesOf(r)), 0);
+    const addr = M.registers.reduce((a, r) => Math.max(a, (Number.isInteger(r.addr) ? r.addr : 0) + sizeOf(r)), 0);
     edit({ ...M, registers: [...M.registers, { name: `reg${i}`, addr, width: 8, access: 'rw' }] }, `reg${i}`);
     select(`reg${i}`);
   }

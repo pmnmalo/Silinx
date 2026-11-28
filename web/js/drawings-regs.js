@@ -18,9 +18,17 @@ import { phoneOnly } from './phone-readonly.js';
 import { designState } from './state-design.js';
 import { readRegmap, writeRegmap, checkRegmap } from '/core/regmap.js';
 
-// where the editor's Header button writes the map's header: its System's first microcontroller's folder (#5488,
-// <id>/<name>.h), else firmware/<name>.h
-const headerPath = async m => `${(await import('./design-system.js')).mcuFolder() ?? 'firmware'}/${m.name}.h`;
+// where the editor's Header button writes the map's header (`path`: the map's): its System's first microcontroller's
+// folder (#5488, <id>/<name>.h), else firmware/<name>.h; an AXI4-Lite map's its Zynq node's ps/ (#4688: the node whose
+// folder holds the map, <id>/ps/<name>.h; a Board project's ps/<name>.h)
+const headerPath = async (m, path) => {
+  const D = await import('./design-system.js');
+  if (m.bus === 'axi') {
+    const id = String(path).includes('/') ? String(path).split('/')[0] : null;
+    return `${id && D.shownSystem()?.system?.nodes.some(n => n.id === id && n.kind === 'fpga') ? `${id}/` : ''}ps/${m.name}.h`;
+  }
+  return `${D.mcuFolder() ?? 'firmware'}/${m.name}.h`;
+};
 
 export async function openRegs(path) {
   const id = `regs:${path}`;
@@ -67,7 +75,7 @@ async function writeHeader(path, m) {
   const errors = checkRegmap(m).filter(x => x.severity === 'error');
   if (errors.length) { logError(`${path.split('/').pop()}: ${errors.map(x => x.message).join('; ')}: no header written`); return; }
   const { regmapHeader } = await import('/core/regmap-c.js');
-  const file = await headerPath(m);
+  const file = await headerPath(m, path);
   await api.writeFile(S.project.name, file, regmapHeader(m).code);
   log(`Wrote ${file}, the header of ${path.split('/').pop()}.`, 'ok');
 }

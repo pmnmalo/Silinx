@@ -82,3 +82,47 @@ uiTest('#5288 a register map: New Source ▸ Register Map, + Register, I²C, sav
   await page.eval(async () => (await import('/js/i18n.js')).setLanguage('en'));
   assert.deepEqual(page.console.filter((c) => c.type === 'warning' || c.type === 'warn' || c.type === 'error').map((c) => c.text), []);
 });
+
+// (#4688) a map on AXI4-Lite, a Zynq's PL seen by its PS: in a Board project on the Zybo Z7, its bus AXI4-Lite (its
+// registers on words, its base 0x43C00000 shown), + Register a word on, its base changed and refused off a 4 KB window
+// (said, then fixed), saved with its HDL (the AXI4-Lite slave), Header writes ps/pwm_regs.h; Portuguese
+uiTest('#4688 a register map on AXI4-Lite: its words, its base address, its HDL the AXI4-Lite slave, Header in ps/; Portuguese', E, async (page) => {
+  const map = { format: 'silinx-regmap', version: 1, name: 'pwm_regs', bus: 'spi', registers: [{ name: 'ctrl', addr: 0, width: 8, access: 'rw', reset: 0 }, { name: 'count', addr: 1, width: 12, access: 'ro' }] };
+  await makeProject(env, { name: 'AxiRegs', template: 'empty', board: 'zybo-z7', files: { 'src/pwm_regs.regs.json': JSON.stringify(map, null, 2) } });
+  await page.openProject('AxiRegs');
+  await page.eval(async () => (await import('/js/drawings-regs.js')).openRegs('src/pwm_regs.regs.json'));
+  await page.waitFor((ed) => document.querySelector(`${ed} .regs-row`), [ED], { what: 'the register map editor' });
+  const bar = () => page.eval((ed) => { const q = (s) => document.querySelector(`${ed} ${s}`); return { base: q('.regs-base').hidden ? null : q('.regs-base').value, address: q('.regs-address').hidden ? null : q('.regs-address').value }; }, ED);
+  assert.deepEqual(await bar(), { base: null, address: null });
+  await page.eval((ed) => { const s = document.querySelector(`${ed} .regs-bus`); s.value = 'axi'; s.dispatchEvent(new Event('change', { bubbles: true })); }, ED);
+  await page.waitFor(() => window.Silinx.active.regsEditor.getModel().bus === 'axi', [], { what: 'AXI4-Lite' });
+  assert.deepEqual(await bar(), { base: '0x43C00000', address: null });
+  let m = await model(page);
+  assert.deepEqual([m.base, m.registers.map((r) => [r.name, r.addr])], [0x43C00000, [['ctrl', 0], ['count', 4]]]);
+  await page.click(`${ED} .regs-add`);
+  await page.waitFor((ed) => document.querySelector(`${ed} .regs-row[data-name="reg1"]`), [ED], { what: 'reg1' });
+  assert.equal((await model(page)).registers[2].addr, 8);
+  assert.equal(await status(page), '3 registers · 12 bytes');
+  // its base off a 4 KB window: said in the Errors; fixed
+  const setBase = (v) => page.eval((ed, v) => { const i = document.querySelector(`${ed} .regs-base`); i.value = v; i.dispatchEvent(new Event('change', { bubbles: true })); }, ED, v);
+  const E2 = 'the AXI base address \'0x43C10800\' is not a 4 KB window\'s in M_AXI_GP0\'s 0x40000000 to 0x7FFFFFFF';
+  await setBase('0x43C10800');
+  await page.waitFor((e) => window.SilinxApp.S.diags.some((d) => d.message === e), [E2], { what: 'the base in the Errors' });
+  await setBase('0x43C10000');
+  await page.waitFor(() => !window.SilinxApp.S.diags.some((d) => d.tool === 'Register Map'), [], { what: 'no problems' });
+  // saved: the map, its HDL the AXI4-Lite slave
+  await waitFile('AxiRegs', 'src/pwm_regs.regs.json', (t) => JSON.parse(t).base === 0x43C10000);
+  await waitFile('AxiRegs', 'src/pwm_regs.vhd', (t) => /Bus {9}: AXI4-Lite slave/.test(t));
+  // Header: ps/pwm_regs.h, its base
+  await page.click(`${ED} .regs-header`);
+  await waitFile('AxiRegs', 'ps/pwm_regs.h', (t) => t.includes('#define PWM_REGS_BASE 0x43C10000u'));
+  await page.waitFor(() => [...document.querySelectorAll('#console-log .ln')].some((l) => l.textContent.trim() === 'Wrote ps/pwm_regs.h, the header of pwm_regs.regs.json.'), [], { what: 'the header\'s line' });
+  // in Portuguese
+  await page.eval(async () => (await import('/js/i18n.js')).setLanguage('pt'));
+  await page.waitFor((ed) => document.querySelector(`${ed} .regs-base-label`)?.textContent === 'Endereço base', [ED], { what: 'Portuguese' });
+  assert.equal(await page.eval((ed) => [...document.querySelectorAll(`${ed} .regs-bus option`)].find((o) => o.value === 'axi').textContent, ED), 'AXI4-Lite (PS do Zynq)');
+  await page.eval(async () => (await import('/js/i18n.js')).setLanguage('en'));
+  m = await model(page);
+  assert.equal(m.registers.length, 3);
+  assert.deepEqual(page.console.filter((c) => c.type === 'warning' || c.type === 'warn' || c.type === 'error').map((c) => c.text), []);
+});

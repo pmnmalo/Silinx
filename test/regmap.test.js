@@ -61,12 +61,12 @@ test('#5288 a register map checked: names, the bus and its address, widths, acce
   assert.deepEqual(run(() => {}), []);
   assert.deepEqual(run((m) => { m.registers = []; }), ['warning: the map has no registers']);
   assert.deepEqual(run((m) => { m.name = '2x'; }), ['error: the map\'s name \'2x\' is not a module\'s name: a letter, then letters, digits and single _']);
-  assert.deepEqual(run((m) => { m.bus = 'can'; }), ['error: no bus \'can\' (the buses: spi, i2c)']);
+  assert.deepEqual(run((m) => { m.bus = 'can'; }), ['error: no bus \'can\' (the buses: spi, i2c, axi)']);
   assert.deepEqual(run((m) => { m.bus = 'i2c'; m.address = 0x78; }), ['error: the I²C address \'120\' is not one of 0x08 to 0x77 (7 bits, the reserved ones left out)']);
   assert.deepEqual(run((m) => { m.registers[0].name = 'signal'; }), ['error: signal: not a register\'s name: a letter, then letters, digits and single _']);
   assert.deepEqual(run((m) => { m.registers[1].name = 'DUTY'; }), ['error: two registers are named DUTY']);
   assert.deepEqual(run((m) => { m.registers[0].name = 'miso'; }), ['error: miso: a port of the bus\'s (clk, sck, mosi, miso, ss)']);
-  const own = (n) => `error: ${n}: a name the generated module uses itself (sck_s, ss_s, mosi_s, scl_s, sda_s, rx, tx, rbyte, addr, bits, first, rd, b, state, state_t, wnext, reading, pull, acked, rise, fall, i2c_address, s_idle, s_addr, s_ptr, s_wdata, s_ack, s_rdata, s_rack, rtl, and names ending with _q)`;
+  const own = (n) => `error: ${n}: a name the generated module uses itself (sck_s, ss_s, mosi_s, scl_s, sda_s, rx, tx, rbyte, addr, bits, first, rd, b, state, state_t, wnext, reading, pull, acked, rise, fall, i2c_address, s_idle, s_addr, s_ptr, s_wdata, s_ack, s_rdata, s_rack, rtl, axi_awaddr, axi_araddr, axi_aw_en, axi_wr, axi_awready, axi_wready, axi_bvalid, axi_arready, axi_rvalid, axi_rdata, and names ending with _q)`;
   assert.deepEqual(run((m) => { m.registers[0].name = 'rx'; }), [own('rx')]);
   assert.deepEqual(run((m) => { m.registers[0].name = 'duty_q'; }), [own('duty_q')]);
   assert.deepEqual(run((m) => { m.registers[0].name = 'pwm_regs'; }), ['error: the map\'s name pwm_regs is a register\'s: the module and its port one name']);
