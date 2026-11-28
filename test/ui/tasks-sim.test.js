@@ -480,7 +480,7 @@ uiTest('#1385 #5939 Tasks ▸ Simulate: the Simulation hierarchy\'s right-click 
   const ssimMenu = () => page.waitFor(() => { const m = [...document.querySelectorAll('.isim-menu-root > .isim-menu-item')].map((i) => `${i.querySelector('.lbl').textContent}${i.classList.contains('dis') ? ' (off)' : ''}`); return m.length ? m : null; }, [], { what: 'SSim\'s menu' });
   const below = (sel) => page.eval((s) => { const b = document.querySelector(s).getBoundingClientRect(), rows = [...document.querySelectorAll(`${s} .row`)].filter((r) => r.getClientRects().length);
     return { x: Math.round(b.left + 30), y: Math.round(((rows.at(-1)?.getBoundingClientRect().bottom ?? b.top) + b.bottom) / 2) }; }, sel);
-  const BENCH = ['Open', 'Rename…', 'Check Syntax', 'New Test Bench…', 'Import Test Bench…', 'Remove from Project', 'Source Properties…'];
+  const BENCH = ['Open', 'Rename…', 'Check Syntax', 'New Test Bench…', 'Import Test Bench…', 'Remove…', 'Source Properties…'];   // (Remove…, #5992)
   // the side panel, nothing simulated: no bar (#5939: New Test Bench… and Import Test Bench… the project's and the device's
   // menus' first), the bench's menu, the empty space's
   await page.waitFor(() => document.querySelector('#task-sim-panel .task-sim-bench .row')?.getClientRects().length > 0, [], { what: 'the panel' });
