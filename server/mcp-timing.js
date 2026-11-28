@@ -65,7 +65,7 @@ const ITEM = { state: 'state', trans: 'transition', node: 'box', edge: 'arrow', 
 export const TIMING_TOOLS = [
   {
     name: 'timing_paths', title: 'Timing paths (Show Path)',
-    description: 'The slowest paths of the newest timing analysis (run_process timing: the Silinx toolchain\'s, ISE\'s trce or Vivado\'s), as the Static Timing Report\'s Paths panel: the worst path into each flip-flop, slowest first, with its clock, delay, PERIOD and slack; with from and / or to, the worst paths between registers. With path, that path\'s stages (clock-to-out, net, logic, setup: delay, arrival, instance, site, net, the source lines of its logic) and what Show Path highlights: the source lines by file, the sites, the nets, and the drawings\' elements those lines come from (states and transitions, ASM boxes and arrows, symbols and wires).',
+    description: 'The slowest paths of the newest timing analysis (run_process timing: Silinx\'s, ISE\'s trce or Vivado\'s), as the Static Timing Report\'s Paths panel: the worst path into each flip-flop, slowest first, its clock, delay, PERIOD and slack; from and / or to: the worst paths between registers. path: its stages (clock-to-out, net, logic, setup: delay, arrival, instance, site, net, its logic\'s source lines) and what Show Path highlights: source lines by file, sites, nets, and the drawings\' elements those lines come from (states and transitions, ASM boxes and arrows, symbols and wires).',
     inputSchema: { type: 'object', properties: {
       project: PROJECT,
       count: { type: 'integer', description: 'How many paths (default 10, at most 20).' },
