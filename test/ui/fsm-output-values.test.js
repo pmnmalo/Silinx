@@ -8,6 +8,7 @@ import assert from 'node:assert/strict';
 import { setupUi, uiTest, makeProject } from './harness.js';
 import { normalizeFsm, parseOutputs, generateFsm } from '../../core/fsm.js';
 import { compile, elaborate } from '../../core/compile.js';
+import { readStamp } from '../../core/hdl-cache.js';
 
 let env;
 before(async () => { env = await setupUi(); });
@@ -65,7 +66,7 @@ for (const lang of ['vhdl', 'verilog']) {
     }, [pj, hdl], { what: 'the diagram and its HDL saved', timeout: 15000 });
     const file = JSON.parse(await page.eval(async (p) => (await fetch(`/api/projects/${p}/file?path=src%2Fov.fsm.json`)).text(), pj));
     assert.deepEqual([file.states.map((s) => s.outputs), file.transitions.map((t) => t.outputs)], [[{}, { z: '1', n: '3' }], [{ n: '2' }, {}]]);
-    assert.equal(code, generateFsm(ref, lang).code);
+    assert.equal(readStamp(code).body, generateFsm(ref, lang).code);   // (its silinx-sync line aside, #5872, #6028)
     const lib = compile([{ path: hdl.slice(4), lang, text: code }]);
     assert.deepEqual(lib.errors.map((e) => `${e.severity}: ${e.message}`), [], lang);
     assert.deepEqual(elaborate(lib, 'ov').diags.map((e) => `${e.severity}: ${e.message}`), [], lang);

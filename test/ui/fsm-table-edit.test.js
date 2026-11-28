@@ -9,6 +9,7 @@ import assert from 'node:assert/strict';
 import { setupUi, uiTest, makeProject, readWs } from './harness.js';
 import { normalizeFsm, generateFsm } from '../../core/fsm.js';
 import { TEXTS, untranslated } from './i18n-check.js';
+import { readStamp } from '../../core/hdl-cache.js';
 
 let env;
 before(async () => { env = await setupUi(); });
@@ -98,8 +99,8 @@ uiTest('#4974 the transition table edited in place: condition, next state, outpu
   await redo(page);
   await page.waitFor((ed) => document.querySelector(`${ed} .fsm-ttable tr[data-state=s3] .fsm-tt-state`)?.value === 'Wait', [ED], { what: 'redone' });
   // ---- the HDL made again from the diagram
-  for (let i = 0; i < 80; i++) { m = await model('TtEdit'); if (m.states.length === 3 && (await readWs(env, 'TtEdit', H)) === generateFsm(m, 'vhdl').code) break; await new Promise((r) => setTimeout(r, 100)); }
-  assert.equal(await readWs(env, 'TtEdit', H), generateFsm(m, 'vhdl').code);
+  for (let i = 0; i < 80; i++) { m = await model('TtEdit'); if (m.states.length === 3 && readStamp(await readWs(env, 'TtEdit', H)).body === generateFsm(m, 'vhdl').code) break; await new Promise((r) => setTimeout(r, 100)); }
+  assert.equal(readStamp(await readWs(env, 'TtEdit', H)).body, generateFsm(m, 'vhdl').code);   // (its silinx-sync line aside, #5872, #6028)
   assert.match(await readWs(env, 'TtEdit', H), /S_WAIT/i);
   // ---- the console: the refusals, and Check's warnings of the machine (Wait not reached, no exit)
   assert.deepEqual(await consoleRows(page), [[], [
@@ -159,9 +160,9 @@ uiTest('#5002 a state\'s code edited in the transition table under the user\'s e
   assert.equal(await page.eval((ed) => document.querySelectorAll(`${ed} .fsm-tt-code`).length, ED), 2);
   await typeIn(page, 's2', '.fsm-tt-code', '1_1');
   let m;
-  for (let i = 0; i < 50; i++) { m = await model('TtCodes'); if (m.states[1].code === '11' && (await readWs(env, 'TtCodes', H)) === generateFsm(m, 'vhdl').code) break; await new Promise((r) => setTimeout(r, 100)); }
+  for (let i = 0; i < 50; i++) { m = await model('TtCodes'); if (m.states[1].code === '11' && readStamp(await readWs(env, 'TtCodes', H)).body === generateFsm(m, 'vhdl').code) break; await new Promise((r) => setTimeout(r, 100)); }
   assert.deepEqual(m.states.map((s) => s.code), ['01', '11']);
-  assert.equal(await readWs(env, 'TtCodes', H), generateFsm(m, 'vhdl').code);
+  assert.equal(readStamp(await readWs(env, 'TtCodes', H)).body, generateFsm(m, 'vhdl').code);   // (its silinx-sync line aside, #5872, #6028)
   assert.deepEqual((await rows(page)).map((r) => r.split('|')[4]), ['11', '01', '01', '11']);
   assert.deepEqual(await consoleRows(page), [[], []]);   // (no warnings)
   // S1's code S0's: Check's error, as for the Properties

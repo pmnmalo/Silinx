@@ -11,6 +11,7 @@ import assert from 'node:assert/strict';
 import { setupUi, uiTest, makeProject } from './harness.js';
 import { normalizeFsm, generateFsm } from '../../core/fsm.js';
 import { compile, elaborate } from '../../core/compile.js';
+import { readStamp } from '../../core/hdl-cache.js';
 
 let env;
 before(async () => { env = await setupUi(); });
@@ -148,7 +149,7 @@ for (const lang of ['vhdl', 'verilog']) {
       [[null, { fill: '#ffcc00', strokeWidth: 3, color: '#800000', fontSize: 20, textStyle: 'italic', font: 'serif' }],
         [{ stroke: '#cc0000', strokeWidth: 2, dash: 'dotted', color: '#008000', fontSize: 16, textStyle: 'bold', font: 'sans-serif' }, null]]);
     const code = await page.eval(async (p, h) => (await fetch(`/api/projects/${p}/file?path=${encodeURIComponent(h)}`)).text(), pj, hdl);
-    assert.equal(code, generateFsm(machine(lang), lang).code);
+    assert.equal(readStamp(code).body, generateFsm(machine(lang), lang).code);   // (its silinx-sync line aside, #5872, #6028)
     const lib = compile([{ path: hdl.slice(4), lang, text: code }]);
     assert.deepEqual(lib.errors.map((e) => `${e.severity}: ${e.message}`), [], lang);
     assert.deepEqual(elaborate(lib, 'lk').diags.map((e) => `${e.severity}: ${e.message}`), [], lang);

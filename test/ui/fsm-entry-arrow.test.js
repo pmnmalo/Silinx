@@ -7,6 +7,7 @@ import { before, after } from 'node:test';
 import assert from 'node:assert/strict';
 import { setupUi, uiTest, makeProject } from './harness.js';
 import { normalizeFsm, generateFsm } from '../../core/fsm.js';
+import { readStamp } from '../../core/hdl-cache.js';
 
 let env;
 before(async () => { env = await setupUi(); });
@@ -64,7 +65,7 @@ for (const lang of ['vhdl', 'verilog']) {
     }, [pj], { what: 'the diagram saved', timeout: 15000 });
     assert.deepEqual(normalizeFsm(saved), { ...machine(lang), entryAngle: -90, generatedFile: hdl });
     const code = await page.eval(async (p, h) => (await fetch(`/api/projects/${p}/file?path=${encodeURIComponent(h)}`)).text(), pj, hdl);
-    assert.equal(code, generateFsm(machine(lang), lang).code);
+    assert.equal(readStamp(code).body, generateFsm(machine(lang), lang).code);   // (its silinx-sync line aside, #5872, #6028)
     assert.deepEqual(await warnings(page), []);
   });
 }
