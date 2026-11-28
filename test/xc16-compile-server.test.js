@@ -24,6 +24,8 @@ const jobs = await import('../server/jobs.js');
 const { startFirmwareCompile } = await import('../server/avr-compile.js');
 const { detectXc16 } = await import('../server/xc16-compile.js');
 const { TOOLS } = await import('../server/mcp.js');
+// (Linux: the docker run as this process's user, so that out/ is not root's: server/image-remote.js's rule)
+const USER = process.platform === 'linux' && typeof process.getuid === 'function' ? ` --user ${process.getuid()}:${process.getgid()}` : '';
 const tool = n => TOOLS.find(t => t.name === n);
 
 const MAIN = '#include <xc.h>\n\nint main(void) {\n  TRISA = 0;\n  for (;;) LATA = 0x55;\n}\n';
@@ -208,7 +210,7 @@ test('#6019 XC16 in its image in this computer\'s Docker (xc16.mode docker, the 
     assert.equal(fileOf(name, 'pic/lcd_uart.hex'), LCD_HEX);
     const calls = fs.readFileSync(dlog, 'utf8').trim().split('\n');
     assert.deepEqual(calls.map(c => c.split(' ')[0]), ['image', 'image', 'run'], calls.join('\n'));
-    assert.equal(calls[2], `run --rm --pull=never --network none --cap-drop ALL --security-opt no-new-privileges --pids-limit 512 -v ${path.join(P.projectDir(name), 'build/nodes/pic/firmware')}:/work -w /work silinx/xc16:2.10 bash build.sh`);
+    assert.equal(calls[2], `run --rm --pull=never --network none --cap-drop ALL --security-opt no-new-privileges --pids-limit 512 -v ${path.join(P.projectDir(name), 'build/nodes/pic/firmware')}:/work -w /work${USER} silinx/xc16:2.10 bash build.sh`);
     const t = await tool('toolchain_info').run({});
     assert.equal(t.text.split('\n')[4], 'XC16 2.10 (a PIC24\'s Compile Firmware): available, in this computer\'s Docker: XC16 in the image silinx/xc16:2.10 in this computer\'s Docker (not used (config.json\'s xc16.mode is docker)).');
     // (the image not in this computer's Docker: not there, said; Compile Firmware refused)
