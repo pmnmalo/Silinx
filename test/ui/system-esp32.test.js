@@ -178,6 +178,37 @@ uiTest('#5495 #5658 an ESP32\'s Timer, PWM, SPI and I²C on JSPI and in a Worker
   assert.deepEqual(page.console.filter((c) => c.type === 'warning' || c.type === 'warn' || c.type === 'error').map((c) => c.text), []);
 }, { timeout: 300000 });
 
+// a program that asks input() (#5884: it stalled 30 s) and reads an output back (#5881: it read 0), on JSPI and in a Worker
+const ASK = ['from machine import Pin', 'led = Pin(2, Pin.OUT)', 'name = input("name? ")', 'led.value(not led.value())', 'print("hi", name, led.value())', 'print("done")', ''].join('\n');
+uiTest('#5881 #5884 regression: Try it, an ESP32 asking input(): a line typed into its console read by it, its LED read back; on JSPI and in a Worker', E, async (page) => {
+  // (a System of its own: the ESP32 alone, its console its REPL's)
+  const sys = JSON.stringify({ format: 'silinx-system', version: 2, name: 'esp', nodes: [{ id: 'mcu', kind: 'mcu', board: 'esp32-devkitc', lang: 'micropython', firmware: 'mcu/main.py', interfaces: [], x: 0, y: 0 }], links: [] }, null, 2);
+  await makeProject(env, { name: 'EspAsk', template: 'uart', files: { [FILE]: sys, 'mcu/main.py': ASK } });
+  const pj = await env.server.api('GET', '/api/projects/EspAsk');
+  delete pj.fileTree;
+  await env.server.api('PUT', '/api/projects/EspAsk', { ...pj, kind: 'system', board: null, constraints: null, top: null });
+  await page.openProject('EspAsk');
+  await page.eval((f) => window.SilinxApp.openFile(f), FILE);
+  await page.waitFor((ed) => document.querySelector(ed), [ED], { what: 'the System editor' });
+  for (const backend of [null, 'worker']) {
+    await page.eval((b) => history.replaceState(null, '', `${location.pathname}${b ? `?esp32=${b}` : ''}${location.hash}`), backend);
+    if (await page.eval((ed) => !!document.querySelector(`${ed} .sys-sim-panel:not([hidden]) .sys-restart`), ED)) await page.click(`${ED} .sys-restart`);
+    else await page.click(`${ED} .sys-sim-btn`);
+    await page.waitFor((ed) => document.querySelector(`${ed} .sys-sim-panel:not([hidden]) .sys-run-for`), [ED], { what: 'the simulation view' });
+    await page.click(`${ED} .sys-run-for`);
+    await page.waitFor(() => { const s = window.Silinx.active.systemEditor.sim.state(); return s && !s.running && s.terminals['mcu.repl'] === 'name? '; }, [], { what: `its question on ${backend ?? 'JSPI'}`, timeout: 120000 });
+    await page.click(`${ED} .sys-term:has([data-term="mcu.repl"]) .sys-term-in`);
+    await page.type('pedro');
+    await page.key('Enter');
+    await page.waitFor((ed) => document.querySelector(`${ed} .sys-term-out[data-term="mcu.repl"]`)?.textContent === 'name? pedro\nhi pedro 1\ndone\n', [ED], { what: `the answer on ${backend ?? 'JSPI'}`, timeout: 120000 });
+    await page.waitFor(() => !window.Silinx.active.systemEditor.sim.state()?.running, [], { what: 'the run ended', timeout: 60000 });
+    const s = await page.eval(() => window.Silinx.active.systemEditor.sim.state());
+    assert.deepEqual([s.warnings, s.errors], [[], []], backend ?? 'JSPI');
+  }
+  await page.eval(() => history.replaceState(null, '', `${location.pathname}${location.hash}`));
+  assert.deepEqual(page.console.filter((c) => c.type === 'warning' || c.type === 'warn' || c.type === 'error').map((c) => c.text), []);
+}, { timeout: 300000 });
+
 uiTest('#5495 the uart-esp32 example: Try it, its hello echoed by the FPGA into the ESP32\'s console; + SPI gives its node SPI1', E, async (page) => {
   await makeProject(env, { name: 'UartEsp', template: 'uart-esp32' });
   await page.openProject('UartEsp');

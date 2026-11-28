@@ -357,6 +357,17 @@ def _silinx_loop(n, c):
     return c
 import builtins
 builtins._silinx_loop = _silinx_loop
+def _input(prompt=""):
+    # (a line typed to its console, as the board's REPL reads it; time passes while none is there, #5884)
+    if prompt:
+        print(prompt, end="")
+    while True:
+        l = _silinx.console_line()
+        if l is not None:
+            print(l)
+            return l
+        _sleep_us(1000)
+builtins.input = _input
 `;
 
 // (a string's end: its quotes, single or triple, its escapes; i its opening quote)
