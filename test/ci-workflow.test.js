@@ -55,12 +55,13 @@ test('CI: at a release (a tag v*, or the toolchain package\'s silinx-fpga-v*, #1
   assert.match(unit, /^    timeout-minutes: 90$/m, 'a part about 40 minutes since #3124 (before, up to 80 on macOS and Windows, #2665)');
   assert.doesNotMatch(unit, /--test-shard=/, "node's own shards split by order, not time");
   for (const t of ['docs', 'changelog', 'quality-page']) assert.ok(fs.existsSync(path.join(ROOT, `test/${t}.test.js`)), t);
-  // the UI tests in both interfaces, each in four parts of about the same time, one file at a time (#912; four since #4463: a part of three reached 40 minutes;
+  // the UI tests in both interfaces, each in five parts of about the same time, one file at a time (#912; four since #4463: a part of three reached 40 minutes;
+  // five since #5836: four parts of four were cut off by the step's 40 minutes on 2026-11-27;
   // --test-concurrency=1 before the files: after them node --test took it for nothing), each part's file times uploaded
   const ui = j.ui.join('\n');
-  assert.match(ui, /^        interface: \[silinx, ise\]\n        part: \[1, 2, 3, 4\]   # \(four parts: a part of three reached the step's 40 minutes, #4463\)$/m);
-  assert.match(ui, /^    name: ui \(\$\{\{ matrix\.interface \}\}, \$\{\{ matrix\.part \}\}\/4\)$/m);
-  assert.match(ui, /node scripts\/test-shard\.mjs "\$PART\/4" --ui --test-concurrency=1\n\s+--test-reporter=tap --test-reporter-destination=stdout\n\s+--test-reporter=\.\/scripts\/test-file-times\.mjs --test-reporter-destination=stdout\n\s+--test-reporter=\.\/scripts\/test-times-reporter\.mjs --test-reporter-destination=test-times\.json\n/);
+  assert.match(ui, /^        interface: \[silinx, ise\]\n        part: \[1, 2, 3, 4, 5\]   # \(five parts: four reached the step's 40 minutes on 2026-11-27, #5836; three did, #4463\)$/m);
+  assert.match(ui, /^    name: ui \(\$\{\{ matrix\.interface \}\}, \$\{\{ matrix\.part \}\}\/5\)$/m);
+  assert.match(ui, /node scripts\/test-shard\.mjs "\$PART\/5" --ui --test-concurrency=1\n\s+--test-reporter=tap --test-reporter-destination=stdout\n\s+--test-reporter=\.\/scripts\/test-file-times\.mjs --test-reporter-destination=stdout\n\s+--test-reporter=\.\/scripts\/test-times-reporter\.mjs --test-reporter-destination=test-times\.json\n/);
   assert.match(ui, /^ {10}PART: \$\{\{ matrix\.part \}\}\n {10}CHROME_PATH: \/usr\/bin\/google-chrome\n {10}SILINX_UI_INTERFACE: \$\{\{ matrix\.interface == 'ise' && 'ise' \|\| '' \}\}$/m);
   assert.match(ui, /- if: always\(\)\n\s+uses: actions\/upload-artifact@.+\n\s+with:\n\s+name: ui-times-\$\{\{ matrix\.interface \}\}-\$\{\{ matrix\.part \}\}\n\s+path: test-times\.json\n/);
   assert.doesNotMatch(ui, /npm run test:ui/, 'the parts, not every file');

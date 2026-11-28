@@ -92,7 +92,7 @@ test('test shard: the repository\'s timings — measured files that exist, in se
   assert.deepEqual(keys, [...keys].sort(), 'sorted (a refresh changes only the times)');
   assertBalanced(files, t, 5);
   assertBalanced(files.filter(f => !HEAVY.includes(f)), t, 3);
-  assertBalanced(uiFiles, t, 4);   // (CI's four parts per interface, #4463)
+  assertBalanced(uiFiles, t, 5);   // (CI's five parts per interface, #5836; four since #4463)
   // a UI file not measured weighs the UI files' median, not the unit files'
   const w = weights([...uiFiles, 'test/ui/new.test.js'], t);
   const ui = uiFiles.map(f => t[f]).filter(v => v != null).sort((a, b) => a - b);
@@ -223,20 +223,28 @@ test('test timings: merged from the parts, the files that no longer exist left o
   // a UI file measured in each interface (#912): the longer time
   assert.deepEqual(merge([{ 'test/ui/u.test.js': 4 }, { 'test/ui/u.test.js': 6 }, { 'test/ui/u.test.js': 5 }], ['test/ui/u.test.js']), { 'test/ui/u.test.js': 6 });
   // the usability files are measured by a workflow of their own (#5295): a CI run keeps their times, a Usability
-  // run the others'; a file measured replaces its time, one that no longer exists is left out
+  // run the others'; a file measured replaces its time, one not measured keeps it (a part cut off, #5836), one that no
+  // longer exists is left out
   const all = ['test/a.test.js', 'test/b.test.js', 'test/ui/u.test.js', 'test/usability/p.test.js', 'test/usability/q.test.js'];
   const before = { 'test/a.test.js': 1, 'test/b.test.js': 2, 'test/ui/u.test.js': 3, 'test/usability/p.test.js': 40, 'test/usability/q.test.js': 50, 'test/usability/gone.test.js': 9 };
   assert.deepEqual(merge([{ 'test/a.test.js': 1.5 }, { 'test/ui/u.test.js': 4 }], all, before),
-    { 'test/a.test.js': 1.5, 'test/ui/u.test.js': 4, 'test/usability/p.test.js': 40, 'test/usability/q.test.js': 50 });
+    { 'test/a.test.js': 1.5, 'test/b.test.js': 2, 'test/ui/u.test.js': 4, 'test/usability/p.test.js': 40, 'test/usability/q.test.js': 50 });
   assert.deepEqual(merge([{ 'test/usability/p.test.js': 42 }, { 'test/usability/p.test.js': 45 }], all, before),
-    { 'test/a.test.js': 1, 'test/b.test.js': 2, 'test/ui/u.test.js': 3, 'test/usability/p.test.js': 45 });
+    { 'test/a.test.js': 1, 'test/b.test.js': 2, 'test/ui/u.test.js': 3, 'test/usability/p.test.js': 45, 'test/usability/q.test.js': 50 });
   const dir = tmp(t);
   for (const [k, v] of [['unit-times-1', { 'test/a.test.js': 1 }], ['ui-times-silinx-2', { 'test/b.test.js': 2 }]]) {
     fs.mkdirSync(path.join(dir, k));
     fs.writeFileSync(path.join(dir, k, 'test-times.json'), JSON.stringify(v));
   }
   fs.writeFileSync(path.join(dir, 'other.json'), '{}');
-  assert.deepEqual(readParts(dir).sort((a, b) => Object.keys(a)[0].localeCompare(Object.keys(b)[0])), [{ 'test/a.test.js': 1 }, { 'test/b.test.js': 2 }]);
+  // (#5836: a part cut off by its step's 40 minutes, its file empty or cut short: left out, said)
+  for (const [k, v] of [['ui-times-ise-4', ''], ['ui-times-silinx-3', '{"test/ui/x.test.js": 1']]) {
+    fs.mkdirSync(path.join(dir, k));
+    fs.writeFileSync(path.join(dir, k, 'test-times.json'), v);
+  }
+  const skipped = [];
+  assert.deepEqual(readParts(dir, skipped).sort((a, b) => Object.keys(a)[0].localeCompare(Object.keys(b)[0])), [{ 'test/a.test.js': 1 }, { 'test/b.test.js': 2 }]);
+  assert.deepEqual(skipped.sort(), [path.join('ui-times-ise-4', 'test-times.json'), path.join('ui-times-silinx-3', 'test-times.json')]);
   // the command line without a run: its usage
   const r = spawnSync(process.execPath, [path.join(ROOT, 'scripts/update-test-timings.mjs')], { cwd: ROOT, encoding: 'utf8' });
   assert.equal(r.status, 2);

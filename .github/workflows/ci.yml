@@ -112,7 +112,8 @@ jobs:
   # the UI tests in headless Chrome, with each interface (alongside the unit tests), in three parts of about
   # the same time, one file at a time (scripts/test-shard.mjs --ui, by test/timings.json's test/ui/ files,
   # #912): about 30 minutes of files in October 2026, a part about 10 (its longest file, open-toolchain, 7);
-  # about 70 in November 2026, a part up to 25 on a slow runner (#2462).
+  # about 70 in November 2026, a part up to 25 on a slow runner (#2462); four parts of 30 to 40 minutes on 2026-11-27, four
+  # of them cut off by the step's 40 minutes: five since (#5836).
   # Each part uploads its files' times, merged by node scripts/update-test-timings.mjs <run id>
   ui:
     needs: changes
@@ -121,18 +122,18 @@ jobs:
       fail-fast: false
       matrix:
         interface: [silinx, ise]
-        part: [1, 2, 3, 4]   # (four parts: a part of three reached the step's 40 minutes, #4463)
+        part: [1, 2, 3, 4, 5]   # (five parts: four reached the step's 40 minutes on 2026-11-27, #5836; three did, #4463)
     runs-on: ubuntu-latest
     timeout-minutes: 45
-    name: ui (${{ matrix.interface }}, ${{ matrix.part }}/4)
+    name: ui (${{ matrix.interface }}, ${{ matrix.part }}/5)
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
       - uses: ./.github/actions/setup
-      - name: UI tests (headless Chrome, ${{ matrix.interface }} interface, part ${{ matrix.part }}/4)
+      - name: UI tests (headless Chrome, ${{ matrix.interface }} interface, part ${{ matrix.part }}/5)
         run: >-
-          node scripts/test-shard.mjs "$PART/4" --ui --test-concurrency=1
+          node scripts/test-shard.mjs "$PART/5" --ui --test-concurrency=1
           --test-reporter=tap --test-reporter-destination=stdout
           --test-reporter=./scripts/test-file-times.mjs --test-reporter-destination=stdout
           --test-reporter=./scripts/test-times-reporter.mjs --test-reporter-destination=test-times.json
