@@ -87,6 +87,8 @@ export const MENU_PARITY = {
   'Project > Add to Project…': ['add_to_project'],
   'Project > Import Source…': ['import_source'],
   'Project > Add Copy of Source…': ['import_source'],
+  // (a source's or a file's copy, its modules renamed, #5862: rename_file's copy)
+  'Project > Duplicate…': ['rename_file'],
   'Project > Set as Top Module': ['set_top'],
   'Project > Design Properties…': ['set_design_properties'],
   // (a project's mode, #5755: set_design_properties's mode; its versions, #5740)

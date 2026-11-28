@@ -39,6 +39,9 @@ test('vhdl indent: the examples\' VHDL files, each line as indented by hand (but
     'examples/breadboard/sim/tb_breadboard.vhd:46: 15 17',
     'examples/gates/sim/tb_gates.vhd:39: 15 17',
     'examples/gates/sim/tb_gates.vhd:44: 15 17',
+    // (a report's message continued, its '&' aligned by hand under its first part: the Circuit examples', #5817's run)
+    'examples/lock-circuit/sim/tb_safe.vhd:48: 16 21',
+    'examples/stopwatch-circuit/sim/tb_stopwatch.vhd:38: 16 21',
     'examples/stopwatch/src/stopwatch.vhd:124: 8 11',
     'examples/traffic/sim/tb_traffic.vhd:88: 18 20',
     'examples/traffic/src/timer.vhd:101: 8 13',

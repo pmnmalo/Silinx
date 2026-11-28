@@ -5,6 +5,11 @@ import { before, after } from 'node:test';
 import assert from 'node:assert/strict';
 import { setupUi, uiTest, makeProject } from './harness.js';
 import { halfAdder } from '../circuit-helpers.mjs';
+import { PART_ORDER, PARTS } from '../../core/circuit-parts.js';
+
+// (the boards' parts, core/circuit-boards.js: each new one a row of Boards, #5215; the Pico's two, #5898, broke the count
+// written here, #5675's run: read from the library)
+const BOARDS = PART_ORDER.filter((t) => PARTS[t].kind === 'board').length;
 
 let env;
 before(async () => { env = await setupUi(); });
@@ -27,7 +32,7 @@ uiTest('Circuit editor: the Parts panel on the left, its drawings, search, categ
     return { parts: x('.circ-parts-side').right <= x('.circ-canvas').left + 1, props: x('.asm-side').left >= x('.circ-canvas').right - 1, inProps: document.querySelectorAll(`${ed} .asm-side .circ-lib-part`).length };
   }, ED);
   assert.deepEqual(sides, { parts: true, props: true, inProps: 0 });
-  assert.equal((await rows(page)).length, 224);   // (the ESP32 DevKitC, #5495; a generator, an LM393, the DA2 and AD1, #5384; the oscilloscope, #5383; the 7 analog parts, #5382; the SD card, #5477; the stepper, #5476; the DHT11 and DHT22, #5470; the PIR, #5463; the HC-SR04, #5456; the buzzer, #5454; the encoder, #5451; the keypad, #5364; the servo, #5347; the LM75, #5342; the OLED, #5336; the LCD, #5330; the 4 boards, #5215; 30 more gates, 11 three-state buffers, 3 transceivers, 23 flip-flops, latches and registers, 20 counters, 8 shift registers, 18 decoders, drivers and encoders, 12 multiplexers, ALUs…, 5 memories…, #4397)
+  assert.equal((await rows(page)).length, 219 + BOARDS);   // (the boards, BOARDS: the ESP32 DevKitC, #5495, the Picos, #5898; a generator, an LM393, the DA2 and AD1, #5384; the oscilloscope, #5383; the 7 analog parts, #5382; the SD card, #5477; the stepper, #5476; the DHT11 and DHT22, #5470; the PIR, #5463; the HC-SR04, #5456; the buzzer, #5454; the encoder, #5451; the keypad, #5364; the servo, #5347; the LM75, #5342; the OLED, #5336; the LCD, #5330; the 4 boards, #5215; 30 more gates, 11 three-state buffers, 3 transceivers, 23 flip-flops, latches and registers, 20 counters, 8 shift registers, 18 decoders, drivers and encoders, 12 multiplexers, ALUs…, 5 memories…, #4397)
   // the drawings: a gate IC's its gate's schematic symbol, an MSI's its block's, a breadboard's and an LED's their own
   assert.deepEqual(await page.eval((ed) => ['7400', '74138', 'breadboard-half', 'led'].map((t) => document.querySelector(`${ed} .circ-lib-part[data-part="${t}"] svg`).classList.contains('circ-pv-sym')), ED), [true, true, false, false]);
   assert.equal(await page.eval((ed) => document.querySelector(`${ed} .circ-lib-part[data-part="7400"] svg .gate`) !== null, ED), true);
