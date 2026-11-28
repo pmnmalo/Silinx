@@ -15,6 +15,8 @@
 set -euo pipefail
 # pinned: {"kind": "tag", "name": "emsdk (@silinx/avr-gcc)", "repo": "emscripten-core/emsdk", "match": "^EMSDK_TAG=\"(?<tag>[0-9.]+)\" +EMSDK_COMMIT=\"(?<commit>[0-9a-f]{40})\"", "update": "the tag and its commit here, the workflow silinx-avr-gcc run on the pull request (its oracle), then a release of the package"}
 EMSDK_TAG="7.0.1" EMSDK_COMMIT="a7c808831a666cc903fedb906c171a718cd97341"
+# (its commit's tarball, pinned by its SHA-256 too: no git clone, which a runner could not always reach)
+EMSDK_SHA256="5c3ac494d7917be781f29b8f75f27bd725dc268a96df2654442511d9570fadc2"
 # pinned: {"kind": "sha256", "name": "GCC 7.3.0 (@silinx/avr-gcc, Arduino's)", "match": "^GCC_URL=\"(?<url>[^\"]+)\" +GCC_SHA256=\"(?<sha256>[0-9a-f]{64})\"", "update": "Arduino's toolchain moves with arduino/toolchain-avr: its GCC, its patches and its Linux toolchain together"}
 GCC_URL="https://ftp.gnu.org/gnu/gcc/gcc-7.3.0/gcc-7.3.0.tar.xz" GCC_SHA256="832ca6ae04636adbb430e865a1451adf6979ab44ca1c8374f61fba65645ce15c"
 # pinned: {"kind": "sha256", "name": "Atmel's GCC patches (@silinx/avr-gcc, arduino/toolchain-avr)", "match": "^GCC_PATCH_URL=\"(?<url>[^\"]+)\" +GCC_PATCH_SHA256=\"(?<sha256>[0-9a-f]{64})\""}
@@ -43,7 +45,7 @@ sha() { if command -v sha256sum >/dev/null; then sha256sum "$@"; else shasum -a 
 fetch() {   # fetch <url> <sha256>: the file in $WORK/src, checked
   local f="$WORK/src/$(basename "$1")"
   mkdir -p "$WORK/src"
-  [ -f "$f" ] || curl -fsSL -o "$f" "$1"
+  [ -f "$f" ] || curl -fsSL --retry 5 --retry-all-errors --retry-delay 10 -o "$f" "$1"
   [ "$(sha "$f" | cut -d' ' -f1)" = "$2" ] || { echo "$1: not its SHA-256 $2"; exit 1; }
   echo "$f"
 }
@@ -51,8 +53,8 @@ fetch() {   # fetch <url> <sha256>: the file in $WORK/src, checked
 # ---- Emscripten
 if [ -z "${EMSDK:-}" ]; then
   if [ ! -d "$WORK/emsdk" ]; then
-    git clone --quiet --depth 1 --branch "$EMSDK_TAG" https://gh.ali360.cloudns.ch/emscripten-core/emsdk.git "$WORK/emsdk"
-    [ "$(git -C "$WORK/emsdk" rev-parse HEAD)" = "$EMSDK_COMMIT" ] || { echo "emsdk: tag $EMSDK_TAG is not commit $EMSDK_COMMIT"; exit 1; }
+    T="$(fetch "https://codeload.github.com/emscripten-core/emsdk/tar.gz/$EMSDK_COMMIT" "$EMSDK_SHA256")"
+    tar -xzf "$T" -C "$WORK" && mv "$WORK/emsdk-$EMSDK_COMMIT" "$WORK/emsdk"
   fi
   (cd "$WORK/emsdk" && ./emsdk install "$EMSDK_TAG" >/dev/null && ./emsdk activate "$EMSDK_TAG" >/dev/null)
   EMSDK="$WORK/emsdk"
