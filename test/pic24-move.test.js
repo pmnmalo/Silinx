@@ -187,7 +187,7 @@ test('#5480 a stack error: W15 past SPLIM (once written) or below the RAM', () =
 });
 
 test('#5480 the resets: an illegal instruction (a dsPIC\'s MAC), an uninitialized W register as a pointer; both said, the PC 0', () => {
-  let { cpu } = cpuWith(['.word 0xc30000', 'nop']);
+  let { cpu } = cpuWith(['.pword 0xc30000', 'nop']);
   cpu.step();
   assert.deepEqual([cpu.pc, cpu.resetCause], [0, 'illegal instruction 0xC30000']);
   assert.match(cpu.log[0].text, /^PC 0x000200: illegal instruction 0xC30000: the device resets$/);

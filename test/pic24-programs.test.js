@@ -45,7 +45,7 @@ test('#5480 a routine: (a * b) / c with MUL.UU, then REPEAT #17 and DIV.UD; call
 
 test('#5480 an interrupt-driven counter: Timer1\'s IRQ 3 every 1000 cycles, its ISR counting in RAM and clearing its flag', () => {
   const { words } = pic24Assemble([
-    'goto main', '.org 0x1a', '.word t1isr',   // IRQ 3's vector, at 0x14 + 2 * 3
+    'goto main', '.org 0x1a', '.pword t1isr',   // IRQ 3's vector, at 0x14 + 2 * 3
     '.org 0x200',
     'main: mov #0x0900, w15', 'clr 0x1000', 'mov #0x4000, w0', 'mov w0, ipc0', 'bset iec0, #3',
     'idle: bra idle',

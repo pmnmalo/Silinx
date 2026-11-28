@@ -1,36 +1,39 @@
 ; lcd_uart.asm: the Explorer 16/32's firmware of the uart-pic24 example (a PIC24FJ1024GB610, Fcy 2 MHz: the FRC
-; divided, as its configuration words are erased but the watchdog's, off), its .hex made from it. UART2 at 9600 baud,
-; 8N1, on the USB-UART's pins through PPS (U2RX on RP10, RF4; U2TX on RP17, RF5), linked to the FPGA: it writes
+; divided, as its configuration words are erased but the watchdog's, off), its .hex built from it by Silinx's
+; assembler. UART2 at 9600 baud, 8N1, on the USB-UART's pins through PPS (U2RX on RP10, RF4; U2TX on RP17, RF5), linked to the FPGA: it writes
 ; "PIC24 + FPGA" on the LCD's first row, sends "Hi from PIC24!" CR LF to the FPGA, then shows each byte it receives
 ; (the FPGA echoes each one back; its BTN0 sends "Hello from Silinx!") on the LCD's second row, a LF starting the row
-; again, and the last one on its LEDs D3..D10 (RA0..RA7).
-    goto main
-    .org 0x200
-main:
+; again, and the last one on its LEDs D3..D10 (RA0..RA7). In xc16-as's syntax (#5931): XC16 builds it as Silinx's
+; PIC24 assembler does.
+    .include "p24FJ1024GB610.inc"
+    config __FWDT, FWDTEN_OFF   ; the watchdog off (the other configuration words erased)
+    .global __reset
+    .text
+__reset:
     mov #0x0900, w15         ; the stack
-    clr 0x066a               ; ANSA: RA0..RA7 digital
+    clr ANSA               ; ANSA: RA0..RA7 digital
     mov #0xff00, w0          ; TRISA: RA0..RA7 outputs (the LEDs)
-    mov w0, 0x0662
+    mov w0, TRISA
 ; UART2 first, its TX idle high while the LCD is set up (a receiver sees the line idle before the first start bit):
 ; its pins through PPS, 9600 baud (U2BRG 12: 2 MHz / (16 * 13) = 9615), on, its receiver and transmitter on
     mov #0x3f0a, w0
-    mov w0, 0x07b6           ; RPINR19: U2RX on RP10 (RF4)
+    mov w0, RPINR19           ; RPINR19: U2RX on RP10 (RF4)
     mov #0x0500, w0
-    mov w0, 0x07e4           ; RPOR8: U2TX (5) on RP17 (RF5)
+    mov w0, RPOR8           ; RPOR8: U2TX (5) on RP17 (RF5)
     mov #12, w0
-    mov w0, 0x03b6           ; U2BRG
+    mov w0, U2BRG           ; U2BRG
     mov #0x8000, w0
-    mov w0, 0x03ae           ; U2MODE: UARTEN
+    mov w0, U2MODE           ; U2MODE: UARTEN
     mov #0x1400, w0
-    mov w0, 0x03b0           ; U2STA: URXEN, UTXEN
+    mov w0, U2STA           ; U2STA: URXEN, UTXEN
 ; the LCD through the EPMP: CS1 at EDS 0x020000 (PMCS1BS), EA 0x8000 with DSRPAG and DSWPAG 4 its RS 0, 0x8001 its RS 1
     mov #0x0200, w0
-    mov w0, 0x0132           ; PMCS1BS
+    mov w0, PMCS1BS           ; PMCS1BS
     mov #0x8300, w0
-    mov w0, 0x0128           ; PMCON1: the EPMP on, master mode
+    mov w0, PMCON1           ; PMCON1: the EPMP on, master mode
     mov #4, w0
-    mov w0, 0x0032           ; DSRPAG
-    mov w0, 0x0034           ; DSWPAG
+    mov w0, DSRPAG           ; DSRPAG
+    mov w0, DSWPAG           ; DSWPAG
     mov #0x8000, w1          ; the LCD
     mov #0x38, w0          ; function set: 8 bits, 2 rows
     rcall cmd
@@ -106,11 +109,11 @@ loop:
 ; serve: each byte received: on the LEDs, then on the LCD's second row (CR ignored; after a LF, W4 set, the row is
 ; cleared and started again at the next line's first character); OERR cleared (a byte lost: the receiver on again)
 serve:
-    bclr 0x03b0, #1          ; OERR
-    btss 0x03b0, #0          ; URXDA: a byte received
+    bclr U2STA, #1          ; OERR
+    btss U2STA, #0          ; URXDA: a byte received
     return
-    mov 0x03b4, w0           ; U2RXREG
-    mov w0, 0x0666           ; LATA: the LEDs
+    mov U2RXREG, w0           ; U2RXREG
+    mov w0, LATA           ; LATA: the LEDs
     cp w0, #10
     bra z, lf
     cp w0, #13
@@ -157,7 +160,7 @@ busy:
     return
 ; send: W0 to the FPGA, once UART2's transmit buffer has room (UTXBF clear)
 send:
-    btsc 0x03b0, #9
+    btsc U2STA, #9
     bra send
-    mov w0, 0x03b2           ; U2TXREG
+    mov w0, U2TXREG           ; U2TXREG
     return

@@ -178,8 +178,11 @@ test('#5288 regs-avr: its map\'s slave generated from it, its firmware regs.asm 
 
 test('#5484 uart-pic24: its firmware lcd_uart.asm assembled, its FPGA module uart-avr\'s; made with the MCP server, checked (no warning: 3.3 V on both sides), simulated (the PIC24\'s hello echoed) and emulated (its LCD the echo, BTN0\'s message, its LEDs the last byte)', async () => {
   const UP = path.join(ROOT, 'examples/uart-pic24');
-  const { asmHex } = await import('./pic24-node-lib.mjs');
-  assert.equal(fs.readFileSync(path.join(UP, 'pic/lcd_uart.hex'), 'utf8'), asmHex(fs.readFileSync(path.join(UP, 'pic/lcd_uart.asm'), 'utf8').split('\n')));
+  const { assembleProgram } = await import('../packages/silinx-pic24/src/index.js');
+  // (its .hex Silinx's PIC24 assembler's build of its xc16-as source, #5931, with no error or warning)
+  const built = assembleProgram(fs.readFileSync(path.join(UP, 'pic/lcd_uart.asm'), 'utf8'), { file: 'lcd_uart.asm' });
+  assert.deepEqual([built.errors, built.warnings, built.linked], [[], [], true]);
+  assert.equal(fs.readFileSync(path.join(UP, 'pic/lcd_uart.hex'), 'utf8'), built.hex);
   for (const f of fs.readdirSync(path.join(EX, 'fpga'))) assert.equal(fs.readFileSync(path.join(UP, 'fpga', f), 'utf8'), fs.readFileSync(path.join(EX, 'fpga', f), 'utf8'), f);
   const ex = await ok('list_examples', {});
   assert.equal(ex.text.split('\n').at(-5), 'uart-pic24: a System example (FPGA and microcontroller nodes in a System), 5 file(s)');
