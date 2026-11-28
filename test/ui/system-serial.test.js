@@ -36,7 +36,7 @@ uiTest('#5449 a System terminal on a real board over Web Serial: its link\'s set
   await makeProject(env, { name: 'CoSer', template: 'uart', files: { 'ser.sys.json': SYS, 'uno/l.hex': intelHex(avrAssemble(LOOP)) } });
   const pj = await env.server.api('GET', '/api/projects/CoSer');
   delete pj.fileTree;
-  await env.server.api('PUT', '/api/projects/CoSer', { ...pj, kind: 'system', board: null, constraints: null, top: null });
+  await env.server.api('PUT', '/api/projects/CoSer', { ...pj, profile: 'system', board: null, constraints: null, top: null });
   await page.openProject('CoSer');
   await page.eval(() => window.SilinxApp.openFile('ser.sys.json'));
   await page.waitFor(() => document.querySelector('.doc:not([hidden]) .system-editor .sys-emu-btn'), [], { what: 'the System editor' });

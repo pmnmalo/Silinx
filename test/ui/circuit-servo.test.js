@@ -58,7 +58,7 @@ uiTest('#5347 Emulate System: an Arduino\'s Timer1 PWM moving a circuit node\'s 
   await makeProject(env, { name: 'CoServo', template: 'uart', files: { 'emu.sys.json': SYS, 'src/bench.circ.json': JSON.stringify(CIRC, null, 2), 'fw/servo.hex': intelHex(avrAssemble(PROG)) } });
   const pj = await env.server.api('GET', '/api/projects/CoServo');
   delete pj.fileTree;
-  await env.server.api('PUT', '/api/projects/CoServo', { ...pj, kind: 'system', board: null, constraints: null, top: null });
+  await env.server.api('PUT', '/api/projects/CoServo', { ...pj, profile: 'system', board: null, constraints: null, top: null });
   await page.openProject('CoServo');
   await page.eval(() => window.SilinxApp.openFile('emu.sys.json'));
   await page.waitFor(() => document.querySelector('.doc:not([hidden]) .system-editor .sys-emu-btn'), [], { what: 'the System editor' });

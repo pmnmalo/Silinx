@@ -31,7 +31,7 @@ uiTest('#5212 Emulate: the System\'s boards side by side, the terminal\'s line o
   await makeProject(env, { name: 'CoEmu', template: 'uart', files: { 'emu.sys.json': SYS, 'fw/l.hex': intelHex(avrAssemble(BLINK)) } });
   const pj = await env.server.api('GET', '/api/projects/CoEmu');
   delete pj.fileTree;
-  await env.server.api('PUT', '/api/projects/CoEmu', { ...pj, kind: 'system', board: null, constraints: null, top: null });
+  await env.server.api('PUT', '/api/projects/CoEmu', { ...pj, profile: 'system', board: null, constraints: null, top: null });
   await page.openProject('CoEmu');
   await page.eval(() => window.SilinxApp.openFile('emu.sys.json'));
   await page.waitFor((ed) => document.querySelector(ed), [ED], { what: 'the System editor' });
@@ -82,7 +82,7 @@ uiTest('#5276 Emulate: held behind another document tab and while the page is hi
   await makeProject(env, { name: 'CoEmuHid', template: 'uart', files: { 'emu.sys.json': SYS, 'fw/l.hex': intelHex(avrAssemble(BLINK)) } });
   const pj = await env.server.api('GET', '/api/projects/CoEmuHid');
   delete pj.fileTree;
-  await env.server.api('PUT', '/api/projects/CoEmuHid', { ...pj, kind: 'system', board: null, constraints: null, top: null });
+  await env.server.api('PUT', '/api/projects/CoEmuHid', { ...pj, profile: 'system', board: null, constraints: null, top: null });
   await page.openProject('CoEmuHid');
   await page.eval(() => window.SilinxApp.openFile('emu.sys.json'));
   await page.waitFor((ed) => document.querySelector(ed), [ED], { what: 'the System editor' });

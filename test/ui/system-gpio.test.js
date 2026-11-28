@@ -28,7 +28,7 @@ uiTest('#5213 a GPIO link drawn: + GPIO on the FPGA\'s BTN0 and the Uno\'s D2, l
   await makeProject(env, { name: 'CoGpio', template: 'uart', files: { 'g.sys.json': SYS, 'fw/p.hex': intelHex(avrAssemble(PROG)) } });
   const pj = await env.server.api('GET', '/api/projects/CoGpio');
   delete pj.fileTree;
-  await env.server.api('PUT', '/api/projects/CoGpio', { ...pj, kind: 'system', board: null, constraints: null, top: null });
+  await env.server.api('PUT', '/api/projects/CoGpio', { ...pj, profile: 'system', board: null, constraints: null, top: null });
   await page.openProject('CoGpio');
   await page.eval(() => window.SilinxApp.openFile('g.sys.json'));
   await page.waitFor((ed) => document.querySelector(ed), [ED], { what: 'the System editor' });

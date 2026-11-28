@@ -35,7 +35,7 @@ uiTest('#5336 a graphic OLED: an Arduino writing to it over I²C in Emulate, its
   await makeProject(env, { name: 'CoOled', template: 'uart', files: { 'oled.sys.json': SYS, 'src/bench.circ.json': JSON.stringify(CIRC, null, 2), 'fw/oled.hex': intelHex(avrAssemble(PROG)) } });
   const pj = await env.server.api('GET', '/api/projects/CoOled');
   delete pj.fileTree;
-  await env.server.api('PUT', '/api/projects/CoOled', { ...pj, kind: 'system', board: null, constraints: null, top: null });
+  await env.server.api('PUT', '/api/projects/CoOled', { ...pj, profile: 'system', board: null, constraints: null, top: null });
   await page.setViewport(1440, 900);
   await page.openProject('CoOled');
   await page.eval(() => window.SilinxApp.openFile('oled.sys.json'));

@@ -34,7 +34,7 @@ uiTest('#5484 the Explorer 16/32 in the System editor: placed, its .hex, linked 
   await makeProject(env, { name: 'PicSys', template: 'uart', files: { [FILE]: JSON.stringify(newSystem('pic'), null, 2), 'mcu/echo.hex': echoHex(), 'mcu/old.elf': 'x' } });
   const pj = await env.server.api('GET', '/api/projects/PicSys');
   delete pj.fileTree;
-  await env.server.api('PUT', '/api/projects/PicSys', { ...pj, kind: 'system', board: null, constraints: null, top: null });
+  await env.server.api('PUT', '/api/projects/PicSys', { ...pj, profile: 'system', board: null, constraints: null, top: null });
   await page.openProject('PicSys');
   await page.leftTab('design');
   await page.waitFor(() => [...document.querySelectorAll('#hier .row .badge')].some((b) => b.textContent === 'System'), [], { what: 'the System\'s row' });

@@ -70,7 +70,7 @@ uiTest('#5488 an old System project (its System document of version 1): said whe
   await makeProject(env, { name: 'OldSys', template: 'uart', files: { 'old.sys.json': OLD } });
   const pj = await env.server.api('GET', '/api/projects/OldSys');
   delete pj.fileTree;
-  await env.server.api('PUT', '/api/projects/OldSys', { ...pj, kind: 'system', board: null, constraints: null, top: null });
+  await env.server.api('PUT', '/api/projects/OldSys', { ...pj, profile: 'system', board: null, constraints: null, top: null });
   await page.openProject('OldSys');
   const said = 'ERROR: old.sys.json: a System document of version 1, made before each node was a folder of its project (#5488): this Silinx does not read it; make the System again in a new System project, each node\'s files in its folder';
   await page.waitFor((s) => [...document.querySelectorAll('#console-log .ln')].some((l) => l.textContent === s), [said], { what: 'the old System said' });

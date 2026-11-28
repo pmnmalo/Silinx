@@ -25,7 +25,7 @@ async function systemProject(name, system) {
   await makeProject(env, { name, template: 'uart', files: { 'uart_avr.sys.json': system, 'fw/echo.hex': intelHex(echoProgram()) } });
   const pj = await env.server.api('GET', `/api/projects/${name}`);
   delete pj.fileTree;
-  await env.server.api('PUT', `/api/projects/${name}`, { ...pj, kind: 'system', board: null, constraints: null, top: null });
+  await env.server.api('PUT', `/api/projects/${name}`, { ...pj, profile: 'system', board: null, constraints: null, top: null });
 }
 async function openSystem(page, name) {
   await page.openProject(name);

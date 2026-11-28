@@ -24,7 +24,7 @@ uiTest('#5484 Emulate: the Explorer 16/32 drawn, its LCD\'s rows, S3 held lights
   await makeProject(env, { name: 'PicEmu', template: 'uart', files: { 'pic.sys.json': SYS, 'pic/explorer.hex': explorerHex() } });
   const pj = await env.server.api('GET', '/api/projects/PicEmu');
   delete pj.fileTree;
-  await env.server.api('PUT', '/api/projects/PicEmu', { ...pj, kind: 'system', board: null, constraints: null, top: null });
+  await env.server.api('PUT', '/api/projects/PicEmu', { ...pj, profile: 'system', board: null, constraints: null, top: null });
   await page.openProject('PicEmu');
   await page.eval(() => window.SilinxApp.openFile('pic.sys.json'));
   await page.waitFor((ed) => document.querySelector(ed), [ED], { what: 'the System editor' });
@@ -108,7 +108,7 @@ uiTest('#5618 regression: the Explorer 16/32\'s buttons S3 to S6 clicked, then h
   await makeProject(env, { name: 'PicBtn', template: 'uart', files: { 'pic.sys.json': SYS.replace('pic/explorer.hex', 'pic/buttons.hex'), 'pic/buttons.hex': buttonsHex() } });
   const pj = await env.server.api('GET', '/api/projects/PicBtn');
   delete pj.fileTree;
-  await env.server.api('PUT', '/api/projects/PicBtn', { ...pj, kind: 'system', board: null, constraints: null, top: null });
+  await env.server.api('PUT', '/api/projects/PicBtn', { ...pj, profile: 'system', board: null, constraints: null, top: null });
   await page.openProject('PicBtn');
   await page.eval(() => window.SilinxApp.openFile('pic.sys.json'));
   await page.waitFor((ed) => document.querySelector(ed), [ED], { what: 'the System editor' });
