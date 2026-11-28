@@ -16,6 +16,7 @@ import { nodeConstraintsProcs } from './system-constraints-ui.js';
 import { nodeModelProcs } from './system-emulate-ui.js';
 import { unprogrammed } from './system-implement-tree.js';
 import { psProcesses } from './zynq-ps-ui.js';
+import { nodeStepReports, nodeSummaryRow } from './system-node-reports.js';
 import { withShield } from '/core/processor-shield.js';
 import { canAddShield, addShieldUi } from './processor-shield-ui.js';
 
@@ -67,9 +68,11 @@ export function systemProcesses(sel, view, { check, rtl }) {
     // (its I/O Pin Planning: its constraints file, #5581, #5642)
     ...(sel.kind === 'fpga' ? [nodeConstraintsProcs({ id: sel.node })] : []),
     ...(sel.kind === 'fpga' && sel.module ? [
+      nodeSummaryRow(sel.node, 'summary'),   // (its Design Summary, the project's in its place, #5632: web/js/system-node-reports.js)
       { id: 'check', label: 'Check Syntax', ico: 'process', run: () => check(sel.module) },
       { id: 'rtl', label: 'View RTL Schematic', ico: 'schematic', run: () => rtl(sel.module) },
-      ...FLOW.map(([id, label, steps]) => ({ id, label, ico: 'process', run: impl(sel.node, steps, label) })),
+      // (its Design Summary and its steps' reports under them, #5632: web/js/system-node-reports.js)
+      ...FLOW.map(([id, label, steps]) => ({ id, label, ico: 'process', run: impl(sel.node, steps, label), children: nodeStepReports(sel.node, id.replace(/^node-/, '')) })),
       { id: 'node-program', label: 'Program Node', ico: 'board', run: program(sel.node) },   // (on its board over JTAG, #5447)
     ] : []),
     // (a Zynq node's PS program, #4687: web/js/zynq-ps-ui.js)

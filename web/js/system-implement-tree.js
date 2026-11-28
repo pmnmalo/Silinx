@@ -14,6 +14,7 @@ import { mcuBoard } from '/core/system-doc.js';
 import { PLAN_KINDS, planLine } from '/core/system-plan.js';
 import { programRefusal } from '/core/system-program.js';
 import { firmwareRefusal } from '/core/avr-compile.js';
+import { nodeStepReports, nodeSummaryRow } from './system-node-reports.js';
 
 // a node's (or the System's, '*') steps, as the Processes panel's (web/js/system-processes.js)
 const FLOW = [['synth', 'Synthesize', ['synth']], ['impl', 'Implement Design', ['synth', 'translate', 'map', 'par']], ['bitgen', 'Generate Programming File', ['synth', 'translate', 'map', 'par', 'trce', 'bitgen']]];
@@ -65,7 +66,8 @@ function nodeProcesses(file, n, e) {
   const refused = unprogrammed(n, e);
   const given = e ? (e.state === 'given' ? e.image : null) : by === 'pickit' ? n.firmware || null : null;
   const kids = [
-    ...(n.kind === 'fpga' ? [nodeConstraintsProcs(n), ...(n.module ? FLOW.map(([step, label, steps]) => ({ id: `impl-${step}-${id}`, label, ico: 'process', run: impl(id, steps, label) })) : [])] : []),
+    // (its Design Summary and its steps' reports under them, #5632: web/js/system-node-reports.js)
+    ...(n.kind === 'fpga' ? [...(n.module ? [nodeSummaryRow(id)] : []), nodeConstraintsProcs(n), ...(n.module ? FLOW.map(([step, label, steps]) => ({ id: `impl-${step}-${id}`, label, ico: 'process', run: impl(id, steps, label), children: nodeStepReports(id, step) })) : [])] : []),
     // (a firmware given, made outside Silinx: nothing to build, its file said; else an Arduino's sketch compiled, a PIC24's C, #5482)
     ...(given ? [{ id: `impl-given-${id}`, label: `Firmware: ${given.split('/').pop()}`, ico: 'process', disabled: true, title: `${id}: its firmware ${given}, made outside Silinx: nothing to build` }]
       : ['avrdude', 'pickit'].includes(by) && !firmwareRefusal(n) ? [{ id: `impl-firmware-${id}`, label: 'Compile Firmware', ico: 'process', run: async () => (await import('./system-firmware-ui.js')).runNodeFirmware(id, file, n.board) }] : []),

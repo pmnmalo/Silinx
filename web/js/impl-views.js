@@ -80,7 +80,8 @@ function selectHierarchyPath(path) {
 // wanted: asked again once summary.js is loaded (its first load may take a while: #4021), the summary opened only if
 // it still is (the Tasks layout's Implement brought forward: still in front); resolved once the summary is drawn with the
 // reports as they are now (#4287: not its drawing of before, from the project's opening)
-export async function openSummary({ background = false, wanted } = {}) {
+// (node: a System's FPGA node's, its own document, #5632)
+export async function openSummary({ background = false, wanted, node = null } = {}) {
   const was = docsState.active;
   const { mountSummary } = await import('./summary.js');
   if (wanted && !wanted()) return;
@@ -88,9 +89,10 @@ export async function openSummary({ background = false, wanted } = {}) {
   // the summary opened behind it, not over it (#4021: over the UCF just opened, a simulation just started)
   // (background, the project's own opening: the document already in front stays there too, #5627)
   const keep = docsState.active && (docsState.active !== was || background) && docsState.active.id !== 'summary' && docsState.docs.includes(docsState.active) ? docsState.active : null;
-  const old = findDoc('summary');
+  const id = node ? `summary:${node}` : 'summary';
+  const old = findDoc(id);
   if (keep && old) { await old.refresh?.(); return; }
-  const d = openDoc({ id: 'summary', title: 'Design Summary', icon: 'summary', background: background || !!keep, create: el => mountSummary(el) });
+  const d = openDoc({ id, title: node ? `Design Summary (${node})` : 'Design Summary', icon: 'summary', background: background || !!keep, create: el => mountSummary(el, { node }) });
   const drawn = d.refresh?.();
   if (keep && docsState.docs.includes(keep)) activateDoc(keep);
   await drawn;

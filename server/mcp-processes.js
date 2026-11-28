@@ -160,6 +160,37 @@ async function runPs(name, { toolchain, node, timeoutS, signal, progress }) {
   return { top: node === undefined ? 'PS program' : `node ${node}`, lines, errors, warnings, locations, paths, ok: job.status === 'ok', silinx: false, toolchain: 'arm-gcc' };
 }
 
+// a System's FPGA node's report (#5632): its Design Summary (its device's utilization rows), or a report of its last run,
+// the Silinx toolchain's, its files in its build folder (build/nodes/<id>/build/), its module its top
+async function nodeReport(name, report, node) {
+  if (report !== 'summary' && !Object.hasOwn(REPORT_FILES.open, report)) throw toolError(`report: summary or one of ${Object.keys(REPORT_FILES.ise).join(', ')}`);
+  const redact = await redactor();
+  let r;
+  try { r = JSON.parse(redact(JSON.stringify(await (await import('./impl-routes.js')).projectReports(name, { node })))); } catch (e) { throw toolError(e.message); }
+  const at = `node ${node}`, base = `build/nodes/${r.node}/`;
+  if (r.available === false) return { text: `No report yet for ${at} of '${name}': run_process implement with node ${node}.`, data: { project: name, node, report, available: false } };
+  if (report === 'summary') {
+    const pj = await readProject(name);
+    const { nodeProject } = await import('../core/system-node.js');
+    const { readSystem, isSystemFile } = await import('../core/system-doc.js');
+    const files = await P.fileTree(name), sys = files.find(isSystemFile);
+    const n = readSystem(await P.readFile(name, sys)).system.nodes.find((x) => x.id === r.node);
+    const device = nodeProject(pj, n, '').device;
+    const { findPart } = await import('./devices.js');
+    r.designSummary = { utilization: designUtilization(r, findPart(device.part) || null, device.package) };
+    return { text: clip(JSON.stringify(r, null, 1)), data: { project: name, node, report, available: true, summary: r }, untrusted: 'the report' };
+  }
+  const file = REPORT_FILES.open[report]?.(r.module);
+  if (!file) {
+    const text = OPEN_REPORTS[report]?.(r);
+    if (text) return { text: redact(text), data: { project: name, node, report, toolchain: 'silinx', path: `${base}build/reports.json`, available: true }, untrusted: 'the report' };
+  } else {
+    const full = await projectPath(name, `${base}${file}`);
+    if (fs.existsSync(full)) return { text: clip(redact(await fsp.readFile(full, 'latin1'))), data: { project: name, node, report, toolchain: 'silinx', path: `${base}${file}`, available: true }, untrusted: 'the report' };
+  }
+  return { text: `No ${report} report for ${at} of '${name}' from its last run (Silinx toolchain${file ? `: ${base}${file}` : ''}).`, data: { project: name, node, report, toolchain: 'silinx', available: false } };
+}
+
 // a System built (node: its id, or * every node not up to date): run_process build's result, as a flow's
 async function runBuild(name, { toolchain, node = '*', timeoutS, signal, progress }) {
   if (toolchain !== undefined) throw toolError('toolchain: a System is built by its nodes\' own (the Silinx toolchain, arduino-cli)');
@@ -220,9 +251,11 @@ export const PROCESS_TOOLS = [
   {
     name: 'get_report', title: 'Read a report',
     description: 'The Design Summary of the last run (summary: the utilization, the timing, the files, as JSON; designSummary.utilization: the Device Utilization Summary\'s caption and rows, as the interface shows them), or the text of a report of the last run: synthesis, map, par, timing, power, pins, drc (with the Silinx toolchain: Yosys\'s statistics for synthesis, the pack and route summaries for map and par; with AMD Vivado: its utilization after synthesis and after routing, its route status, timing summary, power, I/O and DRC reports).',
-    inputSchema: { type: 'object', properties: { project: PROJECT, report: { type: 'string', enum: ['summary', ...Object.keys(REPORT_FILES.ise)], description: 'The report (default summary).' } }, required: ['project'], additionalProperties: false },
+    inputSchema: { type: 'object', properties: { project: PROJECT, report: { type: 'string', enum: ['summary', ...Object.keys(REPORT_FILES.ise)], description: 'The report (default summary).' }, node: STR('A System\'s FPGA node\'s.') }, required: ['project'], additionalProperties: false },
     annotations: { readOnlyHint: true },
-    async run({ project: name, report = 'summary' }) {
+    async run({ project: name, report = 'summary', node }) {
+      // (a System's FPGA node's, #5632: its build folder's, build/nodes/<id>/, the Silinx toolchain's; its own device)
+      if (node !== undefined) return nodeReport(name, report, node);
       const pj = await readProject(name);
       const redact = await redactor();
       if (report === 'summary') {

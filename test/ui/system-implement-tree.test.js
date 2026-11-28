@@ -34,8 +34,9 @@ const warnings = async (page) => (await lines(page)).filter((l) => /^(WARNING|ER
 const FPGA_TIP = 'fpga: out of date (its last build left no record of its sources); built by the Silinx toolchain to build/nodes/fpga/build/uart.bit, programmed over JTAG';
 const UNO_TIP = 'uno: given (its firmware uno/hello.hex, no sketch to compile); its image uno/hello.hex, programmed by avrdude (arduino-cli upload)';
 const PIC_TIP = 'pic: a PIC24 is not programmed by Silinx yet: load its pic/lcd_uart.hex with MPLAB IPE';
-const FPGA_ROWS = ['  fpga (Digilent Basys2)', '    I/O Pin Planning',
-  '    Synthesize', '    Implement Design', '    Generate Programming File', '    Program Node'];
+// (its Design Summary and its steps' reports under them, #5632)
+const FPGA_ROWS = ['  fpga (Digilent Basys2)', '    Design Summary/Reports', '    I/O Pin Planning',
+  '    Synthesize', '      View Synthesis Report', '    Implement Design', '      View Static Timing Report', '    Generate Programming File', '    Program Node'];
 
 uiTest('#5581 a System\'s Implement: its tree, each node\'s plan state its mark, its bar\'s Build All and Program All, Build Plan; a PIC24\'s Program Node off, said why; Portuguese; the ISE style\'s', E, async (page) => {
   await makeProject(env, { name: 'SysImplTree', template: 'uart-avr' });

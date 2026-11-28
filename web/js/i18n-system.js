@@ -39,6 +39,7 @@ export const SYSTEM_PT = {
   'AXI4-Lite (Zynq PS)': 'AXI4-Lite (PS do Zynq)', 'Base address': 'Endereço base',   // (a register map on AXI4-Lite, #4688)
   "The base address of its 4 KB window on the PS's M_AXI_GP0 (0x40000000 to 0x7FFFF000)": 'O endereço base da sua janela de 4 KB no M_AXI_GP0 do PS (0x40000000 a 0x7FFFF000)',
   "Write the program's header of the map (its addresses, a read and a write for each register): an Arduino's in its node's folder, a Zynq PS's in its ps/": 'Escrever o cabeçalho do programa do mapa (os seus endereços, uma leitura e uma escrita por registo): o de um Arduino na pasta do seu nó, o do PS de um Zynq na sua ps/',
+  'View Synthesis Report': 'Ver o Relatório de Síntese', 'View Static Timing Report': 'Ver o Relatório de Temporização Estática', 'System File:': 'Ficheiro do Sistema:',   // (a node's reports, #5632)
   'Compile PS Program': 'Compilar o Programa do PS', 'Run PS Program': 'Correr o Programa do PS',   // (a Zynq's, #4687)
   'Compile Firmware': 'Compilar Firmware', 'A process is already running (use Stop to cancel it)': 'Já está um processo em curso (use Parar para o cancelar)',   // (an Arduino node's sketch to its .hex, #5503)
   'Id': 'Identificador', 'Module': 'Módulo', 'Board': 'Placa', 'Variant': 'Variante', "(the board's)": '(a da placa)',
@@ -191,7 +192,9 @@ export const SYSTEM_PT_PATTERNS = [
   // (a PIC24 node's in the browser edition, #5482)
   [/^(.+): a PIC24 node's firmware is compiled by XC16, on the local server or its ISE machine \(the browser edition has no compiler\): give the node the \.hex MPLAB X built$/,
     '$1: o programa (firmware) de um nó PIC24 é compilado pelo XC16, no servidor local ou na sua máquina do ISE (a edição do browser não tem compilador): dê ao nó o .hex que o MPLAB X construiu'],
-  [/^PS UART (\S+)$/, 'UART do PS $1'],   // (a Zynq's PS UART's properties, #4687)
+  [/^PS UART (\S+)$/, 'UART do PS $1'],
+  [/^System node (\S+) Status$/, 'Estado do nó $1 do Sistema'], [/^Design Summary \((\S+)\)$/, 'Resumo do Projeto ($1)'],   // (a node's Design Summary, #5632)
+  [/^(.+): no report yet for System node (\S+): run its Implement Design first$/, '$1: ainda não há relatório do nó $2 do Sistema: corra primeiro o seu Implementar Projeto'],   // (a Zynq's PS UART's properties, #4687)
   // (a Zynq's PS program in the browser edition, #4687)
   [/^(.+): a Zynq's PS program is loaded and started by the local server's OpenOCD for now \(the browser edition has no compiler\): run Silinx's server$/,
     '$1: o programa do PS de um Zynq é carregado e arrancado pelo OpenOCD do servidor local, por agora (a edição do browser não tem compilador): use o servidor do Silinx'],
