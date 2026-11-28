@@ -952,6 +952,19 @@ Properties, or by the MCP's `edit_system` (`add_interface` with `fields.ps`); on
 only (to another node's UART: refused), with no wires. The Cortex-A9 is not simulated, so Simulate and Emulate leave
 that link out, which the check says; on the board, the terminal's Real Board reaches it (#4687, part 4).
 
+**The PS's program simulated** (#4689, part 5 of #4688; its first part, `core/zynq-ps-sim.js`). The program's C is run
+by Silinx's C interpreter in its program mode (`core/c-interp.js`, `program: true`): no HLS checks, no top, and an
+integer cast to a pointer, `*(volatile uint32_t *)0xE0001000`, a memory-mapped register whose reads and writes go to
+the PS's model. It is behavioural and says so: no ARM instruction is emulated, and each step of the interpreter is one
+clock of the Cortex-A9 (1.5 ns at 666.7 MHz). The PS is as Silinx's ps7_init sets it up. The model has:
+- its UART: a byte written to the FIFO is sent at the baud BRGR and BDIV make (10 bits a byte, 8N1), each with its
+  time; SR says TXFULL while 64 bytes wait and TXEMPTY once all are sent;
+- GPIO bank 0 (MIO 0–31): DATA_0, the masked writes, DIRM_0 and OEN_0; an output pin's changes, each with its time;
+- M_AXI_GP0's window, 0x40000000 to 0x7FFFFFFF: the PL's registers.
+
+Any other address stops the run, and the address is said. Linking it into Simulate (the PS UART's link to its terminal,
+the PL's registers through the AXI4-Lite slave on the PL's simulation) is the next part.
+
 **Run PS Program** (the Design pane's PS row, a Zynq node's row, a Board project's `ps/` files; the MCP's `program_board`
 with `ps`) runs it on the board through the user's [OpenOCD](https://openocd.org) (`server/zynq-ps-run.js`; config.json's
 `paths.openocd`, the PATH or Homebrew's folders; Silinx does not install it, and says so when it is missing). The program

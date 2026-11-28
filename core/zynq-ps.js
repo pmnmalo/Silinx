@@ -59,7 +59,7 @@ export function psSummary(n) {
 }
 
 // a UART's registers (UG585, appendix B: UART), UART0's and UART1's base
-const UART_BASE = [0xE0000000, 0xE0001000];
+export const UART_BASE = [0xE0000000, 0xE0001000];
 const hex = (n) => `0x${n.toString(16).toUpperCase()}`;
 /** The PS's starter program for board `ps` (a board's `ps`): its UART at 115200 baud (8N1) says hello, then its first
  *  PS LED (a GPIO on the MIO, the Zybo Z7's LD4) blinks, or the program waits. C, bare metal, no library. */

@@ -51,7 +51,8 @@ export const exprMethods = {
         const ref = this.lvalue(e.l);
         const val = e.op === '=' ? this.eval(e.r) : this.arith(e.op.slice(0, -1), ref.get(), this.eval(e.r), e);
         ref.set(val);
-        return ref.get();
+        // (a memory-mapped register's: the value written, not read back, #4689)
+        return ref.mmio !== undefined ? { v: convert(this.as(val, ref.t, e), ref.t), t: ref.t } : ref.get();
       }
       case 'cond': {
         const c = this.truth(this.eval(e.c));
@@ -68,6 +69,8 @@ export const exprMethods = {
         const t = typeOf(e.type);
         const x = this.eval(e.e);
         if (x.heap !== undefined && e.type.kind === 'ptr') return this.heapPtr(x, e.type.to, e);
+        // (a program's integer cast to a pointer: a memory-mapped register, #4689)
+        if (this.mmio && e.type.kind === 'ptr' && !x.ptr && !x.arr && typeof x.v === 'bigint') return this.mmioPtr(x, e.type.to, e);
         if (!t) return x;
         return { v: this.as(x, t, e), t };
       }
@@ -384,6 +387,15 @@ export const exprMethods = {
     return false;
   },
   /** The place pointer p points to, read or written: refused outside its array (one past its end, #2655). */
+  /** A memory-mapped register at the address x (a program's, #4689): its reads and writes the hooks' (this.mmio). */
+  mmioPtr(x, to, e) {
+    const t = typeOf(to);
+    if (!t || t.fl || ![8, 16, 32, 64].includes(t.w)) this.fail(e, 'a memory-mapped register is an integer of 8, 16, 32 or 64 bits (uint32_t, uint16_t, uint8_t)');
+    const addr = Number(BigInt.asUintN(32, x.v)), bytes = t.w / 8;
+    if (addr % bytes) this.fail(e, `the register at 0x${addr.toString(16)} is not aligned to its ${bytes} bytes`);
+    const mmio = this.mmio;
+    return { ptr: { get: () => ({ v: convert(BigInt(mmio.read(addr, bytes, this.steps)), t), t }), set: (y) => { mmio.write(addr, bytes, BigInt.asUintN(t.w, this.as(y, t, e)), this.steps); }, t, mmio: addr }, t };
+  },
   target(p, e) {
     if (p.ptr.arr && !(p.ptr.index >= 0 && p.ptr.index < p.ptr.arr.length)) this.fail(e, `the pointer points outside its array (to the element ${p.ptr.index} of 0 to ${p.ptr.arr.length - 1})`);
     return p.ptr;
