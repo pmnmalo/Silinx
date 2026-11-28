@@ -3,8 +3,9 @@
 // the node's build folder: -mcpu=24FJ1024GB610, -omf=elf, -T an existing linker script and -o out/<id>.elf needed; each
 // `#error X` / `#warning X` line of a C file said as gcc says it (its path as given, line and column), each `.error "X"`
 // of an assembly file as the assembler does (file:line: Error: X), a `//stub-link-error` line as the linker's Link
-// Error; exit 1 on an error, else the .elf (a stand-in: the uart-fpga-pic24 example's .hex, for xc16-bin2hex). Its arguments
-// are written to xc16-gcc.json in its folder.
+// Error; exit 1 on an error, else the .elf (a stand-in: the uart-fpga-pic24 example's .hex, for xc16-bin2hex; with a
+// `//stub-jtag-on` line, its FICD word left out, the JTAG port on, #6027). Its arguments are written to xc16-gcc.json in
+// its folder.
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -14,11 +15,12 @@ fs.writeFileSync('xc16-gcc.json', JSON.stringify(a));
 const opt = k => a[a.indexOf(k) + 1];
 if (!a.includes('-mcpu=24FJ1024GB610') || !a.includes('-omf=elf')) { console.error('xc16-gcc: stub: -mcpu=24FJ1024GB610 -omf=elf expected'); process.exit(2); }
 if (!fs.existsSync(opt('-T'))) { console.error(`xc16-ld: cannot open linker script file ${opt('-T')}: No such file or directory`); process.exit(255); }
-let errors = 0, link = false;
+let errors = 0, link = false, jtagOn = false;
 for (const f of a.filter(x => /^src\/.*\.(c|s|S)$/.test(x))) {
   fs.readFileSync(f, 'utf8').split('\n').forEach((l, i) => {
     const c = /^(\s*)#(error|warning)\s+(.*)$/.exec(l), s = /^\s*\.error\s+"(.*)"/.exec(l);
     if (/\/\/stub-link-error/.test(l)) link = true;
+    if (/\/\/stub-jtag-on/.test(l)) jtagOn = true;
     if (c && /\.c$/.test(f)) {
       if (c[2] === 'error') errors++;
       console.error(`${f}: In function 'main':`);
@@ -29,4 +31,5 @@ for (const f of a.filter(x => /^src\/.*\.(c|s|S)$/.test(x))) {
 if (errors) process.exit(1);
 if (link) { console.error('/opt/microchip/xc16/v2.10/bin/bin/elf-ld: Link Error: Could not allocate section .nbss, size = 9000 bytes, attributes = bss near'); process.exit(255); }
 const hex = path.join(path.dirname(fileURLToPath(import.meta.url)), '../../../../../examples/uart-fpga-pic24/pic/lcd_uart.hex');
-fs.writeFileSync(opt('-o'), fs.readFileSync(hex));
+const text = fs.readFileSync(hex, 'utf8');
+fs.writeFileSync(opt('-o'), jtagOn ? text.replace(/^:047E5000[0-9A-F]+\n/m, '') : text);

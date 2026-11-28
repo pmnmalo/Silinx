@@ -872,6 +872,10 @@ image in this computer's own Docker (the ISE runner's nightly tests, #6019: its 
   Silinx compiles at `-O1`, and the console's first line says so.
 - gcc's, the assembler's (`file:line: Error:`) and the linker's (`Link Error:`) errors and warnings go to the console
   as `ERROR: pic/main.c:12:3: …` lines, by the project's file and line, as an Arduino's.
+- **The JTAG port** (#6027, `jtagWarning`): a `.hex` whose FICD leaves JTAGEN on (erased: XC16's default with no
+  `#pragma config JTAGEN = OFF`) while a source uses port A (`TRISA`, `LATA`, `PORTA`, `ODCA`, their bits) is warned
+  of: RA0, RA1, RA4 and RA5, the LEDs D3, D4, D7 and D8, are then the JTAG port's, not the program's. The emulator
+  drives none of them, as the board does, and says so once a pin.
 - The `.hex` is written over the node's firmware when that is a `.hex`, else to `<id>/<id>.hex`, which becomes the
   node's firmware; Emulate System runs it on silinx-pic24. The build plan's XC16 step is the same (Build All).
 - The MCP's `run_process` process `firmware` with the node's id; the browser edition says the `.hex` is MPLAB X's.

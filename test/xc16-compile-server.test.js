@@ -28,7 +28,8 @@ const { TOOLS } = await import('../server/mcp.js');
 const USER = process.platform === 'linux' && typeof process.getuid === 'function' ? ` --user ${process.getuid()}:${process.getgid()}` : '';
 const tool = n => TOOLS.find(t => t.name === n);
 
-const MAIN = '#include <xc.h>\n\nint main(void) {\n  TRISA = 0;\n  for (;;) LATA = 0x55;\n}\n';
+// (the JTAG port off: port A's RA0, RA1, RA4, RA5 the program's, #6027)
+const MAIN = '#include <xc.h>\n#pragma config JTAGEN = OFF\n\nint main(void) {\n  TRISA = 0;\n  for (;;) LATA = 0x55;\n}\n';
 let made = 0;
 async function project(files = { 'pic/main.c': MAIN }) {
   const name = `up${++made}`;
@@ -88,6 +89,24 @@ test('#5482 the pic node\'s C compiled: its .hex the node\'s firmware, read by t
   const r = await tool('simulate').run({ project: name, time_ns: 40e6 });
   const text = w => String.fromCharCode(...r.data.traffic.find(t => t.wire === w).bytes.map(b => b.byte));
   assert.deepEqual([text('serial_pic'), text('serial_fpga'), r.data.warnings, r.data.errors], ['Hi from PIC24!\r\n', 'Hi from PIC24!\r\n', [], []]);
+});
+
+test('#6027 a program that leaves the JTAG port on (its .hex\'s FICD erased) and uses port A: warned, once, naming the source; none with JTAGEN off or no port A; the MCP\'s run_process the same', { skip: WIN }, async () => {
+  const WARN = 'WARNING: pic: its program leaves the JTAG port on (FICD\'s JTAGEN, erased) and pic/main.c uses port A: RA0, RA1, RA4 and RA5 (the LEDs D3, D4, D7, D8) are the JTAG port\'s TMS, TCK, TDI and TDO, not the program\'s (#pragma config JTAGEN = OFF; in assembly config __FICD, JTAGEN_OFF)';
+  const on = '#include <xc.h>\n//stub-jtag-on\nint main(void) {\n  TRISA = 0;\n  for (;;) LATA = 0x55;\n}\n';
+  const name = await project({ 'pic/main.c': on });
+  const j = await run(name);
+  assert.equal(j.status, 'ok', j.lines.join('\n'));
+  assert.deepEqual(j.lines.filter(x => /^(ERROR|WARNING)/.test(x)), [WARN]);
+  assert.equal(j.result.nodes[0].warnings, 1);
+  const r = await tool('run_process').run({ project: name, process: 'firmware', node: 'pic' });
+  assert.deepEqual([r.data.ok, r.data.errors, r.data.warnings], [true, [], [WARN]]);
+  // (no port A, or only in a comment: no warning; the JTAG port off: none)
+  for (const main of ['//stub-jtag-on\nint main(void) {\n  TRISB = 0; // not TRISA\n  for (;;);\n}\n', MAIN]) {
+    await P.writeFile(name, 'pic/main.c', main);
+    const k = await run(name);
+    assert.deepEqual([k.status, k.lines.filter(x => /^(ERROR|WARNING)/.test(x))], ['ok', []], main);
+  }
 });
 
 test('#5482 XC16\'s errors and warnings: gcc\'s, the assembler\'s, the linker\'s, as ERROR and WARNING lines by the project\'s file and line; no .hex written', { skip: WIN }, async () => {

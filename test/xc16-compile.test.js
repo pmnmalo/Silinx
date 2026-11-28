@@ -8,7 +8,7 @@ import { execFileSync } from 'node:child_process';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { XC16_DEVICES, XC16_OPT, XC16_HEAP, XC16_IMAGE, isPic24, nodeProgram, pic24FileOf, pic24Sources, xc16Commands, xc16Messages, xc16Script } from '../core/xc16-compile.js';
+import { XC16_DEVICES, XC16_OPT, XC16_HEAP, XC16_IMAGE, isPic24, jtagWarning, nodeProgram, pic24FileOf, pic24Sources, xc16Commands, xc16Messages, xc16Script } from '../core/xc16-compile.js';
 import { mcuBoard } from '../core/system-doc.js';
 
 const PIC = { id: 'pic', kind: 'mcu', board: 'explorer-1632', lang: 'c', firmware: 'pic/lcd_uart.hex' };
@@ -99,4 +99,17 @@ test('#5482 a source\'s path as the project\'s: src/ relative to the build folde
   assert.equal(pic24FileOf(`${dir}/src/main.c`, dir, 'pic'), 'pic/main.c');
   assert.equal(pic24FileOf('C:\\w\\build\\nodes\\pic\\firmware\\src\\main.c', 'C:\\w\\build\\nodes\\pic\\firmware', 'pic'), 'pic/main.c');
   assert.equal(pic24FileOf('/opt/microchip/xc16/v2.10/support/PIC24F/h/p24FJ1024GB610.h', dir, 'pic'), null);
+});
+
+test('#6027 jtagWarning: the JTAG port on and a source using port A (its registers, their bits, a JTAG pin\'s bit) warned, the first such source named; comments, other ports, JTAG off: none', () => {
+  const on = { jtag: true }, off = { jtag: false };
+  const w = (f) => `WARNING: pic: its program leaves the JTAG port on (FICD's JTAGEN, erased) and ${f} uses port A: RA0, RA1, RA4 and RA5 (the LEDs D3, D4, D7, D8) are the JTAG port's TMS, TCK, TDI and TDO, not the program's (#pragma config JTAGEN = OFF; in assembly config __FICD, JTAGEN_OFF)`;
+  const c = (text, path = 'pic/main.c') => [{ path, text }];
+  for (const t of ['TRISA = 0;', 'LATA |= 1;', 'x = PORTA;', 'ODCA = 0;', 'LATAbits.LATA0 = 1;', '_LATA5 = 1;', '_RA4', '_TRISA1 = 0;']) assert.equal(jtagWarning('pic', on, c(t)), w('pic/main.c'), t);
+  assert.equal(jtagWarning('pic', on, c('    mov w0, LATA', 'pic/a.s')), w('pic/a.s'));
+  assert.equal(jtagWarning('pic', on, [...c('int x;', 'pic/a.c'), ...c('TRISA = 0;', 'pic/b.c'), ...c('LATA = 1;', 'pic/c.c')]), w('pic/b.c'));
+  for (const t of ['// TRISA = 0;', '/* LATA\n = 1 */', 'TRISB = 0;', '_LATA2 = 1;', '_LATA7 = 1;', 'MYLATA = 1;']) assert.equal(jtagWarning('pic', on, c(t)), null, t);
+  assert.equal(jtagWarning('pic', on, c('    ; mov w0, LATA', 'pic/a.s')), null);
+  assert.equal(jtagWarning('pic', off, c('TRISA = 0;')), null);
+  assert.equal(jtagWarning('pic', null, c('TRISA = 0;')), null);
 });
