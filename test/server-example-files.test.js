@@ -7,6 +7,7 @@ import fs from 'node:fs';
 import fsp from 'node:fs/promises';
 import path from 'node:path';
 import { scratchEnv, startApp } from './server-helpers.js';
+import { migrateProject } from '../core/project-json.js';
 
 let tmp, app;
 before(async () => { tmp = await scratchEnv('silinx-example-files-'); app = await startApp(); });
@@ -16,7 +17,7 @@ test('an example\'s description and files, silinx.json apart; the same as New Pr
   const r = await app.call('GET', '/templates/traffic/files');
   assert.equal(r.status, 200);
   const dir = path.join(import.meta.dirname, '..', 'examples', 'traffic');
-  assert.deepEqual(r.body.project, JSON.parse(fs.readFileSync(path.join(dir, 'silinx.json'), 'utf8')));
+  assert.deepEqual(r.body.project, migrateProject(JSON.parse(fs.readFileSync(path.join(dir, 'silinx.json'), 'utf8'))));   // (read in this Silinx's version, #5907)
   assert.deepEqual(Object.keys(r.body.files).sort(), ['constraints/traffic.ucf', 'sim/tb_traffic.vhd', 'src/lamps.bool.json', 'src/lamps.vhd', 'src/sevenseg.v', 'src/timer.vhd', 'src/top.vhd', 'src/traffic.fsm.json', 'src/traffic.vhd']);
   assert.equal(r.body.files['src/top.vhd'], fs.readFileSync(path.join(dir, 'src', 'top.vhd'), 'utf8'));
 });

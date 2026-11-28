@@ -59,7 +59,7 @@ uiTest('#4103 Design Properties: a Project Kind field as New Project\'s, no "no 
   assert.ok((await fields(page)).shown.includes(BOARD) && (await fields(page)).shown.includes('Device:'));
   await page.dialogButton('Cancel');
   await page.waitNoDialog();
-  assert.equal(await page.eval(() => window.Silinx.project.kind), undefined);
+  assert.equal(await page.eval(() => window.Silinx.project.profile), 'fpga');   // (its profile, #5907)
 
   // a design project: its kind shown, the FPGA fields hidden; made an FPGA project with no board
   await makeProject(env, { name: 'KindDrawn', kind: 'design', files: { 'src/traffic.fsm.json': FSM }, top: 'traffic' });
@@ -73,12 +73,12 @@ uiTest('#4103 Design Properties: a Project Kind field as New Project\'s, no "no 
   assert.deepEqual(await note(page), { text: TO_FPGA, refused: false, ok: true });
   await page.dialogButton('OK');
   await page.waitNoDialog();
-  await page.waitFor(() => !window.Silinx.project.kind && !document.documentElement.dataset.projectKind, [], { what: 'an FPGA project' });
+  await page.waitFor(() => window.Silinx.project.profile === 'fpga' && !document.documentElement.dataset.projectKind, [], { what: 'an FPGA project' });
   await page.waitConsole(/KindDrawn: an FPGA project now: its HDL and its implementation shown\./);
   assert.deepEqual(await page.eval(() => [window.Silinx.project.board, window.Silinx.project.constraints]), [null, 'constraints/top.ucf']);
   // undone as any Design Properties: a design project again
   await page.menu('Edit', 'Undo Design Properties');
-  await page.waitFor(() => window.Silinx.project.kind === 'design' && document.documentElement.dataset.projectKind === 'design', [], { what: 'undo: a design project again' });
+  await page.waitFor(() => window.Silinx.project.profile === 'logic' && document.documentElement.dataset.projectKind === 'design', [], { what: 'undo: a design project again' });
   assert.deepEqual(await warnings(page), []);
 });
 

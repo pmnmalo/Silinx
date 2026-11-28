@@ -94,7 +94,7 @@ async function makeNoFpga(page, name, l) {
   await page.waitFor((n) => window.Silinx.project?.name === n && window.Silinx.hdlToSch?.['src/top.vhd'] === 'src/top.fsm.json' && document.querySelector('#hier .row.top-mod'),
     [name], { what: `${name} open, its state diagram's HDL made` });
   const pj = await page.eval(() => window.Silinx.project);
-  assert.deepEqual([pj.kind, pj.board, pj.constraints, pj.top], ['design', null, null, 'top']);
+  assert.deepEqual([pj.profile, pj.board, pj.constraints, pj.top], ['logic', null, null, 'top']);   // (its profile, #5907)
 }
 // the process tree of its top shown (the ISE style interface's: its Implementation view)
 async function showProcesses(page, top = 'top') {
@@ -178,7 +178,7 @@ uiTest('#5757 New Project: a Circuit project from the gates example, no board, n
   await page.waitNoDialog();
   await page.waitFor(() => window.Silinx.project?.name === 'GatesC' && document.querySelector('#hier .row.top-mod'), [], { what: 'GatesC open' });
   const pj = await page.eval(() => window.Silinx.project);
-  assert.deepEqual([pj.kind, pj.board, pj.constraints, pj.top, pj.topSourceType], ['design', null, null, 'gates', undefined]);   // (its top type the example's own: none)
+  assert.deepEqual([pj.profile, pj.board, pj.constraints, pj.top, pj.topSourceType], ['logic', null, null, 'gates', undefined]);   // (its top type the example's own: none)
   await showProcesses(page, 'gates');
   assert.deepEqual(await fpgaShown(page), NOTHING);
   assert.deepEqual(await warnings(page), []);
@@ -201,7 +201,7 @@ async function circuitExample(page, name, l, example) {
 uiTest('#5779 New Project ▸ Circuit ▸ traffic-circuit: a Circuit project, its drawings its rows, nothing of HDL or FPGA shown, no warning', E, async (page) => {
   await circuitExample(page, 'CrossingC', L.en, 'traffic-circuit');
   const pj = await page.eval(() => window.Silinx.project);
-  assert.deepEqual([pj.kind, pj.board, pj.constraints, pj.top, pj.simTop], ['design', null, null, 'crossing', 'tb_crossing']);
+  assert.deepEqual([pj.profile, pj.board, pj.constraints, pj.top, pj.simTop], ['logic', null, null, 'crossing', 'tb_crossing']);
   // (its top a schematic, its controller a state diagram, its lamps a truth table, its timer the palette's counter)
   await page.waitFor(() => ['crossing', 'fsm - traffic', 'lights - lamps'].every(t => [...document.querySelectorAll('#hier .row .lbl')].some(e => e.textContent === t)), [], { what: 'its rows' });
   await showProcesses(page, 'crossing');
