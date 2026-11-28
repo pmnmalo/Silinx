@@ -71,7 +71,7 @@ uiTest('#4686 a System\'s Zynq node: its PS program in its Properties, New PS Pr
   await makeProject(env, { name: 'ZynqSys', template: 'uart', files: { 'zynq.sys.json': SYS } });
   const pj = await env.server.api('GET', '/api/projects/ZynqSys');
   delete pj.fileTree;
-  await env.server.api('PUT', '/api/projects/ZynqSys', { ...pj, kind: 'system', board: null, constraints: null, top: null });
+  await env.server.api('PUT', '/api/projects/ZynqSys', { ...pj, profile: 'system', board: null, constraints: null, top: null });
   await page.openProject('ZynqSys');
   await page.leftTab('design');
   await page.waitFor(() => [...document.querySelectorAll('#hier .row .badge')].some((b) => b.textContent === 'System'), [], { what: 'the System\'s row' });
@@ -115,7 +115,7 @@ uiTest('#4687 a System\'s Zynq node: + PS UART, its properties (its MIO pins), s
   await makeProject(env, { name: 'ZynqUart', template: 'uart', files: { 'zynq.sys.json': SYS } });
   const pj = await env.server.api('GET', '/api/projects/ZynqUart');
   delete pj.fileTree;
-  await env.server.api('PUT', '/api/projects/ZynqUart', { ...pj, kind: 'system', board: null, constraints: null, top: null });
+  await env.server.api('PUT', '/api/projects/ZynqUart', { ...pj, profile: 'system', board: null, constraints: null, top: null });
   await page.openProject('ZynqUart');
   await page.leftTab('design');
   await page.waitFor(() => [...document.querySelectorAll('#hier .row .badge')].some((b) => b.textContent === 'System'), [], { what: 'the System\'s row' });

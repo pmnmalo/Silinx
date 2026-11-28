@@ -82,7 +82,7 @@ uiTest('#4687 a System\'s Zynq node: Compile PS Program in its row\'s processes 
   await makeProject(env, { name: 'ZynqCc', template: 'uart', files: { 'zynq.sys.json': SYS, 'zybo/ps/main.c': 'int main(void) { for (;;) { } }\n' } });
   const pj = await env.server.api('GET', '/api/projects/ZynqCc');
   delete pj.fileTree;
-  await env.server.api('PUT', '/api/projects/ZynqCc', { ...pj, kind: 'system', board: null, constraints: null, top: null });
+  await env.server.api('PUT', '/api/projects/ZynqCc', { ...pj, profile: 'system', board: null, constraints: null, top: null });
   await page.openProject('ZynqCc');
   await page.leftTab('design');
   await page.waitFor(() => [...document.querySelectorAll('#hier .row .lbl')].some((l) => l.textContent.trim() === 'b2'), [], { what: 'the nodes' });
