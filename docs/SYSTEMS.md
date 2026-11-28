@@ -890,7 +890,8 @@ image in this computer's own Docker (the ISE runner's nightly tests, #6019: its 
   compiler with a stand-in `<xc.h>`, and XC16's `.hex` on silinx-pic24 when XC16 is there.
   The ISE runner's nightly (`ise.yml`, #6019) runs the tests of the real compilers on its images
   (`SILINX_TEST_COMPILERS=docker`, `test/compilers-lib.mjs`): these, the starter's link, and every Zynq and PIC24
-  example's program with no warning, XC16's `.hex` of uart-pic24 run on silinx-pic24 as Silinx's own; an image missing
+  example's program with its exact warnings (none, but xc16-as's deprecation of an assembly program's `config`
+  directive), XC16's `.hex` of uart-fpga-pic24 run on silinx-pic24 as Silinx's own; an image missing
   fails them.
 
 ### Compiling a Zynq board's PS program

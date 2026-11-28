@@ -1,6 +1,7 @@
 // The examples' processors' programs built by the real compilers (#6019): every Zynq node's PS program (its ps/: uart-zynq,
-// regs-zynq) linked by arm-none-eabi-gcc with Compile PS Program, every PIC24 node's program (uart-pic24's lcd_uart.asm,
-// in xc16-as's syntax, #5931) by XC16 with Compile Firmware, each with no warning; XC16's .hex run on silinx-pic24 on the
+// regs-zynq) linked by arm-none-eabi-gcc with Compile PS Program, every PIC24 node's program (uart-fpga-pic24's
+// lcd_uart.asm, in xc16-as's syntax, #5931) by XC16 with Compile Firmware, each with its exact warnings (none, but an
+// assembly program's config directive's: assembly has no #pragma config); XC16's .hex run on silinx-pic24 on the
 // Explorer 16/32 beside the example's own .hex (Silinx's PIC24 assembler's build of the same source, its model): the
 // same text on the USB-UART, the same LCD, the same LEDs, before and after characters typed on the terminal. The
 // compilers: this computer's, or their images (SILINX_TEST_COMPILERS, test/compilers-lib.mjs: this computer's Docker,
@@ -36,10 +37,13 @@ const [gcc, xc16] = [await detectArmGcc(), await detectXc16()];
 
 test('#6019 the examples\' processors\' nodes: the Zynq\'s with a PS program, the PIC24\'s', () => {
   assert.deepEqual(ZYNQ.map(([ex, n]) => `${ex}.${n.id}`), ['regs-zynq.zybo', 'uart-zynq.zybo']);
-  assert.deepEqual(PIC24.map(([ex, n]) => `${ex}.${n.id}`), ['uart-pic24.pic']);
+  assert.deepEqual(PIC24.map(([ex, n]) => `${ex}.${n.id}`), ['uart-fpga-pic24.pic']);
 });
 
 const errorsAndWarnings = (j) => j.lines.filter((l) => /^(ERROR|WARNING)/.test(l));
+// XC16's warnings on the PIC24 examples' programs: xc16-as deprecates the config directive, which an assembly program has
+// no other way to say (#pragma config is C's)
+const XC16_WARNINGS = { 'uart-fpga-pic24': ['WARNING: pic/lcd_uart.s:9: DEPRECATED. Please use #pragma config in a C file'] };
 
 test('#6019 every Zynq example\'s PS program linked by arm-none-eabi-gcc with no warning, its ELF in the on-chip memory', { skip: skipWithout(gcc, 'arm-none-eabi-gcc'), timeout: 600000 }, async () => {
   assertThere(gcc, 'arm-none-eabi-gcc');
@@ -70,7 +74,7 @@ function board(hex) {
   return { seen, said: node.messages().filter((m) => m.kind !== 'info').map((m) => m.text) };
 }
 
-test('#6019 every PIC24 example\'s program built by XC16 with no warning, its .hex run on silinx-pic24 as the example\'s own .hex is', { skip: skipWithout(xc16, 'XC16'), timeout: 600000 }, async () => {
+test('#6019 every PIC24 example\'s program built by XC16 with its exact warnings, its .hex run on silinx-pic24 as the example\'s own .hex is', { skip: skipWithout(xc16, 'XC16'), timeout: 600000 }, async () => {
   assertThere(xc16, 'XC16');
   for (const [ex, n] of PIC24) {
     const name = `${ex}-fw`;
@@ -84,7 +88,7 @@ test('#6019 every PIC24 example\'s program built by XC16 with no warning, its .h
     }
     const j = await waitJob(jobs, (await startFirmwareCompile(name, { node: n.id })).id, { timeoutMs: 280000 });
     assert.equal(j.status, 'ok', `${ex}: ${j.lines.join('\n')}`);
-    assert.deepEqual(errorsAndWarnings(j), [], `${ex}: no warning`);
+    assert.deepEqual(errorsAndWarnings(j), XC16_WARNINGS[ex] ?? [], `${ex}: its warnings`);
     const built = fs.readFileSync(path.join(P.projectDir(name), n.firmware), 'utf8');
     const [got, want] = [board(built), board(model)];
     assert.deepEqual(want.said, [], `${ex}: the example's own .hex runs with no warning`);
