@@ -40,16 +40,18 @@ test('CI: at a release (a tag v*, or the toolchain package\'s silinx-fpga-v*, #1
   for (const name of TESTS)
     assert.deepEqual(j[name].filter(l => /^    (needs|if):/.test(l)), ['    needs: changes', "    if: needs.changes.outputs.run == 'true'"], `${name}: gated by the change check only`);
   // the unit tests on every system in parts of about the same time (#573), each Linux part's file times uploaded: on
-  // Linux all of them in five parts, on macOS and Windows in three but the toolchain's heaviest (--light, #3124)
+  // Linux all of them in six parts (five until they took 57 to 85 of their 90 minutes, 2026-11-27), on macOS and Windows
+  // in four but the toolchain's heaviest (--light, #3124)
   const unit = j.unit.join('\n');
-  assert.match(unit, /^        os: \[ubuntu-latest, macos-latest, windows-latest\]\n        shard: \[1, 2, 3, 4, 5\]\n        exclude:\n(?: {10}- \{ os: (?:macos|windows)-latest, shard: 5 \}\n){2}(?! {10}-)/m);
+  assert.match(unit, /^        os: \[ubuntu-latest, macos-latest, windows-latest\]\n        shard: \[1, 2, 3, 4, 5, 6\]\n        exclude:\n(?: {10}- \{ os: (?:macos|windows)-latest, shard: [56] \}\n){4}(?! {10}-)/m);
   for (const os of ['macos', 'windows']) {
-    // (#5314: four parts on macOS and Windows, the fifth left out)
+    // (#5314: four parts on macOS and Windows, the fifth and the sixth left out)
     assert.ok(unit.includes(`- { os: ${os}-latest, shard: 5 }`), `${os} 5`);
+    assert.ok(unit.includes(`- { os: ${os}-latest, shard: 6 }`), `${os} 6`);
     assert.ok(!unit.includes(`- { os: ${os}-latest, shard: 4 }`), `${os} 4`);
   }
-  assert.match(unit, /^    name: unit \(\$\{\{ matrix\.os \}\}, \$\{\{ matrix\.shard \}\}\/\$\{\{ matrix\.os == 'ubuntu-latest' && 5 \|\| 4 \}\}\)$/m);
-  assert.match(unit, /^ {10}SHARD: \$\{\{ matrix\.shard \}\}\n {10}PARTS: \$\{\{ matrix\.os == 'ubuntu-latest' && 5 \|\| 4 \}\}\n {10}LIGHT: \$\{\{ matrix\.os != 'ubuntu-latest' && '--light' \|\| '' \}\}$/m);
+  assert.match(unit, /^    name: unit \(\$\{\{ matrix\.os \}\}, \$\{\{ matrix\.shard \}\}\/\$\{\{ matrix\.os == 'ubuntu-latest' && 6 \|\| 4 \}\}\)$/m);
+  assert.match(unit, /^ {10}SHARD: \$\{\{ matrix\.shard \}\}\n {10}PARTS: \$\{\{ matrix\.os == 'ubuntu-latest' && 6 \|\| 4 \}\}\n {10}LIGHT: \$\{\{ matrix\.os != 'ubuntu-latest' && '--light' \|\| '' \}\}$/m);
   assert.match(unit, /node scripts\/test-shard\.mjs "\$SHARD\/\$PARTS" \$LIGHT\n\s+--test-reporter=tap --test-reporter-destination=stdout\n\s+--test-reporter=\.\/scripts\/test-file-times\.mjs --test-reporter-destination=stdout\n\s+--test-reporter=\.\/scripts\/test-times-reporter\.mjs --test-reporter-destination=test-times\.json\n\s+shell: bash/);
   assert.match(unit, /- if: always\(\) && matrix\.os == 'ubuntu-latest'\n\s+uses: actions\/upload-artifact@.+\n\s+with:\n\s+name: unit-times-\$\{\{ matrix\.shard \}\}\n\s+path: test-times\.json\n/);
   assert.match(unit, /^    timeout-minutes: 90$/m, 'a part about 40 minutes since #3124 (before, up to 80 on macOS and Windows, #2665)');
