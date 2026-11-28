@@ -19,6 +19,8 @@ const P = await import('../server/projects.js');
 const jobs = await import('../server/jobs.js');
 const { startPsCompile, detectArmGcc, armGccPath } = await import('../server/zynq-ps-compile.js');
 const { TOOLS } = await import('../server/mcp.js');
+// (Linux: the docker run as this process's user, so that out/ is not root's: server/image-remote.js's rule)
+const USER = process.platform === 'linux' && typeof process.getuid === 'function' ? ` --user ${process.getuid()}:${process.getgid()}` : '';
 const tool = (n) => TOOLS.find((t) => t.name === n);
 
 const MAIN = 'int main(void) { for (;;) { } }\n';
@@ -175,7 +177,7 @@ test('#6019 arm-none-eabi-gcc in its image in this computer\'s Docker (armGcc.mo
     ]);
     const calls = fs.readFileSync(dlog, 'utf8').trim().split('\n');
     assert.deepEqual(calls.map((c) => c.split(' ')[0]), ['image', 'image', 'run'], calls.join('\n'));
-    assert.equal(calls[2], `run --rm --pull=never --network none --cap-drop ALL --security-opt no-new-privileges --pids-limit 512 -v ${at(name, 'build/nodes/zybo/ps')}:/work -w /work silinx/arm-none-eabi:12.2 bash build.sh`);
+    assert.equal(calls[2], `run --rm --pull=never --network none --cap-drop ALL --security-opt no-new-privileges --pids-limit 512 -v ${at(name, 'build/nodes/zybo/ps')}:/work -w /work${USER} silinx/arm-none-eabi:12.2 bash build.sh`);
     const t = await tool('toolchain_info').run({});
     assert.equal(t.text.split('\n').find((l) => l.startsWith('arm-none-eabi-gcc')), 'arm-none-eabi-gcc 12.2 (a Zynq\'s Compile PS Program): available, in this computer\'s Docker: arm-none-eabi-gcc in the image silinx/arm-none-eabi:12.2 in this computer\'s Docker (not used (config.json\'s armGcc.mode is docker)).');
     // (the image not in this computer's Docker: not there, said; Compile PS Program refused)
