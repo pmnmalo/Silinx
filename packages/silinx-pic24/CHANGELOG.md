@@ -4,6 +4,38 @@ What changed in each version of silinx-pic24, the Silinx PIC24 emulator. The new
 are its own (semver, 0.x until its API is stable), apart from Silinx's. What changed since the last release is in
 [changes/](changes/).
 
+## 0.3.4
+
+In short:
+
+- The JTAG port: on in an erased FICD, it takes RA0, RA1, RA4 and RA5 (the Explorer 16/32's LEDs D3, D4, D7, D8) as
+  on the device; `config __FICD, JTAGEN_OFF` gives them back. The assembler's configuration words now reach the
+  device (`config __FWDT, FWDTEN_OFF` turns the watchdog off).
+- The assembler reads `DSRPAG`, `DSWPAG`, `TBLPAG`, `DISICNT` and the other names XC16's .inc gives a register's bit field
+  as xc16-as does, and says so where a program uses one: the register is `_DSRPAG`. A source builds the same with
+  Silinx's assembler and with XC16.
+- A program that uses the RAM above 0x7FFF before it sets DSRPAG and DSWPAG (an assembly program with no start-up
+  code, a variable XC16's linker placed there) runs as on the device: no address error trap.
+
+In detail:
+
+- **FICD's JTAGEN (#6027, register 30-10):** `readConfig` gives `jtag`, and the ports (`gpio.js`) drive none of TMS
+  (RA0), TCK (RA1), TDI (RA4) and TDO (RA5) while it is on (no debugger shifting TDO), a warning the first time the
+  program makes one an output. The assembler takes `config __FICD, JTAGEN_OFF` and `JTAGEN_ON` (`CONFIG_SETTINGS`).
+- **The configuration words in `assembleProgram`'s .hex (#6037):** each was written at half its program address
+  (`writeHex`'s base is the program address), so the device read them as erased; they are now at their addresses
+  (FWDT at the HEX's byte 0x157E40, as XC16 writes it).
+- **A name that is a register and its bit field (#6025):** XC16's `p24FJ1024GB610.inc` defines 27 registers' bit fields
+  of the register's own name (`DSRPAG`, the field DSRPAG<9:0>, its position 0), which xc16-as reads before the linker
+  script's register, so `mov w0, DSRPAG` is `mov w0, 0x0` (0x880000) to XC16; `assemble` took the register (0x880190).
+  Those names (`FIELD_NAMES` in `gb610-names.js`, XC16 2.10's) are now their constant, each use warned of with the
+  register's address, an `.equ` or a symbol of the name its own; every register is also `_NAME`, the linker script's.
+  Found by XC16's build of uart-fpga-pic24's `lcd_uart.asm` (#6019), which now writes `_DSRPAG` and `_DSWPAG`.
+- **DSRPAG and DSWPAG 0x0001 from the reset (#6023):** the PIC24FJ1024GB610's EDS window, 0x8000-0xFFFF, is the RAM
+  above 0x7FFF from the reset on (DS30010074's register map); `CPU.reset()` cleared both pages to 0, so the first read or
+  write there took an address error trap. Found by XC16's build of uart-fpga-pic24's `lcd_uart.asm` (#6019); a test
+  runs its instruction words after a power-on and after an MCLR reset.
+
 ## 0.3.3
 
 In short:
