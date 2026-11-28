@@ -101,12 +101,12 @@ test('#5416 phase 3: every project of the corpus its System; one node as silinx.
       const circuits = Object.fromEntries(r.model.nodes.filter(n => n.kind === 'circuit' && n.circuit).map(n => [n.circuit, normalizeCircuit(JSON.parse(fs.readFileSync(path.join(ROOT, path.dirname(rel), n.circuit), 'utf8')))]));
       const d = checkSystem(r.model, { constraints, circuits });
       assert.deepEqual(d.filter(x => x.severity === 'error'), [], rel);
-      // (uart-zynq's: its PS UART's link left out of the simulation, #4687)
+      // (uart-zynq's and regs-zynq's: its PS UART's link left out of the simulation, #4687)
       assert.ok(d.every(x => /a 5 V output, drives .* a 3\.3 V input of the FPGA \(LVCMOS33\): a level shifter or a divider on the real boards$/.test(x.message) || /^serial: zybo\.PS_UART1 is its PS's, whose Cortex-A9 is not simulated/.test(x.message)), rel);
     }
   }
-  assert.equal(systems, 9);   // (the System examples: uart-avr, spi-avr, i2c-avr, regs-avr, uart-pic24, adc-pmod, uart-pico, uart-esp32, uart-zynq)
-  assert.equal(implicit, DESCRIPTIONS.length - 9);
+  assert.equal(systems, 10);   // (the System examples: uart-avr, spi-avr, i2c-avr, regs-avr, uart-pic24, adc-pmod, uart-pico, uart-esp32, uart-zynq, regs-zynq)
+  assert.equal(implicit, DESCRIPTIONS.length - 10);
   assert.equal(designs, 4);   // (the Circuit examples: traffic-circuit, blinky-circuit, stopwatch-circuit, lock-circuit, #5779)
   assert.deepEqual(snapshot(dirs), before);
 });

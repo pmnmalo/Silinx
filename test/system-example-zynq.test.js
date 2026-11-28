@@ -37,7 +37,7 @@ test('#4687 uart-zynq\'s files as Silinx makes them: the node\'s XDC (nodeConstr
 
 test('#4687 uart-zynq made with the MCP server: checked (its one warning), simulated (no warning), its PL built with no warning, its PS program compiled', async () => {
   const ex = await ok('list_examples', {});
-  assert.equal(ex.text.split('\n').at(-1), 'uart-zynq: a System example (FPGA and microcontroller nodes in a System), 1 file(s)');
+  assert.equal(ex.text.split('\n').at(-2), 'uart-zynq: a System example (FPGA and microcontroller nodes in a System), 1 file(s)');
   await ok('new_project_from_example', { name: 'uz', example: 'uart-zynq' });
   const c = await ok('check_system', { project: 'uz', file: 'uart_zynq.sys.json' });
   assert.deepEqual(c.text.split('\n'), ['System uart_zynq: 2 nodes, 1 link',
