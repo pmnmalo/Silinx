@@ -46,8 +46,9 @@ export function mailbox(sab) {
 }
 
 /** The scheduler's side: command(t, { inputs, program }) -> the engine's answer { vt, out } once it reached t (it waits
- *  at most `limit` ms of the wall clock for it: an engine that does not answer, an error). */
-export function hostLink(sab, { limit = 30000 } = {}) {
+ *  at most `limit` ms of the wall clock for it: an engine that does not answer, an error, `engine` named: a Zynq PS's
+ *  too, #4689). */
+export function hostLink(sab, { limit = 30000, engine = 'its MicroPython' } = {}) {
   const seq = new Int32Array(sab, 0, 2), times = new Float64Array(sab, 16, 2);
   let n = 0;
   return {
@@ -60,7 +61,7 @@ export function hostLink(sab, { limit = 30000 } = {}) {
       const end = Date.now() + limit;
       while (Atomics.load(seq, 1) !== n) {
         const left = end - Date.now();
-        if (left <= 0 || Atomics.wait(seq, 1, Atomics.load(seq, 1), left) === 'timed-out' && Atomics.load(seq, 1) !== n) throw new Error(`its MicroPython did not answer in ${limit / 1000} s`);
+        if (left <= 0 || Atomics.wait(seq, 1, Atomics.load(seq, 1), left) === 'timed-out' && Atomics.load(seq, 1) !== n) throw new Error(`${engine} did not answer in ${limit / 1000} s`);
       }
       return get(sab, HEAD + BOX);
     },

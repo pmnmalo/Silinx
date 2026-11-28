@@ -1,8 +1,7 @@
 // The System example regs-zynq (#4688, part 4): a Zybo Z7's node whose PL's counter is driven by its PS's program through
 // a register map on AXI4-Lite (its psMap, zybo/cnt_regs.regs.json): the Cortex-A9 clears it, sets its period, enables it
 // and prints the count it reads back on the USB serial port, linked to a serial terminal. Made with the MCP server,
-// checked (the one warning: the PS's link left out of the simulation), simulated (no warning, the terminal silent: the
-// Cortex-A9 not simulated), its PL built by the Silinx toolchain as Silinx's top counter_zynq (the PS7, its M_AXI_GP0 on
+// checked (no warning), simulated (no warning, the PS's program run: its first line on the terminal, #4689), its PL built by the Silinx toolchain as Silinx's top counter_zynq (the PS7, its M_AXI_GP0 on
 // the map's slave, the counter) with no warning, its PS program compiled (a stand-in arm-none-eabi-gcc) with no warning;
 // the program's register offsets are the map's; the counter with Silinx's top, in VHDL and in Verilog (a twin of it),
 // compiled and elaborated with no error and no warning and simulated against a stand-in of the PS7 running the program's
@@ -118,7 +117,7 @@ test('#4688 regs-zynq\'s counter with Silinx\'s top, in VHDL and Verilog: compil
   }
 });
 
-test('#4688 regs-zynq made with the MCP server: checked (its one warning), simulated (no warning), its PL built as counter_zynq with no warning, its PS program compiled', { timeout: 600000 }, async () => {
+test('#4688 regs-zynq made with the MCP server: checked (no warning), simulated (no warning, its PS\'s first line on the terminal), its PL built as counter_zynq with no warning, its PS program compiled', { timeout: 600000 }, async () => {
   const ex = await ok('list_examples', {});
   assert.equal(ex.text.split('\n').at(-1), 'regs-zynq: a System example (FPGA and microcontroller nodes in a System), 1 file(s)');
   await ok('new_project_from_example', { name: 'rz', example: 'regs-zynq' });
@@ -127,10 +126,10 @@ test('#4688 regs-zynq made with the MCP server: checked (its one warning), simul
     'node zybo: FPGA, module counter on zybo-z7-20, in VHDL; its PS\'s program zybo/ps/main.c: the Cortex-A9 at 666.7 MHz, UART1 on MIO 48 (TX) and 49 (RX), FCLK0 50 MHz; its PL built as counter_zynq: the PS7, its M_AXI_GP0 on the registers of zybo/cnt_regs.regs.json, and counter',
     '  PS_UART1: UART 115200 baud 8N1, its PS\'s UART1: TX MIO 48, RX MIO 49, the board\'s USB serial port',
     'node term: Serial terminal', '  serial: UART 115200 baud 8N1', 'link serial: UART zybo.PS_UART1 ↔ term.serial', 'No wires: no link joins two resolved interfaces.',
-    'WARNING: serial: zybo.PS_UART1 is its PS\'s, whose Cortex-A9 is not simulated: Simulate and Emulate leave the link out (its terminal\'s Real Board reaches it)',
-    'Process "Check System" of regs_zynq.sys.json completed successfully with 1 warning(s).']);
-  const s = await ok('simulate', { project: 'rz', time_ns: 1e6 });
-  assert.deepEqual([s.data.warnings, s.data.errors, s.data.terminals], [[], [], { term: '' }]);
+    'Process "Check System" of regs_zynq.sys.json completed successfully.']);
+  const s = await ok('simulate', { project: 'rz', time_ns: 7e6 });
+  // (its PS's program run, #4689: its first line on the terminal, 63 bytes in 5.5 ms; its counts after its delay)
+  assert.deepEqual([s.data.warnings, s.data.errors, s.data.terminals], [[], [], { term: 'The PL\'s counter, driven by the Cortex-A9 of Digilent Zybo Z7\r\n' }]);
   const b = await ok('run_process', { project: 'rz', process: 'bitstream', node: 'zybo' });
   assert.deepEqual([b.data.errors, b.data.warnings], [[], []]);
   assert.ok(b.text.includes('System node zybo: its PL\'s top counter_zynq (zybo/counter_zynq.vhd), written by Silinx: the PS7, its M_AXI_GP0 on the registers of zybo/cnt_regs.regs.json, and counter.'), b.text);

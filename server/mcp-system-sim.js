@@ -9,6 +9,7 @@ import { systemsOn, SYSTEMS_OFF } from '../core/build-channel.js';
 import { prepareSystem, systemReport, runTimeText, systemInputs, systemFromInputs, loadEngines, disposeSystem } from '../core/system-run.js';
 import './rp2040-firmware.js';   // (a Pico's firmware read from the local server's copy, #5494)
 import './esp32-spawn.js';   // (an ESP32's MicroPython in a Node Worker, #5495)
+import './zynq-ps-spawn.js';   // (a Zynq PS's program in a Node Worker, #4689)
 import { emulationBoards, withBoards, watchBoards, boardStates, setBoardInput } from '../core/system-emu.js';
 import { systemVcd } from '../core/system-waves.js';
 import { ucfPort } from '../core/board-constraints.js';

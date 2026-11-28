@@ -10,6 +10,9 @@ import { loadAvr8js } from './system-sim-avr.js';
 import { loadRp2040 } from './system-sim-rp2040.js';
 import { BrokerNode, messageText } from './system-mqtt.js';
 import { prepareEsp32, esp32Engines, esp32EngineText } from './system-sim-esp32.js';
+import { prepareZynqPs } from './system-sim-zynq.js';
+import { nodePs } from './zynq-ps-clocks.js';
+import { psNodeId } from './system-build.js';
 import { mcuBoard } from './system-doc.js';
 import { RUNTIME_NAMES } from './rp2040-firmware.js';
 import { relInNode } from './system-layout.js';
@@ -53,6 +56,10 @@ export async function systemInputs(sys, { ports = {}, netlist, firmware, regmap 
       }
     }
   }
+  // (a Zynq's PS's program, #4689)
+  for (const q of plan.ps ?? []) {
+    try { fw[q.id] = { name: q.program, data: await firmware(q.program) }; } catch (e) { return { error: `${q.node}: its PS's program ${q.program} cannot be read: ${e.message}` }; }
+  }
   const regmaps = {};
   for (const f of plan.fpga) { const m = regmap ? await regmap(f.module) : null; if (m) regmaps[f.id] = m; }
   return { plan, netlists, firmware: fw, regmaps };
@@ -78,6 +85,9 @@ export async function loadEngines(sys, { esp32 = null } = {}) {
   // (an ESP32's MicroPython, each made now, before the run, #5495: in a Worker, or on this thread with JSPI, #5658)
   const esp = sys.nodes.filter(n => n.kind === 'mcu' && mcuBoard(n.board)?.arch === 'esp32').map(n => n.id);
   if (esp.length) await prepareEsp32(esp, { backend: esp32 });
+  // (a Zynq's PS's program, in a Worker of its own, #4689)
+  const ps = sys.nodes.filter(n => n.kind === 'fpga' && n.ps && nodePs(n)).map(n => psNodeId(n.id));
+  if (ps.length) await prepareZynqPs(ps);
 }
 
 /** A run's nodes' resources freed (an ESP32's Worker), the run over. */

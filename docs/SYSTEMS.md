@@ -949,8 +949,9 @@ preset 5 x 4, Silinx's rule). A PL design that takes FCLK0 as its clock is for l
 (the Zybo Z7's UART1; the Arty Z7's `PS_UART0`): no ports of the module, its pins its board's MIO (48 and 49 on the Zybo
 Z7), which reach the board's USB serial port only. It is added by the System editor's **+ PS UART** in the node's
 Properties, or by the MCP's `edit_system` (`add_interface` with `fields.ps`); one a node. It links to a serial terminal
-only (to another node's UART: refused), with no wires. The Cortex-A9 is not simulated, so Simulate and Emulate leave
-that link out, which the check says; on the board, the terminal's Real Board reaches it (#4687, part 4).
+only (to another node's UART: refused), with no wires. Simulate and Emulate run the PS's program (#4689, below), its
+UART's frames on that link; a node with no PS program leaves the link out, which the check says. On the board, the
+terminal's Real Board reaches it (#4687, part 4).
 
 **The PS's program simulated** (#4689, part 5 of #4688; its first part, `core/zynq-ps-sim.js`). The program's C is run
 by Silinx's C interpreter in its program mode (`core/c-interp.js`, `program: true`): no HLS checks, no top, and an
@@ -962,8 +963,21 @@ clock of the Cortex-A9 (1.5 ns at 666.7 MHz). The PS is as Silinx's ps7_init set
 - GPIO bank 0 (MIO 0–31): DATA_0, the masked writes, DIRM_0 and OEN_0; an output pin's changes, each with its time;
 - M_AXI_GP0's window, 0x40000000 to 0x7FFFFFFF: the PL's registers.
 
-Any other address stops the run, and the address is said. Linking it into Simulate (the PS UART's link to its terminal,
-the PL's registers through the AXI4-Lite slave on the PL's simulation) is the next part.
+Any other address stops the run, and the address is said.
+
+In **Simulate and Emulate** (#4689, part 5b; `core/system-sim-zynq.js`), a Zynq FPGA node with a PS program has its PS
+as a node of the run of its own, `<id>_ps` (the plan's `ps`, `core/system-build.js`). The interpreter cannot stop
+between two steps and go on later, so the program runs in a Worker of its own (`core/zynq-ps-engine.js`; the page's
+`web/js/zynq-ps-worker.js`, Node's `server/zynq-ps-worker.js`). It works in lockstep with the scheduler through the
+ESP32's shared buffer (`core/esp32-link.js`), so the run is deterministic, and needs the page cross-origin isolated, as
+an ESP32 does. The node's pins are:
+- `tx`: its UART's frames, 8N1 at the baud the program sets, on the PS UART's link to its terminal;
+- `rx`: nothing received;
+- its board's PS LEDs on the MIO (the Zybo Z7's `LD4`).
+
+The program's end is said: returned (info), or an error that stops the node. The PL's registers through the AXI4-Lite
+slave on the PL's simulation are the next part; until then they are kept by the model, and a read gives the last value
+written.
 
 **Run PS Program** (the Design pane's PS row, a Zynq node's row, a Board project's `ps/` files; the MCP's `program_board`
 with `ps`) runs it on the board through the user's [OpenOCD](https://openocd.org) (`server/zynq-ps-run.js`; config.json's
@@ -1199,9 +1213,8 @@ The local server does the same for the MCP's `serial_terminal` (`server/serial-m
 11. **`uart-zynq`** (#4687). A Zybo Z7 alone, its two sides in one node. Its PL (`zybo/leds.vhd`): LD0–LD2 follow
     SW0–SW2, LD3 blinks from the 125 MHz clock. Its PS's program (`zybo/ps/main.c`, the starter) says "Hello from the
     Cortex-A9 of Digilent Zybo Z7" on the board's USB serial port at 115200 baud and blinks LD4. Its PS UART is linked
-    to a serial terminal. The Cortex-A9 is not simulated: Simulate runs the PL, the terminal stays silent, and the check
-    says the link is left out. On the board, Compile PS Program, Run PS Program and the terminal's Real Board show the
-    hello. It teaches the Zynq's two sides, bare-metal C on its Cortex-A9.
+    to a serial terminal. Simulate runs the PL and the PS's program (#4689): its hello reaches the terminal. On the
+    board, Compile PS Program, Run PS Program and the terminal's Real Board show the hello. It teaches the Zynq's two sides, bare-metal C on its Cortex-A9.
 12. **`regs-zynq`** (#4688). A Zybo Z7 alone, its PS driving its PL through a register map on AXI4-Lite. Its PL
     (`zybo/counter.vhd`) is a counter that steps every `period` clocks of FCLK0 while `enable` is set, with `count`
     shown on LD0–LD3. Its map (`zybo/cnt_regs.regs.json`, the node's `psMap`) holds `enable`, `period`, `count` and

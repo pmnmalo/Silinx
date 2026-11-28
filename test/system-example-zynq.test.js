@@ -1,8 +1,8 @@
 // The System example uart-zynq (#4687, part 4): a Zybo Z7's node, its PL's module (LD0-LD2 following SW0-SW2, LD3
 // blinking from the 125 MHz clock) and its PS's program (the starter: hello on the USB serial port, LD4 blinking), its PS
 // UART linked to a serial terminal. Its files as Silinx makes them (the XDC nodeConstraints', the program psStarter's);
-// made with the MCP server, checked (the one warning: the PS's link left out of the simulation), simulated (no warning,
-// the terminal silent: the Cortex-A9 not simulated), its PL built by the Silinx toolchain with no warning (its ps/ C not
+// made with the MCP server, checked (no warning), simulated (no warning, the PS's program run: its hello on the terminal,
+// #4689), its PL built by the Silinx toolchain with no warning (its ps/ C not
 // HLS's), its PS program compiled (a stand-in arm-none-eabi-gcc) with no warning; the MCP's edit_system adds a PS UART.
 import { test, before, after } from 'node:test';
 import assert from 'node:assert/strict';
@@ -35,7 +35,7 @@ test('#4687 uart-zynq\'s files as Silinx makes them: the node\'s XDC (nodeConstr
   assert.equal(fs.readFileSync(path.join(EX, 'zybo/ps/main.c'), 'utf8'), psStarter(psOfBoard('zybo-z7', '20'), 'Digilent Zybo Z7'));
 });
 
-test('#4687 uart-zynq made with the MCP server: checked (its one warning), simulated (no warning), its PL built with no warning, its PS program compiled', async () => {
+test('#4687 uart-zynq made with the MCP server: checked (no warning), simulated (no warning, its PS\'s hello on the terminal), its PL built with no warning, its PS program compiled', async () => {
   const ex = await ok('list_examples', {});
   assert.equal(ex.text.split('\n').at(-2), 'uart-zynq: a System example (FPGA and microcontroller nodes in a System), 1 file(s)');
   await ok('new_project_from_example', { name: 'uz', example: 'uart-zynq' });
@@ -44,10 +44,10 @@ test('#4687 uart-zynq made with the MCP server: checked (its one warning), simul
     'node zybo: FPGA, module leds on zybo-z7-20, in VHDL; its PS\'s program zybo/ps/main.c: the Cortex-A9 at 666.7 MHz, UART1 on MIO 48 (TX) and 49 (RX), FCLK0 50 MHz',
     '  PS_UART1: UART 115200 baud 8N1, its PS\'s UART1: TX MIO 48, RX MIO 49, the board\'s USB serial port',
     'node term: Serial terminal', '  serial: UART 115200 baud 8N1', 'link serial: UART zybo.PS_UART1 ↔ term.serial', 'No wires: no link joins two resolved interfaces.',
-    'WARNING: serial: zybo.PS_UART1 is its PS\'s, whose Cortex-A9 is not simulated: Simulate and Emulate leave the link out (its terminal\'s Real Board reaches it)',
-    'Process "Check System" of uart_zynq.sys.json completed successfully with 1 warning(s).']);
-  const s = await ok('simulate', { project: 'uz', time_ns: 1e6 });
-  assert.deepEqual([s.data.warnings, s.data.errors, s.data.terminals], [[], [], { term: '' }]);
+    'Process "Check System" of uart_zynq.sys.json completed successfully.']);
+  const s = await ok('simulate', { project: 'uz', time_ns: 5e6 });
+  // (its PS's program run, #4689: its hello on the terminal, 46 bytes at 115200 baud in 4 ms)
+  assert.deepEqual([s.data.warnings, s.data.errors, s.data.terminals], [[], [], { term: 'Hello from the Cortex-A9 of Digilent Zybo Z7\r\n' }]);
   const b = await ok('run_process', { project: 'uz', process: 'bitstream', node: 'zybo' });
   assert.deepEqual([b.data.errors, b.data.warnings], [[], []]);
   // (the stand-in for arm-none-eabi-gcc is a script run by its #! line: not on Windows, as test/zynq-ps-compile-server.test.js's WIN)
@@ -65,8 +65,7 @@ test('#4687 MCP: edit_system adds a Zynq node\'s PS UART (fields.ps), its link t
   const e = await ok('edit_system', { project: 'ue', file: 'uart_zynq.sys.json', edits: [{ action: 'add_interface', node: 'zybo', fields: { kind: 'uart', ps: true } },
     { action: 'add_link', fields: { a: 'zybo.PS_UART1', b: 'term.serial' } }] });
   assert.deepEqual(e.text.split('\n'), ['add_interface zybo.PS_UART1', 'add_link serial', 'zybo: its pins set in its constraints file zybo/leds.xdc',
-    'WARNING: serial: zybo.PS_UART1 is its PS\'s, whose Cortex-A9 is not simulated: Simulate and Emulate leave the link out (its terminal\'s Real Board reaches it)',
-    'Process "Check System" of uart_zynq.sys.json completed successfully with 1 warning(s).']);
+    'Process "Check System" of uart_zynq.sys.json completed successfully.']);
   const d = await ok('check_system', { project: 'ue', file: 'uart_zynq.sys.json' });
   assert.ok(d.text.split('\n').includes('  PS_UART1: UART 115200 baud 8N1, its PS\'s UART1: TX MIO 48, RX MIO 49, the board\'s USB serial port'), d.text);
   const bad = await call('edit_system', { project: 'ue', file: 'uart_zynq.sys.json', edits: [{ action: 'add_interface', node: 'term', fields: { ps: true } }] });

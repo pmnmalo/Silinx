@@ -23,6 +23,8 @@ import { pic24Contract } from './system-sim-pic24.js';
 import { rp2040Contract, replOf } from './system-sim-rp2040.js';
 import { BrokerNode } from './system-mqtt.js';
 import { Esp32Node } from './system-sim-esp32.js';
+import { ZynqPsNode } from './system-sim-zynq.js';
+import { nodePs } from './zynq-ps-clocks.js';
 import { TerminalNode } from './system-sim-terminal.js';
 import { CircuitNode } from './system-sim-circuit.js';
 import { circuitNodePins, circuitLatency } from './system-circuit.js';
@@ -51,10 +53,15 @@ export function fpgaClock(node, ports = []) {
   return { port, period, hz: Math.round(1e12 / period) };
 }
 
+/** A Zynq FPGA node's PS, a node of the run of its own (#4689): its name. */
+export const psNodeId = id => `${id}_ps`;
+
 // a link's end: its node, its interface and the node's pins for it ({ tx, rx } a UART's; pins a GPIO's)
 function endOf(sys, end) {
   const e = linkEnd(end), n = e && sys.nodes.find(x => x.id === e.node), f = n?.interfaces.find(x => x.name === e.iface);
   if (!f) return null;
+  // (a Zynq's PS UART: its PS's node's TX and RX, #4689)
+  if (f.ps && n.kind === 'fpga') return n.ps && nodePs(n) ? { n: { id: psNodeId(n.id), kind: 'ps' }, f, tx: 'tx', rx: 'rx' } : { n, f };
   // (an FPGA's bus bit led<0>, as the UCF writes it: the scheduler's led[0], #5213)
   if (f.kind === 'gpio') return { n, f, pins: n.kind === 'fpga' ? f.pins.map(p => String(p).replace(/<(\d+)>$/, '[$1]')) : f.pins };
   if (f.kind === 'spi') { const s = n.kind === 'mcu' ? mcuBoard(n.board)?.spis?.[f.name] : f; return s ? { n, f, spi: { sck: s.sck, mosi: s.mosi, miso: s.miso, ss: s.ss } } : null; }
@@ -73,15 +80,18 @@ const FIRMWARE_OF = { pic24: 'firmware: a .hex of the project (XC16\'s)', rp2040
  * the output pins its links read), circuits: [{ id, model, latency, pins }] (each circuit node: its circuit, its wires'
  * latency (circuitLatency's, #5384), its pins of the nodes, #5215), wires: [{ name, link, kind, from, to, baud, frame,
  * latency }], idle: [{ node, pin, value, held }] (held: a GPIO
- * input held at 0, its link cut, #5581), errors: [text] }
+ * input held at 0, its link cut, #5581), ps: [{ id, node, program }] (a Zynq FPGA node's PS and its program, #4689),
+ * errors: [text] }
  * (`ports`: { module: [{ name, dir, width }] }; `circuits`: { id: its circuit, read }). An error: the System cannot be
  * simulated (a node with no module, no clock, no firmware, no circuit; a circuit's board that names no node).
  */
 export function systemPlan(sys, { ports = {}, circuits = {} } = {}) {
   const errors = [], wires = [], idle = [], outs = new Map();
-  const fpga = [], circ = [];
+  const fpga = [], circ = [], ps = [];
   for (const n of sys.nodes) {
     if (n.kind === 'fpga') {
+      // (its PS, a Zynq board's with a program, #4689)
+      if (n.ps && nodePs(n)) ps.push({ id: psNodeId(n.id), node: n.id, program: n.ps });
       if (!n.module) { errors.push(`${n.id}: no module`); continue; }
       const clock = fpgaClock(n, ports[n.module] || []);
       if (!clock) { errors.push(`${n.id}: the module ${n.module} has no clock input (clk)`); continue; }
@@ -147,12 +157,12 @@ export function systemPlan(sys, { ports = {}, circuits = {} } = {}) {
   // (a UART's RX no link drives: idle at 1)
   for (const n of sys.nodes) for (const f of n.interfaces) {
     const e = f.kind === 'uart' ? endOf(sys, `${n.id}.${f.name}`) : null;
-    if (e?.rx && !driven.has(`${n.id}.${e.rx}`)) idle.push({ node: n.id, pin: e.rx, value: 1 });
+    if (e?.rx && !driven.has(`${e.n.id}.${e.rx}`)) idle.push({ node: e.n.id, pin: e.rx, value: 1 });
   }
   // (a GPIO input whose link's other node does not run: held at 0, #5581: core/system-alone.js's `held`)
   for (const end of sys.held ?? []) for (const pin of endOf(sys, end)?.pins ?? []) idle.push({ node: linkEnd(end).node, pin, value: 0, held: true });
   for (const f of fpga) f.pins = [...outs.get(f.id)];
-  return { fpga, circuits: circ, wires, idle, errors };
+  return { fpga, circuits: circ, wires, idle, ps, errors };
 }
 
 /** The frames of the plan's UART wires ({ name: '8N1' }), for linkTraffic. */
@@ -171,6 +181,8 @@ export function buildSystem(sys, plan, { fpga = {}, firmware = {} } = {}) {
       const p = plan.fpga.find(x => x.id === n.id), m = fpga[n.id];
       if (!m) throw new Error(`${n.id}: its module ${n.module} not compiled`);
       sim.addNode(n.id, new CompiledNode({ ...m, period: p.clock.period }));
+      // (its PS, its program in a Worker of its own, #4689)
+      for (const q of (plan.ps ?? []).filter(x => x.node === n.id)) sim.addNode(q.id, new ZynqPsNode({ id: q.id, ps: nodePs(n), program: firmware[q.id] }));
     } else if (n.kind === 'mcu') {
       // (an Arduino's AVR, avr8js's; the Explorer 16/32's PIC24, silinx-pic24's behind the node contract, #5484; a Pico's
       // RP2040, rp2040js's on MicroPython, its REPL a terminal of its own, `<id>.repl`, #5494; or on CircuitPython, its
