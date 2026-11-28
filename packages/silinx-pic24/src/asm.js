@@ -157,7 +157,7 @@ function bits(c) {
     let f = fOf(c, ops[0]), bit = lit(c, ops[1], 0, b ? 7 : 15, 'bit');
     if (b && f & 1) { f -= 1; bit += 8; }   // (a byte's bit as its word's)
     if (f & 1) fail(`${c.m} f: f is a word's (even) address`);
-    return [(BIT_F[c.m] << 16) | ((bit >> 1) << 13) | f | (bit & 1)];
+    return [(BIT_F[c.m] << 16) | ((bit & 7) << 13) | f | (bit >> 3)];   // (bit4<3> at op<0>: XC16's, #6017)
   }
   const s = ws(ops[0]);
   if (ops[1].kind === 'w') {

@@ -6,7 +6,8 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { pic24Assemble } from './pic24-asm.mjs';
 
-// [the manual's encoding, a sample, its fields]
+// [the manual's encoding, a sample, its fields] (a bit instruction on f: the manual's bbbf…fb, its last b `c` here,
+// bit4<3>, and bbb bit4<2:0>, as XC16 encodes them: `bclr.b 0x6a7, #5` 0xA9A6A7, a byte's address's LSB there, #6017)
 const FORMS = [
   ['101101000BDfffffffffffff', 'add.b 0x1235', { B: 1, D: 1, f: 0x1235 }],
   ['101101000BDfffffffffffff', 'add 0x800, wreg', { B: 0, D: 0, f: 0x800 }],
@@ -63,21 +64,21 @@ const FORMS = [
   ['110100111Bqqqddddpppssss', 'rrc w4, w5', { d: 5, s: 4 }],
   ['110101110BDfffffffffffff', 'rrnc 0x800', { D: 1, f: 0x800 }],
   ['110100110Bqqqddddpppssss', 'rrnc.b [--w4], w6', { B: 1, d: 6, p: 4, s: 4 }],
-  ['10101001bbbffffffffffffb', 'bclr 0x800, #11', { b: 11, f: 0x400 }],
+  ['10101001bbbffffffffffffc', 'bclr 0x800, #11', { b: 3, c: 1, f: 0x400 }],
   ['10100001bbbb0B000pppssss', 'bclr.b [w3++], #7', { b: 7, B: 1, p: 3, s: 3 }],
-  ['10101000bbbffffffffffffb', 'bset.b 0x801, #2', { b: 10, f: 0x400 }],
+  ['10101000bbbffffffffffffc', 'bset.b 0x801, #2', { b: 2, c: 1, f: 0x400 }],
   ['10100000bbbb0B000pppssss', 'bset w2, #15', { b: 15, B: 0, p: 0, s: 2 }],
-  ['10101010bbbffffffffffffb', 'btg 0x1000, #0', { b: 0, f: 0x800 }],
+  ['10101010bbbffffffffffffc', 'btg 0x1000, #0', { b: 0, c: 0, f: 0x800 }],
   ['10100010bbbb0B000pppssss', 'btg w1, #4', { b: 4, s: 1 }],
-  ['10101111bbbffffffffffffb', 'btsc 0x1200, #9', { b: 9, f: 0x900 }],
+  ['10101111bbbffffffffffffc', 'btsc 0x1200, #9', { b: 1, c: 1, f: 0x900 }],
   ['10100111bbbb00000pppssss', 'btsc w6, #0xf', { b: 15, s: 6 }],
-  ['10101110bbbffffffffffffb', 'btss 0x890, #9', { b: 9, f: 0x448 }],
+  ['10101110bbbffffffffffffc', 'btss 0x890, #9', { b: 1, c: 1, f: 0x448 }],
   ['10100110bbbb00000pppssss', 'btss [w6++], #0xc', { b: 12, p: 3, s: 6 }],
-  ['10101011bbbffffffffffffb', 'btst 0x1200, #3', { b: 3, f: 0x900 }],
+  ['10101011bbbffffffffffffc', 'btst 0x1200, #3', { b: 3, c: 0, f: 0x900 }],
   ['10100011bbbbZ0000pppssss', 'btst.c [w0++], #3', { b: 3, Z: 0, p: 3, s: 0 }],
   ['10100011bbbbZ0000pppssss', 'btst.z w0, #7', { b: 7, Z: 1, s: 0 }],
   ['10100101Zwwww0000pppssss', 'btst.c w2, w3', { Z: 0, w: 3, s: 2 }],
-  ['10101100bbbffffffffffffb', 'btsts 0x808, #15', { b: 15, f: 0x404 }],
+  ['10101100bbbffffffffffffc', 'btsts 0x808, #15', { b: 7, c: 1, f: 0x404 }],
   ['10100100bbbbZ0000pppssss', 'btsts.z w0, #7', { b: 7, Z: 1, s: 0 }],
   ['10101101Zwwww0000pppssss', 'bsw.c w2, w3', { Z: 0, w: 3, s: 2 }],
   ['10101101Zwwww0000pppssss', 'bsw.z [++w0], w6', { Z: 1, w: 6, p: 5, s: 0 }],
@@ -227,7 +228,7 @@ test('#5480 the assembler: CALL and GOTO\'s second word, PUSH and POP as MOV, la
   assert.deepEqual([...words], [0x200010, 0xe90000, 0x3afffe, 0x123456, 0xffffff, 0xffffff, 0xffffff, 0xffffff, 0x37ffff]);
   // SFR names, sums of labels and numbers, the literals' ranges
   assert.equal(pic24Assemble(['mov w0, splim']).words[0], 0x880100);
-  assert.equal(pic24Assemble(['bset.b sr+1, #0']).words[0], 0xa88042);   // (a byte's bit 0 at 0x43: the word's bit 8)
+  assert.equal(pic24Assemble(['bset.b sr+1, #0']).words[0], 0xa80043);   // (a byte's bit 0 at 0x43: the word's bit 8, its bit4<3> op<0>)
   assert.throws(() => pic24Assemble(['add.b #256, w0']), /lit10 256 not in 0\.\.255/);
   assert.throws(() => pic24Assemble(['add w0, #32, w1']), /lit5 32 not in 0\.\.31/);
   assert.throws(() => pic24Assemble(['mov [w1+1], w2']), /a word's offset is even/);

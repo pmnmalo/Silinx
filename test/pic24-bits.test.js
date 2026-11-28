@@ -32,6 +32,26 @@ test('#5480 BTST, BTSTS (.Z: Z the bit\'s complement; .C: C the bit), BTST Ws, W
   assert.equal(exec('bsw.z w1, w2', { W1: 0xffff, W2: 5, SR: Z }).cpu.W(1), 0xffdf, '.Z writes Z\'s complement');
 });
 
+// (XC16 2.10's words at -O1, as xc16-objdump decodes them: a bit on f its op<15:13>, plus 8 when op<0>, a byte's
+// address's LSB; the drawings' programs of #5552 waited on T1IF with btst.b 0x88, #3, read as bit 6 before #6017)
+const XC16_BITS = [[0xab6088, 'btst.b 0x88, #3'], [0xa9a6a7, 'bclr.b 0x6a7, #5'], [0xa8a69f, 'bset.b 0x69f, #5'], [0xa92662, 'bclr.b 0x662, #1'],
+  [0xa90677, 'bclr.b 0x677, #0'], [0xa8e67a, 'bset.b 0x67a, #7'], [0xa84044, 'bset.b 0x44, #2']];
+
+// (one of XC16's words at 0x200, run)
+const xc16 = (word, regs) => exec([], regs, { program: Object.assign([], { [0x200 >> 1]: word }) });
+
+test('#6017 a bit on f in XC16\'s words: its bit4<2:0> at op<15:13>, its bit4<3> at op<0>; the assembler\'s the same', () => {
+  for (const [word, line] of XC16_BITS) {
+    const [, m, f, b] = /^(\w+)\.b 0x([0-9a-f]+), #(\d)$/.exec(line), byte = parseInt(f, 16), bit = Number(b) + 8 * (byte & 1), at = byte & ~1;
+    const before = m === 'bset' ? 0 : 0xffff, data = { [`Data ${at.toString(16)}`]: before, SR: 0 };
+    const cpu = xc16(word, data).cpu, after = cpu.mem[at >> 1];
+    if (m === 'btst') assert.deepEqual([after, cpu.sr & Z], [before, 0], `${line}: bit ${bit} set, Z clear`);
+    else assert.equal(after, m === 'bset' ? 1 << bit : 0xffff & ~(1 << bit), `${line}: bit ${bit} of 0x${hex4(at)}`);
+    assert.equal(exec(line, data).cpu.mem[at >> 1], after, `${line} assembled as XC16's`);
+  }
+  assert.equal(xc16(0xab6088, { 'Data 88': 0x0040, SR: 0 }).cpu.sr & Z, Z, 'btst.b 0x88, #3: bit 6 is not it');
+});
+
 test('#5480 BTSC and BTSS skip the next instruction: 1 cycle, 2 when skipped, 3 over a two-word CALL / GOTO', () => {
   for (const [lines, regs, cycles, pc] of [
     [['btsc w1, #0', 'nop', 'nop'], { W1: 1 }, 1, 0x202],
