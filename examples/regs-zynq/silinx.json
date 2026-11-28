@@ -1,0 +1,29 @@
+{
+  "name": "regs-zynq",
+  "version": 1,
+  "kind": "system",
+  "device": {
+    "family": "zynq",
+    "part": "xc7z020",
+    "package": "clg400",
+    "speed": "-1"
+  },
+  "board": null,
+  "top": "",
+  "simTop": "",
+  "files": [
+    {
+      "path": "zybo/counter.vhd",
+      "lang": "vhdl",
+      "role": "design"
+    }
+  ],
+  "constraints": null,
+  "stimuli": {},
+  "impl": {
+    "optMode": "Speed",
+    "optLevel": 1,
+    "startupClk": "JtagClk"
+  },
+  "preferredLanguage": "vhdl"
+}

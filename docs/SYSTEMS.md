@@ -634,7 +634,8 @@ an AXI4-Lite `.regs.json` of its folder, chosen in the node's Properties (the MC
 `psMap`). The System's Check refuses it on a board with no PS, out of the node's folder, missing, or on another bus.
 The node's Implement (`server/system-implement.js`) writes the top, `<module>_zynq`, into its build folder
 (`build/nodes/<id>/<id>/`, never the project) for the Silinx toolchain (no fixed IO), and builds that in place of the
-module. A module whose ports do not meet the map's registers refuses the build, the port named.
+module. A module whose ports do not meet the map's registers refuses the build, the port named. The **regs-zynq** example
+(#4688, part 4) shows it.
 
 The map is a drawing of the project (#5288, step 2): New Source ▸ Register Map; its HDL file always
 generated from it (`core/view-hdl.js`), its row in the Design pane (its **Registers** badge first); its editor a table
@@ -1188,6 +1189,13 @@ The local server does the same for the MCP's `serial_terminal` (`server/serial-m
     to a serial terminal. The Cortex-A9 is not simulated: Simulate runs the PL, the terminal stays silent, and the check
     says the link is left out. On the board, Compile PS Program, Run PS Program and the terminal's Real Board show the
     hello. It teaches the Zynq's two sides, bare-metal C on its Cortex-A9.
+12. **`regs-zynq`** (#4688). A Zybo Z7 alone, its PS driving its PL through a register map on AXI4-Lite. Its PL
+    (`zybo/counter.vhd`) is a counter that steps every `period` clocks of FCLK0 while `enable` is set, with `count`
+    shown on LD0–LD3. Its map (`zybo/cnt_regs.regs.json`, the node's `psMap`) holds `enable`, `period`, `count` and
+    `clear` (a strobe). Its PS's program (`zybo/ps/main.c`) clears the count, sets the period to a quarter of a second
+    and enables it, then prints the count it reads back on the USB serial port. The node's Implement builds Silinx's
+    top, `counter_zynq` (the PS7, its M_AXI_GP0 on the map's slave, the counter). It teaches memory-mapped
+    registers between a processor and the logic, the Zynq's way.
 
 A scenario test fits `grade` and the labs: press the Arduino's button, expect "OK" on the FPGA's UART.
 

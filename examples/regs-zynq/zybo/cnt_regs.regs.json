@@ -1,0 +1,37 @@
+{
+  "format": "silinx-regmap",
+  "version": 1,
+  "name": "cnt_regs",
+  "bus": "axi",
+  "registers": [
+    {
+      "name": "enable",
+      "addr": 0,
+      "width": 1,
+      "access": "rw",
+      "reset": 0
+    },
+    {
+      "name": "period",
+      "addr": 4,
+      "width": 32,
+      "access": "rw",
+      "reset": 50000000
+    },
+    {
+      "name": "count",
+      "addr": 8,
+      "width": 16,
+      "access": "ro"
+    },
+    {
+      "name": "clear",
+      "addr": 12,
+      "width": 1,
+      "access": "wo",
+      "reset": 0,
+      "strobe": true
+    }
+  ],
+  "lang": "vhdl"
+}

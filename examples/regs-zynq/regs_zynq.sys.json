@@ -1,0 +1,57 @@
+{
+  "format": "silinx-system",
+  "version": 2,
+  "name": "regs_zynq",
+  "nodes": [
+    {
+      "id": "zybo",
+      "kind": "fpga",
+      "module": "counter",
+      "board": "zybo-z7",
+      "variant": "20",
+      "constraints": "zybo/counter.xdc",
+      "pins": {
+        "led<0>": "M14",
+        "led<1>": "M15",
+        "led<2>": "G14",
+        "led<3>": "D18"
+      },
+      "ps": "zybo/ps/main.c",
+      "psMap": "zybo/cnt_regs.regs.json",
+      "lang": "vhdl",
+      "interfaces": [
+        {
+          "name": "PS_UART1",
+          "kind": "uart",
+          "ps": true,
+          "baud": 115200,
+          "frame": "8N1"
+        }
+      ],
+      "x": 0,
+      "y": 0
+    },
+    {
+      "id": "term",
+      "kind": "terminal",
+      "interfaces": [
+        {
+          "name": "serial",
+          "kind": "uart",
+          "baud": 115200,
+          "frame": "8N1"
+        }
+      ],
+      "x": 320,
+      "y": 0
+    }
+  ],
+  "links": [
+    {
+      "id": "serial",
+      "kind": "uart",
+      "a": "zybo.PS_UART1",
+      "b": "term.serial"
+    }
+  ]
+}
