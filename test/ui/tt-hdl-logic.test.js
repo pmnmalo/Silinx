@@ -6,6 +6,7 @@ import { before, after } from 'node:test';
 import assert from 'node:assert/strict';
 import { setupUi, uiTest, makeProject, readWs } from './harness.js';
 import { newTable, normalizeTable, generateTableHdl } from '../../core/logic.js';
+import { readStamp } from '../../core/hdl-cache.js';
 
 let env;
 before(async () => { env = await setupUi(); });
@@ -61,7 +62,7 @@ uiTest('#2951 the HDL logic of each output: a tick box on each result, least gat
   assert.deepEqual(await page.eval(() => window.Silinx.active.ttEditor.getModel().forms), { f: 'csop', g: 'nor', h: 'xor' });
   await moduleHas(page, 'TtHdl', 'src/tl.vhd', /h <= a xor b xor c;/);
   await moduleHas(page, 'TtHdl', 'src/tl.vhd', /g <= .* nor /);
-  const vhd = await readWs(env, 'TtHdl', 'src/tl.vhd');
+  const vhd = readStamp(await readWs(env, 'TtHdl', 'src/tl.vhd')).body;   // (its silinx-sync line aside, #5872, #6028)
   assert.equal(vhd, generateTableHdl(JSON.parse(await readWs(env, 'TtHdl', 'src/tl.bool.json')), 'vhdl', { source: 'tl.bool.json' }).code);
   // Undo: g in least gates again
   await page.eval(() => window.Silinx.active.ttEditor.undo());
