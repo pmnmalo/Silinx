@@ -271,7 +271,7 @@ const treeItems = async (page, row, item) => {
   if (item) await page.click('body > .menu-popup > .mi', { text: item }); else await page.closeMenus();
   return items;
 };
-uiTest('#3534 #4619 the browser edition: Sign in with GitHub… in the Collaboration tab and in the Design tree\'s project and device menus, until signed in; Portuguese', E, async (page) => {
+uiTest('#3534 #4619 #5878 the browser edition: Sign in with GitHub… in the Collaboration tab and in the Design tree\'s project menu, until signed in; Portuguese', E, async (page) => {
   await boot(page, { clientId: 'REPLACE-ME-with-the-client-ID-of-Silinx-GitHub-OAuth-App' });
   await page.eval(() => { localStorage.removeItem('silinx.github-token'); sessionStorage.removeItem('silinx.github-token'); });
   await page.menu('File', 'New Project…');
@@ -297,21 +297,23 @@ uiTest('#3534 #4619 the browser edition: Sign in with GitHub… in the Collabora
   await page.waitNoDialog();
   await page.waitConsole(/The GitHub sign-in was cancelled\./);
   assert.ok((await collabLinks(page)).includes('Sign in with GitHub…'));
-  // the project's and the device's rows: Store Project in a GitHub Repository…, Sign in with GitHub…, then Git
+  // the project's row: Store Project in a GitHub Repository…, Sign in with GitHub…, then Git (the device's none: its own
+  // menu, #5878)
   await page.leftTab('design');
-  for (const row of [0, 1]) {
+  assert.ok(!(await treeItems(page, 1)).includes('Sign in with GitHub…'), 'the device\'s');
+  for (const row of [0]) {
     const items = await treeItems(page, row);
     const at = items.indexOf('Store Project in a GitHub Repository…');
     assert.deepEqual(items.slice(at, at + 3), ['Store Project in a GitHub Repository…', 'Sign in with GitHub…', 'Git'], `row ${row}: ${items.join(' | ')}`);
   }
-  // signed in from the device's row: gone from the menus; the tab's Sign out of GitHub
-  await treeItems(page, 1, 'Sign in with GitHub…');
+  // signed in from the project's row: gone from its menu; the tab's Sign out of GitHub
+  await treeItems(page, 0, 'Sign in with GitHub…');
   await page.waitDialog('Sign in with GitHub');
   await page.fill('.dlg-overlay .git-token', gh.token);
   await page.dialogButton('Sign In');
   await page.waitNoDialog();
   await page.waitConsole(/Signed in to GitHub as student: the sign-in is kept in this browser/);
-  for (const row of [0, 1]) {
+  for (const row of [0]) {
     const items = await treeItems(page, row);
     assert.ok(!items.includes('Sign in with GitHub…') && items.includes('Store Project in a GitHub Repository…'), `row ${row}: ${items.join(' | ')}`);
   }
@@ -328,7 +330,7 @@ uiTest('#3534 #4619 the browser edition: Sign in with GitHub… in the Collabora
   await boot(page, { clientId: 'REPLACE-ME-with-the-client-ID-of-Silinx-GitHub-OAuth-App' });
   await page.waitFor(() => document.documentElement.lang === 'pt' && window.Silinx.project?.name === 'SignTree' && document.querySelectorAll('#hier .row .lbl').length >= 2, [], { what: 'Portuguese, SignTree' });
   await page.leftTab('design');   // (reloaded on the Collaboration tab, the one last shown)
-  for (const row of [0, 1]) {
+  for (const row of [0]) {
     const items = await treeItems(page, row);
     assert.ok(items.includes('Guardar o Projeto num Repositório GitHub…') && items.includes('Iniciar sessão no GitHub…'), `row ${row}: ${items.join(' | ')}`);
   }
@@ -391,8 +393,8 @@ uiTest('#3968 #4619 the browser edition opened fresh: the Start page without Git
   await page.eval(() => { for (const s of [localStorage, sessionStorage]) s.removeItem('silinx.github-token'); window.SilinxApp.closeProject?.(); });
   await page.eval(() => localStorage.removeItem('silinx.lastProject'));
   for (const [lang, start, repo] of [
-    ['en', ['Import Project…', 'Export Project (.zip)…'], ['Sign in with GitHub…', 'Open from GitHub Repository…', 'Store Project in a GitHub Repository… (disabled)']],
-    ['pt', ['Importar Projeto…', 'Exportar Projeto (.zip)…'], ['Iniciar sessão no GitHub…', 'Abrir do Repositório GitHub…', 'Guardar o Projeto num Repositório GitHub… (disabled)']],
+    ['en', ['New Project…', 'Open Project…', 'Import Project…', 'Export Project (.zip)…'], ['Sign in with GitHub…', 'Open from GitHub Repository…', 'Store Project in a GitHub Repository… (disabled)']],
+    ['pt', ['Novo Projeto…', 'Abrir Projeto…', 'Importar Projeto…', 'Exportar Projeto (.zip)…'], ['Iniciar sessão no GitHub…', 'Abrir do Repositório GitHub…', 'Guardar o Projeto num Repositório GitHub… (disabled)']],
   ]) {
     await page.eval((l) => (l === 'pt' ? localStorage.setItem('silinx.lang', 'pt') : localStorage.removeItem('silinx.lang')), lang);
     await boot(page);

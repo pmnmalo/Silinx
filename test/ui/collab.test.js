@@ -284,25 +284,25 @@ uiTest('#3716 Share Project in the main toolbar, after Close Project (#3719), no
   assert.deepEqual(await consoleWarnings(page), []);
 });
 
-// (#3479, #3698) Share Project… in the Design tree's project and device menus, once, as the File menu's; Share Module… in
-// a module's; its window starts with its Share: row, A copy (the default) or Live, each swapping the window for the
+// (#3479, #3698) Share Project… in the Design tree's project menu, once, as the File menu's (the device's its own since
+// #5878, no Share Module… since #5897); its window starts with its Share: row, A copy (the default) or Live, each swapping the window for the
 // other's; the next window on A copy again, Live chosen before or not (#4669); Live disabled, its reason its tip, while following
 // another's project (the copy still there); in Portuguese. No warnings.
 const howState = (page) => page.eval(() => [...document.querySelectorAll('.dlg-overlay .share-how input')].map((r) => `${r.value}${r.checked ? ' *' : ''}${r.disabled ? ` (disabled: ${r.closest('label').title})` : ''}`));
-uiTest('#3698 #4669 Share Project…: once in the Design tree\'s project and device menus, Share Module… in a module\'s; a copy or live chosen in its window, A copy the next time; Live disabled while following; Portuguese', E, async (page) => {
+uiTest('#3698 #4669 #5878 Share Project…: once in the Design tree\'s project menu, none in the device\'s nor a module\'s; a copy or live chosen in its window, A copy the next time; Live disabled while following; Portuguese', E, async (page) => {
   await makeProject(env, { name: 'TreeShared', top: 'top', files: { 'src/top.vhd': TOP } });
   await page.openProject('TreeShared');
   await page.leftTab('design');
   await page.waitFor(() => document.querySelectorAll('#hier .row .lbl').length >= 3, [], { what: 'the Design tree' });
-  for (const row of [0, 1]) {
+  for (const [row, share] of [[0, 'Share Project…'], [1, '']]) {   // (the device's menu its own, #5878)
     const items = await treeMenu(page, row);
-    assert.equal(items.filter((i) => i.startsWith('Share ')).join(' | '), 'Share Project…', `row ${row}: ${items.join(' | ')}`);
+    assert.equal(items.filter((i) => i.startsWith('Share ')).join(' | '), share, `row ${row}: ${items.join(' | ')}`);
   }
   // a module's row (the top's): no Share Module… (#5897: Share Project… chooses the module in its window)
   const mod = await treeMenu(page, 2);
   assert.equal(mod.filter((i) => i.startsWith('Share ')).join(' | '), '', mod.join(' | '));
   // the window: a copy first, its Share: row; Live swaps it for the live window, A copy back
-  await treeMenu(page, 1, 'Share Project…');
+  await treeMenu(page, 0, 'Share Project…');
   assert.equal(await page.waitDialog('Share Project'), 'Share Project');
   assert.deepEqual(await howState(page), ['copy *', 'live']);
   assert.equal(await page.eval(() => [...document.querySelectorAll('.dlg-overlay .share-how > label, .dlg-overlay .share-how-choices > label')].map((l) => (l.parentElement.classList.contains('share-how') ? l.textContent : [...l.children].filter((c) => c.tagName === 'SPAN').map((c) => c.textContent).join(' · '))).join(' | ')), 'Share: | A copy · A link with the project in it | Live · Others follow it as you work');
@@ -340,7 +340,7 @@ uiTest('#3698 #4669 Share Project…: once in the Design tree\'s project and dev
   await page.waitNoDialog();
   // following another's project: Share Project… there, its copy; Live disabled, its reason its tip
   await page.eval(async () => { (await import('/js/api.js')).api.following = true; });
-  await treeMenu(page, 1, 'Share Project…');
+  await treeMenu(page, 0, 'Share Project…');
   await page.waitDialog('Share Project');
   assert.deepEqual(await howState(page), ['copy *', 'live (disabled: You are following another\'s project: stop following it to share one live.)']);
   await page.dialogButton('Close');
@@ -348,7 +348,7 @@ uiTest('#3698 #4669 Share Project…: once in the Design tree\'s project and dev
   await page.eval(async () => { delete (await import('/js/api.js')).api.following; });
   // in Portuguese
   await page.eval(async () => (await import('/js/i18n.js')).setLanguage('pt'));
-  for (const row of [0, 1]) assert.ok((await treeMenu(page, row)).includes('Partilhar Projeto…'), `row ${row}`);
+  assert.ok((await treeMenu(page, 0)).includes('Partilhar Projeto…'), 'the project\'s');
   assert.ok(!(await treeMenu(page, 2)).some((i) => i.startsWith('Partilhar')));   // (no Partilhar Módulo…, #5897)
   await treeMenu(page, 0, 'Partilhar Projeto…');
   await page.waitDialog('Partilhar Projeto');
