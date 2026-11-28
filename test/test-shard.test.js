@@ -90,7 +90,7 @@ test('test shard: the repository\'s timings — measured files that exist, in se
     assert.ok(typeof t[f] === 'number' && t[f] >= 0, `${f}: ${t[f]}`);
   }
   assert.deepEqual(keys, [...keys].sort(), 'sorted (a refresh changes only the times)');
-  assertBalanced(files, t, 5);
+  assertBalanced(files, t, 6);   // (CI's six parts on Linux)
   assertBalanced(files.filter(f => !HEAVY.includes(f)), t, 3);
   assertBalanced(uiFiles, t, 5);   // (CI's five parts per interface, #5836; four since #4463)
   // a UI file not measured weighs the UI files' median, not the unit files'
