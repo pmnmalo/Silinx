@@ -5,7 +5,12 @@
 // in lockstep with the scheduler through core/esp32-link.js's shared buffer, as an ESP32's MicroPython does: advanceTo(t)
 // asks the engine to run to t and blocks until it has, so the run is deterministic. Its pins: its UART's TX (`tx`, the
 // bytes the program wrote, in frames of 8N1 at the baud its BRGR and BDIV make) and RX (`rx`, nothing received), and its
-// board's PS LEDs on the MIO (the Zybo Z7's LD4), each change at its time. The PL's registers on M_AXI_GP0 are part 5c's.
+// board's PS LEDs on the MIO (the Zybo Z7's LD4), each change at its time. With its node's PS–PL register map (`pl`,
+// part 5c, core/system-ps-pl.js), it is the map's AXI4-Lite slave too, transaction by transaction: a write of the
+// program's to M_AXI_GP0's window its register's pins at the write's time (a strobe's <name>_wr high for one clock of
+// FCLK0), wired to the module's inputs; a read its register's value: an ro register's the module's outputs as this node
+// sees them (their wires' changes up to the window's start), an rw one's as written, a wo one's 0, as the slave reads
+// them (core/regmap-axi.js); a word with no register read as 0, written to nothing, said once.
 // Its engine is made before the run (prepareZynqPs; a SharedArrayBuffer: in Node, or a page cross-origin isolated).
 //
 //   await prepareZynqPs(['zybo_ps']);
@@ -14,6 +19,7 @@
 // Isomorphic ES module, no DOM.
 import { esp32Buffer, hostLink } from './esp32-link.js';
 import { isolationProblem } from './cross-origin.js';
+import { sigPins } from './system-ps-pl.js';
 
 const workers = new Map();   // (a node's engine made before its run: { sab, terminate })
 const isNode = typeof process !== 'undefined' && !!process.versions?.node && typeof window === 'undefined' && !globalThis.WorkerGlobalScope;
@@ -55,8 +61,9 @@ const PS_FIDELITY = [
 ];
 
 export class ZynqPsNode {
-  /** id: the node's (`<fpga id>_ps`, its Worker made by prepareZynqPs); ps: the board's PS (nodePs); program: { name, data } (a .c). */
-  constructor({ id, ps, program }) {
+  /** id: the node's (`<fpga id>_ps`, its Worker made by prepareZynqPs); ps: the board's PS (nodePs); program: { name, data } (a .c);
+   *  pl: its PS–PL registers, { regs: the map's registers, fclkHz } (core/system-ps-pl.js), or null. */
+  constructor({ id, ps, program, pl = null }) {
     const w = workers.get(id);
     if (!w) throw new Error(`${id}: its PS's engine not started (prepareZynqPs first)`);
     workers.delete(id);
@@ -66,15 +73,24 @@ export class ZynqPsNode {
     this.ps = ps;
     this.fidelity = PS_FIDELITY;
     this.leds = (ps.gpio ?? []).filter((g) => g.dir === 'out');
-    this.inputs = ['rx'];
-    this.outputs = ['tx', ...this.leds.map((g) => g.name)];
+    // (the slave's registers: the written ones' pins out, a strobe's <name>_wr; the ro ones' in)
+    this.pl = pl;
+    const regs = pl?.regs ?? [];
+    this.regOut = regs.filter((r) => r.access !== 'ro').flatMap((r) => [...sigPins(r.name, r.width), ...(r.strobe ? [`${r.name}_wr`] : [])]);
+    this.regIn = regs.filter((r) => r.access === 'ro').flatMap((r) => sigPins(r.name, r.width));
+    this.regVal = new Map(regs.filter((r) => r.access !== 'ro').map((r) => [r.name, BigInt(r.reset ?? 0)]));
+    this.fclkPs = pl?.fclkHz ? Math.round(1e12 / pl.fclkHz) : null;
+    this.inVals = new Map(this.regIn.map((p) => [p, 0]));
+    this.saidOff = new Set();
+    this.inputs = ['rx', ...this.regIn];
+    this.outputs = ['tx', ...this.leds.map((g) => g.name), ...this.regOut];
     this.now = 0;
     this.out = [];
     this.queue = [];
     this.log = [];
     this.logN = 0;
     this.finished = null;
-    this.last = new Map([['tx', 1], ...this.leds.map((g) => [g.name, 0])]);
+    this.last = new Map([['tx', 1], ...this.leds.map((g) => [g.name, 0]), ...this.regOut.map((p) => [p, 0])]);
     this.bits = [];              // (the TX frames' bits not yet reached: { t, value })
     this.changes = [];           // (the LEDs' changes not yet reached: { pin, t, value })
     this.rx = 1;
@@ -86,14 +102,41 @@ export class ZynqPsNode {
   }
 
   value(name) {
+    if (this.inVals.has(name)) return this.inVals.get(name);
     if (!this.last.has(name) && name !== 'rx') throw new Error(`no pin '${name}'`);
     return name === 'rx' ? this.rx : this.last.get(name);
   }
 
-  /** Its UART's RX: held (nothing received: the model has no receiver). */
+  /** Its UART's RX: held (nothing received: the model has no receiver); an ro register's bit: the module's. */
   setPin(name, value) {
+    if (this.inVals.has(name)) { this.inVals.set(name, value ? 1 : 0); return; }
     if (name !== 'rx') throw new Error(`'${name}' is not an input of the PS`);
     this.rx = value;
+  }
+
+  // the register at the word `off` of M_AXI_GP0's window (its low 12 bits, the slave's 4 KB), or null, said once
+  regAt(off, t, what) {
+    const r = this.pl.regs.find((x) => x.addr === (off & 0xfff));
+    if (!r && !this.saidOff.has(off)) { this.saidOff.add(off); this.log.push({ kind: 'warning', time: t, text: `its program ${what} 0x${(0x40000000 + off).toString(16).toUpperCase()}, where the PS–PL register map has no register: ${what === 'reads' ? 'read as 0' : 'written to nothing'}` }); }
+    return r ?? null;
+  }
+
+  // a write of the program's: its register's bits from t, a strobe's pulse
+  plWrite(off, value, t) {
+    const r = this.regAt(off, t, 'writes');
+    if (!r || r.access === 'ro') return;
+    const v = BigInt.asUintN(r.width, BigInt(value));
+    this.regVal.set(r.name, v);
+    sigPins(r.name, r.width).forEach((p, i) => this.changes.push({ pin: p, t, value: Number((v >> BigInt(i)) & 1n) }));
+    if (r.strobe) this.changes.push({ pin: `${r.name}_wr`, t, value: 1 }, { pin: `${r.name}_wr`, t: t + this.fclkPs, value: 0 });
+  }
+
+  // a read of the program's: its register's value as the slave gives it
+  plRead(off, t) {
+    const r = this.regAt(off, t, 'reads');
+    if (!r || r.access === 'wo') return 0;
+    if (r.access === 'rw') return Number(this.regVal.get(r.name));
+    return sigPins(r.name, r.width).reduce((v, p, i) => v + (this.inVals.get(p) ? 2 ** i : 0), 0);
   }
 
   at(t, fn) {
@@ -109,6 +152,7 @@ export class ZynqPsNode {
   took(out, baud) {
     const bit = 1e12 / baud;
     for (const b of out.bytes) for (const [i, v] of [0, ...Array.from({ length: 8 }, (_, k) => (b.byte >> k) & 1), 1].entries()) this.bits.push({ t: Math.round(b.t + i * bit), value: v });
+    for (const w of out.writes ?? []) this.plWrite(w.off, w.value, w.t);
     const mio = new Map(this.leds.map((g) => [g.mio, g.name]));
     for (const g of out.gpio) if (mio.has(g.mio)) this.changes.push({ pin: mio.get(g.mio), t: g.t, value: g.value });
     if (out.end) {
@@ -125,13 +169,21 @@ export class ZynqPsNode {
     while (this.queue.length && this.queue[0].t <= t) { const e = this.queue.shift(); this.now = e.t; e.fn(this); }
     // (its engine already past t, or its program ended: nothing to ask it)
     if (!this.finished && !this.ended && !(this.started && this.engineAt >= t)) {
-      const cmd = this.started ? {} : { program: this.program, ps: this.ps };
+      // (its registers' reset values on their pins from 0)
+      if (!this.started) for (const [name, v] of this.regVal) { const r = this.pl.regs.find((x) => x.name === name); sigPins(name, r.width).forEach((p, i) => { if ((v >> BigInt(i)) & 1n) this.changes.push({ pin: p, t: 0, value: 1 }); }); }
+      let cmd = this.started ? {} : { program: this.program, ps: this.ps, pl: !!this.pl };
       this.started = true;
-      let r;
-      try { r = this.link.command(t, cmd); } catch (e) { return this.failed(t, e); }
-      this.engineAt = r.vt;
-      if (r.out.baud) this.baud = r.out.baud;
-      this.took(r.out, this.baud);
+      // (a read of the PL's registers: answered, the run to t going on)
+      for (;;) {
+        let r;
+        try { r = this.link.command(t, cmd); } catch (e) { return this.failed(t, e); }
+        this.engineAt = r.vt;
+        if (r.out.baud) this.baud = r.out.baud;
+        this.took(r.out, this.baud);
+        if (!r.out.read) break;
+        cmd = { value: this.plRead(r.out.read.off, r.out.read.t) };
+      }
+      this.changes.sort((a, b) => a.t - b.t);
     }
     this.now = t;
     // (the TX's bits and the LEDs' changes up to t)

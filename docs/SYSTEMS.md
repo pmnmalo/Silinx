@@ -975,9 +975,21 @@ an ESP32 does. The node's pins are:
 - `rx`: nothing received;
 - its board's PS LEDs on the MIO (the Zybo Z7's `LD4`).
 
-The program's end is said: returned (info), or an error that stops the node. The PL's registers through the AXI4-Lite
-slave on the PL's simulation are the next part; until then they are kept by the model, and a read gives the last value
-written.
+The program's end is said: returned (info), or an error that stops the node.
+
+**The PS–PL registers** (#4689, part 5c; `core/system-ps-pl.js`). With the node's PS–PL register map (its `psMap`, read
+by `systemInputs`), the PS node is the map's AXI4-Lite slave too, transaction by transaction, wired to the module as the
+PL's top wires it (`plTopWiring`):
+- a write to M_AXI_GP0's window sets its register's pins at the write's time, each bit a wire to the module's input of
+  its name; a strobe's `<name>_wr` is high for one clock of FCLK0;
+- a read gives the register's value as the slave gives it (`core/regmap-axi.js`): an ro register's from the module's
+  outputs, wired back, as the PS node sees them at the window's start; an rw one's as written; a wo one's 0. The
+  program waits for it: the Worker asks the node, which answers in the same window;
+- a word with no register is read as 0 and written to nothing, and the run says so once;
+- the registers start at their reset values;
+- the module's `clk` is FCLK0 (50 MHz on the Zybo Z7), as the top gives it, not the board's clock.
+
+Each register's wires have the scheduler's latency (a write reaches the module about 1 µs after the program wrote it).
 
 **Run PS Program** (the Design pane's PS row, a Zynq node's row, a Board project's `ps/` files; the MCP's `program_board`
 with `ps`) runs it on the board through the user's [OpenOCD](https://openocd.org) (`server/zynq-ps-run.js`; config.json's
@@ -1220,7 +1232,8 @@ The local server does the same for the MCP's `serial_terminal` (`server/serial-m
     shown on LD0–LD3. Its map (`zybo/cnt_regs.regs.json`, the node's `psMap`) holds `enable`, `period`, `count` and
     `clear` (a strobe). Its PS's program (`zybo/ps/main.c`) clears the count, sets the period to a quarter of a second
     and enables it, then prints the count it reads back on the USB serial port. The node's Implement builds Silinx's
-    top, `counter_zynq` (the PS7, its M_AXI_GP0 on the map's slave, the counter). It teaches memory-mapped
+    top, `counter_zynq` (the PS7, its M_AXI_GP0 on the map's slave, the counter); Simulate runs both sides, the counts
+    on the terminal (#4689: with a shorter period and delay, as its tests do). It teaches memory-mapped
     registers between a processor and the logic, the Zynq's way.
 
 A scenario test fits `grade` and the labs: press the Arduino's button, expect "OK" on the FPGA's UART.

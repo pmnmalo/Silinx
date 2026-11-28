@@ -25,6 +25,7 @@ import { BrokerNode } from './system-mqtt.js';
 import { Esp32Node } from './system-sim-esp32.js';
 import { ZynqPsNode } from './system-sim-zynq.js';
 import { nodePs } from './zynq-ps-clocks.js';
+import { psPlPlan } from './system-ps-pl.js';
 import { TerminalNode } from './system-sim-terminal.js';
 import { CircuitNode } from './system-sim-circuit.js';
 import { circuitNodePins, circuitLatency } from './system-circuit.js';
@@ -80,12 +81,13 @@ const FIRMWARE_OF = { pic24: 'firmware: a .hex of the project (XC16\'s)', rp2040
  * the output pins its links read), circuits: [{ id, model, latency, pins }] (each circuit node: its circuit, its wires'
  * latency (circuitLatency's, #5384), its pins of the nodes, #5215), wires: [{ name, link, kind, from, to, baud, frame,
  * latency }], idle: [{ node, pin, value, held }] (held: a GPIO
- * input held at 0, its link cut, #5581), ps: [{ id, node, program }] (a Zynq FPGA node's PS and its program, #4689),
- * errors: [text] }
+ * input held at 0, its link cut, #5581), ps: [{ id, node, program, pl }] (a Zynq FPGA node's PS and its program, #4689;
+ * pl: its PS–PL registers, { regs, fclkHz }, when its map is read, `psMaps`: { id: its psMap's register map }, its
+ * registers' wires the plan's, core/system-ps-pl.js), errors: [text] }
  * (`ports`: { module: [{ name, dir, width }] }; `circuits`: { id: its circuit, read }). An error: the System cannot be
  * simulated (a node with no module, no clock, no firmware, no circuit; a circuit's board that names no node).
  */
-export function systemPlan(sys, { ports = {}, circuits = {} } = {}) {
+export function systemPlan(sys, { ports = {}, circuits = {}, psMaps = {} } = {}) {
   const errors = [], wires = [], idle = [], outs = new Map();
   const fpga = [], circ = [], ps = [];
   for (const n of sys.nodes) {
@@ -93,10 +95,20 @@ export function systemPlan(sys, { ports = {}, circuits = {} } = {}) {
       // (its PS, a Zynq board's with a program, #4689)
       if (n.ps && nodePs(n)) ps.push({ id: psNodeId(n.id), node: n.id, program: n.ps });
       if (!n.module) { errors.push(`${n.id}: no module`); continue; }
-      const clock = fpgaClock(n, ports[n.module] || []);
+      let clock = fpgaClock(n, ports[n.module] || []);
       if (!clock) { errors.push(`${n.id}: the module ${n.module} has no clock input (clk)`); continue; }
-      fpga.push({ id: n.id, module: n.module, clock, pins: [] });
       outs.set(n.id, new Set());
+      // (its PS–PL registers: the PS's slave's wires to the module and back, its clk FCLK_CLK0, #4689)
+      const q = ps.find(x => x.node === n.id);
+      if (q && psMaps[n.id]) {
+        const r = psPlPlan(n, psMaps[n.id], ports[n.module] || [], q.id);
+        errors.push(...r.errors);
+        q.pl = { regs: r.regs, fclkHz: r.fclkHz };
+        wires.push(...r.wires);
+        for (const p of r.reads) outs.get(n.id).add(p);
+        if (r.fclk && r.fclk === clock.port) clock = { port: clock.port, period: Math.round(1e12 / r.fclkHz), hz: r.fclkHz };
+      }
+      fpga.push({ id: n.id, module: n.module, clock, pins: [] });
     } else if (n.kind === 'mcu' && !n.firmware) errors.push(`${n.id}: no ${FIRMWARE_OF[mcuBoard(n.board)?.arch] ?? 'firmware: a .hex or an .elf of the project'}`);
     else if (n.kind === 'circuit' && !n.circuit) errors.push(`${n.id}: no circuit: a .circ.json of the project`);
     else if (n.kind === 'circuit' && !circuits[n.id]) errors.push(`${n.id}: its circuit ${n.circuit} not read`);
@@ -182,7 +194,7 @@ export function buildSystem(sys, plan, { fpga = {}, firmware = {} } = {}) {
       if (!m) throw new Error(`${n.id}: its module ${n.module} not compiled`);
       sim.addNode(n.id, new CompiledNode({ ...m, period: p.clock.period }));
       // (its PS, its program in a Worker of its own, #4689)
-      for (const q of (plan.ps ?? []).filter(x => x.node === n.id)) sim.addNode(q.id, new ZynqPsNode({ id: q.id, ps: nodePs(n), program: firmware[q.id] }));
+      for (const q of (plan.ps ?? []).filter(x => x.node === n.id)) sim.addNode(q.id, new ZynqPsNode({ id: q.id, ps: nodePs(n), program: firmware[q.id], pl: q.pl ?? null }));
     } else if (n.kind === 'mcu') {
       // (an Arduino's AVR, avr8js's; the Explorer 16/32's PIC24, silinx-pic24's behind the node contract, #5484; a Pico's
       // RP2040, rp2040js's on MicroPython, its REPL a terminal of its own, `<id>.repl`, #5494; or on CircuitPython, its

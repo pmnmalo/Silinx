@@ -3,9 +3,11 @@
 // (core/zynq-ps-sim.js), in lockstep with the System's scheduler through the shared buffer of core/esp32-link.js, as an
 // ESP32's MicroPython is (core/esp32-engine.js). The interpreter cannot stop between two steps and go on later, so it
 // runs in a Worker of its own and waits there (Atomics) each time its time reaches the scheduler's target: what the
-// program did up to then (its UART's bytes, its GPIO's changes) handed over, the next target awaited. Its first command
-// holds the program and the PS ({ program: { source, file }, ps }); once the program returned or stopped, each command is
-// answered at once. The Workers: web/js/zynq-ps-worker.js (a page's), server/zynq-ps-worker.js (Node's).
+// program did up to then (its UART's bytes, its GPIO's changes, its writes of the PL's registers) handed over, the next
+// target awaited. A read of the PL's registers hands over too, at its time, and waits for its value (the node's, from
+// the PL's simulation: { value }, part 5c). Its first command holds the program and the PS ({ program: { source, file },
+// ps, pl: the node simulates the PL's registers }); once the program returned or stopped, each command is answered at
+// once. The Workers: web/js/zynq-ps-worker.js (a page's), server/zynq-ps-worker.js (Node's).
 //
 //   runZynqPsEngine({ sab, ready })   (the Worker's side; the node's: core/system-sim-zynq.js)
 //
@@ -20,18 +22,24 @@ const STEPS = 100;
 /** The engine on the shared buffer `sab`; `ready()` once it waits for its first command. */
 export function runZynqPsEngine({ sab, ready = () => {} }) {
   const box = mailbox(sab);
-  let m = null, vt = 0, target = 0, sent = { bytes: 0, gpio: 0 }, end = null;
-  const answer = () => {
-    const out = { bytes: m ? m.uart.bytes.slice(sent.bytes) : [], gpio: m ? m.gpio.slice(sent.gpio) : [], baud: m ? m.baud() : null, end };
+  let m = null, vt = 0, target = 0, sent = { bytes: 0, gpio: 0 }, end = null, writes = [];
+  const answer = (extra = {}) => {
+    const out = { bytes: m ? m.uart.bytes.slice(sent.bytes) : [], gpio: m ? m.gpio.slice(sent.gpio) : [], writes, baud: m ? m.baud() : null, end, ...extra };
     if (m) sent = { bytes: m.uart.bytes.length, gpio: m.gpio.length };
     end = null;
+    writes = [];
     return { vt, out };
   };
-  const pause = () => { const cmd = box.handOver(answer()); target = box.target(); return cmd; };
+  const pause = (extra) => { const cmd = box.handOver(answer(extra)); target = box.target(); return cmd; };
+  // (the PL's registers the node's: a write handed over with the next answer, a read now, its value awaited)
+  const pl = {
+    write: (off, value, t) => { writes.push({ off, value: Number(value), t }); },
+    read: (off, t) => { vt = t; return BigInt(pause({ read: { off, t } }).value ?? 0); },
+  };
   ready();
   const first = pause();
   try {
-    m = psModel(first.ps);
+    m = psModel(first.ps, { pl: first.pl ? pl : null });
     const clock = { every: STEPS, fn: (steps) => { vt = Math.round(steps * m.cyclePs); while (vt >= target) pause(); } };
     const r = simulateC(String(first.program?.source ?? ''), { file: first.program?.file ?? 'main.c', program: true, mmio: m, clock, maxSteps: Infinity });
     vt = Math.max(vt, Math.round(r.steps * m.cyclePs));
