@@ -5,6 +5,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { BOARDS, getDeviceDb, projectBoardOf, resolveBoard } from '../core/devices.js';
+import { mcuBoard } from '../core/system-doc.js';
 import { existsSync, readFileSync, readdirSync } from 'node:fs';
 
 // The page's resolver before #5092, as it was: the reference.
@@ -72,7 +73,8 @@ test('the resources are copies: the board\'s own are never changed', () => {
 test('the examples\' boards: the page\'s callers get the same board', () => {
   const dir = new URL('../examples/', import.meta.url);
   const pjs = readdirSync(dir).filter(d => existsSync(new URL(`${d}/silinx.json`, dir)))
-    .map(d => JSON.parse(readFileSync(new URL(`${d}/silinx.json`, dir), 'utf8'))).filter(pj => pj.board);
+    // (an FPGA board's: a processor board's example has no FPGA board to resolve, #5874)
+    .map(d => JSON.parse(readFileSync(new URL(`${d}/silinx.json`, dir), 'utf8'))).filter(pj => pj.board && !mcuBoard(pj.board));
   assert.ok(pjs.length >= 10);
   for (const pj of pjs) {
     assert.ok(projectBoardOf(pj, pageBoards), pj.name);
