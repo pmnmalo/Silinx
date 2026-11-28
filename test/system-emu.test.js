@@ -95,3 +95,14 @@ test('#5212 the host: init emulate (its boards), set (BTN0), run (what each boar
     assert.deepEqual(await next(), { type: 'error', id: undefined, message: 'no board of an FPGA node, a circuit or an Explorer 16/32 \'term\'' });   // (a circuit's too, #5322)
   } finally { port1.close(); }
 });
+
+test('#5909 regression: a Pico\'s and a Pico W\'s boards to emulate (none before): their pins, the Pico\'s LED on GP25, the Pico W\'s its wireless chip\'s (none); an ESP32\'s none', () => {
+  const sys = normalizeSystem({ name: 'p', nodes: [
+    { id: 'pico', kind: 'mcu', board: 'pico', lang: 'micropython', firmware: 'pico/main.py', interfaces: [] },
+    { id: 'picow', kind: 'mcu', board: 'pico-w', lang: 'micropython', firmware: 'picow/main.py', interfaces: [] },
+    { id: 'esp', kind: 'mcu', board: 'esp32-devkitc', lang: 'micropython', firmware: 'esp/main.py', interfaces: [] }], links: [] });
+  const boards = emulationBoards(sys, { plan: systemPlan(sys), netlists: {} });
+  const GP = [...[...Array(23).keys()], 25, 26, 27, 28].map((n) => `GP${n}`);
+  assert.deepEqual(boards.map((b) => [b.id, b.kind, b.board.id, b.led]), [['pico', 'mcu', 'pico', 'GP25'], ['picow', 'mcu', 'pico-w', null], ['esp', 'mcu', 'esp32-devkitc', null]]);
+  assert.deepEqual([boards[0].outputs, boards[1].outputs], [GP, GP]);
+});

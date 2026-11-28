@@ -60,6 +60,8 @@ export function emulationBoards(sys, inputs) {
       else if (b?.arch === 'pic24') out.push(explorerBoard(n, b, driven));
       // (an ESP32 DevKitC's pins, #5495: no LED of its program's)
       else if (b?.arch === 'esp32') out.push({ id: n.id, kind: 'mcu', board: b, outputs: [...b.pins], led: null });
+      // (a Pico's pins and its LED on GP25; a Pico W's LED is its wireless chip's, not one of its pins, #5909)
+      else if (b?.arch === 'rp2040') out.push({ id: n.id, kind: 'mcu', board: b, outputs: [...b.pins], led: b.id === 'pico' ? 'GP25' : null });
       continue;
     }
     if (n.kind !== 'fpga' || !n.board || !inputs.netlists[n.id]) continue;
