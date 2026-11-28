@@ -32,6 +32,7 @@ import { expiredTrash } from '../../core/trash.js';
 import { downgradeRefusal, migratingWrite } from '../../core/doc-format.js';
 import { changedMeanwhile, textTag } from '../../core/text-tag.js';
 import { migrateProject, olderProject, parseDescription, sameDescription } from '../../core/project-json.js';
+import { processorBoardOf } from '../../core/processor-board.js';
 
 export const NAME_RE = PROJECT_NAME_RE;   // (core/project-name.js, #3538)
 // the site's development edition (https://pmnmalo.github.io/Silinx/dev/, built from main): its
@@ -113,9 +114,9 @@ export function normalizeProjectJson(saved, name) {
   if (plain(saved.sourceLanguage)) json.sourceLanguage = saved.sourceLanguage;
   if (typeof saved.synthTool === 'string') json.synthTool = saved.synthTool;
   // (its profile, #5440, written whichever it is, #5907; a design and simulation project has no board, #3780; a System
-  // project of before #5440, kind system, none; one since, none unless it has a top: a processor board's, #5756)
+  // project of before #5440, kind system, none; one since, none unless it has a top, or is a processor board's: #5756, #5883)
   json.profile = profileOf(saved);
-  if (isDesignOnly(saved) || (isSystemProject(saved) && (saved.kind === SYSTEM_KIND || !saved.top))) json.board = null;
+  if (isDesignOnly(saved) || (isSystemProject(saved) && (saved.kind === SYSTEM_KIND || (!saved.top && !processorBoardOf(saved))))) json.board = null;
   if (saved.trusted === false) json.trusted = false;   // (a project from outside, #2830: never made trusted by its description)
   // (its id and the origin of a copy, #4205)
   if (isProjectId(saved.id)) json.id = saved.id;

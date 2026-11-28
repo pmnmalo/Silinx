@@ -25,7 +25,14 @@ first, with three cards, and a project can move to another mode later with **Pro
   FPGA example, blinky, pong, uart…). A processor board needs no FPGA field, and the project starts with a firmware that
   blinks the board's LED
   (an assembly program for an Arduino, a MicroPython or CircuitPython one for a Pico, MicroPython for an ESP32; the
-  PIC24 starts with none: its `.hex` is MPLAB X's). Select the board's row in the Design pane for its **Emulate Node**,
+  PIC24 starts with none: its `.hex` is MPLAB X's), or from one of its Board Type's examples: the FPGA examples' designs, the same behaviour on the board's own LEDs,
+  buttons and display, named with the board's suffix, so that the hardware and the software solutions of a problem
+  compare. The Explorer 16/32 (PIC24) has **blinky-pic24** (the knight rider, its steps on the LCD), **traffic-pic24**
+  (the pedestrian crossing), **stopwatch-pic24** (with its laps), **clock-pic24** and **lock-pic24** (the code set with
+  the potentiometer R6), in assembly, each with its `.hex`; the buttons S3..S6 stand for the FPGA boards' buttons and
+  switches, each program's first lines say which. The Arduino's, the Pico's and the ESP32's come next, on their shields.
+
+  Select the board's row in the Design pane for its **Emulate Node**,
   **Simulate Node** and **Program Node**. An Arduino, a Pico or an ESP32 has no buttons, switches or display of its own:
   its row's **Add Shield** puts a circuit around it (`shield/shield.circ.json`: a breadboard, its supply and the board),
   where its buttons, switches, 7-segment displays, LCD and LEDs are wired to its pins; its row's Emulate Node and
@@ -67,5 +74,6 @@ Properties**.
 
 The MCP server does the same ([Silinx for an AI assistant](ai-mcp.md)): `new_project` takes `mode` (`circuit`,
 `board`, `system`) and a processor board as its `board`; `new_project_from_example` takes `mode circuit` for a Circuit
-example; `list_examples` gives each example's modes; `set_design_properties` with `mode` changes a project's mode, a change down only with
+example; `list_examples` gives each example's modes and Board Type (its `mode` and `board_type` list only those),
+and `new_project_from_example` makes a processor board's example on another board of its type (`board`); `set_design_properties` with `mode` changes a project's mode, a change down only with
 `confirm`, the refusal saying what would be lost; `project_info` and `list_projects` give each project's mode.

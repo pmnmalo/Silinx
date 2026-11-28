@@ -16,6 +16,7 @@ import { importXise } from '../core/xise.js';
 import { readSystem } from '../core/system-doc.js';
 import { constraintsPaths } from '../core/system-constraints.js';
 import { normalizeCircuit } from '../core/circuit.js';
+import { processorBoardOf } from '../core/processor-board.js';
 
 const ROOT = path.resolve(import.meta.dirname, '..');
 const DESCRIPTIONS = execFileSync('git', ['ls-files', '*silinx.json'], { cwd: ROOT, encoding: 'utf8' }).trim().split('\n');
@@ -64,7 +65,7 @@ test('#5416 phase 3: the corpus has its kinds of projects', () => {
 test('#5416 phase 3: every project of the corpus its System; one node as silinx.json says; its check; nothing written', () => {
   const dirs = [...new Set(DESCRIPTIONS.map(f => path.join(ROOT, path.dirname(f))))];
   const before = snapshot(dirs);
-  let implicit = 0, systems = 0, designs = 0;
+  let implicit = 0, systems = 0, designs = 0, processors = 0;
   for (const rel of DESCRIPTIONS) {
     const { pj, files, texts } = project(rel);
     const r = projectSystem(pj, { files, texts });
@@ -92,6 +93,8 @@ test('#5416 phase 3: every project of the corpus its System; one node as silinx.
       assert.deepEqual(checkSystem(r.model).map(said), expectedFpga(pj), rel);
     } else {
       systems++;
+      // (a processor board's example, #5874: its System of one microcontroller node, its board silinx.json's)
+      if (processorBoardOf(pj)) { processors++; assert.deepEqual(r.model.nodes.map(n => [n.kind, n.board]), [['mcu', pj.board]], rel); }
       // (a System project: its System document as it reads; its check's warnings the 5 V outputs on 3.3 V inputs, no error)
       assert.deepEqual(r.model, readSystem(texts[r.system]).system, rel);
       // (its FPGA nodes' pins their constraints files', #5581)
@@ -104,8 +107,9 @@ test('#5416 phase 3: every project of the corpus its System; one node as silinx.
       assert.ok(d.every(x => /a 5 V output, drives .* a 3\.3 V input of the FPGA \(LVCMOS33\): a level shifter or a divider on the real boards$/.test(x.message)), rel);
     }
   }
-  assert.equal(systems, 10);   // (the System examples: uart-avr, spi-avr, i2c-avr, regs-avr, uart-fpga-pic24, adc-pmod, uart-fpga-pico, uart-fpga-esp32, uart-zynq, regs-zynq)
-  assert.equal(implicit, DESCRIPTIONS.length - 10);
+  assert.equal(systems, 15);   // (the System examples: uart-avr, spi-avr, i2c-avr, regs-avr, uart-fpga-pic24, adc-pmod, uart-fpga-pico, uart-fpga-esp32, uart-zynq, regs-zynq; the processor boards' five, #5874)
+  assert.equal(processors, 5);   // (blinky-, traffic-, stopwatch-, clock-, lock-pic24)
+  assert.equal(implicit, DESCRIPTIONS.length - 15);
   assert.equal(designs, 4);   // (the Circuit examples: traffic-circuit, blinky-circuit, stopwatch-circuit, lock-circuit, #5779)
   assert.deepEqual(snapshot(dirs), before);
 });

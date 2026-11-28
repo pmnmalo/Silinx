@@ -1,0 +1,25 @@
+{
+  "format": "silinx-system",
+  "version": 2,
+  "name": "stopwatch_pic24",
+  "nodes": [
+    {
+      "id": "pic",
+      "kind": "mcu",
+      "board": "explorer-1632",
+      "firmware": "pic/stopwatch.hex",
+      "lang": "c",
+      "interfaces": [
+        {
+          "name": "UART",
+          "kind": "uart",
+          "baud": 9600,
+          "frame": "8N1"
+        }
+      ],
+      "x": 0,
+      "y": 0
+    }
+  ],
+  "links": []
+}
