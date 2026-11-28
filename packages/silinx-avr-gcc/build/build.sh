@@ -156,7 +156,8 @@ node "$HERE/precompile.mjs" "$OUT"
 cp "$WORK/gcc/COPYING3" "$OUT/LICENSES/GPL-3.0-gcc-binutils.txt"
 cp "$WORK/gcc/COPYING.RUNTIME" "$OUT/LICENSES/GCC-runtime-library-exception.txt"
 cp "$TC/avr/share/doc/avr-libc"*/LICENSE* "$OUT/LICENSES/avr-libc.txt" 2>/dev/null || sed -n '/Copyright/,/SUCH DAMAGE/p' "$S/avr/include/avr/io.h" > "$OUT/LICENSES/avr-libc.txt"
-cp "$WORK/core/LICENSE.txt" "$OUT/LICENSES/LGPL-2.1-arduino-core.txt" 2>/dev/null || curl -fsSL -o "$OUT/LICENSES/LGPL-2.1-arduino-core.txt" https://www.gnu.org/licenses/old-licenses/lgpl-2.1.txt
+# (the Arduino core's licence, the LGPL 2.1: its text as GCC's source holds it, COPYING.LIB, no download)
+cp "$WORK/core/LICENSE.txt" "$OUT/LICENSES/LGPL-2.1-arduino-core.txt" 2>/dev/null || cp "$WORK/gcc/COPYING.LIB" "$OUT/LICENSES/LGPL-2.1-arduino-core.txt"
 cp "$HERE/SOURCES.md" "$OUT/LICENSES/SOURCES.md"
 
 # its files' list and checksums (the package reads the manifest; the release checks the sums)
