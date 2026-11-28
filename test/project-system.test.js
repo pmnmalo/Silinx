@@ -105,7 +105,7 @@ test('#5416 phase 3: every project of the corpus its System; one node as silinx.
       assert.ok(d.every(x => /a 5 V output, drives .* a 3\.3 V input of the FPGA \(LVCMOS33\): a level shifter or a divider on the real boards$/.test(x.message) || /^serial: zybo\.PS_UART1 is its PS's, whose Cortex-A9 is not simulated/.test(x.message)), rel);
     }
   }
-  assert.equal(systems, 10);   // (the System examples: uart-avr, spi-avr, i2c-avr, regs-avr, uart-pic24, adc-pmod, uart-pico, uart-esp32, uart-zynq, regs-zynq)
+  assert.equal(systems, 10);   // (the System examples: uart-avr, spi-avr, i2c-avr, regs-avr, uart-fpga-pic24, adc-pmod, uart-fpga-pico, uart-fpga-esp32, uart-zynq, regs-zynq)
   assert.equal(implicit, DESCRIPTIONS.length - 10);
   assert.equal(designs, 4);   // (the Circuit examples: traffic-circuit, blinky-circuit, stopwatch-circuit, lock-circuit, #5779)
   assert.deepEqual(snapshot(dirs), before);

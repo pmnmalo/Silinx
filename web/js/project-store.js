@@ -22,6 +22,7 @@ import { markUntrusted } from '../../core/trust.js';
 import * as trustRecords from './trust-records.js';
 import { ANCESTOR_FILE, isProjectId, originOf } from '../../core/project-rev.js';
 import { SYSTEM_KIND, DESIGN_KIND, boardRefusal, circuitExample, createRefusal, isDesignOnly, isSystemProject, newSystemKind } from '../../core/project-kind.js';
+import { exampleName } from '../../core/examples.js';
 import { profileOf } from '../../core/project-profile.js';
 import { newSystemFile } from '../../core/system-doc.js';
 import { foldName, foldsToProjectFile, PROJECT_FILE, sameNameIn, spelledAs } from '../../core/fold-name.js';
@@ -610,7 +611,8 @@ export function projectOps(getStore, examples = {}, { beforeMigrate = null } = {
   const ops = {
     list: async () => (await S().list()).map(j => ({ name: j.name, device: j.device, top: j.top, board: j.board, modified: j.modified || 0 })),
     load: name => loaded(name),
-    create: async ({ name, template = 'empty', device, board, kind = null }) => {
+    create: async ({ name, template: given = 'empty', device, board, kind = null }) => {
+      const template = exampleName(given);   // (an example's old name, #5894)
       if (projectNameError(name)) fail(projectNameError(name));
       // (a design and simulation project, #3780: empty, no board, no constraints; the server's rule and messages)
       // (a System project, #4702: empty with its System document, or a System example; core/project-kind.js)

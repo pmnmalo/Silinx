@@ -16,7 +16,7 @@ import { resourcesOf, openOnlyDevice, experimentalDevice, vivadoDevice, openFlow
 import { exportCSources, exportXise, importXise, importIseSchematics, iseModuleSymbols, exportIseSchematics } from '../../core/xise.js';
 import EXAMPLES from 'silinx-examples';
 import { isCSource } from '../../core/view-hdl.js';
-import { orderExamples } from '../../core/examples.js';
+import { orderExamples, exampleName } from '../../core/examples.js';
 import { createZip, browserCodec, textOf } from '../../core/zip.js';
 import { GATE_LIMITS, gateEntries, gateMessages, gateZip } from '../../core/import-gate.js';
 import { isTrusted, markUntrusted, untrustedMessage } from '../../core/trust.js';
@@ -378,7 +378,7 @@ export const api = {
   projects: async () => Promise.all((await ops.list()).map(async p => ({ ...p, stored: store.kind === 'folder' ? 'folder' : 'browser', github: await git.gitRemote(p.name).catch(() => null) }))),
   templates: async () => offeredExamples(orderExamples(Object.keys(EXAMPLES))),   // (the System one where it is on, #5202)
   // an example's description and files ({ project, files: { path: text } }, #2826)
-  exampleFiles: async name => (Object.hasOwn(EXAMPLES, name) ? { project: structuredClone(EXAMPLES[name].json), files: { ...EXAMPLES[name].files } } : fail(`unknown example '${name}'`)),
+  exampleFiles: async given => { const name = exampleName(given); return (Object.hasOwn(EXAMPLES, name) ? { project: structuredClone(EXAMPLES[name].json), files: { ...EXAMPLES[name].files } } : fail(`unknown example '${name}'`)); },
   createProject: p => ops.create(p),
   project: name => ops.project(name),
   saveProject: async (name, pj) => changedProject(name, await ops.saveProject(name, pj)),

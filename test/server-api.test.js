@@ -54,7 +54,7 @@ test('projects: create (empty + template), list, read with file tree, write, del
   for (const d of ['src', 'sim', 'constraints']) assert.ok(fss.statSync(path.join(P.projectDir('Alpha'), d)).isDirectory());
 
   const tpl = await call('GET', '/templates');
-  assert.deepEqual(tpl.body, ['gates', 'breadboard', 'traffic', 'blinky', 'pong', 'stopwatch', 'clock', 'vga', 'isqrt', 'uart', 'micro80', 'lock', 'traffic-circuit', 'blinky-circuit', 'stopwatch-circuit', 'lock-circuit', 'uart-avr', 'spi-avr', 'i2c-avr', 'regs-avr', 'uart-pic24', 'adc-pmod', 'uart-pico', 'uart-esp32', 'uart-zynq', 'regs-zynq']);   // the order the interface lists them (the System example last, #4702)
+  assert.deepEqual(tpl.body, ['gates', 'breadboard', 'traffic', 'blinky', 'pong', 'stopwatch', 'clock', 'vga', 'isqrt', 'uart', 'micro80', 'lock', 'traffic-circuit', 'blinky-circuit', 'stopwatch-circuit', 'lock-circuit', 'uart-avr', 'spi-avr', 'i2c-avr', 'regs-avr', 'uart-fpga-pic24', 'adc-pmod', 'uart-fpga-pico', 'uart-fpga-esp32', 'uart-zynq', 'regs-zynq']);   // the order the interface lists them (the System example last, #4702)
   // the test designs (#1746): not listed (New Project offers the examples only, #5108); a new project from one still
   // made (the tests open them so), a C design's top its function
   assert.equal((await call('GET', '/test-designs')).status, 404);

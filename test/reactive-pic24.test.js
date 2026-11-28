@@ -143,7 +143,7 @@ test('#5552 XC16: each drawing with the node\'s main.c compiled with no warning,
   for (const [k, m] of MODELS().entries()) {
     const g = generatePic24Unit(m);
     const name = `rp${k}`;
-    await P.createProject({ name, template: 'uart-pic24' });
+    await P.createProject({ name, template: 'uart-fpga-pic24' });
     // (the node's main.c the test's: not one made from drawings, which the compile would make again)
     await P.writeFile(name, `pic/${g.filename}`, g.code);
     await P.writeFile(name, 'pic/main.c', pic24Main('pic', [{ module: m.name, file: g.filename }], { mark: 'its test\'s harness' }));

@@ -244,3 +244,14 @@ uiTest('#3316 a shared project\'s link given to the running app: a broken one sa
   assert.deepEqual(await page.eval(() => [location.hash, window.__loaded]), ['', true]);
   assert.deepEqual(await consoleLines(page, /^(WARNING|ERROR)/), ['ERROR: Follow a shared project: the link to follow is broken (copy it again from the owner\'s Share Project).']);
 });
+
+uiTest('#5894 a link to an example\'s old name (uart-pico) opens the renamed one, uart-fpga-pico, its System in front', E, async (page) => {
+  await boot(page);
+  await setHash(page, 'open=example:uart-pico');
+  await linkOpened(page);
+  await page.waitConsole(/Opened 'uart-fpga-pico' from a link \(a new project\)/);
+  assert.equal(await page.eval(() => window.Silinx.project?.name), 'uart-fpga-pico');
+  assert.ok((await projects()).includes('uart-fpga-pico'));
+  assert.deepEqual(await consoleLines(page, /^(WARNING|ERROR)/), []);
+  assert.deepEqual(warnings(page), []);
+});
