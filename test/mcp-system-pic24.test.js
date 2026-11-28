@@ -8,7 +8,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import { scratchEnv } from './server-helpers.js';
 import { unlabelled } from './mcp-label.js';
-import { echoHex, explorerHex } from './pic24-node-lib.mjs';
+import { echoHex, explorerHex, buttonsHex } from './pic24-node-lib.mjs';
 
 let tmp;
 before(async () => { tmp = await scratchEnv('silinx-mcp-system-pic24-'); });
@@ -77,4 +77,17 @@ test('#5484 simulate with controls on an Explorer 16/32: S3 pressed, R6 and the 
   await bad([{ node: 'pic', control: 'R6', value: 2 }], 'controls[0]: R6\'s value: its travel from 0 to 1');
   await bad([{ node: 'pic', control: 'TC1047A', value: 200 }], 'controls[0]: TC1047A\'s value: a temperature (°C) from -40 to 125');
   await bad([{ node: 'nope', control: 'S3', on: true }], 'controls[0]: no FPGA node \'nope\' with a board, a circuit nor an Explorer 16/32, in the System');
+});
+
+test('#5880 regression: simulate with S5 held on an Explorer 16/32 whose program reads RA7: D10 (RA7 too) off, the line says it; let go, lit by the pull-up', async () => {
+  await ok('write_file', { project: 'p', path: 'pic/buttons.hex', text: buttonsHex() });
+  await ok('write_file', { project: 'p', path: SYS, text: JSON.stringify({ format: 'silinx-system', version: 2, name: 'pic_buttons', nodes: [
+    { id: 'pic', kind: 'mcu', board: 'explorer-1632', firmware: 'pic/buttons.hex', interfaces: [], x: 0, y: 0 }], links: [] }, null, 2) });
+  const held = await ok('simulate', { project: 'p', top: SYS, time_ns: 40e6, controls: [{ node: 'pic', control: 'S5', on: true, at_ns: 20e6 }] });
+  const lit = (r) => Object.entries(r.data.boards.pic.leds).filter(([, v]) => v > 0.5).map(([d]) => d);
+  assert.deepEqual([lit(held), held.data.boards.pic.leds.D10, held.data.boards.pic.held], [['D7'], 0, { S5: true }]);
+  assert.ok(held.text.split('\n').includes('pic\'s Explorer 16/32: LEDs D7; held S5; R6 at 50 %, 25 °C; LCD "" / "".'), held.text);
+  assert.deepEqual([held.data.warnings, held.data.errors], [[], []]);
+  const free = await ok('simulate', { project: 'p', top: SYS, time_ns: 40e6, controls: [] });
+  assert.deepEqual([lit(free), free.data.boards.pic.leds.D10], [['D10'], 1]);
 });
