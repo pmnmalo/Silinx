@@ -137,9 +137,13 @@ test('#5484 the edits: an Explorer 16/32 added with its UART; an Uno changed int
   assert.deepEqual(addNode(r.system, { kind: 'mcu', board: 'pic24' }), { error: 'no microcontroller board \'pic24\': arduino-uno, arduino-nano, explorer-1632, pico, pico-w, esp32-devkitc' });
 });
 
-test('#5484 a drawing in a PIC24 node: its C not made yet (only an Arduino\'s sketch is), said', () => {
+test('#5484 #5552 a drawing in a PIC24 node: its C made on the PIC24\'s registers (its LED RA0 an output: TRISA, ANSA, LATA); C++ refused', () => {
   const fsm = JSON.stringify({ format: 'silinx-fsm', name: 'blink', inputs: [], outputs: [{ name: 'led', width: 1 }], states: [{ name: 'S0' }], transitions: [] });
   const node = { id: 'pic', kind: 'mcu', board: 'explorer-1632', lang: 'c', interfaces: [] };
   const r = drawingCode('pic/blink.fsm.json', fsm, { nodeLang: 'c', node });
-  assert.deepEqual([r.errors, r.warnings, r.target, r.text], [["pic/blink.fsm.json: a drawing's C for the Explorer 16/32's PIC24FJ1024GB610 is not made yet (#5552): only an Arduino's sketch is"], [], null, '']);
+  assert.deepEqual([r.errors, r.warnings, r.target, r.pins, r.ports.map((p) => [p.name, p.volts])], [[], [], 'pic/blink.c', { led: ['RA0'] }, [['led', 3.3]]]);
+  for (const l of ['#include <xc.h>', '  ANSA &= ~(1u << 0);', '  TRISA &= ~(1u << 0);   // RA0 an output', '  if (led) LATA |= 1u << 0; else LATA &= ~(1u << 0);   // RA0']) assert.ok(r.text.split('\n').includes(l), l);
+  assert.ok(!/digitalWrite|Arduino/.test(r.text), 'no Arduino API');
+  const cpp = drawingCode('pic/blink.fsm.json', fsm, { nodeLang: 'cpp', node: { ...node, lang: 'cpp' } });
+  assert.deepEqual([cpp.errors, cpp.notMade, cpp.target], [["pic/blink.fsm.json: the Explorer 16/32's PIC24FJ1024GB610 runs C (XC16's): its node's language is C, not C++"], true, null]);
 });

@@ -421,7 +421,8 @@ it needs the emulation.
   temperature sensor, the LCD, the EEPROM), behind the node contract (`pic24Contract`, its fidelity notes); its firmware
   is a `.hex` (no `.elf`). The System editor's **Explorer 16/32** places one; the check warns of a 5 V output on its 3.3 V
   inputs as on an FPGA's; a System's UART link takes the USB-UART's place (a terminal node is the computer on its USB).
-  A drawing in its folder has no C yet (#5552: the generated C is an Arduino's sketch). The System Emulator draws the
+  A drawing in its folder is a unit of its C program on the device's registers (#5552: compiling a PIC24 node's
+  firmware, below). The System Emulator draws the
   board (Silinx's own drawing, `web/js/emulator-explorer.js`; `core/system-emu-explorer.js`): its LCD's two rows, its
   LEDs D3 to D10 (RA0 to RA7), its buttons S3 to S6 held down while pressed (their pins the node's inputs; a button
   whose pin a link drives is not one), its potentiometer R6 and its temperature sensor set on the board's model; the
@@ -844,6 +845,19 @@ config.json's `xc16.mode` (`local` or `ssh`) chooses one; without it, this compu
 - The `.hex` is written over the node's firmware when that is a `.hex`, else to `<id>/<id>.hex`, which becomes the
   node's firmware; Emulate System runs it on silinx-pic24. The build plan's XC16 step is the same (Build All).
 - The MCP's `run_process` process `firmware` with the node's id; the browser edition says the `.hex` is MPLAB X's.
+- **A drawing's C** (#5552, `core/reactive-c-pic24.js`): a state diagram, an ASM chart, a Petri net or a truth table in
+  the node's folder is a unit of its program, as an Arduino's is (the synchronous reactive model's generator,
+  `core/reactive-c.js`), on the PIC24's port registers instead of the Arduino API: each pin's `ANSx` bit cleared (a
+  digital pin), `TRISx` its direction, its inputs read from `PORTx` and its outputs written to `LATx`, once a tick. Its
+  pins are the node's GPIO interfaces named as its ports; else its inputs go on the buttons (S3 RD6, S4 RD13, S6 RD7,
+  S5 RA7: a press reads 0), its outputs on the LEDs (D3–D10, RA0–RA7), then on the pins the board leaves free (not its
+  USB-UART's, LCD's, EEPROM's, crystals' or PICkit's; a port given one of them is warned of). The node's program,
+  `<id>/main.c`, made from its drawings as an Arduino's `.ino` is, calls each unit's `<module>_init()`, then its
+  `<module>_tick()` at every tick: Timer1 counts Fcy / 8 (Fcy 2 MHz, the FRC through its divider at reset, as XC16
+  leaves the configuration words), its flag T1IF every 10 ms; the watchdog, on in the erased configuration, is
+  cleared meanwhile. A hand-written C file with a `main()` in the folder is the node's program instead. XC16 compiles C:
+  a PIC24 node's language is C, not C++. The tests check the C against the model tick by tick: this computer's C
+  compiler with a stand-in `<xc.h>`, and XC16's `.hex` on silinx-pic24 when XC16 is there.
 
 ### Compiling a Zynq board's PS program
 

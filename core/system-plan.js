@@ -12,7 +12,7 @@
 import { mcuBoard } from './system-doc.js';
 import { relInNode } from './system-layout.js';
 import { firmwareRefusal, firmwareSources, nodeAssembly, nodeSketch } from './avr-compile.js';
-import { nodeProgram } from './xc16-compile.js';
+import { nodeProgram, pic24Sources } from './xc16-compile.js';
 import { nodeRefusal } from './system-node.js';
 import { REACTIVE_KINDS, drawingKind } from './reactive-from.js';
 
@@ -44,6 +44,11 @@ export const fpgaSources = (files, id) => files.filter(f => {
 export const asmSources = (files, id) => files.filter(f => /\.asm$/i.test(f) && relInNode(f, id) != null && !/^build\//.test(relInNode(f, id))).sort();
 
 export const sketchSources = (files, id) => [...new Set([...firmwareSources(files, id),
+  ...files.filter(f => relInNode(f, id) != null && REACTIVE_KINDS.includes(drawingKind(f)))])].sort();
+
+/** The files a PIC24 node is built from: its C, headers and assembly (`files` the project's) and the drawings that make
+ *  its C (#5552). */
+export const pic24PlanSources = (files, id) => [...new Set([...pic24Sources(files, id),
   ...files.filter(f => relInNode(f, id) != null && REACTIVE_KINDS.includes(drawingKind(f)))])].sort();
 
 /** The record of a node's build (`hashes`: each source's hash): { node (describedNode's), sources: { path: hash } }. */
@@ -97,7 +102,7 @@ function mcuEntry(n, { files, hashes, records, exists }) {
   if (b.arch === 'pic24') {
     // (its C and assembly compiled by XC16, #5482; else a .hex given, made outside Silinx)
     const prog = nodeProgram(n, files);
-    if (!prog.error) return withState({ ...e, build: 'xc16', image: prog.hex, programmer: 'pickit', sources: prog.sources }, n, { hashes, records, exists });
+    if (!prog.error) return withState({ ...e, build: 'xc16', image: prog.hex, programmer: 'pickit', sources: pic24PlanSources(files, n.id) }, n, { hashes, records, exists });
     const fw = /\.hex$/i.test(n.firmware || '') ? n.firmware : null;
     if (fw && exists.has(fw)) return { ...e, image: fw, programmer: 'pickit', state: 'given', reason: `its .hex ${fw}, made outside Silinx` };
     return { ...e, programmer: 'pickit', state: 'not buildable',

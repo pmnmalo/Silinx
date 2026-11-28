@@ -221,3 +221,25 @@ test('#5482 the real XC16: a C program compiled with no warning, its .hex read b
     assert.ok(e.lines.some(l => /^ERROR: pic\/main\.c:3(:\d+)?: .*TRISQ/.test(l)), e.lines.join('\n'));
   } finally { await writeConfig({ mode: 'silinx', paths: { xc16: STUB } }); }
 });
+
+test('#5552 a drawing in the pic node: its C and the node\'s main.c made (MCP write_file), compiled by run_process firmware with them; the plan\'s sources the drawing too', { skip: WIN }, async () => {
+  const name = await project({});
+  const lock = JSON.parse(fs.readFileSync(path.join(ROOT, 'examples/lock/src/lock.fsm.json'), 'utf8'));
+  delete lock.generatedFile;
+  const w = await tool('write_file').run({ project: name, path: 'pic/lock.fsm.json', text: JSON.stringify(lock, null, 2) });
+  assert.deepEqual(w.text.split('\n').slice(1), ['pic/lock.c generated from pic/lock.fsm.json', 'pic/main.c generated from pic\'s drawings']);
+  const r = await tool('run_process').run({ project: name, process: 'firmware', node: 'pic' });
+  assert.equal(r.isError, false, r.text);
+  assert.deepEqual([r.data.errors, r.data.warnings], [[], []]);
+  assert.ok(r.text.includes('System node pic: its program (2 C and assembly file(s) of pic/) for the PIC24FJ1024GB610 (Explorer 16/32), by XC16 2.10 on this computer, -O1 (XC16\'s free licence: -O0 to -O2), in build/nodes/pic/firmware/.'), r.text);
+  const args = JSON.parse(fs.readFileSync(path.join(P.projectDir(name), 'build/nodes/pic/firmware/xc16-gcc.json'), 'utf8'));
+  assert.deepEqual(args.filter(a => a.startsWith('src/')), ['src/lock.c', 'src/main.c']);
+  const c = await tool('check_system').run({ project: name, file: 'uart_pic24.sys.json' });
+  assert.deepEqual(c.data.plan.nodes.find(e => e.id === 'pic').sources, ['pic/lock.c', 'pic/lock.fsm.json', 'pic/main.c']);
+  assert.equal(c.data.plan.lines.find(l => /^ {2}pic:/.test(l)), '  pic: up to date; compiled by XC16 to pic/lcd_uart.hex, programmed by a PICkit (MPLAB IPE)');
+  // (the drawing deleted: its C no longer called, the node's main.c removed before the compile, nothing left to compile)
+  await tool('delete_file').run({ project: name, path: 'pic/lock.fsm.json' });
+  await tool('delete_file').run({ project: name, path: 'pic/lock.c' });
+  const j = await run(name);
+  assert.deepEqual(j.lines, ['pic/main.c removed: pic has no drawing with its C', 'ERROR: System node pic: pic: no C or assembly in its folder pic/ (a .c or a .s: write one)', 'ERROR: the System node(s) pic failed']);
+});

@@ -23,6 +23,9 @@ import { XC16_IMAGE, XC16_OPT, nodeProgram, pic24FileOf, xc16Commands, xc16Messa
 import { mcuBoard } from '../core/system-doc.js';
 import { parseHex } from '../packages/silinx-pic24/src/hex.js';
 import { takeBuildRecord, writeBuildRecord } from './system-plan.js';
+import { pic24PlanSources } from '../core/system-plan.js';
+import { syncNodeMain } from '../core/node-main-sync.js';
+import { baseLang } from '../core/system-layout.js';
 
 /** Where XC16's installers put it: <folder>/<version>/bin. */
 const XC16_DIRS = ['/Applications/microchip/xc16', '/opt/microchip/xc16'];
@@ -109,10 +112,14 @@ async function runLocal(quiet, root, cmds, onLine) {
 /** One PIC24 node's firmware compiled (the System `sys`: server/avr-compile.js systemOf's; XC16 `tool`: detectXc16's):
  *  its lines logged, its .hex written; its result, as an Arduino node's (Build All's too). */
 export async function compilePic24(job, name, sys, node, tool) {
-  const prog = nodeProgram(node, sys.files);
+  // (the node's main.c made from its drawings made again first: a drawing deleted since no longer called, #5552)
+  const main = await syncNodeMain(P, name, node, baseLang(node));
+  for (const l of main?.messages ?? []) job.log(l);
+  const files = main?.written || main?.removed ? await P.fileTree(name) : sys.files;
+  const prog = nodeProgram(node, files);
   if (prog.error) throw new Error(prog.error);
   // (what its .hex is built from, for the System's build plan, #5489: its sources as they are now)
-  const record = await takeBuildRecord(name, { ...node, firmware: node.firmware || prog.hex }, prog.sources);
+  const record = await takeBuildRecord(name, { ...node, firmware: node.firmware || prog.hex }, pic24PlanSources(files, node.id));
   const root = await buildDir(name, node, prog);
   const units = prog.units.map(f => `src/${f.slice(node.id.length + 1)}`);
   const b = mcuBoard(node.board);
