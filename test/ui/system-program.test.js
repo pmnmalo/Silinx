@@ -49,6 +49,8 @@ const FAKE_SERIAL = async () => {
 uiTest('#5489 Program All and Program Node: the FPGA, then the Uno on the board picked; Skip; Portuguese; the browser edition', E, async (page) => {
   if (process.platform === 'win32') return;   // (the stand-ins are scripts run by their #! line)
   await makeProject(env, { name: 'SysProg', template: 'uart-avr' });
+  // (its Uno's .hex given: no .asm to assemble, #5933, as test/system-program-server.test.js's)
+  await env.server.api('DELETE', `/api/projects/SysProg/file?path=${encodeURIComponent('uno/hello.asm')}`);
   const bit = path.join(env.server.workspace, 'SysProg/build/nodes/fpga/build');
   fs.mkdirSync(bit, { recursive: true });
   fs.writeFileSync(path.join(bit, 'uart.bit'), makeBit({ design: 'uart.ncd;UserID=0xFFFFFFFF' }));

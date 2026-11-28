@@ -54,7 +54,7 @@ uiTest('#5414 a System project\'s nodes as the Design pane\'s branches, each wit
   assert.deepEqual(await procs(page), ['View/Edit System', 'Compile Firmware', 'Program Node', 'Simulate Node', 'Emulate Node']);   // (its sketch's, #5503)
   await page.treeRow('#hier', 'fpga', { exact: true });
   await page.waitFor(() => [...document.querySelectorAll('#procs .row .lbl')].some((l) => l.textContent.trim() === 'Check Syntax'), [], { what: 'the FPGA node\'s processes' });
-  assert.deepEqual(await procs(page), ['View/Edit System', 'I/O Pin Planning', 'Check Syntax', 'View RTL Schematic', 'Synthesize', 'Implement Design', 'Generate Programming File', 'Program Node', 'Simulate Node', 'Emulate Node', 'Emulate Behavioral Model (RTL)', 'Emulate Post-Synthesis Model', 'Emulate Post-Translate Model', 'Emulate Post-Map Model', 'Emulate Post-Place & Route Model']);   // (on its own board, #5446)
+  assert.deepEqual(await procs(page), ['View/Edit System', 'I/O Pin Planning', 'Check Syntax', 'View RTL Schematic', 'Synthesize', 'View Synthesis Report', 'Implement Design', 'View Static Timing Report', 'Generate Programming File', 'Program Node', 'Simulate Node', 'Emulate Node', 'Emulate Behavioral Model (RTL)', 'Emulate Post-Synthesis Model', 'Emulate Post-Translate Model', 'Emulate Post-Map Model', 'Emulate Post-Place & Route Model']);   // (on its own board, #5446)
   await page.treeRow('#procs', 'Check Syntax', { exact: true, dbl: true });
   await page.waitConsole(/^Process "Check Syntax" completed successfully$/m);
   // (its module's row: its node's processes, no flow on the project's default device, #5443)
@@ -66,7 +66,7 @@ uiTest('#5414 a System project\'s nodes as the Design pane\'s branches, each wit
   // in Portuguese
   await page.eval(async () => { (await import('/js/i18n.js')).setLanguage('pt'); });
   await page.waitFor(() => [...document.querySelectorAll('#procs .row .lbl')].some((l) => l.textContent.trim() === 'Ver/Editar Sistema'), [], { what: 'the processes in Portuguese' });
-  assert.deepEqual(await procs(page), ['Ver/Editar Sistema', 'Planeamento de Pinos de E/S', 'Verificar Sintaxe', 'Ver Esquemático RTL', 'Sintetizar', 'Implementar Projeto', 'Gerar Ficheiro de Programação', 'Programar Nó', 'Simular o Nó', 'Emular o Nó', 'Emular Modelo Comportamental (RTL)', 'Emular Modelo Pós-Síntese', 'Emular Modelo Pós-Translate', 'Emular Modelo Pós-Map', 'Emular Modelo Pós-Place & Route']);
+  assert.deepEqual(await procs(page), ['Ver/Editar Sistema', 'Planeamento de Pinos de E/S', 'Verificar Sintaxe', 'Ver Esquemático RTL', 'Sintetizar', 'Ver o Relatório de Síntese', 'Implementar Projeto', 'Ver o Relatório de Temporização Estática', 'Gerar Ficheiro de Programação', 'Programar Nó', 'Simular o Nó', 'Emular o Nó', 'Emular Modelo Comportamental (RTL)', 'Emular Modelo Pós-Síntese', 'Emular Modelo Pós-Translate', 'Emular Modelo Pós-Map', 'Emular Modelo Pós-Place & Route']);
   await page.eval(async () => { (await import('/js/i18n.js')).setLanguage('en'); });
   assert.deepEqual(await warnings(page), []);
   assert.deepEqual(page.console.filter((c) => c.type === 'error' || c.type === 'warning' || c.type === 'warn').map((c) => c.text), []);

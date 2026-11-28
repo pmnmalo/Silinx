@@ -50,6 +50,8 @@ test('#4687 uart-zynq made with the MCP server: checked (its one warning), simul
   assert.deepEqual([s.data.warnings, s.data.errors, s.data.terminals], [[], [], { term: '' }]);
   const b = await ok('run_process', { project: 'uz', process: 'bitstream', node: 'zybo' });
   assert.deepEqual([b.data.errors, b.data.warnings], [[], []]);
+  // (the stand-in for arm-none-eabi-gcc is a script run by its #! line: not on Windows, as test/zynq-ps-compile-server.test.js's WIN)
+  if (process.platform === 'win32') return;
   await P.updateProject('uz', (p) => ({ ...p, trusted: true }));
   const ps = await ok('run_process', { project: 'uz', process: 'ps', node: 'zybo' });
   assert.deepEqual([ps.data.errors, ps.data.warnings], [[], []]);

@@ -24,7 +24,7 @@ uiTest('#3968 #4215 SILINX_GIT=off: no git group on the Start page, the Collabor
   await page.leftTab('start');
   await page.waitFor(() => !!document.querySelector('#start-page .start-box'), [], { what: 'the Start page' });
   assert.equal(await page.eval(async () => (await (await import('/js/api.js')).api.gitEnabled()).enabled), false);
-  assert.deepEqual(await startCommands(page), ['Import Project…', 'Export Project (.zip)…']);
+  assert.deepEqual(await startCommands(page), ['New Project…', 'Open Project…', 'Import Project…', 'Export Project (.zip)…']);   // (New Project… and Open Project… first, #5939)
   // the Collaboration tab (#4215): its Sharing box only (this server shares live), no git box (a project open: no
   // tabs with none, #4257)
   await makeProject(env, { name: 'GitOff', template: 'gates' });

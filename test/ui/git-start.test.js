@@ -32,7 +32,7 @@ uiTest('#3968 #4619 the Collaboration tab\'s git commands when Silinx opens, its
     await page.waitFor(() => [...document.querySelectorAll('#collab-page .entry a')].some((a) => a.textContent === 'Open from GitHub Repository…'), [], { what: 'the git commands' });
     const REPO = ['git signs in to GitHub with its own credentials.', 'No project open.', 'Open from GitHub Repository…', 'Store Project in a GitHub Repository… (disabled)'];
     assert.deepEqual(await repoBox(page), REPO);
-    assert.deepEqual(await startCommands(page), ['Import Project…', 'Export Project (.zip)…']);
+    assert.deepEqual(await startCommands(page), ['New Project…', 'Open Project…', 'Import Project…', 'Export Project (.zip)…']);   // (New Project… and Open Project… first, #5939)
     await page.eval(async () => (await import('/js/i18n.js')).setLanguage('pt'));
     await page.leftTab('collab');
     await page.waitFor(() => [...document.querySelectorAll('#collab-page .entry a')].some((a) => a.textContent === 'Abrir do Repositório GitHub…'), [], { what: 'the tab in Portuguese' });
@@ -40,7 +40,7 @@ uiTest('#3968 #4619 the Collaboration tab\'s git commands when Silinx opens, its
     // (back from the Collaboration tab with no project: its Start tab clicked, the harness's leftTab('start') being the Start page alone's)
     await page.click('#left-tabs .tab[data-page=start]');
     await page.waitFor(() => [...document.querySelectorAll('#start-page .entry a')].some((a) => a.textContent === 'Importar Projeto…'), [], { what: 'the Start page in Portuguese' });
-    assert.deepEqual(await startCommands(page), ['Importar Projeto…', 'Exportar Projeto (.zip)…']);
+    assert.deepEqual(await startCommands(page), ['Novo Projeto…', 'Abrir Projeto…', 'Importar Projeto…', 'Exportar Projeto (.zip)…']);
     await page.eval(async () => (await import('/js/i18n.js')).setLanguage('en'));
     assert.deepEqual(warnings(page), []);
   } finally {

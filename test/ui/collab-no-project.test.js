@@ -72,7 +72,7 @@ uiTest('#4619 the Collaboration tab with no project open: the sign-in, Open from
   // the Start and Collaboration tabs; the Start page's project commands alone
   assert.deepEqual(await shownTabs(page), ['start', 'collab']);
   await page.waitFor(() => !!document.querySelector('#start-page .start-box'), [], { what: 'the Start page' });
-  assert.deepEqual(await startCommands(page), ['Import Project…', 'Export Project (.zip)…']);
+  assert.deepEqual(await startCommands(page), ['New Project…', 'Open Project…', 'Import Project…', 'Export Project (.zip)…']);   // (New Project… and Open Project… first, #5939)
   assert.equal(await page.eval(() => [...document.querySelectorAll('#start-page .entry a')].some((a) => /GitHub/.test(a.textContent))), false, 'no GitHub command on the Start page');
   // the tab: the sign-in, Open from GitHub Repository…, the project's commands disabled; the relay
   await page.leftTab('collab');
@@ -88,7 +88,7 @@ uiTest('#4619 the Collaboration tab with no project open: the sign-in, Open from
   // (back from the Collaboration tab with no project: its Start tab clicked, the harness's leftTab('start') being the Start page alone's)
   await page.click('#left-tabs .tab[data-page=start]');
   await page.waitFor(() => !!document.querySelector('#start-page .start-box'), [], { what: 'the Start page in Portuguese' });
-  assert.deepEqual(await startCommands(page), ['Importar Projeto…', 'Exportar Projeto (.zip)…']);
+  assert.deepEqual(await startCommands(page), ['Novo Projeto…', 'Abrir Projeto…', 'Importar Projeto…', 'Exportar Projeto (.zip)…']);
   await page.eval(() => localStorage.removeItem('silinx.lang'));
   await boot(page);
   await page.leftTab('collab');
@@ -137,6 +137,6 @@ uiTest('#4619 the Collaboration tab with no project open: the sign-in, Open from
   await page.dialogButton('Cancel');
   await page.waitNoDialog();
   await page.leftTab('start');
-  assert.deepEqual(await startCommands(page), ['Import Project…', 'Export Project (.zip)…']);
+  assert.deepEqual(await startCommands(page), ['New Project…', 'Open Project…', 'Import Project…', 'Export Project (.zip)…']);   // (New Project… and Open Project… first, #5939)
   await noWarnings(page);
 }, { url: () => 'about:blank', timeout: 180000 });
