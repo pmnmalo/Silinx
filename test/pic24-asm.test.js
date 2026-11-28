@@ -222,7 +222,7 @@ test('#5480 the assembler: CALL and GOTO\'s second word, PUSH and POP as MOV, la
   assert.deepEqual([...pic24Assemble(['goto 0x027844']).words], [0x047844, 0x000002]);
   // PUSH Ws is MOV Ws, [W15++]; POP Wd is MOV [--W15], Wd
   assert.deepEqual([...pic24Assemble(['push w3', 'pop w4', 'push [w2++]']).words], [0x781f83, 0x78024f, 0x781fb2]);
-  const { words, labels } = pic24Assemble(['start: mov #1, w0', 'loop: dec w0, w0', 'bra nz, loop', '.word 0x123456', '.org 0x10', 'end: bra end'], { org: 0 });
+  const { words, labels } = pic24Assemble(['start: mov #1, w0', 'loop: dec w0, w0', 'bra nz, loop', '.pword 0x123456', '.org 0x10', 'end: bra end'], { org: 0 });
   assert.deepEqual(labels, { start: 0, loop: 2, end: 0x10 });
   assert.deepEqual([...words], [0x200010, 0xe90000, 0x3afffe, 0x123456, 0xffffff, 0xffffff, 0xffffff, 0xffffff, 0x37ffff]);
   // SFR names, sums of labels and numbers, the literals' ranges
@@ -273,4 +273,68 @@ test('#5930 every line\'s error is reported with its file and line, the later li
   // a branch out of reach
   const far = assemble(['bra far', '.org 0x10002', 'far: nop']);
   assert.deepEqual(far.errors.map(asmMessage), ['line 1: bra far: branch 32768 not in -32768..32767']);
+});
+
+// #5931: xc16-as's syntax, the PIC24FJ1024GB610's names, the configuration words and XC16's linker's places
+const XC16 = (body) => ['    .include "p24FJ1024GB610.inc"', '    config __FWDT, FWDTEN_OFF', '    .global __reset', '    .text', '__reset:', ...body];
+
+test('#5931 the device\'s names and xc16-as\'s expressions', async () => {
+  const { assemble, asmMessage } = await import('../packages/silinx-pic24/src/index.js');
+  // (each name and expression its number's words: the encodings themselves are the manual's, above)
+  const same = (a, b) => { const x = assemble(a, { file: 'n.s' }), y = assemble(b); assert.deepEqual(x.errors.map(asmMessage), []); assert.deepEqual([...x.words], [...y.words], a.join(' | ')); };
+  same(['mov w0, TRISA', 'bclr IFS0, #T1IF', 'bset U2STA, #UTXEN', 'mov w1, RPINR19', 'btss PORTD, #RD6', 'bset IEC1, #U2RXIE', 'mov w2, PR1', 'bset T1CON, #TON'],
+    ['mov w0, 0x0662', 'bclr 0x0088, #3', 'bset 0x03b0, #10', 'mov w1, 0x07b6', 'btss 0x06a0, #6', 'bset 0x009a, #14', 'mov w2, 0x0192', 'bset 0x0194, #15']);
+  same(['mov #tblpage(tab), w0', 'mov #tbloffset(tab), w1', 'mov #(1 << 4) | 0x3, w2', 'mov #~0x00ff & 0xffff, w3', '.equ PERIOD, 20000 - 1', 'mov #PERIOD, w4',
+    'mov #(PERIOD / 2) % 7, w5', 'mov #handle(tab), w6', 'tab: .pword 0x123456'],
+  ['mov #0, w0', 'mov #0x0e, w1', 'mov #19, w2', 'mov #0xff00, w3', 'mov #19999, w4', 'mov #3, w5', 'mov #0x0e, w6', '.pword 0x123456']);
+  assert.deepEqual(assemble(['mov #psvpage(x), w0', 'x: nop', 'mov #(1 +, w0', 'mov #nothing, w0'], { file: 'n.s' }).errors.map(asmMessage),
+    ['n.s:1: mov #psvpage(x), w0: psvpage(): not supported yet', 'n.s:3: mov #(1 +, w0: an expression ends too soon: (1 +', 'n.s:4: mov #nothing, w0: unknown symbol: nothing']);
+});
+
+test('#5931 the sections: .text\'s instructions, .bss\'s data labels (.space), .word 16 bits and .pword 24, .align, .end', async () => {
+  const { assemble, asmMessage } = await import('../packages/silinx-pic24/src/index.js');
+  const r = assemble(['.bss', 'count: .space 2', 'buf: .space 8', '.align 4', 'last: .space 1', '.text', 'mov count, w0', 'mov w0, buf+2', '.word 0xbeef, 5', '.pword 0xabcdef', '.align 8', 'nop', '.end', 'frob']);
+  assert.deepEqual(r.errors.map(asmMessage), []);
+  assert.deepEqual(r.labels, { count: 0x0800, buf: 0x0802, last: 0x080c });
+  assert.deepEqual([...r.words], [...assemble(['mov 0x0800, w0', 'mov w0, 0x0804']).words, 0x00beef, 0x000005, 0xabcdef, 0xffffff, 0xffffff, 0xffffff, 0x000000]);
+  assert.deepEqual(assemble(['.word 0x10000', '.data', '.section .const', '.bss', 'nop', '.space 2', '.include "p30F4011.inc"', '.frob', '.text', '.space 2'], { file: 's.s' }).errors.map(asmMessage), [
+    's.s:1: .word 65536 not in -32768..65535',
+    's.s:2: .data: initialised data needs XC16\'s startup code: reserve it in .bss and write it in the program',
+    's.s:3: .section .const: the program\'s (.text) or the data memory\'s (.bss) only',
+    's.s:5: an instruction outside the program\'s section (.text): nop',
+    's.s:7: .include "p30F4011.inc": only the PIC24FJ1024GB610\'s names, "p24FJ1024GB610.inc", are built in',
+    's.s:8: no directive .frob',
+    's.s:10: .space: in .bss (the program\'s words are .word / .pword)',
+  ]);
+});
+
+test('#5931 a program linked as XC16 links it: the reset vector, the vector table, __DefaultInterrupt, the configuration words', async () => {
+  const { assemble, assembleProgram, asmMessage, parseHex, readConfig } = await import('../packages/silinx-pic24/src/index.js');
+  const r = assembleProgram(XC16(['    mov #0x0900, w15', 'loop: bra loop', '    .global __T1Interrupt', '__T1Interrupt:', '    bclr IFS0, #T1IF', '    retfie']), { file: 'p.s' });
+  assert.deepEqual([r.errors, r.warnings, r.linked], [[], [], true]);
+  assert.deepEqual([...r.words.slice(0, 2)], [0x040200, 0x000000]);   // GOTO __reset (0x200)
+  assert.equal(r.words[0x1a / 2], 0x000204);   // T1's vector (IRQ 3, 0x14 + 2 x 3): its handler
+  assert.equal(r.words[0x14 / 2], 0x000208);   // INT0's: __DefaultInterrupt, a RESET after the program
+  assert.equal(r.words[0x04 / 2], 0x000208);   // (a trap's too)
+  assert.equal(r.words[0x208 / 2], 0xfe0000);
+  const hex = parseHex(r.hex);
+  assert.equal(hex.program[0x100], assemble(['mov #0x0900, w15']).words[0]);
+  assert.equal(readConfig((a) => (a === 0x0abf20 ? r.config[0x0abf20] : 0xffffff)).watchdog, 'off');
+  assert.equal(r.config[0x0abf20], 0xffff9f);
+  // its own __DefaultInterrupt; settings ANDed; a handler not .global (XC16 would not see it): said, its vector the default's
+  const own = assembleProgram(XC16(['loop: bra loop', '__DefaultInterrupt: reset', '__U1RXInterrupt: retfie', '    config __FOSCSEL, FNOSC_PRI']), { file: 'q.s' });
+  assert.deepEqual(own.errors, []);
+  assert.deepEqual(own.warnings.map(asmMessage), ['q.s:8: __U1RXInterrupt is not .global: XC16\'s linker would leave its vector to __DefaultInterrupt']);
+  assert.equal(own.words[(0x14 + 2 * 11) / 2], 0x000202);
+  assert.deepEqual(own.config, { 0x0abf20: 0xffff9f, 0x0abf18: 0xfffffa });
+  // the refusals: no __reset defined, a configuration word or setting not the device's, a word set twice
+  assert.deepEqual(assembleProgram(['.global __reset', 'nop'], { file: 'r.s' }).errors.map(asmMessage), ['r.s:1: __reset is .global but not defined: the program\'s entry']);
+  assert.deepEqual(assembleProgram(['config __FWDTX, FWDTEN_OFF', 'config __FWDT, WINDIS_ON', 'nop'], { file: 'c.s' }).errors.map(asmMessage), [
+    'c.s:1: config __FWDTX: no such configuration word (__FSEC, __FBSLIM, __FSIGN, __FOSCSEL, __FOSC, __FWDT, __FPOR, __FICD, __FDEVOPT1, __FBOOT)',
+    'c.s:2: config __FWDT: no setting WINDIS_ON (FWDTEN_OFF, FWDTEN_ON_ACTIVE, FWDTEN_SWON, FWDTEN_ON)']);
+  const twice = assembleProgram(XC16(['nop', 'config __FWDT, FWDTEN_ON']), { file: 't.s' });
+  assert.deepEqual(twice.warnings.map(asmMessage), ['t.s:7: config __FWDT set again (first at line 2)']);
+  assert.equal(twice.config[0x0abf20], 0xffff9f, 'the settings ANDed, as XC16\'s');
+  // an older source (no __reset): from 0, as it is
+  assert.deepEqual([...assembleProgram(['goto main', '.org 0x4', 'main: bra main']).words], [0x040004, 0x000000, 0x37ffff]);
 });

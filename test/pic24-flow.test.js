@@ -25,7 +25,7 @@ test('#5480 BRA on each condition, for every N, OV, Z, C: taken as the condition
     }
   }
   assert.deepEqual([exec('bra 0x01f0').cpu.pc, exec('bra 0x01f0').cycles], [0x1f0, 2]);
-  assert.match(exec('.word 0x3f0000').cpu.log[0].text, /illegal instruction 0x3F0000/);
+  assert.match(exec('.pword 0x3f0000').cpu.log[0].text, /illegal instruction 0x3F0000/);
 });
 
 test('#5480 CALL and RETURN: PC+4 pushed (its low word, then PC<22:16>), the target, 2 and 3 cycles; RCALL, RETLW', () => {
@@ -112,7 +112,7 @@ test('#5480 PWRSAV, RESET, CLRWDT, BOOTSWP, NOPR, PUSH.S and POP.S', () => {
   assert.equal(exec('clrwdt').cycles, 1);
   ({ cpu } = exec('bootswp'));
   assert.match(cpu.log[0].text, /BOOTSWP: the dual partitions' swap is not emulated/);
-  assert.deepEqual([exec('nopr').cpu.pc, exec('.word 0xffffff').cpu.pc], [0x202, 0x202], 'NOPR and the erased flash');
+  assert.deepEqual([exec('nopr').cpu.pc, exec('.pword 0xffffff').cpu.pc], [0x202, 0x202], 'NOPR and the erased flash');
   const s = cpuWith(['push.s', 'mov #1, w0', 'mov #2, w3', 'pop.s']);
   for (const [k, v] of Object.entries({ W0: 0xa, W1: 0xb, W2: 0xc, W3: 0xd, SR: 0x10f })) set(s.cpu, k, v);
   for (let i = 0; i < 3; i++) s.cpu.step();

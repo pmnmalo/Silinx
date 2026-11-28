@@ -129,7 +129,7 @@ test('#5481 RCON\'s flags: POR and BOR at power-on, SWR after RESET, IOPUWR afte
   assert.equal(mcu.get(RCON), 0x0003);
   cpu.step(); cpu.step(); cpu.step();
   assert.equal(mcu.get(RCON), 0x0040);
-  const i = await deviceWith(['.word 0xc30000'], { config: { FWDT: WDT_OFF } });
+  const i = await deviceWith(['.pword 0xc30000'], { config: { FWDT: WDT_OFF } });
   i.cpu.step(); i.cpu.step();
   assert.equal(i.mcu.get(RCON), 0x4003);
 });

@@ -8,6 +8,10 @@
 //
 //   const { words, labels } = pic24Assemble(['mov #0x1234, w0', 'loop: bra loop']);
 
+import { evaluate } from './asm-expr.js';
+import { REGISTERS, BITS, VECTORS, CONFIG_SETTINGS, CONFIG_ADDRESSES, LINK } from './gb610-names.js';
+import { writeHex } from './hex.js';
+
 const MODES = { direct: 0, ind: 1, postdec: 2, postinc: 3, predec: 4, preinc: 5, offset: 6 };
 // the SFRs a test names (the CPU's)
 export const SYMBOLS = {
@@ -41,23 +45,18 @@ function operand(text) {
 }
 
 // a number: decimal, 0x hex, 0b binary, a label, a symbol, '-' before; a sum of them with + and -
+// an expression's value (asm-expr.js): its names a label, an .equ's, the device's (gb610-names.js), else in the first pass 0
 function value(expr, env) {
-  const parts = String(expr).replace(/\s+/g, '').match(/[+-]?[^+-]+/g) ?? fail(`no value: ${expr}`);
-  let v = 0;
-  for (const p of parts) {
-    const neg = p[0] === '-', t = p.replace(/^[+-]/, '');
-    let x;
-    if (/^0x[0-9a-f]+$/i.test(t)) x = parseInt(t.slice(2), 16);
-    else if (/^0b[01]+$/i.test(t)) x = parseInt(t.slice(2), 2);
-    else if (/^\d+$/.test(t)) x = parseInt(t, 10);
-    else if (t === '$') x = env.pc;
-    else if (t in env.labels) x = env.labels[t];
-    else if (t.toUpperCase() in env.symbols) x = env.symbols[t.toUpperCase()];
-    else if (env.pass === 1) x = 0;
-    else fail(`unknown symbol: ${t}`);
-    v += neg ? -x : x;
-  }
-  return v;
+  return evaluate(expr, {
+    pc: env.pc,
+    lookup(t) {
+      if (t in env.labels) return env.labels[t];
+      const up = t.toUpperCase();
+      if (up in env.symbols) return env.symbols[up];
+      if (env.pass === 1) return 0;
+      return fail(`unknown symbol: ${t}`);
+    },
+  });
 }
 
 function range(v, lo, hi, what) { if (v < lo || v > hi) fail(`${what} ${v} not in ${lo}..${hi}`); return v; }
@@ -307,16 +306,59 @@ function split(rest) {
   return out.map(operand);
 }
 
+// xc16-as's directives (#5931): name -> (rest, env, put); the sections .text (the program's) and .bss (the data memory's,
+// .space reserving it), .equ / .set, .global, .include of the device's names, .word / .pword, .align, .org, .end, config
+const INCLUDES = /^"?(p24FJ1024GB610\.inc|xc\.inc)"?$/i;
+const DIRECTIVES = {
+  '.word': (r, env, put) => { for (const e of split(r).map((o) => o.expr ?? r)) put(range(value(e, env), -32768, 0xffff, '.word') & 0xffff); },
+  '.pword': (r, env, put) => { for (const e of split(r).map((o) => o.expr ?? r)) put(value(e, env)); },
+  '.org': (r, env, put) => {
+    const a = value(r, env);
+    if (env.section !== 'text') fail('.org: in the program\'s section (.text) only');
+    if (a < env.pc || a & 1) fail(`.org ${r}: not an even address after 0x${env.pc.toString(16)}`);
+    while (env.pc < a) put(0xffffff);   // (the erased flash between)
+  },
+  '.align': (r, env, put) => { const n = value(r, env); if (env.section === 'text') { while (env.pc % n) put(0xffffff); } else env.dpc = Math.ceil(env.dpc / n) * n; },
+  '.text': (r, env) => { env.section = 'text'; },
+  '.bss': (r, env) => { env.section = 'bss'; },
+  '.data': () => fail('.data: initialised data needs XC16\'s startup code: reserve it in .bss and write it in the program'),
+  '.section': (r, env) => {
+    const name = r.split(',')[0].trim();
+    if (/^\.text\b/.test(name)) env.section = 'text';
+    else if (/^\.(bss|nbss)\b/.test(name) || /\bbss\b/.test(r.split(',').slice(1).join(','))) env.section = 'bss';
+    else fail(`.section ${name}: the program's (.text) or the data memory's (.bss) only`);
+  },
+  '.space': (r, env, put) => { const n = value(r, env); if (env.section === 'text') fail('.space: in .bss (the program\'s words are .word / .pword)'); env.dpc += n; },
+  '.skip': (r, env, put) => DIRECTIVES['.space'](r, env, put),
+  '.equ': (r, env) => { const [n, ...e] = r.split(','); if (!e.length) fail('.equ name, value'); env.symbols[n.trim().toUpperCase()] = value(e.join(','), env); },
+  '.set': (r, env) => DIRECTIVES['.equ'](r, env),
+  '.global': (r, env) => { for (const n of r.split(',')) env.globals.add(n.trim()); },
+  '.globl': (r, env) => DIRECTIVES['.global'](r, env),
+  '.include': (r) => { if (!INCLUDES.test(r.trim())) fail(`.include ${r.trim()}: only the PIC24FJ1024GB610's names, "p24FJ1024GB610.inc", are built in`); },
+  '.end': (r, env) => { env.ended = true; },
+  config: (r, env) => {
+    const [word, ...settings] = r.split(',');
+    const w = word.trim().toUpperCase(), table = CONFIG_SETTINGS[w.replace(/^__/, '')], addr = CONFIG_ADDRESSES[w];
+    if (addr == null) fail(`config ${word.trim()}: no such configuration word (${Object.keys(CONFIG_ADDRESSES).join(', ')})`);
+    let v = env.config.get(addr) ?? 0xffffff;
+    for (const set of settings.join(',').split('&').map((x) => x.trim()).filter(Boolean)) {
+      const k = set.toUpperCase();
+      if (!table || !(k in table)) fail(`config ${word.trim()}: no setting ${set}${table ? ` (${Object.keys(table).join(', ')})` : ''}`);
+      v &= 0xff0000 | table[k];
+    }
+    if (env.pass === 2 && env.configLine.has(addr) && env.configLine.get(addr) !== env.line) env.warn(`config ${word.trim()} set again (first at line ${env.configLine.get(addr)})`);
+    env.configLine.set(addr, env.configLine.get(addr) ?? env.line);
+    env.config.set(addr, v);
+  },
+};
+
 // a line's statement assembled into put(): a directive or an instruction (its errors thrown, its line's text before)
 function statement(s, raw, env, put) {
   const [head, rest = ''] = s.split(/\s+(.*)/);
-  if (head.toLowerCase() === '.word') { put(value(rest, env)); return; }
-  if (head.toLowerCase() === '.org') {
-    const a = value(rest, env);
-    if (a < env.pc || a & 1) fail(`.org ${rest}: not an even address after 0x${env.pc.toString(16)}`);
-    while (env.pc < a) put(0xffffff);   // (the erased flash between)
-    return;
-  }
+  const d = DIRECTIVES[head.toLowerCase()];
+  if (d) { d(rest, env, put); return; }
+  if (head[0] === '.') fail(`no directive ${head}`);
+  if (env.section !== 'text') fail(`an instruction outside the program's section (.text): ${raw.trim()}`);
   const [mn, ...sfx] = head.toUpperCase().split('.');
   const enc = TABLE[mn] ?? fail(`no instruction ${mn}: ${raw}`);
   let out;
@@ -326,34 +368,75 @@ function statement(s, raw, env, put) {
 
 /**
  * A source assembled (its lines, or its text): { words (the program's, from program address `org`), labels (their
- * addresses), errors, warnings } (each { file, line, message }, the line counted from 1). Every line is assembled
- * though an earlier one failed; a label defined twice is an error at its second line, naming the first (#5893).
+ * addresses: a .bss label's its data address), globals, config (program address -> its configuration word), errors,
+ * warnings } (each { file, line, message }, the line counted from 1). Every line is assembled though an earlier one
+ * failed; a label defined twice is an error at its second line, naming the first (#5893). Its names: the device's
+ * (gb610-names.js) and `symbols`.
  */
 export function assemble(lines, { org = 0, symbols = {}, file = '' } = {}) {
   const src = (Array.isArray(lines) ? lines : String(lines).split('\n'));
-  const env = { labels: {}, symbols: { ...SYMBOLS, ...Object.fromEntries(Object.entries(symbols).map(([k, v]) => [k.toUpperCase(), v])) }, pass: 1 };
-  const where = {}, errors = [];
+  const base = { ...REGISTERS, ...BITS, ...SYMBOLS, ...Object.fromEntries(Object.entries(symbols).map(([k, v]) => [k.toUpperCase(), v])) };
+  const env = { labels: {}, pass: 1 };
+  const where = {}, errors = [], warnings = [];
   const error = (line, message) => errors.push({ file, line, message });
   let words;
   for (env.pass = 1; env.pass <= 2; env.pass++) {
     words = [];
-    env.pc = org;
+    Object.assign(env, { pc: org, dpc: LINK.DATA_BASE, section: 'text', symbols: { ...base }, globals: new Set(), config: new Map(), configLine: new Map(), ended: false });
+    env.warn = (message) => { if (env.pass === 2) warnings.push({ file, line: env.line, message }); };
     const put = (w) => { words.push(w & 0xffffff); env.pc += 2; };
     src.forEach((raw, i) => {
+      if (env.ended) return;
+      env.line = i + 1;
       let s = raw.replace(/;.*/, '').trim();
       let m;
       while ((m = /^([A-Za-z_.$][\w.$]*):\s*/.exec(s))) {
         if (env.pass === 1) {
           if (m[1] in where) error(i + 1, `the label '${m[1]}' is defined twice: at line ${where[m[1]]} and at line ${i + 1}`);
-          else { where[m[1]] = i + 1; env.labels[m[1]] = env.pc; }
+          else { where[m[1]] = i + 1; env.labels[m[1]] = env.section === 'text' ? env.pc : env.dpc; }
         }
         s = s.slice(m[0].length);
       }
       if (!s) return;
       try { statement(s, raw, env, put); } catch (e) { if (env.pass === 2) error(i + 1, e.message); }
     });
+    if (env.pass === 2 && env.dpc > LINK.DATA_END + 1) error(src.length, `the data memory overflowed: .bss reaches 0x${env.dpc.toString(16)}, past 0x${LINK.DATA_END.toString(16)}`);
   }
-  return { words: Uint32Array.from(words), labels: env.labels, errors, warnings: [] };
+  return { words: Uint32Array.from(words), labels: env.labels, globals: [...env.globals], config: Object.fromEntries(env.config), errors, warnings, where };
+}
+
+/**
+ * A program assembled and linked as XC16's linker places it (#5931): an xc16-as source (its .global __reset) from the
+ * code's start (0x200, after the vector table), the reset vector a GOTO __reset, each vector the address of its handler
+ * (a .global __T1Interrupt…) or of __DefaultInterrupt (a RESET of the linker's, after the program, when the source
+ * has none); an older source (no __reset: its own GOTO and vectors) from 0. Its configuration words (config). {
+ * words (the flash's, from 0), hex (XC16's Intel HEX), labels, config, linked, errors, warnings }.
+ */
+export function assembleProgram(lines, { file = '', symbols = {} } = {}) {
+  const src = Array.isArray(lines) ? lines : String(lines).split('\n');
+  const probe = /^\s*(\.global|\.globl)\s+[^;]*\b__reset\b|^\s*__reset\s*:/m.test(src.join('\n'));
+  const r = assemble(src, { file, symbols, org: probe ? LINK.CODE_BASE : 0 });
+  const warnings = [...r.warnings], errors = [...r.errors];
+  let words = [...r.words];
+  if (probe) {
+    const at = (name) => r.where[name] ?? 1;
+    if (!('__reset' in r.labels)) errors.push({ file, line: 1, message: '__reset is .global but not defined: the program\'s entry' });
+    else if (!r.globals.includes('__reset')) warnings.push({ file, line: at('__reset'), message: '__reset is not .global: XC16\'s linker would not see the entry' });
+    const handlers = Object.keys(VECTORS).filter((v) => v in r.labels);
+    for (const h of handlers) if (!r.globals.includes(h)) warnings.push({ file, line: at(h), message: `${h} is not .global: XC16's linker would leave its vector to __DefaultInterrupt` });
+    let fallback = r.labels.__DefaultInterrupt;
+    if (fallback == null) { fallback = LINK.CODE_BASE + 2 * words.length; words.push(0xfe0000); }   // (RESET)
+    const image = new Array(LINK.CODE_BASE / 2).fill(0xffffff);
+    image[0] = 0x040000 | ((r.labels.__reset ?? 0) & 0xfffe); image[1] = ((r.labels.__reset ?? 0) >> 16) & 0x7f;
+    for (const [name, addr] of Object.entries(VECTORS)) image[addr / 2] = (r.globals.includes(name) && name in r.labels ? r.labels[name] : fallback) & 0xffffff;
+    for (let a = 0x04; a < LINK.CODE_BASE; a += 2) if (image[a / 2] === 0xffffff) image[a / 2] = fallback;
+    words = [...image, ...words];
+  }
+  const flash = Uint32Array.from(words);
+  let hex = writeHex(flash).replace(/:00000001FF\n$/, '');
+  for (const [addr, v] of Object.entries(r.config).sort((a, b) => a[0] - b[0])) hex += writeHex([v], Number(addr) >> 1).replace(/:00000001FF\n$/, '');
+  hex += ':00000001FF\n';
+  return { words: flash, hex: errors.length ? null : hex, labels: r.labels, config: r.config, linked: probe, errors, warnings };
 }
 
 /** An error or a warning as a line of text: 'file:line: message' ('line N: message' with no file). */

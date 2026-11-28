@@ -70,8 +70,21 @@ const { outputs } = node.run(1e9, [{ t: 5e8, pin: 'RD6', value: 0 }]);   // to 1
 Its shape is avr8js's: `cpu.cycles` counts the instruction cycles, `cpu.readHooks` and `cpu.writeHooks` are the
 SFRs' hooks, `cpu.addClockEvent(fn, cycles)` a peripheral's timing, `cpu.raise(irq)` its interrupt request.
 
+It has its own assembler (#5930, #5931), so a program needs no XC16: `assembleProgram(source, { file })` reads xc16-as's
+syntax (`.include "p24FJ1024GB610.inc"`, `.global __reset`, `.text`, `.bss` with `.space`, `.equ`, `.word` / `.pword`,
+`config __FWDT, FWDTEN_OFF`, the device's registers and bits by name, `tblpage()` / `tbloffset()` / `handle()`) and links it
+as XC16's linker places it (the reset vector, the vector table's handlers and `__DefaultInterrupt`, the code from 0x200,
+the configuration words): `{ hex, words, labels, config, errors, warnings }`, its errors and warnings by file and line.
+
+```js
+import { assembleProgram, Pic24Node } from 'silinx-pic24';
+
+const { hex, errors } = assembleProgram(source, { file: 'blink.s' });
+const node = new Pic24Node({ hex });
+```
+
 It imports nothing of Silinx and no npm package (`test/silinx-pic24-package.test.js`). Its tests are Silinx's,
-`test/pic24-*.test.js`, with a test-side assembler (`test/pic24-asm.mjs`).
+`test/pic24-*.test.js`.
 
 It is published on npm (`npm install silinx-pic24`), with npm's provenance, from its own tags
 ([#5509](https://github.com/pmnmalo/Silinx/issues/5509)). A release: `node scripts/changelog-release.mjs X --package
