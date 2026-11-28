@@ -200,7 +200,7 @@ async function renewLink(name, cur) {
 export const COLLAB_TOOLS = [
   {
     name: 'share_project', title: 'Share a project live',
-    description: 'Share a project live, as Share Project… with Live chosen (Share Module… with top). start: the follow link, read only (in Silinx or follow_project), its files and drawings as they change on disk; with editors: true an editor\'s link too (default none, promote then refused). status: who follows (viewer or editor, p2p or relay), what they look at, the share\'s mode. promote / demote (user), renew: as the Sharing menu; a demotion renews the editors\' link. stop ends it. Through a Silinx server\'s relay (another computer\'s only when config.json\'s relay.relays names it), end-to-end encrypted. build/ is not shared. A lost connection resumes on its own.',
+    description: 'Share a project live, as Share Project… with Live (a module\'s: top). start: the follow link, read only (Silinx or follow_project), its files and drawings as they change on disk; editors: true, an editor\'s link too (default none, promote then refused). status: who follows (viewer or editor, p2p or relay), what they look at, the mode. promote / demote (user), renew: as the Sharing menu; a demotion renews the editors\' link. stop ends it. Through a Silinx server\'s relay (another computer\'s only when config.json\'s relay.relays names it), end-to-end encrypted. build/ is not shared. A lost connection resumes on its own.',
     inputSchema: { type: 'object', properties: {
       project: PROJECT,
       action: { type: 'string', enum: ['start', 'status', 'promote', 'demote', 'renew', 'stop'], description: 'start (default), status, promote, demote, renew or stop. renew: a new editors\' link, as Renew Editor Link; the editors not in the share edit no more, those in it keep editing.' },
@@ -301,7 +301,7 @@ export const COLLAB_TOOLS = [
   },
   {
     name: 'follow_project', title: 'Follow a shared project (read only)',
-    description: 'Follow a project someone shares (a link …/#view=… of Share Project… or share_project; …&relay=… through that relay; an older …/#follow=…), read only, as the interface opened at that link; an editor\'s link (…/#edit=…) can write, source and settings. Gives its files, who is in it, the owner\'s open file, cursor and selection (ownerView), and their activity (ownerActivity: documents, processes and logs, simulations, Board Emulators, Try it). path: that file\'s text now (a drawing as merged, with its Check). version: the owner\'s versions; an editor saves, restores. stop: leave; keep: a copy in the workspace, untrusted, as Keep a Copy. Reconnects on its own (connected; ownerAway, ownerResumed).',
+    description: 'Follow a project someone shares (Share Project…\'s or share_project\'s …/#view=… link; …&relay=… through that relay; an older …/#follow=…), read only, as the interface opened at that link; an editor\'s link (…/#edit=…) writes, source and settings. Gives its files, who is in it, the owner\'s open file, cursor and selection (ownerView) and activity (ownerActivity: documents, processes, logs, simulations, Board Emulators, Try it). path: that file\'s text now (a drawing as merged, with its Check). version: the owner\'s versions; an editor saves, restores. stop: leave; keep: an untrusted copy in the workspace (Keep a Copy). Reconnects on its own (connected; ownerAway, ownerResumed).',
     inputSchema: { type: 'object', properties: {
       link: STR('The link to follow (the whole address).'),
       path: STR('A file of the project: its text as it is now.'),

@@ -166,7 +166,7 @@ export const FSM_TOOLS = [
   },
   {
     name: 'edit_fsm', title: 'Edit a state diagram as its transition table does (state diagram)',
-    description: 'Edit a state diagram (.fsm.json) as its editor\'s transition table (the Tables panel) and the diagram do (core/fsm-edit.js): next_state (a transition\'s next state: transition, to; or a state\'s otherwise row given one: state, to), add_transition (from state to to, default itself, with condition, empty: always; before the else or right after transition after), remove_transition, add_state (name, empty: S<n>), rename_state (state, name). A name used twice, a state or transition not there: refused, nothing written. Conditions: set_fsm_condition; outputs: set_fsm_outputs. The diagram is written, its HDL made again; its Check\'s errors and warnings returned.',
+    description: 'Edit a state diagram (.fsm.json) as its transition table (the Tables panel) and its diagram do (core/fsm-edit.js): next_state (transition, to; or a state\'s otherwise row: state, to), add_transition (from state to to, default itself, with condition, empty: always; before the else or right after transition after), remove_transition, add_state (name, empty: S<n>), rename_state (state, name). A name used twice, a state or transition not there: refused, nothing written. Conditions: set_fsm_condition; outputs: set_fsm_outputs. The diagram written, its HDL made again; its Check\'s errors and warnings returned.',
     inputSchema: { type: 'object', properties: {
       project: PROJECT, path: STR('The state diagram: a .fsm.json file of the project.'),
       action: { type: 'string', enum: ['next_state', 'add_transition', 'remove_transition', 'add_state', 'rename_state'], description: 'What to do.' },
