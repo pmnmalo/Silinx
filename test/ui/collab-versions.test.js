@@ -54,8 +54,8 @@ uiTest('#5742 an editor\'s Versions…: the owner\'s versions; Restore of a file
     // Restore src/top.vhd: done by the owner, in both editors, said to both
     await ep.eval(() => [...document.querySelectorAll('.dlg-overlay .version-file-list a.version-restore')][0].click());
     const line = 'Rui restored src/top.vhd as version 1 had it: 1 file(s) written, 0 removed; the project before it kept as version 2.';
-    await page.waitConsole(new RegExp(`^${line.replace(/[.()]/g, '\\$&')}$`, 'm'));
-    await ep.waitConsole(new RegExp(`^${line.replace(/[.()]/g, '\\$&')}$`, 'm'));
+    await page.waitConsole(new RegExp(`^${line.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, 'm'));
+    await ep.waitConsole(new RegExp(`^${line.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, 'm'));
     await until(async () => await readWs(env, 'Shared', P) === TOP, 'the restore on the disk');
     await ep.waitFor((t) => window.Silinx.active.editor.getValue() === t, [TOP], { what: 'the restore at Rui\'s' });
     // Rui's Save Version…: kept by the owner, Rui its author
