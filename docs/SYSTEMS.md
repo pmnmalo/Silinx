@@ -614,8 +614,20 @@ a word's offset (0x000–0xffc). Its slave (`core/regmap-axi.js`, VHDL and Veril
 the AXI4-Lite channels (`s_axi_aw*`, `w*`, `b*`, `ar*`, `r*`, a 12-bit address), as Xilinx's slave template: a write
 taken when its address and data are both valid, byte by byte as WSTRB says, every response OKAY. Its header is the
 PS's (`core/regmap-c.js`: `volatile uint32_t` words at `<NAME>_BASE` + their offsets, a read and a write for each),
-which the editor's Header writes into the Zynq node's `ps/` (a Board project's `ps/`). The PL's top with the PS7 that
-drives it is #4688's part 2. The map is a drawing of the project (#5288, step 2): New Source ▸ Register Map; its HDL file always
+which the editor's Header writes into the Zynq node's `ps/` (a Board project's `ps/`).
+
+The Zynq node's **PL top** (#4688, part 2, `core/zynq-pl-top.js`) is written by Silinx, as Vivado's processing_system7
+wrapper and a block design would, with no block design. It holds:
+- the PS7, its fixed IO (`FIXED_IO_mio`, `FIXED_IO_ps_*`, `DDR_*`) brought out through BIBUFs, and FCLK_CLK0 through a
+  BUFG, with FCLK_RESET0_N as the PL's reset;
+- M_AXI_GP0 (AXI3) bridged to AXI4-Lite: the A9's word accesses are single beats, each ID is given back with its response,
+  and RLAST is high;
+- the map's slave;
+- the student's module: its ports named as the registers are wired to them (an rw or wo register, or a strobe, to an
+  input of its width; an ro register from an output), its `clk` gets FCLK_CLK0 unless it is on a board's pin, and its
+  other ports are the board's.
+A register the module has no port for, or the wrong direction or width, is said. It is compiled, elaborated and
+simulated against stand-ins of the PS7. Vivado's build with the real PS7 is #5985. The map is a drawing of the project (#5288, step 2): New Source ▸ Register Map; its HDL file always
 generated from it (`core/view-hdl.js`), its row in the Design pane (its **Registers** badge first); its editor a table
 (`web/js/regmap-editor.js`), its Check (the MCP's `check_drawing`), its Header button (the MCP's `related_view` header, written by `write_file`); the
 MCP edits it through `write_file`, as its editor saves it; Simulate System says a link's accesses when its FPGA end is
