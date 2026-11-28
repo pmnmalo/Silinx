@@ -81,6 +81,8 @@ test('#4688 the PL top\'s wiring: the registers to the module\'s ports, its clk 
 });
 
 // the stand-ins: the PS7 (FCLK_CLK0 at 100 MHz, its reset released; the A9's word accesses on M_AXI_GP0), BIBUF, BUFG
+// (the VHDL top's `use UNISIM.VCOMPONENTS.ALL`: the package, empty as Silinx's own; its components the stand-ins below)
+const VCOMP = { path: 'vcomponents.vhd', text: 'package VCOMPONENTS is\nend VCOMPONENTS;\n' };
 const STANDINS = ['`timescale 1ns/1ps',
   'module BIBUF (inout IO, inout PAD); endmodule', 'module BUFG (input I, output O); assign O = I; endmodule',
   `module PS7 (inout [53:0] MIO, inout PSCLK, inout PSPORB, inout PSSRSTB, inout [14:0] DDRA, inout [2:0] DDRBA, inout DDRCASB, inout DDRCKE, inout DDRCKN, inout DDRCKP, inout DDRCSB,
@@ -112,12 +114,12 @@ test('#4688 the PL top in VHDL and in Verilog: compiled and elaborated, no error
     const t = zynqPlTop({ module: MODULE, map: MAP, lang });
     const slave = generateRegmap(MAP, { lang });
     const files = [{ path: slave.file, text: slave.code }, { path: `counter.${lang === 'vhdl' ? 'vhd' : 'v'}`, text: COUNTER[lang] }, { path: t.file, text: t.code }];
-    const lib = compile([...files, { path: 'standins.v', text: STANDINS }]);
+    const lib = compile([VCOMP, ...files, { path: 'standins.v', text: STANDINS }]);
     const d = elaborate(lib, 'counter_zynq');
     // (no error and no warning, the compiler's and the elaboration's; the lint left out: the PS7's stand-in drives nothing it
     // knows of, so its nets would look sourceless; Vivado's build with the real PS7 is the board check's)
     assert.deepEqual([...lib.errors, ...d.diags].map((e) => `${e.severity}: ${e.message}`), [], lang);
-    const r = simulate([...files, { path: 'standins.v', text: STANDINS }, { path: 'tb.v', text: '`timescale 1ns/1ps\nmodule tb; wire [53:0] mio; wire [3:0] led; counter_zynq dut (.FIXED_IO_mio(mio), .led(led)); endmodule\n' }],
+    const r = simulate([VCOMP, ...files, { path: 'standins.v', text: STANDINS }, { path: 'tb.v', text: '`timescale 1ns/1ps\nmodule tb; wire [53:0] mio; wire [3:0] led; counter_zynq dut (.FIXED_IO_mio(mio), .led(led)); endmodule\n' }],
       'tb', { until: 1e7 });
     assert.deepEqual(r.errors, [], lang);
     const log = r.sim.log.map((l) => l.text);
@@ -136,7 +138,7 @@ test('#4688 the PL top for the Silinx toolchain (fixedIo false): no fixed IO, no
     assert.doesNotMatch(t.code, /FIXED_IO_|DDR_|BIBUF|\bMIO\b/, lang);
     assert.match(t.code, lang === 'vhdl' ? /MAXIGP0AWADDR => gp0_awaddr/ : /\.MAXIGP0AWADDR\(gp0_awaddr\)/);
     const slave = generateRegmap(MAP, { lang });
-    const r = simulate([{ path: slave.file, text: slave.code }, { path: `counter.${lang === 'vhdl' ? 'vhd' : 'v'}`, text: COUNTER[lang] }, { path: t.file, text: t.code },
+    const r = simulate([VCOMP, { path: slave.file, text: slave.code }, { path: `counter.${lang === 'vhdl' ? 'vhd' : 'v'}`, text: COUNTER[lang] }, { path: t.file, text: t.code },
       { path: 'standins.v', text: STANDINS }, { path: 'tb.v', text: '`timescale 1ns/1ps\nmodule tb; wire [3:0] led; counter_zynq dut (.led(led)); endmodule\n' }], 'tb', { until: 1e7 });
     assert.deepEqual(r.errors, [], lang);
     assert.deepEqual(r.sim.log.map((l) => l.text).filter((l) => /^(write|read) /.test(l)).map((l) => l.split(':')[1].trim().split(' ')[1]), ['0a1', '0b2', '0a3', '0b4', '0a5', '0b6'], lang);

@@ -10,6 +10,7 @@
 
 import { UNISIM_S6_VHDL } from './unisim-s6.js';
 import { UNISIM_XC7_VHDL } from './unisim-xc7.js';
+import { UNISIM_PS7_VHDL } from './unisim-ps7.js';
 import { UNISIM_JTAG_VHDL } from './unisim-jtag.js';
 import { GOWIN_SOURCE, GOWIN_CELLS, usesGowin } from './gowin-prims.js';
 import { latticeSources, latticeShared } from './lattice-libs.js';
@@ -819,7 +820,7 @@ end VPKG;`,
   ...FFS.flatMap(([b, p]) => [ff(b, p, false), ff(b, p, true)]),
   ...LATCHES.flatMap(([n, p]) => [latch(n, p, false), latch(n, p, true)]),
   SRLS, DRAMS, MULTS, BRAMS, dcm('DCM_SP'), dcm('DCM'), ...ddrs,
-  UNISIM_S6_VHDL, UNISIM_XC7_VHDL, UNISIM_JTAG_VHDL,
+  UNISIM_S6_VHDL, UNISIM_XC7_VHDL, UNISIM_JTAG_VHDL, UNISIM_PS7_VHDL,   // (the Zynq's PS7, #4688)
 ].join('\n');
 
 const VCOMPONENTS = 'package VCOMPONENTS is\nend VCOMPONENTS;';

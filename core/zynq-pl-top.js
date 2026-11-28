@@ -94,7 +94,7 @@ function vhdl(top, module, map, w, fixedIo) {
   const pw = Math.max(...ports.map((p) => p[0].length));
   const L = [`-- ${top}: the Zynq PL's top of ${module.name}, written by Silinx (#4688): the PS7, its M_AXI_GP0 bridged to the register`,
     `-- map ${map.name}'s AXI4-Lite slave, and the module. Generated (edit the map and the module, not this file).`,
-    'library IEEE;', 'use IEEE.STD_LOGIC_1164.ALL;', '', `entity ${top} is`,
+    'library IEEE;', 'use IEEE.STD_LOGIC_1164.ALL;', 'library UNISIM;', 'use UNISIM.VCOMPONENTS.ALL;', '', `entity ${top} is`,
     ...ports.map((p, i) => `${i ? '           ' : '    Port ( '}${p[0].padEnd(pw)} : ${p[1].padEnd(5)} ${p[2]}${i === ports.length - 1 ? ');' : ';'}`), `end ${top};`, '',
     `architecture rtl of ${top} is`,
     '    component PS7', '        port (', [...FX.map(([, ps, wd]) => `            ${ps} : inout ${vType(wd)}`), '            FCLKCLK : out STD_LOGIC_VECTOR (3 downto 0)',
