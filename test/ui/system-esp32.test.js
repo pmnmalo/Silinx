@@ -186,7 +186,7 @@ uiTest('#5881 #5884 regression: Try it, an ESP32 asking input(): a line typed in
   await makeProject(env, { name: 'EspAsk', template: 'uart', files: { [FILE]: sys, 'mcu/main.py': ASK } });
   const pj = await env.server.api('GET', '/api/projects/EspAsk');
   delete pj.fileTree;
-  await env.server.api('PUT', '/api/projects/EspAsk', { ...pj, kind: 'system', board: null, constraints: null, top: null });
+  await env.server.api('PUT', '/api/projects/EspAsk', { ...pj, profile: 'system', board: null, constraints: null, top: null });
   await page.openProject('EspAsk');
   await page.eval((f) => window.SilinxApp.openFile(f), FILE);
   await page.waitFor((ed) => document.querySelector(ed), [ED], { what: 'the System editor' });
