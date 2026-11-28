@@ -135,6 +135,21 @@ test('#5480 the EDS window: PSV reads of the program memory (DSRPAG 0x200-0x3FF)
   assert.match(cpu.log[0].text, /a read at 0x8000 in the EDS window with DSRPAG 0: address error trap/);
 });
 
+test('#6023 DSRPAG and DSWPAG 0x0001 from the reset (DS30010074): a program\'s first write and read at 0x8000 the RAM there, no trap; again after a reset', () => {
+  // (the instruction words, as XC16 encodes them: goto 0x200; mov #0x1234, w1; mov w1, 0x8000; mov 0x8000, w2; bra .)
+  const prog = new Array(0x208 >> 1).fill(0xffffff);
+  [prog[0], prog[1]] = [0x040200, 0x000000];
+  [prog[0x100], prog[0x101], prog[0x102], prog[0x103]] = [0x212341, 0x8c0001, 0x840002, 0x37ffff];
+  const cpu = new CPU(prog);
+  for (const reset of [null, 'MCLR']) {
+    if (reset) { cpu.mem[0x8000 >> 1] = 0; cpu.reset(reset); }
+    assert.deepEqual([get(cpu, 'DSRPAG'), get(cpu, 'DSWPAG')], [1, 1], `${reset ?? 'power-on'}: the pages' reset value`);
+    for (let i = 0; i < 4; i++) cpu.step();
+    assert.deepEqual([cpu.W(2), cpu.mem[0x8000 >> 1], cpu.trapReq, cpu.pc], [0x1234, 0x1234, 0, 0x206], `${reset ?? 'power-on'}: through the window to the RAM`);
+  }
+  assert.deepEqual(cpu.log.filter((l) => l.kind !== 'info'), [], 'no trap, no warning');
+});
+
 test('#5480 the RAW stalls (DS70000157 table 4-6): a W written then used as a pointer, one cycle; PUSH then POP', () => {
   const pairs = [
     [['add w0, w1, w2', 'mov [w2], w3'], 1], [['add w0, w1, w2', 'mov [w2++], w3'], 1],

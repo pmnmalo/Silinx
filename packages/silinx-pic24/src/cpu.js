@@ -54,6 +54,9 @@ export class CPU {
     this.mem.fill(0);
     this.mem[15] = RAM_START;              // W15, the stack pointer (table 4-4)
     this.mem[CORW] = PSV;
+    // (DSRPAG and DSWPAG 0x0001 from the reset, DS30010074's register map: the EDS window the RAM above 0x7FFF, #6023)
+    this.mem[SFR.DSRPAG >> 1] = 1;
+    this.mem[SFR.DSWPAG >> 1] = 1;
     this.mem[SFR.INTCON2 >> 1] = GIE;
     for (let i = 0; i < 30; i++) this.mem[(SFR.IPC0 >> 1) + i] = 0x4444;   // (every interrupt at priority 4)
     this.pc = 0;

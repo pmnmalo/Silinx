@@ -10,7 +10,7 @@ export const REGS = {
 };
 
 /** A CPU with the program assembled at `org` (its PC there); W0-W14 written (no uninitialized-W reset) unless
- *  `uninit`; DSRPAG and DSWPAG 1 (the EDS window on the RAM, as XC16's start-up sets them) unless `eds0`. */
+ *  `uninit`; DSRPAG and DSWPAG 1 (the EDS window on the RAM, as at the reset, #6023) unless `eds0`. */
 export function cpuWith(lines, { org = 0x0200, symbols = {}, uninit = false, eds0 = false, program = null } = {}) {
   const { words, labels } = pic24Assemble(lines, { org, symbols });
   const prog = program ? [...program] : [];
