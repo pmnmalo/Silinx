@@ -10,6 +10,7 @@ import { setupUi, uiTest, makeProject } from './harness.js';
 import { newDoc } from '../../core/schdoc.js';
 import { newFsm } from '../../core/fsm.js';
 import { newRegmap } from '../../core/regmap.js';
+import { PROJECT_VERSION } from '../../core/doc-format.js';
 
 let env;
 before(async () => { env = await setupUi(); });
@@ -46,13 +47,14 @@ uiTest('#4756 #5737 a schematic, a state diagram and a register map a newer Sili
   assert.ok((await logText(page)).includes('WARNING: r.regs.json was saved by a newer Silinx (its format 99; this one reads up to 1): opened read-only, so that it is not saved in the older format and loses nothing: update Silinx to change it'));
   assert.ok(!(await logText(page)).includes('cannot open'), 'not refused');
   assert.equal(await page.eval(() => document.querySelector('.doc.active .regs-add, .regs-add')), null, 'no + Register: read-only');
-  // a project a newer Silinx saved: said when it opens
+  // a project a newer Silinx saved: said when it opens (its version one past this Silinx's, read from the code, #5982)
+  const newer = PROJECT_VERSION + 1;
   await makeProject(env, { name: 'NewerPj' });
   const pjFile = path.join(env.server.workspace, 'NewerPj', 'silinx.json');
-  fs.writeFileSync(pjFile, JSON.stringify({ ...JSON.parse(fs.readFileSync(pjFile, 'utf8')), version: 3 }));
+  fs.writeFileSync(pjFile, JSON.stringify({ ...JSON.parse(fs.readFileSync(pjFile, 'utf8')), version: newer }));
   await page.openProject('NewerPj');
   await page.waitFor(() => /the project was saved by a newer Silinx/.test(document.getElementById('console-log').textContent));
-  assert.ok((await logText(page)).includes('WARNING: the project was saved by a newer Silinx (its format 3; this one reads up to 1): what that Silinx added to it may be lost when it is saved here: update Silinx'));
+  assert.ok((await logText(page)).includes(`WARNING: the project was saved by a newer Silinx (its format ${newer}; this one reads up to ${PROJECT_VERSION}): what that Silinx added to it may be lost when it is saved here: update Silinx`));
   // in Portuguese (its drawings reopened with the project, said again)
   await page.eval(async () => (await import('/js/i18n.js')).setLanguage('pt'));
   try {
