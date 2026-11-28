@@ -76,3 +76,16 @@ test('#5697 edit_system makes the Pico\'s firmware CircuitPython: check_system s
   await ok('edit_system', { project: 'p', file: SYS, edits: [{ action: 'change_node', node: 'pico', fields: { runtime: 'micropython' } }] });
   assert.equal((await ok('check_system', { project: 'p', file: SYS })).text.split('\n')[1], 'node pico: Raspberry Pi Pico, program pico/main.py, in MicroPython');
 });
+
+test('#5909 regression: a Pico emulated (simulate with controls, as Emulate System): its board, each of its pins\' level, its LED on GP25; its line says them', async () => {
+  await ok('write_file', { project: 'p', path: 'pico/main.py', text: 'from machine import Pin\nimport time\nPin(25, Pin.OUT).value(1)\nPin(2, Pin.OUT).value(1)\nPin(3, Pin.OUT).value(0)\nwhile True:\n    time.sleep_ms(1)\n' });
+  const e = await ok('simulate', { project: 'p', top: SYS, time_ns: 300e6, controls: [] });
+  const pico = e.data.boards.pico;
+  assert.deepEqual(Object.keys(pico), ['pins', 'led'], 'its board (none on the old code)');
+  assert.deepEqual(Object.keys(pico.pins), [...[...Array(23).keys()], 25, 26, 27, 28].map((n) => `GP${n}`));
+  assert.deepEqual(['GP25', 'GP2', 'GP3', 'GP0'].map((p) => pico.pins[p]), [1, 1, 0, 0], 'GP0, its UART0\'s TX, not set up by this program');
+  assert.ok(pico.led > 0.99, `its LED: ${pico.led}`);
+  // (GP5: UART1's RX, which no link drives, held idle at 1)
+  assert.ok(e.text.split('\n').includes('pico\'s board: LED (GP25) on; pins high GP2 GP5 GP25.'), e.text);
+  assert.deepEqual([e.data.warnings, e.data.errors], [[], []]);
+});

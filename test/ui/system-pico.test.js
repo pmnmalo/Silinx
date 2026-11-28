@@ -158,3 +158,40 @@ uiTest('#5697 the Pico\'s firmware CircuitPython in its Properties: saved, its h
   assert.deepEqual(lines.filter((l) => /^(ERROR|WARNING)/.test(l)), []);
   assert.deepEqual(page.console.filter((c) => c.type === 'warning' || c.type === 'warn' || c.type === 'error').map((c) => c.text), []);
 }, { timeout: 300000 });
+
+// (#5909) a Pico and a Pico W in Emulate: each its board drawn (none before), its pads' levels (26: GP25 is the LED's, no pad),
+// the Pico's LED lit by GP25
+const BLINK = ['from machine import Pin', 'import time', 'Pin(25, Pin.OUT).value(1)', 'Pin(2, Pin.OUT).value(1)', 'Pin(3, Pin.OUT).value(0)', 'while True:', '    time.sleep_ms(1)', ''].join('\n');
+uiTest('#5909 regression: Emulate draws a Pico and a Pico W, each pad its level (GP2 high, GP3 low), the Pico\'s LED lit by GP25; Portuguese', E, async (page) => {
+  const sys = JSON.stringify({ format: 'silinx-system', version: 2, name: 'pico', nodes: [
+    { id: 'pico', kind: 'mcu', board: 'pico', lang: 'micropython', firmware: 'pico/main.py', interfaces: [], x: 0, y: 0 },
+    { id: 'picow', kind: 'mcu', board: 'pico-w', lang: 'micropython', firmware: 'picow/main.py', interfaces: [], x: 0, y: 200 }], links: [] }, null, 2);
+  await makeProject(env, { name: 'PicoEmu', template: 'uart', files: { [FILE]: sys, 'pico/main.py': BLINK, 'picow/main.py': BLINK } });
+  const pj = await env.server.api('GET', '/api/projects/PicoEmu');
+  delete pj.fileTree;
+  await env.server.api('PUT', '/api/projects/PicoEmu', { ...pj, profile: 'system', board: null, constraints: null, top: null });
+  await page.openProject('PicoEmu');
+  await page.eval((f) => window.SilinxApp.openFile(f), FILE);
+  await page.waitFor((ed) => document.querySelector(ed), [ED], { what: 'the System editor' });
+  await page.click(`${ED} .sys-emu-btn`);
+  const EMU = '.doc:not([hidden]) .sys-emu';
+  await page.waitFor((e) => document.querySelector(`${e} [data-node=pico] .emu-pcb`) && document.querySelector(`${e} [data-node=picow] .emu-pcb`), [EMU], { what: 'the boards', timeout: 120000 });
+  const drawn = await page.eval((e) => ['pico', 'picow'].map((n) => { const b = document.querySelector(`${e} [data-node=${n}]`); return [b.querySelectorAll('.sys-pin').length, !!b.querySelector('.sys-pico-led'), b.querySelector('.emu-board-note').textContent]; }), EMU);
+  assert.deepEqual(drawn, [[26, true, 'Raspberry Pi Pico — pico · RP2040, MicroPython (its firmware on rp2040js)'], [26, false, 'Raspberry Pi Pico W — picow · RP2040, MicroPython (its firmware on rp2040js)']]);
+  if (await page.eval((e) => document.querySelector(`${e} .sysemu-run`)?.textContent !== '⏸ Pause', EMU)) await page.click(`${EMU} .sysemu-run`);
+  // (its pads' levels and its LED, painted from the run)
+  await page.waitFor((e) => ['pico', 'picow'].every((n) => { const pin = (p) => document.querySelector(`${e} [data-node=${n}] .sys-pin[data-pin=${p}]`).classList; return pin('GP2').contains('high') && pin('GP3').contains('low'); }), [EMU], { what: 'GP2 high, GP3 low', timeout: 120000 });
+  await page.waitFor(() => window.SilinxApp.findDoc('sysemu:pico.sys.json').emulator.state()?.boards.pico.led > 0.9, [], { what: 'the LED lit', timeout: 60000 });
+  await page.waitFor((e) => getComputedStyle(document.querySelector(`${e} [data-node=pico] .sys-pico-led`)).boxShadow !== 'none', [EMU], { what: 'the LED drawn lit', timeout: 30000 });
+  const s = await page.eval(() => window.SilinxApp.findDoc('sysemu:pico.sys.json').emulator.state());
+  assert.deepEqual([Object.keys(s.boards.pico), Object.keys(s.boards.picow), s.warnings, s.errors], [['pins', 'led'], ['pins'], [], []]);
+  await page.click(`${EMU} .sysemu-run`);
+  // in Portuguese
+  await page.eval(async () => (await import('/js/i18n.js')).setLanguage('pt'));
+  await page.waitFor((e) => document.querySelector(`${e} [data-node=pico] .sys-pico-led`)?.title === 'LED (pino GP25)', [EMU], { what: 'Portuguese' });
+  assert.equal(await page.eval((e) => document.querySelector(`${e} [data-node=pico] .emu-board-note`).textContent, EMU), 'Raspberry Pi Pico — pico · RP2040, MicroPython (o seu firmware no rp2040js)');
+  await page.eval(async () => (await import('/js/i18n.js')).setLanguage('en'));
+  const lines = await page.eval(() => [...document.querySelectorAll('#console-log .ln')].map((l) => l.textContent.trim()));
+  assert.deepEqual(lines.filter((l) => /^(ERROR|WARNING): Emulate/.test(l)), []);
+  assert.deepEqual(page.console.filter((c) => c.type === 'warning' || c.type === 'warn' || c.type === 'error').map((c) => c.text), []);
+}, { timeout: 300000 });

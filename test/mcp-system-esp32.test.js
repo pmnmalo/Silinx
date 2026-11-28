@@ -80,6 +80,9 @@ test('#5495 an ESP32 emulated (simulate with controls, as Emulate System): its b
   assert.deepEqual(Object.keys(esp.pins), ['GPIO0', 'GPIO1', 'GPIO2', 'GPIO3', 'GPIO4', 'GPIO5', 'GPIO12', 'GPIO13', 'GPIO14', 'GPIO15', 'GPIO16', 'GPIO17', 'GPIO18', 'GPIO19', 'GPIO21', 'GPIO22', 'GPIO23', 'GPIO25', 'GPIO26', 'GPIO27', 'GPIO32', 'GPIO33', 'GPIO34', 'GPIO35', 'GPIO36', 'GPIO39']);
   assert.deepEqual(['GPIO2', 'GPIO4', 'GPIO17', 'GPIO5'].map((p) => esp.pins[p]), [1, 0, 1, null]);
   assert.deepEqual([e.data.warnings, e.data.errors], [[], []]);
+  // (#5882 regression: its board's line names its pins only, no "LED L", the Arduino's)
+  assert.ok(e.text.split('\n').includes('esp\'s board: pins high GPIO2 GPIO17.'), e.text);
+  assert.ok(!/LED/.test(e.text.split('\n').find((l) => l.startsWith('esp\'s board'))), e.text);
 });
 
 test('#5881 #5884 regression: simulate an ESP32 whose program asks input() and reads an output back: the line typed to its console read, its LED toggled', async () => {

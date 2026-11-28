@@ -140,7 +140,7 @@ async function runReady(name, file, sys, { ready, emu, stimulus, set, type, cont
   const vcd = `build/${sys.name}.vcd`;
   await P.writeFile(name, vcd, systemVcd(ready.sim, { name: sys.name }));
   const bytes = t => t.bytes.map(b => ({ t: b.t, byte: b.byte, ...(b.error ? { error: b.error } : {}) }));
-  return { text: [...said, ...rep.lines, ...(shown ? boardLines(shown) : []), `The waves: ${vcd}.`].join('\n'), isError: false,
+  return { text: [...said, ...rep.lines, ...(shown ? boardLines(shown, emu.boards) : []), `The waves: ${vcd}.`].join('\n'), isError: false,
     data: { project: name, file, ...(stimulus ? { stimulus: set.stimulus } : {}), time: runTimeText(rep.now), traffic: rep.traffic.map(t => ({ wire: t.wire, link: t.link, from: t.from, to: t.to, bytes: bytes(t) })), spi: rep.spi.map(x => ({ link: x.link, from: x.from, to: x.to, hz: x.hz, mode: x.mode, transfers: x.transfers })), i2c: rep.i2c.map(x => ({ link: x.link, from: x.from, to: x.to, hz: x.hz, transfers: x.transfers })), regs: rep.regs.map(x => ({ link: x.link, map: x.map, accesses: x.accesses.map(({ text, ...y }) => y) })), terminals: rep.terminals, ...(rep.mqtt ? { mqtt: rep.mqtt } : {}), ...(Object.keys(rep.circuits).length ? { circuits: rep.circuits } : {}), warnings: [...said, ...rep.warnings], errors: rep.errors, vcd, ...(ids ? { nodes: sys.nodes.map(n => n.id) } : {}), ...(shown ? { boards: shown } : {}) },
     untrusted: 'the System\'s names and the bytes its nodes sent' };
 }
@@ -172,10 +172,13 @@ async function runControls(sim, boards, controls, end) {
   return boardStates(sim, boards, from, end);
 }
 
-// what the boards show, a line each
-const boardLines = shown => Object.entries(shown).map(([id, s]) => (s.lcd ? explorerLine(id, s) : s.inputs && s.lit ? `${id}'s circuit: lit ${s.lit.join(' ') || 'none'}${Object.entries(s.sensors || {}).map(([k, x]) => `; ${k} ${x.temp.toFixed(1)} °C`).join('')}${Object.entries(s.servos || {}).map(([k, x]) => `; ${k} at ${Math.round(x.angle)}°`).join('')}${Object.entries(s.buzzers || {}).map(([k, x]) => `; ${k} ${x.sounding ? `${x.hz} Hz` : 'silent'}`).join('')}${Object.entries(s.steppers || {}).map(([k, x]) => `; ${k} at ${x.angle}°`).join('')}${Object.entries(s.sds || {}).map(([k, x]) => `; ${k} ${x.stage}, ${x.written.length} block(s) written`).join('')}${Object.entries(s.sonars || {}).map(([k, x]) => `; ${k} ${x.cm} cm`).join('')}${Object.entries(s.pirs || {}).map(([k, x]) => `; ${k} OUT ${x.out ? 1 : 0}`).join('')}${Object.entries(s.dhts || {}).map(([k, x]) => `; ${k} ${x.temp} °C ${x.hum} %`).join('')}.` : s.leds
+// a microcontroller's LED of its program's by its pin (an Arduino's L, a Pico's on GP25); an ESP32 DevKitC has none (#5882)
+const LED_NAMES = { D13: 'LED L', GP25: 'LED (GP25)' };
+const ledText = (b, s) => (b?.led && s.led != null ? `${LED_NAMES[b.led] ?? `LED (${b.led})`} ${s.led > 0.5 ? 'on' : 'off'}; ` : '');
+// what the boards show, a line each (boards: emulationBoards')
+const boardLines = (shown, boards = []) => Object.entries(shown).map(([id, s]) => (s.lcd ? explorerLine(id, s) : s.inputs && s.lit ? `${id}'s circuit: lit ${s.lit.join(' ') || 'none'}${Object.entries(s.sensors || {}).map(([k, x]) => `; ${k} ${x.temp.toFixed(1)} °C`).join('')}${Object.entries(s.servos || {}).map(([k, x]) => `; ${k} at ${Math.round(x.angle)}°`).join('')}${Object.entries(s.buzzers || {}).map(([k, x]) => `; ${k} ${x.sounding ? `${x.hz} Hz` : 'silent'}`).join('')}${Object.entries(s.steppers || {}).map(([k, x]) => `; ${k} at ${x.angle}°`).join('')}${Object.entries(s.sds || {}).map(([k, x]) => `; ${k} ${x.stage}, ${x.written.length} block(s) written`).join('')}${Object.entries(s.sonars || {}).map(([k, x]) => `; ${k} ${x.cm} cm`).join('')}${Object.entries(s.pirs || {}).map(([k, x]) => `; ${k} OUT ${x.out ? 1 : 0}`).join('')}${Object.entries(s.dhts || {}).map(([k, x]) => `; ${k} ${x.temp} °C ${x.hum} %`).join('')}.` : s.leds
   ? `${id}'s board: LEDs ${s.leds.map((v, k) => [v, k]).filter(([v]) => v > 0.5).map(([, k]) => `LD${k}`).join(' ') || 'off'}${s.digits?.some(Boolean) ? `; display ${s.digits.map(d => (d ? digitText(d) : ' ')).reverse().join('')}` : ''}.`
-  : `${id}'s board: LED L ${s.led > 0.5 ? 'on' : 'off'}; pins high ${Object.entries(s.pins).filter(([, v]) => v === 1).map(([p]) => p).join(' ') || 'none'}.`));
+  : `${id}'s board: ${ledText(boards.find(b => b.id === id), s)}pins high ${Object.entries(s.pins).filter(([, v]) => v === 1).map(([p]) => p).join(' ') || 'none'}.`));
 // an Explorer 16/32's (#5484): its LEDs lit, its buttons held, R6, the temperature, the LCD's rows
 const explorerLine = (id, s) => `${id}'s Explorer 16/32: LEDs ${Object.entries(s.leds).filter(([, v]) => v > 0.5).map(([d]) => d).join(' ') || 'off'}`
   + `; held ${Object.entries(s.held).filter(([, v]) => v).map(([b]) => b).join(' ') || 'none'}; R6 at ${Math.round(s.analog.R6 * 100)} %, ${s.analog.TC1047A} °C`

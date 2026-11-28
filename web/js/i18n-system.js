@@ -96,6 +96,8 @@ export const SYSTEM_PT = {
   'Real Board…': 'Placa Real…', 'Disconnect': 'Desligar', 'Give the terminal back to the emulation': 'Devolver o terminal à emulação',
   "Join this terminal to a real board's USB serial port (Web Serial), at its link's baud and frame": 'Ligar este terminal à porta série USB de uma placa real (Web Serial), com o baud e a trama da sua ligação',
   'LED L (D13)': 'LED L (pino D13)', 'Power': 'Alimentação',
+  // a Raspberry Pi Pico's (#5909)
+  'LED (GP25)': 'LED (pino GP25)', 'RP2040, MicroPython (its firmware on rp2040js)': 'RP2040, MicroPython (o seu firmware no rp2040js)',
   // an Explorer 16/32 (#5484)
   'Potentiometer R6 (AN5): 0 to 3.3 V': 'Potenciómetro R6 (AN5): 0 a 3,3 V', 'Temperature sensor TC1047A (AN4), °C': 'Sensor de temperatura TC1047A (AN4), °C',
   'LCD 16x2 (the PMP: PMD0-7 RE0-RE7, RS RB15, E RD4)': 'LCD 16x2 (o PMP: PMD0-7 RE0-RE7, RS RB15, E RD4)',

@@ -5,7 +5,10 @@
 // the three SWD pads at the right end and the silkscreen; a Pico W's wireless module (its shield can) and its antenna at
 // the right end instead of the SWD pads, which move to the middle. Its pins are where the circuit's part has them
 // (core/circuit-boards.js: BOARD_ART, the part's pins), and this drawing is the circuit editor's (web/js/circuit-draw-board.js).
-import { svgText, ic } from './emulator-pcb.js';
+// The System Emulator draws it too (#5909, picoLayout): each pad's level shown (lit high, dark low, hollow floating), the
+// Pico's LED lit by GP25; a Pico W's LED is its wireless chip's, not shown.
+import { boardFrame, svgText, ic } from './emulator-pcb.js';
+import { ledLook } from './emulator-paint.js';
 import { BOARD_ART, BOARD_PARTS } from '/core/circuit-boards.js';
 
 // the board's own colours: its green solder mask, its gold pads, its silver parts, its white silkscreen
@@ -46,4 +49,33 @@ export function picoArt(id = 'pico') {
     + svgText(w ? 230 : 330, 158, w ? 'Raspberry Pi Pico W' : 'Raspberry Pi Pico', { size: 10, fill: C.silk })
     + labels;
   return { art, W, H, at, l };
+}
+
+/** The board in the System Emulator: { wrap, paint(shown) } (shown: core/system-emu.js boardStates' { pins, led } of the
+ *  board; a Pico W's { pins }). */
+export function picoLayout({ h, board, title }) {
+  const { art, W, H, at, l } = picoArt(board.id);
+  const { put, wrap } = boardFrame({ h, W, H, art, board, title, clockNote: `${board.mcu}, MicroPython (its firmware on rp2040js)` });
+  // (its pads' pins: GP25, the LED's, is no pad of the board)
+  const pads = new Set(BOARD_PARTS.find(q => q.type === board.id).pins.map(q => q.name));
+  const dots = new Map();
+  for (const p of board.pins.filter(x => pads.has(x))) {
+    const { x, y } = at(p);
+    const dot = h('div', { class: 'sys-pin', 'data-pin': p, title: p });
+    dots.set(p, dot);
+    put(dot, x, y - 6);
+  }
+  const led = board.id === 'pico' ? h('div', { class: 'emu-led sys-pico-led', title: 'LED (GP25)' }) : null;
+  if (led) put(led, l.x, l.y - 8);
+  let shownKey = '';
+  return {
+    wrap,
+    paint(s) {
+      const key = s ? JSON.stringify(s) : '';
+      if (key === shownKey) return;
+      shownKey = key;
+      for (const [p, dot] of dots) { const v = s?.pins?.[p]; dot.classList.toggle('high', v === 1); dot.classList.toggle('low', v === 0); }
+      if (led) Object.assign(led.style, ledLook(s?.led ?? 0));
+    },
+  };
 }
