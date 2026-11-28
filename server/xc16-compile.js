@@ -7,7 +7,8 @@
 //   - the Docker image silinx/xc16:2.10 (config.json's xc16.image) on the ISE machine, reached over ssh as ISE's image is
 //     (server/ise.js: ssh.host, its build folder under ssh.remoteDir), the node's build folder uploaded and its out/
 //     brought back.
-// config.json's xc16.mode chooses: 'local', 'ssh', or neither (this computer's when it has one, else the ISE machine's).
+// config.json's xc16.mode chooses: 'local', 'ssh', or neither (this computer's when it has one, else the ISE machine's);
+// or 'docker': the image in this computer's Docker (the ISE runner's nightly tests, #6019).
 // The node's C and assembly (core/xc16-compile.js) are copied into build/nodes/<id>/firmware/src/ and built there:
 // xc16-gcc to out/<id>.elf, xc16-bin2hex to out/<id>.hex, which is written to the node's folder, the node's firmware (set
 // to it when it had none), which the Board Emulator runs on silinx-pic24. XC16's errors and warnings are the job's ERROR
@@ -18,7 +19,7 @@ import path from 'node:path';
 import * as P from './projects.js';
 import { capture, runCommand } from './jobs.js';
 import { loadConfig, which } from './toolchain.js';
-import { runInImage } from './image-remote.js';
+import { localImage, runInImage, runInLocalImage } from './image-remote.js';
 import { XC16_IMAGE, XC16_OPT, nodeProgram, pic24FileOf, xc16Commands, xc16Messages, xc16Script } from '../core/xc16-compile.js';
 import { mcuBoard } from '../core/system-doc.js';
 import { parseHex } from '../packages/silinx-pic24/src/hex.js';
@@ -53,17 +54,17 @@ function localBin(cfg, dirs) {
 }
 
 /**
- * Can a PIC24 node's firmware be compiled, and where? { available, via ('local' | 'ssh' | null), bin, root (XC16's
+ * Can a PIC24 node's firmware be compiled, and where? { available, via ('local' | 'ssh' | 'docker' | null), bin, root (XC16's
  * install folder, this computer's), version (this computer's XC16's, or null), image (the ISE machine's, or null),
  * reason, local: { available, reason }, remote: { available, reason } }: which one is used, and why the other is not.
  * `dirs`: where the installers put XC16 (XC16_DIRS).
  */
 export async function detectXc16(cfg = null, { dirs = XC16_DIRS } = {}) {
   cfg ??= await loadConfig();
-  const mode = ['local', 'ssh'].includes(cfg.xc16?.mode) ? cfg.xc16.mode : 'auto';
+  const mode = ['local', 'ssh', 'docker'].includes(cfg.xc16?.mode) ? cfg.xc16.mode : 'auto';
   const image = cfg.xc16?.image || XC16_IMAGE;
-  let local = { available: false, reason: 'not used (config.json\'s xc16.mode is ssh)' }, bin = null, root = null, version = null;
-  if (mode !== 'ssh') {
+  let local = { available: false, reason: `not used (config.json's xc16.mode is ${mode})` }, bin = null, root = null, version = null;
+  if (mode === 'local' || mode === 'auto') {
     const l = localBin(cfg, dirs);
     if (l.bin) {
       bin = l.bin; root = path.dirname(bin);
@@ -74,16 +75,17 @@ export async function detectXc16(cfg = null, { dirs = XC16_DIRS } = {}) {
         : { available: false, reason: `XC16 ${version || ''} installed here, without the PIC24FJ1024GB610's linker script (its PIC24F support)`.replace('  ', ' ') };
     } else local = { available: false, reason: l.reason };
   }
-  let remote;
+  let remote, docker = null;
   if (mode === 'local') remote = { available: false, reason: 'not used (config.json\'s xc16.mode is local)' };
   else if (!IMAGE.test(image)) remote = { available: false, reason: 'config.json\'s xc16.image is not an image\'s name' };
+  else if (mode === 'docker') ({ docker, ...remote } = await localImage(image));
   else if (!cfg.ssh?.host) remote = { available: false, reason: 'no ISE machine (no ssh host in the toolchain settings)' };
   else if (!which('ssh')) remote = { available: false, reason: 'ssh not found' };
   else remote = { available: true, reason: `the image ${image} on the ISE machine, over ssh` };
   const both = { local, remote };
   if (local.available) return { available: true, via: 'local', bin, root, version, image: null, reason: `${local.reason}${remote.available ? ' (the ISE machine\'s image not used)' : ''}`, ...both };
-  // (the image's version its tag's: silinx/xc16:2.10)
-  if (remote.available) return { available: true, via: 'ssh', bin: null, root: null, version: /:v?(\d+\.\d+)$/.exec(image)?.[1] || null, image, reason: `XC16 in ${remote.reason} (${local.reason})`, ...both };
+  // (the image's version its tag's: silinx/xc16:2.10; `docker` this computer's, the image in its Docker)
+  if (remote.available) return { available: true, via: mode === 'docker' ? 'docker' : 'ssh', bin: null, root: null, version: /:v?(\d+\.\d+)$/.exec(image)?.[1] || null, image, reason: `XC16 in ${remote.reason} (${local.reason})`, ...both, ...(docker ? { docker } : {}) };
   return { available: false, via: null, bin: null, root: null, version, image: null, reason: `${local.reason}; ${remote.reason}`, ...both };
 }
 
@@ -123,7 +125,7 @@ export async function compilePic24(job, name, sys, node, tool) {
   const root = await buildDir(name, node, prog);
   const units = prog.units.map(f => `src/${f.slice(node.id.length + 1)}`);
   const b = mcuBoard(node.board);
-  const where = tool.via === 'local' ? `XC16 ${tool.version || ''} on this computer`.replace('  ', ' ') : `XC16 in the image ${tool.image} on the ISE machine`;
+  const where = tool.via === 'local' ? `XC16 ${tool.version || ''} on this computer`.replace('  ', ' ') : `XC16 in the image ${tool.image} ${tool.via === 'docker' ? 'in this computer\'s Docker' : 'on the ISE machine'}`;
   job.log(`System node ${node.id}: its program (${prog.units.length} C and assembly file(s) of ${node.id}/) for the ${b.mcu} (${b.name}), by ${where}, ${XC16_OPT} (XC16's free licence: -O0 to -O2), in build/nodes/${node.id}/firmware/.`);
   const text = [];
   // (its lines the console's once parsed: the job's own log not the compiler's raw output, which names the build folder)
@@ -133,13 +135,14 @@ export async function compilePic24(job, name, sys, node, tool) {
   if (tool.via === 'local') code = await runLocal(quiet, root, xc16Commands({ id: node.id, device: prog.device, units, bin: tool.bin, root: tool.root }), onLine);
   else {
     await fs.writeFile(path.join(root, 'build.sh'), xc16Script({ id: node.id, device: prog.device, units }));
-    code = await runInImage(quiet, await loadConfig(), { remote: `${name}.${node.id}.xc16`, root, image: tool.image, who: node.id, tool: 'XC16' }, onLine, l => job.log(l));
+    if (tool.via === 'docker') code = await runInLocalImage(quiet, { root, image: tool.image, docker: tool.docker }, onLine);
+    else code = await runInImage(quiet, await loadConfig(), { remote: `${name}.${node.id}.xc16`, root, image: tool.image, who: node.id, tool: 'XC16' }, onLine, l => job.log(l));
   }
   job.checkCancelled();
   const { errors, warnings } = xc16Messages(text.join('\n'), p => pic24FileOf(p, root, node.id));
   for (const l of [...errors, ...warnings]) job.log(l);
   if (code !== 0) {
-    if (tool.via === 'ssh' && text.some(l => /No such image|Unable to find image/i.test(l))) job.log(`ERROR: ${node.id}: the image ${tool.image} is not on the ISE machine (build it there from Microchip's XC16 installer)`);
+    if (tool.via !== 'local' && text.some(l => /No such image|Unable to find image/i.test(l))) job.log(`ERROR: ${node.id}: the image ${tool.image} is not ${tool.via === 'docker' ? 'in this computer\'s Docker' : 'on the ISE machine'} (build it there from Microchip's XC16 installer)`);
     else if (!errors.length) job.log(`ERROR: ${node.id}: XC16 failed (exit code ${code}): ${text.filter(l => l.trim() && !/^\$ /.test(l)).slice(-3).join(' ').slice(0, 300) || 'no message'}`);
     throw new Error(`${node.id}: its program did not compile (${errors.length || 1} error(s), ${warnings.length} warning(s))`);
   }

@@ -2,8 +2,33 @@
 // A compiler's Docker image on the ISE machine (XC16's, #5482; arm-none-eabi-gcc's, #4687), reached over ssh as ISE's
 // image is (server/ise.js: ssh.host, its build folder under ssh.remoteDir): the local build folder uploaded (tar over
 // ssh), its build.sh run in the image (no network, the folder at /work), its out/ brought back, the remote folder removed.
-import { runCommand } from './jobs.js';
+// Or the image in this computer's Docker (config.json's xc16.mode or armGcc.mode 'docker': the ISE runner's own images,
+// #6019): the build folder itself at /work.
+import { capture, runCommand } from './jobs.js';
+import { which } from './toolchain.js';
 import { DOCKER_ISOLATION, remoteDirFor, runPipe, shQuote, sshParts } from './ise.js';
+
+// (where Docker Desktop and Homebrew put docker, besides the PATH: a server started from the Dock has a short PATH)
+const DOCKER_DIRS = ['/usr/local/bin', '/opt/homebrew/bin'];
+
+/** Docker on this computer and `image` in it (never pulled): { available, docker (its path), reason }. */
+export async function localImage(image) {
+  const docker = which('docker') || which('docker', DOCKER_DIRS);
+  if (!docker) return { available: false, docker: null, reason: 'docker not found on this computer' };
+  const r = await capture(docker, ['image', 'inspect', '--format', '{{.Id}}', image], { timeoutMs: 20000 });
+  if (r.code === 0) return { available: true, docker, reason: `the image ${image} in this computer's Docker` };
+  if (/No such image/i.test(r.out)) return { available: false, docker, reason: `the image ${image} is not in this computer's Docker` };
+  return { available: false, docker, reason: `this computer's Docker did not answer (docker image inspect: ${r.error || `exit code ${r.code}`})` };
+}
+
+/** The build folder `root` built by its build.sh in `image` in this computer's Docker (`docker`: localImage's), the
+ *  folder at /work, no network; the image's output through `onLine`. Its exit code. */
+export function runInLocalImage(quiet, { root, image, docker }, onLine) {
+  const args = ['run', '--rm', '--pull=never', ...DOCKER_ISOLATION, '-v', `${root}:/work`, '-w', '/work'];
+  // (Linux: the calling user's, so that out/ is not root's; Docker Desktop maps the owner by itself, as ISE's image's)
+  if (process.platform === 'linux' && typeof process.getuid === 'function') args.push('--user', `${process.getuid()}:${process.getgid()}`);
+  return runCommand(quiet, docker, [...args, image, 'bash', 'build.sh'], { echo: false, onLine });
+}
 
 /**
  * The build folder `root` built by its build.sh in `image` on the ISE machine (config `cfg`), in its remote folder

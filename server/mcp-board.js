@@ -172,6 +172,7 @@ export const BOARD_TOOLS = [
       // (a PIC24 node's, #5482: this computer's XC16 or the ISE machine's image, which one and why not the other)
       const x = await (await import('./xc16-compile.js')).detectXc16();
       const said = r => pathless(redact(r));
+      const WHERE = { local: 'on this computer', ssh: 'on the ISE machine', docker: 'in this computer\'s Docker' };
       const xc16 = { available: x.available, via: x.via, version: x.version, reason: said(x.reason), local: said(x.local.reason), remote: said(x.remote.reason) };
       // (a Zynq board's PS program's, #4687: this computer's arm-none-eabi-gcc or the ISE machine's image, as XC16's)
       const g = await (await import('./zynq-ps-compile.js')).detectArmGcc();
@@ -183,8 +184,8 @@ export const BOARD_TOOLS = [
         `AMD Vivado: ${vivado.available ? 'available' : 'not available'}${vivado.reason ? `: ${vivado.reason}` : ''}.`,
         `Arduino (Compile Firmware): ${arduino.available ? 'available' : 'not available'}: ${arduino.reason}.`,
         `Arduino assembly (Compile Firmware of an .asm): available: Silinx's AVR assembler, built in.`,
-        `XC16${xc16.version ? ` ${xc16.version}` : ''} (a PIC24's Compile Firmware): ${xc16.available ? `available, ${xc16.via === 'local' ? 'on this computer' : 'on the ISE machine'}` : 'not available'}: ${xc16.reason}.`,
-        `arm-none-eabi-gcc${armGcc.version ? ` ${armGcc.version}` : ''} (a Zynq's Compile PS Program): ${armGcc.available ? `available, ${armGcc.via === 'local' ? 'on this computer' : 'on the ISE machine'}` : 'not available'}: ${armGcc.reason}.`,
+        `XC16${xc16.version ? ` ${xc16.version}` : ''} (a PIC24's Compile Firmware): ${xc16.available ? `available, ${WHERE[xc16.via]}` : 'not available'}: ${xc16.reason}.`,
+        `arm-none-eabi-gcc${armGcc.version ? ` ${armGcc.version}` : ''} (a Zynq's Compile PS Program): ${armGcc.available ? `available, ${WHERE[armGcc.via]}` : 'not available'}: ${armGcc.reason}.`,
         `OpenOCD${openocd.version ? ` ${openocd.version}` : ''} (a Zynq's Run PS Program): ${openocd.available ? 'available' : 'not available'}: ${openocd.reason}.`].join('\n'), data: { ise, vivado, arduino, avrAsm, xc16, armGcc, openocd } };
     },
   },

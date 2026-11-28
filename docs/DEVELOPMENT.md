@@ -68,6 +68,7 @@ node bin/silinx.js grade <exercise.json> <submissions…> --csv grades.csv   # g
 node bin/silinx.js classroom template|grade …                  # GitHub Classroom assignments (docs/CLASSROOM.md)
 npm test                                                         # test suite
 SILINX_ISE_TESTS=1 npm run test:ise                              # the real ISE flow (Docker image; SILINX_ISE_HOST=user@host: on another machine)
+SILINX_TEST_COMPILERS=docker node --test test/examples-compilers.test.js   # the real XC16 and arm-none-eabi-gcc in their images here (or a config.json's path: the ISE machine's, over ssh)
 SILINX_ISE_HOST=user@host npm run check:open-flow [projects…]   # the open flow vs ISE: DRC, byte-identical bitstreams (SILINX_ISE_HOST=local: the image here)
 npm run check:xc7 [-- --boards basys3 --filter '^pong$' --vivado]   # the 7-series' open flow: frames, round trip, pins (--vivado: Vivado's DRC, timing, write_cfgmem)
 node scripts/check-private-data.mjs [--history]                 # no personal data, secrets or Xilinx files (also run by npm test)

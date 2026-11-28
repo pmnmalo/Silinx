@@ -1,8 +1,9 @@
 name: ISE
 # The tests against Xilinx ISE 14.7 (test/ise/*.test.js: the examples built by ISE on every device of
 # the Silinx toolchain with the expected warnings, Silinx's bitstreams byte-identical to ISE's and
-# ISE's DRC clean, the whole ISE flow through the REST API), on a self-hosted runner: a machine with
-# the ISE Docker image (xilinx/ise:14.7), registered to this repository with the label "ise".
+# ISE's DRC clean, the whole ISE flow through the REST API), and the tests of the real compilers (XC16 and
+# arm-none-eabi-gcc, #6019), on a self-hosted runner: a machine with the ISE Docker image (xilinx/ise:14.7) and the
+# compilers' (silinx/xc16:2.10, silinx/arm-none-eabi:12.2), registered to this repository with the label "ise".
 #
 # The repository is public: this workflow runs only code already on main (nightly, and by hand:
 # Actions ▸ ISE ▸ Run workflow), never a pull request's, and no other workflow may target the "ise"
@@ -30,7 +31,7 @@ jobs:
       contents: read
     with:
       workflow: ise.yml
-      only: core/,packages/,server/,scripts/,bin/,docker/,examples/,test/ise/,test/examples-lib.mjs,test/fixtures/,package.json,package-lock.json,.github/workflows/ise.yml
+      only: core/,packages/,server/,scripts/,bin/,docker/,examples/,test/ise/,test/examples-lib.mjs,test/compilers-lib.mjs,test/reactive-pic24.test.js,test/reactive-lib.mjs,test/zynq-ps-compile.test.js,test/examples-compilers.test.js,test/fixtures/,package.json,package-lock.json,.github/workflows/ise.yml
   ise:
     # never from a fork: scheduled or by hand, on main only (#482; test/workflows.test.js)
     needs: changes
@@ -53,6 +54,17 @@ jobs:
         run: docker image inspect --format '{{.Id}} {{.Size}}' "${SILINX_ISE_IMAGE:-xilinx/ise:14.7}"
       - name: ISE tests
         run: node --test --test-reporter=spec test/ise/*.test.js
+      # the tests of the real compilers (#6019): XC16 (a PIC24 node's) and arm-none-eabi-gcc (a Zynq's PS program's) in
+      # their images in this runner's own Docker, as ISE's (test/compilers-lib.mjs: no host or user, no ssh); an image
+      # missing fails them, never skips them. Run after the ISE tests, whatever those did.
+      - name: The compilers' images
+        if: ${{ !cancelled() }}
+        run: docker image inspect --format '{{.Id}} {{.Size}}' silinx/xc16:2.10 silinx/arm-none-eabi:12.2
+      - name: Compiler tests
+        if: ${{ !cancelled() }}
+        env:
+          SILINX_TEST_COMPILERS: docker
+        run: node --test --test-reporter=spec test/reactive-pic24.test.js test/zynq-ps-compile.test.js test/examples-compilers.test.js
 
   # a failed job is an issue (#251): .github/workflows/failure-report.yml
   report:

@@ -154,6 +154,41 @@ test('#4687 MCP: run_process ps, its warnings and locations; its refusals; toolc
   assert.deepEqual(t.data.armGcc, { available: true, via: 'local', version: '14.2.1', reason: 'arm-none-eabi-gcc 14.2.1 installed here', local: 'arm-none-eabi-gcc 14.2.1 installed here', remote: NO_MACHINE });
 });
 
+test('#6019 arm-none-eabi-gcc in its image in this computer\'s Docker (armGcc.mode docker, the ISE runner\'s): build.sh run there on the build folder, its ELF made; the image missing said; toolchain_info says so', { skip: WIN }, async () => {
+  const dlog = path.join(tmp, 'docker-local.log');
+  const was = process.env.PATH;
+  // (the stand-in found in the "image" on its PATH: the fake docker runs it here)
+  process.env.PATH = isolatedPath(fakes.docker, path.dirname(STUB), path.dirname(process.execPath));
+  Object.assign(process.env, { FAKE_DOCKER_LOG: dlog });
+  await writeConfig({ mode: 'silinx', paths: { 'arm-none-eabi-gcc': STUB }, armGcc: { mode: 'docker' } });
+  try {
+    const d = await detectArmGcc();
+    assert.deepEqual([d.available, d.via, d.image, d.version, d.docker, d.reason], [true, 'docker', 'silinx/arm-none-eabi:12.2', '12.2', path.join(fakes.docker, 'docker'),
+      'arm-none-eabi-gcc in the image silinx/arm-none-eabi:12.2 in this computer\'s Docker (not used (config.json\'s armGcc.mode is docker))']);
+    const name = await systemProject({ 'zybo/ps/main.c': '#warning check the clock\n' + MAIN });
+    const j = await run(name, 'zybo');
+    assert.equal(j.status, 'ok', j.lines.join('\n'));
+    assert.deepEqual(j.lines, [
+      'System node zybo: its PS program (1 C and assembly file(s) of zybo/ps/) for the Cortex-A9, by arm-none-eabi-gcc in the image silinx/arm-none-eabi:12.2 in this computer\'s Docker, with Silinx\'s startup code and Silinx\'s linker script (the on-chip memory), in build/nodes/zybo/ps/.',
+      'WARNING: zybo/ps/main.c:1:2: #warning check the clock',
+      'System node zybo: its PS program build/nodes/zybo/ps/out/zybo.elf, 8 bytes loaded in the on-chip memory (16392 of its 192 KB used, its .bss and stack included), its entry 0x00000000.',
+    ]);
+    const calls = fs.readFileSync(dlog, 'utf8').trim().split('\n');
+    assert.deepEqual(calls.map((c) => c.split(' ')[0]), ['image', 'image', 'run'], calls.join('\n'));
+    assert.equal(calls[2], `run --rm --pull=never --network none --cap-drop ALL --security-opt no-new-privileges --pids-limit 512 -v ${at(name, 'build/nodes/zybo/ps')}:/work -w /work silinx/arm-none-eabi:12.2 bash build.sh`);
+    const t = await tool('toolchain_info').run({});
+    assert.equal(t.text.split('\n').find((l) => l.startsWith('arm-none-eabi-gcc')), 'arm-none-eabi-gcc 12.2 (a Zynq\'s Compile PS Program): available, in this computer\'s Docker: arm-none-eabi-gcc in the image silinx/arm-none-eabi:12.2 in this computer\'s Docker (not used (config.json\'s armGcc.mode is docker)).');
+    // (the image not in this computer's Docker: not there, said; Compile PS Program refused)
+    process.env.FAKE_DOCKER_NO_IMAGE = '1';
+    assert.deepEqual((await detectArmGcc()).remote, { available: false, reason: 'the image silinx/arm-none-eabi:12.2 is not in this computer\'s Docker' });
+    await assert.rejects(startPsCompile(name, { node: 'zybo' }), { message: 'Compile PS Program needs arm-none-eabi-gcc on the local server or the ISE machine: not used (config.json\'s armGcc.mode is docker); the image silinx/arm-none-eabi:12.2 is not in this computer\'s Docker' });
+  } finally {
+    process.env.PATH = was;
+    for (const k of ['FAKE_DOCKER_LOG', 'FAKE_DOCKER_NO_IMAGE']) delete process.env[k];
+    await writeConfig({ mode: 'silinx', paths: { 'arm-none-eabi-gcc': STUB } });
+  }
+});
+
 test('#4687 arm-none-eabi-gcc in its image on the ISE machine: the build folder sent over ssh, build.sh run in the image, its ELF brought back; the remote folder removed', { skip: WIN }, async () => {
   const home = path.join(tmp, 'remote-home'), log = path.join(tmp, 'ssh.log'), dlog = path.join(tmp, 'docker.log');
   const was = process.env.PATH;
