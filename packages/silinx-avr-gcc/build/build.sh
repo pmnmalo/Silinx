@@ -45,6 +45,8 @@ sha() { if command -v sha256sum >/dev/null; then sha256sum "$@"; else shasum -a 
 fetch() {   # fetch <url> <sha256>: the file in $WORK/src, checked
   local f="$WORK/src/$(basename "$1")"
   mkdir -p "$WORK/src"
+  # (Arduino's patches are kept in build/patches/, the same files: raw.githubusercontent.com is not every runner's to reach)
+  [ -f "$f" ] || [ ! -f "$HERE/patches/$(basename "$1")" ] || cp "$HERE/patches/$(basename "$1")" "$f"
   [ -f "$f" ] || curl -fsSL --retry 5 --retry-all-errors --retry-delay 10 -o "$f" "$1"
   [ "$(sha "$f" | cut -d' ' -f1)" = "$2" ] || { echo "$1: not its SHA-256 $2"; exit 1; }
   echo "$f"
